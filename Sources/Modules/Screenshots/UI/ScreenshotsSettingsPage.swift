@@ -8,7 +8,7 @@ struct ScreenshotsSettingsPage: View {
     /// holds of the same shortcuts.
     enum Tab: String, CaseIterable { case capturing, editor, system }
 
-    @ObservedObject private var model: ScreenshotsPageModel
+    @ObservedObject private var model: ScreenshotsViewModel
     private let store: NamespacedStore
 
     @State private var tab = Tab.capturing
@@ -40,8 +40,9 @@ struct ScreenshotsSettingsPage: View {
     @StateObject private var screenKey: HelmHotkeyRecorder
     @StateObject private var panelKey: HelmHotkeyRecorder
 
-    init(vm: ModuleViewModel, store: NamespacedStore) {
-        model = ScreenshotsPageModel.shared(vm: vm)
+    init(model: ScreenshotsViewModel) {
+        self.model = model
+        let store = model.store
         self.store = store
         let settings = ScreenshotsSettings.read(store)
         _target = State(initialValue: settings.saveTarget)
@@ -78,7 +79,7 @@ struct ScreenshotsSettingsPage: View {
             }
         }
         .formStyle(.grouped)
-        .helmWindowToolbar(toolbarContent, token: ScreenshotsDescriptor.id.rawValue)
+        .helmWindowToolbar(toolbarContent)
         .helmIdlesOffScreen()
         .helmTracksScreenRecording($screenRecording)
         .task { model.refresh() }
@@ -125,9 +126,9 @@ struct ScreenshotsSettingsPage: View {
     private var toolbarContent: HelmPageToolbarContent {
         let holds = Self.holdsSystemKeys(model.state.boxes)
         return HelmPageToolbarContent(
-            tabs: [HelmToolbarTab(id: Tab.capturing.rawValue, title: ScStr.tabCapturing, symbol: "camera.viewfinder"),
-                   HelmToolbarTab(id: Tab.editor.rawValue, title: ScStr.tabEditor, symbol: "pencil.tip.crop.circle"),
-                   HelmToolbarTab(id: Tab.system.rawValue, title: ScStr.systemSection, symbol: "command",
+            tabs: [HelmToolbarTab(id: Tab.capturing.rawValue, title: ScStr.tabCapturing),
+                   HelmToolbarTab(id: Tab.editor.rawValue, title: ScStr.tabEditor),
+                   HelmToolbarTab(id: Tab.system.rawValue, title: ScStr.systemSection,
                                   needsAttention: holds, attentionNote: holds ? ScStr.stillOn : nil)],
             selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }))
     }
@@ -159,7 +160,7 @@ struct ScreenshotsSettingsPage: View {
                           taken: HotkeyStatus.isTaken(ScreenshotsHotkey.panel.slot),
                           note: conflictNote(.panel))
         } header: {
-            HelmSectionTitle(ScStr.shortcuts)
+            HelmSectionTitle(HelmWord.keyboardShortcuts)
         }
     }
 
@@ -167,11 +168,12 @@ struct ScreenshotsSettingsPage: View {
     /// store nothing was ever recorded into — the one it ships with. Nil for one
     /// that was cleared.
     static func combination(of hotkey: ScreenshotsHotkey, in store: NamespacedStore) -> (keyCode: Int, modifiers: Int)? {
-        guard store.object("\(hotkey.storePrefix)KeyCode") != nil else {
+        let keys = HotkeyStoreKeys(prefix: hotkey.storePrefix)
+        guard store.object(keys.keyCode) != nil else {
             return (hotkey.fallback.keyCode, hotkey.fallback.modifiers)
         }
-        let key = store.int("\(hotkey.storePrefix)KeyCode", default: -1)
-        let modifiers = store.int("\(hotkey.storePrefix)Modifiers", default: 0)
+        let key = store.int(keys.keyCode, default: -1)
+        let modifiers = store.int(keys.modifiers, default: 0)
         guard key >= 0, modifiers > 0 else { return nil }
         return (key, modifiers)
     }
@@ -189,7 +191,7 @@ struct ScreenshotsSettingsPage: View {
 
     // MARK: - The system's own
 
-    /// The boxes the section draws: the two Helm replaces always, and a
+    /// The boxes the section draws: the boxes Helm replaces always (`SystemBox.replaced`), and a
     /// clipboard twin (29, 31) only while it holds a combination Helm holds — recorded here or shipped as the default.
     /// The conflict note says «Untick it below first» for any box macOS holds, so
     /// the box it means has to be below — and a twin that conflicts with nothing
@@ -271,11 +273,12 @@ struct ScreenshotsSettingsPage: View {
     struct BoxStatus: View {
         let state: BoxState
         let warns: Bool
+        @Environment(\.helmTraits) private var traits
 
         var body: some View {
             Text(ScreenshotsSettingsPage.say(state))
                 .font(HelmText.rowDetail)
-                .foregroundStyle(warns ? HelmSignal.warning : HelmText.quiet)
+                .foregroundStyle(warns ? HelmSignal.warning(increased: traits.increasedContrast) : HelmText.quiet)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
@@ -375,8 +378,7 @@ struct ScreenshotsSettingsPage: View {
                 HStack(spacing: HelmSpace.s4) {
                     let choices = paletteChoices
                     Text(ScStr.toolsShown(choices.filter { shownItems.contains($0.item) }.count, of: choices.count))
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmText.quiet)
+                        .helmQuietDetail()
                     Button(ScStr.choose) { choosing = true }
                         .controlSize(.small)
                         .popover(isPresented: $choosing) { toolList }
@@ -463,22 +465,29 @@ struct ScreenshotsSettingsPage: View {
     /// stored, so the page never shows a choice the engine does not hold.
     private func targetChanged(to value: SaveTarget) {
         chosenRefused = false
-        // The bar chose «Other…» and the mirror followed: it is already stored.
-        if value == .other, ScreenshotsSettings.read(store).saveTarget == .other { return }
-        guard value == .other else {
-            store.set(value.rawValue, for: ScreenshotsSettings.Key.saveTarget)
-            return
-        }
-        switch Self.askForFolder() {
-        case .chosen(let path):
+        switch Self.storeTarget(value, in: store) {
+        case nil: return
+        case .chosen(let path)?:
             otherFolder = path
-            store.set(path, for: ScreenshotsSettings.Key.otherFolder)
-            store.set(value.rawValue, for: ScreenshotsSettings.Key.saveTarget)
             return
-        case .refused: chosenRefused = true
-        case .cancelled: break
+        case .refused?: chosenRefused = true
+        case .cancelled?: break
         }
         target = ScreenshotsSettings.read(store).saveTarget
+    }
+
+    /// The store side of `targetChanged`: nil when the target went in (or was already `.other`, the bar's choice the
+    /// mirror followed), else what the folder question came back with; only a `.chosen` folder is written.
+    static func storeTarget(_ value: SaveTarget, in store: NamespacedStore,
+                            ask: @MainActor () -> FolderChoice = askForFolder) -> FolderChoice? {
+        if value == .other, ScreenshotsSettings.read(store).saveTarget == .other { return nil }
+        guard value == .other else {
+            store.set(value.rawValue, for: ScreenshotsSettings.Key.saveTarget)
+            return nil
+        }
+        let choice = ask()
+        if case .chosen(let path) = choice { ScreenshotsSettings.chooseOtherFolder(path, in: store) }
+        return choice
     }
 
     private func chooseAnother() {
@@ -513,15 +522,8 @@ struct ScreenshotsSettingsPage: View {
     /// as long as it is up — accepted: a panel of an inactive app is not reliably
     /// answered. Nil when cancelled.
     private static func chooseFolder() -> String? {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.canCreateDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = ScStr.chooseFolder
-        NSApp.activate(ignoringOtherApps: true)
-        guard panel.runModal() == .OK, let url = panel.url else { return nil }
-        return url.path
+        FolderPicker.choose(prompt: ScStr.chooseFolder, startingAt: nil,
+                            canCreate: true, activate: true)?.path
     }
 
     // MARK: - The folder
@@ -543,8 +545,7 @@ struct ScreenshotsSettingsPage: View {
                 HelmSettingRow(ScStr.folder, note: folderNote(folder)) {
                     HStack(spacing: HelmSpace.s4) {
                         Text(Self.shown(folder.url.path))
-                            .font(HelmText.rowDetail)
-                            .foregroundStyle(HelmText.quiet)
+                            .helmQuietDetail()
                             .lineLimit(1)
                             .truncationMode(.middle)
                         if target == .other {

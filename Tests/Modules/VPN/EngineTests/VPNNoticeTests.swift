@@ -5,6 +5,9 @@ import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
 
+/// How loudly a firing is announced, and what a refused banner falls back to.
+///
+/// Past defect: commit 1fe5e099, «fix(vpn): a rule is bound to a signature, and a forged plist stops summoning dialogs» (a teardown Helm performed answered to the rules' setting alone).
 final class VPNNoticeTests: XCTestCase {
     private func settings() -> VPNSettings {
         VPNSettings(store: NamespacedStore(namespace: "vpn-test-\(UUID().uuidString)",
@@ -19,9 +22,9 @@ final class VPNNoticeTests: XCTestCase {
 
     func testTheChoiceRoundTrips() {
         let s = settings()
-        s.setNotice(.system)
+        s.store.set(VPNNotice.system.rawValue, for: VPNSettings.automationNoticeKey)
         XCTAssertEqual(s.notice, .system)
-        s.setNotice(.silent)
+        s.store.set(VPNNotice.silent.rawValue, for: VPNSettings.automationNoticeKey)
         XCTAssertEqual(s.notice, .silent)
     }
 
@@ -97,8 +100,8 @@ final class VPNNoticeTests: XCTestCase {
     /// The store reads the same rule, so nothing decides this twice.
     func testTheSettingsAgreeWithTheRule() {
         let s = settings()
-        s.setNotice(.silent)
-        s.setDropNotice(.system)
+        s.store.set(VPNNotice.silent.rawValue, for: VPNSettings.automationNoticeKey)
+        s.store.set(VPNNotice.system.rawValue, for: VPNSettings.dropNoticeKey)
         XCTAssertEqual(s.notice(for: .disconnected), .system)
         XCTAssertEqual(s.notice(for: .connected), .silent)
         XCTAssertEqual(s.notice(for: .dropped), .system)

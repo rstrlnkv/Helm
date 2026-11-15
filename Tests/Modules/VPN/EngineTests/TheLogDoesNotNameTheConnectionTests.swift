@@ -1,12 +1,13 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
 /// The log carries no names, and nothing checked that this module's lines obey
 /// it.
 ///
-/// CLAUDE.md states the rule and `Redact` implements it, with three test files
+/// (ARCHITECTURE.md § Diagnostics log) states the rule and `Redact` implements it, with three test files
 /// of its own. What none of them can see is the *call site*: a line written as
 /// `info("vpn", "connect \(name)")` instead of `Redact.vpn(name)` compiles,
 /// reads correctly, and puts somebody's employer in the file they are asked to
@@ -30,28 +31,17 @@ final class TheLogDoesNotNameTheConnectionTests: XCTestCase {
     /// length of each test and off again, which is where it began.
     override func setUp() {
         super.setUp()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
-    }
-
-    private func makeSettings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
+        tailTheLog()
     }
 
     private func engine(_ runner: FakeRunner) -> VPNEngine {
-        VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+        VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
                   interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                   work: .inline)
     }
 
     private var vpnLines: [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == "vpn" }.map(\.message)
+        loggedLines("vpn")
     }
 
     func testConnectingDoesNotWriteTheName() {
@@ -60,7 +50,7 @@ final class TheLogDoesNotNameTheConnectionTests: XCTestCase {
         Available network connection services:
         (Disconnected) 11111111-1111-1111-1111-111111111111 PPP (L2TP) --> "\(secretName)"
         """
-        engine(runner).connect(secretName)
+        engine(runner).connect(secretName, auto: false)
 
         XCTAssertTrue(vpnLines.contains { $0.hasPrefix("connect ") },
                       "no connect line was written at all, so this proves nothing: \(vpnLines)")
@@ -74,7 +64,7 @@ final class TheLogDoesNotNameTheConnectionTests: XCTestCase {
         Available network connection services:
         (Connected) 11111111-1111-1111-1111-111111111111 PPP (L2TP) --> "\(secretName)"
         """
-        engine(runner).disconnect(secretName)
+        engine(runner).disconnect(secretName, auto: false)
 
         XCTAssertTrue(vpnLines.contains { $0.hasPrefix("disconnect ") },
                       "no disconnect line was written at all: \(vpnLines)")
@@ -92,7 +82,7 @@ final class TheLogDoesNotNameTheConnectionTests: XCTestCase {
         (Connected) 11111111-1111-1111-1111-111111111111 PPP (L2TP) --> "\(secretName)"
         """
         let engine = engine(runner)
-        engine.connect(secretName)
+        engine.connect(secretName, auto: false)
         engine.refresh()
 
         XCTAssertFalse(vpnLines.isEmpty, "nothing was logged, so this proves nothing")

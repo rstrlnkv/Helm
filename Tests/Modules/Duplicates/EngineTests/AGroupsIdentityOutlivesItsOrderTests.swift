@@ -13,6 +13,8 @@ import XCTest
 /// So the identity is taken from the set of paths, sorted, and the assertions
 /// below are structural: they compare an id against another id of the same
 /// group, never against a value a fixture could satisfy by accident.
+///
+/// Guards a past defect: 245d09e6 feat(duplicates): a group's identity outlives its order, and a copy remembers when it arrived.
 final class AGroupsIdentityOutlivesItsOrderTests: XCTestCase {
 
     private func group(_ paths: [String]) -> DuplicateGroup {
@@ -40,8 +42,8 @@ final class AGroupsIdentityOutlivesItsOrderTests: XCTestCase {
     /// Every permutation, not the one that was thought of: the rule is about the
     /// set, so nothing in the arrangement may reach the id.
     func testEveryArrangementOfTheSameCopiesHasOneId() {
-        let ids = Set(permutations(of: three).map { group($0).id })
-        XCTAssertEqual(permutations(of: three).count, 6)
+        let ids = Set(permutations(three).map { group($0).id })
+        XCTAssertEqual(permutations(three).count, 6)
         XCTAssertEqual(ids.count, 1, "the same three copies answered with \(ids.count) ids")
     }
 
@@ -61,7 +63,7 @@ final class AGroupsIdentityOutlivesItsOrderTests: XCTestCase {
     }
 
     /// The id is a derived value, so it must not be a place a path can be read
-    /// out of. Ids reach diagnostics — the log carries no names (CLAUDE.md), and
+    /// out of. Ids reach diagnostics — the log carries no names (ARCHITECTURE.md § Diagnostics log), and
     /// a joined list of paths would carry every one of them.
     func testTheIdDoesNotSpellThePathsItWasMadeFrom() {
         let id = group(three).id
@@ -69,15 +71,6 @@ final class AGroupsIdentityOutlivesItsOrderTests: XCTestCase {
             XCTAssertFalse(id.contains(path), "the id quotes \(path)")
             XCTAssertFalse(id.contains((path as NSString).lastPathComponent),
                            "the id quotes a file name")
-        }
-    }
-
-    private func permutations(of items: [String]) -> [[String]] {
-        guard items.count > 1 else { return [items] }
-        return items.indices.flatMap { index -> [[String]] in
-            var rest = items
-            let head = rest.remove(at: index)
-            return permutations(of: rest).map { [head] + $0 }
         }
     }
 }

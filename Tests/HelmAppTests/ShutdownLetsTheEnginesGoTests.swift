@@ -18,8 +18,7 @@ import HelmRuntime
 /// The assertion is that the engines are **gone**, not that `live` is empty —
 /// `live` emptied is `shutdown()` reading back its own write. An engine still alive
 /// after the host let go of it is being held by something it should have cancelled
-/// (`Task { [weak self] }` holds strongly once the body runs, CLAUDE.md § What not
-/// to do, and what breaks if you do), and whatever it registered is still
+/// (`Task { [weak self] }` holds strongly once the body runs, ARCHITECTURE.md § State that outlives a page and ends with its module), and whatever it registered is still
 /// registered. Freed is the state no leftover can survive: the tap's own `deinit`
 /// is unreachable while the engine lives, and certain once it does not.
 @MainActor

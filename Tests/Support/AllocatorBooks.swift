@@ -7,8 +7,7 @@ import Foundation
 /// only meant to look at. `MemoryFootprint.current()` is `phys_footprint`, what
 /// the *process* costs the machine, and it can read flat across a fill that
 /// really did allocate: measured at 145 bytes an entry alone, 0 KB in its own
-/// class, and it passed with a kilobyte of ballast per entry added (CLAUDE.md
-/// § What not to do, and what breaks if you do). Three benchmarks had written this five-liner
+/// class, and it passed with a kilobyte of ballast per entry added (ARCHITECTURE.md § The memory trail). Three benchmarks had written this five-liner
 /// privately before it moved here, which is the note such a spread is.
 public enum AllocatorBooks {
 

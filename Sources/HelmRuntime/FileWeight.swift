@@ -47,7 +47,7 @@ public enum FileWeight {
     /// are one question — "what does this batch give the disk back" — and a
     /// caller that carried one set and forgot the other would answer it half
     /// right, which is exactly how the clone half came to be missing.
-    public struct Ledger {
+    struct Ledger {
         fileprivate var inodes: Set<UInt64> = []
         fileprivate var families: Set<UInt64> = []
         /// False where the caller is asking what a path *occupies* rather than
@@ -55,7 +55,7 @@ public enum FileWeight {
         /// per file and is only worth asking on the removal path.
         fileprivate let asksAboutClones: Bool
 
-        public init() { asksAboutClones = true }
+        init() { asksAboutClones = true }
 
         /// The books of a batch that leaves some files behind.
         ///
@@ -67,7 +67,7 @@ public enum FileWeight {
         /// construction excluded from the plan. Measured on a `clonefile` pair,
         /// the batch reported 8 003 584 bytes freed where the disk gains
         /// 4 001 792.
-        public init(sharedWith paths: [String]) {
+        init(sharedWith paths: [String]) {
             asksAboutClones = true
             families = Set(paths.compactMap(CloneShare.familyID(ofFileAt:)))
         }
@@ -91,7 +91,7 @@ public enum FileWeight {
     /// clone whose twin lives on elsewhere is still charged in full. That is the
     /// direction `CloneShare` chose deliberately — under-reporting space somebody
     /// really gets back is the worse error of the two.
-    public static func reclaimed(of url: URL, charging ledger: inout Ledger) -> Int {
+    static func reclaimed(of url: URL, charging ledger: inout Ledger) -> Int {
         weigh(url, &ledger)
     }
 

@@ -17,6 +17,14 @@ import HelmLaunch
 /// inside that poll. Reading to EOF already proves the child closed its output;
 /// the termination handler supplies the status without the poll.
 public enum HelmProcess {
+    /// Where a tool's standard error goes. `discarded` for every parsed query;
+    /// `merged` only for the one caller whose whole answer is a diagnostic
+    /// (Homebrew's `brew doctor`).
+    public enum StandardError: Sendable {
+        case discarded
+        case merged
+    }
+
     public struct Result: Sendable {
         public let status: Int32
         public let output: String
@@ -26,7 +34,7 @@ public enum HelmProcess {
         }
     }
 
-    /// **How many tools Helm will have out at once.**
+    /// **How many tools `run` and `runData` will have out at once.**
     ///
     /// Nothing bounded this, and nothing in the app asked to: the bound existed
     /// because no screen had ever started more than a few. Homebrew's search
@@ -37,15 +45,18 @@ public enum HelmProcess {
     ///
     /// The `LatestRequest` that now sits in `HomebrewViewModel` stops that
     /// particular screen from asking. This is the floor under every screen that
-    /// has not been written yet: a caller may still ask for more than eight, and
-    /// what it gets is a queue rather than eight more processes.
+    /// has not been written yet and goes through `run` or `runData`: a caller
+    /// may still ask for more than eight, and what it gets is a queue rather
+    /// than eight more processes. **`start` takes no slot**, so a tool launched
+    /// through it (Homebrew's streamed runs, the updater's swap)
+    /// is not counted and not held back by this number.
     ///
     /// Eight, and it is a ceiling on *concurrency* rather than a guess at what
     /// the machine can take. These are subprocesses that spend their time
     /// waiting on a network or a disk, so the useful number is not the core
     /// count; what matters is that it is small, fixed, and far below the point
     /// where a page can exhaust anything.
-    public static let launchCeiling = 8
+    static let launchCeiling = 8
 
     /// The slots, and the count for a test to read.
     ///
@@ -73,24 +84,17 @@ public enum HelmProcess {
     /// means the spawn itself failed.
     public static let timedOutStatus: Int32 = -2
 
-    @discardableResult
-    public static func run(_ path: String,
-                           _ arguments: [String],
-                           env: [String: String]? = nil) -> Result {
-        let r = runData(path, arguments, env: env, deadline: nil)
-        return Result(status: r.status, output: String(data: r.output, encoding: .utf8) ?? "")
-    }
-
-    /// The same run, bounded. A tool that has not closed its output by
-    /// `timeout` is terminated (TERM, then KILL after a two-second grace for
-    /// tools that trap it) and the result is `timedOutStatus` with no output —
-    /// a hung `brew` waiting on another brew's lock otherwise parks the calling
-    /// thread for the life of the process, and everything behind it queues.
+    /// A run with no `timeout` waits for the tool as long as it takes. With one,
+    /// a tool that has not closed its output by then is terminated (TERM, then
+    /// KILL after a two-second grace for tools that trap it) and the result is
+    /// `timedOutStatus` with no output — a hung `brew` waiting on another brew's
+    /// lock otherwise parks the calling thread for the life of the process, and
+    /// everything behind it queues.
     @discardableResult
     public static func run(_ path: String,
                            _ arguments: [String],
                            env: [String: String]? = nil,
-                           timeout: TimeInterval) -> Result {
+                           timeout: TimeInterval? = nil) -> Result {
         let r = runData(path, arguments, env: env, deadline: timeout)
         return Result(status: r.status, output: String(data: r.output, encoding: .utf8) ?? "")
     }
@@ -100,16 +104,20 @@ public enum HelmProcess {
     /// already here, became a String on return, and were copied straight back
     /// into `Data` at the call site. Measured on `outdated()` at 13 MB of
     /// payload: 79–80 MB held at peak through the String round-trip, 50–51 MB
-    /// handing the bytes through (`OutdatedQueryAllocationBenchmark`).
+    /// handing the bytes through (measured once; the benchmark is gone).
+    ///
+    /// `standardError: .merged` points stderr at the same pipe as stdout, in
+    /// write order; the deadline, TERM, grace and KILL are the same.
     public static func runData(_ path: String,
                                _ arguments: [String],
                                env: [String: String]? = nil,
-                               timeout: TimeInterval) -> (status: Int32, output: Data) {
-        runData(path, arguments, env: env, deadline: timeout)
+                               timeout: TimeInterval,
+                               standardError: StandardError = .discarded) -> (status: Int32, output: Data) {
+        runData(path, arguments, env: env, deadline: timeout, standardError: standardError)
     }
 
-    /// Stderr is discarded, not merged: a tool's diagnostics are not its output,
-    /// and every caller here parses what it gets.
+    /// Stderr is discarded unless the one merged caller asks: a tool's
+    /// diagnostics are not its output, and every other caller parses what it gets.
     ///
     /// `nullDevice`, not a `Pipe()`. A pipe nobody reads holds about 64 KB
     /// and then blocks the child in `write(2)` — so it never exits, never
@@ -123,7 +131,8 @@ public enum HelmProcess {
     private static func runData(_ path: String,
                                 _ arguments: [String],
                                 env: [String: String]?,
-                                deadline: TimeInterval?) -> (status: Int32, output: Data) {
+                                deadline: TimeInterval?,
+                                standardError: StandardError = .discarded) -> (status: Int32, output: Data) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = arguments
@@ -135,8 +144,8 @@ public enum HelmProcess {
 
         let out = Pipe()
         process.standardOutput = out
-        // Discarded: see the doc comment above.
-        process.standardError = FileHandle.nullDevice
+        // Discarded unless merged into the same, read pipe: see the doc comment above.
+        process.standardError = standardError == .merged ? out : FileHandle.nullDevice
 
         let finished = DispatchSemaphore(value: 0)
         process.terminationHandler = { _ in finished.signal() }

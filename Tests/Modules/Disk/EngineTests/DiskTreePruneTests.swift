@@ -4,6 +4,7 @@ import XCTest
 /// Trashing a folder invalidates the tree — but re-walking a whole disk to
 /// learn something we already know (those bytes are gone) costs a minute.
 /// Pruning applies the deletion to the tree we have.
+/// Past defect: fixed in commit 76f18e41.
 final class DiskTreePruneTests: XCTestCase {
     private func entry(_ path: String, _ bytes: Int, _ children: [DiskEntry] = []) -> DiskEntry {
         DiskEntry(name: (path as NSString).lastPathComponent, path: path, bytes: bytes,

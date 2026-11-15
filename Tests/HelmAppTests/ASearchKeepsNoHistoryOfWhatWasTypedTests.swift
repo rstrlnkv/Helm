@@ -24,8 +24,8 @@ import XCTest
 /// toolbar, whose `target`/`action` were both nil — SwiftUI hung the submit
 /// off its own field editor, so no commit ever reached AppKit's own recording
 /// path and `recentSearches` stayed `[]` through everything this fixture could
-/// do to the field, Return included. `SettingsToolbar.makeSearchItem` wires a
-/// real `target`/`action` (`searchSubmitted(_:)`), so a Return now *is* a
+/// do to the field, Return included. `HelmHeaderSearch` wires a
+/// real `target`/`action` (`Coordinator.submitted(_:)`), so a Return now *is* a
 /// commit AppKit's own control recognises — and measured on this field,
 /// `recentSearches` reads `["wget"]` after one, in memory, whatever
 /// `recentsAutosaveName` is set to. `testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents`
@@ -34,7 +34,7 @@ import XCTest
 /// list this control keeps regardless of persistence.
 ///
 /// **`recentsAutosaveName` is the load-bearing reading, and the in-memory list
-/// is not.** `field.recentsAutosaveName = nil` (`makeSearchItem`) is what
+/// is not.** `field.recentsAutosaveName = nil` (`HelmHeaderSearch.makeNSView`) is what
 /// there is no key for AppKit to persist under — measured nil at mount, after
 /// typing and after the commit that populates `recentSearches` — and the
 /// defaults-domain sweep at the end of the same test is what actually answers
@@ -44,29 +44,10 @@ import XCTest
 /// end on this very control, so the guard above it is standing in front of
 /// something measured rather than something quoted from documentation.
 ///
-/// **The bar.** Every row reads a real `SettingsToolbar` that
-/// `LivePageInTheToolbarFixture` attaches to the mount's window, built with the
-/// default lead `.sidebarSeparator`, not the app's `.spacer` build. The field is
-/// the one of the toolbar's search item (`LivePageInTheToolbarFixture.searchField`),
-/// and each row asserts that `MountedRender.type` and `.pressReturn`, which act
-/// on the field the frame-view walk meets first, act on that very field before
-/// it types. **The look.** Nothing here reads a width or a cell, so the settings
-/// are pinned in `setUp` (`PinnedBarSettings`: Flat, text tabs, a search that
-/// does not always collapse) to make the run the same each time, not because the
-/// subject is the look.
+/// **The row.** Every row reads the field `LivePageUnderTheHeaderFixture` mounts
+/// under the card's header row (`HelmHeaderSearch`), and asserts it is there before it types.
 @MainActor
 final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
-
-    /// **Both looks, both rows**: the field is AppKit's `NSSearchToolbarItem` one under Glass and Helm's own
-    /// (`ShellBarSearch`) under Flat, each wired by its own path to the same no-history rule.
-    private static let looks: [HelmBarAppearance] = [.flat, .liquidGlass]
-
-    private func underEachLook(_ body: (HelmBarAppearance) throws -> Void) rethrows {
-        for look in Self.looks {
-            PinnedBarSettings.pin(in: self, look: look)
-            try body(look)
-        }
-    }
 
     /// The page's side: the binding that moves per keystroke and the press
     /// that is the search, counted so that "the word landed" and "the commit
@@ -78,14 +59,13 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
 
     private struct Pane: View {
         let page: Page
-        let token: String
         var body: some View {
             Text("the list")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .helmWindowToolbar(HelmPageToolbarContent(search: HelmToolbarSearch(
                     prompt: "Search packages",
                     text: Binding(get: { page.text }, set: { page.text = $0 }),
-                    onSubmit: { page.submits += 1 })), token: token)
+                    onSubmit: { page.submits += 1 })))
         }
     }
 
@@ -95,31 +75,21 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     /// plausible source of.
     private static let word = "wget"
 
-    /// **The guard.** Nothing about the field this toolbar builds carries a
+    /// **The guard.** Nothing about the field the header row draws carries a
     /// history.
     func testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents() throws {
-        try underEachLook { look in try run_testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents(look) }
-    }
-
-    private func run_testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents(_ look: HelmBarAppearance) throws {
         let page = Page()
-        let fixture = LivePageInTheToolbarFixture(Pane(page: page, token: "test.searchHistory"), selection: .module("test.searchHistory"),
+        let fixture = LivePageUnderTheHeaderFixture(Pane(page: page), selection: .module("test.searchHistory"),
                                                   width: 1060, height: 400)
         defer { fixture.drop() }
         fixture.settle(20)
-        PinnedBarSettings.assertWears(look, fixture)
 
         // The subject, before any absence is read off it. A walk that found no
         // control would satisfy every assertion below by never running, and an
         // empty history is exactly what "there was no field" looks like.
         let field = try XCTUnwrap(fixture.searchField, """
-            under \(look.rawValue) the window's toolbar holds no search field at all, so there is nothing here whose \
+            the header row holds no search field at all, so there is nothing here whose \
             history could be read and every reading below would be of nothing
-            """)
-        XCTAssertTrue(fixture.mount.searchField === field, """
-            the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
-            toolbar's field — they would type into another control and nothing below would be \
-            about the toolbar's
             """)
         XCTAssertNil(field.recentsAutosaveName, """
             the field arrived already carrying the autosave name \
@@ -127,6 +97,14 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
             writes the searched-for words into the user defaults domain under that key, and \
             this app's two search bars are typed with the names of somebody's applications and \
             the packages they looked for
+            """)
+
+        // The guard below reads the whole domain for the word, so it reads only
+        // what this run wrote when nothing carrying it was there before.
+        let leftovers = Self.keysCarrying(Self.word)
+        XCTAssertEqual(leftovers, [], """
+            precondition: «\(Self.word)» is already in the defaults domain under \(leftovers), so \
+            the reading below would be of somebody else's leftovers
             """)
 
         // And the word has to actually land, or "no history" is a reading of a
@@ -166,7 +144,7 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
         // `target`/`action` were both nil, so no commit ever reached AppKit's
         // recording path and this stayed `[]` no matter what was done to the
         // field. This field's action really fires on Return
-        // (`searchSubmitted(_:)`), and AppKit keeps its own in-memory list of
+        // (`HelmHeaderSearch.Coordinator.submitted(_:)`), and AppKit keeps its own in-memory list of
         // what has been committed regardless of `recentsAutosaveName` — that
         // flag governs persistence, not the in-memory list. The word landing
         // here is not the leak this file guards against; the next assertion,
@@ -193,27 +171,17 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     /// Without this the guard above is a sentence about a framework rather than
     /// a measurement — it would read the same whether `recentsAutosaveName`
     /// were a live property of the mounted control or a name that does nothing
-    /// on macOS 27. So the defect is put back here, on the field this toolbar
-    /// builds, and the cost of it is measured: the typed word in the settings
+    /// on macOS 27. So the defect is put back here, on the field the header row
+    /// draws, and the cost of it is measured: the typed word in the settings
     /// domain, under the planted key.
     func testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile() throws {
-        try underEachLook { look in try run_testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile(look) }
-    }
-
-    private func run_testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile(_ look: HelmBarAppearance) throws {
         let page = Page()
-        let fixture = LivePageInTheToolbarFixture(Pane(page: page, token: "test.searchHistoryCanary"), selection: .module("test.searchHistoryCanary"),
+        let fixture = LivePageUnderTheHeaderFixture(Pane(page: page), selection: .module("test.searchHistoryCanary"),
                                                   width: 1060, height: 400)
         defer { fixture.drop() }
         fixture.settle(20)
-        PinnedBarSettings.assertWears(look, fixture)
         let field = try XCTUnwrap(fixture.searchField, """
-            no search field in the toolbar, so the guard beside this one has no subject either
-            """)
-        XCTAssertTrue(fixture.mount.searchField === field, """
-            the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
-            toolbar's field — they would type into another control and nothing below would be \
-            about the toolbar's
+            no search field in the header row, so the guard beside this one has no subject either
             """)
 
         // Registered before the key can exist, and as a teardown block rather

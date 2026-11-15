@@ -4,9 +4,7 @@
 import XCTest
 import SwiftUI
 import AppKit
-import HelmContract
 import HelmRuntime
-import HelmUI
 import HelmTestSupport
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI
@@ -16,7 +14,7 @@ import HelmTestSupport
 /// An automatic connect may not open the System keychain, and an empty credential
 /// cache therefore means a rule cannot raise its tunnel at all. The engine knows
 /// (`VPNSecretBook`); until this landed the only account of it was a line in
-/// `~/Library/Logs/Helm/helm.log`, which is the outcome CLAUDE.md forbids — the app
+/// `~/Library/Logs/Helm/helm.log`, which is the outcome the house rules forbid — the app
 /// silently not doing the thing it was asked.
 ///
 /// **One surface, and it used to be two.** The banner spoke for the configurations
@@ -25,6 +23,8 @@ import HelmTestSupport
 /// so that row is invisible until somebody opens a popover — and a configuration
 /// that cannot raise its tunnel said so nowhere at all. Measured here as «the page
 /// grows a news card, once per locked configuration».
+///
+/// Past defect: commit ed04d30c, «fix(vpn): a rule that cannot reach its secret says so, once, on the screen».
 @MainActor
 final class OnePressOfConnectIsAskedForTests: XCTestCase {
 
@@ -36,18 +36,17 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
         super.tearDown()
     }
 
-    // MARK: - The wire reaches the model
+    // MARK: - The stream reaches the model
 
     func testTheModelPublishesWhatTheEngineCouldNotRead() {
-        let transport = LocalTransport()
-        let vm = VPNViewModel(transport: transport)
+        let work = FakeVPNWork()
+        let vm = VPNViewModel(work: work, settings: seededVPNSettings())
         var payload = VPNEngine.StatePayload(
             connections: [VPNConnection(id: "1", name: "Office", status: .disconnected,
                                         kind: "IPSec")],
-            autoConnected: [], defaultName: "Office", lastAutomation: nil)
+            autoConnected: [], lastAutomation: nil)
         payload.secretsBehindAPrompt = ["Office"]
-        transport.emit(EngineEvent(name: VPNEvent.state.rawValue,
-                                   payload: try! JSONEncoder().encode(payload)))
+        work.say(payload)
         pump { !vm.connections.isEmpty }
 
         XCTAssertEqual(vm.secretsBehindAPrompt, ["Office"],
@@ -107,7 +106,7 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
     // MARK: - The page, and its instrument
 
     private func page(_ locked: [String], ruleFor vpn: String = "One") -> VPNSettingsPage {
-        let transport = LocalTransport()
+        let work = FakeVPNWork()
         // In memory, never `UserDefaults.standard`: this page writes its settings
         // through on every change.
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
@@ -118,17 +117,16 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
             "com.apple.Safari": VPNAppRule(vpnName: vpn,
                                            identity: CodeIdentity(signingID: "com.apple.Safari",
                                                                   teamID: "APPLE"))]))
-        let vm = VPNViewModel(transport: transport, settings: settings)
+        let vm = VPNViewModel(work: work, settings: settings)
         var payload = VPNEngine.StatePayload(
             connections: [VPNConnection(id: "id-One", name: "One", status: .disconnected,
                                         kind: "IPSec")],
-            autoConnected: [], defaultName: nil, lastAutomation: nil)
+            autoConnected: [], lastAutomation: nil)
         payload.secretsBehindAPrompt = locked
-        transport.emit(EngineEvent(name: VPNEvent.state.rawValue,
-                                   payload: try! JSONEncoder().encode(payload)))
+        work.say(payload)
         pump { !vm.connections.isEmpty }
         XCTAssertEqual(vm.connections.count, 1,
-                       "the wire did not deliver: nothing below measures anything")
+                       "the stream did not deliver: nothing below measures anything")
         XCTAssertEqual(vm.secretsBehindAPrompt, locked, "…nor the state under test")
         return VPNSettingsPage(vm: vm, store: store)
     }

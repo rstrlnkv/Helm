@@ -2,34 +2,57 @@ import Foundation
 import HelmRuntime
 import Security
 
-/// The keychain service both of this module's items live under.
+/// The keychain items this module's two ports address.
 ///
-/// One spelling, because it is deployed: it names the items on every Mac that
-/// has ever run Autopilot, and the two classes below would otherwise each carry
-/// a literal that only one of them needs changing to lose the other. Not derived
-/// from `AutopilotEngine.moduleID` for the same reason the doc below gives — a
-/// rename of the module must not move a keychain item somebody's rules are
-/// sealed under.
-private let ruleKeychainService = "com.helm.autopilot"
+/// The service is one spelling, because it is deployed: it names the items on
+/// every Mac that has ever run Autopilot, and the two classes below would
+/// otherwise each carry a literal that only one of them needs changing to lose
+/// the other. Not derived from `AutopilotEngine.moduleID` for the same reason the
+/// doc below gives — a rename of the module must not move a keychain item
+/// somebody's rules are sealed under.
+///
+/// **Helm Dev has accounts of its own**, because Dev shares the person's
+/// installed Helm's keychain and `rule-seq` is a counter: a rule saved in Dev
+/// would raise the mark, and Helm could then read its own rules as rolled back. Exactly
+/// `AppBuild.devIdentifier` moves; anything else, a nil identifier included,
+/// reads the deployed items. Not `AppBuild.isDev`, which is the version string
+/// and true of the person's own installed Helm.
+struct RuleKeychainItems: Equatable, Sendable {
+    /// Deployed: names items on every Mac that has run Autopilot.
+    static let service = "com.helm.autopilot"
+    let seal: String
+    let sequence: String
+
+    static func of(bundle identifier: String?) -> RuleKeychainItems {
+        AppBuild.isDevIdentifier(identifier)
+            ? RuleKeychainItems(seal: "dev-rule-seal", sequence: "dev-rule-seq")
+            : RuleKeychainItems(seal: "rule-seal", sequence: "rule-seq")
+    }
+}
 
 /// The rule-set key, in Helm's own login keychain.
 ///
-/// The mechanism is `KeychainSealKey` (HelmRuntime) since the background scans
-/// grew a seal of their own — the `SecItemAdd` dance, the "created once, never
-/// rewritten" rule and the treatment of an unreadable keychain are all one
-/// implementation now, and the note that used to sit here wishing for exactly
-/// that is spent.
+/// The mechanism is `KeychainSealKey` (HelmRuntime), the one the background
+/// scans' seal stands on: the `SecItemAdd` dance, the "created once, never
+/// rewritten" rule and the treatment of an unreadable keychain are one implementation.
 ///
 /// **The service and account stay exactly what they were.** This item exists on
 /// every Mac that has ever run Autopilot, and moving it would read to all of
 /// them as "somebody rewrote your rules" — a refusal to run the person's own
-/// configuration, in the signal that exists to warn them about forgery.
+/// configuration, in the signal that exists to warn them about forgery. In Helm
+/// Dev the account is `dev-rule-seal` (`RuleKeychainItems`); no copy, no delete.
 public final class KeychainRuleKey: RuleKeyPort {
-    private let keychain = KeychainSealKey(service: ruleKeychainService,
-                                            account: "rule-seal",
-                                            category: AutopilotEngine.moduleID)
+    let items: RuleKeychainItems
+    private let keychain: KeychainSealKey
 
-    public init() {}
+    public convenience init() { self.init(items: .of(bundle: Bundle.main.bundleIdentifier)) }
+
+    init(items: RuleKeychainItems) {
+        self.items = items
+        keychain = KeychainSealKey(service: RuleKeychainItems.service,
+                                   account: items.seal,
+                                   category: AutopilotEngine.moduleID)
+    }
 
     public func key() -> RuleKey? { keychain.key() }
 }
@@ -51,42 +74,42 @@ public final class KeychainRuleKey: RuleKeyPort {
 /// It is not in `HelmRuntime` because nothing else keeps a counter yet. The day
 /// a second sealed setting needs one, this is the file it moves out of.
 public final class KeychainRuleSequence: RuleSequencePort {
+    let items: RuleKeychainItems
 
-    public init() {}
+    public convenience init() { self.init(items: .of(bundle: Bundle.main.bundleIdentifier)) }
+
+    init(items: RuleKeychainItems) { self.items = items }
 
     private var query: [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: ruleKeychainService,
-         kSecAttrAccount as String: "rule-seq"]
+        KeychainItem.address(service: RuleKeychainItems.service, account: items.sequence)
     }
 
     public func highWater() -> RuleSequence {
         // A test run never reaches the real item — `KeychainSealKey.key()`
         // gives the reason, and it is this item's too.
         guard !TestProcess.isRunning else { return .unavailable }
-        var request = query
-        request[kSecReturnData as String] = true
-        request[kSecMatchLimit as String] = kSecMatchLimitOne
-        var item: CFTypeRef?
-        let status = SecItemCopyMatching(request as CFDictionary, &item)
-        switch status {
-        case errSecSuccess:
-            // A value that is there and is not a number is not "never sealed":
-            // it is an item this app cannot read the meaning of, and the safe
-            // reading of that is the same as a keychain that will not answer.
-            guard let data = item as? Data,
-                  let text = String(data: data, encoding: .utf8),
-                  let mark = UInt64(text)
-            else { return .unavailable }
-            return .at(mark)
-        case errSecItemNotFound:
+        switch KeychainItem.read(service: RuleKeychainItems.service, account: items.sequence) {
+        case let .found(data):
+            return Self.sequence(from: data)
+        case .absent:
             return .absent
-        default:
-            HelmLog.shared.warn(AutopilotEngine.moduleID,
-                                "could not read which rule set is the current one: "
-                                + HelmFailure.osStatus(status))
+        case let .refused(status):
+            if status != errSecSuccess {
+                HelmLog.shared.warn(AutopilotEngine.moduleID,
+                                    "could not read which rule set is the current one: "
+                                    + HelmFailure.osStatus(status))
+            }
             return .unavailable
         }
+    }
+
+    /// A value that is there and is not a number is not "never sealed": it is an
+    /// item this app cannot read the meaning of, and the safe reading of that is
+    /// the same as a keychain that will not answer.
+    static func sequence(from data: Data) -> RuleSequence {
+        guard let text = String(data: data, encoding: .utf8), let mark = UInt64(text)
+        else { return .unavailable }
+        return .at(mark)
     }
 
     @discardableResult

@@ -6,6 +6,8 @@ import XCTest
 /// **Copy Text leaves out the lines the person covered:** the reading is of the frame without the layers, so a line under a blur, a filled
 /// rectangle or ellipse, or a step's circle would reach the clipboard under «Text copied» with the cover undone. A line wholly or partly under
 /// one of them is not copied; a stroked shape hides nothing and a line it only outlines is.
+///
+/// Mutant, red here: `CopiedText.lines` ignores the covers.
 final class TheTextUnderACoverIsNotCopiedTests: XCTestCase {
 
     /// A 1× picture of 200 × 100 pixels at the origin: a line's box of (0.1, 0.5, 0.5, 0.1) is the points (20, 40)-(120, 50).

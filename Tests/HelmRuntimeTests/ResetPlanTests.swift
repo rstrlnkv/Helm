@@ -8,17 +8,36 @@ final class ResetPlanTests: XCTestCase {
     private let home = "/Users/someone"
 
     func testItNamesTheTwoHelmDirectories() {
-        let paths = ResetPlan.removablePaths(home: home)
+        let paths = ResetPlan.removablePaths(home: home, folder: .helm)
         XCTAssertEqual(Set(paths), [
             "\(home)/Library/Application Support/Helm",
             "\(home)/Library/Logs/Helm",
         ])
     }
 
-    func testEveryPathItProducesIsInsideTheHome() {
-        for path in ResetPlan.removablePaths(home: home) {
-            XCTAssertTrue(path.hasPrefix(home + "/"), "\(path) escaped the home directory")
+    /// The release, a test runner and nil are `.helm`; Helm Dev is `.helmDev`.
+    func testEveryPathItProducesIsInsideTheHomeAndNamesTheBuildsFolder() {
+        for id in ["com.helm.app", AppBuild.devIdentifier, nil] as [String?] {
+            let folder = DataFolder.of(identifier: id)
+            let name = AppBuild.isDevIdentifier(id) ? "Helm Dev" : "Helm"
+            XCTAssertEqual(Set(ResetPlan.removablePaths(home: home, folder: folder)), [
+                "\(home)/Library/Application Support/\(name)",
+                "\(home)/Library/Logs/\(name)",
+            ], "\(id ?? "nil")")
         }
+    }
+
+    /// What Dev's reset hands to the Trash, from the call the app makes: Helm Dev's
+    /// folders only, never the real Helm's.
+    func testHelmDevsResetNamesOnlyHelmDevsFolders() {
+        XCTAssertEqual(Set(ResetPlan.trashPaths(home: home, identifier: AppBuild.devIdentifier)), [
+            "\(home)/Library/Application Support/Helm Dev",
+            "\(home)/Library/Logs/Helm Dev",
+        ])
+        XCTAssertEqual(Set(ResetPlan.trashPaths(home: home, identifier: "com.helm.app")), [
+            "\(home)/Library/Application Support/Helm",
+            "\(home)/Library/Logs/Helm",
+        ])
     }
 
     /// The gate, asked the questions somebody would ask it by accident.
@@ -27,7 +46,7 @@ final class ResetPlanTests: XCTestCase {
                      "/", "/System/Library", "\(home)/Library/Application Support",
                      "\(home)/Library/Logs", "\(home)/Library/Application Support/Helmet",
                      "\(home)/Library/Application Support/Helm/../../Documents"] {
-            XCTAssertFalse(ResetPlan.mayRemove(path, home: home),
+            XCTAssertFalse(ResetPlan.mayRemove(path, home: home, folder: .helm),
                            "\(path) must not be removable by a reset")
         }
     }
@@ -37,15 +56,7 @@ final class ResetPlanTests: XCTestCase {
                      "\(home)/Library/Application Support/Helm/Disk",
                      "\(home)/Library/Logs/Helm",
                      "\(home)/Library/Logs/Helm/helm.log"] {
-            XCTAssertTrue(ResetPlan.mayRemove(path, home: home), "\(path) is Helm's own")
-        }
-    }
-
-    /// Everything the plan produces must pass its own gate. A list and a gate
-    /// that disagree is the shape of the bug this pair exists to prevent.
-    func testThePlanAgreesWithItsOwnGate() {
-        for path in ResetPlan.removablePaths(home: home) {
-            XCTAssertTrue(ResetPlan.mayRemove(path, home: home))
+            XCTAssertTrue(ResetPlan.mayRemove(path, home: home, folder: .helm), "\(path) is Helm's own")
         }
     }
 }

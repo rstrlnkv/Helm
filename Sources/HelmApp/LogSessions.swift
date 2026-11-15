@@ -4,6 +4,7 @@
 import Foundation
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 // **What the Log page draws, derived from the lines and from nothing else.**
 //
@@ -54,7 +55,7 @@ struct LogSession: Identifiable {
     var id: LogEntry.ID { isTailHead ? Self.tailHeadID : lines[0].id }
     private static let tailHeadID = UUID(uuidString: "5E9B6C5A-7A49-4E0B-9F4D-0C2B7D8E1A63")!
     var start: LogEntry? { opensWithLaunch ? lines[0] : nil }
-    var version: String? { start.flatMap(LogSessions.version(of:)) }
+    var version: String? { start.flatMap(LogSeed.version(of:)) }
 
     /// The start-up burst: what a launch says while it switches its modules on.
     var startup: ArraySlice<LogEntry> {
@@ -104,89 +105,12 @@ enum LogCardTitle: Equatable {
 
 enum LogSessions {
 
-    /// **The one place a launch is recognised**, and the one place the words
-    /// `HelmLog.start` writes are spelled a second time. The two sides are held
-    /// together by `TheLogSplitsIntoLaunchesTests`, which has a real `HelmLog`
-    /// write its start line and asks this to read it — a reworded start line
-    /// otherwise turns every card into one long "earlier launch" and nothing
-    /// says so.
-    static let startCategory = "app"
-    private static let startPrefix = "Helm "
-    private static let startSuffix = " started"
-
-    static func isStart(_ entry: LogEntry) -> Bool { version(of: entry) != nil }
-
-    /// The version a start line names, or nil for any other line.
-    ///
-    /// **A start line a crash glued to a torn one is still a start.** A write cut
-    /// short has no newline, so the next launch's first line is appended to it,
-    /// and `LogSeed` — which keeps a line whole and claims nothing — reads the
-    /// pair as one entry whose category is half a line plus the next stamp and
-    /// whose message is the start line's own «[app] Helm … started». The launch
-    /// after a crash is the one somebody opened the page for, so it is read here
-    /// as the launch it is; the entry stays one line, in the place it was.
-    static func version(of entry: LogEntry) -> String? {
-        if entry.category == startCategory, let version = version(inMessage: entry.message) {
-            return version
-        }
-        return versionOfGluedStart(entry)
-    }
-
-    /// The glued pair, whatever byte the tear fell on and whatever level the
-    /// torn line had. `LogSeed` reads the pair as a stamp-level-category-message
-    /// entry when it can and as one whole unreadable message when it cannot, so
-    /// the two are put back into one string — category, «] », message — and the
-    /// start line is looked for at the end of it: its own stamp, «[info] [app]
-    /// Helm … started». A start line standing alone has category `app` and was
-    /// answered before this is asked.
-    ///
-    /// **Not a line that carries a source site.** `HelmLog.warn` and `.error`
-    /// write one on every line, and a glued start never has one — the start
-    /// line is written without a site and is the end of the glued entry — so a
-    /// warning or an error that merely quotes a start line (a copied log line, a
-    /// file named like one) is not a launch. An `info` line has no site either,
-    /// so the same quote at that level cannot be told from a tear by the entry
-    /// alone.
-    private static func versionOfGluedStart(_ entry: LogEntry) -> String? {
-        guard entry.site == nil, entry.message.hasSuffix(startSuffix) else { return nil }
-        let text = entry.category.isEmpty ? entry.message : entry.category + "] " + entry.message
-        let marker = " [info] [\(startCategory)] \(startPrefix)"
-        guard let found = text.range(of: marker, options: .backwards),
-              text.distance(from: text.startIndex, to: found.lowerBound) >= 23,
-              isStamp(text[text.index(found.lowerBound, offsetBy: -23)..<found.lowerBound])
-        else { return nil }
-        return version(inMessage: String(text[text.index(found.upperBound, offsetBy: -startPrefix.count)...]))
-    }
-
-    private static func version(inMessage message: String) -> String? {
-        guard message.hasPrefix(startPrefix), message.hasSuffix(startSuffix),
-              message.count > startPrefix.count + startSuffix.count
-        else { return nil }
-        return String(message.dropFirst(startPrefix.count).dropLast(startSuffix.count))
-    }
-
-    /// Exactly the 23 characters `LogLine.stampFormat` spells.
-    private static func isStamp(_ text: Substring) -> Bool {
-        let stamp = Array(text)
-        guard stamp.count == 23 else { return false }
-        return stamp.indices.allSatisfy { index in
-            switch index {
-            case 4, 7: return stamp[index] == "-"
-            case 10: return stamp[index] == " "
-            case 13, 16: return stamp[index] == ":"
-            case 19: return stamp[index] == "."
-            default: return stamp[index].isASCII && stamp[index].isNumber
-            }
-        }
-    }
-
-    static func isTerminating(_ entry: LogEntry) -> Bool {
-        entry.category == startCategory && entry.message == "terminating"
-    }
+    static func isStart(_ entry: LogEntry) -> Bool { LogSeed.version(of: entry) != nil }
 
     /// **Lines that cannot belong to the launch above them.** A launch is not a
-    /// process: two builds write one folder, and logging can be switched on in
-    /// the middle of a run that wrote no start line. So a launch ends at the line
+    /// process: two builds no longer share a folder, but older files still
+    /// interleave, and logging can be switched on in the middle of a run that
+    /// wrote no start line. So a launch ends at the line
     /// where it says it is terminating — a process that has said so writes
     /// nothing more, and whatever follows is some other's — and a «logging
     /// enabled» that does not answer a «logging disabled» just above it is the
@@ -199,9 +123,9 @@ enum LogSessions {
         // builds that quit one after the other write it twice (49 ms apart in
         // the owner's log), and it belongs to the launch it ends. Anything else
         // after one is another run's.
-        if isTerminating(previous) { return !isTerminating(entry) }
-        guard entry.category == startCategory, let named = loggingEnabled(entry) else { return false }
-        guard previous.category == startCategory && previous.message == "logging disabled" else { return true }
+        if LogSeed.isTerminating(previous) { return !LogSeed.isTerminating(entry) }
+        guard let named = LogSeed.loggingEnabled(entry) else { return false }
+        guard LogSeed.isLoggingDisabled(previous) else { return true }
         // An answer — unless the on edge names a version and the launch above
         // knows its own, and they differ: then the off edge was another launch's.
         guard let enabledAs = named else { return false }
@@ -211,7 +135,7 @@ enum LogSessions {
         // another launch's. A run with no first word of its own to go by (the
         // tail's head) is left whole, as before.
         guard let running = run.first.flatMap(versionOfRun(openedBy:)) else {
-            return run.first.map(isBareLoggingEnabled) ?? false
+            return run.first.map(LogSeed.isBareLoggingEnabled) ?? false
         }
         return enabledAs != running
     }
@@ -220,22 +144,8 @@ enum LogSessions {
     /// build opened by switching logging on, which wrote no start line — the
     /// one on its own «logging enabled (version)».
     private static func versionOfRun(openedBy first: LogEntry) -> String? {
-        if let version = version(of: first) { return version }
-        guard first.category == startCategory, let named = loggingEnabled(first) else { return nil }
-        return named
-    }
-
-    private static func isBareLoggingEnabled(_ entry: LogEntry) -> Bool {
-        entry.category == startCategory && entry.message == "logging enabled"
-    }
-
-    /// `.some(nil)` for a bare «logging enabled» (older builds wrote no version),
-    /// `.some(version)` for «logging enabled (version)», nil for any other line.
-    private static func loggingEnabled(_ entry: LogEntry) -> String?? {
-        let word = "logging enabled"
-        if entry.message == word { return .some(nil) }
-        guard entry.message.hasPrefix(word + " ("), entry.message.hasSuffix(")") else { return nil }
-        return .some(String(entry.message.dropFirst(word.count + 2).dropLast()))
+        if let version = LogSeed.version(of: first) { return version }
+        return LogSeed.loggingEnabled(first) ?? nil
     }
 
     /// **How long after the start line a line still belongs to the burst.**
@@ -273,50 +183,6 @@ enum LogSessions {
         }
         close()
         return sessions
-    }
-
-    /// **The days a folded row stands for, written the way the language writes a
-    /// span of days** — the system's own interval formatter, and not two days
-    /// joined with a dash: the sign and its spacing are the language's (Japanese
-    /// writes «～», and a day that shares its month or year with the other is
-    /// written once). The long date style `HelmDates.day` uses, which makes a
-    /// span and a heading one family in six of the eight languages; in Chinese
-    /// and Japanese the interval formatter answers in numerals
-    /// (`2026/9/22 – 2026/9/23`) beside a heading spelled `2026年9月22日`. That is
-    /// a known defect, `log-span-zh-ja` in the defect log.
-    ///
-    /// The formatter is kept per language and zone, never in one constant: the
-    /// app's language changes while it runs, and a formatter built per call is
-    /// the cost the page reads a thousand rows to avoid.
-    static func daySpan(from first: Date, to last: Date, language: String,
-                        calendar: Calendar = .current) -> String {
-        let spelled = spanFormatters.formatter(language: language, zone: calendar.timeZone)
-            .string(from: first, to: last)
-        // A formatter that answers nothing leaves the two days as `HelmDates`
-        // writes them rather than an empty heading over a row.
-        return spelled.isEmpty ? HelmDates.day(first, language: language) + " – "
-            + HelmDates.day(last, language: language) : spelled
-    }
-
-    private static let spanFormatters = SpanFormatters()
-
-    private final class SpanFormatters: @unchecked Sendable {
-        private let lock = NSLock()
-        private var made: [String: DateIntervalFormatter] = [:]
-
-        func formatter(language: String, zone: TimeZone) -> DateIntervalFormatter {
-            lock.lock()
-            defer { lock.unlock() }
-            let key = language + "|" + zone.identifier
-            if let found = made[key] { return found }
-            let formatter = DateIntervalFormatter()
-            formatter.locale = Locale(identifier: language)
-            formatter.timeZone = zone
-            formatter.dateStyle = .long
-            formatter.timeStyle = .none
-            made[key] = formatter
-            return formatter
-        }
     }
 
     /// How many lines after `run[0]` are the unbroken `info` burst.
@@ -388,8 +254,9 @@ enum LogSearch {
     /// «Helm» on the owner's log, all of them for «PM»). The query must be the
     /// version, «Helm <version>», or the day and minute as drawn, case and
     /// accents aside; a card whose lines match is drawn for its lines. The head of
-    /// the tail also draws «Earlier launch», and no query finds a card by that
-    /// word — a known defect, `log-earlier-launch-search` in the defect log.
+    /// the tail also draws «Earlier launch», in the page's language, and a query
+    /// that is a part of those words finds that card (`LogCardTitle.earlierLaunch`):
+    /// it is the one card that draws them, so a short query cannot draw every card.
     static func matches(header session: LogSession, _ query: String,
                         drawnTime: (Date) -> String) -> Bool {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -397,8 +264,13 @@ enum LogSearch {
         // A card with no version still draws its day and time.
         let drawn = [session.version, session.version.map { "Helm \($0)" }, drawnTime(session.lines[0].date)]
         let typed = plainBlanks(needle)
+        let options: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
+        if session.title == .earlierLaunch,
+           plainBlanks(AppStr.logEarlierLaunch).range(of: typed, options: options) != nil {
+            return true
+        }
         return drawn.compactMap { $0 }.contains {
-            plainBlanks($0).compare(typed, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+            plainBlanks($0).compare(typed, options: options) == .orderedSame
         }
     }
 
@@ -454,6 +326,26 @@ struct LogPresentation {
         /// The last row on the card — what Follow is following when this card is
         /// the newest.
         var newestID: LogEntry.ID { rows.last?.id ?? startup.last?.id ?? session.lines[0].id }
+    }
+
+    /// The day a run of lines belongs to, written when it changes.
+    ///
+    /// **A heading and not a column.** The row carries a time to the
+    /// millisecond, and a date beside it would cost every row about a third of
+    /// its message width in the languages that spell a short date longest; the
+    /// day changes a few times in a log and the row would repeat it a thousand.
+    /// Inside a card it is written where a launch crosses midnight — the card's
+    /// own header names the day it began.
+    ///
+    /// The spelling is `HelmDates.day` — the app's language, a formatter cached
+    /// per language — and the comparison is the reader's calendar day, the same
+    /// clock the row's time is drawn in. Nil for a line on the same day as the
+    /// one above it in what is *shown*, never in what exists.
+    static func dayHeading(for entry: LogEntry, after previous: LogEntry?,
+                           language: String = AppLanguage.current.rawValue,
+                           calendar: Calendar = .current) -> String? {
+        if let previous, calendar.isDate(entry.date, inSameDayAs: previous.date) { return nil }
+        return HelmDates.day(entry.date, language: language)
     }
 
     let cards: [Card]
@@ -534,14 +426,14 @@ struct LogPresentation {
                 // across midnight ends on the new day, and compared by its last
                 // line it would swallow the heading of the row that follows it.
                 let above = restRows.last?.first ?? session.lines[0]
-                var heading = LogView.dayHeading(for: run[0], after: above, language: language,
-                                                 calendar: calendar)
+                var heading = LogPresentation.dayHeading(for: run[0], after: above, language: language,
+                                                         calendar: calendar)
                 // A repeat that ran across midnight is one row, and the day it
                 // ended on would be named nowhere if nothing follows it: its
                 // heading is the span, the days the row stands for.
                 if let end = run.last, !calendar.isDate(run[0].date, inSameDayAs: end.date) {
-                    heading = LogSessions.daySpan(from: run[0].date, to: end.date, language: language,
-                                                  calendar: calendar)
+                    heading = HelmDates.daySpan(from: run[0].date, to: end.date, language: language,
+                                                  zone: calendar.timeZone)
                 }
                 restRows.append(Row(lines: run, heading: heading))
             }

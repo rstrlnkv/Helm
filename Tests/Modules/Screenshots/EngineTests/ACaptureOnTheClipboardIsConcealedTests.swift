@@ -7,6 +7,8 @@ import XCTest
 /// `TransientType` beside it), and is still a picture that pastes. Read off a
 /// real pasteboard of the test's own — a named one, never the general board —
 /// because a fake that records what it was told would agree with any marking.
+///
+/// Mutant, red here: `SystemShotPasteboard.copy(png:)` leaves out `concealedType`.
 final class ACaptureOnTheClipboardIsConcealedTests: XCTestCase {
 
     private var board: NSPasteboard!

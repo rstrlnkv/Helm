@@ -84,11 +84,7 @@ final class TheSealKeyIsAskedOnceAndNotOnMainTests: XCTestCase {
         let guarded = SettingGuard(keys: SealKeyCache(source))
         let warming = Task { await guarded.warmKey() }
 
-        var turns = 0
-        while turns < 50 {
-            turns += 1
-            await Task.yield()
-        }
+        await grace()
         XCTAssertEqual(source.reads, 0, "the gate is shut, so the source has not answered yet")
         gate.signal()
         await warming.value
@@ -151,20 +147,22 @@ final class TheSealKeyIsAskedOnceAndNotOnMainTests: XCTestCase {
         let gate = DispatchSemaphore(value: 0)
         let source = SealKeyProbe(gate: gate)
         let cache = SealKeyCache(source)
-        let answers = Answers()
+        // A class behind a lock, because the two callers write from two queues and
+        // `wait(for:)` reads afterwards.
+        let answers = Locked<[SealKey?]>([])
         let both = expectation(description: "both callers answered")
         both.expectedFulfillmentCount = 2
 
         for _ in 0..<2 {
             DispatchQueue.global().async {
-                answers.add(cache.key())
+                answers.withLock { $0.append(cache.key()) }
                 both.fulfill()
             }
         }
         gate.signal()
         wait(for: [both], timeout: 5)
 
-        let material = answers.taken.map(\.?.material)
+        let material = answers.value.map(\.?.material)
         XCTAssertEqual(material.count, 2, "one of the callers never answered")
         XCTAssertNil(material.first(where: { $0 == nil }) ?? nil,
                      "a caller was told there is no key while the other had one")
@@ -175,15 +173,6 @@ final class TheSealKeyIsAskedOnceAndNotOnMainTests: XCTestCase {
         // is one door, and two callers holding it open is the defect
         // `TheFirstReadClosesTheSealsDoorTests` exists for, arriving by another
         // route.
-        XCTAssertEqual(answers.taken.filter { $0?.firstUse == true }.count, 1)
-    }
-
-    /// What the two background callers answered. A class behind a lock, because
-    /// they write from two queues and `wait(for:)` reads afterwards.
-    private final class Answers: @unchecked Sendable {
-        private let lock = NSLock()
-        private var stored: [SealKey?] = []
-        func add(_ key: SealKey?) { lock.withLock { stored.append(key) } }
-        var taken: [SealKey?] { lock.withLock { stored } }
+        XCTAssertEqual(answers.value.filter { $0?.firstUse == true }.count, 1)
     }
 }

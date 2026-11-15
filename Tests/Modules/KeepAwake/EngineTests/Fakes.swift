@@ -29,7 +29,6 @@ final class FakeAssertions: SleepAssertions {
     /// is the shape of half the defects in this module: the Mac sleeps, and
     /// every surface says the session is holding it.
     var succeeds = true
-    @discardableResult
     func preventSleep(display: Bool) -> Bool {
         preventCount += 1
         guard succeeds else { return false }
@@ -48,6 +47,13 @@ final class FakeAssertions: SleepAssertions {
 final class FakeDisplayInfo: DisplayInfoPort {
     var flags: [Bool] = [true]
     func builtInFlags() -> [Bool] { flags }
+}
+
+final class FakeLidInfo: LidInfoPort {
+    var lid = true
+    var battery = true
+    func hasLid() -> Bool { lid }
+    func hasBattery() -> Bool { battery }
 }
 
 final class FakeDisplayObserver: DisplayObserverPort {
@@ -97,8 +103,10 @@ final class FakeApps: AppRunningPort {
     var ids: Set<String> = []
     private var onChange: (@Sendable () -> Void)?
     func runningBundleIDs() -> Set<String> { ids }
-    func startObserving(_ onChange: @escaping @Sendable () -> Void) { self.onChange = onChange }
+    private(set) var observing = false
+    func startObserving(_ onChange: @escaping @Sendable () -> Void) { self.onChange = onChange; observing = true }
     func fire() { onChange?() }
+    func stopObserving() { onChange = nil; observing = false }
 }
 
 final class FakePointer: PointerPort {
@@ -112,7 +120,7 @@ final class FakePointer: PointerPort {
 
 final class FakeClamshell: ClamshellPort {
     var sudoersInstalled = false
-    var pmset = ""
+    var pmset: String? = ""
     var disableSleepCalls: [Bool] = []
     var installCompletion: ((Bool) -> Void)?
     var installCalls = 0
@@ -120,9 +128,20 @@ final class FakeClamshell: ClamshellPort {
     /// nothing back» — has to be read *after* the launch looked, or it is green
     /// because nothing has run yet.
     private(set) var installedChecks = 0
+    /// Set to hold the next look at the file until the test signals it, which
+    /// is what a look still out looks like to a setting changed meanwhile;
+    /// `lookBegan` is fulfilled when the look has read the file and is parked.
+    var holdNextLook: DispatchSemaphore?
+    var lookBegan: XCTestExpectation?
     func isSudoersInstalled() -> Bool {
         installedChecks += 1
-        return sudoersInstalled
+        let answer = sudoersInstalled
+        if let gate = holdNextLook {
+            holdNextLook = nil
+            lookBegan?.fulfill()
+            gate.wait()
+        }
+        return answer
     }
     func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         installCalls += 1
@@ -189,10 +208,16 @@ final class FakeClamshell: ClamshellPort {
     /// a password — the question that is `sudo -n pmset disablesleep 0`, and
     /// which it now asks on a queue of its own. «No dialog was raised» has to be
     /// read *after* the question was answered, or it is green because nobody has
-    /// asked yet, which is the vacuous absence CLAUDE.md warns about.
+    /// asked yet, which is the vacuous absence (ARCHITECTURE.md § What makes a check) warns about.
     private(set) var grantChecks = 0
+    /// Set to hold the next probe on the lid's queue until the test signals it,
+    /// which is what a probe still out looks like to the next edit.
+    var holdNextProbe: DispatchSemaphore?
     func canDisableSleepWithoutPassword() -> Bool {
         grantChecks += 1
+        let gate = holdNextProbe
+        holdNextProbe = nil
+        gate?.wait()
         return passwordlessGrantExists ?? sudoersInstalled
     }
     func setDisableSleep(_ on: Bool) -> Bool {
@@ -210,8 +235,12 @@ final class FakeClamshell: ClamshellPort {
     /// `pmset` at all» is a question about every launch on every Mac: the
     /// recovery's anchors exist to keep that read off the ordinary path.
     private(set) var pmsetReads = 0
-    func pmsetReport() -> String {
+    /// Signalled on entry: the next call the launch look makes on `shell` after
+    /// the file read and the verdict's hop, so a test can know both have happened.
+    var pmsetEntered: DispatchSemaphore?
+    func pmsetReport() -> String? {
         pmsetReads += 1
+        pmsetEntered?.signal()
         return pmset
     }
 }
@@ -268,6 +297,30 @@ extension XCTestCase {
         let drained = expectation(description: "main actor drained")
         Task { @MainActor in drained.fulfill() }
         await fulfillment(of: [drained], timeout: 5)
+    }
+
+    /// Everything already on the main queue has run.
+    ///
+    /// The engine posts a callback with `DispatchQueue.main.async` (`osascript`
+    /// calls back on a background queue, and engine state belongs on main); this
+    /// block is enqueued after it, and a serial queue runs them in order.
+    ///
+    /// What the tests prove with it is the assertion that the block ran on
+    /// main: a drain that skipped the hop is red. The ordering itself is not
+    /// shown to be needed by any caller, because `await fulfillment` yields to
+    /// the main queue anyway; no caller waits on this alone. `await fulfillment`
+    /// rather than `wait(for:)`: these tests are on the main actor, and blocking
+    /// it is what stops the queue draining at all.
+    @MainActor
+    func drainMainQueue() async {
+        let drained = expectation(description: "main queue drained")
+        var ranOnMain = false
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated { ranOnMain = true }
+            drained.fulfill()
+        }
+        await fulfillment(of: [drained], timeout: 5)
+        XCTAssertTrue(ranOnMain, "the drain block was not run from the main queue")
     }
 
     /// The withdrawal has been attempted, and its verdict has landed.

@@ -60,16 +60,18 @@ import SwiftUI
 /// demotion still happens, and `HelmMotion.disclosure` collapses it to a cut on
 /// its own. Nothing is lost except the movement, which is the thing that was
 /// asked to go.
-public extension View {
+extension View {
     /// `measuring` is the engine's own fact — a run is in flight for this
     /// tunnel — and `false` is completely inert: no border, full ink, and a
     /// paused schedule that wakes nothing.
-    func helmMeasuringSlot(_ measuring: Bool) -> some View {
+    public func helmMeasuringSlot(_ measuring: Bool) -> some View {
         modifier(HelmMeasuringSlot(measuring: measuring, lap: HelmMeasuringSlot.lap))
     }
 }
 
 struct HelmMeasuringSlot: ViewModifier {
+    @Environment(\.helmTraits) private var traits
+
 
     /// How long the segment takes to get round, in seconds.
     ///
@@ -168,9 +170,9 @@ struct HelmMeasuringSlot: ViewModifier {
             let sweep = Sweep.at(context.date, lap: lap)
             ZStack {
                 // Reduce Motion takes the whole border at once and stands
-                // still. Read fresh inside the body, so turning the setting on
-                // stops this without a relaunch.
-                if HelmMotion.reduceMotion {
+                // still. Read from the environment (`helmTraits`); that a change
+                // reaches this view without a relaunch is intended and untried.
+                if traits.reducedMotion {
                     edge.trim(from: 0, to: 1).stroke(Self.lit, lineWidth: Self.weight)
                 } else {
                     edge.trim(from: sweep.first.lowerBound, to: sweep.first.upperBound)

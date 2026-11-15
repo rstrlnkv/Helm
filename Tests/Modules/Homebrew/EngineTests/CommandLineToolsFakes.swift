@@ -209,68 +209,30 @@ final class ScriptedPrivileged: PrivilegedRunner, @unchecked Sendable {
     func answer() { answered.signal() }
 }
 
-/// Records what it was asked to stream and finishes only when told: a stream
-/// that answered at once would release the busy gate before the call returned.
-final class RecordingStreamRunner: ProcessRunner, @unchecked Sendable {
-    struct Call { let launch: String; let args: [String]; let env: [String: String] }
-    private let lock = NSLock()
-    private var _calls: [Call] = []
-    private var _exits: [@Sendable (Int32) -> Void] = []
-
-    var calls: [Call] { lock.lock(); defer { lock.unlock() }; return _calls }
-
-    func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) { (0, "") }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        lock.lock(); _calls.append(Call(launch: launchPath, args: args, env: env)); _exits.append(onExit); lock.unlock()
-        return NoProcess()
-    }
-
-    func finishAll(code: Int32 = 0) {
-        lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-        for exit in exits { exit(code) }
-    }
-}
-
 /// An engine wired to the three fakes for the three sides of its boundary —
 /// Apple's tools, time, root — plus a runner, each named at construction.
 final class WaitRig {
-    struct FixedLocator: BrewLocator { func brewPath() -> String? { "/opt/homebrew/bin/brew" } }
-
     let journal = Journal()
     let tools: FakeCommandLineTools
     let ticker = FakeWaitTicker()
     let privileged: ScriptedPrivileged
-    let runner = RecordingStreamRunner()
-    let transport = LocalTransport()
+    let runner = HangingRunner()
+    let news = EngineNews<HomebrewNews>()
     let engine: HomebrewEngine
 
     init(reply: PrivilegedOutcome = .done, holdsDialog: Bool = false, user: String = "tester") {
         tools = FakeCommandLineTools(journal: journal)
         privileged = ScriptedPrivileged(reply: reply, holds: holdsDialog, journal: journal)
         engine = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: privileged,
-                                user: user, transport: transport, marker: InMemoryOpMarker(),
+                                user: user, news: news, marker: InMemoryOpMarker(),
                                 tools: tools, ticker: ticker)
     }
 
-    /// The latest `opState` and `opLog` the transport would replay to a page
+    /// The latest `opState` and `opLog` the news would replay to a page
     /// opened now. A sentinel emitted before subscribing marks where the replay
     /// ends, so the read is deterministic.
-    func replayed() async -> (state: OpState?, log: String?) {
-        transport.emit(EngineEvent(name: "test.sentinel", payload: Data()))
-        var state: OpState?
-        var log: String?
-        for await event in transport.events {
-            if event.name == "test.sentinel" { break }
-            switch HomebrewEvent(rawValue: event.name) {
-            case .opState: state = try? JSONDecoder().decode(OpState.self, from: event.payload)
-            case .opLog: log = String(bytes: event.payload, encoding: .utf8)
-            case .none: break
-            }
-        }
-        return (state, log)
+    func replayed() async -> (state: OpState?, busy: Bool) {
+        let items = await replay(news)
+        return (items.states.last, items.sawBusy)
     }
 }

@@ -45,10 +45,9 @@ enum BadgeImage {
         // **Exactly `points` tall, whatever the style.** A framed badge used to
         // add 2 for the stroke — but the path is already `insetBy(0.5)`, which
         // is what keeps a 1 pt stroke inside its own rectangle, so the 2 bought
-        // nothing and cost the one thing «Size» is for: at 15 pt requested,
-        // filled and outlined drew 17 while plain drew 15, and the whole Size
-        // range is 11 → 15. A style that moves the badge as far as the size
-        // picker does makes the size picker a suggestion.
+        // nothing and cost the one thing `points` is for: at 15 pt requested,
+        // filled and outlined drew 17 while plain drew 15. A style that moves
+        // the badge as far as a size step does makes the size a suggestion.
         let canvas = NSSize(width: ceil(size.width) + padding * 2, height: points)
 
         return NSImage(size: canvas, flipped: false) { rect in

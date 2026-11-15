@@ -16,6 +16,8 @@ import HelmTestSupport
 /// defect instead of fixing it.
 ///
 /// The reader answers which of the three it was, so everything above it can.
+///
+/// Past defect: fixed in 6009a76e.
 final class AnEmptyFolderIsNotAnUnreadableOneTests: XCTestCase {
 
     private var home: URL!
@@ -143,9 +145,7 @@ final class AnEmptyFolderIsNotAnUnreadableOneTests: XCTestCase {
     }
 
     private func engine() -> AutopilotEngine {
-        AutopilotEngine(store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                               backing: InMemoryKeyValueStore()),
-                        home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        AutopilotEngine.scratch(home: home.path)
     }
 
     private func folder(at path: String) -> WatchedFolder {

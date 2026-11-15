@@ -37,6 +37,20 @@ final class AResetAsksBeforeItDeletesTests: XCTestCase {
                           + "false to an engine that has not been told anything yet")
     }
 
+    /// A module stopping writes (the Screenshots bar's place). Stopped after the
+    /// forget, that write would survive the reset; stopped after the engines
+    /// were asked and before the trash, nothing writes after the forget.
+    func testEveryModuleIsStoppedAfterTheHandBackAndBeforeAnythingIsRemoved() throws {
+        let handBack = try XCTUnwrap(ResetPlan.order.firstIndex(of: .handBackWhatIsOutsideHelm))
+        let stop = try XCTUnwrap(ResetPlan.order.firstIndex(of: .stopEveryModule),
+                                 "a reset never stops the live modules, so a model's close-time write lands after the domain was forgotten")
+        let trash = try XCTUnwrap(ResetPlan.order.firstIndex(of: .trashHelmsOwnFolders))
+        let forget = try XCTUnwrap(ResetPlan.order.firstIndex(of: .forgetPreferences))
+        XCTAssertLessThan(handBack, stop, "the modules are stopped before the engines are asked")
+        XCTAssertLessThan(stop, trash)
+        XCTAssertLessThan(stop, forget, "a stop after the forget writes into the emptied domain")
+    }
+
     /// The relaunch is last, and it is what ends this process: anything after it
     /// would be a step nobody runs.
     func testNothingIsAskedOfAProcessThatIsAlreadyGone() {
@@ -52,5 +66,18 @@ final class AResetAsksBeforeItDeletesTests: XCTestCase {
                            + "times — a reset either skips it or does it twice")
         }
         XCTAssertEqual(ResetPlan.order.count, ResetPlan.Step.allCases.count)
+    }
+
+    /// The trash takes the log folder and the latch with it; the latch is written
+    /// again after the trash and before the preferences go and the process ends.
+    func testTheLogPurgeIsLatchedAgainAfterTheTrashAndBeforeTheRelaunch() throws {
+        let trash = try XCTUnwrap(ResetPlan.order.firstIndex(of: .trashHelmsOwnFolders))
+        let latch = try XCTUnwrap(ResetPlan.order.firstIndex(of: .relatchTheLogPurge),
+                                  "the reset never writes the purge latch again")
+        let forget = try XCTUnwrap(ResetPlan.order.firstIndex(of: .forgetPreferences))
+        let relaunch = try XCTUnwrap(ResetPlan.order.firstIndex(of: .relaunch))
+        XCTAssertLessThan(trash, latch, "the trash removes the latch, so it is written after the trash")
+        XCTAssertLessThan(latch, forget)
+        XCTAssertLessThan(latch, relaunch)
     }
 }

@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// `NSWorkspace.runningApplications` is main-thread-only, and Helm's VPN engine
@@ -90,15 +91,7 @@ final class RunningAppsTests: XCTestCase {
         let done = expectation(description: "completion ran")
         // A locked box rather than a captured var: the reads happen on a
         // detached thread and Swift 6 rightly refuses the bare capture.
-        final class Box: @unchecked Sendable {
-            private let lock = NSLock()
-            private var stored: Set<String> = ["not read"]
-            var value: Set<String> {
-                get { lock.lock(); defer { lock.unlock() }; return stored }
-                set { lock.lock(); stored = newValue; lock.unlock() }
-            }
-        }
-        let atCompletion = Box()
+        let atCompletion = Locked<Set<String>>(["not read"])
         DispatchQueue.global().async {
             apps.refreshOnMain {
                 // Read the way the engine reads — through the snapshot path,

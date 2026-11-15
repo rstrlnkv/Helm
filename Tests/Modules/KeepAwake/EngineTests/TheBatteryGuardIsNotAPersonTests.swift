@@ -1,23 +1,19 @@
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
 /// What the battery guard leaves behind when it ends a session.
 ///
-/// `batteryCheck` ends one by calling `stopSession()`, which is the verb the
-/// person's own Stop button uses — and `stopSession` suppresses: it sets the
-/// flag that means «an automatic condition is true and is being ignored». The
-/// field's own doc comment says what that flag is for:
-///
-///     An automatic condition is true and is being ignored, because a session
-///     was ended — by hand, or by a timer the person asked to end automation.
-///
-/// The battery guard is neither. It is a floor the machine keeps, and it fires
-/// with nobody at the Mac — that is the whole reason it exists, since
-/// `defaultDurationMinutes` ships as «indefinitely» and nothing else ever ends
-/// an unattended session. Borrowing the person's verb makes the guard's decision
-/// permanent in a way its own condition is not: suppression lifts only when the
-/// *trigger* drops and comes back, so the charger going in does nothing.
+/// The guard is a floor the machine keeps, and it fires with nobody at the Mac
+/// — that is the whole reason it exists, since `defaultDurationMinutes` ships
+/// as «indefinitely» and nothing else ever ends an unattended session. It once
+/// ended one through `stopSession()`, the person's own Stop button, which sets
+/// `suppressed` («an automatic condition is true and is being ignored»), and
+/// that lifts only when the *trigger* drops and comes back, so the charger
+/// going in did nothing. It now vetoes while the charge is low: the veto is
+/// recomputed on every power event, lifts by itself, and is published as
+/// `batteryStopped`, which is what the screens draw the reason from.
 final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
 
     private var store: NamespacedStore!
@@ -44,7 +40,7 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
                                  displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(),
                                  power: power, apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: clock)
+                                 clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
     }
 
     private func onMains() {
@@ -152,14 +148,10 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
     /// changes nothing and says nothing new, which is the honest answer to a
     /// button that cannot do what it offers.
     ///
-    /// What is still missing, and is a production change rather than a test's
-    /// business: no surface says *the battery* is the reason. The log is the
-    /// only account, so its line count is asserted — an absence would pass here
-    /// for free otherwise.
+    /// The log line is the account of an unattended stop, so its count is
+    /// asserted — an absence would pass here for free otherwise.
     func testResumeCannotOutrunAFlatBattery() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         theGuardStopsTheRule()
         engine.resumeAutomation()
@@ -173,17 +165,11 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
     }
 
     /// A session with no rule behind it — pressed by hand, at 5%, on the way to
-    /// the door. It ends thirty seconds later, `suppressed` stays false because
-    /// no automatic condition holds, and the state that reaches every screen is
-    /// the same one it carries when nothing was ever running.
-    ///
-    /// Also pinned rather than argued: telling those two apart needs a field on
-    /// `StatePayload` that does not exist, which is a production change and not
-    /// a test's business.
-    func testAHandStartedSessionAtFivePerCentEndsWithNothingOnScreenToShowForIt() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+    /// the door. The guard is consulted where the decision is made, so it is
+    /// refused at once; `suppressed` stays false because no automatic condition
+    /// holds, and `batteryStopped` is what tells the screens the battery is why.
+    func testAHandStartedSessionAtFivePerCentIsRefusedAndTheBatteryIsSaidToBeWhy() {
+        tailTheLog()
 
         settings.setAppTriggers([])
         apps.ids = []
@@ -196,14 +182,15 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
                        + "asked for at 5% is refused at once rather than holding the Mac "
                        + "until the watch ticks half a minute later")
         XCTAssertFalse(engine.suppressed,
-                       "nothing was suppressed, so no screen draws the paused banner and the "
-                       + "session simply vanishes")
+                       "nothing was suppressed, so the paused banner is not the account")
+        XCTAssertTrue(engine.batteryStopped,
+                      "the battery is the reason, and the state the screens read says so")
         XCTAssertEqual(guardLines(), 1, "the log is the whole account")
     }
 
     // MARK: - A guard that stops nothing still says it stopped something
 
-    /// `batteryCheck` runs from the power observer, and the power observer
+    /// `recompute` runs from the power observer, and the power observer
     /// fires on every change IOKit reports — each percentage step on a
     /// draining battery, each charging-state change. Nothing in it asks
     /// whether a session is running, so below the floor it writes
@@ -217,9 +204,7 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
     /// out of. The house rule about the log being a product surface is the
     /// same rule.
     func testAGuardWithNoSessionToStopSaysNothing() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         settings.setAppTriggers([])
         apps.ids = []
@@ -244,9 +229,7 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
     /// that has stopped working: the same battery, with a session running,
     /// still writes exactly one line.
     func testTheGuardStillSpeaksWhenThereIsASessionToStop() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         settings.setAppTriggers([])
         apps.ids = []

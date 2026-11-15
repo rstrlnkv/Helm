@@ -7,7 +7,7 @@ import HelmUI
 ///
 /// One action per binding, not one binding: Keep Awake's toggle was the only
 /// shortcut for a long time and the manager was written around it, so the
-/// Layout module's two — convert and undo — had nowhere to go.
+/// Layout module's chord had nowhere to go.
 @MainActor final class HotkeyManager {
     static let shared = HotkeyManager()
 
@@ -44,8 +44,8 @@ import HelmUI
     /// module is switched off holds nothing — a registered combination that does
     /// nothing is a key taken from every other program for no reason, and it is
     /// the one thing this manager can see that the module's own switch cannot.
-    func register(_ name: String, store: NamespacedStore, prefix: String = "hotkey",
-                  fallback: HotkeyFallback? = nil, isLive: @escaping () -> Bool = { true },
+    func register(_ name: String, store: NamespacedStore, prefix: String,
+                  fallback: HotkeyFallback?, isLive: @escaping () -> Bool,
                   action: @escaping () -> Void) {
         guard bindings[name] == nil else { return }
         bindings[name] = Binding(id: UInt32(order.count + 1), store: store,
@@ -65,11 +65,12 @@ import HelmUI
         // What a stored pair may be is Carbon's question, not this loop's:
         // the guard that stood here converted it with `UInt32(_:)`, which
         // traps. `HotkeyCombination` has the argument and the bounds.
-        if store.object("\(prefix)KeyCode") == nil, let fallback {
+        let keys = HotkeyStoreKeys(prefix: prefix)
+        if store.object(keys.keyCode) == nil, let fallback {
             return HotkeyCombination(keyCode: fallback.keyCode, modifiers: fallback.modifiers)
         }
-        let keyCode = store.int("\(prefix)KeyCode", default: -1)
-        let modifiers = store.int("\(prefix)Modifiers", default: 0)
+        let keyCode = store.int(keys.keyCode, default: -1)
+        let modifiers = store.int(keys.modifiers, default: 0)
         return HotkeyCombination(keyCode: keyCode, modifiers: modifiers)
     }
 
@@ -106,6 +107,8 @@ import HelmUI
         binding.action()
     }
 
+    private var lastHeld: [String]?
+
     func reload() {
         for name in order {
             guard var binding = bindings[name] else { continue }
@@ -135,5 +138,11 @@ import HelmUI
         // Published where the module settings pages can see it: they own the
         // rows, and a row must be able to say the combination was refused.
         HotkeyStatus.taken = Set(order.filter { bindings[$0]?.status == .taken })
+        let held = order.filter { bindings[$0]?.status == .registered }.sorted()
+        // Only a change is news: a reload runs on every module switch.
+        if held != lastHeld {
+            lastHeld = held
+            HelmLog.shared.info("hotkey", "held: \(held.isEmpty ? "none" : held.joined(separator: ", "))")
+        }
     }
 }

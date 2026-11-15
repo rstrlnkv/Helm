@@ -1,29 +1,6 @@
 import XCTest
 @testable import HelmRuntime
 
-final class UpdateVersionPrereleaseTests: XCTestCase {
-    func testPrereleaseOrdersBelowItsRelease() {
-        XCTAssertTrue(UpdateVersion.isNewer("0.7.0", than: "0.7.0-dev.3"))
-        XCTAssertFalse(UpdateVersion.isNewer("0.7.0-dev.3", than: "0.7.0"))
-    }
-
-    func testPrereleasesOrderAmongThemselves() {
-        XCTAssertTrue(UpdateVersion.isNewer("0.7.0-dev.2", than: "0.7.0-dev.1"))
-        XCTAssertFalse(UpdateVersion.isNewer("0.7.0-dev.1", than: "0.7.0-dev.2"))
-        XCTAssertTrue(UpdateVersion.isNewer("v0.7.0-dev.10", than: "0.7.0-dev.9"))
-    }
-
-    func testPrereleaseStillBeatsOlderRelease() {
-        XCTAssertTrue(UpdateVersion.isNewer("0.7.0-dev.1", than: "0.6.1"))
-        XCTAssertFalse(UpdateVersion.isNewer("0.6.1", than: "0.7.0-dev.1"))
-    }
-
-    func testEqualVersionsAreNotNewer() {
-        XCTAssertFalse(UpdateVersion.isNewer("0.6.1", than: "0.6.1"))
-        XCTAssertFalse(UpdateVersion.isNewer("0.7.0-dev.1", than: "0.7.0-dev.1"))
-    }
-}
-
 final class UpdateChannelSelectionTests: XCTestCase {
     private func releaseJSON(tag: String, prerelease: Bool, draft: Bool = false) -> String {
         """

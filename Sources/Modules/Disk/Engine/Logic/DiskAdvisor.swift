@@ -17,25 +17,26 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
     /// The weight travels with the path because a partial removal has to leave
     /// an honest row behind: half the targets gone and the row still claiming
     /// the whole folder is the same lie in a quieter place.
-    public struct Target: Codable, Equatable, Sendable {
+    struct Target: Codable, Equatable, Sendable {
         public let path: String
         public let bytes: Int
 
+        /// Every `Target` is built here, the decoder's current and older forms
+        /// included, so the figure is held to `0...DiskEntry.byteCeiling` in one
+        /// place. The file is one any process running as the user can write, and the
+        /// sum over targets in `DiskAdvice` and the deletion total read it: `Int.max`
+        /// must not pass the ceiling and a negative figure must not understate a
+        /// total. The sums saturate (`Sequence.saturatingSum()`), as the ceiling
+        /// bounds one figure and not thousands of them.
         public init(path: String, bytes: Int) {
             self.path = path
-            self.bytes = bytes
+            self.bytes = bytes.clamped(to: 0...DiskEntry.byteCeiling)
         }
 
-        /// Held to `DiskEntry.byteCeiling` as the tree's own figures are: the file
-        /// is one any process running as the user can write, and the sum over
-        /// targets in `DiskAdvice` runs in the decoder. Only for the form that has
-        /// `targets`: an older row decodes `bytes` unbounded and builds a `Target`
-        /// through the memberwise initialiser, the known defect `Q-legacy-advice` in
-        /// the defect log.
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
-            path = try c.decode(String.self, forKey: .path)
-            bytes = try c.decode(Int.self, forKey: .bytes).clamped(to: 0...DiskEntry.byteCeiling)
+            self.init(path: try c.decode(String.self, forKey: .path),
+                      bytes: try c.decode(Int.self, forKey: .bytes))
         }
     }
 
@@ -47,7 +48,7 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
     /// What pressing + really removes. Usually `path` itself; for a cache it is
     /// the folder's contents, because the folder is not the app's to take away —
     /// see `DiskAdvisor.cacheFolders`. Never empty, and `bytes` is its total.
-    public let targets: [Target]
+    let targets: [Target]
     /// When the file was last **written**, as epoch seconds — the only date the
     /// scanner has (`ATTR_CMN_MODTIME`), and the one the age thresholds above
     /// are measured against. nil where there is none to give: a cache advice is
@@ -68,7 +69,7 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
 
     /// The contents of a container. The row still names `path` — one row, one
     /// size, one button — and the size is the sum of what will be attempted.
-    public init(name: String, path: String, kind: Kind,
+    init(name: String, path: String, kind: Kind,
                 modified: TimeInterval? = nil, targets: [Target]) {
         self.name = name; self.path = path; self.kind = kind
         self.modified = modified
@@ -176,15 +177,20 @@ enum DiskAdvisor {
             // Foundation handing back autoreleased objects — and this runs inside
             // `offTheCooperativePool`, where the only pool that would ever drain
             // is the one closing when the whole scan returns. Measured over
-            // 20 000 file nodes: 56 bytes a node kept without this, 0 with it
+            // 20 000 file nodes that all pass the size and age floors and reach
+            // the gate: 88 bytes a node kept without this, 0 with it
             // (`TheAdvisorKeepsOnlyItsAdviceTests`, against the allocator's own
             // books). ARCHITECTURE.md § Module pattern.
             autoreleasepool {
+                // Size and age first: they cost a comparison, the gate costs
+                // filesystem calls, and most nodes of a volume fail them. The
+                // download floor and age are the weaker of the two verdicts'.
+                let age = now.timeIntervalSince1970 - node.modified
                 if !node.isDirectory, !node.isFolded, node.modified > 0,
+                   node.bytes >= downloadFloor, age > downloadAge,
                    UserFileScope.isRemovable(path),
                    !cachePrefixes.contains(where: { path.hasPrefix($0) }) {
-                    let age = now.timeIntervalSince1970 - node.modified
-                    if path.hasPrefix(downloads), node.bytes >= downloadFloor, age > downloadAge {
+                    if path.hasPrefix(downloads) {
                         advice.append(DiskAdvice(name: node.name, path: path,
                                                  bytes: node.bytes, kind: .oldDownload,
                                                  modified: node.modified))

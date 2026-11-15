@@ -40,7 +40,7 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
                                  assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock())
+                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     private var guardFlag: Bool {
@@ -54,7 +54,7 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
     func testSwitchingTheOptionOffWithdrawsTheGrantWithoutADialog() async {
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
 
         await waitUntil("the rule came out") { !self.clamshell.isSudoersInstalled() }
         XCTAssertEqual(clamshell.passwordlessRemovals, 1)
@@ -71,7 +71,7 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
         clamshell.withdrawalIsGranted = false
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
 
         await waitUntil("the dialog was raised") { self.clamshell.removeCalls == 1 }
         XCTAssertEqual(clamshell.passwordlessRemovals, 1, "the free route is tried first")
@@ -98,6 +98,20 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
                        "a terminating process must never put a password dialog on screen")
     }
 
+    /// The launch look publishes what it found: the option is off and the rule
+    /// is on disk, so the state says a grant remains without anything having
+    /// been removed or declined first.
+    @MainActor
+    func testARuleLeftOnDiskWithTheOptionOffIsPublishedAtLaunch() async {
+        settings.setClamshellEnabled(false)
+
+        engine.activate()
+
+        await waitUntil("the launch look published the grant") { self.engine.lidGrantRemains }
+        XCTAssertTrue(engine.lidGrantRemains)
+        XCTAssertTrue(clamshell.isSudoersInstalled(), "precondition: nothing took it out")
+    }
+
     /// The withdrawal at quit is `sudo -n` or it is nothing. A rule too old to
     /// take itself out is left where it is rather than answered with a dialog
     /// nobody will be there for — which is the defect this module was corrected
@@ -122,9 +136,10 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
     /// seamless. That would reopen the window this change closed: a rule
     /// installed at every launch is a rule present whenever the app is deleted.
     /// It is asked for when the feature is actually needed — one dialog per run
-    /// of the app, at the moment it means something.
+    /// of the app, at the moment it means something: the person's own turn of
+    /// the lid switch, never a launch and never a Start press.
     @MainActor
-    func testTheNextLaunchPutsNothingBackUntilSomebodyStartsASession() async {
+    func testTheNextLaunchPutsNothingBackUntilSomebodyTurnsTheLidSwitch() async {
         // Our file is the only thing granting this, so the capability goes with
         // it — the planted «somebody else's rule» of the other cases would leave
         // the next session with nothing to ask for.
@@ -151,6 +166,12 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
                        "with neither anchor there is nothing to recover and nothing to read")
 
         next.startSession(minutes: 0)
+        await next.drainClamshellForTests()
+        XCTAssertEqual(clamshell.installCalls, 0,
+                       "a Start press raised the administrator dialog; only the lid switch may")
+
+        next.lidSwitchTurned(false)
+        next.lidSwitchTurned(true)
 
         await waitUntil("the rule was asked for") { self.clamshell.installCalls == 1 }
     }
@@ -162,7 +183,7 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
                         assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                         displayObserver: FakeDisplayObserver(), power: FakePower(),
                         apps: FakeApps(), pointer: FakePointer(),
-                        clamshell: clamshell, clock: FakeClock())
+                        clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     // MARK: - Where the grant is still load-bearing

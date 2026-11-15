@@ -1,6 +1,6 @@
 import Foundation
-import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Leftovers_Engine
 
@@ -30,10 +30,7 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
         files.listing["/Users/x/Library/LaunchAgents"] = [file]
         files.plists["/Users/x/Library/LaunchAgents/\(file)"] =
             PlistData(["Label": label, "Program": "/Applications/Gone.app/Contents/MacOS/x"])
-        let items = LeftoversScanner(home: home, files: files, apps: LeftoversFakeApps(),
-                                     extensions: LeftoversFakeLoaded()).scan()
-        return try XCTUnwrap(items.first { $0.kind == .launchAgent },
-                            "precondition: the agent is listed at all")
+        return try firstAgent(home: home, files: files)
     }
 
     /// **The finding.** A file wearing somebody else's label is offered the switch.
@@ -84,7 +81,7 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
     /// `apps:` and `loaded:` went on defaulting to `WorkspaceInstalledApps` and
     /// `ActiveExtensions` — the second of which shells out to `launchctl
     /// print-disabled gui/$(getuid())`, so these three answers were partly facts
-    /// about whoever ran the suite (CLAUDE.md: a default argument naming a real
+    /// about whoever ran the suite (ARCHITECTURE.md § Fakes: a default argument naming a real
     /// port makes every forgetful construction an integration test).
     private var switchable: LeftoversFakeFiles {
         var files = LeftoversFakeFiles()
@@ -94,10 +91,8 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
         return files
     }
 
-    private func send(_ toggle: LeftoversToggle, to engine: LeftoversEngine) async throws {
-        _ = try await engine.transport.send(
-            EngineCommand(name: LeftoversCommand.setDisabled.rawValue,
-                          payload: try JSONEncoder().encode(toggle)))
+    private func send(_ toggle: LeftoversToggle, to engine: LeftoversEngine) async {
+        await engine.setDisabled(toggle)
     }
 
     /// The page is not the guard. A request naming a label that is not the one its
@@ -105,11 +100,12 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
     func testTheEngineRefusesALabelThatIsNotTheFilesOwn() async throws {
         let recorder = LeftoversFakeSwitcher()
         let engine = LeftoversEngine(home: home, files: switchable, apps: LeftoversFakeApps(),
-                                     loaded: LeftoversFakeLoaded(), switcher: recorder)
+                                     loaded: LeftoversFakeLoaded(), switcher: recorder,
+                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
 
-        try await send(LeftoversToggle(label: victim,
-                                       path: "/Users/x/Library/LaunchAgents/zz-innocent.plist",
-                                       disabled: true), to: engine)
+        await send(LeftoversToggle(label: victim,
+                                   path: "/Users/x/Library/LaunchAgents/zz-innocent.plist",
+                                   disabled: true), to: engine)
 
         XCTAssertEqual(recorder.labels, [], """
             the engine passed «\(victim)» to `launchctl` because a request said so — and a request \
@@ -123,11 +119,12 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
     func testTheEngineStillSwitchesAJobUnderItsOwnName() async throws {
         let recorder = LeftoversFakeSwitcher()
         let engine = LeftoversEngine(home: home, files: switchable, apps: LeftoversFakeApps(),
-                                     loaded: LeftoversFakeLoaded(), switcher: recorder)
+                                     loaded: LeftoversFakeLoaded(), switcher: recorder,
+                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
 
-        try await send(LeftoversToggle(label: "com.vendor.updater",
-                                       path: "/Users/x/Library/LaunchAgents/com.vendor.updater.plist",
-                                       disabled: true), to: engine)
+        await send(LeftoversToggle(label: "com.vendor.updater",
+                                   path: "/Users/x/Library/LaunchAgents/com.vendor.updater.plist",
+                                   disabled: true), to: engine)
 
         XCTAssertEqual(recorder.labels, ["com.vendor.updater"])
     }
@@ -137,11 +134,12 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
     func testTheEngineRefusesAPathThatDefinesNoLoginItem() async throws {
         let recorder = LeftoversFakeSwitcher()
         let engine = LeftoversEngine(home: home, files: switchable, apps: LeftoversFakeApps(),
-                                     loaded: LeftoversFakeLoaded(), switcher: recorder)
+                                     loaded: LeftoversFakeLoaded(), switcher: recorder,
+                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
 
-        try await send(LeftoversToggle(label: "com.vendor.updater",
-                                       path: "/tmp/com.vendor.updater.plist",
-                                       disabled: true), to: engine)
+        await send(LeftoversToggle(label: "com.vendor.updater",
+                                   path: "/tmp/com.vendor.updater.plist",
+                                   disabled: true), to: engine)
 
         XCTAssertEqual(recorder.labels, [])
     }

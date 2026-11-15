@@ -3,9 +3,10 @@ import Foundation
 /// Which endings of a word are taken as "I meant that word", and which merely
 /// end it.
 ///
-/// Not every boundary is a confirmation. Moving the caret, clicking elsewhere
-/// or leaving the window says the person went somewhere else — converting then
-/// edits text they are no longer looking at.
+/// Not every boundary is a confirmation. Moving the caret or clicking elsewhere
+/// says the person went somewhere else — converting then edits text they are no
+/// longer looking at. A word left in another app is caught by the app checks
+/// (`RememberedWord`).
 ///
 /// **None of it is a choice any more.** Three toggles on the settings page used
 /// to write these, and they could be set to a combination the page then had to
@@ -22,7 +23,7 @@ import Foundation
 /// `ConversionTriggersTests` used that freedom to plant `onReturn: true`, a
 /// state production cannot reach, and prove a branch nothing runs. A fake freer
 /// than the port proves nothing about the port.
-public enum ConversionTriggers {
+enum ConversionTriggers {
 
     /// Return does **not** confirm, and that is not timidity. In Slack,
     /// Telegram and every other chat, Return sends the message and empties the
@@ -31,7 +32,7 @@ public enum ConversionTriggers {
     /// the mistyped word and then a second message with the correction. It
     /// would belong on only where Return means a line break, and no switch can
     /// know which app that is.
-    public static func converts(_ event: TypingBuffer.Event) -> Bool {
+    static func converts(_ event: TypingBuffer.Event) -> Bool {
         switch event {
         case .space: return true
         case .newline: return false
@@ -40,7 +41,7 @@ public enum ConversionTriggers {
         // chord: ⌘Space — the gesture someone makes on noticing the wrong
         // layout — used to arrive as a plain space and budget a backspace for a
         // character that never reached the field.
-        case .navigation, .chord, .click, .focusChange: return false
+        case .navigation, .chord, .click: return false
         case .character, .backspace: return false
         }
     }

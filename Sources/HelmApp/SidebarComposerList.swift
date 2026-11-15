@@ -1,5 +1,6 @@
 import SwiftUI
 import HelmUI
+import HelmAppStrings
 
 /// The sidebar's arrangement as a SwiftUI `List` — the prototype that asks
 /// whether the `NSTableView` was necessary.
@@ -175,7 +176,7 @@ struct SidebarComposerListRow: View {
                 header(section)
             }
         case .module(let id, let sectionID):
-            if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
+            if let descriptor = ModuleRegistry.descriptor(id) {
                 module(descriptor, in: sectionID)
             }
         }
@@ -210,7 +211,7 @@ struct SidebarComposerListRow: View {
 
     private func menu(_ section: SidebarLayout.Section) -> some View {
         Menu {
-            Button(AppStr.renameSection) { rename(section) }
+            Button(HelmWord.rename) { rename(section) }
             if section.seed != nil, section.name != nil {
                 Button(AppStr.useDefaultSectionName) {
                     apply(layout.renaming(section.id, to: nil))

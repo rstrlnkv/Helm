@@ -32,6 +32,13 @@ public enum AskFirst: Equatable, Sendable {
 }
 
 public enum LeftoverActions {
+    /// Apple's own job, or one the scan marked protected: the one test both
+    /// `available(for:)` and `whyDeleteIsWithheld(from:)` stand on, so the page
+    /// cannot offer what the reason below says is withheld.
+    private static func isApplesOrProtected(_ item: StaleItem) -> Bool {
+        item.identifier.hasPrefix("com.apple.") || item.status == .protectedItem
+    }
+
     /// **One argument, and it is the item.**
     ///
     /// This took `writable:` beside the item that already carries it, and every
@@ -42,14 +49,14 @@ public enum LeftoverActions {
     /// scan cannot produce. `LaunchctlDisabled.canToggle` was deleted for the
     /// same family of reason, one argument the other way round: it took a
     /// `status` and never read it.
-    public static func available(for item: StaleItem) -> Set<LeftoverAction> {
+    static func available(for item: StaleItem) -> Set<LeftoverAction> {
         // **A source row is a folder the scan did not read, not a file it found.**
         // Nothing below is true of one: there is no file to move, no label to
         // switch and no owner to judge. Looking at it is the one thing left, and
         // it is what a person told «Helm did not read this folder» wants to do.
         if item.status.isSource { return [.reveal] }
         if item.kind == .systemExtension { return [.systemSettings] }
-        if item.identifier.hasPrefix("com.apple.") || item.status == .protectedItem {
+        if isApplesOrProtected(item) {
             return [.reveal]
         }
         var actions: Set<LeftoverAction> = [.reveal]
@@ -103,10 +110,7 @@ public enum LeftoverActions {
         // installed it and SIP refuses everyone else. The row draws the button
         // that opens the pane instead of this menu, and the answer is still the
         // honest one.
-        if item.kind == .systemExtension { return .protectedByMacOS }
-        if item.identifier.hasPrefix("com.apple.") || item.status == .protectedItem {
-            return .protectedByMacOS
-        }
+        if item.kind == .systemExtension || isApplesOrProtected(item) { return .protectedByMacOS }
         // What is left is a folder Helm cannot write in, or a daemon whose
         // unloading needs root: both are things an administrator really can do.
         return .needsAdministrator
@@ -129,7 +133,7 @@ public enum LeftoverActions {
     /// leftover. A job whose plist could not be read is one of those now, and
     /// «loaded now» is a claim about contents Helm never got to see.
     ///
-    /// Exhaustive over the status: a fifth one must be a build error here rather
+    /// Exhaustive over the status: a further one must be a build error here rather
     /// than inherit whichever sentence sits nearest.
     public static func askBeforeDeleting(_ item: StaleItem) -> AskFirst? {
         switch item.status {

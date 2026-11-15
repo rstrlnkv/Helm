@@ -5,6 +5,12 @@ final class ScanRootTests: XCTestCase {
 
     private var home: String { FileManager.default.homeDirectoryForCurrentUser.path }
 
+    /// `~/Library` is a legitimate place inside the home and a refused root: the
+    /// same descent gate the walk asks (`refusesDescentInHome`). Every Mac has one.
+    func testTheLibraryInTheHomeIsRefusedAsARoot() {
+        XCTAssertNil(ScanRoot.resolve(home + "/Library"))
+    }
+
     /// The commonest root there is, and the one `UserFileScope.isRemovable`
     /// refuses — which is why this gate exists separately.
     func testTheHomeItselfIsAllowed() {

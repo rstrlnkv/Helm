@@ -3,6 +3,7 @@ import HelmTestSupport
 import HelmUI
 import XCTest
 @testable import HelmApp
+import HelmAppStrings
 
 /// The section that finally says Helm reads the disk on its own.
 ///
@@ -16,7 +17,7 @@ final class TheScansNobodyWatchesHaveASwitchTests: XCTestCase {
 
     /// The rows are the list the coordinator actually loops over, not a list
     /// written again for the screen. A hand-written second copy is the comment
-    /// CLAUDE.md § Where things go: a scan added to
+    /// (ARCHITECTURE.md § Background scans): a scan added to
     /// `ScanRunner.scannableModules` and forgotten here reads as consent nobody
     /// was asked for.
     func testEveryScanThatCanRunHasARowOnTheScreen() throws {
@@ -40,6 +41,12 @@ final class TheScansNobodyWatchesHaveASwitchTests: XCTestCase {
         XCTAssertEqual(rows.first { !$0.isOn }.map(\.id), "disk",
                        "the one scan off by default is Disk's, and the row must say so")
         XCTAssertEqual(rows.filter(\.isOn).count, ScanRunner.scannableModules.count - 1)
+    }
+
+    /// The default is built from Disk's descriptor, but the spelling stored and
+    /// read by every earlier build is the literal.
+    func testTheDefaultIsTheSpellingEveryEarlierBuildStored() {
+        XCTAssertEqual(AppSettings.defaultDisabledScans, ["disk"])
     }
 
     /// Every sentence of the section, in the eight languages — including the

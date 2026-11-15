@@ -17,6 +17,7 @@ import XCTest
 /// Not behind `HELM_BENCH`: nothing here reads this Mac's own applications.
 /// The precondition asserts that the API really did make the date up, so the
 /// case cannot pass on a machine where the subject never happened.
+/// Past defect: fix commit 4ce355a9.
 final class TheLastOpenedPortInventsNoDateTests: XCTestCase {
 
     func testABundleSpotlightNeverIndexedHasNoOpeningInvented() throws {

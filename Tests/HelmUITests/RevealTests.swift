@@ -13,6 +13,7 @@ import XCTest
 /// `.photoslibrary` mounts — so opening the enclosing folder to "show where it
 /// was" would execute whatever bundle the stale row sat inside. The enclosing
 /// folder is therefore *selected*, not opened, whenever it is a package.
+/// Kept for the defect fixed in fbd693f9 (revealing a file that has gone).
 final class RevealTargetTests: XCTestCase {
 
     private func target(_ path: String,

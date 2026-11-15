@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-public extension View {
+extension View {
     /// **A line of a hero: centred on its column, and allowed the second line it
     /// needs.**
     ///
@@ -25,10 +25,9 @@ public extension View {
     /// tracking of its own. What they share is how a line behaves when it wraps,
     /// and that is all this carries.
     ///
-    /// A file of its own rather than a member of `HelmSurfaces`, which is
-    /// already past this repository's own length rule and is where the page
-    /// header and its hover light live.
-    func helmHeroSentence() -> some View {
+    /// A file of its own rather than a member of `HelmSurfaces`, which
+    /// holds components and not text treatments.
+    public func helmHeroSentence() -> some View {
         multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
     }

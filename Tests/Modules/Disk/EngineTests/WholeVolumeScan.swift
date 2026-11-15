@@ -4,6 +4,7 @@ import XCTest
 
 /// The crash reproducer: scanning "/" walks synthetic volumes whose device
 /// ids are negative. Behind HELM_BENCH because it takes real time.
+/// Past defect: fixed in commit 55d64e69.
 final class WholeVolumeScan: XCTestCase {
     func testRootVolumeScanCompletes() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_BENCH"] == "1")

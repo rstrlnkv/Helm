@@ -66,7 +66,7 @@ private final class PromptClamshell: ClamshellPort {
     }
 
     func setDisableSleep(_ on: Bool) -> Bool { disableSleepCalls.append(on); return true }
-    func pmsetReport() -> String { pmset }
+    func pmsetReport() -> String? { pmset }
 }
 
 /// What happens to the sudoers rule while the password prompt is on screen.
@@ -104,27 +104,19 @@ final class SudoersPromptInFlightTests: XCTestCase {
                                  displayObserver: FakeDisplayObserver(),
                                  power: FakePower(), apps: FakeApps(),
                                  pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock())
+                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
-    }
-
-    /// Everything already on the main queue has run. The engine posts its
-    /// install callback with `DispatchQueue.main.async`; this is enqueued after
-    /// it, and a serial queue runs them in order — so this is an ordering fact,
-    /// not a sleep.
-    ///
-    /// `await fulfillment` rather than `wait(for:)`: these tests are on the main
-    /// actor, and blocking it is what stops the queue draining at all.
-    private func drainMain() async {
-        let drained = expectation(description: "main queue drained")
-        DispatchQueue.main.async { drained.fulfill() }
-        await fulfillment(of: [drained], timeout: 5)
     }
 
     /// Puts a prompt on screen and leaves it there.
     private func startSessionWithPromptUp() async {
+        // The dialog comes only from the person's gesture on the lid switch,
+        // never from a Start press: the session starts with the option off and
+        // the switch is turned on during it.
+        KeepAwakeSettings(store: store).setClamshellEnabled(false)
         engine.activate()
         engine.startSession(minutes: 0)
+        engine.lidSwitchTurned(true)
         // The question that decides whether to prompt is `sudo -n`, asked off
         // the drawing thread — see `waitForTheLid`.
         await waitUntil("the lid asked for the rule") { clamshell.installCount == 1 }
@@ -153,13 +145,13 @@ final class SudoersPromptInFlightTests: XCTestCase {
 
         // The person changes their mind while the prompt is up.
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
+        engine.settingsChanged()
         XCTAssertEqual(clamshell.removeCount, 0,
                        "precondition: there was nothing on disk to remove yet")
 
         // …and then the password is typed. The rule is installed now.
         clamshell.answerAllPrompts(granted: true)
-        await drainMain()
+        await drainMainQueue()
 
         XCTAssertFalse(clamshell.sudoersInstalled,
                        "a passwordless-sudo rule was left installed for a feature that is off")
@@ -172,9 +164,9 @@ final class SudoersPromptInFlightTests: XCTestCase {
         await startSessionWithPromptUp()
 
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
+        engine.settingsChanged()
         clamshell.answerAllPrompts(granted: true)
-        await drainMain()
+        await drainMainQueue()
 
         XCTAssertFalse(clamshell.disableSleepCalls.contains(true))
         XCTAssertFalse(engine.clamshellActive)
@@ -182,44 +174,29 @@ final class SudoersPromptInFlightTests: XCTestCase {
 
     // MARK: - One question, asked once
 
-    /// Stop and start again while the prompt is up, which is one click each in
-    /// the panel and needs no timing at all: `recompute` calls `engage`
-    /// on every false→true edge of `isActive`, and `isSudoersInstalled()` is
-    /// still false because the first prompt has not been answered.
-    ///
-    /// The person now has two admin password dialogs for one decision, and both
-    /// of them are `osascript` writing the same staging file inside
-    /// `/etc/sudoers.d`.
-    func testStartingASessionAgainDoesNotAskForThePasswordTwice() async {
+    /// Only the person's own gesture raises the dialog: a Start press or an
+    /// unrelated settings change reaches `engage(mayPrompt: false)` and never
+    /// the in-flight flag, so it is not tested here (`AStoredSwitchIsNotAGestureTests`).
+    /// The one way left to ask twice: the person's own gesture, twice. Off and on
+    /// again on the switch while the first prompt is still up is a second rising
+    /// edge, and only the in-flight flag stands between it and a second dialog.
+    func testTheSwitchTurnedOffAndOnAgainWhileThePromptIsUpRaisesNoSecondDialog() async {
         await startSessionWithPromptUp()
 
         let asked = clamshell.grantChecks
-        engine.stopSession()
-        engine.startSession(minutes: 0)
+        engine.lidSwitchTurned(false)
+        engine.lidSwitchTurned(true)
 
         await waitUntil("the lid asked again whether it needs a password") {
             clamshell.grantChecks > asked
         }
+        // The answer is acted on back on main, after the question: read the
+        // count only once that hop has landed, or it is green because the
+        // second request has not been made yet.
+        await engine.drainClamshellForTests()
+        await drainMainQueue()
         XCTAssertEqual(clamshell.installCount, 1,
                        "a second admin password prompt was stacked on the one already up")
-    }
-
-    /// The same edge through the settings page rather than the panel.
-    /// `reconcileActiveSettings` asks `clamshellEnabled && !clamshellActive` —
-    /// which is true for the whole life of the prompt — so *any* settings change
-    /// while it is up asks again: the display toggle, the jiggle interval, a
-    /// battery threshold.
-    func testASettingsChangeWhileThePromptIsUpDoesNotAskAgain() async throws {
-        await startSessionWithPromptUp()
-
-        let asked = clamshell.grantChecks
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
-
-        await waitUntil("the lid asked again whether it needs a password") {
-            clamshell.grantChecks > asked
-        }
-        XCTAssertEqual(clamshell.installCount, 1,
-                       "changing an unrelated setting put a second password prompt on screen")
     }
 
     // MARK: - …and the feature still works
@@ -231,7 +208,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
         await startSessionWithPromptUp()
 
         clamshell.answerAllPrompts(granted: true)
-        await drainMain()
+        await drainMainQueue()
 
         XCTAssertTrue(clamshell.sudoersInstalled)
         XCTAssertEqual(clamshell.disableSleepCalls, [true])
@@ -243,13 +220,16 @@ final class SudoersPromptInFlightTests: XCTestCase {
     /// clicked Cancel may well mean to say yes later. This is what the in-flight
     /// guard the tests above ask for must *not* break: "a prompt is up" and "a
     /// prompt was declined" are different states.
-    func testADeclinedPromptCanBeAskedAgainOnTheNextSession() async {
+    func testADeclinedPromptCanBeAskedAgainByTheNextGestureOnTheSwitch() async {
         await startSessionWithPromptUp()
 
         clamshell.answerAllPrompts(granted: false)
-        await drainMain()
+        await drainMainQueue()
         engine.stopSession()
         engine.startSession(minutes: 0)
+        // A Start press does not ask; the person's next turn of the switch does.
+        engine.lidSwitchTurned(false)
+        engine.lidSwitchTurned(true)
 
         await waitUntil("the lid asked for the rule a second time") { clamshell.installCount == 2 }
         XCTAssertEqual(clamshell.installCount, 2,

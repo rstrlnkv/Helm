@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Helm
 
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
@@ -25,9 +26,10 @@ import HelmRuntime
 /// screen, and a tunnel that simply never came up.
 ///
 /// The sibling path had already learned this. `UnreadableListTests` exists
-/// because `--nc list` answering nothing looked exactly like a Mac with no VPN,
-/// and its own comment says the runner «returns only the tool's stdout and
-/// throws the exit status away». The list was fixed; the two commands were not.
+/// because `--nc list` answering nothing looked exactly like a Mac with no VPN.
+/// The list was fixed; the two commands were not.
+///
+/// Past defect: commit 34a0e9fc, «fix(vpn): a refused connect is not silence».
 final class ARefusedCommandIsNotSilenceTests: XCTestCase {
 
     // MARK: - The reading
@@ -56,8 +58,7 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
     // MARK: - What the engine does with it
 
     private func engine(_ runner: FakeRunner) -> VPNEngine {
-        VPNEngine(settings: VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                               backing: InMemoryKeyValueStore())),
+        VPNEngine(settings: VPNSettings.inMemory(),
                   runner: runner, credentials: nil, apps: FakeApps(),
                   interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                   work: .inline)
@@ -69,7 +70,7 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
         let runner = FakeRunner()
         runner.reply = ""
         let e = engine(runner)
-        e.connect("Office")
+        e.connect("Office", auto: false)
         XCTAssertNil(e.lastFailure)
     }
 
@@ -77,7 +78,7 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
         let runner = FakeRunner()
         runner.reply = "No service"
         let e = engine(runner)
-        e.connect("Old office")
+        e.connect("Old office", auto: false)
 
         XCTAssertEqual(e.lastFailure,
                        VPNFailure(name: "Old office", reason: .noSuchService, verb: .connect),
@@ -88,7 +89,7 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
         let runner = FakeRunner()
         runner.reply = "No service"
         let e = engine(runner)
-        e.disconnect("Old office")
+        e.disconnect("Old office", auto: false)
 
         XCTAssertEqual(e.lastFailure?.reason, .noSuchService)
     }
@@ -99,11 +100,11 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
         let runner = FakeRunner()
         runner.reply = "No service"
         let e = engine(runner)
-        e.connect("Old office")
+        e.connect("Old office", auto: false)
         XCTAssertNotNil(e.lastFailure, "precondition")
 
         runner.reply = ""
-        e.connect("Office")
+        e.connect("Office", auto: false)
 
         XCTAssertNil(e.lastFailure)
     }
@@ -112,19 +113,17 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
     /// writes goes through `Redact.vpn`, because the diagnostic file leaves the
     /// machine and the screen does not.
     func testTheLogDoesNotNameTheConfiguration() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         let runner = FakeRunner()
         runner.reply = "No service"
-        engine(runner).connect("Secret Office VPN")
+        engine(runner).connect("Secret Office VPN", auto: false)
 
-        let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
+        let lines = loggedLines("vpn")
         XCTAssertFalse(lines.isEmpty, "precondition: something was logged at all")
-        XCTAssertFalse(lines.contains { $0.message.contains("Secret Office VPN") },
+        XCTAssertFalse(lines.contains { $0.contains("Secret Office VPN") },
                        "the connection's name reached the log file")
-        XCTAssertTrue(lines.contains { $0.message.contains("no such configuration") },
+        XCTAssertTrue(lines.contains { $0.contains("no such configuration") },
                       "…and the reason did not")
     }
 }

@@ -1,42 +1,23 @@
 import XCTest
 @testable import Module_KeepAwake_Engine
 
+/// Guards: aff8a787 (extendedMinutes trapped on a stored deadline off the ceiling).
 final class TimerPolicyTests: XCTestCase {
-    func test_no_auto_condition_deactivates() {
-        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: false, suppressed: false,
-                                            timerEndsAutomation: false), .deactivate)
-    }
-    func test_auto_condition_not_suppressed_continues_as_auto() {
-        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: true, suppressed: false,
-                                            timerEndsAutomation: false), .continueAsAuto)
-    }
-    func test_auto_condition_suppressed_deactivates() {
-        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: true, suppressed: true,
-                                            timerEndsAutomation: false), .deactivate)
-    }
-
-    // MARK: - A timer set on top of automation
-
-    /// The point of the setting: the timer ran out, a rule's app is still
-    /// running, and the person asked for that to be the end of it. Without the
-    /// setting this is `.continueAsAuto` — the case directly above — so these
-    /// two tests are each other's control.
-    func testATimerEndsTheAutomationItSatOnWhenAsked() {
-        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: true, suppressed: false,
-                                            timerEndsAutomation: true), .deactivate)
-    }
-
-    /// With no automatic condition there is nothing for the setting to change:
-    /// the session ends because the timer ended.
-    func testTheSettingChangesNothingWithoutAnAutomaticCondition() {
-        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: false, suppressed: false,
-                                            timerEndsAutomation: true), .deactivate)
-    }
-
-    /// Already suppressed is already the answer this setting produces.
-    func testTheSettingChangesNothingWhenAlreadySuppressed() {
-        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: true, suppressed: true,
-                                            timerEndsAutomation: true), .deactivate)
+    /// (auto condition, suppressed, timer ends automation, expected, why). The two
+    /// rows with a running rule's app and nothing suppressed are each other's control.
+    func testOnExpiry() {
+        let rows: [(Bool, Bool, Bool, TimerPolicy.Action, String)] = [
+            (false, false, false, .deactivate, "no automatic condition: the session ends because the timer ended"),
+            (true, false, false, .continueAsAuto, "the timer ran out, a rule's app still runs: without the setting it carries on"),
+            (true, true, false, .deactivate, "suppressed rule: nothing to carry on as"),
+            (true, false, true, .deactivate, "the person asked for the timer to be the end of it: the control of the row above"),
+            (false, false, true, .deactivate, "no automatic condition: nothing for the setting to change"),
+            (true, true, true, .deactivate, "already suppressed is already the answer the setting produces")
+        ]
+        for (auto, suppressed, ends, expected, why) in rows {
+            XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: auto, suppressed: suppressed,
+                                                timerEndsAutomation: ends), expected, why)
+        }
     }
 
     // MARK: - The panel tile's "+15"

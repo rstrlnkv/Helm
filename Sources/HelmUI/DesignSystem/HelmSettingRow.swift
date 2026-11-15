@@ -15,6 +15,9 @@ public enum HelmRowMark: Equatable, Sendable {
     /// Switched on and not met right now. Drawn so that «my rule does
     /// nothing» stops looking like «my rule is off».
     case waiting
+    /// Something is wrong and the row has the remedy — a grant macOS withholds. Never returned by `of`: it is a
+    /// fact about the world that the caller states, like the grant itself.
+    case attention
 
     /// The three-way answer, decided once for every module rather than in
     /// each page's own `if`.
@@ -69,11 +72,14 @@ public enum HelmRowMark: Equatable, Sendable {
 /// title, not `.combine` on the stack, which would fold the ⓘ in too); the
 /// trailing control stays its own, because that is the part a person navigates to.
 public struct HelmSettingRow<Trailing: View>: View {
+    @Environment(\.helmTraits) private var traits
+
 
     private let title: String
     private let note: String?
     private let explainer: HelmExplainer.Content?
     private let mark: HelmRowMark
+    private let markSpoken: String?
     private let trailing: Trailing
 
     /// - Parameter explainer: what an ⓘ beside the row's name opens, for a
@@ -81,13 +87,18 @@ public struct HelmSettingRow<Trailing: View>: View {
     ///   reason the row is not the place for it are on `HelmExplainer`; the
     ///   short version is that the note answers «should I switch this on» and
     ///   the explainer answers «what happens if I do».
+    /// - Parameter markSpoken: what the mark says, for VoiceOver — the mark itself is hidden from it, and a
+    ///   state only drawn is a state only seen. Read as the title's value. `nil` for a mark whose meaning the
+    ///   row's own words or control already carry: the value is then the row's spoken text, as it was before the
+    ///   mark existed.
     public init(_ title: String, note: String? = nil,
-                explainer: HelmExplainer.Content? = nil, mark: HelmRowMark = .none,
+                explainer: HelmExplainer.Content? = nil, mark: HelmRowMark = .none, markSpoken: String? = nil,
                 @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.title = title
         self.note = note
         self.explainer = explainer
         self.mark = mark
+        self.markSpoken = markSpoken
         self.trailing = trailing()
     }
 
@@ -104,6 +115,7 @@ public struct HelmSettingRow<Trailing: View>: View {
                     Text(title)
                         // One stop for title and note: see the type's doc comment.
                         .accessibilityLabel(spoken)
+                        .accessibilityValue(markSpoken ?? spoken)
                     if let explainer { HelmExplainer(explainer) }
                 }
                 if let note {
@@ -162,12 +174,12 @@ public struct HelmSettingRow<Trailing: View>: View {
         return "\(title). \(note)"
     }
 
-    /// **One view for all four marks, not a `switch` over them.**
+    /// **One view for every mark, not a `switch` over them.**
     ///
     /// This was four branches, and SwiftUI interpolates between two states of
     /// one view and never between two views — so `.space` → `.holding` was an
     /// insert and a remove however many transactions surrounded it, and the
-    /// green tick simply appeared. The four states are properties of a single
+    /// green tick simply appeared. The states are properties of a single
     /// `Image` now: which symbol, what colour, whether it is drawn at all, and
     /// how wide the column it sits in is. Every one of those interpolates.
     ///
@@ -184,11 +196,11 @@ public struct HelmSettingRow<Trailing: View>: View {
             // Nothing to say, but the column may still have to hold its width:
             // `.space` is drawn and invisible rather than absent, so the labels
             // of a mixed card keep one left edge.
-            .opacity(mark == .holding || mark == .waiting ? 1 : 0)
+            .opacity(mark == .holding || mark == .waiting || mark == .attention ? 1 : 0)
             // The whole column, gap included. At `.none` it is nothing at all
             // and the labels sit flush; anywhere else it is the mark's width
             // plus the gap the stack no longer contributes.
-            .frame(width: mark == .none ? 0 : Self.markWidth + 12, alignment: .leading)
+            .frame(width: mark == .none ? 0 : HelmLayout.markColumn + 12, alignment: .leading)
             .accessibilityHidden(true)
     }
 
@@ -196,19 +208,19 @@ public struct HelmSettingRow<Trailing: View>: View {
     /// with no symbol is a different shape, and the swap out of invisibility
     /// would resize the column under the transition that is carrying it.
     private var symbolName: String {
-        mark == .waiting ? "clock" : "checkmark.circle.fill"
+        switch mark {
+        case .waiting: "clock"
+        case .attention: "exclamationmark.circle.fill"
+        case .none, .space, .holding: "checkmark.circle.fill"
+        }
     }
 
     private var markInk: Color {
-        mark == .waiting ? HelmText.faint : HelmSignal.success
+        switch mark {
+        case .waiting: HelmText.faint
+        case .attention: HelmSignal.warning(increased: traits.increasedContrast)
+        case .none, .space, .holding: HelmSignal.success(increased: traits.increasedContrast)
+        }
     }
 
 }
-
-/// 14, from `.rspace { flex: 0 0 14px }` — the same column the marks are drawn
-/// in, so a card of mixed rows keeps one left edge for its labels.
-///
-/// Outside the struct because `HelmSettingRow` is generic in its trailing view,
-/// and a generic type cannot hold a static stored property. One number for
-/// every specialisation is exactly what it has to be.
-extension HelmSettingRow { fileprivate static var markWidth: CGFloat { 14 } }

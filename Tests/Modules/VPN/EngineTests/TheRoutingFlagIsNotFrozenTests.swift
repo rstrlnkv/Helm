@@ -20,8 +20,7 @@ import XCTest
 /// this; the reading it is compared against is frozen.
 ///
 /// It is a local memory of a live external fact with no reverse channel from
-/// the port that knows — CLAUDE.md § What not to do, and what breaks if you
-/// do, and the same shape as
+/// the port that knows — ARCHITECTURE.md § Ports and logic, and the same shape as
 /// `LayoutEngine.tapped`: set once against something macOS can revoke.
 ///
 /// **The branch it decides is reached whenever the dynamic store answers nil.**
@@ -34,6 +33,8 @@ import XCTest
 ///
 /// Both directions are wrong and the second is the dangerous one: an absent
 /// answer reads as «not known», a stale one reads as an answer.
+///
+/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
 
     private let list = """
@@ -41,27 +42,14 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
         * (Connected) AAAAAAAA-0000-0000-0000-000000000001 VPN (com.x.work) "work" [VPN:com.x.work]
         """
 
-    /// `scutil --nc status "work"` as the tool writes it. The flag is the only
-    /// thing that moves between the two readings.
-    private func status(primary: Bool) -> String {
-        """
-        Connected
-        Extended Status <dictionary> {
-          IPv4 : <dictionary> {
-            InterfaceName : utun4
-          }
-          IsPrimaryInterface : \(primary ? 1 : 0)
-          LastStatusChangeTime : 08/19/2026 14:57:22
-          Status : 2
-        }
-        """
-    }
+    /// What the real tool writes besides the flag, and the flag is the only thing
+    /// that moves between the two readings.
+    private let toolsOwnLines = ["LastStatusChangeTime : 08/19/2026 14:57:22", "Status : 2"]
 
     /// **The store answers nil**, which is the state the connection's own flag
     /// is consulted for. Every port named.
-    private func engine(_ runner: FakeRunner)
-        -> (engine: VPNEngine, transport: LocalTransport) {
-        let interfaces = FakeInterfaces()
+    private func engine(_ runner: FakeRunner, interfaces: FakeInterfaces = FakeInterfaces())
+        -> (engine: VPNEngine, news: EngineNews<VPNEngine.StatePayload>) {
         interfaces.primary = nil
         interfaces.counters = ["utun4": (in: 1_000, out: 2_000)]
         // Held open, the way the real port is for up to eight seconds — and so
@@ -69,31 +57,29 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
         // (`TheTestQueueIsAsSerialAsTheRealOneTests`).
         let exit = FakeExit()
         exit.hangs = true
-        let transport = LocalTransport()
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                                    namespace: "vpn", backing: InMemoryKeyValueStore())),
-                               runner: runner, apps: FakeApps(), transport: transport,
+        let news = EngineNews<VPNEngine.StatePayload>()
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
+                               runner: runner, apps: FakeApps(), news: news,
                                interfaces: interfaces, exit: exit, speed: FakeSpeed(),
                                work: .inline)
-        return (engine, transport)
+        return (engine, news)
     }
 
-    private func verdict(on transport: LocalTransport) async -> VPNExitVerdict? {
-        await lastState(on: transport)?.tunnels.first?.exit
+    private func verdict(on news: EngineNews<VPNEngine.StatePayload>) async -> VPNExitVerdict? {
+        await lastState(on: news)?.tunnels.first?.exit
     }
 
     /// The control. A tunnel whose first reading says it holds the route is read
     /// correctly — so the two tests below are about the *second* reading and not
     /// about a fixture that never gets the flag right.
     func testTheFlagIsReadWhenItIsFirstAsked() async {
-        let runner = FakeRunner()
-        runner.listOutput = list
-        runner.statusOutput["work"] = status(primary: true)
-        let (engine, transport) = self.engine(runner)
+        let runner = FakeRunner(list: list)
+        runner.statusOutput["work"] = scutilStatus(primary: true, extra: toolsOwnLines)
+        let (engine, news) = self.engine(runner)
         defer { engine.deactivate() }
 
         engine.refresh()
-        let seen = await verdict(on: transport)
+        let seen = await verdict(on: news)
         XCTAssertEqual(seen, .throughTunnel(countryCode: nil),
                        "precondition: the tool's own routing flag is not read at all")
     }
@@ -104,23 +90,22 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
     /// order of events — the handshake finishes, then the routing table is
     /// rewritten. The first status read catches the moment in between.
     func testARouteThatMovesOntoTheTunnelIsNoticed() async {
-        let runner = FakeRunner()
-        runner.listOutput = list
-        runner.statusOutput["work"] = status(primary: false)
-        let (engine, transport) = self.engine(runner)
+        let runner = FakeRunner(list: list)
+        runner.statusOutput["work"] = scutilStatus(primary: false, extra: toolsOwnLines)
+        let (engine, news) = self.engine(runner)
         defer { engine.deactivate() }
 
         engine.refresh()
-        let seen = await verdict(on: transport)
+        let seen = await verdict(on: news)
         XCTAssertEqual(seen, .besideTunnel,
                        "precondition: the first reading was not the one this test starts from")
 
         // The routing table is rewritten. The tunnel has not moved.
-        runner.statusOutput["work"] = status(primary: true)
+        runner.statusOutput["work"] = scutilStatus(primary: true, extra: toolsOwnLines)
         engine.refresh()
         engine.refresh()
 
-        let seenAgain = await verdict(on: transport)
+        let seenAgain = await verdict(on: news)
         XCTAssertEqual(seenAgain, .throughTunnel(countryCode: nil), """
             the tunnel took the default route and the page went on saying the \
             traffic goes around it, because the reading was cached at the one \
@@ -136,28 +121,44 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
     /// where the traffic actually goes has changed. An absent answer reads as
     /// «not known»; this one reads as «checked, and you are covered».
     func testARouteThatLeavesTheTunnelIsNoticed() async {
-        let runner = FakeRunner()
-        runner.listOutput = list
-        runner.statusOutput["work"] = status(primary: true)
-        let (engine, transport) = self.engine(runner)
+        let runner = FakeRunner(list: list)
+        runner.statusOutput["work"] = scutilStatus(primary: true, extra: toolsOwnLines)
+        let (engine, news) = self.engine(runner)
         defer { engine.deactivate() }
 
         engine.refresh()
-        let seen = await verdict(on: transport)
+        let seen = await verdict(on: news)
         XCTAssertEqual(seen, .throughTunnel(countryCode: nil),
                        "precondition: the first reading was not the one this test starts from")
 
-        runner.statusOutput["work"] = status(primary: false)
+        runner.statusOutput["work"] = scutilStatus(primary: false, extra: toolsOwnLines)
         engine.refresh()
         engine.refresh()
 
-        let seenAgain = await verdict(on: transport)
+        let seenAgain = await verdict(on: news)
         XCTAssertEqual(seenAgain, .besideTunnel, """
-            the default route left the tunnel and the page kept the green tick: \
+            the default route left the tunnel and the page kept the green dot: \
             the routing flag was cached with the interface at the first status \
             read and the tool is never asked again while the tunnel is up, so \
             the one sentence this feature exists to get right is a reassurance \
             nobody checked
             """)
+    }
+
+    /// **One reading of the primary interface per refresh reaches the tunnels.**
+    /// The store answers `en0` to the refresh's own question and nil to any
+    /// later one; the tunnel is judged by the first, as `readInterfaces` was.
+    func testTheTunnelsAreJudgedByTheRefreshsOwnReading() async {
+        let runner = FakeRunner(list: list)
+        runner.statusOutput["work"] = scutilStatus(primary: true, extra: toolsOwnLines)
+        let interfaces = FakeInterfaces()
+        interfaces.primaryScript = ["en0", nil]
+        let (engine, news) = self.engine(runner, interfaces: interfaces)
+        defer { engine.deactivate() }
+
+        engine.refresh()
+        let seen = await verdict(on: news)
+        XCTAssertEqual(seen, .besideTunnel, "the tunnel was judged by a second answer from the store, not the refresh's own")
+        XCTAssertEqual(interfaces.primaryCalls, 1, "one primary-interface reading per refresh")
     }
 }

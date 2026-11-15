@@ -8,9 +8,11 @@ open is Helm's own rather than whatever a plist happened to hold. The doc commen
 `SettingGuard`, `SealKeyCache` and `KeychainSealKey` hold the mechanism: the key is
 cached once per process and no verdict is, because the key is a secret created once
 while whether a stored value is Helm's own is a live fact about a plist anything can
-rewrite; a refusal is not cached either. A broken seal refuses in each side's own safe
-direction: the folder is left unwalked, and the disabled list becomes every scannable
-module.
+rewrite; a refusal is not cached either. `KeychainItem.read` (in `KeychainSealKey.swift`) is
+the one read of a keychain item for the seal key and Autopilot's rule sequence:
+`errSecItemNotFound` alone is `absent`, anything else, a success without data
+included, is `refused`. A broken seal refuses in each side's own safe direction: the
+folder is left unwalked, and the disabled list becomes every scannable module.
 
 A stored setting that steers unattended work is sealed, because the property list is
 writable by any process running as the user and an unsealed setting is somebody else
@@ -34,13 +36,15 @@ a new keychain account, because Autopilot's item exists on every Mac that has ru
 module and moving it would read there as "somebody rewrote your rules".
 
 The reads of the rules come from the sweep timer, from file-system events, from the
-transport and from the watch refresh. One lock covers reading, judging against the seal
-and recording the judgement; another covers saving payload and seal. Without the second,
-a read landing between the two writes judges new rules against an old seal and calls
+model's calls and from the watch refresh. In Autopilot's rules one lock, `decisionLock`
+(`Sources/Modules/Autopilot/Engine/SealedRules.swift`), covers both reading, judging against the
+seal and recording the judgement, and saving payload and seal, on purpose: it is not split. Without
+that, a read landing between the two writes judges new rules against an old seal and calls
 Helm's own work tampering, and unordered, "these are Helm's own rules" lands on top of
 "something else wrote these"
-(`Tests/Modules/Autopilot/EngineTests/AutopilotSealRaceTests.swift` holds both). Each
-lock is taken on both sides of a field, in a synchronous property that returns the value
+(`Tests/Modules/Autopilot/EngineTests/AutopilotSealRaceTests.swift` holds both orderings). `keyLock` is
+held only around the two keychain ports and `trustLock` only around the field access, each on
+both sides of a field, in a synchronous property that returns the value
 rather than holding it across a suspension.
 
 What is *not* sealed is as much a part of the shape: `KeepAwakeSettings.clamshellEnabled`
@@ -52,7 +56,7 @@ is not, for a reason that lives in that property's doc comment.
 well as debug. The single ceiling for the durations is `TimerPolicy.longestSessionMinutes`
 (`Sources/Modules/KeepAwake/Engine/Logic/TimerPolicy.swift`), read by every reader of
 the number — the settings (`KeepAwakeSettings`), the engine's session start, the extend
-button (`TimerPolicy.extendedMinutes`) and the drawn label — so the multiply is
+button (`TimerPolicy.extendedMinutes`), the panel tile's stored length (`panelTimerMinutes`, read as written up to the ceiling, so 721 to 1440 minutes come back unchanged) and the drawn label — so the multiply is
 unreachable by construction rather than guarded at each call site. A value read at
 launch is bounded as strictly as one read from a window, because a trap during launch is
 the app terminating with no window left to undo the bad value from. `SessionRestore.decide`
@@ -67,3 +71,8 @@ the caller who wants `nil` instead and is not a substitute, since it refuses inf
 too. A bound that is relative to something and proven from one side only is unproven
 from the other, so when a fix adds a bound the question is which direction the tests
 exercise.
+
+The scan settings' key is `com.helm.app` / `settings-seal`; Helm Dev seals under `dev-settings-seal`
+(`SettingsSealItems.of(bundle:)`), so its saves never touch the installed Helm's item. A seal Dev wrote
+before that account existed reads in Dev as broken and refuses safe; `defaults delete com.helm.app.dev`
+once starts Dev clean.

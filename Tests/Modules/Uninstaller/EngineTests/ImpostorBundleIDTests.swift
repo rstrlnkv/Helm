@@ -1,43 +1,6 @@
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// The sibling tests are about the *names* a glob reaches. This one is about
-/// the id itself.
-///
-/// `SiblingPrefixTests` and `NestedSiblingTests` both compare an entry's name
-/// against the bundle id being removed, and both take for granted that the id
-/// belongs to the app being removed. It does not have to: the id is read from
-/// that app's own `Info.plist`, and an app may write anybody's there.
-///
-/// The exact candidates — `Containers/<id>`, `Preferences/<id>.plist`,
-/// `HTTPStorages/<id>`, `WebKit/<id>`, `Cookies/<id>.binarycookies`,
-/// `Saved Application State/<id>.savedState` — went through no ownership check
-/// at all, so removing a 2 MB download would take the whole of another app's
-/// container with it, ticked, on a screen whose next button is Trash.
-///
-/// The evidence available is that two installed bundles declare the one id.
-/// Assertions name paths, never counts.
-private struct ImpostorFS: FileSystemPort {
-    let entries: [String: Int]
-    func exists(_ url: URL) -> Bool { entries[url.path] != nil }
-    func size(_ url: URL) -> Int { entries[url.path] ?? 0 }
-    func glob(_ pattern: URL) -> [URL] {
-        let dir = pattern.deletingLastPathComponent().path
-        let name = pattern.lastPathComponent
-        return entries.keys
-            .filter { ($0 as NSString).deletingLastPathComponent == dir }
-            .filter { GlobMatch.matches(($0 as NSString).lastPathComponent, pattern: name) }
-            .sorted()
-            .map { URL(fileURLWithPath: $0) }
-    }
-    func children(of url: URL) -> [URL] {
-        entries.keys
-            .filter { ($0 as NSString).deletingLastPathComponent == url.path }
-            .sorted()
-            .map { URL(fileURLWithPath: $0) }
-    }
-}
-
 /// `listed` is what a directory listing finds; `nested` is an app installed one
 /// folder down, which only LaunchServices sees. Both declare the id.
 private struct Declarers: AppLister {
@@ -56,6 +19,22 @@ private struct Declarers: AppLister {
     }
 }
 
+/// The sibling tests are about the *names* a glob reaches. This one is about
+/// the id itself.
+///
+/// `SiblingPrefixTests` and `NestedSiblingTests` both compare an entry's name
+/// against the bundle id being removed, and both take for granted that the id
+/// belongs to the app being removed. It does not have to: the id is read from
+/// that app's own `Info.plist`, and an app may write anybody's there.
+///
+/// The exact candidates — `Containers/<id>`, `Preferences/<id>.plist`,
+/// `HTTPStorages/<id>`, `WebKit/<id>`, `Cookies/<id>.binarycookies`,
+/// `Saved Application State/<id>.savedState` — went through no ownership check
+/// at all, so removing a 2 MB download would take the whole of another app's
+/// container with it, ticked, on a screen whose next button is Trash.
+///
+/// The evidence available is that two installed bundles declare the one id.
+/// Assertions name paths, never counts.
 final class ImpostorBundleIDTests: XCTestCase {
     private let lib = "/Users/x/Library"
     private let id = "com.adobe.acrobat"
@@ -76,10 +55,9 @@ final class ImpostorBundleIDTests: XCTestCase {
 
     private func scan(_ apps: AppLister, entries: [String: Int]) async throws -> ScanResult {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                       apps: apps, fs: ImpostorFS(entries: entries),
+                                       apps: apps, fs: GlobbingFS(entries: entries),
                                        trash: NoTrash(), running: NoRunning())
-        return try await engine.scan(bundleID: id, appPath: "/Applications/Sketchy.app",
-                                     appName: "Sketchy")
+        return await engine.scan(bundleID: id, appName: "Sketchy")
     }
 
     /// The impostor: a second bundle in `/Applications` declaring the id of an

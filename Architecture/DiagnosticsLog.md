@@ -1,10 +1,10 @@
 # Diagnostics log
 
-`~/Library/Logs/Helm/helm.log`, two megabytes and then one rollover (`HelmLog.sizeLimit`),
+`~/Library/Logs/Helm/helm.log` (Helm Dev: `~/Library/Logs/Helm Dev/helm.log`), two megabytes and then one rollover (`HelmLog.sizeLimit`),
 in a folder created 0700 (`PrivateFile.directory(at:)`). `LogPolicy.isEnabled` answers
-whether it logs at all and `LogDestination` where it lives: every `-dev` build logs
+whether it logs at all and `LogDestination` where it lives (`LogDestination.relativePath(folder:)`, spelled from the build's `DataFolder`): every `-dev` build logs
 whatever was saved, and a beta build stays silent until its owner turns on the «Write a
-log file» item of the «More actions» menu on the Log page's window toolbar.
+log file» item of the «More actions» menu in the Log page's header row.
 
 What the installed build says about itself is read from that file rather than assumed: the
 lines tagged "permissions" (`Sources/HelmApp/PermissionAudit.swift`) state which grants it
@@ -21,6 +21,12 @@ names a person's habits, so the app-cleanup modules write `Redact.app` and not t
 alone. The tag is a salted FNV-1a rather than a hash of the bare name, because a keyless
 hash of a name drawn from a small public list is an index into that list; the salt is per
 install, in a `0600` file beside the log.
+
+`Redact.path` is not a tag: it writes only the home folder as `~`, and the folders and file
+names of a person's own documents (Autopilot, Disk, Duplicates) stay in the line. Two
+exceptions are tagged: a scan root outside home (`LogRoot.label`) and a software leaf
+(`Redact.path(_:leaf:)`, Uninstaller and Leftovers). That is the owner's decision of
+11.11.2026, and the Log page's note says it (`logRedactionNote`).
 
 Two things follow the file rather than the process. The one-time purge records that it
 has run in a file beside the log rather than in `UserDefaults`, which is namespaced per
@@ -46,7 +52,8 @@ cancellation. `begin`/`end` is the pair for a body the closure cannot take. It i
 only with a `defer` on the very next line, and only where the phase is the whole body of
 an asynchronous function, because a `defer` ends at the end of the function and so is the
 end of the phase only there; the balance-by-hand the phase call replaces caused
-cancel-path defects. The label goes on the shared path rather than at each call site, as
+cancel-path defects. One documented exception: Homebrew's `homebrew.operation` is begun in `beginBusy` and ended in `endBusy`,
+because the operation outlives one async body. The label goes on the shared path rather than at each call site, as
 `HelmTrash` does with `"\(module).trash"` (ARCHITECTURE.md § Removal), so every module
 deleting through `HelmTrash` carries the name and a new one cannot forget to.
 `HelmActivity.sweep(module:)` is called from `ModuleHost.shutdown` and
@@ -54,7 +61,12 @@ deleting through `HelmTrash` carries the name and a new one cannot forget to.
 been dropped.
 
 The labels are not listed in prose. What exists is what
-`command grep -rhoE 'HelmActivity\.(phase|begin)\("[^"]+"' Sources | sort -u` prints.
+`command grep -rnE 'HelmActivity\.(phase|begin)\(|(operationPhase|phaseLabel) =|\.trash"' Sources`
+finds: the literal labels, and the three held as values (`"\(module).trash"` in
+`HelmTrash`, `operationPhase` in `HomebrewEngine`, `phaseLabel` in Homebrew's
+`SystemPorts`). The host's `scan.<id>` phase (`ScanCoordinator`) is outside
+`sweep(module:)`, which matches the module id and a dot; the phase call closes it when
+the walk returns, so no sweep is needed for it.
 An empty registry renders as `no phases running`, which is what the registry knows and no
 statement about the app: the SwiftUI render, a VPN refresh, the update check and the trash
 sweep all run outside it (`HelmActivity.describe`).
@@ -73,14 +85,14 @@ the allocator's own books — `malloc_zone_statistics`' `size_in_use`. Every wal
 budget carries its ceiling as a file rather than as a paragraph, per entry or per item:
 `Tests/Modules/Disk/EngineTests/ScanFootprintTests.swift`,
 `Tests/Modules/Leftovers/EngineTests/AScanKeepsWhatItFoundTests.swift`,
-`Tests/Modules/Duplicates/EngineTests/WalkFootprintTests.swift` and
-`Tests/HelmRuntimeTests/ReleaseDigestFootprintTests.swift`, with
-`Tests/HelmRuntimeTests/MemoryTrailCoverageTests.swift` holding the list of phases
+`Tests/Modules/Duplicates/EngineTests/WalkFootprintTests.swift`; the streamed digest of
+an update carries a process ceiling over one large file instead, run only with
+`HELM_BENCH=1` (`Tests/HelmRuntimeTests/ReleaseDigestFootprintTests.swift`).
+`Tests/HelmRuntimeTests/MemoryTrailCoverageTests.swift` holds the list of phases
 obliged to carry a reading at all.
 
-`Tests/Support/ThreadAllocations.swift` judges one call by the requests it made and never
-by a high-water sampled from those books, which are the whole process's (its doc comment
-holds the measurement). A memory peak is never attributed to a neighbouring log line; the
+A call is judged by the requests it made and never
+by a high-water sampled from those books, which are the whole process's. A memory peak is never attributed to a neighbouring log line; the
 same signature is looked for in a run where the suspect was idle, and the log that raised
 the suspicion usually holds the run that settles it. Bulk phases carry both the named
 interval and the memory reading or stay out of the trail, and the trail never says the app
@@ -90,7 +102,7 @@ is idle (ARCHITECTURE.md § The activity registry).
 
 `Sources/HelmApp/LogView.swift` is the same lines readable while they are being written,
 on every build. It computes nothing about the file: one `write`, one format, and the pane
-is a window onto it. Its controls live in the settings window's own toolbar rather than
+is a window onto it. Its controls live in the header row of the settings window's card rather than
 in a band of the page (`LogView.toolbarContent`), so the place a person is sent to when
 they report a problem is the one named after it.
 
@@ -98,10 +110,9 @@ Each launch is **a card** (under a filter, one with nothing to show has none), a
 launch is comes out of the lines themselves, in pure functions in
 `Sources/HelmApp/LogSessions.swift` and not in the view, so a fixture can be handed to them.
 Nothing is dropped or reordered on the way: the cards joined are the tail. Which of them the
-page draws is a separate matter, below. Two known defects are in the defect log:
-`log-earlier-launch-search`, no query finds a card by «Earlier launch», and
-`log-span-zh-ja`, a day span across midnight is written by the system's interval
-formatter, which in Chinese and Japanese is numerals beside long-form day headings.
+page draws is a separate matter, below. The head of the tail, which draws «Earlier launch»,
+is found by a part of those words in the page's language, and a day span across midnight is
+written like the day headings in Chinese and Japanese too (a template, not the long style).
 
 `Sources/HelmRuntime/LogTail.swift` is the in-memory tail, bounded by `LogTail.standardLimit` and trimmed
 from the front. It is filled from the parts a file line is spelled from rather than by
@@ -110,6 +121,13 @@ says so in its own first line: a seed has no parts to hold, so it parses — onc
 type whose name says so, as the exact inverse of the format, and reading a stamp once a
 minute rather than once a line. It seeds from this process's log files and their
 predecessor on disk, so the pane is not limited to what this process happened to write.
+It decodes the bytes it read rather than validating them: a window that starts inside a
+multi-byte character leaves bytes that are not UTF-8 only in the first fragment, which is
+dropped, and a last line torn inside one is kept, so one cut character never costs the file.
+The launch words («Helm … started», «logging enabled», «logging disabled», «terminating») are
+spelled once, in `LogLine` (`HelmLog.swift`), which `HelmLog.start`, `setEnabled` and
+`terminating()` write through; `LogSeed` recognises them from the same words, and
+`LogSessions` only decides where a launch ends.
 
 The pane follows the newest line by its identity rather than by the tail's count — the
 count is the limit for ever once the tail is full. While Follow is lit and the view is at

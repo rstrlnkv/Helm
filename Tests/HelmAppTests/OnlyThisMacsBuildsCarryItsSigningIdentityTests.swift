@@ -16,31 +16,12 @@ import HelmTestSupport
 /// `TMPDIR`, so neither this Mac's identity nor its staged bundle is read.
 final class OnlyThisMacsBuildsCarryItsSigningIdentityTests: XCTestCase {
 
-    private struct Run {
-        let status: Int32
-        let output: String
-        let errors: String
-    }
-
     private func script(_ name: String) -> URL {
         RepoSource.root.appendingPathComponent("Scripts/\(name)")
     }
 
-    private func run(_ script: URL, env: [String: String]) throws -> Run {
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/bin/bash")
-        proc.arguments = [script.path]
-        proc.environment = env
-        let out = Pipe(), err = Pipe()
-        proc.standardOutput = out
-        proc.standardError = err
-        try proc.run()
-        let output = out.fileHandleForReading.readDataToEndOfFile()
-        let errors = err.fileHandleForReading.readDataToEndOfFile()
-        proc.waitUntilExit()
-        return Run(status: proc.terminationStatus,
-                   output: String(decoding: output, as: UTF8.self),
-                   errors: String(decoding: errors, as: UTF8.self))
+    private func run(_ script: URL, env: [String: String]) throws -> ChildResult {
+        try runChild("/bin/bash", [script.path], environment: env)
     }
 
     // MARK: - Which identity a build on this Mac takes
@@ -86,7 +67,7 @@ final class OnlyThisMacsBuildsCarryItsSigningIdentityTests: XCTestCase {
 
     /// A staged bundle and a `codesign` stub that verifies it and describes its
     /// signature as `signature`.
-    private func release(_ scriptName: String, signature: String) throws -> Run {
+    private func release(_ scriptName: String, signature: String) throws -> ChildResult {
         let tmp = scratchDirectory("release-tmp")
         let app = tmp.appendingPathComponent("helm-package/Helm.app/Contents")
         try FileManager.default.createDirectory(at: app, withIntermediateDirectories: true)

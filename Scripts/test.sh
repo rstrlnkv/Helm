@@ -45,7 +45,10 @@ set -euo pipefail
 # Usage: Scripts/test.sh [swift test arguments...]
 # Without a --filter every class `Tests/optional-tests.txt` names is skipped;
 # HELM_FULL_SUITE=1 runs them too, as a release does (ARCHITECTURE.md § What
-# proves what).
+# proves what). A class gated on HELM_BENCH=1 keeps its body skipped even then,
+# because the body is a benchmark or report (it writes and hashes over a
+# gigabyte, mounts a volume, or builds a very large fixture); a release does
+# not run those bodies.
 # A listed name no `class <Name>:` under Tests/ declares refuses the run before
 # swift test, naming it.
 # The log path is $HELM_TEST_LOG if set, otherwise a fresh file under
@@ -95,6 +98,24 @@ set -euo pipefail
 # count apart from a genuine typo or an unrelated `--skip`, so all three
 # land in the same "ran no test case" message below rather than one of them
 # being guessed at.
+#
+# LIMIT: an empty alternative is refused before swift test runs, because
+# `swift test` reads it as a pattern that matches every test (measured for a
+# trailing `|` only: the whole suite; the rest follow from the regex) and a trailing
+# `|` turns a family run into the whole suite, while the count below, splitting
+# on `|`, drops a trailing one and counts a leading or middle one as matching
+# every selected case, so it never fails a bare one; a group's halves do fail it
+# (LIMIT above), but only after the run is spent. Each --filter occurrence is judged
+# on its own.
+# What is refused is spelled, not parsed: a value that is empty (also
+# `--filter` with no value after it, and `--filter=`), starts or ends with `|`,
+# or contains `||`, `(|` or `|)`. Not refused, and reaching swift test: `(?:|A)`,
+# whose empty alternative sits behind a `?:`, and any other alternative that
+# matches the empty string (`A|()`, `A|.*`, `A|x?`). An escaped `\|`, a literal
+# bar, is not understood: it is refused where its `|` ends the value, touches
+# another bar or stands before a `)` (`A\|`, `A\||B`, `(A\|)`), and reaches
+# swift test elsewhere (`\|A`, `A|\|B`), where the count's split leaves a lone
+# `\` and fails the run.
 
 # --filter can arrive as `--filter X` or `--filter=X`, and more than once;
 # swift test ORs every occurrence, so every one is read here too and joined
@@ -120,10 +141,16 @@ done
 # and `NoSuchTestsAtAll` counted every selected case and printed PASS).
 # Refuse any --filter value carrying one — in either the `--filter X` or
 # `--filter=X` form, and on any occurrence — before swift test runs at all,
-# so a bad value never gets as far as spending the run.
+# so a bad value never gets as far as spending the run. An empty alternative
+# is refused the same way (LIMIT above), on each occurrence read alone.
 if [ "${#FILTER_VALUES[@]}" -gt 0 ]; then
   for ALT in "${FILTER_VALUES[@]}"; do
     case "$ALT" in
+      ''|'|'*|*'|'|*'||'*|*'(|'*|*'|)'*)
+        echo "!! --filter value has an empty alternative, refused before swift test runs: $(printf '%q' "$ALT")" >&2
+        echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  log=not written"
+        exit 1
+        ;;
       *$'\n'*)
         echo "!! --filter value contains a newline byte, refused before swift test runs: $(printf '%q' "$ALT")" >&2
         echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  log=not written"

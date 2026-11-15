@@ -11,7 +11,7 @@ import os
 ///
 /// Written by engines, read by whoever asks — the same shape as `HelmLog`, and
 /// for the same reason: a module publishes what it is doing without anyone being
-/// able to reach in and command it. Nothing here crosses a transport, because
+/// able to reach in and command it. Nothing here takes a command, because
 /// nothing here carries a decision.
 ///
 /// Also emits `os_signpost` intervals, so the same boundaries land on the
@@ -22,7 +22,7 @@ public enum HelmActivity {
 
     public struct Running: Sendable, Equatable {
         public let label: String
-        public let started: Date
+        let started: Date
         public init(label: String, started: Date) {
             self.label = label
             self.started = started
@@ -32,7 +32,7 @@ public enum HelmActivity {
     /// A leaked interval must not grow without bound: this is the mechanism for
     /// finding memory bugs and must not become one. Past the limit a phase runs
     /// unregistered rather than failing — the work matters more than the record.
-    public static let liveLimit = 64
+    static let liveLimit = 64
 
     private static let lock = NSLock()
     nonisolated(unsafe) private static var live: [String: Running] = [:]
@@ -73,10 +73,7 @@ public enum HelmActivity {
         live[label] = Running(label: label, started: Date())
     }
 
-    public static func end(_ label: String) {
-        lock.lock(); defer { lock.unlock() }
-        live[label] = nil
-    }
+    public static func end(_ label: String) { lock.withLock { live[label] = nil } }
 
     /// Everything a module had open, dropped with the module. `ModuleHost` owns
     /// the lifecycle, so it is the only place with standing to do this: a scan
@@ -88,16 +85,10 @@ public enum HelmActivity {
         }
     }
 
-    public static var running: [Running] {
-        lock.lock(); defer { lock.unlock() }
-        return Array(live.values)
-    }
+    public static var running: [Running] { lock.withLock { Array(live.values) } }
 
     /// For tests, which must not inherit another test's phases.
-    static func reset() {
-        lock.lock(); defer { lock.unlock() }
-        live.removeAll()
-    }
+    static func reset() { lock.withLock { live.removeAll() } }
 
     /// The phrase that goes after a memory reading.
     ///
@@ -115,7 +106,7 @@ public enum HelmActivity {
     /// VPN refresh, the Layout tap, the update check and the trash sweep all
     /// run outside this registry — a reading taken beside any of them is not a
     /// reading of an idle app, and the line must not say it is.
-    public static func describe(_ running: [Running], now: Date = Date(),
+    static func describe(_ running: [Running], now: Date = Date(),
                                 excluding label: String? = nil) -> String {
         let running = running.filter { $0.label != label }
         guard !running.isEmpty else { return label == nil ? "no phases running" : "" }

@@ -26,7 +26,7 @@ import XCTest
 /// indistinguishable from one the app itself created.
 ///
 /// **The list of subjects is not written here.** A hand-written list of types is
-/// tied to the thing it names or it is a comment (CLAUDE.md), so the subjects are
+/// tied to the thing it names or it is a comment (Architecture/TestsAndMeasurement.md § What makes a check), so the subjects are
 /// *derived*: every `init` in `Sources/` with a parameter whose default reaches
 /// the keychain is a subject, and that parameter's own label is what a test has
 /// to name. A module that grows a fourth port arrives in this scan without
@@ -74,8 +74,7 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
             these build a type over a port whose default is the login keychain, so running them \
             reads — and where the item is absent, creates — an item in the keychain of whoever \
             runs the suite. Hand each one a double: SealKeyProbe or SilentSealKey \
-            (HelmTestSupport), TestRuleKey / TestRuleSequence (Autopilot), PlantedSealKey \
-            (Duplicates).
+            (HelmTestSupport), TestRuleKey / TestRuleSequence (Autopilot).
             """)
     }
 

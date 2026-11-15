@@ -100,7 +100,7 @@ public enum WatchScope {
     /// a question about where two paths lead, and a prefix test on their spelling
     /// answers it for one spelling only. Not absolute is a comparison of the text,
     /// for the reason `sameFolder` gives.
-    public static func isWithin(_ path: String, _ ancestor: String) -> Bool {
+    static func isWithin(_ path: String, _ ancestor: String) -> Bool {
         let a = (path as NSString).standardizingPath, b = (ancestor as NSString).standardizingPath
         guard a.hasPrefix("/"), b.hasPrefix("/") else { return a == b || a.hasPrefix(b + "/") }
         let inner = canonical(a), outer = canonical(b)

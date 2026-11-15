@@ -29,7 +29,7 @@ import SwiftUI
 /// hierarchical style (`.secondary`, `.tertiary`) inside it resolves again when
 /// the layer goes away, which reads as a blink at the end of the reveal. Use
 /// `Color.primary.opacity(…)` in there.
-public extension View {
+extension View {
 
     /// A height taken from the layout and written **inside a transaction**, so
     /// the thing built from it travels instead of jumping.
@@ -62,7 +62,7 @@ public extension View {
     ///     everything; the sidebar's rows correct their own heights while the
     ///     list is already reordering on `interface`, and two systems need one
     ///     curve rather than one duration.
-    func helmMeasuredHeight(_ height: Binding<CGFloat?>,
+    public func helmMeasuredHeight(_ height: Binding<CGFloat?>,
                             animation: Animation = HelmMotion.disclosure) -> some View {
         onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
             guard measured > 0, height.wrappedValue != measured else { return }
@@ -100,10 +100,13 @@ public extension View {
     /// so does hit testing — a collapsed row that still answers the pointer is
     /// the same defect for the hand.
     ///
+    /// Content of more than one line needs `.fixedSize(horizontal: false, vertical: true)`
+    /// to be measured whole, as `ShowcaseMotionBoard` does.
+    ///
     /// Alignment is `.top` and not an argument: a block growing from its middle
     /// is not something this app does, and the clip is taken from an edge the
     /// content slides out from under.
-    func helmAccordion(open: Bool, height: Binding<CGFloat?>,
+    public func helmAccordion(open: Bool, height: Binding<CGFloat?>,
                        animation: Animation = HelmMotion.disclosure) -> some View {
         helmMeasuredHeight(height, animation: animation)
             .frame(height: open ? (height.wrappedValue ?? 0) : 0, alignment: .top)

@@ -61,4 +61,20 @@ final class ActionHistoryFloodTests: XCTestCase {
                        + "inside it; the summary counts \(summary.refused) refusals and "
                        + "\(summary.moved) moves")
     }
+
+    /// The cap itself: distinct work, more of it than the limit, inside the
+    /// window. Refusals collapse, so only real actions reach it.
+    func testTheHistoryHoldsNoMoreThanTheLimit() {
+        let now = hour(30 * 24)
+        var history: [ActionRecord] = []
+        for n in 0..<(ActionHistory.limit + 5) {
+            let move = ActionRecord(at: hour(n), rule: "Invoices", file: "file\(n).pdf",
+                                    kind: .moved, detail: "Invoices")
+            history = ActionHistory.recording(move, into: history, now: now)
+        }
+
+        XCTAssertEqual(history.count, ActionHistory.limit)
+        XCTAssertEqual(history.first?.file, "file\(ActionHistory.limit + 4).pdf",
+                       "the newest leads")
+    }
 }

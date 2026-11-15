@@ -4,7 +4,6 @@
 import Combine
 import HelmContract
 import HelmRuntime
-import HelmUI
 import XCTest
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI
@@ -15,16 +14,16 @@ import XCTest
 /// `appearance.title` verbatim — so the bound is applied by the module that has
 /// an unbounded string, which is this one: the name comes out of a configuration
 /// somebody else wrote.
+///
+/// Past defect: commit 1fe5e099, «fix(vpn): a rule is bound to a signature, and a forged plist stops summoning dialogs».
 @MainActor
 final class ANameReachesTheMenuBarBoundedTests: XCTestCase {
 
     private func appearance(name: String) -> StatusAppearance {
-        let descriptor = VPNDescriptor()
-        let host = ModuleViewModel(transport: LocalTransport())
-        descriptor.viewModel(host).setForTesting(
-            automation: VPNAutomation(at: Date(), name: name, kind: .connected),
-            notice: .menuBar)
-        return descriptor.statusAppearance(host)
+        let model = VPNViewModel(work: FakeVPNWork(), settings: seededVPNSettings(notice: .menuBar))
+        model.setForTesting(
+            automation: VPNAutomation(at: Date(), name: name, kind: .connected))
+        return VPNDescriptor().statusAppearance(model)
     }
 
     func testAnOrdinaryNameIsStillTheName() {

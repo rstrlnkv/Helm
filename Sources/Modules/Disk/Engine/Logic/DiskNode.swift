@@ -38,8 +38,9 @@ public final class DiskNode: @unchecked Sendable {
 
     public init(name: String, bytes: Int, isDirectory: Bool,
                 children: [DiskNode] = [], modified: TimeInterval = 0,
-                isFolded: Bool = false) {
+                isFolded: Bool = false, noAccess: Bool = false) {
         self.isFolded = isFolded
+        self.noAccess = noAccess
         self.name = name
         self.bytes = bytes
         self.isDirectory = isDirectory

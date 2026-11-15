@@ -25,7 +25,7 @@ public enum RuleCondition: Codable, Equatable, Sendable {
     case tag(String)
 }
 
-public extension RuleCondition {
+extension RuleCondition {
     /// The extensions somebody typed into the editor's one field: "pdf, .PNG"
     /// is `["pdf", "png"]`.
     ///
@@ -46,7 +46,7 @@ public extension RuleCondition {
     ///
     /// A dot on its own is not an extension and is dropped with the empties, so
     /// the field cannot produce the entry that would match every file.
-    static func fileExtension(typed text: String) -> RuleCondition {
+    public static func fileExtension(typed text: String) -> RuleCondition {
         .fileExtension(text.split(separator: ",").compactMap { entry in
             let trimmed = entry.trimmingCharacters(in: .whitespaces).lowercased()
             let named = String(trimmed.drop(while: { $0 == "." }))
@@ -75,7 +75,7 @@ public enum RuleMatch: String, Codable, CaseIterable, Sendable {
     case all, any
 }
 
-public extension RuleCondition {
+extension RuleCondition {
     /// A number this condition can be stored with.
     ///
     /// `JSONEncoder` refuses a non-finite `Double`, and the rules are one JSON
@@ -103,7 +103,7 @@ public extension RuleCondition {
     /// field refused that too. Stated once here instead, so the sentence stays
     /// true. `0` is still refused at the keyboard — "larger than 0 MB" is a
     /// condition that matches every file, which is not a rule anybody means.
-    static func accepts(_ value: Double) -> Bool {
+    public static func accepts(_ value: Double) -> Bool {
         value.isFinite && value > lowerBound && value <= upperBound
     }
 
@@ -192,7 +192,7 @@ public extension RuleCondition {
     }
 }
 
-public extension WatchedFolder {
+extension WatchedFolder {
     /// The folder with every rule's numbers brought into range. Applied on the
     /// way into storage, so nothing unencodable can reach the one JSON value
     /// that holds all of them.

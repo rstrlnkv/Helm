@@ -15,13 +15,13 @@ import HelmRuntime
 ///
 /// This is the `LaunchctlDisabledTests` shape: a parameter varied between
 /// fixtures that the code under test never reads.
+///
+/// Past defect: fixed in `51247cad`.
 final class ExtensionOfferFixtureTests: XCTestCase {
 
     private let home = URL(fileURLWithPath: "/Users/x")
     private let info = SystemExtensionInfo(identifier: "com.gone.vendor.app.ext",
-                                           teamID: "T1", name: "Gone Network",
-                                           version: "1.0", state: "activated enabled",
-                                           enabled: true)
+                                           version: "1.0", enabled: true)
 
     private func scan(_ extensions: LeftoversFakeLoaded, installed: Set<String> = []) -> [StaleItem] {
         LeftoversScanner(home: home, files: LeftoversFakeFiles(),
@@ -32,9 +32,7 @@ final class ExtensionOfferFixtureTests: XCTestCase {
     /// is offered has to be made over a list that has the thing in it.
     func testTheFixtureThatNamesAnActivatedExtensionActuallyContainsOne() {
         let items = scan(LeftoversFakeLoaded(installed: [
-            SystemExtensionInfo(identifier: "com.gone.vendor.app.ext", teamID: "T",
-                                name: "Ext", version: "1", state: "activated enabled",
-                                enabled: true),
+            SystemExtensionInfo(identifier: "com.gone.vendor.app.ext", version: "1", enabled: true),
         ]))
 
         XCTAssertFalse(items.filter { $0.kind == .systemExtension }.isEmpty,

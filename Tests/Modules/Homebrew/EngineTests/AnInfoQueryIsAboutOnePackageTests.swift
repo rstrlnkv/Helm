@@ -1,5 +1,4 @@
 import XCTest
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// The questions this codebase asks of a new query, asked of `info` — in the
@@ -18,7 +17,7 @@ import HelmRuntime
 ///
 /// The payload is JSON, so this one runs through `runData` — the same reason
 /// `outdated()` does, and the same reason its fake speaks `Data` rather than
-/// `String` (`OutdatedQueryAllocationBenchmark`'s `CannedRunner`).
+/// `String`.
 private final class InfoRunner: ProcessRunner, @unchecked Sendable {
     private let lock = NSLock()
     private var _calls: [[String]] = []
@@ -50,21 +49,6 @@ private final class InfoRunner: ProcessRunner, @unchecked Sendable {
         onExit(0)
         return NoProcess()
     }
-}
-
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
-/// Homebrew is not installed, or was uninstalled in a terminal beside this
-/// window — `FSBrewLocator` re-reads the disk at every call, so this is an
-/// ordinary answer and not a broken fixture.
-private struct NoBrew: BrewLocator {
-    func brewPath() -> String? { nil }
-}
-
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
 final class AnInfoQueryIsAboutOnePackageTests: XCTestCase {

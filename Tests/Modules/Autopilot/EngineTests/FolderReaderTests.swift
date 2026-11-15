@@ -3,6 +3,22 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Autopilot_Engine
 
+/// The fixture both reader classes below stand on: a scratch folder and the
+/// reader over it.
+class FolderReaderRig: XCTestCase {
+
+    fileprivate var root: URL!
+    fileprivate let reader = FolderReader()
+
+    override func setUpWithError() throws {
+        root = scratchDirectory("reader")
+    }
+
+    fileprivate func names(depth: Int) -> [String] {
+        reader.reading(in: root.path, depth: depth).files.map(\.name).sorted()
+    }
+}
+
 /// What a rule is offered, and what it is not.
 ///
 /// `FolderReader` is the only place a file becomes `FileFacts`, so it is the
@@ -11,18 +27,7 @@ import HelmTestSupport
 /// Everything asserted here is about the *shape* of what comes back: which
 /// names, at which levels. Sizes and dates come off the disk and are not this
 /// module's to promise.
-final class FolderReaderTests: XCTestCase {
-
-    private var root: URL!
-    private let reader = FolderReader()
-
-    override func setUpWithError() throws {
-        root = scratchDirectory("reader")
-    }
-
-    private func names(depth: Int) -> [String] {
-        reader.facts(in: root.path, depth: depth).map(\.name).sorted()
-    }
+final class FolderReaderTests: FolderReaderRig {
 
     // MARK: - Packages
 
@@ -47,7 +52,7 @@ final class FolderReaderTests: XCTestCase {
                            "at depth \(depth) a package was taken apart")
         }
 
-        let facts = reader.facts(in: root.path, depth: 9)
+        let facts = reader.reading(in: root.path, depth: 9).files
         for package in facts.filter({ $0.name.contains(".") && $0.name != "plain.txt" }) {
             XCTAssertFalse(package.isDirectory,
                            "\(package.name) is offered as a folder, so a folder rule will act on it")
@@ -102,7 +107,7 @@ final class FolderReaderTests: XCTestCase {
 
         let scale = Scale()
         let reader = FolderReader(weigh: { url in scale.weigh(url.lastPathComponent) })
-        let facts = reader.facts(in: root.path, depth: 2)
+        let facts = reader.reading(in: root.path, depth: 2).files
 
         // First that the read happened at all, so an empty answer cannot buy
         // the absence asserted below.
@@ -146,18 +151,7 @@ final class FolderReaderTests: XCTestCase {
 
 /// How far a read goes down, and what it offers when there is nothing to walk:
 /// the depth limit, an empty folder, a folder that is gone.
-final class FolderReaderDepthTests: XCTestCase {
-
-    private var root: URL!
-    private let reader = FolderReader()
-
-    override func setUpWithError() throws {
-        root = scratchDirectory("reader")
-    }
-
-    private func names(depth: Int) -> [String] {
-        reader.facts(in: root.path, depth: depth).map(\.name).sorted()
-    }
+final class FolderReaderDepthTests: FolderReaderRig {
 
     // MARK: - Depth
 
@@ -201,8 +195,8 @@ final class FolderReaderDepthTests: XCTestCase {
     /// hanging — the folder a rule watches can be on a volume that went away
     /// between the sweep timer firing and the enumerator starting.
     func testAFolderThatIsGoneReadsAsEmpty() {
-        XCTAssertTrue(reader.facts(in: root.appendingPathComponent("gone").path,
-                                   depth: 1).isEmpty)
+        XCTAssertTrue(reader.reading(in: root.appendingPathComponent("gone").path,
+                                       depth: 1).files.isEmpty)
     }
 
     // MARK: - Where the walk may descend

@@ -21,7 +21,15 @@ import HelmRuntime
 /// A slip has a **word** behind it. `TypingHabits` stays a pure shape test —
 /// that is all it can honestly be — and the engine asks whether what the shape
 /// proposes is a word in the layout being typed in.
+///
+/// Guards a past defect: abbreviations rewritten by the capital fix (fix commit `618a822d`).
 final class ASlipHasAWordBehindItTests: XCTestCase {
+
+    /// The real port's answer on a Mac with no dictionary for the layout: `nil`,
+    /// which `FakeSpell` (a set lookup) can never say.
+    private struct NoDictionarySpell: SpellPort {
+        func isWord(_ word: String, sourceID: String) -> Bool? { nil }
+    }
 
     private var typing = FakeTyping()
     private var tap = FakeTap()
@@ -29,12 +37,16 @@ final class ASlipHasAWordBehindItTests: XCTestCase {
     /// `valid` is the dictionary. Everything else is the same rig the module's
     /// other engine tests build.
     private func engine(dictionary valid: Set<String>) -> LayoutEngine {
+        engine(spell: FakeSpell(valid: valid))
+    }
+
+    private func engine(spell: SpellPort) -> LayoutEngine {
         typing = FakeTyping(); tap = FakeTap()
         let engine = LayoutEngine(
             tap: tap, typing: typing, sources: FakeSources(),
             translation: FakeTranslation(table: [:]),
-            spell: FakeSpell(valid: valid),
-            secure: FakeSecure(), automatic: true,
+            spell: spell,
+            secure: FakeSecure(), activation: FakeActivation(), automatic: true,
             settings: Self.boundStore())
         engine.activate()
         return engine
@@ -47,8 +59,7 @@ final class ASlipHasAWordBehindItTests: XCTestCase {
     /// passed `fixCapitals: true` would be testing a value the engine discards
     /// one line later.
     private static func boundStore() -> NamespacedStore {
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
+        let store = layoutStore()
         store.set(true, for: LayoutKey.fixCapitals)
         return store
     }
@@ -79,7 +90,7 @@ final class ASlipHasAWordBehindItTests: XCTestCase {
     /// «go ahead» either, or the rule is back to shape alone on exactly the
     /// Macs where nothing can check it.
     func testNoDictionaryMeansNoCorrection() {
-        let engine = engine(dictionary: [])
+        let engine = engine(spell: NoDictionarySpell())
         tap.type("HEllo"); tap.space()
         XCTAssertTrue(typing.performed.isEmpty,
                       "with no dictionary the rule fell back to the shape test alone")

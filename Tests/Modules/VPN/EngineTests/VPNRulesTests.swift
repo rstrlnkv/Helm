@@ -2,6 +2,7 @@ import XCTest
 @testable import HelmRuntime
 @testable import Module_VPN_Engine
 
+/// Guards: the rules JSON round-trips, a legacy string map still decodes, garbage decodes empty and a rule naming a missing VPN is dropped (no fix commit; the sibling classes in this file carry 54abd430, 63e9bcfe).
 final class VPNRulesTests: XCTestCase {
     func test_encode_decode_roundtrip() {
         let rules = ["com.x": VPNAppRule(vpnName: "A", connectOnLaunch: true, disconnectOnQuit: false)]
@@ -46,53 +47,21 @@ final class VPNRulesTests: XCTestCase {
         XCTAssertFalse(rule.disconnectOnQuit)
     }
 
-    // MARK: - What the AUTOMATIC dial counts
-
-    /// The dial sat above the rules list and disagreed with it: it counted
-    /// `autoConnected` — connections a rule has raised *right now* — under a
-    /// label the list beneath reads as "the rules I wrote". With nothing
-    /// running it said 0 over one visible rule. Whether a rule is firing this
-    /// second is the green dot's job.
-    func testTheDialCountsRulesRatherThanLiveConnections() {
-        let rules = ["com.a": VPNAppRule(vpnName: "Work"),
-                     "com.b": VPNAppRule(vpnName: "Work")]
-        XCTAssertEqual(VPNRules.automationCount(rules), 2)
-    }
-
-    /// A rule set to "Off" is written down and does nothing. Counting it would
-    /// be the same lie in the other direction.
-    func testARuleTurnedOffIsNotAutomation() {
-        var off = VPNAppRule(vpnName: "Work")
-        off.set(.off)
-        XCTAssertEqual(VPNRules.automationCount(["com.a": VPNAppRule(vpnName: "Work"),
-                                                 "com.b": off]), 1)
-    }
-
-    func testNoRulesCountAsNone() {
-        XCTAssertEqual(VPNRules.automationCount([:]), 0)
-    }
-
     // MARK: - Rules whose VPN is gone
 
-    func testARuleNamingAMissingVPNIsReportedNotJustDropped() {
+    func testARuleNamingAMissingVPNIsDropped() {
         let rules = ["com.acme": VPNAppRule(vpnName: "Old VPN")]
         let connections = [VPNConnection(id: "1", name: "New VPN", status: .disconnected, kind: "L2TP")]
         XCTAssertTrue(VPNRules.valid(rules, against: connections).isEmpty)
-        XCTAssertEqual(Array(VPNRules.orphaned(rules, against: connections).keys), ["com.acme"])
-    }
-
-    func testNothingIsOrphanedWhileTheVPNExists() {
-        let rules = ["com.acme": VPNAppRule(vpnName: "NBCom VPN")]
-        let connections = [VPNConnection(id: "1", name: "NBCom VPN", status: .connected, kind: "L2TP")]
-        XCTAssertTrue(VPNRules.orphaned(rules, against: connections).isEmpty)
     }
 }
 
 /// The three questions a status can be asked, and which is which.
 ///
-/// `isUp` means "something is happening here" — right for a tile that lights,
-/// wrong for a number labelled *active*, which counted a connection whose own
-/// row was spinning and saying "Connecting", in green.
+/// `isUp` means "something is happening here" — right for the panel tile's
+/// switch; the tile lights on `isConnected`.
+///
+/// Past defect: commit 54abd430, «fix: two screens that said one thing and did another».
 final class VPNStatusVocabularyTests: XCTestCase {
 
     func testConnectedIsNarrowerThanUp() {
@@ -121,6 +90,8 @@ final class VPNStatusVocabularyTests: XCTestCase {
 /// Helm took one down. A VPN can also drop on its own — the network goes, the
 /// server hangs up, somebody stops it in System Settings — and the strip then
 /// read "ACTIVE 0 · AUTOMATIC 1" until the app restarted.
+///
+/// Past defect: commit 63e9bcfe, «fix: three more from the suspicions list».
 final class AutoConnectedFollowsRealityTests: XCTestCase {
 
     /// **The credit runs out at `VPNDropSettle.window`, not at the first read
@@ -133,8 +104,7 @@ final class AutoConnectedFollowsRealityTests: XCTestCase {
         let runner = FakeRunner()
         let clock = TestClock()
         runner.listOutput = #"* (Connected) A --> B  "Work" [IKEv2]"#
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-            namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
             runner: runner, apps: FakeApps(),
             interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
             now: { clock.now }, work: .inline)
@@ -163,10 +133,8 @@ extension AutoConnectedFollowsRealityTests {
     /// would wipe a connection Helm had just raised, which is what broke
     /// `test_auto_connect_on_app_launch` on the first attempt at this.
     func testAConnectionThatHasNotComeUpYetIsStillCredited() {
-        let runner = FakeRunner()
-        runner.listOutput = #"(Disconnected) 1111 IPSec "Work""#
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-            namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let runner = FakeRunner(list: #"(Disconnected) 1111 IPSec "Work""#)
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
             runner: runner, apps: FakeApps(),
             interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
             work: .inline)

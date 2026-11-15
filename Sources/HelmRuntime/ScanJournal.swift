@@ -5,14 +5,14 @@ import Foundation
 /// No localized text: the sentence is written when it is drawn, so a person who
 /// switches Helm to another language does not keep a history half in the old one.
 public struct ScanEntry: Codable, Equatable, Sendable {
-    public let at: Date
+    let at: Date
     /// What acting on everything found would return. Zero is a real answer — the
     /// scan ran and there was nothing.
-    public let bytes: Int
-    public let count: Int
+    let bytes: Int
+    let count: Int
     /// How long it took, so a page can say whether a re-scan is a moment or a
     /// walk away.
-    public let seconds: TimeInterval
+    let seconds: TimeInterval
 
     public init(at: Date, bytes: Int, count: Int, seconds: TimeInterval) {
         self.at = at
@@ -47,13 +47,14 @@ public struct ScanEntry: Codable, Equatable, Sendable {
 /// what "what changed since last time" needs and no more.
 public final class ScanJournal: @unchecked Sendable {
 
-    public enum Slot: String, Sendable {
+    enum Slot: String, Sendable {
         case current, previous
     }
 
-    /// Thirty scans. A module scanning twice a day keeps a fortnight, which is
-    /// long enough to see a pattern and short enough that the file stays small.
-    public static let limit = 30
+    /// Thirty scans. A completed scan holds its module for a day, so entries
+    /// stand a day or more apart and thirty keep a month or more, which is long
+    /// enough to see a pattern and short enough that the file stays small.
+    static let limit = 30
 
     private let root: URL
     /// One queue, so two scans finishing together land in the order they
@@ -66,8 +67,7 @@ public final class ScanJournal: @unchecked Sendable {
 
     /// A per-process temporary directory under `swift test`, Application Support
     /// in the app. `TestProcess` decides which, and says why it is the question
-    /// it is; `TestScratch` is the shape of the temporary one, and Disk's
-    /// last-scan cache takes the same one.
+    /// it is; `TestScratch` is the shape of the temporary one.
     private static let testScratch = TestScratch(prefix: "helm-scan-journal-")
 
     public static let defaultDirectory: URL = {
@@ -76,8 +76,8 @@ public final class ScanJournal: @unchecked Sendable {
     }()
 
     /// The journal's own name for `TestScratch`'s judgement, narrowed to the
-    /// journal's prefix. `AbandonedJournalsTests` asks it here, which is where
-    /// the 452 directories were counted, and ARCHITECTURE.md § Background scans
+    /// journal's prefix. `TestScratchTests` asks it here, which is where
+    /// the 452 directories were counted, and (ARCHITECTURE.md § Background scans)
     /// names it too.
     static func abandonedTestJournals(_ names: [String],
                                       isAlive: (Int32) -> Bool) -> [String] {
@@ -90,25 +90,25 @@ public final class ScanJournal: @unchecked Sendable {
         root.appendingPathComponent(module, isDirectory: true)
     }
 
-    public func entriesURL(module: String) -> URL {
+    func entriesURL(module: String) -> URL {
         directory(module: module).appendingPathComponent("journal.json")
     }
 
-    public func listURL(module: String, _ slot: Slot) -> URL {
+    func listURL(module: String, _ slot: Slot) -> URL {
         directory(module: module).appendingPathComponent("\(slot.rawValue).json")
     }
 
     // MARK: - Reading
 
     /// Newest first, which is the order a page reads them in.
-    public func entries(module: String) -> [ScanEntry] {
+    func entries(module: String) -> [ScanEntry] {
         guard let data = try? Data(contentsOf: entriesURL(module: module)),
               let stored = try? JSONDecoder().decode([ScanEntry].self, from: data)
         else { return [] }
         return stored.sorted { $0.at > $1.at }
     }
 
-    public func list(module: String, _ slot: Slot) -> [ScanItem]? {
+    func list(module: String, _ slot: Slot) -> [ScanItem]? {
         guard let data = try? Data(contentsOf: listURL(module: module, slot)) else { return nil }
         return try? JSONDecoder().decode([ScanItem].self, from: data)
     }

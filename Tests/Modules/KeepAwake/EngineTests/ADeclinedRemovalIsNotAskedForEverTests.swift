@@ -8,13 +8,12 @@ import HelmTestSupport
 ///
 /// `ALidThatDidNotWorkSaysSoTests` covers the answer itself: a declined removal
 /// leaves the rule where it is and `lidGrantRemains` says so. Both cases here
-/// are about the state that answer leaves behind, and both are the family
-/// CLAUDE.md names — a local flag standing in for a live external fact, with the
+/// are about the state that answer leaves behind, and both are the family (ARCHITECTURE.md § Ports and logic) names — a local flag standing in for a live external fact, with the
 /// reverse channel sitting unread in the same method.
 ///
 /// `releaseIfUnneeded()` is called from the `settingsChanged` command, which the
-/// settings page sends **for every control it draws** — a stepper sends one per
-/// press. `removalInFlight` covers the seconds a dialog is on screen and is
+/// settings page sends **for every control it draws** — a slider sends one per
+/// change. `removalInFlight` covers the seconds a dialog is on screen and is
 /// cleared when it is answered, deliberately, «because a declined removal has to
 /// be askable again». Nothing decides *when* it is asked again: the answer is
 /// «on the next edit of any setting in the module», which is the same five
@@ -64,7 +63,7 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
                                  assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock())
+                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     override func tearDown() {
@@ -83,7 +82,7 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
     /// the dialog below is what a rule *older than that line* still costs.
     func testSwitchingTheOptionOffTakesTheRuleBackOnce() async {
         settings.setClamshellEnabled(false)
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
 
         XCTAssertEqual(clamshell.passwordlessRemovals, 1)
@@ -95,7 +94,7 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
     /// Every edit is a `settingsChanged`, and each one finds the same true
     /// answer — the option is off, our rule is on disk — so each one puts an
     /// administrator password dialog on screen for a decision the person has
-    /// already made. The `await settle()` between them is not decoration: it is
+    /// already made. The `await drainMainActor()` between them is not decoration: it is
     /// what lets `removalInFlight` clear, which is exactly what the person
     /// answering the dialog does, and without it this case would pass on a
     /// guard that has nothing to do with the defect.
@@ -103,17 +102,17 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
         XCTAssertEqual(clamshell.removeCalls, 1, "precondition: it was asked, and declined")
         XCTAssertTrue(clamshell.isSudoersInstalled(),
                       "precondition: Cancel leaves our file exactly where it was")
 
         // Three ordinary edits of some other control — the battery floor's
-        // stepper sends one of these per press.
+        // slider sends one of these per change.
         for _ in 0..<3 {
-            engine.settingsChangedForTests()
-            await settle()
+            engine.settingsChanged()
+            await drainMainActor()
         }
 
         XCTAssertEqual(clamshell.removeCalls, 1,
@@ -134,15 +133,15 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
         XCTAssertTrue(engine.lidGrantRemains, "precondition: declined, so the rule is still there")
 
         // An administrator removes it from the terminal. Nothing tells the app.
         clamshell.sudoersInstalled = false
         clamshell.passwordlessGrantExists = false
-        engine.settingsChangedForTests()
-        await settle()
+        engine.settingsChanged()
+        await drainMainActor()
 
         XCTAssertFalse(engine.lidGrantRemains,
                        "the row goes on naming a passwordless root rule that is not there, and "
@@ -155,20 +154,15 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
         XCTAssertTrue(engine.lidGrantRemains, "precondition")
 
-        engine.settingsChangedForTests()
-        await settle()
+        engine.settingsChanged()
+        await drainMainActor()
 
         XCTAssertTrue(engine.lidGrantRemains,
                       "the page stopped naming a rule that is still granting passwordless "
                       + "`pmset disablesleep` to this account")
     }
-
-    /// The removal's callback records its verdict on the main actor. Awaiting a
-    /// hop of our own is what puts this after it; a serial executor runs them in
-    /// order, so this is an ordering fact rather than a sleep.
-    private func settle() async { await drainMainActor() }
 }

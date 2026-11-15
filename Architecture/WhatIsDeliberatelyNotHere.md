@@ -14,12 +14,20 @@ take back — taking back what one binary changed is already
 ARCHITECTURE.md § Giving everything back.
 
 **No transport between the parts.** The host and the modules are one process and
-talk through `Sources/HelmContract`, so there is no version to negotiate and no
-wire compatibility to keep across a release. The `Data` payload of
-`EngineCommand`/`EngineEvent` (`Sources/HelmContract/EngineMessage.swift`) only
-erases a type for one generic call site and never reaches a socket, a pipe or a
-second binary.
+talk through `Sources/HelmContract` and the descriptor, so there is no version to
+negotiate and no wire compatibility to keep across a release. A model calls its
+engine's methods, and what an engine says unasked reaches the model as typed values
+on `EngineNews` (`Sources/HelmContract/EngineNews.swift`): nothing is encoded, and
+nothing reaches a socket, a pipe or a second binary.
 
 **No back-deployment.** The package declares `.macOS("26.0")` and the shipped
 bundle is arm64 only. Supporting an older system means the ports grow a second path each, and there
 is no second machine to prove that path on.
+
+**No page bar of Helm's own.** A bar drawn by the shell (`ShellPageBar`) and a hybrid that drew only
+the tabs were both replaced by the system `NSToolbar`, now `Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift`,
+on the owner's feedback about the look, so nobody puts a custom bar back.
+
+**Not in Screenshots' first version.** Video, a long screenshot, a history of shots, Beautify, a real window editor, Save As, Pin, a "Start with" choice and a panel place per display are not here and are not proposed as gaps; the owner left them out, and `Architecture/Screenshots.md` and `Architecture/ScreenshotsEditor.md` describe what is. Copy All names a shot that is gone by its position in the pile ("Screenshot 2"), by the owner's choice.
+
+**Not one list of protected prefixes.** `StaleItemRules.protectedPrefixes` (what Leftovers offers) and `UserFileScope.protectedPrefixes` (what a removal of the user's files may touch; Leftovers' own removal passes `RemovableScope.partition`) are two lists on purpose: they answer two questions, and merging them would let the offer's list loosen a gate or a gate's list narrow the offer.

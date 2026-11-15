@@ -1,6 +1,7 @@
 import XCTest
 @testable import Module_Homebrew_Engine
 
+/// Kept: the only test of the list parser's happy path (version choice, blanks); `BrewParserShapeTests` pins its empty and whitespace shapes only.
 final class BrewListParserTests: XCTestCase {
     func testParsesNameVersionSkipsBlanksAndTakesFirstVersion() {
         let out = "ada-url 3.4.4\nbrotli 1.2.0\n\nc-ares 1.34.8\nmulti 1.0 1.1\nnoversion\n"
@@ -15,6 +16,7 @@ final class BrewListParserTests: XCTestCase {
     }
 }
 
+/// Kept: the only test of the outdated parser's ordinary document and of the empty/nil split; `BrewParserShapeTests` covers collisions and nil only.
 final class BrewOutdatedParserTests: XCTestCase {
     func testParsesFormulaeAndCasks() throws {
         let json = """
@@ -44,6 +46,7 @@ final class BrewOutdatedParserTests: XCTestCase {
     }
 }
 
+/// Kept: the only test of the sectioned and flat search output; `BrewParserShapeTests` covers empty output only.
 final class BrewSearchParserTests: XCTestCase {
     func testSectionedOutput() {
         let out = "==> Formulae\nwget\nwget2\n\n==> Casks\nwget-gui\n"

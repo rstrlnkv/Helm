@@ -18,13 +18,7 @@ private func pattern(width: Int, height: Int, space: CGColorSpace? = nil, bits: 
     return context.makeImage()!
 }
 
-private func pixels(_ image: CGImage) -> [UInt32] {
-    let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: image.width * 4,
-                            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-    context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-    let bytes = context.data!.assumingMemoryBound(to: UInt8.self)
-    return (0..<(image.width * image.height)).map { UInt32(bytes[$0 * 4]) << 16 | UInt32(bytes[$0 * 4 + 1]) << 8 | UInt32(bytes[$0 * 4 + 2]) }
-}
+private func pixels(_ image: CGImage) -> [UInt32] { packedRGB(image, space: CGColorSpace(name: CGColorSpace.sRGB)!) }
 
 private func blur(_ rect: CGRect, _ step: AnnotationThickness = .medium) -> Annotation {
     Annotation(tool: .blur, start: rect.origin, end: CGPoint(x: rect.maxX, y: rect.maxY), style: AnnotationStyle(thickness: step))
@@ -49,6 +43,8 @@ private func holds(_ out: [UInt32], _ base: [UInt32], width: Int, box: (Int, Int
 }
 
 /// One colour a block in P3, 16-bit sRGB, Adobe RGB, linear, grey and half-transparent pictures.
+///
+/// Mutant, red here: `Pixelate.spaces` has no sRGB fallback (the `grown` bound is `TheMosaicsEdgesMeetEveryRemainderTests`'s).
 final class TheBlurMeetsInputsNobodyFedItTests: XCTestCase {
     func testAPictureWithAlphaSixteenBitsOrAnotherSpaceStillHasOneColourABlock() throws {
         let spaces: [(String, CGColorSpace, Int)] = [("P3", CGColorSpace(name: CGColorSpace.displayP3)!, 8),

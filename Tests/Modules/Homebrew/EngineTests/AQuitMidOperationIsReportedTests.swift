@@ -13,36 +13,6 @@ import HelmRuntime
 /// left behind — once.
 final class AQuitMidOperationIsReportedTests: XCTestCase {
 
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
-
-    /// Never finishes unless told to — a quit happens *during* an operation.
-    private final class HangingRunner: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _exits: [@Sendable (Int32) -> Void] = []
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            lock.lock(); _exits.append(onExit); lock.unlock()
-            return NoProcess()
-        }
-        func finishAll(code: Int32 = 0) {
-            lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-            for exit in exits { exit(code) }
-        }
-    }
-
     private func engine(_ runner: ProcessRunner, marker: OpMarker) -> HomebrewEngine {
         HomebrewEngine(locator: FixedLocator(), runner: runner,
                        privileged: NoPrivileges(), user: "tester", marker: marker)
@@ -103,5 +73,21 @@ final class AQuitMidOperationIsReportedTests: XCTestCase {
         let after = engine(HangingRunner(), marker: marker)
         XCTAssertEqual(after.status().interruptedOp, "upgrade all",
                        "the mid-operation status query above consumed the marker")
+    }
+
+    /// The marker is stored data: the bytes an earlier build left must read as
+    /// before, once, and the file must be gone after.
+    func testAMarkerWrittenByAnEarlierBuildIsReadAsBefore() throws {
+        let folder = scratchDirectory("brew-marker")
+        let file = folder.appendingPathComponent("homebrew-operation")
+        try Data("upgrade all".utf8).write(to: file)
+
+        XCTAssertEqual(FileOpMarker(directory: folder).take(), "upgrade all")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path),
+                       "taking the marker must remove it")
+
+        try Data("upgrade all".utf8).write(to: file)
+        let fresh = engine(HangingRunner(), marker: FileOpMarker(directory: folder))
+        XCTAssertEqual(fresh.status().interruptedOp, "upgrade all")
     }
 }

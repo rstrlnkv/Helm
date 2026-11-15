@@ -5,6 +5,7 @@ import XCTest
 ///
 /// `stream` is the only port whose output a person reads directly, line by
 /// line, as it arrives. Two ways of losing some of it, both silent.
+/// Kept: guards the defect fixed in 3075fecf fix(homebrew): the console lost the end of every long operation.
 final class LineBufferUTF8Tests: XCTestCase {
 
     private final class Sink: @unchecked Sendable {
@@ -79,6 +80,7 @@ final class LineBufferUTF8Tests: XCTestCase {
 }
 
 /// The other half: what is still in the pipe when the child exits.
+/// Kept: guards the defect fixed in 3075fecf fix(homebrew): the console lost the end of every long operation.
 final class StreamTailTests: XCTestCase {
 
     private final class Sink: @unchecked Sendable {

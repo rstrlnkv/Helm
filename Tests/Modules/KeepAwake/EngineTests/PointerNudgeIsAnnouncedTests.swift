@@ -18,6 +18,8 @@ import XCTest
 /// listener in `HelmApp` — and no test touched any of them. The failure is
 /// silent in the worst way: Keep Awake goes on working perfectly, and a
 /// different module quietly stops.
+///
+/// Guards: f69e4167 (the nudge was not announced as Helm's own).
 final class PointerNudgeIsAnnouncedTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!
@@ -43,7 +45,7 @@ final class PointerNudgeIsAnnouncedTests: XCTestCase {
                                  displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(),
                                  power: FakePower(), apps: FakeApps(),
-                                 pointer: pointer, clamshell: FakeClamshell(), clock: clock)
+                                 pointer: pointer, clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
     }
 
     /// Fires the jiggle timer once, at the interval the settings ask for.

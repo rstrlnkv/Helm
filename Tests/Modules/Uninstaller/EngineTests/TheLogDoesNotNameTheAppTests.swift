@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 
@@ -13,20 +14,11 @@ final class TheLogDoesNotNameTheAppTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var logged: [String] {
-        HelmLog.shared.recentEntries()
-            .filter { $0.category == UninstallerEngine.moduleID }
-            .map(\.message)
+        loggedLines(UninstallerEngine.moduleID)
     }
 
     func testARefusedAppIsLoggedWithoutItsName() async {
@@ -44,5 +36,52 @@ final class TheLogDoesNotNameTheAppTests: XCTestCase {
                       "the refusal line was not written, so an absence proves nothing: \(logged)")
         XCTAssertFalse(logged.contains { $0.contains(secret) },
                        "the log names the application: \(logged)")
+    }
+
+    /// The part of the name the tests below look for; unique so another run's
+    /// line cannot match.
+    private let secretTool = "SecretTool\(UUID().uuidString.prefix(6))"
+
+    private func engine(trash: TrashPort) -> UninstallerEngine {
+        UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"), apps: FakeApps(),
+                          fs: FakeFS(existing: [:]), trash: trash,
+                          running: FakeRunning(running: []),
+                          extensions: NoSystemExtensions(),
+                          store: NamespacedStore(namespace: UninstallerEngine.moduleID,
+                                                 backing: InMemoryKeyValueStore()))
+    }
+
+    private func assertLogged(_ prefix: String, without names: [String],
+                              file: StaticString = #filePath, line: UInt = #line) {
+        let lines = logged
+        XCTAssertTrue(lines.contains { $0.hasPrefix(prefix) },
+                      "no «\(prefix)» line was written, so an absence proves nothing: \(lines)",
+                      file: file, line: line)
+        for name in names {
+            XCTAssertFalse(lines.contains { $0.contains(name) },
+                           "the log names «\(name)»: \(lines)", file: file, line: line)
+        }
+    }
+
+    // MARK: - Out of scope
+
+    /// `/Applications/Utilities` is on the gate's forbidden list, so a bundle
+    /// there never reaches `trashItem` and is logged by the out-of-scope line.
+    func testABundleInAForbiddenFolderIsRefusedWithoutItsName() async {
+        let path = "/Applications/Utilities/\(secretTool).app"
+        let result = await engine(trash: FakeTrash()).trashPaths([path])
+        XCTAssertEqual(result.failures.map(\.reason), [.outOfScope], "precondition: the gate refused it")
+        assertLogged("refused out-of-scope path: ", without: [secretTool])
+    }
+
+    // MARK: - Nested bundles, macOS refusing
+
+    /// A bundle one folder down and one in the home's own Applications folder:
+    /// the leaf is still the app's name.
+    func testNestedBundlesAreRefusedWithoutTheirNames() async {
+        let paths = ["/Applications/Setapp/\(secretTool).app", "/Users/x/Applications/\(secretTool).app"]
+        let result = await engine(trash: FakeTrash(failing: paths)).trashPaths(paths)
+        XCTAssertEqual(Set(result.failed), Set(paths), "precondition: macOS refused both")
+        assertLogged("trash refused ", without: [secretTool])
     }
 }

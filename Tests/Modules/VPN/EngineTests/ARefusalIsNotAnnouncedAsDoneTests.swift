@@ -26,18 +26,14 @@ import HelmRuntime
 /// at `""`, which is what `scutil` prints when it **succeeded**. The whole
 /// recording table was therefore proved against a tool that cannot refuse, which
 /// is why the ordering was never seen.
+///
+/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity».
 final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
 
     private let at = Date(timeIntervalSince1970: 1_000_000)
-    private let uuid = "11111111-1111-1111-1111-111111111111"
-
-    private func list(_ status: String, _ name: String = "A") -> String {
-        "(\(status)) \(uuid) IPSec \"\(name)\""
-    }
 
     private func settings(rules: String? = nil) -> VPNSettings {
-        let s = VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                   backing: InMemoryKeyValueStore()))
+        let s = VPNSettings.inMemory()
         if let rules { s.setRulesJSON(rules) }
         return s
     }
@@ -57,8 +53,7 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
     /// tool accepting, this same call *does* announce. Without it, a module that
     /// had stopped recording altogether would pass the whole file.
     func testAToolThatAcceptsIsStillAnnounced() {
-        let runner = FakeRunner()
-        runner.listOutput = list("Disconnected")
+        let runner = FakeRunner(list: scutilListRow("Disconnected"))
         runner.reply = ""                     // what scutil prints when it worked
         let e = engine(runner)
 
@@ -73,8 +68,7 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
     /// A rule whose configuration is gone. `scutil` prints `No service`, exits 0,
     /// and the tunnel does not come up — and the person is told it did.
     func testAConnectTheToolRefusedIsNotAConnection() {
-        let runner = FakeRunner()
-        runner.listOutput = list("Disconnected", "Office")
+        let runner = FakeRunner(list: scutilListRow("Disconnected", "Office"))
         runner.reply = "No service"
         let e = engine(runner)
 
@@ -90,8 +84,7 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
     /// The same for anything else the tool says. `.refused` is the open case, so a
     /// message nobody has enumerated must not read as success either.
     func testAConnectTheToolComplainedAboutIsNotAConnection() {
-        let runner = FakeRunner()
-        runner.listOutput = list("Disconnected")
+        let runner = FakeRunner(list: scutilListRow("Disconnected"))
         runner.reply = "cannot start A: busy"
         let e = engine(runner)
 
@@ -107,16 +100,15 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
     /// page draws the failure banner *and* the view model posts the banner, so
     /// the two channels contradict each other in one frame.
     func testTheEmittedStateDoesNotCarryBothAConnectionAndItsRefusal() async {
-        let runner = FakeRunner()
-        runner.listOutput = list("Disconnected", "Office")
+        let runner = FakeRunner(list: scutilListRow("Disconnected", "Office"))
         runner.reply = "No service"
         let e = engine(runner)
 
         e.connect("Old office", auto: true)
 
         var payload: VPNEngine.StatePayload?
-        for await event in e.transport.events where event.name == "state" {
-            payload = try? JSONDecoder().decode(VPNEngine.StatePayload.self, from: event.payload)
+        for await state in e.stream() {
+            payload = state
             break
         }
         guard let payload else {
@@ -133,8 +125,7 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
     /// a name that never came up stays in it for the life of the process — the
     /// refresh path only forgets names that were once seen up.
     func testARefusedConnectDoesNotClaimTheTunnelAsHelmsOwn() {
-        let runner = FakeRunner()
-        runner.listOutput = list("Disconnected", "Office")
+        let runner = FakeRunner(list: scutilListRow("Disconnected", "Office"))
         runner.reply = "No service"
         let e = engine(runner)
 
@@ -154,15 +145,14 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
     /// person is told it came down, and both books are wiped so no later drop can
     /// be reported for it either.
     func testATeardownTheToolRefusedIsNotADisconnection() {
-        let runner = FakeRunner()
-        runner.listOutput = list("Disconnected")
+        let runner = FakeRunner(list: scutilListRow("Disconnected"))
         let apps = FakeApps.trustingA()
         let e = engine(runner, apps: apps, settings: settings(rules: ruleJSONForA))
 
         e.activate()
         apps.bundleIDs = ["com.a"]
         apps.fire()
-        runner.listOutput = list("Connected")     // the tunnel came up
+        runner.listOutput = scutilListRow("Connected")     // the tunnel came up
         e.refresh()
         e.clearLastAutomationForTesting()
 
@@ -184,15 +174,14 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
     /// makes the later drop unreportable: `refreshNow` only announces a drop for a
     /// name that is still in `_autoConnected`.
     func testARefusedTeardownDoesNotForgetTheTunnelItLeftUp() {
-        let runner = FakeRunner()
-        runner.listOutput = list("Disconnected")
+        let runner = FakeRunner(list: scutilListRow("Disconnected"))
         let apps = FakeApps.trustingA()
         let e = engine(runner, apps: apps, settings: settings(rules: ruleJSONForA))
 
         e.activate()
         apps.bundleIDs = ["com.a"]
         apps.fire()
-        runner.listOutput = list("Connected")
+        runner.listOutput = scutilListRow("Connected")
         e.refresh()
         XCTAssertTrue(e.autoConnected.contains("A"), "precondition: Helm raised it")
 

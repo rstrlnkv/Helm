@@ -25,6 +25,7 @@ final class TheWalkDoesNotOpenAppBundlesTests: XCTestCase {
             at: root.appendingPathComponent("Thing.app/Contents/Resources"),
             withIntermediateDirectories: true)
         try payload.write(to: root.appendingPathComponent("holiday.jpg"))
+        try payload.write(to: root.appendingPathComponent("holiday copy.jpg"))
         try payload.write(to: root.appendingPathComponent(
             "Thing.app/Contents/Resources/holiday.jpg"))
 
@@ -38,8 +39,11 @@ final class TheWalkDoesNotOpenAppBundlesTests: XCTestCase {
 
         XCTAssertFalse(groups.flatMap(\.paths).contains { $0.contains(".app/") },
                        "a path inside an application bundle reached the result: \(groups)")
-        // And the pair does not form at all, which is the honest outcome: the
-        // copy in the open has nothing to be a duplicate of.
-        XCTAssertTrue(groups.isEmpty, "groups: \(groups)")
+        // The two copies in the open do form a pair, so a scanner that finds
+        // nothing fails here instead of passing for the wrong reason.
+        XCTAssertEqual(groups.count, 1, "groups: \(groups)")
+        XCTAssertEqual(Set(groups.flatMap(\.paths)),
+                       Set(["holiday.jpg", "holiday copy.jpg"].map { root.appendingPathComponent($0).path }),
+                       "groups: \(groups)")
     }
 }

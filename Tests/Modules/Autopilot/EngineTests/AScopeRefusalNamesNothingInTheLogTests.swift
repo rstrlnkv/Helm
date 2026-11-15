@@ -30,10 +30,7 @@ final class AScopeRefusalNamesNothingInTheLogTests: XCTestCase {
         try FileManager.default.createSymbolicLink(
             at: home.appendingPathComponent("Stuff"),
             withDestinationURL: home.appendingPathComponent("Library"))
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func watch(_ path: String) -> WatchedFolder {
@@ -44,7 +41,7 @@ final class AScopeRefusalNamesNothingInTheLogTests: XCTestCase {
     }
 
     private func logged() -> [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == AutopilotEngine.moduleID }.map(\.message)
+        loggedLines(AutopilotEngine.moduleID)
     }
 
     /// The line a runner refusal for scope writes — the one a file that vanishes
@@ -70,9 +67,7 @@ final class AScopeRefusalNamesNothingInTheLogTests: XCTestCase {
     /// ordinary file in the same batch, which is what shows the watcher ran,
     /// does not name the protected one either.
     func testAWatcherEventBehindTheLinkLogsNothingAboutIt() throws {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
         try write("Real/Inbox/notes.pdf", in: home)
         engine.folders = [watch(home.appendingPathComponent("Stuff/Inbox").path),
                           watch(home.appendingPathComponent("Real/Inbox").path)]

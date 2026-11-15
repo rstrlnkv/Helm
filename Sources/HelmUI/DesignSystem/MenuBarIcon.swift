@@ -16,12 +16,12 @@ public enum MenuBarIconStyle: String, CaseIterable, Sendable {
 
     public var label: String {
         switch self {
-        case .ring: return L("Ring")
-        case .doubleRing: return L("Double ring")
-        case .ringDot: return L("Ring + dot")
-        case .squircle: return L("Square")
-        case .hexagon: return L("Hexagon")
-        case .capsule: return L("Capsule")
+        case .ring: return L(.ring)
+        case .doubleRing: return L(.doubleRing)
+        case .ringDot: return L(.ringDot)
+        case .squircle: return L(.square)
+        case .hexagon: return L(.hexagon)
+        case .capsule: return L(.capsule)
         }
     }
 
@@ -131,7 +131,7 @@ public enum MenuBarIcon {
     /// `phase` runs 0…1 across the whole spin and the segment goes round
     /// *twice* in it, so half way is one whole revolution and the two ends
     /// meet.
-    public static func makeSpinner(style: MenuBarIconStyle, size: MenuBarIconSize,
+    private static func makeSpinner(style: MenuBarIconStyle, size: MenuBarIconSize,
                                    tintToken: String?, phase: Double) -> NSImage {
         draw(size: size, tintToken: tintToken) { s, colour in
             let path = outline(style: style, size: s)
@@ -330,12 +330,11 @@ public enum MenuBarIcon {
         let end = CGFloat(to) * total
         // Twice round, so a segment that wraps past the start is one stroke
         // rather than two that meet at a seam.
-        for lap in 0..<2 {
+        for _ in 0..<2 {
             for (index, segment) in lengths.enumerated() {
                 let a = points[index], b = points[(index + 1) % points.count]
                 let segmentStart = walked, segmentEnd = walked + segment
                 walked = segmentEnd
-                _ = lap
                 guard segmentEnd > begin, segmentStart < end, segment > 0 else { continue }
                 let t0 = max(0, (begin - segmentStart) / segment)
                 let t1 = min(1, (end - segmentStart) / segment)
@@ -360,7 +359,7 @@ public enum MenuBarIcon {
         let s = size.points
         let image = NSImage(size: NSSize(width: s, height: s))
         image.lockFocus()
-        body(s, nsColor(tintToken: tintToken))
+        body(s, nsColor(forTintToken: tintToken))
         image.unlockFocus()
         image.isTemplate = (tintToken == nil)
         return image
@@ -388,11 +387,9 @@ public enum MenuBarIcon {
     private static let spinnerCache = LockedMemo<SpinnerKey, [NSImage]>()
 
     /// Palette lookup, also used for menu-bar text drawn beside the glyph.
-    public static func nsColor(forTintToken token: String?) -> NSColor { nsColor(tintToken: token) }
-
-    private static func nsColor(tintToken: String?) -> NSColor {
-        switch tintToken {
-        case nil, "white": return .white
+    public static func nsColor(forTintToken token: String?) -> NSColor {
+        switch token {
+        case nil: return .white
         // Theme-adaptive, and a trap in a baked bitmap: the glyph is drawn with
         // `lockFocus`, so this resolves once against whatever appearance was
         // current — not the one the image is shown in. In-app previews should
@@ -400,20 +397,12 @@ public enum MenuBarIcon {
         // through `HelmAppearance`. Kept for callers that draw at a moment
         // when the appearance is known to be right.
         case "primary": return .labelColor
-        case "red": return .systemRed
-        case "orange": return .systemOrange
-        case "yellow": return .systemYellow
-        case "green": return .systemGreen
-        case "mint": return .systemMint
-        case "cyan": return .systemCyan
-        case "blue": return .systemBlue
-        case "purple": return .systemPurple
-        case "pink": return .systemPink
-        // A colour the person chose themselves, stored as `#RRGGBB`. Anything
-        // else — a token from a build that had names this one does not, a
-        // hand-edited plist — falls back to white, which is the untinted glyph
+        // Every palette name, the retired ones too, answers from `PaletteColor`.
+        // A colour the person chose themselves, stored as `#RRGGBB`, comes next.
+        // Anything else — a token from a build that had names this one does not,
+        // a hand-edited plist — falls back to white, which is the untinted glyph
         // and the same answer `nil` gives.
-        default: return PaletteTint.custom(tintToken) ?? .white
+        case let token?: return PaletteColor(rawValue: token)?.nsColor ?? PaletteTint.custom(token) ?? .white
         }
     }
 }

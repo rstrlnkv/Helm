@@ -7,34 +7,28 @@ import XCTest
 /// anything gets the nearest thing the editor has.** The store is a file any process running
 /// as the user can write: a stored number is clamped to the steps there are, and a name that
 /// is none of the cases is the default, never a crash and never a stranger's value.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/EditorMemory.swift`: `clamped(to: 0...(AnnotationThickness.allCases.count - 1))` -> `clamped(to: 0...(AnnotationThickness.allCases.count))`.
 final class TheEditorRemembersItsLastPicksTests: XCTestCase {
-
-    private func store(_ raw: [String: Any] = [:]) -> NamespacedStore {
-        let backing = InMemoryKeyValueStore()
-        let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: backing)
-        for (key, value) in raw { store.set(value, for: key) }
-        return store
-    }
 
     private typealias Key = ScreenshotsSettings.Key
 
     func testAnEmptyStoreIsTheStandardEditor() {
-        XCTAssertEqual(EditorMemory.read(store()), EditorMemory())
+        XCTAssertEqual(EditorMemory.read(screenshotsStore()), EditorMemory())
         for tool in AnnotationTool.allCases {
-            XCTAssertEqual(EditorMemory.read(store()).style(for: tool), .standard, "\(tool)")
-            XCTAssertNil(EditorMemory.read(store()).style(for: tool).color, "no colour was ever picked, so each tool keeps its own")
+            XCTAssertEqual(EditorMemory.read(screenshotsStore()).style(for: tool), .standard, "\(tool)")
+            XCTAssertNil(EditorMemory.read(screenshotsStore()).style(for: tool).color, "no colour was ever picked, so each tool keeps its own")
         }
     }
 
     func testWhatWasPickedComesBackWholeForEveryCase() {
         for tool in AnnotationTool.allCases {
-            let kept = store()
+            let kept = screenshotsStore()
             EditorMemory.remember(tool: tool, in: kept)
             XCTAssertEqual(EditorMemory.read(kept).tool, tool)
         }
         for color in AnnotationColor.allCases {
             for step in AnnotationThickness.allCases {
-                let kept = store()
+                let kept = screenshotsStore()
                 let style = AnnotationStyle(color: AnnotationInk(color), thickness: step, filled: step == .medium)
                 EditorMemory.remember(style: style, for: .arrow, in: kept)
                 XCTAssertEqual(EditorMemory.read(kept).style(for: .arrow), style, "\(color) \(step)")
@@ -43,7 +37,7 @@ final class TheEditorRemembersItsLastPicksTests: XCTestCase {
     }
 
     func testPuttingTheToolDownIsRememberedAsNoTool() {
-        let kept = store()
+        let kept = screenshotsStore()
         EditorMemory.remember(tool: .pencil, in: kept)
         EditorMemory.remember(tool: nil, in: kept)
         XCTAssertNil(EditorMemory.read(kept).tool)
@@ -53,7 +47,7 @@ final class TheEditorRemembersItsLastPicksTests: XCTestCase {
     func testAThicknessOutOfRangeIsTheNearestStep() {
         for (stored, step) in [(Int.max, AnnotationThickness.thick), (3, .thick), (2, .thick), (1, .medium),
                                (0, .thin), (-1, .thin), (Int.min, .thin)] as [(Int, AnnotationThickness)] {
-            XCTAssertEqual(EditorMemory.read(store([Key.editorThicknessByTool: ["arrow": stored]])).style(for: .arrow).thickness,
+            XCTAssertEqual(EditorMemory.read(screenshotsStore([Key.editorThicknessByTool: ["arrow": stored]])).style(for: .arrow).thickness,
                            step, "\(stored)")
         }
     }
@@ -63,20 +57,20 @@ final class TheEditorRemembersItsLastPicksTests: XCTestCase {
             Key.editorTool: "laser", Key.editorColor: "magenta",
             Key.editorThicknessByTool: "thick", Key.editorOpacityByTool: "half", Key.editorFill: "yes",
         ]
-        XCTAssertEqual(EditorMemory.read(store(garbage)), EditorMemory())
+        XCTAssertEqual(EditorMemory.read(screenshotsStore(garbage)), EditorMemory())
         let wrongKinds: [String: Any] = [
             Key.editorTool: 7, Key.editorColor: [1, 2], Key.editorThicknessByTool: 1e300, Key.editorFill: 3.5,
         ]
-        XCTAssertEqual(EditorMemory.read(store(wrongKinds)).style(for: .arrow).thickness, .medium, "a real number is not a table of steps")
-        XCTAssertNil(EditorMemory.read(store(wrongKinds)).tool)
-        XCTAssertNil(EditorMemory.read(store(wrongKinds)).style(for: .arrow).color)
-        XCTAssertFalse(EditorMemory.read(store(wrongKinds)).style(for: .arrow).filled)
+        XCTAssertEqual(EditorMemory.read(screenshotsStore(wrongKinds)).style(for: .arrow).thickness, .medium, "a real number is not a table of steps")
+        XCTAssertNil(EditorMemory.read(screenshotsStore(wrongKinds)).tool)
+        XCTAssertNil(EditorMemory.read(screenshotsStore(wrongKinds)).style(for: .arrow).color)
+        XCTAssertFalse(EditorMemory.read(screenshotsStore(wrongKinds)).style(for: .arrow).filled)
     }
 
     func testTheSettingsReaderIsNotMovedByTheEditorsKeys() {
-        let kept = store()
+        let kept = screenshotsStore()
         EditorMemory.remember(tool: .line, in: kept)
-        EditorMemory.remember(style: AnnotationStyle(color: .blue, thickness: .thick, filled: true), for: .line, in: kept)
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue), thickness: .thick, filled: true), for: .line, in: kept)
         XCTAssertEqual(ScreenshotsSettings.read(kept), ScreenshotsSettings.defaults,
                        "the editor's memory changed what a capture does")
     }

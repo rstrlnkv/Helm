@@ -3,7 +3,7 @@ import Foundation
 /// **The one rule every filterable list on this page answers to.**
 ///
 /// One needle, one substring match — multi-word matching is out of scope, and
-/// left for the owner to ask for if a single word turns out not to be enough.
+/// left out until a single word turns out not to be enough.
 /// Not `localizedCaseInsensitiveContains`, which the Uninstaller's own filter
 /// uses (`UninstallerSettingsPage.swift`): that is not diacritic-insensitive,
 /// and it reads `Locale.current`, which is not the language this app draws in

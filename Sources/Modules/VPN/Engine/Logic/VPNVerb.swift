@@ -12,17 +12,16 @@ import Foundation
 /// asked to bring a tunnel down then read that it was down while it was up,
 /// which is the one sentence this module must never produce.
 ///
-/// `String`-backed and `Codable` because it crosses the transport inside
-/// `VPNFailure`, and the log word is the same declaration rather than a literal
-/// typed beside it.
-public enum VPNVerb: String, Codable, Equatable, Sendable {
+/// `String`-backed because the log word is the same declaration rather than a
+/// literal typed beside it.
+public enum VPNVerb: String, Equatable, Sendable {
     case connect, disconnect
 
     /// The state the tool was asked to reach, which is what a poll waits for.
     ///
     /// Not `isUp`: a connect that has reached `.connecting` has not arrived, and
     /// the poll exists for exactly that stretch.
-    public var settledStatus: VPNStatus {
+    var settledStatus: VPNStatus {
         switch self {
         case .connect: return .connected
         case .disconnect: return .disconnected

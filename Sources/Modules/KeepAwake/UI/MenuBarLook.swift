@@ -41,12 +41,11 @@ enum MenuBarLook {
     ///
     /// It was `red`, and red is `HelmSignal.danger`: a session running normally
     /// was painted in the app's own failure colour, and the page showed two
-    /// palettes disagreeing — orange ringed under «Active icon color», red
-    /// ringed under «Timer color», neither of them chosen by anybody.
+    /// palettes disagreeing — orange ringed under «Active icon colour», red
+    /// ringed under «Timer colour», neither of them chosen by anybody.
     ///
-    /// **This value is always applied**, and the two comments that said
-    /// otherwise are corrected where they stand: a stored tint is never empty,
-    /// so the reader in `KeepAwakeDescriptor` has no fallback path to take.
+    /// **This value is always applied**: a stored tint is never empty, so the
+    /// reader in `KeepAwakeDescriptor` has no fallback path to take.
     /// Changing the active colour therefore does not change the countdown's —
     /// that is a second decision, and it is the person's to make in the row
     /// below it.

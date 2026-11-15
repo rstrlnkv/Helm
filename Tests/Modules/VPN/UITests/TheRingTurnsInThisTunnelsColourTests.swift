@@ -3,7 +3,6 @@
 
 import XCTest
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 @testable import Module_VPN_Engine
@@ -23,31 +22,32 @@ import HelmTestSupport
 /// they exercise is the one that had been missing: a firing carries the
 /// configuration's *name* (`scutil --nc start` takes a name), the settings are
 /// keyed by its *id*, and something has to turn one into the other.
+///
+/// Guards: a firing's name is joined to the configuration id its per-tunnel settings are keyed by (no fix commit; the code and this test landed together).
 @MainActor
 final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
 
     private func model(_ connections: [(String, String)],
                        book: (VPNSettings) -> Void = { _ in }) -> VPNViewModel {
-        let transport = LocalTransport()
+        let work = FakeVPNWork()
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
         let settings = VPNSettings(store: store)
-        settings.setNotice(.menuBar)
-        settings.setDropNotice(.menuBar)
-        settings.setAutomationSpin(true)
+        settings.store.set(VPNNotice.menuBar.rawValue, for: VPNSettings.automationNoticeKey)
+        settings.store.set(VPNNotice.menuBar.rawValue, for: VPNSettings.dropNoticeKey)
+        settings.store.set(true, for: VPNSettings.automationSpinKey)
         book(settings)
-        let vm = VPNViewModel(transport: transport, settings: settings)
+        let vm = VPNViewModel(work: work, settings: settings)
         let payload = VPNEngine.StatePayload(
             connections: connections.map {
                 VPNConnection(id: $0.0, name: $0.1, status: .disconnected, kind: "IKEv2")
             },
-            autoConnected: [], defaultName: nil, lastAutomation: nil)
-        transport.emit(EngineEvent(name: VPNEvent.state.rawValue,
-                                   payload: try! JSONEncoder().encode(payload)))
+            autoConnected: [], lastAutomation: nil)
+        work.say(payload)
         for _ in 0..<80 where vm.connections.isEmpty {
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
         }
         XCTAssertEqual(vm.connections.count, connections.count,
-                       "the wire did not deliver: nothing below measures anything")
+                       "the stream did not deliver: nothing below measures anything")
         return vm
     }
 
@@ -118,9 +118,19 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
     /// constant spelled twice.
     func testAnUntouchedTunnelFollowsTheModuleWideColour() {
         let vm = model([("id-A", "Office")], book: { settings in
-            settings.setSpinTint("blue", for: .connected)
+            settings.store.set("blue", for: VPNSettings.spinTintKey(.connected))
         })
         XCTAssertEqual(vm.spinTint(for: .connected, on: "Office"), "blue")
+    }
+
+    /// A name this Mac does not have answers with the module-wide values.
+    func testAFiringOnAnUnknownNameFollowsTheModuleWideValues() {
+        let vm = model([("id-A", "Office")], book: { settings in
+            settings.store.set("blue", for: VPNSettings.spinTintKey(.connected))
+            settings.store.set(false, for: VPNSettings.automationSpinKey)
+        })
+        XCTAssertEqual(vm.spinTint(for: .connected, on: "Nowhere"), "blue")
+        XCTAssertFalse(vm.automationSpin(on: "Nowhere"))
     }
 
     // MARK: - The firing path asks on the configuration, not the module
@@ -132,7 +142,7 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
     /// green while the popover changed nothing. Driving the descriptor here is
     /// not the answer: its view model comes with the app's real store as a
     /// default argument, and eleven engine tests once rolled back the owner's
-    /// own Autopilot exactly that way (CLAUDE.md). So the guard is on the
+    /// own Autopilot exactly that way (ARCHITECTURE.md § Fakes). So the guard is on the
     /// source: in the firing path, each of the three is asked with the
     /// configuration's name.
     func testTheDescriptorAsksAllThreeOnTheConfigurationThatFired() throws {
@@ -147,7 +157,6 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
                           + "to the store and never read")
         }
         for moduleWide in ["model.automationSpin\n", "model.automationSpin ",
-                           "model.effectiveNotice(for: firing.kind)",
                            "model.spinTint(for: firing.kind)"] {
             XCTAssertFalse(source.contains(moduleWide),
                            "the firing path still reads «\(moduleWide)» module-wide")

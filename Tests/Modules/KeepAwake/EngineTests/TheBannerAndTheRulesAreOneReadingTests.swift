@@ -20,6 +20,8 @@ import HelmRuntime
 /// both accessors derived from it. Unreadable means **no rules and the banner**:
 /// the module fails toward the Mac sleeping and says so, which is the honest pair
 /// (and the path the size cap in `AppTriggerRules.readable` routes into).
+///
+/// Guards: d18692b8 (banner and rules read one value two ways).
 final class TheBannerAndTheRulesAreOneReadingTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!
@@ -68,7 +70,7 @@ final class TheBannerAndTheRulesAreOneReadingTests: XCTestCase {
                                      displayInfo: FakeDisplayInfo(),
                                      displayObserver: FakeDisplayObserver(),
                                      power: FakePower(), apps: apps, pointer: FakePointer(),
-                                     clamshell: FakeClamshell(), clock: FakeClock())
+                                     clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
 
         engine.activate()
 

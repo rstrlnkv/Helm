@@ -2,9 +2,9 @@ import HelmTestSupport
 import XCTest
 
 /// Every § pointer written in the standing documents names a heading that
-/// exists, spelled exactly, and `CLAUDE.md` stays inside its byte ceiling.
+/// exists, spelled exactly, and `CLAUDE.local.md` stays inside its byte ceiling.
 ///
-/// **Why this is a test.** `CLAUDE.md` points at the reason for most of its
+/// **Why this is a test.** `CLAUDE.local.md` points at the reason for most of its
 /// orders with a bare `→` then the sign and a heading of `ARCHITECTURE.md`; the
 /// few that point with `→` at a file or a script header are not read here.
 /// `EverySectionNamedInTheCodeExistsTests` reads Swift files only and wants a
@@ -22,31 +22,18 @@ import XCTest
 /// that prose after a pointer with no punctuation (a pointer followed by a bare word)
 /// reads as dead; punctuate it.
 ///
-/// **Where `CLAUDE.md` comes from.** It is not in the repository: the owner's
-/// copy is `CLAUDE.local.md` (a link to Core), found by `StandingDocuments.requireRules()`
-/// beside `Package.swift` or, from a linked worktree, in the main checkout. A
-/// clone with neither skips the methods that read it (`XCTSkip`, naming the paths
-/// sought) and nothing more: the `ARCHITECTURE.md` checks always run, and no
-/// method both asserts about `ARCHITECTURE.md` and skips for the rules. A file that is there and unreadable
-/// or empty is not absent and stays red.
-///
 /// **Why headings come only from outside fenced blocks.** A `# comment` line
 /// in a shell block is not a section, and counting it would let a pointer at
 /// one resolve.
 final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
 
-    /// The ceiling the owner set for `CLAUDE.md` (15 KB); a sentence added past
+    /// The ceiling the owner set for `CLAUDE.local.md` (15 KB); a sentence added past
     /// it has to take a sentence out or move a story to `ARCHITECTURE.md`.
     static let claudeCeilingBytes = 15_360
 
     // MARK: - The parser
 
     enum Parser {
-        /// Closing marks a pointer may carry directly after its heading.
-        private static let closers: Set<Character> = ["`", "\"", "»", "”", "*", "'"]
-        /// Marks that end a pointer.
-        private static let terminators: Set<Character> = [".", ",", ";", ":", ")", "]"]
-
         /// Soft line breaks removed: a newline between two non-blank lines
         /// becomes a space, with a quote marker or list indent dropped. A blank
         /// line stays a paragraph break.
@@ -54,24 +41,6 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
             let regex = try! NSRegularExpression(pattern: #"(?<=\S)[ \t]*\n[ \t]*(?:>[ \t]*)?(?=\S)(?![-*+|#][ \t]|\d+\.[ \t]|#)"#)
             return regex.stringByReplacingMatches(
                 in: text, range: NSRange(text.startIndex..., in: text), withTemplate: " ")
-        }
-
-        /// The heading a pointer's text names, or nil. `rest` is everything
-        /// after the section sign; a match is a heading followed by an optional closing
-        /// mark and then a terminator, whitespace before another § or an
-        /// arrow, or the end of the text.
-        static func resolve(_ rest: String, headings: [String]) -> String? {
-            var text = Substring(rest.drop(while: { $0 == " " || $0 == "\t" }))
-            if let first = text.first, "«\"“`*".contains(first) { text = text.dropFirst() }
-            for heading in headings where text.hasPrefix(heading) {
-                var after = text.dropFirst(heading.count)
-                if let c = after.first, closers.contains(c) { after = after.dropFirst() }
-                guard let next = after.first else { return heading }
-                if terminators.contains(next) || next == "\n" { return heading }
-                let trimmed = after.drop(while: { $0 == " " || $0 == "\t" })
-                if trimmed.isEmpty || trimmed.hasPrefix("\u{A7}") || trimmed.hasPrefix("→") { return heading }
-            }
-            return nil
         }
 
         /// What follows each § of a text, up to the next § — so a pointer
@@ -97,7 +66,7 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
             }
         }
 
-        /// The bare pointers of `CLAUDE.md`: every § after the first arrow of
+        /// The bare pointers of `CLAUDE.local.md`: every § after the first arrow of
         /// a line. Returns the pointers and the lines carrying a § outside
         /// that shape.
         static func arrowPointers(in claude: String) -> (pointers: [String], stray: [String]) {
@@ -115,77 +84,56 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
 
     // MARK: - The documents
 
-    /// The one line of `CLAUDE.md` that mentions the section sign as notation and names no
+    /// The one line of `CLAUDE.local.md` that mentions the section sign as notation and names no
     /// section: the header explaining the arrow.
     private static let notation = "\u{A7} X is a heading"
 
     func testEveryBarePointerOfClaudeNamesAHeadingOfArchitecture() throws {
-        let claude = try StandingDocuments.requireRules()
+        let claude = try StandingDocuments.rules()
         let headings = try StandingDocuments.headings(of: "ARCHITECTURE")
         XCTAssertGreaterThan(headings.count, 20, "the hub's and its pages' headings were not read")
 
         let read = Parser.arrowPointers(in: claude)
         XCTAssertGreaterThan(read.pointers.count, 40,
-            "only \(read.pointers.count) bare pointers read from CLAUDE.md — the parser reads nothing and every verdict is over no text")
+            "only \(read.pointers.count) bare pointers read from CLAUDE.local.md — the parser reads nothing and every verdict is over no text")
 
         let stray = read.stray.filter { !$0.contains(Self.notation) }
         XCTAssertTrue(stray.isEmpty,
             "a section sign outside the arrow shape is read by nothing:\n\(stray.joined(separator: "\n"))")
 
-        let dead = read.pointers.filter { Parser.resolve($0, headings: headings) == nil }
+        let dead = read.pointers.filter { StandingDocuments.resolve($0, headings: headings) == nil }
         XCTAssertTrue(dead.isEmpty, """
-            \(dead.count) pointer(s) of CLAUDE.md name no heading of ARCHITECTURE.md exactly:
+            \(dead.count) pointer(s) of CLAUDE.local.md name no heading of ARCHITECTURE.md exactly:
             \(dead.map { "\u{A7}" + $0.prefix(50) }.joined(separator: "\n"))
             """)
     }
 
-    /// The named pointers of `texts` that name a document in `headings`, read and
-    /// dead, each text with the documents it is read for.
-    private func namedPointers(in texts: [(file: String, text: String, documents: [String])],
-                               headings: [String: [String]]) -> (read: Int, dead: [String]) {
+    func testEveryNamedPointerOfTheStandingDocumentsNamesAHeading() throws {
+        var headingsByDocument = ["ARCHITECTURE": try StandingDocuments.headings(of: "ARCHITECTURE")]
+        // No rules file (fresh clone, CI): pointers into it are not judged, the rest are.
+        if RepoSource.rulesEntry() != nil { headingsByDocument["CLAUDE"] = try StandingDocuments.headings(of: "CLAUDE") }
         var read = 0
         var dead: [String] = []
-        for (file, text, documents) in texts {
-            for pointer in Parser.named(in: text) where documents.contains(pointer.document) {
+        for file in StandingDocuments.all() {
+            for pointer in Parser.named(in: try RepoSource.text(of: file)) {
                 read += 1
-                if Parser.resolve(pointer.rest, headings: headings[pointer.document] ?? []) == nil {
+                guard let known = headingsByDocument[pointer.document] ?? (pointer.document == "CLAUDE" ? nil : []) else { continue }
+                if StandingDocuments.resolve(pointer.rest, headings: known) == nil {
                     dead.append("\(file) — \(pointer.document) \u{A7}\(pointer.rest.prefix(50))")
                 }
             }
         }
-        return (read, dead)
-    }
-
-    func testEveryNamedPointerOfTheStandingDocumentsIntoArchitectureNamesAHeading() throws {
-        let texts = try StandingDocuments.all().map { ($0, try RepoSource.text(of: $0), ["ARCHITECTURE"]) }
-        let result = namedPointers(in: texts,
-            headings: ["ARCHITECTURE": try StandingDocuments.headings(of: "ARCHITECTURE")])
-        XCTAssertGreaterThanOrEqual(result.read, 1,
+        XCTAssertGreaterThanOrEqual(read, 1,
             "no named pointer read from the standing documents — ARCHITECTURE.md carries at least one")
-        XCTAssertTrue(result.dead.isEmpty,
-            "\(result.dead.count) dead pointer(s):\n\(result.dead.joined(separator: "\n"))")
-    }
-
-    /// The rules' own named pointers (into either document) and the repository's
-    /// named pointers into the rules.
-    func testEveryNamedPointerOfTheStandingDocumentsIntoClaudeNamesAHeading() throws {
-        let rules = try StandingDocuments.requireRules()
-        let texts = try StandingDocuments.all().map { ($0, try RepoSource.text(of: $0), ["CLAUDE"]) }
-            + [("CLAUDE.md", rules, ["ARCHITECTURE", "CLAUDE"])]
-        let result = namedPointers(in: texts, headings: [
-            "ARCHITECTURE": try StandingDocuments.headings(of: "ARCHITECTURE"),
-            "CLAUDE": try StandingDocuments.headings(of: "CLAUDE")])
-        XCTAssertTrue(result.dead.isEmpty,
-            "\(result.dead.count) dead pointer(s):\n\(result.dead.joined(separator: "\n"))")
+        XCTAssertTrue(dead.isEmpty, "\(dead.count) dead pointer(s):\n\(dead.joined(separator: "\n"))")
     }
 
     func testClaudeStaysInsideItsCeiling() throws {
-        let rules = try StandingDocuments.requireRules()
-        let size = rules.utf8.count
+        let size = try StandingDocuments.rules().utf8.count
         XCTAssertGreaterThan(size, 4_000,
-            "CLAUDE.md is \(size) bytes — an emptied file is under every ceiling, and the rules are gone")
+            "CLAUDE.local.md is \(size) bytes — an emptied file is under every ceiling, and the rules are gone")
         XCTAssertLessThanOrEqual(size, Self.claudeCeilingBytes,
-            "CLAUDE.md is \(size) bytes, ceiling \(Self.claudeCeilingBytes) — move a story to ARCHITECTURE.md")
+            "CLAUDE.local.md is \(size) bytes, ceiling \(Self.claudeCeilingBytes) — move a story to ARCHITECTURE.md")
     }
 
     // MARK: - The pages of the wiki
@@ -229,7 +177,7 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
         var extra: [String] = []
         var named: [String] = []
         for tail in Parser.tails(of: rest) {
-            if let heading = Parser.resolve(tail, headings: subHeadings), !named.contains(heading) {
+            if let heading = StandingDocuments.resolve(tail, headings: subHeadings), !named.contains(heading) {
                 named.append(heading)
             } else {
                 extra.append("\u{A7}" + tail.prefix(40))
@@ -339,52 +287,5 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
         let all = try StandingDocuments.headings(of: "ARCHITECTURE")
         XCTAssertEqual(all.count, owners.values.reduce(0) { $0 + $1.count },
             "headings(of: \"ARCHITECTURE\") lists \(all.count) headings; the hub and the pages hold \(owners.values.reduce(0) { $0 + $1.count })")
-    }
-
-    /// `requireRules` is the only thing that turns "no file" into a skip: with the
-    /// file there it answers the text, with none it throws `XCTSkip` and nothing else.
-    func testRequireRulesAnswersTheTextOrSkips() throws {
-        let dir = scratchDirectory("rules")
-        let present = dir.appendingPathComponent("CLAUDE.local.md")
-        try "the rules".write(to: present, atomically: true, encoding: .utf8)
-        let absent = dir.appendingPathComponent("none/CLAUDE.local.md")
-
-        XCTAssertEqual(try StandingDocuments.requireRules(candidates: [absent, present]), "the rules")
-        do {
-            _ = try StandingDocuments.requireRules(candidates: [absent])
-            XCTFail("no candidate exists and nothing was thrown")
-        } catch let skip as XCTSkip {
-            XCTAssertTrue("\(skip)".contains(absent.path) || (skip.message ?? "").contains(absent.path),
-                "the skip does not name the path sought: \(skip)")
-        }
-    }
-
-    /// The worktree branch of `rulesCandidates()` exists, whether or not any rules
-    /// file does. Without this, a resolver that lost the branch leaves every
-    /// worktree's CLAUDE halves skipped, and a skipped half reads as a pass.
-    /// Asserts the shape only, so a fresh clone (a `.git` directory) passes too:
-    /// there the list is the one path beside `Package.swift`; in a linked worktree
-    /// (`.git` is a file) it adds the same name in a main checkout that holds a
-    /// `.git` directory.
-    func testALinkedWorktreeSeeksTheRulesInTheMainCheckoutToo() throws {
-        let root = RepoSource.root
-        let name = "CLAUDE.local.md"
-        let candidates = StandingDocuments.rulesCandidates()
-        XCTAssertEqual(candidates.first?.standardizedFileURL, root.appendingPathComponent(name).standardizedFileURL)
-        var isDir: ObjCBool = false
-        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent(".git").path, isDirectory: &isDir),
-            "no .git beside Package.swift: the root is not a checkout")
-        if isDir.boolValue {
-            XCTAssertEqual(candidates.count, 1, "a clone has one place to look: \(candidates.map(\.path))")
-        } else {
-            XCTAssertEqual(candidates.count, 2, "a linked worktree must also seek the main checkout: \(candidates.map(\.path))")
-            let main = try XCTUnwrap(candidates.last).deletingLastPathComponent()
-            XCTAssertNotEqual(main.standardizedFileURL, root.standardizedFileURL)
-            XCTAssertEqual(candidates.last?.lastPathComponent, name)
-            var mainGitIsDir: ObjCBool = false
-            XCTAssertTrue(FileManager.default.fileExists(atPath: main.appendingPathComponent(".git").path,
-                                                         isDirectory: &mainGitIsDir) && mainGitIsDir.boolValue,
-                "\(main.path) is not a main checkout (no .git directory)")
-        }
     }
 }

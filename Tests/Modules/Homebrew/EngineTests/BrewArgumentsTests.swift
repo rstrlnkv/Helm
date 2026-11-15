@@ -1,5 +1,4 @@
 import XCTest
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// Where a value stops being a value.
@@ -36,38 +35,6 @@ import HelmRuntime
 /// — both exit 1, but only the second reads `-n` as the name of a (missing)
 /// formula rather than an option `info` does not recognise; the terminator is
 /// doing its job even though neither call finds a package.
-private final class RecordingRunner: ProcessRunner, @unchecked Sendable {
-    private let lock = NSLock()
-    private var _calls: [[String]] = []
-    var calls: [[String]] { lock.lock(); defer { lock.unlock() }; return _calls }
-
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) {
-        lock.lock(); _calls.append(args); lock.unlock()
-        return (0, "")
-    }
-
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        lock.lock(); _calls.append(args); lock.unlock()
-        onExit(0)
-        return NoProcess()
-    }
-}
-
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
 final class BrewArgumentsTests: XCTestCase {
 
     private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
@@ -78,94 +45,69 @@ final class BrewArgumentsTests: XCTestCase {
     /// Asserts the *structure* — the value sits behind a terminator — rather
     /// than comparing the whole argument list, which would have to be rewritten
     /// every time a flag is added and would say nothing about the hazard.
-    private func assertBehindTerminator(_ args: [String], value: String,
+    private func assertBehindTerminator(_ args: [String], value: String, what: String,
                                         file: StaticString = #filePath, line: UInt = #line) {
         guard let terminator = args.firstIndex(of: "--") else {
-            return XCTFail("no `--` in \(args): brew reads \(value.debugDescription) as a flag",
+            return XCTFail("\(what): no `--` in \(args): brew reads \(value.debugDescription) as a flag",
                            file: file, line: line)
         }
         guard let at = args.firstIndex(of: value) else {
-            return XCTFail("\(value.debugDescription) is not in \(args)", file: file, line: line)
+            return XCTFail("\(what): \(value.debugDescription) is not in \(args)", file: file, line: line)
         }
         XCTAssertGreaterThan(at, terminator,
-                             "\(value.debugDescription) is ahead of the `--` in \(args)",
+                             "\(what): \(value.debugDescription) is ahead of the `--` in \(args)",
                              file: file, line: line)
     }
 
-    func testASearchQueryIsBehindATerminator() {
-        let runner = RecordingRunner()
-        _ = engine(runner).search("-n")
-        XCTAssertFalse(runner.calls.isEmpty, "no call was made at all")
-        for call in runner.calls { assertBehindTerminator(call, value: "-n") }
-    }
+    /// One door per subcommand that takes a dash-led value, each with the number
+    /// of calls it must make — `nil` for the ones that make several and are asked
+    /// about every one of them — and a label, so a red run says which subcommand
+    /// lost its terminator.
+    private typealias Row = (what: String, value: String, count: Int?, act: (HomebrewEngine) -> Void)
 
-    func testDescribedNamesAreBehindATerminator() {
-        let runner = RecordingRunner()
-        _ = engine(runner).descriptions(names: ["--version"], isCask: false)
-        XCTAssertFalse(runner.calls.isEmpty)
-        for call in runner.calls { assertBehindTerminator(call, value: "--version") }
-    }
-
-    func testInstallPutsTheNameBehindATerminator() {
-        for isCask in [false, true] {
-            let runner = RecordingRunner()
-            engine(runner).install(name: "-n", isCask: isCask)
-            XCTAssertEqual(runner.calls.count, 1)
-            assertBehindTerminator(runner.calls[0], value: "-n")
+    func testEveryDashLedValueIsBehindATerminator() {
+        let rows: [Row] = [
+            ("search", "-n", nil, { _ = $0.search("-n") }),
+            ("descriptions", "--version", nil, { _ = $0.descriptions(names: ["--version"], isCask: false) }),
+            // A cask is answered without a tool run, so there is nothing to assert
+            // about its arguments — `ACaskIsNeverAskedWhatUsesItTests` owns that half.
+            ("dependents", "-n", 1, { _ = $0.dependents(name: "-n", isCask: false) }),
+            ("upgrade", "-n", 1, { $0.upgrade(name: "-n") }),
+        ] + [false, true].flatMap { isCask -> [Row] in [
+            ("install, cask: \(isCask)", "-n", 1, { $0.install(name: "-n", isCask: isCask) }),
+            ("uninstall, cask: \(isCask)", "-n", 1, { $0.uninstall(name: "-n", isCask: isCask) }),
+            // `info` runs through `runData`, not `run` — `AnInfoQueryIsAboutOnePackageTests`
+            // owns that query's own behaviour; this asserts only the hazard this file
+            // exists for.
+            ("info, cask: \(isCask)", "-n", 1, { _ = $0.info(name: "-n", isCask: isCask) }),
+        ] }
+        for row in rows {
+            let runner = EnvironmentRecorder()
+            row.act(engine(runner))
+            let calls = runner.calls.map(\.args)
+            if let count = row.count {
+                XCTAssertEqual(calls.count, count, row.what)
+            } else {
+                XCTAssertFalse(calls.isEmpty, "\(row.what): no call was made at all")
+            }
+            for call in calls { assertBehindTerminator(call, value: row.value, what: row.what) }
         }
-    }
-
-    func testUninstallPutsTheNameBehindATerminator() {
-        for isCask in [false, true] {
-            let runner = RecordingRunner()
-            engine(runner).uninstall(name: "-n", isCask: isCask)
-            XCTAssertEqual(runner.calls.count, 1)
-            assertBehindTerminator(runner.calls[0], value: "-n")
-        }
-    }
-
-    /// A cask is answered without a tool run, so there is nothing to assert
-    /// about its arguments — `ACaskIsNeverAskedWhatUsesItTests` owns that half.
-    func testDependentsPutTheNameBehindATerminator() {
-        let runner = RecordingRunner()
-        _ = engine(runner).dependents(name: "-n", isCask: false)
-        XCTAssertEqual(runner.calls.count, 1)
-        assertBehindTerminator(runner.calls[0], value: "-n")
-    }
-
-    /// `info` runs through `runData`, not `run` — `AnInfoQueryIsAboutOnePackageTests`
-    /// owns that query's own behaviour; this asserts only the hazard this file
-    /// exists for.
-    func testInfoPutsTheNameBehindATerminator() {
-        for isCask in [false, true] {
-            let runner = RecordingRunner()
-            _ = engine(runner).info(name: "-n", isCask: isCask)
-            XCTAssertEqual(runner.calls.count, 1)
-            assertBehindTerminator(runner.calls[0], value: "-n")
-        }
-    }
-
-    func testUpgradePutsTheNameBehindATerminator() {
-        let runner = RecordingRunner()
-        engine(runner).upgrade(name: "-n")
-        XCTAssertEqual(runner.calls.count, 1)
-        assertBehindTerminator(runner.calls[0], value: "-n")
     }
 
     /// `upgradeAll` has no subject, so it must not grow a stray terminator —
     /// the guard above is about values, and there is no value here.
     func testUpgradeAllTakesNoSubjectAndNoTerminator() {
-        let runner = RecordingRunner()
+        let runner = EnvironmentRecorder()
         engine(runner).upgradeAll()
-        XCTAssertEqual(runner.calls, [["upgrade"]])
+        XCTAssertEqual(runner.calls.map(\.args), [["upgrade"]])
     }
 
     /// The flags the module chooses itself stay flags: a terminator that landed
     /// ahead of `--cask` would turn it into a package name.
     func testTheModulesOwnFlagsStayAheadOfTheTerminator() {
-        let runner = RecordingRunner()
+        let runner = EnvironmentRecorder()
         engine(runner).install(name: "wget", isCask: true)
-        let call = runner.calls[0]
+        let call = runner.calls[0].args
         let terminator = call.firstIndex(of: "--")
         let cask = call.firstIndex(of: "--cask")
         XCTAssertNotNil(terminator)

@@ -59,14 +59,14 @@ enum VPNInterfaceCounters {
         }
     }
 
-    /// The same count as the wire carries it: whole kilobytes.
+    /// The same count as the published state carries it: whole kilobytes.
     ///
     /// **The counters are the one part of the payload that moves on its own**,
     /// and the engine withholds only a payload equal in every field to the last
     /// one it sent (`VPNEngine.emitState`). A raw byte count therefore makes
     /// every re-read news: the poll behind one connect re-reads 26 times, and a
     /// live tunnel has carried another packet by each of them, so 26 payloads go
-    /// out where one used to and every mounted page re-renders for a figure
+    /// out for one connect and every mounted page re-renders for a figure
     /// nobody can see change.
     ///
     /// A kilobyte is the granularity the strip is drawn at: `HelmBytes` writes

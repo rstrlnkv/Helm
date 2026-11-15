@@ -4,7 +4,7 @@ import HelmRuntime
 // MARK: - Locator
 
 public struct FSBrewLocator: BrewLocator {
-    public init() {}
+    init() {}
     public func brewPath() -> String? {
         for p in ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"] where FileManager.default.isExecutableFile(atPath: p) {
             return p
@@ -69,31 +69,23 @@ private final class StatusBox: @unchecked Sendable {
     var status: Int32 { lock.lock(); defer { lock.unlock() }; return value }
 }
 
-/// Carries the bytes read on the helper thread in `runCapturingDiagnostics` to
-/// the caller waiting on `readDone`.
-private final class DiagnosticsBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value = Data()
-    func set(_ d: Data) { lock.lock(); value = d; lock.unlock() }
-    func take() -> Data { lock.lock(); defer { lock.unlock() }; return value }
-}
-
 public struct ShellProcessRunner: ProcessRunner {
     /// How long a *query* may go unanswered before it is a hang, not a wait.
     ///
-    /// `run` serves only the read-only queries (list, outdated, desc, search);
-    /// the long operations stream and are stopped by hand, never by a clock.
+    /// `run`, `runData` and `runCapturingDiagnostics` serve the read-only queries
+    /// (list, outdated, desc, search, uses, info, config, doctor); the long
+    /// operations stream and are stopped by hand, never by a clock.
     /// Measured on the owner's log before choosing: warm queries answer in
     /// 0.3–0.6 s, and a cold `brew outdated` — which goes to the network —
     /// took 7.4 s (helm.log, 2026-08-15 16:09:35→42). Ninety seconds clears the
     /// slowest measured query more than tenfold and still ends a hung brew —
     /// another brew's lock never released, a stalled network read — inside the
     /// same sitting, with the Refresh button live again.
-    public static let defaultQueryTimeout: TimeInterval = 90
+    static let defaultQueryTimeout: TimeInterval = 90
 
     private let queryTimeout: TimeInterval
 
-    public init(queryTimeout: TimeInterval = ShellProcessRunner.defaultQueryTimeout) {
+    init(queryTimeout: TimeInterval = ShellProcessRunner.defaultQueryTimeout) {
         self.queryTimeout = queryTimeout
     }
 
@@ -117,15 +109,14 @@ public struct ShellProcessRunner: ProcessRunner {
     /// `stream` keeps stderr: a console should show what the tool says. It is
     /// output that gets parsed that must not carry diagnostics.
     public func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String) {
-        let result = HelmProcess.run(launchPath, args, env: environment(env),
-                                     timeout: queryTimeout)
+        let result = HelmProcess.run(launchPath, args, env: env, timeout: queryTimeout)
         return (result.status, result.output)
     }
 
     /// The bytes without the String round-trip — `HelmProcess.runData`'s doc
     /// comment carries the measured difference.
     public func runData(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: Data) {
-        let r = HelmProcess.runData(launchPath, args, env: environment(env), timeout: queryTimeout)
+        let r = HelmProcess.runData(launchPath, args, env: env, timeout: queryTimeout)
         return (r.status, r.output)
     }
 
@@ -143,51 +134,14 @@ public struct ShellProcessRunner: ProcessRunner {
     /// stream, so it gets the one method that goes and gets it, rather than a
     /// change to `run` that would break every other parser here.
     ///
-    /// **A second launch, not a second `HelmProcess` entry point.**
-    /// `HelmProcess` has nothing that captures both streams together — `run`
-    /// and `runData` discard stderr by design, and `stream`'s pipe-sharing
-    /// trick belongs to a long operation with no deadline. So this follows
-    /// `run`'s shape by hand instead: `HelmProcess.start` for the launch
-    /// guard (never `try p.run()`, for the reason its own doc comment gives),
-    /// read to EOF before waiting on the same reasoning `HelmProcess.run`
-    /// documents, the same environment merge, and the same query deadline —
-    /// past it the child is terminated (TERM, then KILL after a grace) and
-    /// the answer is `HelmProcess.timedOutStatus` with no output, exactly as
-    /// `run` reports a hang.
+    /// **A merged read, through `HelmProcess`.** The same launch guard, launch
+    /// slot, deadline (TERM, then KILL after a grace) and read-before-wait as
+    /// `runData`, with standard error merged into the one pipe; past the
+    /// deadline the answer is `HelmProcess.timedOutStatus` with no output.
     public func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: launchPath)
-        p.arguments = args
-        p.environment = environment(env)
-        let pipe = Pipe()
-        p.standardOutput = pipe
-        p.standardError = pipe
-
-        let finished = DispatchSemaphore(value: 0)
-        p.terminationHandler = { _ in finished.signal() }
-
-        guard HelmProcess.start(p, path: launchPath) else { return (-1, "") }
-
-        // Bounded, on a helper thread, so this one can stop waiting for it —
-        // the same shape `HelmProcess`'s own bounded `runData` uses, for the
-        // same reason: reading is what proves the child has closed both
-        // streams, and it must not be the thing left blocking past the
-        // deadline.
-        let box = DiagnosticsBox()
-        let readDone = DispatchSemaphore(value: 0)
-        DispatchQueue.global(qos: .userInitiated).async {
-            box.set(pipe.fileHandleForReading.readDataToEndOfFile())
-            readDone.signal()
-        }
-        if readDone.wait(timeout: .now() + queryTimeout) == .timedOut {
-            p.terminate()
-            if readDone.wait(timeout: .now() + 2) == .timedOut {
-                kill(p.processIdentifier, SIGKILL)
-            }
-            return (HelmProcess.timedOutStatus, "")
-        }
-        finished.wait()
-        return (p.terminationStatus, String(decoding: box.take(), as: UTF8.self))
+        let r = HelmProcess.runData(launchPath, args, env: env, timeout: queryTimeout,
+                                    standardError: .merged)
+        return (r.status, String(decoding: r.output, as: UTF8.self))
     }
 
     /// **The exit is reported at end of pipe, not at end of process.** These are
@@ -322,7 +276,7 @@ private struct LiveProcess: RunningProcess, @unchecked Sendable {
 // MARK: - Privileged runner
 
 public struct OSAPrivilegedRunner: PrivilegedRunner {
-    public init() {}
+    init() {}
     /// Through `PrivilegedRun`, which is what makes a cancelled dialog
     /// readable: this used to run `osascript` bare, so the `(-128)` that says
     /// «the person pressed Cancel» went to the standard error `HelmProcess`
@@ -354,7 +308,7 @@ public struct SystemCommandLineTools: CommandLineToolsPort {
     private static let requestDeadline: TimeInterval = 30
     private static let selectDeadline: TimeInterval = 10
 
-    public init() {}
+    init() {}
 
     public func isExecutable(_ path: String) -> Bool {
         FileManager.default.isExecutableFile(atPath: path)
@@ -375,8 +329,8 @@ public struct SystemCommandLineTools: CommandLineToolsPort {
 
     /// The snapshot `RunningApps` keeps is refreshed on the main thread and
     /// nowhere else, and nothing in this module refreshes it — so the reading
-    /// hops there, which is the door CLAUDE.md names for the running-application
-    /// list. AppKit itself does not come into this module.
+    /// hops there, which is the door for the running-application
+    /// list (ARCHITECTURE.md § Running applications). AppKit itself does not come into this module.
     public func installerIsRunning() -> Bool {
         let ids = Thread.isMainThread
             ? RunningApps.shared.bundleIDs()
@@ -385,24 +339,13 @@ public struct SystemCommandLineTools: CommandLineToolsPort {
     }
 }
 
-/// Keeps a scheduled tick alive exactly as long as it is held: releasing the
-/// token cancels it, so an engine that drops its token in `stop()`,
-/// `deactivate()` or `deinit` cannot have a tick land afterwards.
-private final class WaitToken {
-    private let item: DispatchWorkItem
-    init(_ item: DispatchWorkItem) { self.item = item }
-    deinit { item.cancel() }
-}
-
 /// The real ticker. **Not the main queue**, unlike Keep Awake's clock: what a
 /// tick continues into is a blocking password dialog, and that must not be
 /// raised on the thread that draws the page.
 public struct DispatchWaitTicker: WaitTicker {
-    public init() {}
+    init() {}
     public func schedule(after interval: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject {
-        let item = DispatchWorkItem(block: block)
-        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + interval, execute: item)
-        return WaitToken(item)
+        DelayedWork.schedule(on: .global(qos: .userInitiated), after: interval, block)
     }
 }
 
@@ -418,7 +361,7 @@ public struct DispatchWaitTicker: WaitTicker {
 public struct FileOpMarker: OpMarker {
     private let url: URL
 
-    public init(directory: URL = HelmSupport.directory) {
+    init(directory: URL = HelmSupport.directory) {
         url = directory.appendingPathComponent("homebrew-operation")
     }
 
@@ -520,7 +463,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// in `PopularityRefresh` cannot help either, because it is consulted once
     /// `URLSession` has already buffered the body. This is the one thing that
     /// ends such a transfer, which is what lets the store claim a bound on the
-    /// wire at all (CLAUDE.md § What not to do, and what breaks if you do).
+    /// wire at all.
     ///
     /// Two minutes for the larger document, 453,903 bytes on 2026-09-13, is a
     /// floor of about 30 kbit/s — slower than any link this app is usable over,
@@ -535,8 +478,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     ///
     /// **What this costs while it is held: 2.84 MiB.** Measured on 2026-09-14
     /// against the allocator's own books rather than the process footprint,
-    /// because it is a per-object cost (CLAUDE.md § What not to do, and what
-    /// breaks if you do) — `malloc_zone_statistics(malloc_default_zone(),)`,
+    /// because it is a per-object cost (ARCHITECTURE.md § The memory trail) — `malloc_zone_statistics(malloc_default_zone(),)`,
     /// `size_in_use` across parsing both of this Mac's cached documents:
     /// 2,976,224 / 2,975,696 / 2,975,696 bytes over 15,270 entries, three
     /// consecutive readings. That is the module's largest standing allocation,
@@ -546,7 +488,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// is why this field starts nil.
     private var stored: PopularityReadings?
 
-    public convenience init(directory: URL = HelmSupport.directory) {
+    convenience init(directory: URL = HelmSupport.directory) {
         self.init(directory: directory, transfer: FilePopularityStore.liveTransfer)
     }
 
@@ -555,10 +497,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
         self.transfer = transfer
     }
 
-    public func readings() -> PopularityReadings {
-        lock.lock(); defer { lock.unlock() }
-        return loadedUnderTheLock()
-    }
+    public func readings() -> PopularityReadings { lock.withLock { loadedUnderTheLock() } }
 
     public func refreshIfDue() async {
         if let counts = await fetchIfDue(Self.formulae) {
@@ -585,8 +524,8 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// What this store's work is called in the activity trail, and the label
     /// its memory reading is filed under.
     ///
-    /// **A bulk phase carries both or neither** (CLAUDE.md § What not to do,
-    /// and what breaks if you do). Every synchronous hop in this store can
+    /// **A bulk phase carries both or neither** (ARCHITECTURE.md § The memory trail).
+    /// Every synchronous hop in this store can
     /// reach `InstallCounts.parse`: the ETag gate through `readings()`, `adopt`
     /// through `PopularityRefresh.answer`, and each replace through `load`.
     /// That parse is the module's largest standing allocation — 2.84 MiB, see
@@ -614,7 +553,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// **Not in `init`, and that is a measurement rather than a taste.** The two
     /// documents are 850 KB of JSON and 15,270 packages; parsing both takes
     /// 30 ms on this Mac, optimised, three readings out of three — and `init`
-    /// runs inside `makeEngine`, which `ModuleHost.enable` calls on the main
+    /// runs inside `makeModule`, which `ModuleHost.enable` calls on the main
     /// thread at launch for every module that is switched on.
     ///
     /// **Nor from the refresh unless the refresh needs it.** The only thing in
@@ -638,7 +577,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
 
     /// The two writers, synchronous and one line each, because a lock may not
     /// be held across a suspension and an `async` body may not take one at all
-    /// (CLAUDE.md § What not to do, and what breaks if you do).
+    /// (ARCHITECTURE.md § Sealed settings).
     ///
     /// **Only the other half is read.** These used to call
     /// `loadedUnderTheLock()`, which on the first ask — the ordinary case on a
@@ -771,8 +710,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// `PrivateFile` and set an attribute on it — and this runs inside a bare
     /// `Task`, which is the shared pool with one thread per core, the same
     /// shape every `brew` call in this module already goes through
-    /// `offTheCooperativePool` for (CLAUDE.md § What not to do, and what breaks
-    /// if you do). The wire itself stays *on* the pool: an `await` on a
+    /// `offTheCooperativePool` for (ARCHITECTURE.md § Running other programs). The wire itself stays *on* the pool: an `await` on a
     /// transfer holds no thread.
     private func fetchIfDue(_ endpoint: Endpoint) async -> InstallCounts? {
         guard let request = await offThePoolInThePhase({ [self] in requestIfDue(endpoint) })
@@ -781,8 +719,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
         // cancellation that arrives at quit all land here. None of them is
         // worth a line in somebody's log — an offline laptop is an ordinary
         // state, and a line that is printed on an ordinary day sends an
-        // investigation after nothing (CLAUDE.md § What not to do, and what
-        // breaks if you do).
+        // investigation after nothing (ARCHITECTURE.md § Diagnostics log).
         guard let (data, http) = try? await transfer(request) else { return nil }
         return await offThePoolInThePhase { [self] in adopt(data, http, from: endpoint) }
     }
@@ -879,7 +816,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
 /// the module is talking to.
 public struct CellarWeight: PackageWeight {
     private let locator: BrewLocator
-    public init(locator: BrewLocator) { self.locator = locator }
+    init(locator: BrewLocator) { self.locator = locator }
 
     public func bytes(ofPackage name: String, isCask: Bool) -> Int? {
         // **First, and before the prefix is even asked for.** A cask has no
@@ -908,14 +845,14 @@ public struct CellarWeight: PackageWeight {
         // `chmod` in somebody's terminal, or any TCC refusal, arrives that way.
         // A keg that really is installed occupies blocks; nothing that
         // occupies none is a package worth drawing a figure for, so both
-        // readings fold into the one nil the tile is absent for.
+        // readings fold into the one nil the row is absent for.
         let measured = FileWeight.allocated(of: keg)
         guard measured > 0 else {
             // Said once, and only about a directory that is *there*: an absent
             // keg is the ordinary answer for half the questions this port is
             // asked, and a line about one would send a reading after something
             // that has not happened — a refusal is logged, an absence is not
-            // (CLAUDE.md § What not to do, and what breaks if you do).
+            // (ARCHITECTURE.md § Diagnostics log).
             HelmLog.shared.warn(HomebrewEngine.moduleID,
                                 "the Cellar directory of \(Redact.pkg(name)) measured nothing "
                                 + "— it is there and could not be read")

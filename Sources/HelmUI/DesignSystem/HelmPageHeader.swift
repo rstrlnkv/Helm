@@ -28,7 +28,7 @@ import SwiftUI
 ///
 /// Dark: pane 30.0 → 37.8, which one constant pair predicted over four different
 /// backdrops — near-white at α ≈ 0.038 (`fill`); that was before the window's backdrop
-/// became the sidebar's material, and Dark now draws `darkFill`. `Color.primary` is that
+/// became the sidebar's material, and Dark under Glass now draws `darkFill`. `Color.primary` is that
 /// white in dark and black in light. The light values were not measured: the Mac
 /// switches appearance by the sun and making System Settings draw light is a
 /// system setting, which a read-only measurement may not touch.
@@ -60,7 +60,7 @@ import SwiftUI
 /// frequencies gone: a blur.
 ///
 /// It is `.bar` — the system's own scroll-edge surface — rather than
-/// `.glassEffect`, which ARCHITECTURE.md § Design system reserves for a thing that
+/// `.glassEffect`, which (ARCHITECTURE.md § Design system) reserves for a thing that
 /// *floats*: glass carries its own edge and its own shadow, and this strip
 /// draws the pane's edge itself, one point below.
 ///
@@ -105,7 +105,7 @@ struct HeaderEdgeLight: ViewModifier {
     /// the settled value (this Mac,
     /// dark, three runs each).
     ///
-    /// CLAUDE.md states the rule for a measured height — **do not animate the
+    /// The rule for a measured height (ARCHITECTURE.md § Motion) — **do not animate the
     /// first measurement** — because nil means nothing has measured this yet
     /// and animating up from it plays the view arriving from a state it was
     /// never in. This was that defect with a `Bool` in place of a `CGFloat`,
@@ -129,10 +129,12 @@ struct HeaderEdgeLight: ViewModifier {
 
     /// Near-white at 3.8%, from the composite over four backdrops.
     static let fill = 0.038
-    /// **In Dark the fill is 1%**, not 3.8%: white at 3.8% over the card's 40 read 49, which is the
-    /// window backdrop's own level (Finder's sidebar material, `ShellContentView.makeBackdrop()`), and
+    /// **Under Glass in Dark the fill is 1%**, not 3.8%: white at 3.8% over the card's 40 read 49, which is the
+    /// window backdrop's own level (Finder's sidebar material, `ShellContentView.makeGlassGround()`), and
     /// a band at the backdrop's level takes the card's top edge and rounded corners away. At 1% the band
-    /// read 43 on the card's 40, 6 under the backdrop's 49 (key; 5 non-key), Dark, at rest. Light keeps 3.8%.
+    /// read 43 on the card's 40, 6 under the backdrop's 49 (key; 5 non-key), Dark, at rest. These numbers were read on
+    /// the Glass ground only (the glass variant 18 at level 49); Flat draws its own `.sidebar` ground that did not match
+    /// Finder in Dark, so Flat and Light keep 3.8%, unmeasured against the Flat ground.
     static let darkFill = 0.01
     /// **In Dark, with the content scrolled under the strip, the material is shaded by 20% black.** Over
     /// the card, scrolled, `Material.bar` read 45 to 51 in Dark, the backdrop's level, so the band lost the
@@ -161,6 +163,10 @@ struct HeaderEdgeLight: ViewModifier {
     /// backed at 2× — sees a point. Nothing offscreen can prove the rule's thickness.
     @Environment(\.displayScale) private var displayScale
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.helmBarAppearance) private var appearance
+
+    /// The Dark numbers were read on the Glass ground; see `darkFill`.
+    private var glassDark: Bool { colorScheme == .dark && appearance == .liquidGlass }
 
     func body(content: Content) -> some View {
         content
@@ -169,8 +175,8 @@ struct HeaderEdgeLight: ViewModifier {
                     // Only where something passes behind it. A blur over an
                     // opaque band is a backdrop filter with nothing to filter.
                     if overContent { Rectangle().fill(Self.material) }
-                    if overContent && scrolled && colorScheme == .dark { Color.black.opacity(Self.darkShade) }
-                    Color.primary.opacity(lit ? (colorScheme == .dark ? Self.darkFill : Self.fill) : 0)
+                    if overContent && scrolled && glassDark { Color.black.opacity(Self.darkShade) }
+                    Color.primary.opacity(lit ? (glassDark ? Self.darkFill : Self.fill) : 0)
                 }
             }
             .overlay(alignment: .bottom) {
@@ -188,6 +194,18 @@ struct HeaderEdgeLight: ViewModifier {
             // animation keyed on `lit` animates the page's declaration
             // arriving, which is a first delivery and not a change.
             .animation(HelmMotion.hover(entering: lit), value: live)
+    }
+}
+
+/// What the module is doing, as the header row says it after the name: `word` is localised already,
+/// `active` picks the badge over the quiet word.
+public struct HelmHeaderStatus: Equatable, Sendable {
+    let word: String
+    let active: Bool
+
+    public init(word: String, active: Bool) {
+        self.word = word
+        self.active = active
     }
 }
 
@@ -242,7 +260,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// **Both directions are tempting and both are wrong.** Lighting every
     /// page's band always, because the older capture says the system draws its
     /// rule at rest, puts the hairline this app measured away
-    /// back over the five pages that hand
+    /// back over the pages that hand
     /// over a `Form`. Taking the declaration out, because the newer capture
     /// says the system draws none at rest, leaves every page that stands on
     /// still content waiting for a scroll that cannot come. The rule above is
@@ -256,8 +274,8 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// (`onHover` does not reliably send `false` when a window loses key under
     /// a stationary pointer), so it is never trusted alone; `controlActiveState`
     /// is the live fact beside it, and the `&&` is the reverse channel
-    /// CLAUDE.md's rule about a local flag standing in for an external one asks
-    /// for.
+    /// that a local flag standing in for an external one asks for
+    /// (ARCHITECTURE.md § Ports and logic).
     ///
     /// `scrolled` carries **no** key gate, and that is not an oversight. Hover
     /// being ignored in a background window is a fact about the pointer; content
@@ -270,13 +288,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// not about where the pointer is, and a page's shape does not change when
     /// its window stops being key.
     ///
-    /// **The pointer is live in one of the two drawers only.** Drawn in the page
-    /// the header reads its own `onHover`; drawn in the window's toolbar
-    /// `ToolbarBackdrop` (`Sources/HelmUI/DesignSystem/PageBarStyle.swift`)
-    /// passes `hovering: false, active: .key` and has no pointer to read, so
-    /// there the band has two reasons and not three. The `&&` above is what
-    /// makes the pair honest wherever the pointer *is* asked for; it is not a
-    /// claim that both live triggers reach both placements.
+    /// The `&&` above is what makes the pair honest wherever the pointer *is* asked for.
     static func isLit(hovering: Bool, active: ControlActiveState, scrolled: Bool,
                       standsOnStillContent: Bool) -> Bool {
         standsOnStillContent || isLive(hovering: hovering, active: active, scrolled: scrolled)
@@ -294,11 +306,14 @@ public struct HelmPageHeader<Trailing: View>: View {
         scrolled || (hovering && active == .key)
     }
 
-    @State private var hovering = false
+    @State private var pointerOver = false
+    @Environment(\.helmShownInteraction) private var shown
+    private var hovering: Bool { pointerOver || shown == .hover }
     @Environment(\.controlActiveState) private var activeState
     /// Whether this header wears Helm's band at all — on macOS 26 it does
     /// not, by the owner's answer (`HelmBandChoice.pageHeaderBandOn26`).
     @Environment(\.helmBandChoice) private var band
+    @Environment(\.helmTraits) private var traits
 
     let symbol: String
     let tint: Color
@@ -306,16 +321,17 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// True for a page whose content spans the pane rather than sitting in the
     /// 744 pt form column. Which pages those are is a command and not a list
     /// here, because a list written into prose is wrong from the next commit:
-    /// `command grep -rn 'pageBleeds: Bool { true }' Sources` names the module
-    /// descriptors that declare it, and the log, which has no descriptor,
-    /// spells `bleeds: true` at its own call to this view.
+    /// `command grep -rn 'bleeds: true' Sources` names the pages that spell it
+    /// at their own call to this view. The header the settings window draws in
+    /// its card (`CardHeader`) passes true for every page, and every module page
+    /// is mounted there.
     let bleeds: Bool
     /// Whether the page's content passes *under* this strip.
     ///
     /// Not `showsRule:` with a nicer name: a per-page choice about whether to
     /// draw a line is four decisions where there should be none, and this is the
     /// other kind of parameter: a fact about how the page is built, the way
-    /// `bleeds` is a fact a module declares about its own content. No call site
+    /// `bleeds` is a fact about the page's width. No call site
     /// spells it, because the only thing that sets it is `helmPageHeader`,
     /// which is *what laying the header over the content means*.
     let overContent: Bool
@@ -327,9 +343,8 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// first frame.
     ///
     /// **Not `bleeds` under another name, however alike the two look today.**
-    /// Eight things declare each — the seven module descriptors plus the log —
-    /// and on all thirteen pages the two answers coincide exactly. They are
-    /// still different questions: `bleeds` is about the header's **width**, and
+    /// The header in the card takes `bleeds` true on every page, so the two
+    /// coincide there. They are still different questions: `bleeds` is about the header's **width**, and
     /// this is about the **species of the thing under it**. Folding one into
     /// the other would pass every test anybody could write today and fail
     /// silently on the first page where a full-bleed `ScrollView` or a
@@ -341,10 +356,16 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// `DuplicatesSettingsPage` opens on a permission note — so a computed
     /// answer would flicker the band exactly where the page changes shape
     /// under a stationary pointer. The price is paid knowingly and in one
-    /// place: on Uninstaller's objects tab the band is lit over a list that
-    /// does scroll under it. That is an over-reach the design pass chose, not
+    /// place: on Uninstaller's page the band is lit over lists that do
+    /// scroll under it. That is an over-reach the design pass chose, not
     /// an oversight to repair.
     let standsOnStillContent: Bool
+    /// The module's state, said after the name: a badge while it is active, a quiet word while it is idle.
+    /// nil for a page that has none, and then nothing is drawn.
+    let status: HelmHeaderStatus?
+    /// The row's elements — name, status, tabs, actions, search — dim as one; the ground under them does not,
+    /// so a header over content hides what passes behind it as well in a window that is not the active one.
+    let dimmed: Bool
     let trailing: Trailing
 
     public init(symbol: String, tint: Color, title: String,
@@ -361,7 +382,8 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// above because a page that draws this header as a view — the log — has
     /// no `helmPageHeader` to declare it through.
     init(symbol: String, tint: Color, title: String, bleeds: Bool,
-         overContent: Bool, scrolled: Bool, standsOnStillContent: Bool,
+         overContent: Bool, scrolled: Bool, standsOnStillContent: Bool, status: HelmHeaderStatus? = nil,
+         dimmed: Bool = false,
          @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.symbol = symbol
         self.tint = tint
@@ -370,11 +392,13 @@ public struct HelmPageHeader<Trailing: View>: View {
         self.overContent = overContent
         self.scrolled = scrolled
         self.standsOnStillContent = standsOnStillContent
+        self.status = status
+        self.dimmed = dimmed
         self.trailing = trailing()
     }
 
     public var body: some View {
-        lit(row).onHover { hovering = $0 }
+        lit(row).onHover { pointerOver = $0 }
     }
 
     @ViewBuilder
@@ -404,12 +428,23 @@ public struct HelmPageHeader<Trailing: View>: View {
             // — and with the summary gone the name no longer has to hold a
             // two-line block up on its own.
             Text(title)
-                .font(.system(size: 16, weight: .semibold))
+                .font(HelmText.plateTitle)
                 .tracking(-0.2)
                 .lineLimit(1)
+                // The name does not give way, nor do the tabs and the search beside it: the window's minimum
+                // width (`SettingsWindow.minSize`) is measured on the Log page, the fullest row, in every language.
+                .fixedSize(horizontal: true, vertical: false)
+            if let status {
+                if status.active {
+                    HelmBadge(status.word, tint: HelmSignal.success(increased: traits.increasedContrast))
+                } else {
+                    Text(status.word).font(.system(size: 11)).foregroundStyle(HelmText.quiet)
+                }
+            }
             Spacer(minLength: 12)
             trailing
         }
+        .opacity(dimmed ? HelmText.inactiveOpacity : 1)
         // **20 across, not the redesign's 18.** The mockups draw this strip and
         // the pane below it at one gutter, and moving only the header to 18
         // breaks the rule that matters more: a bleeding page's content starts
@@ -429,23 +464,24 @@ public struct HelmPageHeader<Trailing: View>: View {
         // derived the same way from the same plate.
         .padding(.vertical, HelmSpace.s5)
         // On the same column as the content below it. Which column that is
-        // depends on the page: a grouped Form is capped at 744 pt and centred,
-        // so its header is too — but a full-bleed page draws its toolbar at a
+        // depends on the page: outside the card a grouped Form is capped at 744 pt
+        // and centred, so its header is too — but a full-bleed page draws its toolbar at a
         // flat 20 pt inset across the whole pane, and a centred header above
         // it walks away as the window grows. Measured on a 1400 pt window: the
         // title sat 203 pt right of the controls beneath it. It has never
         // been seen because at the default window the pane is 690 pt —
-        // narrower than the column, where the two rules agree.
+        // narrower than the column, where the two rules agree. Only a header
+        // drawn in the page can get `false` here; the card's passes `true`.
         .frame(maxWidth: bleeds ? .infinity : HelmLayout.settingsColumn)
         // The lighting goes on the pane-wide frame and not the one above it:
-        // macOS lights the whole strip, and on a grouped-`Form` page the frame
-        // above is capped at the 744 pt column and centred, so a background
-        // there would be a lit band floating in an unlit pane.
+        // macOS lights the whole strip, and on a grouped-`Form` page drawn outside
+        // the card the frame above is capped at the 744 pt column and centred,
+        // so a background there would be a lit band floating in an unlit pane.
         .frame(maxWidth: .infinity, alignment: bleeds ? .leading : .center)
     }
 }
 
-public extension View {
+extension View {
     /// Lays the page header **over** this page, and lets the page scroll under
     /// it.
     ///
@@ -464,21 +500,16 @@ public extension View {
     /// to be the edge of; a rule there would be the hairline this app measured
     /// away under a different name.
     ///
-    /// **Where the window has a toolbar, the header goes there instead**
-    /// (`PageBarStyle`): the settings window sets `helmPageBar`, and this draws
-    /// no row in the page at all. `subtitle` is the status said in words, for
-    /// the `.windowTitle` style, which gives it to the window as its subtitle; the settings window hides its title. Carries
-    /// no trailing content any more, under either bar style or none: the one
-    /// caller that filled it drew a status badge, and that badge now lives at
-    /// the bar's own trailing edge (`SettingsToolbar.makeStatusItem`, the
-    /// owner, 2026-09-28) — a page mounted with no window toolbar at all (a
-    /// sheet, a page on its own) draws `HelmPageHeader` directly instead,
-    /// which still takes a `trailing` view of its own for that case
-    /// (`AboutPage`'s `WhatsNewView`, its one caller today).
-    func helmPageHeader(
-        symbol: String, tint: Color, title: String, subtitle: String? = nil, bleeds: Bool = false
+    /// **Where the window has set `\.helmHeaderInCard`** (`SettingsWindow`), this draws
+    /// no row in the page at all: the settings window's own row, `helmCardHeader`, is the header and takes
+    /// the page's name from the window's page identity; `PageBarContent` carries the window's title and
+    /// whether the page has scrolled under the row.
+    /// A page mounted without it (a sheet, a page on its own) draws `HelmPageHeader` directly, which
+    /// takes a `trailing` view of its own for that case (`AboutPage`'s `WhatsNewView`, its one caller today).
+    public func helmPageHeader(
+        symbol: String, tint: Color, title: String, bleeds: Bool = false
     ) -> some View {
-        modifier(PageHeaderPlacement(symbol: symbol, tint: tint, title: title, subtitle: subtitle,
+        modifier(PageHeaderPlacement(symbol: symbol, tint: tint, title: title,
                                      bleeds: bleeds))
     }
 }
@@ -489,23 +520,19 @@ private struct PageHeaderPlacement: ViewModifier {
     let symbol: String
     let tint: Color
     let title: String
-    let subtitle: String?
     let bleeds: Bool
 
-    @Environment(\.helmPageBar) private var bar
+    @Environment(\.helmHeaderInCard) private var inCard
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if bar == nil {
+        if !inCard {
             content.modifier(PageHeaderOverContent(symbol: symbol, tint: tint, title: title,
                                                    bleeds: bleeds))
         } else {
-            // `PageBarContent`'s `.moduleName` arm draws nothing of its own
-            // any more (its own comment, `PageBarStyle.swift`) —
-            // `SettingsToolbar` owns the name and the status item directly on
-            // the app-owned `NSToolbar`; neither the icon nor a trailing view
-            // reaches this arm.
-            content.modifier(PageBarContent(title: title, subtitle: subtitle))
+            // The window's card header draws the name and the status;
+            // neither the icon nor a trailing view reaches this arm.
+            content.modifier(PageBarContent(title: title))
         }
     }
 }
@@ -533,7 +560,7 @@ private struct PageHeaderPlacement: ViewModifier {
 /// **And the page's own declaration about what is under the band travels the
 /// same direction.** `helmPageStandsOnStillContent` is set inside the page and
 /// read here, exactly as `HelmPageScrolledKey` is set inside the page and read
-/// by `ToolbarBackdrop` — the header is applied from outside the page, so a
+/// by `CardHeader` — the header is applied from outside the page, so a
 /// preference is the only way round, and the alternative would be a hand-kept
 /// list of pages living somewhere neither the page nor the band can see.
 private struct PageHeaderOverContent: ViewModifier {
@@ -553,11 +580,7 @@ private struct PageHeaderOverContent: ViewModifier {
             .onPreferenceChange(HelmPageStandsOnStillContentKey.self) { now in
                 standsOnStillContent = now
             }
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y + geometry.contentInsets.top > 0.5
-            } action: { _, now in
-                scrolled = now
-            }
+            .onScrolledUnder { scrolled = $0 }
             // `spacing: 0` — the gap under the header is the page's own top
             // padding, which every page already draws.
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -565,5 +588,171 @@ private struct PageHeaderOverContent: ViewModifier {
                                overContent: true, scrolled: scrolled,
                                standsOnStillContent: standsOnStillContent)
             }
+    }
+}
+
+extension View {
+    /// **The header row in the card, over this page.** One row for every page of the settings window, drawn
+    /// at the root of the detail pane so it keeps its identity across a page switch: the page's name and
+    /// status on the left, on the right what the page declared through `helmWindowToolbar` — tabs, actions,
+    /// search (`HelmPageToolbarKey`). The page scrolls under it, as it does under `helmPageHeader`, and
+    /// the pane reserves the row's height as a top inset.
+    ///
+    /// The declaration is read with `overlayPreferenceValue`: the value carries closures cut from the page's
+    /// state at its last body, and a copy kept in `@State` behind an `==` would hold the old ones
+    /// (`LogView`'s Copy captures `page.lines`).
+    ///
+    /// The empty part of the row drags the window, since there is no title bar under it any more.
+    public func helmCardHeader(symbol: String, tint: Color, title: String, status: HelmHeaderStatus?) -> some View {
+        modifier(CardHeader(symbol: symbol, tint: tint, title: title, status: status))
+    }
+}
+
+private struct CardHeader: ViewModifier {
+    let symbol: String
+    let tint: Color
+    let title: String
+    let status: HelmHeaderStatus?
+
+    @State private var scrolled = false
+    @State private var standsOnStillContent = false
+    @Environment(\.helmWindowAppearsActive) private var windowAppearsActive
+
+    /// The 28 pt plate and `HelmSpace.s5` above and below it: System Settings' own strip (`HelmPageHeader`).
+    static let height = HelmSpace.s5 * 2 + 28
+
+    func body(content: Content) -> some View {
+        content
+            .onPreferenceChange(HelmPageScrolledKey.self) { scrolled = $0 }
+            .onPreferenceChange(HelmPageStandsOnStillContentKey.self) { standsOnStillContent = $0 }
+            .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: Self.height) }
+            .overlayPreferenceValue(HelmPageToolbarKey.self, alignment: .top) { controls in
+                HelmPageHeader(symbol: symbol, tint: tint, title: title, bleeds: true,
+                               overContent: true, scrolled: scrolled,
+                               standsOnStillContent: standsOnStillContent, status: status,
+                               dimmed: !windowAppearsActive) {
+                    HelmHeaderControls(content: controls)
+                }
+                .frame(height: Self.height)
+                .background { Color.clear.contentShape(Rectangle()).gesture(WindowDragGesture()) }
+            }
+    }
+}
+
+/// Tabs, then actions and search, in that order, on the right of the row; each only where the page declared it.
+///
+/// **The tab strip's place is the owner's, not the page's.** Where pages share one strip and declare different
+/// runs (the settings window's three), the owner declares the widest (`HelmPageToolbarContent.reserves`) and the
+/// run keeps at least that width, so the strip ends 12 pt before it on every one of them. A page without a
+/// declaration gets exactly the room of what it declared, as the row had before.
+private struct HelmHeaderControls: View {
+    let content: HelmPageToolbarContent?
+
+    var body: some View {
+        if let content {
+            HStack(spacing: 12) {
+                if !content.tabs.isEmpty, let selected = content.selectedTab {
+                    HelmHeaderTabs(tabs: content.tabs, selection: selected, enabled: content.tabsEnabled)
+                }
+                if !content.actions.isEmpty || content.search != nil || content.reserves != nil {
+                    HStack(spacing: 12) {
+                        if !content.actions.isEmpty {
+                            HelmHeaderActions(actions: content.actions)
+                        }
+                        if let search = content.search {
+                            HelmHeaderSearch(search: search)
+                        }
+                    }
+                    .frame(minWidth: content.reserves?.width ?? 0, alignment: .trailing)
+                }
+            }
+        }
+    }
+}
+
+extension EnvironmentValues {
+    /// Whether the window draws its chrome active — the window's own reading (`SettingsWindow`'s header above
+    /// `windowDidBecomeKey`), not `\.controlActiveState`, which reads `.inactive` under a sheet where the
+    /// window is still the active one. The header row and the sidebar's rows dim by it; a view outside the settings window reads true.
+    @Entry public var helmWindowAppearsActive = true
+}
+
+extension EnvironmentValues {
+    /// **True where the window's card draws the page's header row** — the settings window sets it; a sheet or a
+    /// test mounting a page on its own leaves it false. Then `helmPageHeader` draws the page's own header
+    /// row in the page (`PageHeaderPlacement`), `helmPageBar` is inert, and a page that draws its own row
+    /// reads this itself (`LogView`).
+    @Entry public var helmHeaderInCard: Bool = false
+}
+
+/// What the page asks the window to call it. The window, not the page, owns its title: the settings window
+/// reads this and sets it on the `NSWindow` itself.
+public struct HelmPageTitleKey: PreferenceKey {
+    public static let defaultValue: String? = nil
+    /// The innermost page that says anything wins; views that say nothing contribute nil and must not erase it.
+    public static func reduce(value: inout String?, nextValue: () -> String?) {
+        value = nextValue() ?? value
+    }
+}
+
+/// Whether the page's content has scrolled under the header row. The page's scroll view is the only thing that
+/// knows, and the row (`CardHeader`) is the thing that draws it, so the answer travels up as a preference.
+struct HelmPageScrolledKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
+}
+
+/// **Whether what sits directly under the header row is a scroll view** — the page's own structural claim,
+/// travelling to whoever draws the row, by the road `HelmPageScrolledKey` takes and for the same reason: the row
+/// is applied from outside the page. The reduction is `||`, so an inner page that says nothing cannot take the
+/// claim back.
+struct HelmPageStandsOnStillContentKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
+}
+
+extension View {
+    /// Declares that this page's content under the header row is still, not a scroll view
+    /// (`HelmPageStandsOnStillContentKey`).
+    public func helmPageStandsOnStillContent() -> some View {
+        preference(key: HelmPageStandsOnStillContentKey.self, value: true)
+    }
+
+    /// What the page says to the window's card: its name, and whether its scroll view has moved. Inert where no
+    /// card draws the header (`helmHeaderInCard`).
+    public func helmPageBar(title: String) -> some View {
+        modifier(PageBarContent(title: title))
+    }
+}
+
+struct PageBarContent: ViewModifier {
+    let title: String
+    @Environment(\.helmHeaderInCard) private var inCard
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if inCard {
+            content.modifier(ReportsScrolledUnderBar())
+                .preference(key: HelmPageTitleKey.self, value: title)
+        } else {
+            content
+        }
+    }
+}
+
+private extension View {
+    /// Says whether the content has scrolled past the bar laid over its top.
+    func onScrolledUnder(_ set: @escaping (Bool) -> Void) -> some View {
+        onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 0.5 } action: { _, now in set(now) }
+    }
+}
+
+private struct ReportsScrolledUnderBar: ViewModifier {
+    @State private var scrolled = false
+
+    func body(content: Content) -> some View {
+        content
+            .onScrolledUnder { scrolled = $0 }
+            .preference(key: HelmPageScrolledKey.self, value: scrolled)
     }
 }

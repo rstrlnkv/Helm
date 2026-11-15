@@ -26,6 +26,7 @@ public final class SealKeyProbe: SealKeyPort, @unchecked Sendable {
     private var mainThread = false
     private var material: Data?
     private let gate: DispatchSemaphore?
+    private let fixedFirstUse: Bool?
     /// Raised as each caller *enters*, before the gate is waited on.
     ///
     /// `reads` cannot answer «somebody is inside right now»: it is incremented on
@@ -35,8 +36,15 @@ public final class SealKeyProbe: SealKeyPort, @unchecked Sendable {
     /// and the arrangement being tested may never occur.
     private let entered = DispatchSemaphore(value: 0)
 
-    /// - Parameter gate: held shut until a test opens it. Nil answers at once.
-    public init(gate: DispatchSemaphore? = nil) { self.gate = gate }
+    /// - Parameters:
+    ///   - gate: held shut until a test opens it. Nil answers at once.
+    ///   - firstUse: answered on every ask, for a guard built fresh over a store
+    ///     that is, or is not, the run that made the item. Nil is the real
+    ///     door: `true` once, then spent.
+    public init(gate: DispatchSemaphore? = nil, firstUse: Bool? = nil) {
+        self.gate = gate
+        self.fixedFirstUse = firstUse
+    }
 
     /// Blocks until a caller has reached the gate, so a test can arrange a second
     /// one behind the first. False when nobody arrived inside `seconds`, which is
@@ -62,10 +70,10 @@ public final class SealKeyProbe: SealKeyPort, @unchecked Sendable {
         return lock.withLock {
             count += 1
             mainThread = mainThread || onMain
-            if let material { return SealKey(material: material, firstUse: false) }
+            if let material { return SealKey(material: material, firstUse: fixedFirstUse ?? false) }
             let made = Data(repeating: 0x5A, count: 32)
             material = made
-            return SealKey(material: made, firstUse: true)
+            return SealKey(material: made, firstUse: fixedFirstUse ?? true)
         }
     }
 }

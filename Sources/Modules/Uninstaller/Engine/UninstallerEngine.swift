@@ -3,16 +3,16 @@ import HelmContract
 import HelmRuntime
 
 /// Orchestrates app listing, leftover scanning, and trashing against side-effecting
-/// ports. Request/response over `transport.send` (the handler's returned `Data` is
-/// the reply). Not a toggle — no active state, so it never tints the menu bar.
+/// ports. The module's model calls its methods directly (`UninstallerWork`); the
+/// one thing it says unasked, "look at the Trash again", goes out through
+/// `trashChanged`. Not a toggle — no active state, so it never tints the menu bar.
 public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///
     /// It reaches disk in shapes nothing would flag if they disagreed: the
     /// `module.uninstaller.*` keys of a store, the directory `ScanJournal` names after
     /// it, and the removal attributed to it in the log. `UninstallerDescriptor.id`
-    /// is built from this rather than repeating it, the direction the
-    /// descriptors already carry their command enums, so the two spellings are
+    /// is built from this rather than repeating it, so the two spellings are
     /// one. **The string itself never changes** — it names folders and stored
     /// settings that are already on people's machines.
     public static let moduleID = "uninstaller"
@@ -23,11 +23,13 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private let trash: TrashPort
     private let running: RunningAppsPort
     private let extensions: SystemExtensionPort
+    private let fullDiskAccess: FullDiskAccessPort
     private let store: NamespacedStore
-    /// The only mutable field here, and main-actor confinement is what makes the
-    /// `@unchecked Sendable` above true. `activate` and `deactivate` are called
-    /// from `ModuleHost`, which is `@MainActor`; the `setWatchingTrash` arm of
-    /// the transport handler hops there for the same reason.
+    /// The one mutable field without a lock, and main-actor confinement is what
+    /// makes the `@unchecked Sendable` above true of it; the others are under
+    /// `watchLock` and `openedWorkerLock`. `activate` and `deactivate` are called
+    /// from `ModuleHost`, which is `@MainActor`, and `setWatchingTrash` is called
+    /// only by the `@MainActor` model.
     private var watcher: FolderWatcher?
     /// The two live facts behind the Trash-offer switch, and the lock is because
     /// neither of them arrives on the main actor: the watcher answers on its own
@@ -37,29 +39,35 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private let watchLock = NSLock()
     private var watcherStarted: Bool?
     private var trashReadable: Bool?
-    private let localTransport: LocalTransport
-    public let transport: EngineTransport
+    /// Whether the last unattended scan was refused for want of the grant, so the
+    /// refusal is logged when it begins and not on every wake-up.
+    private var refusedForAccess = false
+    /// Told that something reached the Trash that could have been an app, or
+    /// that the offer was switched on: "look again". May be called from any queue.
+    private let trashChanged: @Sendable () -> Void
 
-    /// `store` holds one thing: which trashed apps the person has already declined
-    /// to clean up after. Defaulted to memory so the thirteen tests that build this
-    /// engine directly keep working — and a fresh record per test is what a test
-    /// wants anyway.
+
+    /// `store` holds three things: which trashed apps the person has already
+    /// declined to clean up after, the Trash-offer switch, and the remembered sort
+    /// order. Defaulted to memory so the tests that build this engine
+    /// directly keep working — and a fresh record per test is what a test wants
+    /// anyway.
     public init(home: URL, apps: AppLister, fs: FileSystemPort, trash: TrashPort,
                 running: RunningAppsPort,
                 extensions: SystemExtensionPort = NoSystemExtensions(),
+                fullDiskAccess: FullDiskAccessPort = GrantedFullDiskAccess(),
                 store: NamespacedStore = NamespacedStore(namespace: UninstallerEngine.moduleID,
                                                         backing: InMemoryKeyValueStore()),
-                transport: LocalTransport = LocalTransport()) {
+                trashChanged: @escaping @Sendable () -> Void = {}) {
         self.home = home
         self.apps = apps
         self.fs = fs
         self.trash = trash
         self.running = running
         self.extensions = extensions
+        self.fullDiskAccess = fullDiskAccess
         self.store = store
-        self.localTransport = transport
-        self.transport = transport
-        wireTransport()
+        self.trashChanged = trashChanged
     }
 
     /// Watches `~/.Trash` so that an app dragged there while Helm is running is
@@ -67,9 +75,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     ///
     /// The watcher belongs to the engine and the judgement stays with it: the
     /// host is told "look again", never "an app arrived", and it learns that
-    /// through the transport's event stream, which is the channel it is already
-    /// allowed to use. The sweep on activate stays — it is the only thing that
-    /// catches an app deleted while Helm was closed.
+    /// through `trashChanged`. The host's sweep at launch and when the module is
+    /// switched on stays — it is the only thing that catches an app deleted while
+    /// Helm was closed.
     public func activate() {
         startWatchingTrashIfAsked()
     }
@@ -105,7 +113,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         let made = FolderWatcher { [weak self] changed in
             guard let self, TrashArrival.namesAnApp(changed, trash: trash) else { return }
             HelmLog.shared.info(UninstallerEngine.moduleID, "an app reached the Trash")
-            self.localTransport.emit(EngineEvent(name: UninstallerEvent.trashChanged.rawValue))
+            self.trashChanged()
         }
         watcher = made
         // The stream's own answer, which used to be thrown away — so this method
@@ -133,26 +141,23 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                             "Helm cannot read the Trash, so the offer will not appear")
     }
 
-    /// Stopped here and not only in `deinit`: the stream holds this object, so a
-    /// `deinit` that waits for the stream to go away waits forever.
+    /// Stopped here rather than left to the watcher's `deinit`, which runs only
+    /// once the engine itself is released.
     public func deactivate() {
         watcher?.stop()
         watcher = nil
     }
 
     /// Where every leftover this module knows about lives.
-    ///
-    /// It carried a doc comment about running blocking work on a dispatch queue
-    /// so a pool thread is never parked — true of this engine, and about
-    /// `offTheCooperativePool`, which the operations below call directly. The
-    /// helper that sentence described is gone and the sentence stayed, over the
-    /// next declaration it found. Homebrew's engine had the same orphan.
     private var library: URL { home.appendingPathComponent("Library") }
 
     // MARK: - Operations
 
     public func listApps() async -> [InstalledApp] {
-        await offTheCooperativePool { self.apps.installedApps() }
+        HelmLog.shared.info(UninstallerEngine.moduleID, "engine listApps start")
+        let list = await offTheCooperativePool { self.apps.installedApps() }
+        HelmLog.shared.info(UninstallerEngine.moduleID, "engine listApps done: \(list.count)")
+        return list
     }
 
     /// Sizes for the list already on screen — which is why the list arrives as
@@ -253,18 +258,18 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     private func releaseOpenedWorker() { openedWorkerLock.withLock { openedWorkerBusy = false } }
 
-    public func scan(bundleID: String, appPath: String, appName: String) async throws -> ScanResult {
-        await offTheCooperativePool { self.scanSync(bundleID: bundleID, appPath: appPath, appName: appName) }
+    public func scan(bundleID: String, appName: String) async -> ScanResult {
+        await offTheCooperativePool { self.scanSync(bundleID: bundleID, appName: appName) }
     }
 
-    private func scanSync(bundleID: String, appPath: String, appName: String) -> ScanResult {
+    private func scanSync(bundleID: String, appName: String) -> ScanResult {
         var leftovers: [Leftover] = []
         // Prefix globs overlap the exact candidates they generalise; the same
         // directory must not be listed (or trashed) twice.
         var seenPaths: Set<String> = []
-        // Every candidate below is derived from the app's bundle id, and the
-        // facts that can refute a claim on one refute the claim on all of them,
-        // so they are gathered once per scan rather than per candidate — and
+        // The candidates built from the app's bundle id are judged by facts that
+        // can refute a claim on one and so refute the claim on all of them, so
+        // they are gathered once per scan rather than per candidate — and
         // only when there is something to judge, since an app with no leftovers
         // should not pay for a directory listing.
         var ownership: LeftoverOwnership?
@@ -299,14 +304,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         }
         report(refusedPaths, bundleID: bundleID, contested: ownership?.idIsContested ?? false)
         leftovers.sort { $0.sizeBytes > $1.sizeBytes }
-        return ScanResult(bundleID: bundleID, appPath: appPath,
-                          // Zero, deliberately: nothing reads this, and filling it walked the
-                          // whole bundle again — a median of 49 ms per app, 3.2 s for Xcode,
-                          // while the user waits for the review screen. The size shown there
-                          // comes from `InstalledApp`, which already has it.
-                          appSizeBytes: 0,
-                          leftovers: leftovers,
-                          runningNow: running.isRunning(bundleID: bundleID))
+        return ScanResult(leftovers: leftovers, runningNow: running.isRunning(bundleID: bundleID))
     }
 
     /// The per-scan ownership facts, read once each: the app folders' listing,
@@ -315,17 +313,22 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// five folders of entries ask about the same handful of ids, and each
     /// question is a round trip to the system.
     private func makeOwnership(bundleID: String) -> LeftoverOwnership {
-        var answers: [String: Bool] = [:]
-        return LeftoverOwnership(
+        LeftoverOwnership(
             bundleID: bundleID,
             installedBundleIDs: apps.installedBundleIDs(),
             installedPaths: apps.installedPaths(forBundleID: bundleID),
-            knownToSystem: { [apps] id in
-                if let remembered = answers[id] { return remembered }
-                let answer = apps.isKnownToSystem(bundleID: id)
-                answers[id] = answer
-                return answer
-            })
+            knownToSystem: rememberingLaunchServices())
+    }
+
+    /// One scan's LaunchServices answers, each asked once.
+    private func rememberingLaunchServices() -> (String) -> Bool {
+        var answers: [String: Bool] = [:]
+        return { [apps] id in
+            if let remembered = answers[id] { return remembered }
+            let answer = apps.isKnownToSystem(bundleID: id)
+            answers[id] = answer
+            return answer
+        }
     }
 
     /// A refusal that leaves no trace reads exactly like a scan that found
@@ -343,7 +346,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                             + "candidate(s) belonging to another installed app")
     }
 
-    public func quit(bundleID: String, force: Bool = false) { running.quit(bundleID: bundleID, force: force) }
+    func quit(bundleID: String, force: Bool) { running.quit(bundleID: bundleID, force: force) }
 
     /// Waits for a quit to have actually happened.
     ///
@@ -356,13 +359,16 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// back. Too long and everyone waits for an app that stopped in 50 ms.
     ///
     /// **The deadline ends the wait, not the question.** An app that ignores a
-    /// quit does not make this fail or throw; `removeBatch` asks whether the app
+    /// quit does not make this fail or throw; `trashPaths` asks whether the app
     /// still runs once this returns, and a batch still holding one moves nothing.
-    public func waitUntilGone(bundleID: String,
-                              deadline: TimeInterval = 5,
-                              poll: TimeInterval = 0.05) async {
+    func waitUntilGone(bundleID: String,
+                      deadline: TimeInterval = 5,
+                      poll: TimeInterval = 0.05) async {
         let until = Date().addingTimeInterval(deadline)
-        while running.isRunning(bundleID: bundleID), Date() < until {
+        // Each poll is a blocking AppKit read: off the cooperative pool, the sleep
+        // between polls stays a suspension (ARCHITECTURE.md § Running applications).
+        while await offTheCooperativePool({ self.running.isRunning(bundleID: bundleID) }),
+              Date() < until {
             try? await Task.sleep(nanoseconds: UInt64(poll * 1_000_000_000))
         }
     }
@@ -385,11 +391,13 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     private static let dismissedKey = "trashOfferDismissed"
 
+    /// One lock over read-judge-record of the dismissed set: the sweep's prune and
+    /// a cancel both read it, change it and write it back, and without this one
+    /// overwrites the other's change. Neither path suspends while holding it.
+    private let dismissedLock = NSLock()
+
     /// What is sitting in the Trash that left something behind, minus what has
     /// already been declined.
-    ///
-    /// One command rather than several, because the host cannot import this target
-    /// and reach these pieces one at a time (Package.swift, HelmApp's dependencies).
     ///
     /// The order is the order the Trash listed, which is the order the window draws
     /// its groups in.
@@ -418,6 +426,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         // copy is still installed, or it left nothing behind. Counts only; a
         // bundle id names somebody's habits.
         var stillInstalled = 0, nothingLeft = 0
+        dismissedLock.lock()
         var dismissed = Set(store.stringArray(Self.dismissedKey))
         // Swept before it is read: an app that has left the Trash — restored, or
         // finally deleted — takes its "no" with it, so removing the same app later
@@ -427,6 +436,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             store.set(Array(kept), for: Self.dismissedKey)
             dismissed = kept
         }
+        dismissedLock.unlock()
 
         let offerable = TrashOfferMemory.toOffer(found: found, dismissed: dismissed)
         let groups = offerable
@@ -441,8 +451,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                     stillInstalled += 1
                     return nil
                 }
-                let result = scanSync(bundleID: app.bundleID, appPath: app.path,
-                                      appName: app.name)
+                let result = scanSync(bundleID: app.bundleID, appName: app.name)
                 guard !result.leftovers.isEmpty else {
                     nothingLeft += 1
                     return nil
@@ -476,13 +485,15 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         HelmLog.shared.info(UninstallerEngine.moduleID, "trash offer switched \(on ? "on" : "off")")
         startWatchingTrashIfAsked()
         guard on else { return }
-        recordTrashReadable(apps.trashedApps() != nil)
-        localTransport.emit(EngineEvent(name: UninstallerEvent.trashChanged.rawValue))
+        recordTrashReadable(apps.trashIsReadable())
+        trashChanged()
     }
 
     /// Cancel. Remembered so the window does not return for this app at the next
     /// launch, and forgotten when the app leaves the Trash.
     public func dismissTrashedApp(bundleID: String) {
+        dismissedLock.lock()
+        defer { dismissedLock.unlock() }
         var dismissed = Set(store.stringArray(Self.dismissedKey))
         dismissed.insert(bundleID)
         store.set(Array(dismissed), for: Self.dismissedKey)
@@ -520,9 +531,27 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         // bundle-id-shaped folder under `~/Library` becomes a removal candidate,
         // unattended.
         //
-        // CLAUDE.md records that a local install drops the Full Disk Access
+        // A local install drops (ARCHITECTURE.md § Signing and grants) the Full Disk Access
         // grant **every time**, so an unreadable Library is the ordinary state
         // after an update, not an exotic one.
+        //
+        // So the grant is asked first, before a single listing. Without it the
+        // leftovers under `~/Library/Containers` cannot be read, and a Library
+        // that lists at the top can still be missing the folders that matter;
+        // only `.granted` goes on, and no answer is not one.
+        let access = await offTheCooperativePool { [fullDiskAccess] in fullDiskAccess.fullDiskAccess() }
+        let refused = access != .granted
+        let wasRefused = watchLock.withLock { () -> Bool in
+            defer { refusedForAccess = refused }
+            return refusedForAccess
+        }
+        guard !refused else {
+            if !wasRefused {
+                HelmLog.shared.warn("scan", "uninstaller: Full Disk Access not confirmed — "
+                                    + "no unattended leftovers scan")
+            }
+            return nil
+        }
         let checks = await offTheCooperativePool { [apps, fs, library] in
             (installed: apps.installedBundleIDs(),
              library: fs.children(of: library).count)
@@ -549,12 +578,13 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     private func scanOrphansSync() -> [OrphanGroup] {
         let installedIDs = apps.installedBundleIDs()
+        let knownToSystem = rememberingLaunchServices()
         var byID: [String: [Leftover]] = [:]
         for (dir, kind) in Self.orphanScanDirs {
             for url in fs.children(of: library.appendingPathComponent(dir)) {
                 let name = url.lastPathComponent
                 guard OrphanDetector.isOrphan(name: name, installedBundleIDs: installedIDs,
-                                              knownToSystem: { self.apps.isKnownToSystem(bundleID: $0) })
+                                              knownToSystem: knownToSystem)
                 else { continue }
                 let id = OrphanDetector.bundleID(from: name)
                 byID[id, default: []].append(
@@ -566,22 +596,17 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             .sorted { $0.totalBytes > $1.totalBytes }
     }
 
-    /// Trashes a batch of paths, which may hold app bundles.
-    public func trashPaths(_ paths: [String],
-                           quittingRunningApps mayQuit: Bool = false) async -> UninstallResult {
-        await removeBatch(paths, quittingRunningApps: mayQuit)
-    }
-
-    /// The batch, with the one question that must not be carried from the scan
-    /// asked again first.
+    /// Trashes a batch of paths, which may hold app bundles, with
+    /// the one question that must not be carried from the scan asked again first.
     ///
     /// The review screen's `running` flag is `ScanResult.runningNow`, read when
     /// the review was built, and it is stale in both directions by the time
-    /// anybody presses anything: an app the person has since quit leaves the
-    /// button dead, and an app started since then has its bundle moved out from
-    /// under a live process — which then writes its preferences on exit and puts
-    /// back the leftovers this batch has just taken. That is the family CLAUDE.md
-    /// names: a local flag standing in for a live external fact. The flag is not
+    /// anybody presses anything: an app the person has since quit still shows
+    /// as running, and an app started since then does not, so on the flag alone
+    /// its bundle would be moved out from under a live process — which then
+    /// writes its preferences on exit and puts back the leftovers this batch has
+    /// just taken. That is the family
+    /// (ARCHITECTURE.md § The gates) of a local flag standing in for a live external fact. The flag is not
     /// made fresher; the question is asked where the answer is used, and again
     /// after the quitting — which is itself long enough to have changed it.
     ///
@@ -590,8 +615,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// login item, a helper, a double click — or it ignores the quit and
     /// `waitUntilGone` gives up. macOS moves a running app's bundle without a
     /// word, so neither refuses anything of its own accord.
-    private func removeBatch(_ paths: [String],
-                             quittingRunningApps mayQuit: Bool) async -> UninstallResult {
+    public func trashPaths(_ paths: [String],
+                           quittingRunningApps mayQuit: Bool = false) async -> UninstallResult {
         // Off the pool: this reads each bundle's `Info.plist`, and the running
         // port reaches AppKit through the main thread (ARCHITECTURE.md § Running
         // applications).
@@ -604,7 +629,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         case .quitFirst(let apps):
             for app in apps {
                 HelmLog.shared.info(UninstallerEngine.moduleID, "force quit \(Redact.app(app.bundleID))")
-                quit(bundleID: app.bundleID, force: true)
+                await offTheCooperativePool { self.quit(bundleID: app.bundleID, force: true) }
                 // Returns when the app is actually gone. It used to be the view
                 // model's business, decided there from the same stale flag.
                 await waitUntilGone(bundleID: app.bundleID)
@@ -723,76 +748,6 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 TrashFailureInfo(path: $0.path, reason: $0.reason,
                                  message: saidByPath[$0.path] ?? "")
             })
-    }
-
-    // MARK: - Transport (request/response)
-
-    private func wireTransport() {
-        localTransport.setHandler { [weak self] cmd in
-            guard let self else { return Data() }
-            guard let name = UninstallerCommand(rawValue: cmd.name) else { return Data() }
-            switch name {
-            case .listApps:
-                HelmLog.shared.info(UninstallerEngine.moduleID, "engine listApps start")
-                let list = await self.listApps()
-                HelmLog.shared.info(UninstallerEngine.moduleID, "engine listApps done: \(list.count)")
-                return EngineReply.encode(list, for: cmd)
-            case .appSizes:
-                guard let list = EngineReply.decode([InstalledApp].self, from: cmd)
-                else { return Data() }
-                return EngineReply.encode(await self.appSizes(list), for: cmd)
-            case .lastOpened:
-                guard let list = EngineReply.decode([InstalledApp].self, from: cmd)
-                else { return Data() }
-                return EngineReply.encode(await self.lastOpened(list), for: cmd)
-            case .sortOrder:
-                return EngineReply.encode(self.sortOrder, for: cmd)
-            case .setSortOrder:
-                guard let order = EngineReply.decode(AppSortOrder.self, from: cmd) else { return Data() }
-                self.setSortOrder(order)
-                return Data()
-            case .scan:
-                guard let r = EngineReply.decode(UninstallScanRequest.self, from: cmd)
-                else { return Data() }
-                let res = try await self.scan(bundleID: r.bundleID, appPath: r.appPath, appName: r.appName)
-                return EngineReply.encode(res, for: cmd)
-            case .scanOrphans:
-                return EngineReply.encode(await self.scanOrphans(), for: cmd)
-            case .backgroundScan:
-                return EngineReply.encode(await self.backgroundScan(), for: cmd)
-            case .trashedAppLeftovers:
-                return EngineReply.encode(await self.trashedAppLeftovers(), for: cmd)
-            case .watchingTrash:
-                // The state, not the flag: a `Bool` here was the whole of what the
-                // page could know, so «on» was all it could draw.
-                return EngineReply.encode(self.trashWatch, for: cmd)
-            case .setWatchingTrash:
-                // The one arm that writes `watcher`, so it goes where the other
-                // two writers already are. `send` runs this handler on the
-                // caller's own executor, and nobody awaits this reply — the
-                // sweep it asks for arrives as `trashChanged`.
-                let on = EngineReply.decode(Bool.self, from: cmd) ?? false
-                await MainActor.run { self.setWatchingTrash(on) }
-                return Data()
-            case .dismissTrashedApp:
-                self.dismissTrashedApp(bundleID: String(decoding: cmd.payload, as: UTF8.self))
-                return Data()
-            case .trashPaths:
-                guard let batch = EngineReply.decode(TrashBatchRequest.self, from: cmd)
-                else { return Data() }
-                let done = await self.trashPaths(batch.paths,
-                                                 quittingRunningApps: batch.quitRunningApps)
-                return EngineReply.encode(done, for: cmd)
-            case .quit:
-                if let r = EngineReply.decode(QuitRequest.self, from: cmd) {
-                    self.quit(bundleID: r.bundleID, force: r.force)
-                    // The command returns when the app is gone, so the caller
-                    // does not have to guess how long that takes.
-                    await self.waitUntilGone(bundleID: r.bundleID)
-                }
-                return Data()
-            }
-        }
     }
 }
 

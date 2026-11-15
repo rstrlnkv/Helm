@@ -55,7 +55,6 @@ final class ScanJournalInterruptedTests: XCTestCase {
         let change = journal.change(module: "disk")
         XCTAssertTrue(change.went.isEmpty,
                       "a current list that is not on disk was read as a scan that found nothing")
-        XCTAssertEqual(change.wentBytes, 0)
     }
 
     /// The same hole, arrived at the other way: `current.json` is on disk but

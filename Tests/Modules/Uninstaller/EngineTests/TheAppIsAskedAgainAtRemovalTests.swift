@@ -25,6 +25,8 @@ final class WatchfulTrash: TrashPort, @unchecked Sendable {
     func trashItem(_ url: URL) -> TrashOutcome {
         let answer = watching()
         lock.lock(); readings.append((url.path, answer)); lock.unlock()
+        // Gone from its place, as a real move leaves it: `HelmTrash.remove` asks.
+        try? FileManager.default.removeItem(at: url)
         return .success
     }
 }
@@ -62,9 +64,7 @@ final class TheAppIsAskedAgainAtRemovalTests: XCTestCase {
     private func appBundle(_ name: String, id: String) throws -> String {
         let app = home.appendingPathComponent("Applications/\(name).app")
         _ = try write("Applications/\(name).app/Contents/MacOS/\(name)", in: home, bytes: 64)
-        let info = app.appendingPathComponent("Contents/Info.plist")
-        try (["CFBundleIdentifier": id] as NSDictionary).write(to: info)
-        return app.path
+        return try writeAppBundle(app, id: id)
     }
 
     private func leftover(_ name: String) throws -> String {

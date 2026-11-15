@@ -17,6 +17,8 @@ import XCTest
 /// of any name carries two quote delimiters, so a fragment holding exactly one
 /// quote is a row whose name was cut in half — and the two halves belong to one
 /// record.
+///
+/// Past defect: commit 1fe5e099, «fix(vpn): a rule is bound to a signature, and a forged plist stops summoning dialogs».
 final class ANameCannotForgeARowTests: XCTestCase {
 
     /// A name carrying a newline and a complete, well-formed row after it.

@@ -3,11 +3,14 @@
 
 import Foundation
 import HelmRuntime
+import XCTest
 @testable import Module_VPN_Engine
 
 final class FakeRunner: VPNRunnerPort {
     var issued: [[String]] = []
     var listOutput: String = ""
+
+    init(list: String = "") { listOutput = list }
 
     /// **Consecutive answers to `--nc list`, which is what the real tool gives.**
     ///
@@ -25,6 +28,9 @@ final class FakeRunner: VPNRunnerPort {
     /// answering the same thing. Empty means «use `listOutput`», so every test
     /// written before this stays exactly as it was.
     var listScript: [String] = []
+    /// How many of the first `--nc list` reads exit non-zero, as a tool that was
+    /// not ready does; the later ones answer from `listOutput`/`listScript`.
+    var failingListReads = 0
     private var listReads = 0
 
     /// What `--nc status <name>` answers, per configuration name.
@@ -81,11 +87,29 @@ final class FakeRunner: VPNRunnerPort {
     private let hook = NSLock()
     private var _onRun: (@Sendable ([String]) -> Void)?
 
+    /// Every `start(_:supplying:)` the engine made, in order: the credentials
+    /// travel here and never through `issued`, which is the point.
+    var supplied: [(name: String, credentials: VPNCredentials)] = []
+    /// What the in-process start answers; the port's four states and no more.
+    var startAnswer: VPNStartAnswer = .started
+
+    func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer {
+        supplied.append((name, credentials))
+        return startAnswer
+    }
+
+    /// A query answers as a command does: this fake never runs out of time.
+    /// A read that does is scripted in `AHungScutilDoesNotParkTheModuleTests`.
+    func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result {
+        run(args)
+    }
+
     func run(_ args: [String]) -> HelmProcess.Result {
         onRun?(args)
         issued.append(args)
         if args == ["--nc", "list"] {
             defer { listReads += 1 }
+            if listReads < failingListReads { return HelmProcess.Result(status: 1, output: "") }
             guard !listScript.isEmpty else { return answer(listOutput) }
             return answer(listScript[min(listReads, listScript.count - 1)])
         }
@@ -117,12 +141,16 @@ final class FakeCreds: VPNCredentialsPort {
     var map: [String: VPNCredentials] = [:]
     /// Readable only where a prompt is allowed: the System keychain.
     var behindAPrompt: [String: VPNCredentials] = [:]
+    /// Names whose credential read failed: the tool answered nothing usable, so
+    /// nobody knows whether a secret is kept (`VPNCredentialRead.unreadable`).
+    var unreadable: Set<String> = []
     /// Every ask, so a test can see that nothing was asked at all — which is a
     /// different fact from any of the three answers.
     private(set) var asks: [(name: String, promptingAllowed: Bool)] = []
 
     func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentialRead {
         asks.append((name, promptingAllowed))
+        if unreadable.contains(name) { return .unreadable }
         if let cached = map[name] { return answer(cached) }
         guard let stored = behindAPrompt[name] else {
             // Neither tier has anything: the configuration keeps no secret Helm
@@ -143,8 +171,7 @@ final class FakeCreds: VPNCredentialsPort {
 
     /// `.ready` only ever carries a usable secret, exactly as `KeychainCredentials`
     /// builds it — a fake free to answer `.ready` with nothing in it would be freer
-    /// than the port it stands for (CLAUDE.md § What not to do, and what breaks if
-    /// you do).
+    /// than the port it stands for (ARCHITECTURE.md § Fakes).
     private func answer(_ creds: VPNCredentials) -> VPNCredentialRead {
         creds.secret?.isEmpty == false ? .ready(creds) : .notNeeded
     }
@@ -159,7 +186,7 @@ final class FakeCreds: VPNCredentialsPort {
 ///
 /// **Six files in this target had written this out privately** — three epochs
 /// between them, one with no `advance` and one with no settable `now` — which
-/// is the shape ARCHITECTURE.md § Tests and measurement records for every
+/// is the shape (ARCHITECTURE.md § Tests and measurement) records for every
 /// helper that ended up in `HelmRuntime`. It is here rather than in `HelmTestSupport` only because
 /// `Tests/Support` has another writer in it today; that is the move owed next.
 final class TestClock: @unchecked Sendable {
@@ -225,12 +252,19 @@ final class FakeApps: AppObserverPort {
     /// instance whose signature could not be read at all — a real state, and the
     /// one a forged bundle in a place the reader cannot follow would produce.
     var identities: [String: CodeIdentity] = [:]
+    private(set) var starts = 0
+    private(set) var stops = 0
     private(set) var onChange: (@Sendable () -> Void)?
 
     func runningBundleIDs() -> Set<String> { bundleIDs }
     func identity(of bundleID: String) -> CodeIdentity? { identities[bundleID] }
     func startObserving(_ onChange: @escaping @Sendable () -> Void) {
+        starts += 1
         self.onChange = onChange
+    }
+    func stopObserving() {
+        stops += 1
+        onChange = nil
     }
     func fire() { onChange?() }
 
@@ -242,4 +276,65 @@ final class FakeApps: AppObserverPort {
         apps.identities["com.a"] = testAppIdentity
         return apps
     }
+}
+
+/// The fixture two blip files share: a tunnel Helm itself raised, because that is
+/// what a drop is about. `_autoConnected` is written by an *automatic* connect — a
+/// rule firing for an app that launched — and not by a command somebody sent, so
+/// the first version of this fixture, which connected with a command, said
+/// nothing about drops until it asserted its own precondition.
+private let blipBundleID = "com.example.app"
+private let blipIdentity = CodeIdentity(signingID: "com.example.app", teamID: "ABCDE12345")
+
+func blipList(_ status: String) -> String {
+    ["Available network connection services:",
+     "* (\(status)) 11111111-1111-1111-1111-111111111111 VPN (com.x.work) \"work\" [VPN:com.x.work]"]
+        .joined(separator: "\n")
+}
+
+func blipEngineHoldingTheTunnel(_ runner: FakeRunner, _ clock: TestClock) -> VPNEngine {
+    let apps = FakeApps()
+    apps.identities[blipBundleID] = blipIdentity
+    apps.bundleIDs = [blipBundleID]
+    let settings = VPNSettings.inMemory()
+    settings.setRulesJSON(VPNRules.encode(
+        [blipBundleID: VPNAppRule(vpnName: "work", identity: blipIdentity)]))
+    runner.listOutput = blipList("Disconnected")
+    // Every port named, none defaulted: three of the defaults reach the
+    // network or run a tool for fifteen seconds
+    // (`NoTestTakesAProductionPortTests`).
+    let engine = VPNEngine(settings: settings, runner: runner, apps: apps,
+                           interfaces: FakeInterfaces(), exit: FakeExit(),
+                           speed: FakeSpeed(), now: { clock.now }, work: .inline)
+    engine.activate()
+    runner.listOutput = blipList("Connected")
+    engine.refresh()
+    XCTAssertTrue(engine.autoConnected.contains("work"),
+                  "precondition: Helm is not holding the tunnel, so nothing here is a drop")
+    engine.clearLastAutomationForTesting()
+    return engine
+}
+
+/// `scutil --nc status "<name>"` for a tunnel that is up, as the real tool writes
+/// it: the tunnel's own `InterfaceName` inside the `IPv4` dictionary, the routing
+/// flag one level out (absent when `primary` is nil), then any `extra` lines.
+/// `TheInterfaceComesFromTheToolTests` carries the whole captured output, decoys and all.
+func scutilStatus(_ interface: String = "utun4", primary: Bool? = nil, extra: [String] = []) -> String {
+    (["Connected", "Extended Status <dictionary> {", "  IPv4 : <dictionary> {",
+      "    InterfaceName : \(interface)", "  }"]
+        + (primary.map { ["  IsPrimaryInterface : \($0 ? 1 : 0)"] } ?? [])
+        + extra.map { "  " + $0 } + ["}"]).joined(separator: "\n")
+}
+
+extension VPNSettings {
+    /// Settings over a store that lives and dies with the test, in the module's own namespace.
+    static func inMemory() -> VPNSettings {
+        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
+    }
+}
+
+/// One `scutil --nc list` row in the plain IPSec shape, without the leading `*`.
+func scutilListRow(_ status: String, _ name: String = "A",
+                   id: String = "11111111-1111-1111-1111-111111111111") -> String {
+    "(\(status)) \(id) IPSec \"\(name)\""
 }

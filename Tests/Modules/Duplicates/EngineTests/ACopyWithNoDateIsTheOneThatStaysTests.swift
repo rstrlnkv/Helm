@@ -13,8 +13,8 @@ import XCTest
 ///
 /// One thing it fixes in place. **The undated copy stays whatever is below the
 /// rung**, which the fixtures already in the suite could not show: in
-/// `SurvivingCopyTests` and `KeepPolicyTests` the dateless copy is also the
-/// shallower one, so both were green whether the undated rung decided or the
+/// `KeepPolicyTests` the dateless copy is also the
+/// shallower one, so its cases were green whether the undated rung decided or the
 /// depth rung did — they ask `SurvivingCopy.reason` now, which tells the two
 /// apart on the fixture they already had. This file keeps the other half: a
 /// dateless copy with every rung below it *against* it.
@@ -23,19 +23,11 @@ import XCTest
 /// here and nothing depends on where this Mac keeps Downloads.
 final class ACopyWithNoDateIsTheOneThatStaysTests: XCTestCase {
 
-    private func file(_ path: String, added: Date? = nil) -> FileFacts {
-        FileFacts(path: path, bytes: 4_096, fileID: UInt64(abs(path.hashValue)), added: added)
-    }
-    private func day(_ n: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(n) * 86_400) }
-    private func rule(_ policy: KeepPolicy) -> KeepRule {
-        KeepRule(policy, transit: TransitFolders(roots: []))
-    }
-
     /// The copy with no date is four folders further in and sorts last, so every
     /// rung below the undated one is against it.
     private var copies: [FileFacts] {
-        [file("/Users/r/Archive/a.jpg", added: day(400)),
-         file("/Users/r/Archive/2019/Old/Deep/z.jpg")]
+        [facts("/Users/r/Archive/a.jpg", added: day(400)),
+         facts("/Users/r/Archive/2019/Old/Deep/z.jpg")]
     }
 
     // MARK: - The rule
@@ -48,7 +40,7 @@ final class ACopyWithNoDateIsTheOneThatStaysTests: XCTestCase {
                            "/Users/r/Archive/2019/Old/Deep/z.jpg", """
                 policy «\(policy.rawValue)»: the deeper, later-sorting copy is the one whose \
                 Date Added the filesystem never recorded, and the group kept the other one. \
-                A blank date read as a loss is the rule `SurvivingCopyTests` records being \
+                A blank date read as a loss is the rule `KeepPolicyTests` records being \
                 put back — and read as silence it is the cycle \
                 `TheSurvivorDoesNotDependOnWalkOrderTests` records.
                 """)
@@ -65,8 +57,8 @@ final class ACopyWithNoDateIsTheOneThatStaysTests: XCTestCase {
     /// wins» and the test above would not notice.
     func testTwoCopiesWithoutDatesAreAlikeOnThisRung() {
         for policy in KeepPolicy.allCases {
-            let ordered = SurvivingCopy.order([file("/Users/r/Archive/2019/Old/deep.jpg"),
-                                               file("/Users/r/Archive/shallow.jpg")],
+            let ordered = SurvivingCopy.order([facts("/Users/r/Archive/2019/Old/deep.jpg"),
+                                               facts("/Users/r/Archive/shallow.jpg")],
                                               by: rule(policy))
             XCTAssertEqual(ordered[0].path, "/Users/r/Archive/shallow.jpg",
                            "policy «\(policy.rawValue)»: neither has a date, so the missing "
@@ -79,8 +71,8 @@ final class ACopyWithNoDateIsTheOneThatStaysTests: XCTestCase {
     /// copy's win, which is the rung the new one sits above rather than replaces.
     func testTwoKnownDatesAreStillDecidedByTheDate() {
         for policy in KeepPolicy.allCases {
-            let dated = [file("/Users/r/Archive/a.jpg", added: day(400)),
-                         file("/Users/r/Archive/z.jpg", added: day(100))]
+            let dated = [facts("/Users/r/Archive/a.jpg", added: day(400)),
+                         facts("/Users/r/Archive/z.jpg", added: day(100))]
             XCTAssertEqual(SurvivingCopy.order(dated, by: rule(policy))[0].path,
                            "/Users/r/Archive/z.jpg")
             XCTAssertEqual(SurvivingCopy.reason(among: dated, by: rule(policy)), .date,

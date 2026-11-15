@@ -1,9 +1,7 @@
 import XCTest
 import HelmTestSupport
-import HelmContract
 import HelmRuntime
-import HelmUI
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
 /// The one row on the ring whose path names no file.
@@ -19,7 +17,7 @@ import Module_Disk_Engine
 final class TheBucketCannotBePickedTests: XCTestCase {
 
     private func model() -> DiskViewModel {
-        DiskViewModel(vm: ModuleViewModel(transport: AnsweringTransport(volumes: [])),
+        DiskViewModel(work: AnsweringWork(volumes: []),
                       store: ScanStore(directory: scratchDirectory("disk-bucket-pick")))
     }
 

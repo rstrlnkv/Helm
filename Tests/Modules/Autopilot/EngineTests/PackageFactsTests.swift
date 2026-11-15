@@ -30,7 +30,7 @@ final class PackageFactsTests: XCTestCase {
     }
 
     private func fact(named name: String) throws -> FileFacts {
-        let facts = FolderReader().facts(in: root.path, depth: 1)
+        let facts = FolderReader().reading(in: root.path, depth: 1).files
         return try XCTUnwrap(facts.first { $0.name == name }, "\(name) was not read at all")
     }
 

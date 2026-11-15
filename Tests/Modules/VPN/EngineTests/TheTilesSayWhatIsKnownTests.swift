@@ -8,6 +8,8 @@ import XCTest
 /// unknown. What it must never do is invent: a Helm launched after the tunnel
 /// came up does not know how long it has been up, and «—» in that tile would be
 /// a reading rather than an absence.
+///
+/// Past defect: commit 9e2f08f9, «fix(vpn): the measurement leaves the module's queue, and four absences get a value».
 final class TheTilesSayWhatIsKnownTests: XCTestCase {
 
     private let now = Date(timeIntervalSince1970: 10_000)

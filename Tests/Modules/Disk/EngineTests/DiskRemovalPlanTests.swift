@@ -1,18 +1,20 @@
 import XCTest
 @testable import Module_Disk_Engine
 
+let caches = "/Users/test/Library/Caches"
+
+/// A cache folder's advice row, one target per child, shared by the two files
+/// about what the basket hands to the Trash.
+func cacheAdvice(_ children: [(String, Int)]) -> DiskAdvice {
+    DiskAdvice(name: "Caches", path: caches, kind: .cache,
+               targets: children.map { DiskAdvice.Target(path: caches + "/" + $0.0,
+                                                         bytes: $0.1) })
+}
+
 /// The basket holds one row per thing the person picked. What that row hands to
 /// the Trash is a different list, and these are the rules for getting from one
 /// to the other and back.
 final class DiskRemovalPlanTests: XCTestCase {
-    private let caches = "/Users/test/Library/Caches"
-
-    private func cacheAdvice(_ children: [(String, Int)]) -> DiskAdvice {
-        DiskAdvice(name: "Caches", path: caches, kind: .cache,
-                   targets: children.map { DiskAdvice.Target(path: caches + "/" + $0.0,
-                                                             bytes: $0.1) })
-    }
-
     // MARK: - Basket to targets
 
     func testACacheRowHandsOverItsContents() {

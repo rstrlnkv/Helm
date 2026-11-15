@@ -9,6 +9,7 @@ import XCTest
 /// crosshair, so the freeze is taken twice — the overlay's frame without, the
 /// cut's with — and only when the setting asks. `crop` and the full-screen shot
 /// take the second when there is one.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Freeze.swift`: `public var shot: CGImage { withCursor ?? image }` -> `public var shot: CGImage { image }`.
 final class TheCursorIsInTheShotNotTheFreezeTests: XCTestCase {
 
     private func freeze(withCursor: Bool) -> Freeze {

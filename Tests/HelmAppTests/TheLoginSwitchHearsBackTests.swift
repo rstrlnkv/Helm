@@ -3,6 +3,7 @@ import HelmUI
 import ServiceManagement
 import XCTest
 @testable import HelmApp
+import HelmAppStrings
 
 /// «Open Helm at login» against the only thing that can refuse it.
 ///
@@ -60,5 +61,39 @@ final class TheLoginSwitchHearsBackTests: XCTestCase {
         XCTAssertNil(AppStr.loginItemNote(.off))
         XCTAssertNotNil(AppStr.loginItemNote(.refused))
         XCTAssertNotNil(AppStr.loginItemNote(.needsApproval))
+    }
+
+    /// Switching off from «waiting for approval» must unregister, or the switch
+    /// springs back on and Reset leaves the registration.
+    func testSwitchingOffGivesBackARegistrationWaitingForApproval() {
+        XCTAssertTrue(LoginItem.unregisters(from: .enabled))
+        XCTAssertTrue(LoginItem.unregisters(from: .requiresApproval))
+        XCTAssertFalse(LoginItem.unregisters(from: .notRegistered))
+        XCTAssertFalse(LoginItem.unregisters(from: .notFound))
+    }
+
+    /// The write path itself: off from «waiting for approval» calls unregister.
+    func testRequestingOffFromWaitingForApprovalCallsUnregister() throws {
+        var unregistered = 0, registered = 0
+        try LoginItem.request(false, status: .requiresApproval,
+                              register: { registered += 1 }, unregister: { unregistered += 1 })
+        XCTAssertEqual(unregistered, 1)
+        XCTAssertEqual(registered, 0)
+        try LoginItem.request(false, status: .notRegistered,
+                              register: { registered += 1 }, unregister: { unregistered += 1 })
+        XCTAssertEqual(unregistered, 1)
+    }
+
+    /// The other branch of the same seam: on registers unless already enabled.
+    func testRequestingOnRegistersUnlessAlreadyEnabled() throws {
+        for (status, expected) in [(SMAppService.Status.notRegistered, 1),
+                                   (.enabled, 0),
+                                   (.requiresApproval, 1)] {
+            var registered = 0, unregistered = 0
+            try LoginItem.request(true, status: status,
+                                  register: { registered += 1 }, unregister: { unregistered += 1 })
+            XCTAssertEqual(registered, expected, "\(status)")
+            XCTAssertEqual(unregistered, 0, "\(status)")
+        }
     }
 }

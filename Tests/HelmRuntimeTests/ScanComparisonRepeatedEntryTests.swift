@@ -13,6 +13,8 @@ import XCTest
 /// treatment, so the identical input on the identical structure is handled two
 /// different ways. The byte totals the journal draws are `reduce` over those
 /// arrays, so the asymmetry is not cosmetic: it is one number twice.
+///
+/// Guards: 9b750e18 (a repeated entry counted twice on the current side only).
 final class ScanComparisonRepeatedEntryTests: XCTestCase {
 
     private func item(_ path: String, _ bytes: Int) -> ScanItem {
@@ -36,6 +38,6 @@ final class ScanComparisonRepeatedEntryTests: XCTestCase {
         let change = ScanComparison.between(previous: [item("/a", 10)],
                                             current: [item("/a", 10), item("/a", 10)])
         XCTAssertEqual(change.stayed.map(\.path), ["/a"])
-        XCTAssertEqual(change.stayedBytes, 10)
+        XCTAssertEqual(change.stayed.map(\.bytes), [10])
     }
 }

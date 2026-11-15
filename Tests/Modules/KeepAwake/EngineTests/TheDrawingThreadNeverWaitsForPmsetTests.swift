@@ -20,7 +20,7 @@ import HelmRuntime
 /// And every KeepAwake caller of that port is the thread that draws.
 /// `activate()` is the host's module enable, at launch; `recompute()` runs from
 /// the display, power and application observers, all of which deliver on main;
-/// the transport handler wraps itself in `MainActor.run` on purpose. So a Mac
+/// the model's calls into the engine are made on the main actor. So a Mac
 /// whose Homebrew page is busy can have its main thread parked inside
 /// `ClamshellCoordinator`, at launch, before anything is drawn — which is the
 /// arrangement `fix(settings): the thread that draws never waits for the
@@ -29,6 +29,8 @@ import HelmRuntime
 /// These cases assert **where** the work happens, never how long it takes: the
 /// call has to have happened before the thread is judged, or this is an
 /// absence-passes-vacuously test of a port nobody asked anything.
+///
+/// Guards: bf6c973b (the drawing thread waited on pmset).
 final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
 
     /// A clamshell port that answers like `FakeClamshell` and also records the
@@ -98,7 +100,7 @@ final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
             return true
         }
         func setDisableSleep(_ on: Bool) -> Bool { record("setDisableSleep"); return grantExists }
-        func pmsetReport() -> String { record("pmsetReport"); return pmset }
+        func pmsetReport() -> String? { record("pmsetReport"); return pmset }
     }
 
     private var backing: InMemoryKeyValueStore!
@@ -128,7 +130,7 @@ final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: apps,
                         pointer: FakePointer(), clamshell: clamshell,
-                        clock: clock)
+                        clock: clock, lidInfo: FakeLidInfo())
     }
 
     /// The control: with neither anchor, launch asks `pmset` nothing at all —
@@ -217,8 +219,6 @@ final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
     /// `engage` asks `sudo -n` whether it may disable sleep. Nobody pressed
     /// anything; the person is looking at some other app.
     func testARuleTakingHoldDoesNotAskSudoOnTheDrawingThread() throws {
-        try XCTSkipUnless(MacHardware.hasLid,
-                          "this Mac has no lid, so the lid is never engaged")
         store.set(true, for: KeepAwakeSettings.Key.clamshellEnabled)
         store.set(AppTriggerRules.encode([AppTrigger(bundleID: "com.example.render")]),
                   for: KeepAwakeSettings.Key.autoAppRules)

@@ -12,6 +12,8 @@ import XCTest
 ///
 /// Total failure of the subject prints: `.same` for a file that was written into, swapped for a copy of itself, turned
 /// into a link or a folder, or read from nowhere.
+///
+/// Mutant, red here: `ShotReplacement.verdict` ignores the inode.
 final class TheReplacementVerdictMeetsEveryReadingTests: XCTestCase {
 
     private func reading(device: UInt64 = 1, inode: UInt64 = 2, size: Int64 = 3, seconds: Int64 = 4, nanoseconds: Int64 = 5,

@@ -5,8 +5,9 @@ import XCTest
 ///
 /// `listInstalled`, `outdated`, `descriptions` and `search` all call
 /// `ShellProcessRunner.run` and parse what comes back. It answers on a dispatch
-/// queue borrowed from the transport, so whatever happens here happens to the
+/// queue of the system's own, so whatever happens here happens to the
 /// Homebrew page.
+/// Kept: guards the defect fixed in 6dec5f2f fix: eight defects a second agent pass turned up (a chatty stderr stalled every fast query).
 final class ShellProcessRunnerTests: XCTestCase {
 
     /// Runs `body` on a background queue and fails rather than hanging the

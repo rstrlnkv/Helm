@@ -1,14 +1,13 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
+@testable import HelmUI
 import ImageIO
 import SwiftUI
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **«Edit» opens the palette on the finished picture, never on the screen under it, and «Done» replaces the file that
@@ -21,52 +20,14 @@ import Module_Screenshots_Engine
 /// Total failure of the subject prints: a file with the screen's ground in it, an editor
 /// opened on a file that is not the shot's, a second Done that replaces twice, a thumbnail that offers an Edit it could not
 /// keep, or a replacement that the person is not told of.
+///
+/// Mutant, red here: the overlay of an edit is built with `picture: nil`.
 @MainActor
 final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
 
     private typealias Board = CountingBoard
 
-    private final class Shutter: ShutterPlaying, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var plays: Int { lock.withLock { count } }
-        func play() { lock.withLock { count += 1 } }
-    }
-
-    /// The freeze, which can be held open: the editor is then still being opened.
-    private final class Frames: ScreenCapturing, @unchecked Sendable {
-        let freeze: Freeze
-        private let lock = NSLock()
-        private var count = 0
-        private var holding = false
-        private var waiting: CheckedContinuation<Void, Never>?
-        var freezes: Int { lock.withLock { count } }
-        var isHeld: Bool { lock.withLock { waiting != nil } }
-        init(_ freeze: Freeze) { self.freeze = freeze }
-        func hold() { lock.withLock { holding = true } }
-        func release() {
-            let next: CheckedContinuation<Void, Never>? = lock.withLock { holding = false; defer { waiting = nil }; return waiting }
-            next?.resume()
-        }
-        func access() -> CaptureAccess { .granted }
-        func requestAccess() {}
-        func freeze(cursor: Bool) async -> FreezeOutcome {
-            lock.withLock { count += 1 }
-            if lock.withLock({ holding }) {
-                await withCheckedContinuation { continuation in
-                    lock.withLock { waiting = continuation }
-                }
-            }
-            return .frozen(freeze)
-        }
-        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
-    }
-
-    private struct NoPreferences: CapturePreferences {
-        func location() -> RawSetting { RawSetting(nil) }
-        func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
-        func uiSounds() -> RawSetting { RawSetting(nil) }
-    }
+    private typealias Shutter = CountingShutter
 
     private final class Box { var overlay: CaptureOverlay?; var count = 0 }
 
@@ -76,7 +37,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let board: Board
         let trash: AsideTrash
         let shutter: Shutter
-        let capture: Frames
+        let capture: PileFrames
         let box: Box
         let store: NamespacedStore
         let desktop: URL
@@ -99,31 +60,15 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         super.tearDown()
     }
 
-    /// One 1000×800-point frame at 1× per real screen, with a red ground.
-    private func groundFrames() throws -> [FrozenDisplay] {
-        var frames: [FrozenDisplay] = []
-        for (index, screen) in NSScreen.screens.enumerated() {
-            let number = try XCTUnwrap(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32)
-            let context = try XCTUnwrap(CGContext(data: nil, width: 1000, height: 800, bitsPerComponent: 8, bytesPerRow: 0,
-                                                  space: CGColorSpaceCreateDeviceRGB(),
-                                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-            context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
-            context.fill(CGRect(x: 0, y: 0, width: 1000, height: 800))
-            frames.append(FrozenDisplay(id: DisplayID(number), frame: CGRect(x: 100_000 * CGFloat(index), y: 0, width: 1000, height: 800),
-                                        scale: 1, image: try XCTUnwrap(context.makeImage())))
-        }
-        return frames
-    }
-
     private func scene(target: SaveTarget = .desktop, thumbnail: Bool = true) throws -> Scene {
-        let frames = try groundFrames()
+        let frames = try OverlayRig.frames(ground: CGColor(red: 1, green: 0, blue: 0, alpha: 1))
         let home = scratchDirectory("edit-ui")
         let desktop = home.appendingPathComponent("Desktop", isDirectory: true)
         let aside = home.appendingPathComponent("Trash", isDirectory: true)
         try FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: aside, withIntermediateDirectories: true)
         let trash = AsideTrash(aside), board = Board(), shutter = Shutter()
-        let capture = Frames(Freeze(displays: frames.map { .image($0) }, windows: []))
+        let capture = PileFrames(Freeze(displays: frames.map { .image($0) }, windows: []))
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         store.set(thumbnail, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
@@ -133,9 +78,9 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))
         let toast = ShotToastRig.toast(clock)
         let box = Box()
-        let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store, session: session,
+        let controller = CaptureController(store: store, session: session,
                                            presentOverlay: { overlay in box.count += 1; box.overlay = overlay; return overlay.build() },
-                                           pins: PinBoard(present: { _ in }, screens: { [] }), toast: toast)
+                                           toast: toast)
         controllers.append(controller)
         return Scene(controller: controller, toast: toast, board: board, trash: trash, shutter: shutter, capture: capture, box: box,
                      store: store, desktop: desktop, frames: frames)
@@ -144,7 +89,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
     // MARK: Helpers
 
     private func take(_ s: Scene, width: Int = 1200, height: Int = 700) async throws -> WrittenShot {
-        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: width, height: height), kind: .area))
+        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: width, height: height)))
         let shot = try XCTUnwrap(s.toast.model.editSource?.shot, "nothing to edit after a saved shot")
         let written = try XCTUnwrap(image(shot.url), "the shot's file is no picture")
         let read = rgb(written, 3, 3)
@@ -247,8 +192,8 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         guard case .picture(_, let caption, let shown)? = s.toast.model.content else { return XCTFail("\(String(describing: s.toast.model.content))") }
         XCTAssertEqual(caption, ScStr.replaced)
         XCTAssertEqual(shown, original.url)
-        XCTAssertEqual(s.toast.model.reading, FileShotWriter().reading(of: original.url), "the thumbnail holds the file as it is now")
-        XCTAssertNotEqual(s.toast.model.reading, original.reading)
+        XCTAssertEqual(s.toast.model.current?.reading, FileShotWriter().reading(of: original.url), "the thumbnail holds the file as it is now")
+        XCTAssertNotEqual(s.toast.model.current?.reading, original.reading)
         XCTAssertFalse(s.controller.isBusy)
     }
 
@@ -384,6 +329,118 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertFalse(s.controller.isBusy)
     }
 
+    /// Empties the regions of this process's own address space that their owner has marked volatile (memory it has said
+    /// it can do without) and no other: it walks this task's regions, asks each for its purgeable state, and sets
+    /// EMPTY on those answering VOLATILE. Measured here: with the picture made from the file's path (before the
+    /// bytes were read at the opening), a file moved before this call could no longer be encoded after it.
+    ///
+    /// It allocates a purgeable region of its own, writes into it, marks it VOLATILE and asserts that the walk itself
+    /// emptied it. Whether ImageIO or CoreGraphics leave a volatile region of theirs at this point depends on the
+    /// system's caches (the earlier "emptied something" precondition failed on about one run in three), so the walk is
+    /// proven to run and to empty by a region that is certain to be there; the system's own volatile regions, when
+    /// present, are emptied by the same walk. The kernel itself may purge a volatile region before the walk reaches it
+    /// (measured: about one run in twenty); that attempt proves nothing and is made again with a fresh region, up to
+    /// `attempts` times. The region proves the walk, not the editor: whether the editor's decoded picture is ever
+    /// purgeable is the system's choice, and what the tests below prove is that the editor does not need a second
+    /// read of the file whichever regions the system took back.
+    private func emptyVolatileRegions(attempts: Int = 50) {
+        let length = mach_vm_size_t(getpagesize()) * 4
+        for _ in 0..<attempts {
+            var own: mach_vm_address_t = 0
+            guard mach_vm_allocate(mach_task_self_, &own, length, VM_FLAGS_ANYWHERE | VM_FLAGS_PURGABLE) == KERN_SUCCESS else {
+                return XCTFail("no purgeable region could be allocated")
+            }
+            defer { mach_vm_deallocate(mach_task_self_, own, length) }
+            UnsafeMutableRawPointer(bitPattern: UInt(own))?.storeBytes(of: 0x5A, as: UInt8.self)
+            var volatile: Int32 = VM_PURGABLE_VOLATILE
+            guard vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: own), VM_PURGABLE_SET_STATE, &volatile) == KERN_SUCCESS else {
+                return XCTFail("the region could not be marked volatile")
+            }
+            if emptyEveryVolatileRegion(watching: own) { return }
+        }
+        XCTFail("the walk never emptied the test's own volatile region in \(attempts) attempts")
+    }
+
+    /// One walk; true when the region at `own` was found VOLATILE and set EMPTY by it.
+    private func emptyEveryVolatileRegion(watching own: mach_vm_address_t) -> Bool {
+        var ownEmptied = false
+        var address: mach_vm_address_t = 0
+        while true {
+            var size: mach_vm_size_t = 0
+            var info = vm_region_basic_info_data_64_t()
+            var count = mach_msg_type_number_t(MemoryLayout<vm_region_basic_info_data_64_t>.size / MemoryLayout<Int32>.size)
+            var object: mach_port_t = 0
+            let found = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: Int32.self, capacity: Int(count)) {
+                    mach_vm_region(mach_task_self_, &address, &size, VM_REGION_BASIC_INFO_64, $0, &count, &object)
+                }
+            }
+            guard found == KERN_SUCCESS else { break }
+            var state: Int32 = 0
+            if vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: address), VM_PURGABLE_GET_STATE, &state) == KERN_SUCCESS,
+               state & VM_PURGABLE_STATE_MASK == VM_PURGABLE_VOLATILE {
+                var empty: Int32 = VM_PURGABLE_EMPTY
+                if vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: address), VM_PURGABLE_SET_STATE, &empty) == KERN_SUCCESS,
+                   address == own {
+                    // Read back: the call's success is not the state it left.
+                    var now: Int32 = 0
+                    ownEmptied = vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: address), VM_PURGABLE_GET_STATE, &now) == KERN_SUCCESS
+                        && now & VM_PURGABLE_STATE_MASK == VM_PURGABLE_EMPTY
+                }
+            }
+            address += size
+        }
+        return ownEmptied
+    }
+
+    /// The editor survives an emptying of the process's volatile regions, with the shot's file moved while it is open:
+    /// the edit comes out of what the editor holds, not of a second read of a path that no longer leads to the shot.
+    /// It does not claim the editor's own picture was among what was emptied.
+    func testTheEditorSurvivesTheVolatileRegionsEmptiedWithItsFileMovedAndSavesASeparateFile() async throws {
+        let s = try scene()
+        let original = try await take(s, width: 400, height: 300)
+        let overlay = try await openEditor(s)
+        try FileManager.default.moveItem(at: original.url, to: s.desktop.appendingPathComponent("mine.png"))
+        emptyVolatileRegions()
+        await finish(s, overlay)
+        let said = try XCTUnwrap(refusal(s), "no plaque: \(String(describing: s.toast.model.content))")
+        XCTAssertEqual(said.body, ScStr.refusal(.notReplaced(.changed)), "the edit could not be made from the picture the editor held")
+        XCTAssertEqual(names(s.desktop), ["mine.png", original.url.lastPathComponent].sorted(), "the edit was not saved")
+        XCTAssertEqual(s.trash.asked, [])
+        XCTAssertFalse(s.controller.isBusy)
+    }
+
+    /// The editor survives an emptying of the process's volatile regions, with marks drawn and the file moved: the
+    /// picture is drawn under the marks, since a picture that cannot be read again would leave the marks alone in the
+    /// file. It does not claim the editor's own picture was among what was emptied.
+    func testTheEditorSurvivesTheVolatileRegionsEmptiedWithItsFileMovedAndKeepsThePictureUnderTheMarks() async throws {
+        let s = try scene()
+        let original = try await take(s, width: 400, height: 300)
+        let overlay = try await openEditor(s)
+        draw(overlay, on: s.display(of: overlay))
+        try FileManager.default.moveItem(at: original.url, to: s.desktop.appendingPathComponent("mine.png"))
+        emptyVolatileRegions()
+        await finish(s, overlay)
+        let saved = names(s.desktop).filter { $0 != "mine.png" }
+        XCTAssertEqual(saved.count, 1, "the edit was not saved: \(names(s.desktop))")
+        let edit = try XCTUnwrap(saved.first.flatMap { image(s.desktop.appendingPathComponent($0)) }, "the edit is no picture")
+        XCTAssertTrue(isPicture(rgb(edit, 3, 3)), "the saved edit lost the picture under its marks: \(rgb(edit, 3, 3)) for \(picture)")
+        XCTAssertEqual(s.trash.asked, [])
+    }
+
+    /// The control: the editor survives the same emptying of the process's volatile regions with the file left in place.
+    /// The edit replaces the file, as it does without it, so this separates the emptying from the move that the two
+    /// tests above add to it.
+    func testTheEditorSurvivesTheVolatileRegionsEmptiedWithItsFileInPlaceAndReplacesIt() async throws {
+        let s = try scene()
+        let original = try await take(s, width: 400, height: 300)
+        let overlay = try await openEditor(s)
+        emptyVolatileRegions()
+        await finish(s, overlay)
+        XCTAssertEqual(s.trash.moved, [original.url])
+        XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
+    }
+
     func testTheTrashRefusingIsToldWithItsReasonAndBothFilesStay() async throws {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
@@ -420,7 +477,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertNil(refusal(s))
         guard case .picture(_, let caption, _)? = s.toast.model.content else { return XCTFail("\(String(describing: s.toast.model.content))") }
         XCTAssertEqual(caption, ScStr.replaced)
-        XCTAssertEqual(s.toast.model.reading, FileShotWriter().reading(of: original.url))
+        XCTAssertEqual(s.toast.model.current?.reading, FileShotWriter().reading(of: original.url))
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: s.trash.folder.path).count, 2)
     }
 
@@ -516,7 +573,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
     /// and no original is moved.
     func testAClipboardOnlyShotEditsAndCopiesAndSavesNoFile() async throws {
         let s = try scene(target: .clipboard)
-        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 400, height: 300), kind: .area))
+        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 400, height: 300)))
         let source = try XCTUnwrap(s.toast.model.editSource)
         XCTAssertNil(source.shot, "a shot with no file has no original")
         XCTAssertNotNil(source.held)
@@ -536,7 +593,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
     /// nothing is replaced, since the shot had no file.
     func testAClipboardOnlyShotEditedAfterTheSettingChangedIsSavedAsANewShot() async throws {
         let s = try scene(target: .clipboard)
-        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 400, height: 300), kind: .area))
+        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 400, height: 300)))
         let overlay = try await openEditor(s)
         s.store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         await finish(s, overlay)
@@ -569,7 +626,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let beside = s.desktop.appendingPathComponent(original.url.deletingPathExtension().lastPathComponent + " (1).png")
         XCTAssertEqual(file.path, beside.path, "the thumbnail's file is the edit, where it is")
         XCTAssertEqual(try Data(contentsOf: original.url), stranger, "the stranger was written over")
-        XCTAssertEqual(s.toast.model.reading, FileShotWriter().reading(of: beside), "the thumbnail holds the edit's own reading")
+        XCTAssertEqual(s.toast.model.current?.reading, FileShotWriter().reading(of: beside), "the thumbnail holds the edit's own reading")
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: s.trash.folder.path).count, 1, "the original is in the Trash")
 
         // A second Edit, from this thumbnail.

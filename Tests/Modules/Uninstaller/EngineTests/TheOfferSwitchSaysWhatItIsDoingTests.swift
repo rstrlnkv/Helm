@@ -1,5 +1,4 @@
 import Foundation
-import HelmContract
 import HelmRuntime
 import XCTest
 import HelmTestSupport
@@ -20,6 +19,7 @@ import HelmTestSupport
 /// draw. What the switch's own row *says* in the two blind states is a sentence
 /// this file does not invent: the state is wired and the wording is the
 /// localizer's.
+/// Past defect: fix commit f710c8f9.
 final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
 
     /// A Trash that can refuse to be read, and change its mind — the grant is
@@ -48,31 +48,15 @@ final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
         func isKnownToSystem(bundleID: String) -> Bool { false }
     }
 
-    private struct NoFiles: FileSystemPort {
-        func exists(_ url: URL) -> Bool { false }
-        func size(_ url: URL) -> Int { 0 }
-        func glob(_ pattern: URL) -> [URL] { [] }
-        func children(of url: URL) -> [URL] { [] }
-    }
-
     private var home: URL!
 
     override func setUpWithError() throws {
         home = scratchDirectory("trash-watch")
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var logged: [String] {
-        HelmLog.shared.recentEntries()
-            .filter { $0.category == UninstallerEngine.moduleID }
-            .map(\.message)
+        loggedLines(UninstallerEngine.moduleID)
     }
 
     private func engine(_ apps: AppLister) -> UninstallerEngine {
@@ -202,7 +186,7 @@ final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
     /// something is deleted, and reporting that as a missing permission would put a
     /// note on the page of somebody who has every grant. A Trash that is there and
     /// **refused** is nil, which is the Full Disk Access case — every install
-    /// (CLAUDE.md). Reached here with a mode-000 directory rather than by revoking
+    /// (ARCHITECTURE.md § The gates: a nil report is never an empty one). Reached here with a mode-000 directory rather than by revoking
     /// anything on this machine: `contentsOfDirectory` answers
     /// `NSFileReadNoPermissionError` either way.
     func test_a_missing_trash_is_empty_and_a_refused_one_is_not_an_answer() throws {
@@ -224,24 +208,5 @@ final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
             a Trash this process may not read answered «there are no apps in it», which is the \
             reading that made the switch on the Leftovers tab a claim nobody had checked
             """)
-    }
-
-    // MARK: - What the page is told
-
-    /// The reply the page reads is this value, and both sides read the enum: a
-    /// `Bool` here is how the switch came to be the only thing anybody knew.
-    func test_the_command_answers_the_state_and_not_a_flag() async throws {
-        let apps = TrashOfMine(readable: false)
-        let transport = LocalTransport()
-        let engine = UninstallerEngine(home: home, apps: apps, fs: NoFiles(),
-                                       trash: NoTrash(), running: NoRunning(),
-                                       transport: transport)
-        await MainActor.run { engine.setWatchingTrash(true) }
-
-        let reply = try await transport.send(
-            EngineCommand(name: UninstallerCommand.watchingTrash.rawValue, payload: Data()))
-
-        XCTAssertEqual(try JSONDecoder().decode(TrashWatch.self, from: reply), .cannotReadTrash,
-                       "the page cannot tell a switch that works from one that does nothing")
     }
 }

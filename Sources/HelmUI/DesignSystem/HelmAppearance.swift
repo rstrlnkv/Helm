@@ -16,7 +16,7 @@ import SwiftUI
 public enum HelmAppearance {
     /// Runs `body` with `scheme`'s appearance current, so any dynamic colour
     /// it resolves matches the view doing the asking.
-    public static func drawing<T>(_ scheme: ColorScheme, _ body: () -> T) -> T {
+    static func drawing<T>(_ scheme: ColorScheme, _ body: () -> T) -> T {
         let appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
         guard let appearance else { return body() }
         var result: T?

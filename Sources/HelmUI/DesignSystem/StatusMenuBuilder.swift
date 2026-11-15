@@ -6,9 +6,9 @@ public enum StatusMenuBuilder {
     /// One row: what to call it, what to draw beside it, and which module it
     /// opens.
     public struct Entry {
-        public let id: String
+        let id: String
         public let title: String
-        public let symbol: String
+        let symbol: String
 
         public init(id: String, title: String, symbol: String) {
             self.id = id
@@ -21,12 +21,12 @@ public enum StatusMenuBuilder {
     /// them. The menu shows no headings — a menu with section titles reads as
     /// a menu with disabled items — so the grouping is carried by rules alone.
     public struct Group {
-        public let entries: [Entry]
+        let entries: [Entry]
 
         public init(entries: [Entry]) { self.entries = entries }
     }
 
-    public static let glyphSize = NSSize(width: 15, height: 15)
+    static let glyphSize = NSSize(width: 15, height: 15)
 
     public static func menu(settingsTitle: String, quitTitle: String, groups: [Group],
               target: AnyObject?,

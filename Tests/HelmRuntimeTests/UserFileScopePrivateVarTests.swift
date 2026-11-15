@@ -29,6 +29,17 @@ final class UserFileScopePrivateVarTests: XCTestCase {
         }
     }
 
+    /// `/private` is stripped from the path before the list is asked, and the
+    /// list names `/usr` and `/System`, not `/private/usr`: a path carrying the
+    /// prefix is still those places to the gate, which compares both spellings.
+    /// Without the strip the long spelling of a short list entry gets through.
+    func testAPrivateSpellingOfAShortProtectedPrefixIsRefused() {
+        for prefix in UserFileScope.protectedPrefixes where !prefix.hasPrefix("/private/") {
+            XCTAssertFalse(UserFileScope.isRemovable("/private" + prefix + "/does-not-exist"),
+                           "/private" + prefix)
+        }
+    }
+
     /// A prefix on the list has to refuse the paths that are actually under it,
     /// not only the ones that are not there. Anything on the list that exists is
     /// checked against itself and against its real children.

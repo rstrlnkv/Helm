@@ -2,25 +2,23 @@ import XCTest
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-/// **The binding, acted on.** `FakeSources` records what it was asked to
-/// select, so these assertions are about what the engine decided and not about
-/// TIS.
+/// The fixture both classes below build on, so the split that lets the second one
+/// stay optional does not copy it. Holds no test.
 @MainActor
-final class TheBoundLayoutIsSelectedOnActivationTests: XCTestCase {
-
-    private var sources = FakeSources()
+class LayoutBindingRig: XCTestCase {
+    fileprivate var sources = FakeSources()
 
     /// `FakeSources.installed()` answers `["en", "ru"]` and starts on `en`, so
     /// the bindings below name those.
-    private func engine(bindings: [String: String]) -> LayoutEngine {
+    fileprivate func engine(bindings: [String: String], appRules: [String: Bool] = [:]) -> LayoutEngine {
         sources = FakeSources()
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
+        let store = layoutStore()
         store.set(bindings, for: LayoutKey.appLayouts)
+        if !appRules.isEmpty { store.set(appRules, for: LayoutKey.appRules) }
         let engine = LayoutEngine(
             tap: FakeTap(), typing: FakeTyping(), sources: sources,
             translation: FakeTranslation(table: [:]),
-            spell: FakeSpell(valid: []), secure: FakeSecure(),
+            spell: FakeSpell(valid: []), secure: FakeSecure(), activation: AppActivation(),
             settings: store)
         engine.activate()
         return engine
@@ -30,7 +28,13 @@ final class TheBoundLayoutIsSelectedOnActivationTests: XCTestCase {
         FrontmostApp.shared.setForTesting("")
         super.tearDown()
     }
+}
 
+/// **The binding, acted on.** `FakeSources` records what it was asked to
+/// select, so these assertions are about what the engine decided and not about
+/// TIS.
+@MainActor
+final class TheBoundLayoutIsSelectedOnActivationTests: LayoutBindingRig {
     /// A deactivated engine has stopped watching. Without this the watcher
     /// outlives the module being switched off, and every activation selects a
     /// layout for a module that is not running.
@@ -60,31 +64,7 @@ final class TheBoundLayoutIsSelectedOnActivationTests: XCTestCase {
 
 /// Which layout the activation of an app selects, and which it does not.
 @MainActor
-final class WhichLayoutAnActivationSelectsTests: XCTestCase {
-
-    private var sources = FakeSources()
-
-    /// `FakeSources.installed()` answers `["en", "ru"]` and starts on `en`, so
-    /// the bindings below name those.
-    private func engine(bindings: [String: String]) -> LayoutEngine {
-        sources = FakeSources()
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        store.set(bindings, for: LayoutKey.appLayouts)
-        let engine = LayoutEngine(
-            tap: FakeTap(), typing: FakeTyping(), sources: sources,
-            translation: FakeTranslation(table: [:]),
-            spell: FakeSpell(valid: []), secure: FakeSecure(),
-            settings: store)
-        engine.activate()
-        return engine
-    }
-
-    override func tearDown() {
-        FrontmostApp.shared.setForTesting("")
-        super.tearDown()
-    }
-
+final class WhichLayoutAnActivationSelectsTests: LayoutBindingRig {
     func testComingForwardSelectsTheBoundLayout() {
         let engine = engine(bindings: ["ru.keepcoder.Telegram": "ru"])
         FrontmostApp.shared.setForTesting("ru.keepcoder.Telegram")
@@ -121,17 +101,7 @@ final class WhichLayoutAnActivationSelectsTests: XCTestCase {
     /// «do not rewrite my text here» and «I write English here». The second is
     /// more likely to be wanted in a terminal, not less.
     func testAnAppOnTheLeaveAloneListStillGetsItsLayout() {
-        sources = FakeSources()
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        store.set(["com.apple.Terminal": "ru"], for: LayoutKey.appLayouts)
-        store.set(["com.apple.Terminal": false], for: LayoutKey.appRules)
-        let engine = LayoutEngine(
-            tap: FakeTap(), typing: FakeTyping(), sources: sources,
-            translation: FakeTranslation(table: [:]),
-            spell: FakeSpell(valid: []), secure: FakeSecure(),
-            settings: store)
-        engine.activate()
+        let engine = engine(bindings: ["com.apple.Terminal": "ru"], appRules: ["com.apple.Terminal": false])
         FrontmostApp.shared.setForTesting("com.apple.Terminal")
         XCTAssertEqual(sources.selected, ["ru"])
         withExtendedLifetime(engine) {}

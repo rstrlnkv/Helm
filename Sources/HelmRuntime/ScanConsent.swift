@@ -6,7 +6,7 @@ import Foundation
 /// **The switch existed and had no writer.** `AppSettings.disabledScans` decides
 /// whether `ScanCoordinator` walks the volume while the Mac is idle, and until
 /// this screen nothing in `Sources/` ever wrote it: the only way to learn that
-/// Helm reads the disk twice a day was the log. This is the arithmetic behind
+/// Helm reads the disk on its own was the log. This is the arithmetic behind
 /// that screen — which rows there are and what an answer does to the stored
 /// list — kept here beside `ScanRunner` and `ScanSchedule` rather than in the
 /// view, for the reason those two give.

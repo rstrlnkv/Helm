@@ -27,8 +27,8 @@ enum TypingHabits {
     /// **What it still cannot tell**, recorded rather than claimed away:
     /// `OSes`, `ТВшник` and `IPhone` read as slips to this rule and always did.
     /// There is no test of the letters that separates those from `ПРивет` —
-    /// which is why the switch ships off, and why its note names the boundary
-    /// this has instead of promising one it does not.
+    /// which is why the switch's note names the boundary this has instead of
+    /// promising one it does not.
     ///
     /// The rule changes exactly one letter. A correction that also converted
     /// the layout would be two edits to one word, which the undo shortcut

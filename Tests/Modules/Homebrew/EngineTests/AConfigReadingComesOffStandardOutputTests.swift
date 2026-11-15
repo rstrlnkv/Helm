@@ -57,18 +57,6 @@ private final class ConfigRunner: ProcessRunner, @unchecked Sendable {
     }
 }
 
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
-private struct NoBrew: BrewLocator {
-    func brewPath() -> String? { nil }
-}
-
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
 final class AConfigReadingComesOffStandardOutputTests: XCTestCase {
 
     /// Byte-for-byte what `/tmp/cfg.out` held — captured independently of

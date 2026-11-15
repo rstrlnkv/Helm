@@ -61,7 +61,7 @@ public final class RunningApps: @unchecked Sendable {
     /// report a mistake. Debug and test builds do trap, deliberately: a
     /// wrong-thread caller should be found here rather than in a crash log.
     @discardableResult
-    public func refresh() -> Set<String> {
+    func refresh() -> Set<String> {
         guard Thread.isMainThread else {
             assertionFailure("RunningApps.refresh() off the main thread")
             lock.lock(); defer { lock.unlock() }
@@ -83,10 +83,7 @@ public final class RunningApps: @unchecked Sendable {
     /// Where the bundle of the instance running under that identifier is, as of
     /// the last snapshot. Nil when nothing of that identifier is running, or when
     /// macOS did not say where it came from.
-    public func bundleURL(of bundleID: String) -> URL? {
-        lock.lock(); defer { lock.unlock() }
-        return bundleURLs[bundleID]
-    }
+    public func bundleURL(of bundleID: String) -> URL? { lock.withLock { bundleURLs[bundleID] } }
 
     /// Refreshes on the main thread, then runs the block there. For an
     /// observer that may or may not already be on it.
@@ -105,10 +102,7 @@ public final class RunningApps: @unchecked Sendable {
     /// Whether the snapshot has ever been filled. A background caller reading
     /// before the first refresh gets an empty set, which reads as "nothing is
     /// running" — worth being able to tell apart in a test.
-    public var hasSnapshot: Bool {
-        lock.lock(); defer { lock.unlock() }
-        return seeded
-    }
+    var hasSnapshot: Bool { lock.withLock { seeded } }
 
     /// Test seam: fills the snapshot without AppKit. The bundle locations come
     /// with it, because a snapshot that knows who is running and not where they

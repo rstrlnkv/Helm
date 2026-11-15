@@ -5,9 +5,10 @@ import XCTest
 ///
 /// These two units are used one after the other — the view model splices the
 /// fresh subtree, rebuilds the focus by path, and then asks for the chain down
-/// to the folder the user clicked. Each is tested on its own elsewhere; what
-/// matters here is that a node put in by one is reachable by the other, and
+/// to the folder the user clicked. The splice and the chain are tested here, and
+/// what matters is that a node put in by one is reachable by the other, and
 /// that the shapes the whole-disk scan produces are among them.
+/// Past defect: fixed in commit 6c7f39b5.
 final class DiskSpliceReachabilityTests: XCTestCase {
     private func entry(_ path: String, _ bytes: Int = 1,
                        _ children: [DiskEntry] = []) -> DiskEntry {
@@ -34,6 +35,12 @@ final class DiskSpliceReachabilityTests: XCTestCase {
         XCTAssertEqual(chain.last?.children.map(\.path), ["/Users/me/Code/helm"])
         XCTAssertEqual(result.children.first { $0.path == "/System" }?.bytes, 4,
                        "the other branch of the root is the tree that was already there")
+    }
+
+    /// The graft at the root itself is the measured tree, not the old one.
+    func testGraftingAtTheRootIsTheNewTree() {
+        let tree = entry("/a", 10, [entry("/a/b", 5)])
+        XCTAssertEqual(DiskTreeSplice.replacing("/a", with: entry("/a", 42), in: tree).bytes, 42)
     }
 
     /// A direct child of "/" is the shallowest graft there is, and the one the

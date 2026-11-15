@@ -3,8 +3,7 @@
 
 import Foundation
 
-/// Pure parsing of `scutil --nc list` / `scutil --nc status` output and the
-/// "which VPN does a one-click toggle act on" resolution.
+/// Pure parsing of `scutil --nc list` / `scutil --nc status` output.
 enum VPNListParser {
     static func parseStatus(_ token: String) -> VPNStatus {
         switch token.trimmingCharacters(in: .whitespaces).lowercased() {
@@ -25,8 +24,9 @@ enum VPNListParser {
 
     /// Whether this output is an answer at all.
     ///
-    /// `ScutilRunner` hands back the tool's stdout and drops its exit status, so
-    /// a read that failed arrives here as an empty string — and an empty string
+    /// Callers hand this only the stdout of the result `ScutilRunner` returns, and
+    /// its exit status is not read, so a read that failed arrives here as an
+    /// empty string — and an empty string
     /// parses, perfectly happily, into "this Mac has no VPNs". The two are not
     /// the same fact and the caller must not confuse them: the page told a user
     /// their connections were gone while both were up, and the drop detection,
@@ -99,23 +99,6 @@ enum VPNListParser {
                                         status: parseStatus(statusToken), kind: kind))
         }
         return result
-    }
-
-    /// The VPN a one-click toggle acts on: the sole configured one, else the
-    /// last-used (if still present), else the first.
-    static func defaultConnection(from connections: [VPNConnection],
-                                  lastUsedName: String?) -> VPNConnection? {
-        if connections.count == 1 { return connections.first }
-        // **A lookup key, never a command.** The name comes out of an unsealed
-        // plist any process running as this user can rewrite, and the bound —
-        // that it can only nominate a configuration this Mac already has — is the
-        // whole of what stands between a forged value and the tool being handed a
-        // name nobody configured. `AForgedLastUsedNameIsBoundedTests` holds it
-        // from both ends, and says there why sealing the value is refused.
-        if let lastUsedName, let match = connections.first(where: { $0.name == lastUsedName }) {
-            return match
-        }
-        return connections.first
     }
 
     /// The rows of the output, which is **not** the same as its lines.

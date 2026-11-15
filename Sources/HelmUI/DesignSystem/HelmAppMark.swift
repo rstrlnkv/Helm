@@ -19,13 +19,13 @@ import SwiftUI
 /// screen it matches the "gray gamma 22" of `Assets.car`, while
 /// `NSColor(calibratedWhite:)` did not (it rendered 0.192 as 62 instead of 48).
 public struct HelmAppMark: View {
-    let size: CGFloat
-    @Environment(\.colorScheme) private var scheme
+    public let size: CGFloat
+    @Environment(\.helmTraits) private var traits
 
     public init(size: CGFloat = 96) { self.size = size }
 
     /// Inverted on purpose: light window → dark mark, dark window → light mark.
-    private var darkVariant: Bool { scheme == .light }
+    private var darkVariant: Bool { traits.scheme == .light }
 
     /// The SVG is a 256 pt canvas the ring fills edge to edge; the layer is
     /// scaled 3.05 on Icon Composer's 1024 pt canvas, so the ring spans

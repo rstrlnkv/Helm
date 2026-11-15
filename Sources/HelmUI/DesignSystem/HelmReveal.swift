@@ -28,7 +28,7 @@ import Foundation
 public enum HelmReveal {
 
     /// What Finder is asked to do.
-    public enum Target: Equatable {
+    enum Target: Equatable {
         /// Highlight this in its parent window. Never launches or mounts it —
         /// `activateFileViewerSelecting` selects a bundle without opening it.
         case select(URL)
@@ -53,7 +53,7 @@ public enum HelmReveal {
     /// *before* the button is drawn — which is worth more than a report after
     /// somebody has pressed one. `inFinder` used to return a `Bool` for that
     /// purpose and no caller ever read it.
-    public static func target(
+    static func target(
         for path: String,
         exists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) },
         traits: (String) -> (isDirectory: Bool, isPackage: Bool)? = {

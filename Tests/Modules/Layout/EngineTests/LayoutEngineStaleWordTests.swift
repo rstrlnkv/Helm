@@ -4,14 +4,6 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-// The fakes are per-file, as in the other engine suites: a shared set tempts
-// the next person to change one suite's world to suit another's.
-
-private final class StaleTyping: TypingPort, @unchecked Sendable {
-    var performed: [SwitchPlan] = []
-    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return true }
-}
-
 /// The two halves of the secure check are separate on purpose, and the gap
 /// between them is where this suite lives. `isSecureInput` is the cheap syscall
 /// asked on every key; it only knows about *system-wide* secure input.
@@ -27,56 +19,9 @@ private final class StaleContext: SecureContextPort, @unchecked Sendable {
     func frontmostBundleID() -> String { bundle }
 }
 
-/// Translates anything Latin into Cyrillic of the same length. This suite is
-/// about which word the engine reaches for, not about which words a dictionary
-/// knows.
-private struct StaleTranslation: TranslationPort {
-    func translate(_ word: String, from: String, to: String) -> String? {
-        guard !word.isEmpty else { return nil }
-        return String(repeating: "п", count: word.count)
-    }
-}
-
-private struct StaleSpell: SpellPort {
-    /// Cyrillic reads as a word, and Latin only when it is one.
-    ///
-    /// **The second half is new and the fake could not answer without it.** The
-    /// layout path asks whether a *Cyrillic* translation is a word; the capital
-    /// fix asks whether a *Latin* correction is one, which is a question this
-    /// fake used to answer «no» to unconditionally. A fake that cannot be in a
-    /// state the port can be in cannot fail the way the port can.
-    private static let latinWords: Set<String> = ["Hello"]
-    func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 } || Self.latinWords.contains(word)
-    }
-}
-
-private final class StaleTap: KeyTapPort, @unchecked Sendable {
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        handler = onEvent
-        modifiers = onModifier
-        return true
-    }
-    func stop() { handler = nil; modifiers = nil }
-    func type(_ text: String) { for character in text { handler?(.character(character)) } }
-    func send(_ event: TypingBuffer.Event) { handler?(event) }
-}
-
-private final class StaleSources: LayoutSourcePort, @unchecked Sendable {
-    var selected: [String] = []
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) { selected.append(sourceID) }
-}
-
 private final class StaleSelection: SelectionPort, @unchecked Sendable {
     var text: String?
     var replaced: [String] = []
-    func selectedText() -> String? { text }
     func selectedTextWithoutClipboard() -> String? { text }
     func replaceSelection(with text: String) -> Bool { replaced.append(text); return true }
 }
@@ -100,16 +45,11 @@ private final class StaleSelection: SelectionPort, @unchecked Sendable {
 /// backspaces at whatever has the keyboard now, counted from a word that is no
 /// longer there.
 final class LayoutEngineStaleWordTests: XCTestCase {
-    private var typing = StaleTyping()
+    private var typing = FakeTyping()
     private var context = StaleContext()
-    private var tap = StaleTap()
-    private var sources = StaleSources()
+    private var tap = FakeTap()
+    private var sources = StuckSources()
     private var selection = StaleSelection()
-
-    /// The chord bound as «fix». Only the recorded one ends a word and leaves
-    /// it remembered: every other chord may have changed the text in front of
-    /// the caret — ⌘V pastes, ⌥V types `√` — so the word before it is dropped.
-    private static let shortcut: UInt16 = 9
 
     /// A store with that binding in it, because these suites use a chord as the
     /// boundary that remembers.
@@ -121,19 +61,17 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     /// which is deliberate (ARCHITECTURE.md § Module pattern); the test has
     /// to speak to it the way the page does.
     private static func boundStore(fixCapitals: Bool = false) -> NamespacedStore {
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        store.set(Int(shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
+        let store = layoutStore(bound: true)
         store.set(fixCapitals, for: LayoutKey.fixCapitals)
         return store
     }
 
     private func engine(                        fixCapitals: Bool = false) -> LayoutEngine {
-        typing = StaleTyping(); context = StaleContext()
-        tap = StaleTap(); sources = StaleSources(); selection = StaleSelection()
+        typing = FakeTyping(); context = StaleContext()
+        tap = FakeTap(); sources = StuckSources(); selection = StaleSelection()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
-                                  translation: StaleTranslation(), spell: StaleSpell(),
-                                  secure: context, selection: selection,
+                                  translation: SameLengthTranslation(), spell: CyrillicSpell(latin: ["Hello"]),
+                                  secure: context, activation: FakeActivation(), selection: selection,
  fixCapitals: fixCapitals,
                                   settings: Self.boundStore(fixCapitals: fixCapitals))
         engine.activate()
@@ -163,18 +101,18 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     }
 
     /// A selection was converted, which typed into the field and moved the
-    /// caret. `transform` clears the buffer and the undo record for exactly
-    /// that reason and forgets the third one.
+    /// caret. `convertSelection` cleared the buffer and the undo record for exactly
+    /// that reason and left the third standing.
     func testConvertingASelectionLeavesNoWordBehind() async throws {
         let engine = engine()
         tap.type("vjq")
         // A chord, not an arrow: a caret move now forgets the word on its own,
         // and the subject here is what the selection edit leaves behind.
-        tap.send(.chord(Self.shortcut))          // ends the word without converting; it is remembered
+        tap.send(.chord(layoutShortcut))          // ends the word without converting; it is remembered
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
 
         selection.text = "ghbdtn"
-        engine.convertSelection()
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
         XCTAssertEqual(selection.replaced.count, 1, "precondition: the selection was replaced")
 
         engine.convertLastWord()
@@ -234,18 +172,17 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     /// The engine refuses to convert a word abandoned by a *click*, because the
     /// caret is somewhere else. Switching apps by keyboard is the same event to
     /// the person and a different one to the tap: every chord arrives as
-    /// `.chord`, which ends the word and remembers it. The real tap never emits
-    /// `.focusChange` at all — grep the sources — so nothing tells the engine
-    /// the app changed.
+    /// `.chord`, which ends the word and remembers it. No event
+    /// tells the engine the app changed.
     ///
     /// `UndoRecord` already carries the bundle id and refuses to fire anywhere
     /// else, on exactly this reasoning: a blind edit is only correct in the app
     /// it was measured in. The remembered word is the same kind of blind edit
-    /// and carries no app at all.
+    /// and carried no app at all.
     func testAWordLeftBehindInAnotherAppIsNotTheGesturesToConvert() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.chord(Self.shortcut))               // ⌘Tab, as the tap reports it
+        tap.send(.chord(layoutShortcut))               // ⌘Tab, as the tap reports it
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
 
         context.bundle = "com.apple.Mail"
@@ -271,7 +208,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     func testAChordThatIsNotTheShortcutIsNotAWordTheGestureMayConvert() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.chord(Self.shortcut &+ 1))     // ⌘V, or anything that is not the binding
+        tap.send(.chord(layoutShortcut &+ 1))     // ⌘V, or anything that is not the binding
 
         engine.convertLastWord()
 
@@ -288,7 +225,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     func testTheWordIsStillConvertibleInTheAppItWasTypedIn() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.chord(Self.shortcut))
+        tap.send(.chord(layoutShortcut))
         engine.convertLastWord()
         XCTAssertEqual(typing.performed.count, 1)
         XCTAssertEqual(typing.performed[0].backspaces, 6)
@@ -310,7 +247,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         tap.type("ghbdtn")
         // A chord, not an arrow, for the same reason: the subject is the token
         // the buffer refused, not the boundary that set the word up.
-        tap.send(.chord(Self.shortcut))                // ends the word without converting; it is remembered
+        tap.send(.chord(layoutShortcut))                // ends the word without converting; it is remembered
         tap.type(String(repeating: "g", count: TypingBuffer.maxLength + 6))
         tap.send(.space)                // too long to report — and it is not reported
         XCTAssertTrue(typing.performed.isEmpty, "precondition: the long token was refused")
@@ -332,7 +269,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         let engine = engine()
         context.bundle = "com.apple.Terminal"
         selection.text = "ghbdtn"
-        engine.convertSelection()
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Terminal")
         XCTAssertTrue(selection.replaced.isEmpty)
     }
 
@@ -340,7 +277,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         let engine = engine()
         context.passwordField = true
         selection.text = "ghbdtn"
-        engine.convertSelection()
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
         XCTAssertTrue(selection.replaced.isEmpty)
     }
 
@@ -350,31 +287,22 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         let engine = engine()
         for blank in ["", "   ", "\n", "\t\t", " \n "] {
             selection.text = blank
-            engine.convertSelection()
+            engine.convertSelection(selected: blank, readIn: "com.apple.Notes")
             XCTAssertTrue(selection.replaced.isEmpty, "selection was \(blank.debugDescription)")
         }
-    }
-
-    /// An app that refuses to say what is selected is an app with no selection,
-    /// and the module has nothing to do rather than something to guess.
-    func testAnAppThatWillNotSayWhatIsSelectedIsLeftAlone() async throws {
-        let engine = engine()
-        selection.text = nil
-        engine.convertSelection()
-        XCTAssertTrue(selection.replaced.isEmpty)
     }
 
     // MARK: - A module that is off
 
     /// `deactivate` clears the buffer, the undo record and the remembered word
     /// on purpose, and the existing suite pins that the word path types nothing
-    /// afterwards. The selection path is the same promise and has no guard at
-    /// all: `transform` never asks whether the module is running.
+    /// afterwards. The selection path is the same promise and had no guard at
+    /// all: `convertSelection` did not ask whether the module is running.
     func testATurnedOffModuleDoesNotConvertASelection() async throws {
         let engine = engine()
         selection.text = "ghbdtn"
         engine.deactivate()
-        engine.convertSelection()
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
         XCTAssertTrue(selection.replaced.isEmpty,
                       "a module that is switched off replaced text in another app")
     }

@@ -15,15 +15,21 @@ final class TheLedgerOutlivesALaunchAndLeavesNothingTests: XCTestCase {
     /// **Nobody named a directory, so nothing is written.** Outside the app the
     /// count is kept in memory and dies with the process — which is what makes
     /// a suite of these leave the disk exactly as it found it.
-    func testWithNoDirectoryNamedNothingReachesTheDisk() throws {
-        let before = try namesUnder(NSTemporaryDirectory())
+    func testWithNoDirectoryNamedNothingReachesTheDisk() {
+        // Only the ledger's own file is looked at, by modification date and size:
+        // `$TMPDIR` is shared, another program's file there is not this store's
+        // doing, and a stale copy of the ledger's file must not hide a rewrite.
+        let folders = [LedgerStore.defaultHome.path, NSTemporaryDirectory()]
+        let before = folders.map { ledgerFile(in: $0) }
         let store = LedgerStore()
         store.record(characters: 8, on: Date())
         XCTAssertEqual(store.totals(now: Date()).today.words, 1,
                        "the count still has to work — in memory is not «switched off»")
 
-        XCTAssertEqual(try namesUnder(NSTemporaryDirectory()).subtracting(before), [],
-                       "a ledger nobody asked to persist put something in the temporary directory")
+        for (folder, was) in zip(folders, before) {
+            XCTAssertEqual(ledgerFile(in: folder), was,
+                       "a ledger nobody asked to persist wrote its file into \(folder)")
+        }
     }
 
     /// And two of them do not share it, whatever else they share.
@@ -36,8 +42,10 @@ final class TheLedgerOutlivesALaunchAndLeavesNothingTests: XCTestCase {
                        "one store's count reached another — the suite would read its neighbours' words")
     }
 
-    private func namesUnder(_ path: String) throws -> Set<String> {
-        Set((try? FileManager.default.contentsOfDirectory(atPath: path)) ?? [])
+    private func ledgerFile(in folder: String) -> String? {
+        let path = (folder as NSString).appendingPathComponent(LedgerStore.fileName)
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path) else { return nil }
+        return "\(attributes[.modificationDate] ?? "")/\(attributes[.size] ?? "")"
     }
 }
 

@@ -60,6 +60,7 @@ final class TheScanSettingsSealDoesNotMoveTests: XCTestCase {
     /// one constant, which cannot fail.
     func testTheStoredKeysAreTheOnesAlreadyOnPeoplesMacs() {
         XCTAssertEqual(DuplicatesSettings.keepPolicyKey, "keepPolicy")
+        XCTAssertEqual(DuplicatesSettings.folderKey, "folder")
         XCTAssertEqual(SettingGuard.macKey(for: "folder"), "folderMAC")
         XCTAssertEqual(SettingGuard.macKey(for: DuplicatesSettings.keepPolicyKey),
                        "keepPolicyMAC")

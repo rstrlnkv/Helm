@@ -11,7 +11,7 @@ import HelmRuntime
 /// a hand edit — and Helm never looks again: system sleep stays off machine-wide,
 /// every screen says Keep Awake is idle, and the Mac does not sleep until
 /// somebody works out what `pmset -g` is saying. It is the one setting in this
-/// module that steers privileged work with nobody watching, and CLAUDE.md's seal
+/// module that steers privileged work with nobody watching, and the seal of (ARCHITECTURE.md § Sealed settings)
 /// cannot be used on it (`clamshellEnabled`'s own doc comment has the reason: an
 /// ad-hoc signed bundle meets a keychain dialog at every install).
 ///
@@ -37,22 +37,28 @@ final class RecoveryAnchorIsNotAWritableFlagTests: XCTestCase {
         store.bool(KeepAwakeSettings.Key.clamshellGuard, default: false)
     }
 
-    private func launch() {
-        KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
+    /// The recovery runs on the lid's own queue and lands its state on main:
+    /// read nothing before both have run.
+    @MainActor
+    private func launch() async {
+        let engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
                         assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                         displayObserver: FakeDisplayObserver(), power: FakePower(),
                         apps: FakeApps(), pointer: FakePointer(),
-                        clamshell: clamshell, clock: FakeClock()).activate()
+                        clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine.activate()
+        await engine.drainClamshellForTests()
     }
 
     /// Sleep is off machine-wide, Helm's own rule is on disk, and the note in the
     /// plist is gone. This is the state the whole file is about.
-    func testARuleOnDiskIsEnoughToGoAndLook() {
+    @MainActor
+    func testARuleOnDiskIsEnoughToGoAndLook() async {
         store.set(false, for: KeepAwakeSettings.Key.clamshellGuard)
         clamshell.sudoersInstalled = true
         clamshell.pmset = "SleepDisabled 1"
 
-        launch()
+        await launch()
 
         XCTAssertEqual(clamshell.disableSleepCalls, [false],
                        "the note was cleared behind Helm's back, so nothing ever looked again — "
@@ -63,14 +69,46 @@ final class RecoveryAnchorIsNotAWritableFlagTests: XCTestCase {
 
     /// The other anchor still works on its own: Helm crashed with sleep off and
     /// the rule has since been taken out by an admin or a migration.
-    func testTheNoteAloneIsStillEnoughToGoAndLook() {
+    @MainActor
+    func testTheNoteAloneIsStillEnoughToGoAndLook() async {
         store.set(true, for: KeepAwakeSettings.Key.clamshellGuard)
         clamshell.sudoersInstalled = false
         clamshell.pmset = "SleepDisabled 1"
 
-        launch()
+        await launch()
 
         XCTAssertEqual(clamshell.disableSleepCalls, [false])
+    }
+
+    // MARK: - A report nobody could read
+
+    /// `pmset -g` did not answer. That is not an empty report, which says sleep is
+    /// enabled: with Helm's note set, sleep may be off, and putting it back is
+    /// idempotent.
+    @MainActor
+    func testAnUnreadablePmsetWithTheNoteSetRestoresSleep() async {
+        store.set(true, for: KeepAwakeSettings.Key.clamshellGuard)
+        clamshell.passwordlessGrantExists = true
+        clamshell.pmset = nil
+
+        await launch()
+
+        XCTAssertEqual(clamshell.disableSleepCalls, [false],
+                       "an unreadable report was taken for «sleep enabled» and the note it exists "
+                       + "for was left standing over a Mac that may not sleep")
+        XCTAssertFalse(guardFlag, "the note is written off once sleep is really back")
+    }
+
+    /// With only the rule on disk the person may have set the block themselves.
+    @MainActor
+    func testAnUnreadablePmsetWithOnlyTheRuleOnDiskRestoresNothing() async {
+        clamshell.sudoersInstalled = true
+        clamshell.pmset = nil
+
+        await launch()
+
+        XCTAssertEqual(clamshell.pmsetReads, 1, "precondition: the report was asked for")
+        XCTAssertTrue(clamshell.disableSleepCalls.isEmpty)
     }
 
     // MARK: - The controls, which are what keep this from being a launch that
@@ -80,8 +118,9 @@ final class RecoveryAnchorIsNotAWritableFlagTests: XCTestCase {
     /// asked of `pmset` at all — the reason the flag short-circuited the read in
     /// the first place, and `||` keeps it, because the second half of the guard
     /// is only reached when one of the two anchors holds.
-    func testAnOrdinaryLaunchReadsNothingAndRestoresNothing() {
-        launch()
+    @MainActor
+    func testAnOrdinaryLaunchReadsNothingAndRestoresNothing() async {
+        await launch()
 
         XCTAssertEqual(clamshell.pmsetReads, 0,
                        "every launch on every Mac now runs `pmset -g` to find out that this app "
@@ -93,11 +132,12 @@ final class RecoveryAnchorIsNotAWritableFlagTests: XCTestCase {
     /// back»: sleep is on, so there is nothing to restore, and a launch that
     /// called `pmset disablesleep 0` here would be spending the grant for
     /// nothing.
-    func testAnAnchorWithSleepAlreadyOnRestoresNothing() {
+    @MainActor
+    func testAnAnchorWithSleepAlreadyOnRestoresNothing() async {
         clamshell.sudoersInstalled = true
         clamshell.pmset = "SleepDisabled 0"
 
-        launch()
+        await launch()
 
         XCTAssertEqual(clamshell.pmsetReads, 1, "precondition: the report was read")
         XCTAssertTrue(clamshell.disableSleepCalls.isEmpty,

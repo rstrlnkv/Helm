@@ -7,22 +7,21 @@ import HelmRuntime
 /// Whether the one-time removal of the old credential cache should run, and where
 /// the record that it has lives.
 ///
-/// The purge itself deletes every `com.helm.vpn` keychain item, because items
+/// The purge itself deletes every item of the service `KeychainCredentials.service(for:)` answers for the real Helm (`com.helm.vpn`; Helm Dev never purges and keeps `com.helm.vpn.dev`), because items
 /// written by the first implementation carry an access list that let
 /// `/usr/bin/security` read them with no prompt at all. It must happen once per
-/// installation and never again — and it used to be able to happen on **every**
-/// run of anything that linked this module:
+/// installation and never again, and two things would run it on **every**
+/// run of anything that links this module:
 ///
-/// - `VPNDescriptor.makeEngine` builds `VPNSystemPorts()` unconditionally, which
-///   constructs `KeychainCredentials`, whose `init` purged. Two test files call
-///   `makeEngine` for every descriptor there is, so `swift test` deleted the
+/// - `VPNDescriptor.makeModule` builds `VPNSystemPorts()` unconditionally, which
+///   constructs `KeychainCredentials`. A purge in its `init` runs from every test
+///   that builds every descriptor's module, and `swift test` deletes the
 ///   person's real VPN secrets.
-/// - The latch was `UserDefaults.standard`, which is the *calling process's*
-///   domain. The test domain therefore never held it, and the deletion was
-///   retried on every run.
+/// - A latch in `UserDefaults.standard` is the *calling process's* domain. The
+///   test domain never holds it, and the deletion is retried on every run.
 ///
-/// Both halves are answered here, and both are the lesson ARCHITECTURE.md
-/// § Diagnostics log already records after a per-process latch let a test target
+/// Both halves are answered here, and both are the lesson (ARCHITECTURE.md
+/// § Diagnostics log) already records after a per-process latch let a test target
 /// wipe the real `helm.log`: **a latch belongs to what it guards, not to whoever
 /// asks.** What it guards is a keychain item, and a marker *inside* the keychain
 /// would mean a keychain read during `init` — which on this ad-hoc-signed bundle

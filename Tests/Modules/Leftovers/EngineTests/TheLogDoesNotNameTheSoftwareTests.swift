@@ -11,7 +11,7 @@ import XCTest
 /// home directory with `~`. That is right for a module whose paths name folders; here
 /// the last component is a bundle id (`~/Library/Preferences/com.acme.tool.plist`,
 /// `~/Library/LaunchAgents/com.vendor.updater.plist`), which is exactly what
-/// `Redact.app` exists for: ARCHITECTURE.md § Diagnostics log says a bundle id
+/// `Redact.app` exists for: (ARCHITECTURE.md § Diagnostics log) says a bundle id
 /// names a person's habits.
 ///
 /// And these lines are not the exceptional case. A refusal by Full Disk Access is a
@@ -33,18 +33,11 @@ final class TheLogDoesNotNameTheSoftwareTests: XCTestCase {
 
     override func setUpWithError() throws {
         home = scratchDirectory("leftovers-log")
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var lines: [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == "leftovers" }.map(\.message)
+        loggedLines("leftovers")
     }
 
     /// Both refusals a removal can write, in one batch: one path the gate turns away
@@ -54,7 +47,8 @@ final class TheLogDoesNotNameTheSoftwareTests: XCTestCase {
         let inScope = home.appendingPathComponent("Library/Preferences/\(bundleID).plist").path
         _ = await LeftoversEngine(home: home, files: LeftoversFakeFiles(),
                                   apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
-                                  switcher: LeftoversFakeSwitcher())
+                                  switcher: LeftoversFakeSwitcher(),
+                                  store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
             .trash([outOfScope, inScope])
         return lines
     }

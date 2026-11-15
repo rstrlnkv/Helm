@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
@@ -28,7 +29,7 @@ final class ASessionAPlistCanInventTests: XCTestCase {
                         assertions: assertions, displayInfo: FakeDisplayInfo(),
                         displayObserver: FakeDisplayObserver(), power: FakePower(),
                         apps: FakeApps(), pointer: FakePointer(),
-                        clamshell: FakeClamshell(), clock: FakeClock())
+                        clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     // MARK: - One boolean, and the Mac never sleeps again
@@ -46,9 +47,7 @@ final class ASessionAPlistCanInventTests: XCTestCase {
     /// log is the only account, which is the same reason `restoreSession`
     /// writes one for a session that had already ended.
     func testAPlistThatSaysOnlySessionOnHoldsTheMacAndSaysSoInTheLog() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         store.set(true, for: KeepAwakeEngine.SessionKey.on)
 
@@ -67,9 +66,7 @@ final class ASessionAPlistCanInventTests: XCTestCase {
     /// The control for the line above — an ordinary launch with nothing stored
     /// says nothing, so «the log mentions it» is not wallpaper.
     func testALaunchWithNoStoredSessionSaysNothingAboutRestoring() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         let module = engine()
         module.activate()
@@ -102,6 +99,23 @@ final class ASessionAPlistCanInventTests: XCTestCase {
         XCTAssertFalse(module.isActive,
                        "a Mac held awake for nine hundred years, from a date that looks "
                        + "perfectly ordinary in the file")
+        XCTAssertFalse(assertions.held)
+    }
+
+    /// A start *after* the deadline: finite, under a day, and a session that
+    /// ended before it began. The deadline is in the future, so only the
+    /// `bounded > 0` floor refuses it.
+    func testAStartAfterTheDeadlineIsNotASession() {
+        let end = FakeClock().now().addingTimeInterval(3600)
+        store.set(true, for: KeepAwakeEngine.SessionKey.on)
+        store.set(end.addingTimeInterval(60).timeIntervalSinceReferenceDate,
+                  for: KeepAwakeEngine.SessionKey.startedAt)
+        store.set(end.timeIntervalSinceReferenceDate, for: KeepAwakeEngine.SessionKey.endsAt)
+
+        let module = engine()
+        module.activate()
+
+        XCTAssertFalse(module.isActive, "a session that ended before it began was restored")
         XCTAssertFalse(assertions.held)
     }
 
@@ -184,7 +198,7 @@ final class ASessionAPlistCanInventTests: XCTestCase {
     /// settings next to them, and the answer has to be «no session» rather than
     /// a crash on the way up.
     func testAValueOfTheWrongTypeUnderASessionKeyIsNoSession() {
-        for junk in ["soon", "", ["a"], 0.0] as [Any] {
+        for junk in ["soon", "", ["a"]] as [Any] {
             store.set(true, for: KeepAwakeEngine.SessionKey.on)
             store.set(junk, for: KeepAwakeEngine.SessionKey.startedAt)
             store.set(junk, for: KeepAwakeEngine.SessionKey.endsAt)
@@ -194,14 +208,14 @@ final class ASessionAPlistCanInventTests: XCTestCase {
                                          displayObserver: FakeDisplayObserver(),
                                          power: FakePower(), apps: FakeApps(),
                                          pointer: FakePointer(), clamshell: FakeClamshell(),
-                                         clock: clock)
+                                         clock: clock, lidInfo: FakeLidInfo())
 
             module.activate()
 
-            // «On, with no readable dates» is the same shape as a real
-            // indefinite session, so the Mac is held — what must not happen is
-            // a deadline invented out of a string.
+            // Helm never writes these: not a session, and not a deadline
+            // invented out of a string.
             XCTAssertNil(module.endDate, "a stored \(junk) became a deadline")
+            XCTAssertFalse(module.isActive, "a stored \(junk) decided the session")
         }
     }
 

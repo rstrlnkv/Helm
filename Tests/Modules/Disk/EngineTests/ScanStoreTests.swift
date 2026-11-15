@@ -25,6 +25,21 @@ final class ScanStoreTests: XCTestCase {
         XCTAssertEqual(loaded.savedAt, Date(timeIntervalSince1970: 1_800_000_000))
     }
 
+    /// The detached save is fire-and-forget; it must still carry the date it was given.
+    func testDetachedSaveKeepsTheDateItWasGiven() async throws {
+        let saved = result(root: "/", bytes: 1000)
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        store.saveDetached(saved, at: date)
+        var loaded = store.load()
+        for _ in 0..<200 where loaded == nil {
+            try await Task.sleep(nanoseconds: 25_000_000)
+            loaded = store.load()
+        }
+        let cached = try XCTUnwrap(loaded)
+        XCTAssertEqual(cached.result, saved)
+        XCTAssertEqual(cached.savedAt, date)
+    }
+
     func testNothingSavedYet() {
         XCTAssertNil(store.load())
     }
@@ -49,5 +64,23 @@ final class ScanStoreTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try Data("not json".utf8).write(to: store.fileURL)
         XCTAssertNil(store.load())
+    }
+
+    /// A missing file is the first launch and says nothing; a file that is there
+    /// and will not decode is a lost measurement and says so once, naming no path.
+    func testAnUndecodableFileIsLoggedOnceAndAMissingOneNever() throws {
+        tailTheLog()
+        func lines() -> [String] {
+            loggedLines(DiskEngine.moduleID)
+        }
+        XCTAssertNil(store.load())
+        XCTAssertEqual(lines(), [], "a missing file logged")
+
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data("not json".utf8).write(to: store.fileURL)
+        XCTAssertNil(store.load())
+        XCTAssertEqual(lines().count, 1, "an undecodable file did not log exactly once")
+        XCTAssertFalse(lines().joined().contains(directory.path), "the line names the path")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: store.fileURL.path), "the file was removed")
     }
 }

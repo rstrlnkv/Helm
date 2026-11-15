@@ -117,8 +117,8 @@ final class BrewDescAndSearchShapeTests: XCTestCase {
     ///
     /// A unit test cannot assert the right kind here: the text carries no kind
     /// to read. What it can pin is that the parser does not silently *claim*
-    /// one. Recorded as the characterisation of today's behaviour, with the
-    /// live cross-check in `BrewSearchKindLiveScan` as the actual gate.
+    /// one. Recorded as the characterisation of today's behaviour; the engine
+    /// takes the kind from which call produced the name.
     func testHeaderlessSearchOutputIsWhatCurrentBrewEmits() {
         let out = "firefoxpwa\nfirefly\n\nfirefox\nfirefox@beta\n"
         let hits = BrewSearchParser.parse(out, isCask: false)
@@ -126,7 +126,7 @@ final class BrewDescAndSearchShapeTests: XCTestCase {
                        "the blank separator must not become a row")
         XCTAssertTrue(hits.allSatisfy { !$0.isCask },
                       "characterisation: with no headers everything is called a formula — "
-                      + "see BrewSearchKindLiveScan for what that costs")
+                      + "the kind comes from the call, not from the text")
     }
 
     /// Brew's own prose must never become an installable row. "Error: No
@@ -134,42 +134,5 @@ final class BrewDescAndSearchShapeTests: XCTestCase {
     /// arrives on stdout in the same string the parser is handed.
     func testBrewsNoResultsProseIsNotAPackage() {
         XCTAssertEqual(BrewSearchParser.parse("Error: No formulae or casks found for \"zzqqxx\".", isCask: false).count, 0)
-    }
-}
-
-/// Cross-checks the search parser's `isCask` against brew itself. Depends on
-/// the installed Homebrew and its index, so it informs rather than gates:
-/// `HELM_BENCH=1 swift test --filter BrewSearchKindLiveScan`.
-final class BrewSearchKindLiveScan: XCTestCase {
-    private func brew(_ args: [String]) throws -> String {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        p.arguments = ["brew"] + args
-        let pipe = Pipe()
-        p.standardOutput = pipe
-        p.standardError = Pipe()
-        try p.run()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        p.waitUntilExit()
-        return String(decoding: data, as: UTF8.self)
-    }
-
-    func testSearchHitsCarryTheKindBrewItselfReports() throws {
-        try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_BENCH"] == "1")
-        let query = "firefox"
-        // The same two calls the engine makes: brew no longer labels a flat
-        // list, so the kind comes from which call produced the name.
-        let hits = BrewSearchParser.parse(try brew(["search", "--formula", query]), isCask: false)
-                 + BrewSearchParser.parse(try brew(["search", "--cask", query]), isCask: true)
-        let casks = Set(try brew(["search", "--cask", query])
-            .split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty && !$0.hasPrefix("==>") })
-        XCTAssertFalse(hits.isEmpty, "no hits at all — brew index may be cold")
-        let mislabelled = hits.filter { casks.contains($0.name) && !$0.isCask }
-        print("search '\(query)': \(hits.count) hits, \(casks.count) casks, \(mislabelled.count) mislabelled")
-        for hit in mislabelled { print("  cask shown as formula: \(hit.name)") }
-        XCTAssertTrue(mislabelled.isEmpty,
-                      "Install on these rows runs `brew install <name>` without --cask: "
-                      + mislabelled.map(\.name).joined(separator: ", "))
     }
 }

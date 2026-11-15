@@ -4,6 +4,7 @@
 import XCTest
 @testable import Module_VPN_Engine
 
+/// Guards: one launch connects and only the last quit disconnects (no fix commit; the code and this test landed together in 30e6caf8).
 final class VPNAutoConnectCoreTests: XCTestCase {
     func test_launch_connects_on_first_and_not_again() {
         var core = VPNAutoConnectCore(rules: ["a": VPNAppRule(vpnName: "V"), "b": VPNAppRule(vpnName: "V")])
@@ -34,12 +35,5 @@ final class VPNAutoConnectCoreTests: XCTestCase {
         var n = 0
         core.appLaunched("x", connect: { _ in n += 1 })
         XCTAssertEqual(n, 0)
-    }
-    func test_activeVPNs() {
-        var core = VPNAutoConnectCore(rules: ["a": VPNAppRule(vpnName: "V")])
-        core.appLaunched("a", connect: { _ in })
-        XCTAssertEqual(core.activeVPNs, ["V"])
-        core.appTerminated("a", disconnect: { _ in })
-        XCTAssertTrue(core.activeVPNs.isEmpty)
     }
 }

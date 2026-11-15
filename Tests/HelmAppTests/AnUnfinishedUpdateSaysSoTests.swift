@@ -81,7 +81,7 @@ final class AnUnfinishedUpdateSaysSoTests: XCTestCase {
     /// (`AFailedCopyKeepsTheInstalledAppTests`); this pins the half
     /// that decides what the script is given and when.
     func testTheAppWritesTheNoteBeforeItHandsOver() throws {
-        let source = try RepoSource.text(of: "Sources/HelmApp/Installer.swift")
+        let source = SwiftSource.uncommented(try RepoSource.text(of: "Sources/HelmApp/Installer.swift"))
         XCTAssertGreaterThan(source.count, 2000, "the installer was not read at all")
 
         let note = try XCTUnwrap(source.range(of: "UpdateHandoff.note("),
@@ -129,5 +129,34 @@ final class AnUnfinishedUpdateSaysSoTests: XCTestCase {
         UpdateHandoff.reportAtLaunch()
         XCTAssertTrue(log.recentEntries().isEmpty,
                       "an update that installed cleanly is reported as a failure")
+    }
+
+    /// Q16a: the sentence on the updates card does not depend on the log. A
+    /// Beta build ships with logging off, so a report that travels only through
+    /// `HelmLog` reaches nobody there.
+    func testTheFailureIsPublishedWithLoggingOff() throws {
+        let log = HelmLog.shared
+        log.setEnabled(false)
+        // A note in today's format: the bare version, as `note(version:)` writes it.
+        XCTAssertTrue(UpdateHandoff.note(version: "0.9.9"), "precondition: the note was written")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: UpdateHandoff.file.path),
+                      "precondition: the note is on disk")
+
+        let published = UpdateHandoff.reportAtLaunch()
+
+        XCTAssertEqual(published, "0.9.9",
+                       "with logging off the failed update is said nowhere: the person "
+                       + "pressed «Update & Relaunch» and the card is silent about it")
+    }
+
+    func testTheCardSaysItWhenNothingNewerHasBeenSaid() {
+        func drawn(note: UpdateService.Note?, unfinished: Bool) -> UpdateCard {
+            UpdateCard.drawn(installState: .idle, checking: false, hasRelease: false,
+                             hasAhead: false, note: note, hasUnfinishedUpdate: unfinished)
+        }
+        XCTAssertEqual(drawn(note: nil, unfinished: true), .unfinishedUpdate)
+        XCTAssertEqual(drawn(note: nil, unfinished: false), .lastChecked)
+        XCTAssertEqual(drawn(note: .upToDate, unfinished: true), .upToDate,
+                       "a check that just answered is newer than the failure")
     }
 }

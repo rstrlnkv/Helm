@@ -1,7 +1,6 @@
 import Foundation
 import XCTest
 import HelmContract
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// **A tool's refusal read as a success.**
@@ -28,8 +27,8 @@ import HelmRuntime
 /// `HelmProcess` sends stderr to `nullDevice` — so the exit code is the only
 /// thing left that knows anything went wrong.
 ///
-/// The module already has a word for "could not answer" and it is nil: zero
-/// bytes on the wire, the view model keeps its last answer, Refresh stays live.
+/// The module already has a word for "could not answer" and it is nil: the
+/// view model keeps the list it had, Refresh stays live.
 /// These tests ask for that word
 /// where today there is a confident empty list.
 ///
@@ -49,16 +48,10 @@ private struct BrewAnswer {
     }
 }
 
+/// Kept: guards the defect fixed in 7006109b fix(homebrew): four refusals the module read as good news.
 final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
 
     // MARK: - Fakes
-
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
 
     /// A brew that answers a canned `(status, stdout)` per subcommand — and can
     /// answer *differently per call*, because the real one does: `listInstalled`
@@ -115,7 +108,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
         // took a real one would be an integration test against this Mac.
         HomebrewEngine(locator: FixedLocator(), runner: runner,
                        privileged: NoPrivileges(), user: "tester",
-                       transport: LocalTransport(), marker: InMemoryOpMarker())
+                       news: EngineNews(), marker: InMemoryOpMarker())
     }
 
     // MARK: - The installed list
@@ -152,6 +145,19 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
         let answer = engine(CannedBrew([BrewAnswer(["list"], 0, "")])).listInstalled()
         XCTAssertNotNil(answer, "an honestly empty Cellar was reported as unreadable")
         XCTAssertEqual(answer?.count, 0)
+    }
+
+    /// A brew that vanished between the locator and the ask is no machine with
+    /// nothing on it: each reading says it could not answer.
+    func testAMissingBrewIsNotACleanMachine() {
+        let runner = CannedBrew([])
+        let e = HomebrewEngine(locator: NoBrew(), runner: runner,
+                               privileged: NoPrivileges(), user: "tester",
+                               news: EngineNews(), marker: InMemoryOpMarker())
+        XCTAssertNil(e.listInstalled(), "a missing brew answered \"No packages installed.\"")
+        XCTAssertNil(e.outdated(), "a missing brew answered an up-to-date machine")
+        XCTAssertNil(e.search("wget"), "a missing brew answered \"no results\"")
+        XCTAssertTrue(runner.calls.isEmpty, "brew was asked although it is missing")
     }
 
     // MARK: - The outdated list

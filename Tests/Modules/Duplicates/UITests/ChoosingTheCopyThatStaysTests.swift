@@ -1,5 +1,4 @@
 import HelmRuntime
-import HelmUI
 import XCTest
 import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
@@ -30,7 +29,7 @@ final class ChoosingTheCopyThatStaysTests: XCTestCase {
     }
 
     private func searched(_ groups: [DuplicateGroup]) async -> DuplicatesViewModel {
-        await searchedModel(over: DuplicatesWire(groups: groups))
+        await searchedModel(over: AnsweringWork(groups: groups))
     }
 
     // MARK: - The choice itself
@@ -111,7 +110,7 @@ final class ChoosingTheCopyThatStaysTests: XCTestCase {
     func testTheRecommendationCanBePutBack() async throws {
         let dvm = await searched([trio()])
         // A policy chosen outright, so the order on screen is one the rule
-        // produced: the fake wire hands back the fixture as it was written, and
+        // produced: the fake work hands back the fixture as it was written, and
         // a «recommendation» read off that would be whatever the test typed.
         dvm.choose(.byDate)
         let recommended = try XCTUnwrap(dvm.groups.first?.paths.first)
@@ -147,7 +146,7 @@ final class ChoosingTheCopyThatStaysTests: XCTestCase {
         dvm.keep(archived, in: try XCTUnwrap(dvm.groups.first))
 
         dvm.search()
-        for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
+        await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
         dvm.choose(.byPlace)
 
         // The rung, whichever it is, rather than `.byHand`: both filed copies

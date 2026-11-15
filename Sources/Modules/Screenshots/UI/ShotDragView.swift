@@ -148,7 +148,7 @@ struct ShotDragSource: NSViewRepresentable {
         view.payload = { [weak model] in model?.shots.first { $0.id == shot }.flatMap { model?.drag(of: $0) } }
         view.others = { [weak model] in model?.othersDragged(with: shot) ?? [] }
         view.onClick = { [weak model] in model?.clicked(shot) }
-        view.onHover = { [weak model, weak view] over in model?.pointer(over: over, shot: shot, view: view) }
+        view.onHover = { [weak model] over in model?.pointer(over: over, shot: shot) }
         view.onScroll = { [weak model] delta, precise in model?.scroll(delta, precise) }
         view.onWindow = { [weak model] view in
             if model?.shots.last?.id == shot { model?.anchor = view }

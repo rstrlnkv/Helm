@@ -23,18 +23,11 @@ final class RedactSoftwareLeavesNobodyFedTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var logged: [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == module }.map(\.message)
+        loggedLines(module)
     }
 
     /// Runs one path through the shared loop with macOS refusing it as told,
@@ -68,6 +61,14 @@ final class RedactSoftwareLeavesNobodyFedTests: XCTestCase {
         XCTAssertEqual(Redact.path("/Users/x/Library/Containers/com.acme.Secret",
                                    leaf: .softwareName, home: home),
                        "~/Library/Containers/" + Redact.app("com.acme.Secret"))
+    }
+
+    /// In the *path* the leaf is delimited, so a short name is a name reaching the
+    /// log and is replaced whatever its length.
+    func testAVeryShortNameIsStillTaggedInThePath() {
+        let shown = Redact.path("/Users/x/Library/QuickLook/Ax.qlgenerator",
+                                leaf: .softwareName, home: "/Users/x")
+        XCTAssertEqual(shown, "~/Library/QuickLook/" + Redact.app("Ax") + ".qlgenerator")
     }
 
     /// A known type in another case is still a known type, and it is kept as

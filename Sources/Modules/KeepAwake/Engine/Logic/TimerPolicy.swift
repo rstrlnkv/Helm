@@ -4,16 +4,15 @@ import HelmRuntime
 /// What the module believes about a timed session: how long one may be, what
 /// happens when it runs out, and what the panel's "+15" asks for.
 public enum TimerPolicy {
-    public enum Action: Equatable, Sendable { case deactivate, continueAsAuto }
+    enum Action: Equatable, Sendable { case deactivate, continueAsAuto }
     /// On timer expiry: if an auto condition still holds and not suppressed, keep going as auto.
     ///
     /// Unless the person asked a timer to be the end of automation as well. Then
-    /// the session stops, and the caller's `stopSession()` suppresses the
-    /// condition that is still true — until it drops and comes back, which is
+    /// the session stops, and the caller's `endSession(pausingRules:)` suppresses
+    /// the condition that is still true — until it drops and comes back, which is
     /// what "until the trigger fires again" means in this module. The
-    /// suppression is not decided here: this answers what the timer does, and
-    /// suppressing is what stopping already does.
-    public static func onExpiry(hasAutoCondition: Bool,
+    /// suppression is not decided here: this answers what the timer does.
+    static func onExpiry(hasAutoCondition: Bool,
                                 suppressed: Bool,
                                 timerEndsAutomation: Bool) -> Action {
         guard !timerEndsAutomation else { return .deactivate }
@@ -31,7 +30,7 @@ public enum TimerPolicy {
 
     /// The same ceiling in seconds, which is the shape everything holding a
     /// deadline wants it in; `minutes * 60` was being spelled at each of them.
-    public static let longestSession = TimeInterval(longestSessionMinutes * 60)
+    static let longestSession = TimeInterval(longestSessionMinutes * 60)
 
     /// The session the panel tile's "+15" asks for: what is left of the
     /// countdown, rounded up to the whole minute it shows, plus fifteen.

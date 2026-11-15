@@ -1,4 +1,5 @@
 import Foundation
+import HelmContract
 import HelmRuntime
 
 /// What macOS is withholding, counted once.
@@ -14,12 +15,18 @@ enum PermissionSummary {
         let declared = ModuleRegistry.all
             .filter { ModuleHost.shared.isEnabled($0) }
             .flatMap { $0.currentPermissions() }
-        return PermissionNeed.allCases.filter { need in
-            switch need {
-            case .fullDiskAccess: return declared.contains(.fullDisk)
-            case .accessibility: return declared.contains(.accessibility)
-            case .screenRecording: return declared.contains(.screenRecording)
-            }
+        let wanted = Set(declared.compactMap(need(for:)))
+        return PermissionNeed.allCases.filter(wanted.contains)
+    }
+
+    /// What macOS gate a declared permission stands behind; the admin helper
+    /// is a sudoers rule, not a privacy pane.
+    static func need(for permission: ModulePermission) -> PermissionNeed? {
+        switch permission {
+        case .fullDisk: return .fullDiskAccess
+        case .accessibility: return .accessibility
+        case .screenRecording: return .screenRecording
+        case .adminHelper: return nil
         }
     }
 
@@ -37,17 +44,16 @@ enum PermissionSummary {
     /// triangle is about a module that can do nothing, and this is about every
     /// module the gap reaches — the Full Disk ones do work, and they find less.
     static func affected(by withheld: [PermissionNeed]) -> Int {
-        ModuleRegistry.all.filter { descriptor in
-            ModuleHost.shared.isEnabled(descriptor)
-                && descriptor.moduleMetadata.permissions.contains { declared in
-                    withheld.contains { need in
-                        switch need {
-                        case .fullDiskAccess: return declared == .fullDisk
-                        case .accessibility: return declared == .accessibility
-                        case .screenRecording: return declared == .screenRecording
-                        }
-                    }
-                }
+        affected(by: withheld, among: ModuleRegistry.all
+            .filter { ModuleHost.shared.isEnabled($0) }
+            .map { $0.moduleMetadata.permissions })
+    }
+
+    /// How many of the given modules' declared lists reach a withheld gate.
+    static func affected(by withheld: [PermissionNeed],
+                         among declared: [[ModulePermission]]) -> Int {
+        declared.filter { list in
+            list.contains { need(for: $0).map(withheld.contains) ?? false }
         }.count
     }
 }

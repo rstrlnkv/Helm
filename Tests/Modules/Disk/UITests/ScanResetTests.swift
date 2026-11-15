@@ -1,8 +1,6 @@
 import XCTest
 import HelmTestSupport
-import HelmContract
-import HelmUI
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
 /// Getting out of a scan.
@@ -34,9 +32,10 @@ final class ScanResetTests: XCTestCase {
     func testStartingOverForgetsTheScanOnDiskAsWellAsOnScreen() async throws {
         let store = ScanStore(directory: storeDirectory)
         store.save(saved())
-        let model = DiskViewModel(vm: ModuleViewModel(transport: LocalTransport()), store: store)
-        for _ in 0..<200 where model.result == nil { await Task.yield() }
-        XCTAssertNotNil(model.result, "the fixture has to be restored for this to prove anything")
+        let model = DiskViewModel(work: AnsweringWork(volumes: []), store: store)
+        await model.appear()
+        await waitUntil("the fixture is restored, for this to prove anything",
+                        within: .seconds(5)) { model.result != nil }
 
         model.newScan()
 

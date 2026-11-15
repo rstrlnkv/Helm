@@ -25,11 +25,20 @@ public final class LedgerStore: @unchecked Sendable {
     /// A directory named is a directory written to. Nothing named, outside the
     /// app, means nothing on disk at all — see `persists`.
     public init(directory: URL? = nil) {
-        let home = directory
-            ?? HelmSupport.directory.appendingPathComponent("Layout", isDirectory: true)
-        url = home.appendingPathComponent("conversions.json")
+        let home = directory ?? Self.defaultHome
+        url = home.appendingPathComponent(Self.fileName)
         persists = directory != nil || AppBuild.isBundledApp
         cached = persists ? (Self.read(url) ?? ConversionLedger()) : ConversionLedger()
+    }
+
+    /// The one name the ledger is ever written under — what a test looks for
+    /// in the folders a store could have written to.
+    static let fileName = "conversions.json"
+
+    /// The folder a store with no directory named would write in — what a test
+    /// watches to see that nothing reached the disk.
+    static var defaultHome: URL {
+        HelmSupport.directory.appendingPathComponent("Layout", isDirectory: true)
     }
 
     /// **Whether this ledger touches the disk at all.**

@@ -43,7 +43,7 @@ public enum RemovableScope {
         "/Applications/Utilities",
     ]
 
-    public static func isRemovable(_ path: String,
+    static func isRemovable(_ path: String,
                                    home: String = NSHomeDirectory()) -> Bool {
         // Resolve first: `..` is invisible to a prefix test but not to the
         // filesystem, which is what actually performs the removal — and neither

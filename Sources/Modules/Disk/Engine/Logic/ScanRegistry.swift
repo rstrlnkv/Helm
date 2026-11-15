@@ -3,7 +3,7 @@ import Foundation
 /// Every scan in flight, each under a token only its owner holds.
 ///
 /// One slot was not enough. Drilling into a folder the scan never reached
-/// issues a second "scan" command while the first is still walking, so a single
+/// starts a second scan while the first is still walking, so a single
 /// last-writer-wins box ended up holding the folder measurement — and when that
 /// finished it cleared the box, taking the volume walk's only handle with it.
 /// From then on Stop, New scan and switching the module off all reached

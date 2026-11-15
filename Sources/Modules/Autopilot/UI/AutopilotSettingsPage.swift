@@ -6,9 +6,21 @@ import SwiftUI
 /// The module's page: the folders being watched, and each one's rules in the
 /// order they will be tried.
 struct AutopilotSettingsPage: View {
-    @StateObject private var rvm: AutopilotViewModel
+    @ObservedObject var rvm: AutopilotViewModel
     @State private var editing: EditingRule?
     @State private var diskAccess: PermissionState = .granted
+    /// What the list draws, a copy of `rvm.folders` written only from
+    /// `.onChange` inside its own `withAnimation`. A rule saved in the editor
+    /// lands in the model from a `Task`, outside any transaction of the press
+    /// that caused it, so the animation has to be carried where the value lands
+    /// (`helmAccordion`'s law for a value an engine publishes).
+    @State private var shownFolders: [WatchedFolder]
+    /// Seeded from the model: the first value is not a change, and a page that
+    /// opens on three folders must not play them arriving.
+    init(rvm: AutopilotViewModel) {
+        self.rvm = rvm
+        _shownFolders = State(initialValue: rvm.folders)
+    }
 
     /// A rule and the folder it belongs to, which the editor needs both of.
     struct EditingRule: Identifiable {
@@ -21,99 +33,124 @@ struct AutopilotSettingsPage: View {
         var id: String { rule.id }
     }
 
-    init(vm: ModuleViewModel) {
-        _rvm = StateObject(wrappedValue: AutopilotViewModel(vm: vm))
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: ApStr.needsAccess)
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+                    .helmPageStrip()
                 Divider()
             }
             // Nothing to say about the order of rules unless the rules are what
             // is on screen: the empty state's own call to action is the whole
             // page, and a refusal is a statement about rules that are not
-            // running. One value decides both halves — `folders.isEmpty` was a
-            // second answer to the same question, and it read a refused rule set
-            // as a Mac with nothing on it.
+            // running. One value decides both halves, so a refused rule set is
+            // never read as a Mac with nothing on it.
             if rvm.screen == .folders {
                 toolbar
                 Divider()
             }
             content
-            if let banner = rvm.banner {
-                Divider()
-                VStack(alignment: .leading, spacing: HelmSpace.s3) {
-                    // A return's report is several lines — one per file that
-                    // did not go back, with its reason — and a single-line
-                    // banner would truncate exactly the part that explains
-                    // itself.
-                    Text(banner).font(HelmText.rowTitle)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.leading)
-                    // Under the text and wrapping, never beside it in one
-                    // HStack: the turn-off button carries a rule's *name* —
-                    // the person's own text, with no bound — and beside the
-                    // report it compressed to «Выключить правило „Ск…“» at the
-                    // narrow pane. Pinned leading because `HelmWrappingRow`
-                    // answers with its widest line and centres otherwise.
-                    HelmWrappingRow(spacing: 8, lineSpacing: HelmSpace.s3,
-                                    alignment: .leading) {
-                        // The pass this run just made, offered where the
-                        // sentence about it is.
-                        if let pass = rvm.bannerRun {
-                            Button(ApStr.putBackFiles(pass.undoable.count)) {
-                                Task { await rvm.undoRun(pass) }
-                            }
-                            .controlSize(.small)
-                        }
-                        // The one line in a return's report with something to
-                        // do: a rule that could not be re-marked will take the
-                        // file back within the hour, so the lever to switch it
-                        // off is here, named, beside the warning that says so.
-                        // Capped, because the wrapping row gives an over-wide
-                        // child a whole line rather than folding it — a name
-                        // longer than the pane still has to truncate, and in
-                        // the middle, so its opening survives.
-                        ForEach(rvm.unmarkedRules) { rule in
-                            Button { rvm.turnOffRule(rule) } label: {
-                                Text(ApStr.turnRuleOff(rule.name))
-                                    .lineLimit(1).truncationMode(.middle)
-                                    .frame(maxWidth: AutopilotLayout.turnOffButtonCap)
-                            }
-                            .controlSize(.small)
-                        }
-                        Button(ApStr.done) { rvm.dismissBanner() }.controlSize(.small)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
-            }
+            if let banner = rvm.banner { report(banner) }
         }
+        // The cross-fade between the empty page and the folders: a value that
+        // changes only when the page reaches or leaves its folders, so no list
+        // edit rides on it.
+        .animation(HelmMotion.interface, value: rvm.screen == .folders)
         // The band stands on the permission note or on the page's own toolbar
         // above the rules, never on a scroll view, so it is lit from the first
         // frame (`helmPageStandsOnStillContent`).
         .helmPageStandsOnStillContent()
         .helmTracksFullDiskAccess($diskAccess)
-        .animation(HelmMotion.interface, value: rvm.folders.count)
+        // At every mount: the model outlives the page, and the folders' states
+        // and whether anything is watching are re-asked at each opening.
+        .task { await rvm.appear() }
+        .onChange(of: rvm.folders) { old, now in
+            // The switch to or from the empty page is not a list change: the
+            // page is replaced there, by the cross-fade above. On the way out
+            // the departing list keeps its rows until it has faded; on the way
+            // in the new rows land before the first visible frame.
+            guard !now.isEmpty else { return }
+            withAnimation(old.isEmpty ? nil : HelmMotion.interface) { shownFolders = now }
+        }
         // A sweep's report and a return's report grow into the banner without
         // moving focus, so they are silent to VoiceOver unless said.
         .helmAnnounces(rvm.banner)
+        // Discard rules, Clear and Discard history delete a record, so each asks
+        // first; the press only sets `pendingDiscard`.
+        .confirmationDialog(rvm.pendingDiscard.map { ApStr.discardQuestion($0) } ?? "",
+                            isPresented: Binding(get: { rvm.pendingDiscard != nil },
+                                                 set: { if !$0 { rvm.pendingDiscard = nil } }),
+                            titleVisibility: .visible) {
+            Button(rvm.pendingDiscard.map { ApStr.discardVerb($0) } ?? "", role: .destructive) {
+                let asked = rvm.pendingDiscard
+                Task { await rvm.confirmDiscard(asked) }
+            }
+            Button(HelmWord.cancel, role: .cancel) { rvm.pendingDiscard = nil }
+        }
         .sheet(item: $editing) { context in
             RuleEditor(rvm: rvm, folder: context.folder, rule: context.rule,
                        preset: context.preset)
         }
     }
 
+    /// The report at the foot. It appears and leaves at once: a button arrives
+    /// after its sentence, and an opening slide drew the sentence over it.
+    private func report(_ banner: String) -> some View {
+        VStack(spacing: 0) {
+            Divider()
+            VStack(alignment: .leading, spacing: HelmSpace.s3) {
+                // A return's report is several lines — one per file that
+                // did not go back, with its reason — and a single-line
+                // banner would truncate exactly the part that explains
+                // itself.
+                Text(banner).font(HelmText.rowTitle)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.leading)
+                // Under the text and wrapping, never beside it: the turn-off
+                // button carries a rule's *name*, the person's own text with no
+                // bound, and beside the report it compressed at the narrow pane.
+                // Pinned leading because `HelmWrappingRow` answers with its
+                // widest line and centres otherwise.
+                HelmWrappingRow(spacing: HelmSpace.s4, lineSpacing: HelmSpace.s3,
+                                alignment: .leading) {
+                    // The pass this run just made, offered where the
+                    // sentence about it is.
+                    if let pass = rvm.bannerRun {
+                        Button(ApStr.putBackFiles(pass.undoable.count)) {
+                            Task { await rvm.undoRun(pass) }
+                        }
+                        .controlSize(.small)
+                    }
+                    // The one line in a return's report with something to
+                    // do: a rule that could not be re-marked will take the
+                    // file back within the hour, so the lever to switch it
+                    // off is here, named, beside the warning that says so.
+                    // Capped, because the wrapping row gives an over-wide
+                    // child a whole line rather than folding it; the middle
+                    // is cut so the name's opening survives.
+                    ForEach(rvm.unmarkedRules) { rule in
+                        Button { rvm.turnOffRule(rule) } label: {
+                            Text(ApStr.turnRuleOff(rule.name))
+                                .lineLimit(1).truncationMode(.middle)
+                                .frame(maxWidth: AutopilotLayout.turnOffButtonCap)
+                        }
+                        .controlSize(.small)
+                    }
+                    Button(HelmWord.done) { rvm.dismissBanner() }.controlSize(.small)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .helmPageStrip()
+        }
+    }
+
     private var toolbar: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             Text(ApStr.firstMatchNote)
                 .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                 .lineLimit(2).fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 12)
+            Spacer(minLength: HelmSpace.s5)
             // Beside the button that adds a folder, where a page that already
             // has folders but no rules still looks for a way to begin.
             presets.controlSize(.small)
@@ -121,7 +158,7 @@ struct AutopilotSettingsPage: View {
                 .controlSize(.small)
                 .fixedSize()
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+        .helmPageStrip()
     }
 
     @ViewBuilder private var content: some View {
@@ -132,10 +169,8 @@ struct AutopilotSettingsPage: View {
             // **No `ScrollView` around this.** `HelmEmptyState` centres itself
             // in whatever space it is given, with `maxHeight: .infinity`; inside
             // a scroll view that height is unbounded and the page draws
-            // differently — measured at 25 layers against 44 for the same page
-            // under two permission readings, which inverted a layer-count
-            // guard. The empty state takes the flexible space and the card sits
-            // under it.
+            // differently. The empty state takes the flexible space and the card
+            // sits under it.
             VStack(spacing: HelmSpace.s6) {
                 HelmEmptyState(symbol: "location.north.circle",
                                tint: AutopilotDescriptor.tint.colour,
@@ -155,18 +190,25 @@ struct AutopilotSettingsPage: View {
             .padding(.bottom, HelmSpace.s5)
         case .folders:
             List {
-                ForEach(rvm.folders) { folder in
+                ForEach(shownFolders) { folder in
                     Section {
                         folderRows(folder)
                     } header: {
                         folderHeader(folder)
                     }
                 }
+                ForEach(rvm.removedFolderRules) { group in
+                    Section {
+                        ForEach(group.rules, id: \.index) { unappliedRow($0) }
+                    } header: {
+                        removedFolderHeader(group)
+                    }
+                }
                 if rvm.drawsHistory {
                     Section {
                         HistorySection(history: rvm.history, runs: rvm.runs,
                                        empty: rvm.historyEmpty,
-                                       clear: { rvm.clearHistory() },
+                                       clear: { rvm.ask($0) },
                                        refused: rvm.historyRefused,
                                        canPutBack: rvm.canPutBack,
                                        canPutBackRun: rvm.canPutBack,
@@ -179,9 +221,8 @@ struct AutopilotSettingsPage: View {
             .listStyle(.inset)
             // No history read here on purpose. The engine acts on a timer and
             // on files arriving, and it *announces* those passes — the view
-            // model subscribes for the life of the page and re-asks, so a
-            // `.task` here would only re-read the same store on open and on
-            // every remount after an off-screen idle.
+            // model subscribes for the life of the module and re-asks, so a
+            // `.task` here would only read the same store twice on open.
         }
     }
 
@@ -211,16 +252,16 @@ struct AutopilotSettingsPage: View {
     /// to delete somebody's rules over it would be the worst button in the app.
     @ViewBuilder private func refused(_ reason: RuleRefusal) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
-            switch reason {
-            case .tampered:
-                HelmBanner(ApStr.rulesTampered) {
+            // One banner, one place that says whether it carries Discard:
+            // `RuleRefusal.offersDiscard`, which a test reads. The way out of
+            // `.unreadable` is Reset, or a newer Helm that reads the record.
+            HelmBanner(reason.sentence) {
+                if reason.offersDiscard {
                     Button(ApStr.discardRules, role: .destructive) {
-                        Task { await rvm.discardRefusedRules() }
+                        rvm.ask(.rules)
                     }
                     .controlSize(.small)
                 }
-            case .noKey:
-                HelmBanner(ApStr.rulesUnreadable)
             }
             Spacer(minLength: 0)
         }
@@ -244,38 +285,31 @@ struct AutopilotSettingsPage: View {
     }
 
     private func folderRow(_ folder: WatchedFolder) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             Toggle("", isOn: Binding(get: { folder.enabled },
                                      set: { rvm.setEnabled($0, folder: folder) }))
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .labelsHidden()
                 // The verb first, then which folder — the same shape as the
-                // rule rows' "\(ApStr.edit), \(rule.name)". Labelled with the
-                // bare path this read as the Text beside it said twice, and
-                // never as a switch that does something.
+                // rule rows' "\(HelmWord.edit), \(rule.name)". The bare path would
+                // read as the Text beside it said twice, never as a switch that
+                // does something.
                 .accessibilityLabel("\(ApStr.watchFolder), \(Redact.path(folder.path))")
             Text(Redact.path(folder.path))
                 .font(HelmText.sectionHeading)
                 .lineLimit(1).truncationMode(.middle)
-            Spacer(minLength: 8)
+            Spacer(minLength: HelmSpace.s4)
             Button(ApStr.runNow) { Task { await rvm.runNow(folder) } }
                 .controlSize(.small)
-                // The folder's own switch, not only its rules'. Without it the
-                // row read «[off] ~/Downloads [Run now]» with a live button, and
-                // pressing it reported a sweep of a folder that is off.
-                // `activeRules` meant nothing could actually move.
+                // The folder's own switch, not only its rules': a live button on
+                // a folder that is off would report a sweep of it.
                 .disabled(!folder.enabled || folder.rules.allSatisfy { !$0.enabled })
-            Menu {
+            HelmRowMenu(subject: Redact.path(folder.path)) {
                 Toggle(ApStr.depth, isOn: Binding(get: { folder.depth > 1 },
                                                   set: { rvm.setDepth($0, folder: folder) }))
                 Button(ApStr.removeFolder, role: .destructive) { rvm.removeFolder(folder) }
-            } label: {
-                Image(systemName: "ellipsis.circle")
             }
-            .menuStyle(.borderlessButton)
-            .accessibilityLabel(HelmA11y.moreActions)
-            .fixedSize()
         }
     }
 
@@ -291,6 +325,32 @@ struct AutopilotSettingsPage: View {
             editing = EditingRule(folder: folder, rule: rvm.addRule(to: folder))
         }
         .controlSize(.small)
+        ForEach(rvm.unapplied(in: folder), id: \.index) { unappliedRow($0) }
+    }
+
+    /// A rule this build cannot read: its name when that could be read, and the
+    /// sentence. No switch, no edit, no move, no delete: it is kept as it was and
+    /// a newer Helm reads it.
+    private func unappliedRow(_ rule: UnappliedRule) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s1) {
+            Text(rule.name ?? ApStr.untitledRule).lineLimit(1)
+            Text(ApStr.newerHelmRule)
+                .font(HelmText.smallPrint).foregroundStyle(HelmText.faint)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func removedFolderHeader(_ group: RemovedFolderRules) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s2) {
+            if let path = group.path {
+                Text(Redact.path(path))
+                    .font(HelmText.sectionHeading)
+                    .lineLimit(1).truncationMode(.middle)
+            }
+            Text(ApStr.folderRemoved)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
+        }
     }
 
     private func ruleRow(_ rule: Rule, in folder: WatchedFolder) -> some View {
@@ -310,7 +370,7 @@ struct AutopilotSettingsPage: View {
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text(rule.name).lineLimit(1)
                 Text(RuleSummary.describe(rule))
-                    .font(.caption2).foregroundStyle(HelmText.faint)
+                    .font(HelmText.smallPrint).foregroundStyle(HelmText.faint)
                     .lineLimit(1).truncationMode(.tail)
             }
             .accessibilityElement(children: .combine)
@@ -324,7 +384,7 @@ struct AutopilotSettingsPage: View {
                 Image(systemName: "slider.horizontal.3")
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("\(ApStr.edit), \(rule.name)")
+            .accessibilityLabel("\(HelmWord.edit), \(rule.name)")
             // The order is the rule: the arrows are how it is set, and they are
             // reachable from the keyboard, which a drag is not.
             Button { rvm.move(rule, in: folder, by: -1) } label: {
@@ -350,7 +410,7 @@ struct AutopilotSettingsPage: View {
     }
 
     @ViewBuilder private func ruleActions(_ rule: Rule, in folder: WatchedFolder) -> some View {
-        Button(ApStr.edit) { editing = EditingRule(folder: folder, rule: rule) }
+        Button(HelmWord.edit) { editing = EditingRule(folder: folder, rule: rule) }
         Button(ApStr.delete, role: .destructive) { rvm.remove(rule, from: folder) }
     }
 }

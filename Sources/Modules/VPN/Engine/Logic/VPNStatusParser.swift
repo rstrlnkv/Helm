@@ -87,8 +87,7 @@ enum VPNStatusParser {
     /// is not going through the tunnel» on a Mac where it is: a false alarm in
     /// the one sentence this feature exists to get right.
     ///
-    /// This was «the shallowest `InterfaceName` seen» for one release, which is
-    /// the same rule only while the tunnel's own line is present. `scutil`
+    /// «The shallowest `InterfaceName` seen» is the same rule only while the tunnel's own line is present. `scutil`
     /// prints a dictionary's keys in order — `Addresses`, `ExcludedRoutes`,
     /// `InterfaceName`, `Router`, `ServerAddress` — so the decoys come *before*
     /// the line that overrules them, and any output stopping between the two
@@ -96,7 +95,7 @@ enum VPNStatusParser {
     /// past `Connected`, or a read cut short inside `ExcludedRoutes`. The
     /// caller then caches that reading for the life of the tunnel
     /// (`VPNEngine.readInterfaces`), so one transient read draws `en0`'s
-    /// since-boot counters under a green tick. Nil is the answer, and the
+    /// since-boot counters beside a card whose dot is green. Nil is the answer, and the
     /// caller is already written for it.
     ///
     /// So the anchor is the `IPv4` dictionary's own indent: the tunnel's line
@@ -134,8 +133,8 @@ enum VPNStatusParser {
             if let destination = value(of: "DestinationAddress", in: text) {
                 pendingDestination = destination
             }
-            if let mask = value(of: "SubnetMask", in: text), let destination = pendingDestination {
-                excluded.append(VPNExcludedRoutes.Route(destination: destination, mask: mask))
+            if value(of: "SubnetMask", in: text) != nil, let destination = pendingDestination {
+                excluded.append(VPNExcludedRoutes.Route(destination: destination))
                 pendingDestination = nil
             }
         }

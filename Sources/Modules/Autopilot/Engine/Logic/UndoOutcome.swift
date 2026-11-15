@@ -5,7 +5,7 @@ import Foundation
 /// A value rather than a `Bool`, for the reason `RuleOutcome` is one: a rule
 /// that could not put three files back has to be able to say which three and
 /// why, and a report built from flags can only say "some of them".
-public enum UndoOutcome: Codable, Equatable, Sendable {
+public enum UndoOutcome: Equatable, Sendable {
     /// The file is back, at this path — which is not always the path it came
     /// from: a name taken in the meantime is numbered, the way an arrival is,
     /// and the report names what it settled on.
@@ -27,7 +27,7 @@ public enum UndoOutcome: Codable, Equatable, Sendable {
 /// file any more" ask for different next moves. The `rawValue` is storage and
 /// nothing else — every one of these is spoken in the reader's language from
 /// the day it ships.
-public enum UndoRefusal: String, Codable, CaseIterable, Equatable, Sendable {
+public enum UndoRefusal: String, CaseIterable, Equatable, Sendable {
     /// Nothing is at the path the record says the file went to.
     case notThere
     /// Something is, and it is not the file Helm moved.
@@ -68,14 +68,14 @@ public enum UndoRefusal: String, Codable, CaseIterable, Equatable, Sendable {
 /// put back one at a time is not atomic — the fourth file can refuse after
 /// three have moved — and a report carrying its own tallies is a report that
 /// can say "3 restored" about a batch where two of them failed.
-public struct UndoReport: Codable, Equatable, Sendable {
-    public struct Line: Codable, Equatable, Sendable, Identifiable {
+public struct UndoReport: Equatable, Sendable {
+    public struct Line: Equatable, Sendable, Identifiable {
         /// The record's own id, so the page can find the row this is about.
         public let id: String
         public let file: String
         public let outcome: UndoOutcome
 
-        public init(id: String, file: String, outcome: UndoOutcome) {
+        init(id: String, file: String, outcome: UndoOutcome) {
             self.id = id
             self.file = file
             self.outcome = outcome
@@ -104,7 +104,7 @@ public struct UndoReport: Codable, Equatable, Sendable {
 
     public let lines: [Line]
 
-    public init(lines: [Line]) { self.lines = lines }
+    init(lines: [Line]) { self.lines = lines }
 
     public var restored: [Line] { lines.filter(\.restored) }
     public var notPutBack: [Line] { lines.filter { !$0.restored } }

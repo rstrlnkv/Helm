@@ -1,12 +1,11 @@
-import HelmContract
 import HelmRuntime
-import HelmUI
+import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
 /// The page is where the policy is chosen and the engine is where it is applied,
-/// and between them sit a plist entry, a MAC and a wire — three places the answer
+/// and between them sit a plist entry, a MAC and the call to the engine — three places the answer
 /// can be dropped without anything failing to build.
 ///
 /// **The seal is the part a UI test has to prove.** The engine refuses a policy
@@ -18,7 +17,7 @@ import XCTest
 final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
 
     private var store: NamespacedStore!
-    private var keys: PlantedSealKey!
+    private var keys: SealKeyProbe!
     /// The page's guard, wired the way the module wires it: behind
     /// `SealKeyCache`, because what the page reads it reads only once the key is
     /// in hand and a port that keeps nothing is never in hand
@@ -27,20 +26,20 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
 
     override func setUp() async throws {
         store = duplicatesStore(folder: "\(home)/Downloads")
-        keys = PlantedSealKey()
+        keys = SealKeyProbe(firstUse: false)
         settings = SettingGuard(keys: SealKeyCache(keys))
     }
 
     /// The page with its first load finished.
     ///
-    /// **Awaited, not raced.** The policy arrives from a task the initialiser
-    /// holds, because reading it goes to the keychain and this page is built on
+    /// **Awaited, not raced.** The policy arrives from a task `appear()` starts
+    /// and the model holds, because reading it goes to the keychain and this page is built on
     /// the thread that draws; a test that read `policy` on the next line would be
     /// asserting about a page mid-load rather than about what is in force.
-    private func model(_ wire: EngineTransport = OneAnswerTransport(groups: [])) async
+    private func model(_ work: any DuplicatesWork = AnsweringWork(groups: [])) async
     -> DuplicatesViewModel {
-        let dvm = DuplicatesViewModel(vm: ModuleViewModel(transport: wire), store: store,
-                                      settings: settings)
+        let dvm = DuplicatesViewModel(work: work, store: store, settings: settings, chooseFolder: { nil })
+        dvm.appear()
         await dvm.firstLoad?.value
         return dvm
     }
@@ -52,7 +51,8 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
 
         dvm.choose(.byDate)
 
-        let engine = DuplicatesEngine(store: store, settings: SettingGuard(keys: keys))
+        let engine = DuplicatesEngine(store: store, settings: SettingGuard(keys: keys),
+                                      trashing: { _ in XCTFail("a read of the policy removed a file") })
         XCTAssertEqual(engine.storedKeepPolicy(), .byDate,
                        "the background scan reads what the page stored, seal and all")
     }
@@ -100,14 +100,14 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
     /// hashes anything — the representative of a hard-linked set is chosen by
     /// the same ladder — and because the person may have just changed the popup.
     func testASearchCarriesThePolicyThePageIsShowing() async {
-        let wire = DuplicatesWire(groups: [])
-        let dvm = await model(wire)
+        let work = AnsweringWork(groups: [])
+        let dvm = await model(work)
         dvm.choose(.byDate)
 
         dvm.search()
-        for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
+        await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
 
-        XCTAssertEqual(wire.searches.map(\.keepPolicy), [.byDate],
+        XCTAssertEqual(work.searches.map(\.keepPolicy), [.byDate],
                        "the search ran on whatever the engine had stored, not on the popup")
     }
 }

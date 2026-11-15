@@ -4,150 +4,47 @@ import XCTest
 import HelmContract
 @testable import Module_Layout_Engine
 
-final class FakeTyping: TypingPort, @unchecked Sendable {
-    var performed: [SwitchPlan] = []
-    var succeeds = true
-    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return succeeds }
-}
-
-final class FakeSecure: SecureContextPort, @unchecked Sendable {
-    var secure = false
-    var bundle = "com.apple.Notes"
-    func isSecureInput() -> Bool { secure }
-    func isSecure() -> Bool { secure }
-    func frontmostBundleID() -> String { bundle }
-}
-
-struct FakeTranslation: TranslationPort {
-    let table: [String: String]
-    func translate(_ word: String, from: String, to: String) -> String? { table[word] }
-}
-
-struct FakeSpell: SpellPort {
-    let valid: Set<String>
-    func isWord(_ word: String, sourceID: String) -> Bool? { valid.contains(word) }
-}
-
-/// A tap that can be in the three states the real one can: watching, refused
-/// for want of the grant, and stopped by macOS behind the app's back.
-///
-/// `start` used to return `true` unconditionally, so «macOS would not give us a
-/// tap» and «macOS took the tap away» were states no test could write down — which
-/// is why the second one shipped as a page that said «Active» with nobody listening
-/// (CLAUDE.md § What not to do, and what breaks if you do).
-final class FakeTap: KeyTapPort, @unchecked Sendable {
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
-    private var died: (@Sendable () -> Void)?
-    /// Whether Accessibility is granted. False is a refusal, exactly as
-    /// `AXIsProcessTrusted()` failing is.
-    var grant = true
-    /// How many taps have been asked for — the difference between «it was
-    /// rebuilt» and «the engine still believes in the first one».
-    var starts = 0
-    /// Fired after each `start`, so a test can wait for the rebuild that the
-    /// `didBecomeActive` observer performs on the main queue.
-    var onStart: (@Sendable () -> Void)?
-
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        starts += 1
-        guard grant else { onStart?(); return false }
-        handler = onEvent
-        modifiers = onModifier
-        self.died = died
-        onStart?()
-        return true
-    }
-
-    /// The grant is withdrawn mid-session: macOS disables the tap and the port
-    /// stands down, which is a teardown the engine did not ask for.
-    func macOSTakesItAway() {
-        grant = false
-        let announce = died
-        stop()
-        died = nil
-        announce?()
-    }
-    /// One clean press and release of the bound key.
-    func tapKey(_ code: Int64, at: TimeInterval = 0) {
-        modifiers?(.down(code, at: at, othersHeld: false))
-        modifiers?(.up(code, at: at + 0.05))
-    }
-    func stop() { handler = nil }
-    func type(_ text: String) { for character in text { handler?(.character(character)) } }
-    func space() { handler?(.space) }
-}
-
-/// A keyboard that is actually on the layout it was switched to.
-///
-/// `current()` used to answer `"en"` for ever, whatever `select()` had been
-/// told — so "convert, then convert the next word back" was unrepresentable:
-/// the engine reads `current()` at the top of every conversion, and in a test
-/// the second one always started from where the first one had. No test could
-/// have covered the sequence, whatever anybody wrote.
-///
-/// Shared rather than private because it was written out twice, in this file
-/// and in `TheLogDoesNotCarryWhatYouTypeTests` — the arrangement where one copy
-/// gets fixed. KeepAwake and VPN keep theirs in a `Fakes.swift` for the same
-/// reason.
-final class FakeSources: LayoutSourcePort, @unchecked Sendable {
-    var selected: [String] = []
-    private var live: String
-    init(current: String = "en") { self.live = current }
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { live }
-    func select(_ sourceID: String) { selected.append(sourceID); live = sourceID }
-}
-
-/// The newest state the engine published — `LocalTransport` replays the last
-/// event per name to every new subscriber, so this is not racing the emit.
+/// The newest state the engine published — `stream()` hands every new
+/// subscriber the latest one first, so this is not racing the emit.
 /// Beside the shared fakes for the reason they are here: three suites read the
 /// state back and each had spelled this loop for itself.
 func latestLayoutState(_ engine: LayoutEngine) async -> LayoutState? {
-    for await event in engine.transport.events
-    where event.name == LayoutEvent.layoutState.rawValue {
-        return try? JSONDecoder().decode(LayoutState.self, from: event.payload)
-    }
+    for await state in engine.stream() { return state }
     return nil
 }
 
-/// The engine's own job is refusing: everything it does that is not a
-/// conversion is a guard, and each of these is one of them.
-final class LayoutEngineTests: XCTestCase {
-    private var typing = FakeTyping()
-    private var secure = FakeSecure()
-    private var tap = FakeTap()
-    private var sources = FakeSources()
-
-    /// The chord bound as «fix». Only the recorded one ends a word and leaves
-    /// it remembered: every other chord may have changed the text in front of
-    /// the caret — ⌘V pastes, ⌥V types `√` — so the word before it is dropped.
-    private static let shortcut: UInt16 = 9
-
-    /// A store with that binding in it, because these suites use a chord as the
-    /// boundary that remembers.
-    private static func boundStore() -> NamespacedStore {
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        store.set(Int(shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
-        return store
+/// Asks the engine to re-read the store and returns once the re-read is in force.
+func rereadSettings(_ engine: LayoutEngine) async {
+    await withCheckedContinuation { continuation in
+        engine.settingsChanged(then: { continuation.resume() })
     }
+}
 
-    private func engine(automatic: Bool = true) -> LayoutEngine {
+/// The fixture both classes below build on, so the split that lets the conversion
+/// half stay optional does not copy it. Holds no test.
+class LayoutEngineRig: XCTestCase {
+    fileprivate var typing = FakeTyping()
+    fileprivate var secure = FakeSecure()
+    fileprivate var tap = FakeTap()
+    fileprivate var sources = FakeSources()
+
+    fileprivate func engine(automatic: Bool = true) -> LayoutEngine {
         typing = FakeTyping(); secure = FakeSecure(); tap = FakeTap(); sources = FakeSources()
         let engine = LayoutEngine(
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет", "ras": "кфы",
                                                  "qqqq": "ййыы"]),
             spell: FakeSpell(valid: ["привет", "ras"]),
-            secure: secure, automatic: automatic,
-            settings: Self.boundStore())
+            secure: secure, activation: FakeActivation(), automatic: automatic,
+            settings: layoutStore(bound: true))
         engine.activate()
         return engine
     }
+}
 
+/// The engine's own job is refusing: everything it does that is not a
+/// conversion is a guard, and each of these is one of them.
+final class LayoutEngineTests: LayoutEngineRig {
     /// Secure input stops conversions and takes the buffer with it.
     func testSecureInputSuspends() {
         let engine = engine()
@@ -232,7 +129,7 @@ extension LayoutEngineTests {
     func testACommandChordEndsTheWordWithoutConverting() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.handler?(.chord(Self.shortcut))           // what a chord delivers
+        tap.handler?(.chord(layoutShortcut))           // what a chord delivers
         XCTAssertTrue(typing.performed.isEmpty)
 
         // …and the word it ended is still available to the shortcut, which is
@@ -249,7 +146,7 @@ extension LayoutEngineTests {
         let engine = LayoutEngine(
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
-            spell: FakeSpell(valid: ["привет"]), secure: secure)
+            spell: FakeSpell(valid: ["привет"]), secure: secure, activation: FakeActivation())
         engine.activate()
         tap.type("ghbdtn"); tap.space()
         XCTAssertTrue(sources.selected.isEmpty, "the input source must not follow a failure")
@@ -259,39 +156,7 @@ extension LayoutEngineTests {
 }
 
 /// The conversions themselves; `LayoutEngineTests` holds the refusals.
-final class LayoutEngineConversionTests: XCTestCase {
-    private var typing = FakeTyping()
-    private var secure = FakeSecure()
-    private var tap = FakeTap()
-    private var sources = FakeSources()
-
-    /// The chord bound as «fix». Only the recorded one ends a word and leaves
-    /// it remembered: every other chord may have changed the text in front of
-    /// the caret — ⌘V pastes, ⌥V types `√` — so the word before it is dropped.
-    private static let shortcut: UInt16 = 9
-
-    /// A store with that binding in it, because these suites use a chord as the
-    /// boundary that remembers.
-    private static func boundStore() -> NamespacedStore {
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        store.set(Int(shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
-        return store
-    }
-
-    private func engine(automatic: Bool = true) -> LayoutEngine {
-        typing = FakeTyping(); secure = FakeSecure(); tap = FakeTap(); sources = FakeSources()
-        let engine = LayoutEngine(
-            tap: tap, typing: typing, sources: sources,
-            translation: FakeTranslation(table: ["ghbdtn": "привет", "ras": "кфы",
-                                                 "qqqq": "ййыы"]),
-            spell: FakeSpell(valid: ["привет", "ras"]),
-            secure: secure, automatic: automatic,
-            settings: Self.boundStore())
-        engine.activate()
-        return engine
-    }
-
+final class LayoutEngineConversionTests: LayoutEngineRig {
     func testAMislayoutWordIsConvertedAndTheSourceFollows() {
         let engine = engine()
         tap.type("ghbdtn"); tap.space()

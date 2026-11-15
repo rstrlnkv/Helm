@@ -1,4 +1,5 @@
 import Foundation
+import HelmTestSupport
 import XCTest
 
 /// Which operations can name themselves in the memory trail.
@@ -24,14 +25,12 @@ import XCTest
 /// This is a coverage test, not a measurement: it asserts the labels exist in the
 /// source, so removing one is visible. It cannot tell whether a label sits in the
 /// right place — only that the operation is still able to name itself.
+///
+/// Guards: 2d1eae5b (a 75 MB to 1338 MB spike with no operation named in the trail).
 final class MemoryTrailCoverageTests: XCTestCase {
 
     private var sources: URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // HelmRuntimeTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-            .appendingPathComponent("Sources")
+        RepoSource.root.appendingPathComponent("Sources")
     }
 
     /// Every bulk operation that has been found to matter, with the file it lives

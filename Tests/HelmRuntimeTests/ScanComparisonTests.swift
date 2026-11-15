@@ -13,7 +13,6 @@ final class ScanComparisonTests: XCTestCase {
         XCTAssertTrue(change.appeared.isEmpty)
         XCTAssertTrue(change.went.isEmpty)
         XCTAssertEqual(change.stayed.count, 2)
-        XCTAssertFalse(change.isSomething)
     }
 
     func testAppearedAndWent() {
@@ -22,7 +21,6 @@ final class ScanComparisonTests: XCTestCase {
         XCTAssertEqual(change.appeared.map(\.path), ["/c"])
         XCTAssertEqual(change.went.map(\.path), ["/a"])
         XCTAssertEqual(change.stayed.map(\.path), ["/b"])
-        XCTAssertTrue(change.isSomething)
     }
 
     /// A file at the same path with a different size is not the same file for
@@ -45,8 +43,8 @@ final class ScanComparisonTests: XCTestCase {
             previous: [item("/a", 10), item("/b", 20)],
             current: [item("/b", 20), item("/c", 30), item("/d", 5)])
         XCTAssertEqual(change.appearedBytes, 35)
-        XCTAssertEqual(change.wentBytes, 10)
-        XCTAssertEqual(change.stayedBytes, 20)
+        XCTAssertEqual(change.went.map(\.bytes), [10])
+        XCTAssertEqual(change.stayed.map(\.bytes), [20])
     }
 
     /// A first scan has nothing behind it. Everything is new, and that must not

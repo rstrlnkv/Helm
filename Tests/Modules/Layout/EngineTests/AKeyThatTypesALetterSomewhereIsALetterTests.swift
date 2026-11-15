@@ -13,6 +13,8 @@ import XCTest
 /// **any** installed layout. That is a fact about the keyboard rather than about
 /// Russian, so a Greek, Armenian or Hebrew layout gets the same answer for the
 /// same reason.
+///
+/// Guards a past defect: the tap cutting a word at a key that is a letter elsewhere (fix commit `a1e8d857`).
 final class AKeyThatTypesALetterSomewhereIsALetterTests: XCTestCase {
 
     /// Toy tables in the shape `UCTranslation` builds: keycode → what it types.

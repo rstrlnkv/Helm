@@ -1,12 +1,14 @@
 import AppKit
 import Foundation
 import HelmRuntime
+import HelmAppStrings
 
 /// Checks the public GitHub repo's latest release and, if newer than the running
 /// build, offers a one-click silent update: it downloads the release `.zip`
 /// itself (self-downloaded → no quarantine, no Gatekeeper prompt), swaps the app
 /// bundle in place, and relaunches. Falls back to opening the release page when
-/// no installable zip asset is present.
+/// this build does not take published builds, when the release has no installable
+/// zip asset, and when it published no digest for that zip.
 @MainActor final class UpdateService: ObservableObject {
     static let shared = UpdateService()
 
@@ -51,22 +53,41 @@ import HelmRuntime
         case cannotReplaceItself
     }
 
-    @Published private(set) var available: Release?
+    /// Settable from the module so a test can stand an offer in place before `decline`.
+    @Published var available: Release?
     /// What the channel's newest release is, when the running build is a
     /// prerelease ahead of it. Nil in every other state, including while an
     /// update is on offer.
     @Published private(set) var aheadOfChannel: String?
     @Published private(set) var checking = false
     @Published private(set) var installState: InstallState = .idle
+    /// The version the last self-update was reaching for when it did not finish,
+    /// read from the handoff note at launch (`UpdateHandoff.reportAtLaunch`).
+    /// Kept apart from `note`: every check clears that, and this is true of the
+    /// whole launch. Nil when the last update, or none, finished.
+    @Published var unfinishedUpdate: String?
     /// A short status for the settings row after a manual check (nil = idle).
     @Published private(set) var note: Note?
 
-    /// The app's one instance is `shared`; a test passes its own notice port and store.
+    /// What asks GitHub: one request, one answer. The app's is `URLSession`; a test
+    /// passes a feed it can hold and release.
+    typealias Feed = @Sendable (URLRequest) async throws -> (Data, URLResponse)
+
+    /// The app's one instance is `shared`; a test passes its own notice port, store,
+    /// feed and the backing the channel is kept in.
     init(notices: AutomationNoticePort = SystemAutomationNotice(area: UpdateService.logArea),
-         store: NamespacedStore = AppSettings.store) {
+         store: NamespacedStore = AppSettings.store,
+         feed: @escaping Feed = { try await URLSession.shared.data(for: $0) },
+         channelBacking: KeyValueStore = UserDefaults.standard) {
         self.notices = notices
         self.store = store
+        self.feed = feed
+        self.channelBacking = channelBacking
     }
+
+    private let feed: Feed
+    /// Where the channel is kept: the bare `updateChannel` key, app-wide.
+    private let channelBacking: KeyValueStore
 
     /// Where the two stamps this service keeps are written — when it last
     /// looked, and what it last said out loud.
@@ -95,29 +116,18 @@ import HelmRuntime
     /// The tag as published, never a parsed version: see `UpdateNews.version`.
     static let lastAnnouncedKey = "lastAnnouncedUpdate"
 
-    /// The release cannot be installed from inside Helm, and the browser has
-    /// been sent to the page instead.
+    /// The release cannot be installed from inside Helm, or this build cannot
+    /// be replaced by a published bundle, and the browser has been sent to the
+    /// page instead.
     ///
     /// **The offer goes with it.** The card asks about `available` before it
     /// asks about the note, so leaving the release in place kept «Update ready»
     /// and «Update & Relaunch» on screen while a browser opened by itself — the
     /// exact reading the note was written to prevent. The offer is not on offer
     /// any more: Helm has just declined to take it.
-    func noteManualInstall() {
+    func decline(_ note: Note) {
         installState = .idle
-        note = .manualInstall
-        available = nil
-    }
-
-    /// This build cannot be replaced by a published bundle, and the browser has
-    /// been sent to the page instead.
-    ///
-    /// **The offer goes with it**, for the reason `noteManualInstall` gives: the
-    /// card asks about `available` before it asks about the note, so a release
-    /// left standing keeps «Update & Relaunch» on screen over a refusal.
-    func noteCannotReplaceItself() {
-        installState = .idle
-        note = .cannotReplaceItself
+        self.note = note
         available = nil
     }
 
@@ -148,6 +158,10 @@ import HelmRuntime
     }
 
     func checkNow() { Task { await performCheck(manual: true) } }
+
+    /// The newest manual check, so only it clears `checking`: an older one that
+    /// finishes late must not stop the spinner of the one still waiting.
+    private var manualChecks = LatestRequest()
 
     /// How often the day's check is given a chance to happen. Not how often it
     /// happens — `checkOnLaunch` still refuses inside 24 hours.
@@ -198,7 +212,7 @@ import HelmRuntime
         // being told, at every press, and read the refusal as «install failed».
         guard AppBuild.takesPublishedBuilds else {
             HelmLog.shared.warn("update", "this build is not \(AppBuild.releaseIdentifier) — manual install")
-            noteCannotReplaceItself()
+            decline(.cannotReplaceItself)
             NSWorkspace.shared.open(rel.pageURL)
             return
         }
@@ -208,7 +222,7 @@ import HelmRuntime
             // so the card went on offering to install what it had just sent
             // somebody else to fetch.
             HelmLog.shared.warn("update", "no installable asset for \(rel.version) — manual install")
-            noteManualInstall()
+            decline(.manualInstall)
             NSWorkspace.shared.open(rel.pageURL)
             return
         }
@@ -218,7 +232,16 @@ import HelmRuntime
                 var req = URLRequest(url: zip)
                 req.setValue("Helm", forHTTPHeaderField: "User-Agent")
                 let (tmp, resp) = try await URLSession.shared.download(for: req)
-                guard (resp as? HTTPURLResponse)?.statusCode == 200 else { installState = .failed; return }
+                // `download` leaves the file in the temporary directory for the
+                // caller to remove, so every way out removes it (the installer
+                // has usually done so already; a second removal is harmless).
+                defer { try? FileManager.default.removeItem(at: tmp) }
+                let status = (resp as? HTTPURLResponse)?.statusCode
+                guard status == 200 else {
+                    HelmLog.shared.warn("update", "download answered HTTP \(status.map(String.init) ?? "none") for \(zip.lastPathComponent)")
+                    installState = .failed
+                    return
+                }
                 // Nothing is swapped in silently without the digest the release
                 // published for this exact asset. No digest, or the wrong one,
                 // and the user gets the release page instead — the updater
@@ -230,7 +253,7 @@ import HelmRuntime
                     // The browser opening on its own, with the row still saying
                     // "update available", reads as the button having done
                     // nothing. Say why before the window goes away.
-                    noteManualInstall()
+                    decline(.manualInstall)
                     NSWorkspace.shared.open(rel.pageURL)
                     return
                 }
@@ -242,8 +265,9 @@ import HelmRuntime
                 // § Module pattern) — and until now it ran unattended with no label, so a
                 // silent update check could only ever appear in the trail as
                 // growth between two `idle` readings.
-                let digestMatches = HelmActivity.phase("update.digest") {
-                    ReleaseDigest.matches(fileAt: tmp, expected: expected)
+                // Off the main actor: hashing a whole file is a blocking read.
+                let digestMatches = await HelmActivity.phase("update.digest") { @Sendable in
+                    await offTheCooperativePool { ReleaseDigest.matches(fileAt: tmp, expected: expected) }
                 }
                 HelmLog.shared.memory("update.digest")
                 guard digestMatches else {
@@ -252,7 +276,7 @@ import HelmRuntime
                     return
                 }
                 installState = .installing
-                try Installer.installZip(at: tmp, expectedVersion: rel.version)  // terminates on success
+                try await Installer.installZip(at: tmp, expectedVersion: rel.version)  // terminates on success
             } catch {
                 HelmLog.shared.failure("update", "install failed", error)
                 installState = .failed
@@ -261,36 +285,50 @@ import HelmRuntime
     }
 
     /// Update channel, persisted app-wide (not a module setting).
-    static var channel: UpdateCheck.Channel {
+    var channel: UpdateCheck.Channel {
         get {
-            UpdateCheck.Channel.stored(UserDefaults.standard.string(forKey: "updateChannel"))
+            UpdateCheck.Channel.stored(channelBacking.object(forKey: "updateChannel") as? String)
         }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "updateChannel") }
+        set { channelBacking.set(newValue.rawValue, forKey: "updateChannel") }
     }
 
     /// Switching channels re-checks immediately: a dev opt-in should surface a
     /// prerelease at once, and opting back out must drop a prerelease offer.
     func setChannel(_ channel: UpdateCheck.Channel) {
-        guard channel != Self.channel else { return }
-        Self.channel = channel
+        guard channel != self.channel else { return }
+        self.channel = channel
         available = nil
         aheadOfChannel = nil
         checkNow()
     }
 
     private func performCheck(manual: Bool) async {
-        if manual { checking = true; note = nil }
-        defer { checking = false }
+        var token = 0
+        if manual {
+            token = manualChecks.take()
+            checking = true
+            note = nil
+        }
+        defer { if manual, manualChecks.isLatest(token) { checking = false } }
 
-        let channel = Self.channel
+        let channel = self.channel
         var req = URLRequest(url: URL(string: channel.endpoint(repo: repo))!)
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         req.setValue("Helm", forHTTPHeaderField: "User-Agent")
         req.timeoutInterval = 15
 
         do {
-            let (data, resp) = try await URLSession.shared.data(for: req)
-            guard let http = resp as? HTTPURLResponse else { return }
+            let (data, resp) = try await feed(req)
+            guard let http = resp as? HTTPURLResponse else {
+                HelmLog.shared.warn("update", "check got no HTTP answer (\(channel.rawValue))")
+                return
+            }
+            // The channel was switched while this was in flight: the answer is
+            // for the channel left, and `setChannel` has already dropped its offer.
+            guard channel == self.channel else {
+                HelmLog.shared.info("update", "dropped an answer for \(channel.rawValue) — the channel changed")
+                return
+            }
             // What the response MEANS is decided by the unit-tested core.
             // Beta reads a single release; dev reads the list of releases.
             let outcome = channel == .beta
@@ -338,7 +376,8 @@ import HelmRuntime
                 tellSomebodyAboutIt(r.version, startedByHand: manual)
             }
         } catch {
-            if manual { note = .checkFailed }
+            HelmLog.shared.failure("update", "check failed (\(channel.rawValue))", error)
+            if manual, channel == self.channel { note = .checkFailed }
         }
     }
 

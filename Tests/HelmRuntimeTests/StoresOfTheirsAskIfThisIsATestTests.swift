@@ -2,16 +2,21 @@ import HelmTestSupport
 import XCTest
 
 /// A file that resolves one of the person's own folders has to ask whether this
-/// is a test run — and one of the two that do it does not ask.
+/// is a test run.
 ///
 /// `TestProcess` exists for exactly this question and says so at its
 /// declaration: "asked by anything that would otherwise write into somebody's
-/// real files". Two places in `Sources/` name a `SearchPathDirectory` of the
-/// person's. `ScanJournal` asks and lands in `$TMPDIR`; `ScanStore` does not, so
-/// a suite run reads — and can delete — their last Disk scan, which is
-/// `TheSuiteDoesNotReadTheUsersLastScanTests`, next door to the store itself.
-/// That one names the file and the measurement; this one is the family, so the
-/// third store to be written arrives with the question already asked of it.
+/// real files". `HelmSupport` is the one place that resolves Application
+/// Support, and it asks; `ScreenshotsState` (Documents) and Autopilot's
+/// `SystemPorts` (Downloads) ask too. Duplicates' `KeepPolicy` (Downloads,
+/// Desktop) does not ask: it names `TestProcess` only in a doc comment saying
+/// so, and is the one named exemption (`answeredNotAsked`) from the per-file
+/// check below, which reads code. A store that
+/// skipped the question would read — and could delete — the person's own files
+/// in a suite run, which is what `TheSuiteDoesNotReadTheUsersLastScanTests`
+/// measured for the last Disk scan. That one names the file and the
+/// measurement; this one is the family, so the next store to be written arrives
+/// with the question already asked of it.
 ///
 /// **Why the source and not the behaviour.** The behaviour can only be asked of
 /// a store that already exists, from a target that can see it — nine engine
@@ -19,8 +24,8 @@ import XCTest
 /// The rule is one line of source per site, so the source is where it can be
 /// held for the whole tree at once.
 ///
-/// The rule is coarse on purpose: it asks that the file *mentions* the question,
-/// not that it answers it correctly. A file that names `TestProcess` and ignores
+/// The rule is coarse on purpose: it asks that the file's *code* mentions the
+/// question, not that it answers it correctly. A file that names `TestProcess` and ignores
 /// what it says is a defect this cannot see, and the two behaviour guards —
 /// here and in Disk's engine tests — are what cover that.
 final class StoresOfTheirsAskIfThisIsATestTests: XCTestCase {
@@ -34,6 +39,10 @@ final class StoresOfTheirsAskIfThisIsATestTests: XCTestCase {
         ".documentDirectory", ".libraryDirectory", ".downloadsDirectory",
     ]
 
+    /// The one file whose doc comment explains why it does not ask: it resolves
+    /// the folders only to compare a path as a string, and writes nothing.
+    private static let answeredNotAsked = "Sources/Modules/Duplicates/Engine/Logic/KeepPolicy.swift"
+
     private struct Site {
         let file: String
         let line: Int
@@ -45,13 +54,26 @@ final class StoresOfTheirsAskIfThisIsATestTests: XCTestCase {
     func testEverySiteThatResolvesOneOfTheirFoldersNamesTestProcess() throws {
         let sites = try self.sites()
         let unguarded = try sites.filter { site in
-            try !RepoSource.text(of: site.file).contains("TestProcess")
+            if site.file == Self.answeredNotAsked { return false }
+            return try !RepoSource.lines(of: site.file).contains { RepoSource.code($0).contains("TestProcess") }
         }
         XCTAssertEqual(unguarded.map { "\($0.file):\($0.line) \($0.folder)" }, [], """
             these resolve a folder of the person's without asking TestProcess.isRunning, so a \
             suite run lands in it: the log and the scan journal both ask, and the file that does \
             not is the one whose contents a test reads by accident.
             """)
+    }
+
+    /// The rule above reads a file's code, but any other line of it would do, so
+    /// `HelmSupport` and `ScanJournal` could lose the branch and keep another
+    /// mention. These two are held on the asking line itself.
+    func testTheTwoFoldersTheSuiteWouldOtherwiseWriteIntoAskInCode() throws {
+        for file in ["Sources/HelmRuntime/HelmSupport.swift", "Sources/HelmRuntime/ScanJournal.swift"] {
+            let asks = try RepoSource.lines(of: file).contains {
+                RepoSource.code($0).contains("TestProcess.isRunning")
+            }
+            XCTAssertTrue(asks, "\(file) no longer asks TestProcess.isRunning in code")
+        }
     }
 
     // MARK: - The scan itself, which is the half that goes quiet

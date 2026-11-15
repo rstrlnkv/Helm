@@ -25,29 +25,17 @@ import XCTest
 /// what «Select extras» ticks — so the array the walk built decides which of
 /// somebody's three copies is offered for the Trash.
 ///
-/// **Why the existing guard did not catch it.** `SurvivingCopyTests.
+/// **Why the existing guard did not catch it.** `KeepPolicyTests.
 /// testTheOrderDoesNotDependOnTheInputOrder` reverses a pair of copies whose dates
 /// are both known and equal. Two elements cannot hold a cycle, and a rung that is
 /// silent for *both* orderings of one pair is symmetric — so that test is green for
-/// every predicate this file can write, including one that is wrong. It is the
-/// shape CLAUDE.md § Before you touch the code: a check whose subject
+/// every predicate this file can write, including one that is wrong. It is the shape (ARCHITECTURE.md § What makes a check) names: a check whose subject
 /// cannot exhibit the defect.
 ///
 /// The fixture is machine-independent on purpose: `TransitFolders(roots: [])`
 /// rather than `.system`, so the `.place` rung is silent for every path here and
 /// nothing depends on where this Mac keeps Downloads.
 final class TheSurvivorDoesNotDependOnWalkOrderTests: XCTestCase {
-
-    private func file(_ path: String, added: Date?) -> FileFacts {
-        FileFacts(path: path, bytes: 4_096, fileID: UInt64(abs(path.hashValue)), added: added)
-    }
-    private func day(_ n: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(n) * 86_400) }
-
-    /// No transit tier and no `.system` read: every rung above `.date` is silent,
-    /// which is what leaves the dateless copy's incomparability visible.
-    private func rule(_ policy: KeepPolicy) -> KeepRule {
-        KeepRule(policy, transit: TransitFolders(roots: []))
-    }
 
     /// Three copies at one depth, in one tier, one of them with no Date Added.
     ///
@@ -56,9 +44,9 @@ final class TheSurvivorDoesNotDependOnWalkOrderTests: XCTestCase {
     /// restored from a backup, or written by a tool that never set the attribute,
     /// which is the `nil` `KeepCandidate.added` is documented to carry.
     private var copies: [FileFacts] {
-        [file("/Users/r/Archive/photo.jpg", added: day(400)),
-         file("/Users/r/Mirror/photo.jpg", added: nil),
-         file("/Users/r/Sync/photo.jpg", added: day(100))]
+        [facts("/Users/r/Archive/photo.jpg", added: day(400)),
+         facts("/Users/r/Mirror/photo.jpg", added: nil),
+         facts("/Users/r/Sync/photo.jpg", added: day(100))]
     }
 
     /// Every ordering the walk could have handed over, and what each one keeps.
@@ -70,15 +58,6 @@ final class TheSurvivorDoesNotDependOnWalkOrderTests: XCTestCase {
             found[survivor, default: []].append(order.map(\.path).joined(separator: " → "))
         }
         return found
-    }
-
-    private func permutations<T>(_ items: [T]) -> [[T]] {
-        guard items.count > 1 else { return [items] }
-        return items.indices.flatMap { index -> [[T]] in
-            var rest = items
-            let head = rest.remove(at: index)
-            return permutations(rest).map { [head] + $0 }
-        }
     }
 
     /// The pairwise readings, printed in the failure so the cycle is named rather
@@ -126,6 +105,22 @@ final class TheSurvivorDoesNotDependOnWalkOrderTests: XCTestCase {
         }
     }
 
+    /// **Copies that tie on every rung above the path are still ordered by it.**
+    ///
+    /// The three-copy fixture above is settled by `.undated` before `.name` is
+    /// reached, so it stays green with the path tie-break gone. Two copies of one
+    /// depth, in one tier, with the same Date Added are separated by nothing but
+    /// their paths, and the survivor must not be whichever the walk met first.
+    func testCopiesTyingOnEveryRungAreSeparatedByTheirPaths() {
+        let tied = [facts("/Users/r/B/photo.jpg", added: day(7)),
+                    facts("/Users/r/A/photo.jpg", added: day(7))]
+        for policy in KeepPolicy.allCases {
+            let survivors = survivorsOverEveryWalkOrder(tied, rule(policy))
+            XCTAssertEqual(Array(survivors.keys), ["/Users/r/A/photo.jpg"],
+                           "policy «\(policy.rawValue)»: the survivor of a full tie follows the walk order")
+        }
+    }
+
     /// The same cycle, said as the thing the module promises: the copy that stays
     /// is the copy that stays, whichever two it is compared against.
     ///
@@ -161,9 +156,9 @@ final class TheSurvivorDoesNotDependOnWalkOrderTests: XCTestCase {
     /// answer, which is true of any unstable sort and of nothing worth reporting.
     /// With it, what is left is the dateless copy.
     func testWithEveryDateKnownTheSurvivorIsOneWhateverTheWalkOrderWas() {
-        let dated = [file("/Users/r/Archive/photo.jpg", added: day(400)),
-                     file("/Users/r/Mirror/photo.jpg", added: day(250)),
-                     file("/Users/r/Sync/photo.jpg", added: day(100))]
+        let dated = [facts("/Users/r/Archive/photo.jpg", added: day(400)),
+                     facts("/Users/r/Mirror/photo.jpg", added: day(250)),
+                     facts("/Users/r/Sync/photo.jpg", added: day(100))]
         for policy in KeepPolicy.allCases {
             let survivors = survivorsOverEveryWalkOrder(dated, rule(policy))
             XCTAssertEqual(survivors.keys.sorted(), ["/Users/r/Sync/photo.jpg"],
@@ -178,12 +173,12 @@ final class TheSurvivorDoesNotDependOnWalkOrderTests: XCTestCase {
     ///
     /// So the finding is not «a `nil` date makes the ordering unstable», which would
     /// invite the wrong repair (treating an unknown date as a loss, which is the rule
-    /// `SurvivingCopyTests.testAnUnknownDateIsARungOfItsOwnAndTheCopyItIsMissingFromStays`
+    /// `KeepPolicyTests.testAnUnknownDateIsARungOfItsOwnAndTheCopyItIsMissingFromStays`
     /// exists to keep out). It takes a third copy for the silent rung to compose
     /// with a speaking one.
     func testOneDatelessCopyAgainstOneDatedCopyIsStillDecided() {
-        let pair = [file("/Users/r/Mirror/photo.jpg", added: nil),
-                    file("/Users/r/Sync/photo.jpg", added: day(100))]
+        let pair = [facts("/Users/r/Mirror/photo.jpg", added: nil),
+                    facts("/Users/r/Sync/photo.jpg", added: day(100))]
         for policy in KeepPolicy.allCases {
             let survivors = survivorsOverEveryWalkOrder(pair, rule(policy))
             XCTAssertEqual(survivors.count, 1,

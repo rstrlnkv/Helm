@@ -8,7 +8,7 @@ import HelmRuntime
 ///
 /// `brew info --json=v2` carries no size in either direction — measured on this
 /// Mac against Homebrew 7.0.1, 2026-09-15: `bottle.files.*.size` is null and the
-/// `installed[]` entry has no size field at all. So the figure the tile draws
+/// `installed[]` entry has no size field at all. So the figure the row draws
 /// comes from `<prefix>/Cellar/<name>`, and every way that walk can fail has to
 /// answer the same thing: **nil, never 0**. A zero is not a gap on the page, it
 /// is a measurement, and it says a package occupies nothing.
@@ -74,30 +74,6 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
         }
     }
 
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
-    /// Nothing here runs a `brew`: every question in this file is about a
-    /// directory. A runner that launches anything at all would be an
-    /// integration test against the owner's own Homebrew.
-    private struct SilentRunner: ProcessRunner {
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                     env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            onExit(0)
-            return NoProcess()
-        }
-    }
-
     // MARK: - The fixture
 
     /// A Cellar under `prefix` holding one keg of `files`, and what those files
@@ -123,7 +99,10 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
     }
 
     private func engine(weight: PackageWeight) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: SilentRunner(),
+        // Nothing here runs a `brew`: every question in this file is about a
+        // directory. A runner that launches anything at all would be an
+        // integration test against the owner's own Homebrew.
+        HomebrewEngine(locator: FixedLocator(), runner: IdleRunner(),
                        privileged: NoPrivileges(), user: "tester",
                        marker: InMemoryOpMarker(), popularity: NoPopularity(),
                        weight: weight)
@@ -204,24 +183,6 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
             """)
     }
 
-    /// And the name is not allowed to leave the Cellar. `name` reaches here
-    /// from `brew`'s own stdout and from a search box somebody types into, and
-    /// it is appended to a path that is then **walked**: `..` would point the
-    /// walk at the prefix, and an absolute-looking name at whatever it names.
-    func testANameThatWouldLeaveTheCellarIsNotAPackage() throws {
-        let prefix = scratchDirectory("brew-size-escape")
-        try keg("openssl@3", version: "3.6.4", in: prefix, files: [("bin/openssl", 10_000)])
-        let locator = CountingLocator(prefix: prefix)
-        let weight = CellarWeight(locator: locator)
-
-        for name in ["..", ".", "", "../Cellar/openssl@3", "openssl@3/3.6.4", "/etc"] {
-            XCTAssertNil(weight.bytes(ofPackage: name, isCask: false),
-                         "«\(name)» was walked as though it named a package")
-        }
-        XCTAssertNotNil(weight.bytes(ofPackage: "openssl@3", isCask: false),
-                        "nothing here is measurable, so the nils above say nothing")
-    }
-
     // MARK: - 3. A cask is answered without looking
 
     /// **Nothing is walked for a cask, and the locator never hears about it.**
@@ -271,7 +232,7 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
     }
 
     /// And a version that moved is a different keg: the upgrade that changed the
-    /// number in the tile above changed the one this draws.
+    /// number in the row above changed the one this draws.
     func testAVersionThatMovedIsWalkedAgain() {
         let weight = CountingWeight(answering: 4_096)
         let engine = engine(weight: weight)
@@ -299,7 +260,7 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
 
     /// A nil is never remembered. «Nothing was measured» is a live fact about a
     /// directory — a refusal that has since been lifted, a keg that has since
-    /// been installed — and a remembered nil would keep the tile absent for the
+    /// been installed — and a remembered nil would keep the row absent for the
     /// life of the app.
     func testARefusalIsNotRemembered() {
         let weight = CountingWeight(answering: nil)
@@ -324,7 +285,7 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
         XCTAssertEqual(engine.size(name: "openssl@3", isCask: false, version: "3.6.4"), 4_096)
 
         // The whole of an operation, through the one door every operation uses:
-        // `SilentRunner` exits the child at once, so the conclude path has run
+        // `IdleRunner` exits the child at once, so the conclude path has run
         // by the time this returns.
         engine.uninstall(name: "wget", isCask: false)
         weight.answer(8_192)

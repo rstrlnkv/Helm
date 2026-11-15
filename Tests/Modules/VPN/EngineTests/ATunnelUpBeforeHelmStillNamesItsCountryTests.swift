@@ -4,6 +4,7 @@
 import Foundation
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
@@ -16,14 +17,12 @@ import XCTest
 /// goes through the tunnel» with the half that names a place simply missing, for
 /// the whole life of the process, on the most ordinary arrangement there is.
 ///
-/// Every test here drives the engine through the wire rather than reading a
+/// Every test here drives the engine through its stream rather than reading a
 /// private field, and each names its fake ports: a default argument here reaches
 /// `TraceExit`, which is a real request to Cloudflare from a test run.
+///
+/// Past defect: commit 428f240b, «feat(0.11): the tunnel comes first, hosts leaves the panel, a launch stops killing the app».
 final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
-
-    private func makeSettings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
-    }
 
     /// One configuration, already `Connected` at the very first read — which is
     /// what `--nc list` says on a Mac whose tunnel was raised before Helm was.
@@ -31,14 +30,7 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput =
             "* (Connected) 11111111-1111-1111-1111-111111111111 VPN (com.x.work) \"work\" [VPN:com.x.work]"
-        runner.statusOutput = ["work": """
-        Connected
-        Extended Status <dictionary> {
-          IPv4 : <dictionary> {
-            InterfaceName : utun4
-          }
-        }
-        """]
+        runner.statusOutput = ["work": scutilStatus()]
         return runner
     }
 
@@ -49,24 +41,24 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
         return interfaces
     }
 
-    private func makeEngine(_ runner: FakeRunner, transport: LocalTransport,
+    private func makeEngine(_ runner: FakeRunner, news: EngineNews<VPNEngine.StatePayload>,
                             interfaces: FakeInterfaces, exit: FakeExit,
                             now: @escaping @Sendable () -> Date = Date.init) -> VPNEngine {
-        VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
-                  transport: transport, interfaces: interfaces, exit: exit,
+        VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
+                  news: news, interfaces: interfaces, exit: exit,
                   speed: FakeSpeed(), now: now, work: .inline)
     }
 
     /// The regression itself. Nothing goes down and nothing comes up: the engine
     /// simply reads a list on which a tunnel is already `Connected`.
     func test_a_tunnel_already_up_at_the_first_read_is_asked_about() async {
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let exit = FakeExit()
         exit.answer = "NL"
-        let engine = makeEngine(alreadyUp(), transport: transport,
+        let engine = makeEngine(alreadyUp(), news: news,
                                 interfaces: routed("utun4"), exit: exit)
 
-        let arrived = await refreshed(engine, on: transport) {
+        let arrived = await refreshed(engine, on: news) {
             $0.tunnels.first?.exit == .throughTunnel(countryCode: "NL")
         }
 
@@ -84,17 +76,17 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
     /// refresh reaches the gate — a page opening, the panel becoming key, the
     /// poll behind a connect re-reading up to 26 times.
     func test_the_country_is_asked_for_once_and_then_left_alone() async {
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let exit = FakeExit()
         exit.answer = "NL"
-        let engine = makeEngine(alreadyUp(), transport: transport,
+        let engine = makeEngine(alreadyUp(), news: news,
                                 interfaces: routed("utun4"), exit: exit)
 
-        await refreshed(engine, on: transport) {
+        await refreshed(engine, on: news) {
             $0.tunnels.first?.exit == .throughTunnel(countryCode: "NL")
         }
         for _ in 0..<5 {
-            await refreshed(engine, on: transport) { _ in true }
+            await refreshed(engine, on: news) { _ in true }
         }
 
         XCTAssertEqual(exit.asks, 1, """
@@ -107,22 +99,21 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
     /// by a blocked host, and without the quiet period every refresh behind that
     /// refusal is another request.
     func test_an_empty_answer_is_not_retried_on_the_next_refresh() async {
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let exit = FakeExit()
         exit.answer = nil
         let clock = TestClock(Date(timeIntervalSince1970: 1_000_000))
-        let engine = makeEngine(alreadyUp(), transport: transport,
+        let engine = makeEngine(alreadyUp(), news: news,
                                 interfaces: routed("utun4"), exit: exit,
                                 now: { clock.now })
 
-        await refreshed(engine, on: transport) { $0.tunnels.first?.exit != nil }
+        await refreshed(engine, on: news) { $0.tunnels.first?.exit != nil }
         // Long enough for the request to have come back empty: the assertion below
         // is an absence, and an absence also holds while the first attempt is still
-        // out — which would make this pass with the gate deleted (CLAUDE.md § What
-        // not to do, and what breaks if you do).
-        await waitUntil("the first attempt came back") { exit.asks == 1 }
+        // out — which would make this pass with the gate deleted (ARCHITECTURE.md § What makes a check).
+        await waitUntilReached("the first attempt came back", within: .seconds(5)) { exit.asks == 1 }
         for _ in 0..<3 {
-            await refreshed(engine, on: transport) { _ in true }
+            await refreshed(engine, on: news) { _ in true }
         }
 
         XCTAssertEqual(exit.asks, 1,
@@ -131,7 +122,7 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
         // And the quiet period ends rather than closing the question for good.
         clock.now = clock.now.addingTimeInterval(VPNExitAsk.quietPeriod)
         exit.answer = "DE"
-        let answered = await refreshed(engine, on: transport) {
+        let answered = await refreshed(engine, on: news) {
             $0.tunnels.first?.exit == .throughTunnel(countryCode: "DE")
         }
         XCTAssertTrue(answered, "the quiet period never ended, so one timeout cost the country for ever")
@@ -142,26 +133,26 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
     /// a different exit — and a country that stayed put would be an answer,
     /// where none at all is only a gap.
     func test_the_route_moving_drops_a_country_that_is_no_longer_true() async {
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let exit = FakeExit()
         exit.answer = "NL"
         let interfaces = routed("utun4")
-        let engine = makeEngine(alreadyUp(), transport: transport,
+        let engine = makeEngine(alreadyUp(), news: news,
                                 interfaces: interfaces, exit: exit)
 
-        await refreshed(engine, on: transport) {
+        await refreshed(engine, on: news) {
             $0.tunnels.first?.exit == .throughTunnel(countryCode: "NL")
         }
 
         interfaces.primary = "en0"
         exit.answer = "DE"
-        let moved = await refreshed(engine, on: transport) { $0.tunnels.first?.exit == .besideTunnel }
+        let moved = await refreshed(engine, on: news) { $0.tunnels.first?.exit == .besideTunnel }
         XCTAssertTrue(moved, "the tunnel still claimed the route after it had moved")
 
         // Back through the tunnel, and the country must be the one read since
         // the move rather than the one from before it.
         interfaces.primary = "utun4"
-        let reread = await refreshed(engine, on: transport) {
+        let reread = await refreshed(engine, on: news) {
             $0.tunnels.first?.exit == .throughTunnel(countryCode: "DE")
         }
         XCTAssertTrue(reread, """
@@ -175,20 +166,20 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
     /// one, every hiccup of the dynamic store would drop a good answer and buy
     /// another request.
     func test_an_unreadable_route_does_not_cost_the_country() async {
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let exit = FakeExit()
         exit.answer = "NL"
         let interfaces = routed("utun4")
-        let engine = makeEngine(alreadyUp(), transport: transport,
+        let engine = makeEngine(alreadyUp(), news: news,
                                 interfaces: interfaces, exit: exit)
 
-        await refreshed(engine, on: transport) {
+        await refreshed(engine, on: news) {
             $0.tunnels.first?.exit == .throughTunnel(countryCode: "NL")
         }
         interfaces.primary = nil
-        await refreshed(engine, on: transport) { _ in true }
+        await refreshed(engine, on: news) { _ in true }
         interfaces.primary = "utun4"
-        await refreshed(engine, on: transport) { _ in true }
+        await refreshed(engine, on: news) { _ in true }
 
         XCTAssertEqual(exit.asks, 1,
                        "an unreadable route was read as the machine moving, and cost a request")
@@ -203,7 +194,7 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
     /// a route the Mac has left, and would clear the «a request is out» flag
     /// while one is, buying a third request from the next refresh.
     func test_an_answer_that_has_been_superseded_is_not_written() async {
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let exit = FakeExit()
         // The first ask is held open and would answer «NL»; the forced second
         // one answers «DE», which is the reading that belongs to the route.
@@ -213,38 +204,31 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput =
             "* (Disconnected) 11111111-1111-1111-1111-111111111111 VPN (com.x.work) \"work\" [VPN:com.x.work]"
-        runner.statusOutput = ["work": """
-        Connected
-        Extended Status <dictionary> {
-          IPv4 : <dictionary> {
-            InterfaceName : utun4
-          }
-        }
-        """]
+        runner.statusOutput = ["work": scutilStatus()]
         let interfaces = routed("en0")
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces, exit: exit)
+        let engine = makeEngine(runner, news: news, interfaces: interfaces, exit: exit)
 
         // A first reading with nothing up, so the tunnel below is seen coming
         // up rather than found already there — this test is about the forced
         // check, and `wasDown` needs a previous reading to be false about.
-        await refreshed(engine, on: transport) { _ in true }
+        await refreshed(engine, on: news) { _ in true }
 
         // Now it is up and holds the route: the gate asks, and that request is
         // held open.
         runner.listOutput =
             "* (Connected) 11111111-1111-1111-1111-111111111111 VPN (com.x.work) \"work\" [VPN:com.x.work]"
         interfaces.primary = "utun4"
-        await refreshed(engine, on: transport) { $0.tunnels.count == 1 }
-        await waitUntil("the first request left") { exit.asks >= 1 }
+        await refreshed(engine, on: news) { $0.tunnels.count == 1 }
+        await waitUntilReached("the first request left", within: .seconds(5)) { exit.asks >= 1 }
 
         // It drops and comes back, which forces a second check while the first
         // is still out.
         runner.listOutput =
             "* (Disconnected) 11111111-1111-1111-1111-111111111111 VPN (com.x.work) \"work\" [VPN:com.x.work]"
-        await refreshed(engine, on: transport) { $0.tunnels.isEmpty }
+        await refreshed(engine, on: news) { $0.tunnels.isEmpty }
         runner.listOutput =
             "* (Connected) 11111111-1111-1111-1111-111111111111 VPN (com.x.work) \"work\" [VPN:com.x.work]"
-        let backWithACountry = await refreshed(engine, on: transport) {
+        let backWithACountry = await refreshed(engine, on: news) {
             $0.tunnels.first?.exit == .throughTunnel(countryCode: "DE")
         }
         XCTAssertTrue(backWithACountry, "the second request's answer never reached the page")
@@ -258,22 +242,9 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
         // completions — there is no count of completions, so the wait is a
         // plain one and generous.
         try? await Task.sleep(nanoseconds: 400_000_000)
-        let drawn = await lastState(on: transport)?.tunnels.first?.exit
+        let drawn = await lastState(on: news)?.tunnels.first?.exit
         XCTAssertEqual(drawn, .throughTunnel(countryCode: "DE"), """
         a superseded answer was written over a newer one. Cancelling a URL load         does not silence its completion, so the run that comes back last wins         unless something tells the two apart.
         """)
-    }
-
-    // MARK: - Plumbing
-
-    /// Waits for a condition the module reaches on its own thread, with a
-    /// deadline so a failure is a failure rather than a hung suite.
-    private func waitUntil(_ what: String, timeout: TimeInterval = 5,
-                           _ condition: @escaping () -> Bool) async {
-        let deadline = Date().addingTimeInterval(timeout)
-        while !condition(), Date() < deadline {
-            try? await Task.sleep(nanoseconds: 5_000_000)
-        }
-        XCTAssertTrue(condition(), "timed out waiting for: \(what)")
     }
 }

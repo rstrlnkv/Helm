@@ -1,6 +1,5 @@
 import Foundation
 import HelmContract
-import HelmRuntime
 import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
@@ -20,7 +19,6 @@ final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
     private final class Selection: SelectionPort, @unchecked Sendable {
         var text: String?
         var accepts = true
-        func selectedText() -> String? { text }
         func selectedTextWithoutClipboard() -> String? { text }
         func replaceSelection(with text: String) -> Bool { accepts }
     }
@@ -32,18 +30,11 @@ final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var layoutLines: [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == "layout" }.map(\.message)
+        loggedLines("layout")
     }
 
     private func engine(selection: Selection,
@@ -52,7 +43,7 @@ final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
             tap: FakeTap(), typing: FakeTyping(), sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: table),
             spell: FakeSpell(valid: Set(table.values)),
-            secure: FakeSecure(), selection: selection)
+            secure: FakeSecure(), activation: FakeActivation(), selection: selection)
         engine.activate()
         return engine
     }
@@ -64,7 +55,7 @@ final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
         selection.text = selected
         let engine = engine(selection: selection, table: [:])
 
-        engine.convertSelection()
+        engine.convertSelection(selected: selected, readIn: "com.apple.Notes")
 
         XCTAssertTrue(layoutLines.contains { $0.contains("selection left alone") },
                       "no decline line was written, so this proves nothing: \(layoutLines)")
@@ -85,7 +76,7 @@ final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
                             table: ["ghbdtn": "привет", "xbcnj": "чисто",
                                     selected: replacement])
 
-        engine.convertSelection()
+        engine.convertSelection(selected: selected, readIn: "com.apple.Notes")
 
         XCTAssertTrue(layoutLines.contains { $0.contains("refused") },
                       "no refusal line was written, so this proves nothing: \(layoutLines)")

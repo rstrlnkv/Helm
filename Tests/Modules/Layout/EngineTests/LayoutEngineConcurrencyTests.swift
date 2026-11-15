@@ -13,24 +13,6 @@ private final class ConcurrentTyping: TypingPort, @unchecked Sendable {
     }
 }
 
-private struct ConcurrentContext: SecureContextPort {
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { "com.apple.Notes" }
-}
-
-private struct ConcurrentTranslation: TranslationPort {
-    func translate(_ word: String, from: String, to: String) -> String? {
-        word.isEmpty ? nil : String(repeating: "п", count: word.count)
-    }
-}
-
-private struct ConcurrentSpell: SpellPort {
-    func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 }
-    }
-}
-
 private final class ConcurrentTap: KeyTapPort, @unchecked Sendable {
     private let lock = NSLock()
     private var starts = 0
@@ -48,31 +30,24 @@ private final class ConcurrentTap: KeyTapPort, @unchecked Sendable {
     func stop() { handler = nil; modifiers = nil }
 }
 
-private struct ConcurrentSources: LayoutSourcePort {
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) {}
+private func concurrentEngine(_ settings: NamespacedStore,
+                             tap: ConcurrentTap,
+                             typing: ConcurrentTyping) -> LayoutEngine {
+    LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
+                 translation: SameLengthTranslation(), spell: CyrillicSpell(),
+                 secure: FakeSecure(), activation: FakeActivation(), settings: settings)
 }
 
-/// The tap delivers on a run-loop source and the transport on a concurrency
-/// pool, and both touch the same fields behind one `NSLock`.
+/// The tap delivers on a run-loop source and the settings re-read runs on the
+/// engine's serial queue, and both touch the same fields behind one `NSLock`.
 final class LayoutEngineConcurrencyTests: XCTestCase {
-
-    private func engine(_ settings: NamespacedStore,
-                        tap: ConcurrentTap,
-                        typing: ConcurrentTyping) -> LayoutEngine {
-        LayoutEngine(tap: tap, typing: typing, sources: ConcurrentSources(),
-                     translation: ConcurrentTranslation(), spell: ConcurrentSpell(),
-                     secure: ConcurrentContext(), settings: settings)
-    }
-
     /// Two starts would build two taps and leave the first one enabled on the
     /// run loop, doubling every keystroke. The claim in the source is that the
     /// start is claimed inside the lock rather than merely checked.
     func testStartingTwiceBuildsOneTap() {
         let tap = ConcurrentTap()
-        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
-        let engine = engine(store, tap: tap, typing: ConcurrentTyping())
+        let store = layoutStore()
+        let engine = concurrentEngine(store, tap: tap, typing: ConcurrentTyping())
         engine.activate()
         engine.activate()
         engine.activate()
@@ -84,8 +59,8 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
     /// stays dead until relaunch.
     func testItStartsAgainAfterBeingSwitchedOff() {
         let tap = ConcurrentTap()
-        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
-        let engine = engine(store, tap: tap, typing: ConcurrentTyping())
+        let store = layoutStore()
+        let engine = concurrentEngine(store, tap: tap, typing: ConcurrentTyping())
         engine.activate()
         engine.deactivate()
         engine.activate()
@@ -94,7 +69,7 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
 
     /// The storm, then a question with one right answer.
     ///
-    /// Reloads arrive on the transport's pool while keys arrive on the tap's
+    /// Reloads arrive on the engine's serial queue while keys arrive on the tap's
     /// thread. Nothing here asserts on what happened *during* the storm — a
     /// race can satisfy any such claim by luck. What is asserted is the state
     /// afterwards: every task has finished, and the engine must be reporting
@@ -108,8 +83,8 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
     func testTheEngineSettlesOnTheStoredKeyAfterConcurrentTraffic() async throws {
         let tap = ConcurrentTap()
         let typing = ConcurrentTyping()
-        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
-        let engine = engine(store, tap: tap, typing: typing)
+        let store = layoutStore()
+        let engine = concurrentEngine(store, tap: tap, typing: typing)
         let codes: [Int64] = TapKey.allCases.compactMap(\.keyCode)
 
         for key in [TapKey.globe, .leftControl, .off, .rightCommand] {
@@ -118,8 +93,7 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
             await withTaskGroup(of: Void.self) { group in
                 for _ in 0..<100 {
                     group.addTask {
-                        _ = try? await engine.transport.send(
-                            EngineCommand(name: "settingsChanged"))
+                        await rereadSettings(engine)
                     }
                     group.addTask {
                         // The tap's own stream: presses and releases of every
@@ -151,15 +125,6 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
 /// The thread-sanitiser run of the storm in `LayoutEngineConcurrencyTests`,
 /// which only reports.
 final class LayoutEngineUnderTheSanitiserTests: XCTestCase {
-
-    private func engine(_ settings: NamespacedStore,
-                        tap: ConcurrentTap,
-                        typing: ConcurrentTyping) -> LayoutEngine {
-        LayoutEngine(tap: tap, typing: typing, sources: ConcurrentSources(),
-                     translation: ConcurrentTranslation(), spell: ConcurrentSpell(),
-                     secure: ConcurrentContext(), settings: settings)
-    }
-
     /// The same storm, longer, for a thread sanitiser to look at.
     ///
     /// `handleModifier` reads `tapKey` without taking the lock — the log line
@@ -175,14 +140,14 @@ final class LayoutEngineUnderTheSanitiserTests: XCTestCase {
     func testConcurrentSettingsAndTapsUnderTheSanitiser() async throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_BENCH"] == "1")
         let tap = ConcurrentTap()
-        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
-        let engine = engine(store, tap: tap, typing: ConcurrentTyping())
+        let store = layoutStore()
+        let engine = concurrentEngine(store, tap: tap, typing: ConcurrentTyping())
         engine.activate()
 
         await withTaskGroup(of: Void.self) { group in
             for _ in 0..<5_000 {
                 group.addTask {
-                    _ = try? await engine.transport.send(EngineCommand(name: "settingsChanged"))
+                    await rereadSettings(engine)
                 }
                 group.addTask {
                     tap.modifiers?(.down(TapKey.globe.keyCode!, at: 0, othersHeld: false))

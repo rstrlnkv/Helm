@@ -7,9 +7,10 @@ import Foundation
 /// `SettingSeal.mac`, `DuplicateScanner.hash` and `DuplicateGroup.id` each
 /// spelled `map { String(format: "%02x", $0) }.joined()`, two of them inside
 /// this target — and the spelling is not free to differ: an update's digest is
-/// compared against what a release note published, and a seal's is compared
-/// against what an earlier build wrote into somebody's settings. One uppercase
-/// letter would refuse every sealed setting on the Mac it shipped to.
+/// compared against what a release note published, and a rule's mark
+/// (`RuleStamp`) is compared as a string against the ones an earlier build wrote
+/// onto somebody's files. A seal is decoded and checked by its bytes
+/// (`SettingSeal.verdict`), so it does not care.
 ///
 /// It is also the fast way, which the hand-written line was not.
 /// `String(format:)` goes through Foundation's formatter for every byte and
@@ -17,8 +18,9 @@ import Foundation
 /// once per group on every `ForEach` diff, which is a render path. Measured at
 /// `-O` over 100.000 SHA-256 digests, three runs agreeing: 2.25 s the old way
 /// against 0.033 s this way, 22.3 µs a digest against 0.33 µs. The answer is
-/// identical for all 256 byte values, which is what `HexDigestTests` pins —
-/// against the old line written out, not against this one.
+/// identical for all 256 byte values; the settings seals compare it with strings
+/// an earlier build stored, and the release digest with the `shasum` line the
+/// release scripts print.
 public enum HexDigest {
 
     private static let digits = Array("0123456789abcdef".utf8)

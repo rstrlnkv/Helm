@@ -101,7 +101,8 @@ final class ShortWordTests: XCTestCase {
     /// rest of this list is — by being on it — and more strictly, since at one
     /// letter the list replaces the checker rather than joining it.
     func testEveryEntryIsShort() {
-        for word in ShortWords.all {
+        for word in ShortWords.russian.union(ShortWords.english)
+            .union(ShortWords.russianSingles).union(ShortWords.englishSingles) {
             XCTAssertLessThanOrEqual(word.count, 3, "\(word) is not a short word")
             XCTAssertGreaterThanOrEqual(word.count, 1, "\(word) is not a word at all")
             XCTAssertEqual(word, word.lowercased(), "\(word) is not lowercased")

@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// Composing the sidebar, in a sheet.
 ///
@@ -141,8 +142,8 @@ struct SidebarComposerSheet: View {
         // measured dead, with `.animation(_, value:)`
         // sitting on the frame and the row heights written raw underneath.
         withAnimation(HelmMotion.interface) { revision &+= 1 }
-        // The sidebar and the icon menu read the same value and cannot observe
-        // UserDefaults; this is the notification both already listen for.
+        // The sidebar cannot observe UserDefaults; this is the notification it
+        // already listens for. The icon menu reads the store at each right click.
         NotificationCenter.default.post(name: .helmModuleOrderChanged, object: nil)
     }
 
@@ -155,10 +156,11 @@ struct SidebarComposerSheet: View {
                     // sheet's title and reads at the same rank. It was 15,
                     // which is on no step and was invisible only because the
                     // ratchet did not read the app shell.
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(HelmText.plateTitle)
                 Spacer()
-                Button(AppStr.done) { dismiss() }
+                Button(HelmWord.done) { dismiss() }
                     .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
             }
             .padding(.horizontal, HelmLayout.formInset)
             .padding(.top, 18)
@@ -225,16 +227,16 @@ struct SidebarComposerSheet: View {
         // every edit here is applied as it is made, so leaving loses nothing and
         // Escape means the same thing «Done» does.
         .onExitCommand { dismiss() }
-        .alert(AppStr.renameSection, isPresented: Binding(
+        .alert(HelmWord.rename, isPresented: Binding(
             get: { renaming != nil },
             set: { if !$0 { renaming = nil } }
         )) {
-            TextField(AppStr.renameSection, text: $draftName)
-            Button(AppStr.done) {
+            TextField(HelmWord.rename, text: $draftName)
+            Button(HelmWord.done) {
                 if let section = renaming { apply(layout.renaming(section.id, to: draftName)) }
                 renaming = nil
             }
-            Button(AppStr.cancel, role: .cancel) { renaming = nil }
+            Button(HelmWord.cancel, role: .cancel) { renaming = nil }
         }
     }
 }
@@ -248,25 +250,8 @@ struct SidebarComposerRow: View {
     @State private var revision = 0
 
     var body: some View {
-        // Built by hand rather than as a `LabeledContent`. That control aligns
-        // its two halves on the label's *first* baseline, which is right for a
-        // one-line label and a switch; with a summary underneath it parked the
-        // button against the title and left the second line hanging below it.
-        //
-        // A `LabeledContentStyle` cannot fix it either — `configuration.label`
-        // hands the two `Text`s over as one opaque view, and outside the
-        // default style they lay themselves out side by side.
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(AppStr.sidebarSections)
-                Text(summary)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
-            }
-            // A minimum, not a bare `Spacer`: at a narrow width the summary
-            // would otherwise run into the button.
-            Spacer(minLength: 12)
-            Button(AppStr.edit) { composing = true }
+        HelmSettingRow(AppStr.sidebarSections, note: summary) {
+            Button(HelmWord.edit) { composing = true }
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmModuleOrderChanged)) { _ in
             revision &+= 1
@@ -282,7 +267,7 @@ struct SidebarComposerRow: View {
                                              registry: SidebarLayoutStore.registry())
         let ids = layout.sections.flatMap(\.modules)
         let on = ids.filter { id in
-            ModuleRegistry.all.first { $0.idRaw == id }.map { host.isEnabled($0) } ?? false
+            ModuleRegistry.descriptor(id).map { host.isEnabled($0) } ?? false
         }.count
         return AppStr.sidebarSummary(on: on, of: ids.count, sections: layout.sections.count)
     }

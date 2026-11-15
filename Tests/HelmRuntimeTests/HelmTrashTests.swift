@@ -9,7 +9,7 @@ final class HelmTrashTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = trashScratchDirectory("trash")
+        root = scratchDirectory("trash")
     }
 
     /// A file this test is going to trash for real, so its name is one nobody
@@ -77,7 +77,7 @@ final class HelmTrashFolderSizeTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = trashScratchDirectory("trash-size")
+        root = scratchDirectory("trash-size")
     }
 
     /// The item that will be trashed, named so the cleanup can find it in the

@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import Module_Screenshots_Engine
 
 /// **A blur that "Blur Emails and Phone Numbers" puts over a find leaves none of the find's pixels in the file.**
@@ -12,6 +13,8 @@ import XCTest
 ///
 /// The pictures are 1×, 1.5× and 2×, the area is never on the mosaic's grid, and the finds sit in the middle, at
 /// every edge of the area, in a corner, and larger than the area.
+///
+/// Mutant, red here: `RecognizedBoxes.place` rounds the left edge up (dropping the padding alone stays green here: the padding is beyond the find's pixels).
 final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
 
     /// Every pixel its own colour: three channels from a hash of the position, so no two neighbours are alike and
@@ -45,10 +48,7 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
     }
 
     private func makeRig() throws -> Rig {
-        let home = FileManager.default.temporaryDirectory.appendingPathComponent("helm-find-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
-        addTeardownBlock { try? FileManager.default.removeItem(at: home) }
-        return Rig(home: home)
+        Rig(home: scratchDirectory("find"))
     }
 
     /// The pixels of the cut that a normalised box stands on, worked out here from the box alone: the lower-left
@@ -216,7 +216,8 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
     }
 
     /// An area whose far edge is one pixel past a grid line, and a find whose ink lies wholly in the last pixel of both axes: the box the
-    /// rounding leaves is one pixel, which the mosaic cannot make (a block of one pixel is its own pixel) and which the file refuses.
+    /// rounding leaves is one pixel, which `Pixelate.tile` grows by a neighbouring display pixel (`grown`), so its block is the mean of two
+    /// and the file is made.
     func testAFindInTheLastPixelOfAnAreaThatEndsPastAGridLineDoesNotRefuseTheFile() async throws {
         let local = CGRect(x: 20, y: 20, width: 201, height: 201)
         let out = try await survivors(scale: 1, local: local, boxes: [CGRect(x: 0.9985, y: 0.0, width: 0.0015, height: 0.0015)])

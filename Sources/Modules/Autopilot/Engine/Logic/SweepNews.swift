@@ -35,13 +35,6 @@ public enum SweepNews {
 
         /// Whether there is anything to say at all.
         var isSomething: Bool { trashed + refused + failed > 0 }
-
-        /// Two folders swept in one pass are one banner, so the tallies add.
-        static func + (lhs: Tally, rhs: Tally) -> Tally {
-            Tally(trashed: lhs.trashed + rhs.trashed,
-                  refused: lhs.refused + rhs.refused,
-                  failed: lhs.failed + rhs.failed)
-        }
     }
 
     /// What a pass did, whether or not it is worth saying.

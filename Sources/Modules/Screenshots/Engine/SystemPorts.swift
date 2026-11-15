@@ -24,18 +24,21 @@ private struct Unshared<T>: @unchecked Sendable {
 /// Helm's own windows are left out of both, by process id: the overlay and the
 /// thumbnail are Helm's, and a screenshot of the screenshot's own frame is the
 /// defect this excludes.
-public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
+final class SCKCapture: ScreenCapturing, @unchecked Sendable {
     private let store: NamespacedStore
     private let dockBounds: DockBounds
+    private let request: @Sendable () -> Void
 
-    public init(store: NamespacedStore = NamespacedStore(namespace: ScreenshotsEngine.moduleID,
+    init(store: NamespacedStore = NamespacedStore(namespace: ScreenshotsEngine.moduleID,
                                                          backing: UserDefaults.standard),
-                dockBounds: DockBounds = SystemDockBounds()) {
+                dockBounds: DockBounds = SystemDockBounds(),
+                request: @escaping @Sendable () -> Void = { _ = CGRequestScreenCaptureAccess() }) {
         self.store = store
         self.dockBounds = dockBounds
+        self.request = request
     }
 
-    public func access() -> CaptureAccess {
+    func access() -> CaptureAccess {
         CGPreflightScreenCaptureAccess() ? .granted : .denied
     }
 
@@ -46,13 +49,13 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
     /// reason to make it at all — that part is the header's intent and was not
     /// observed here. It returns at once and its dialog is the system's, so the
     /// answer is read on the next press.
-    public func requestAccess() {
-        guard !store.bool("screenRecordingAsked", default: false) else { return }
-        store.set(true, for: "screenRecordingAsked")
-        _ = CGRequestScreenCaptureAccess()
+    func requestAccess() {
+        guard !store.bool(ScreenshotsSettings.Key.screenRecordingAsked, default: false) else { return }
+        store.set(true, for: ScreenshotsSettings.Key.screenRecordingAsked)
+        request()
     }
 
-    public func freeze(cursor: Bool) async -> FreezeOutcome {
+    func freeze(cursor: Bool) async -> FreezeOutcome {
         let content: SCShareableContent
         do {
             content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
@@ -145,7 +148,7 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
         return CFUUIDCreateString(nil, reference) as String?
     }
 
-    public func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot {
+    func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot {
         let content: SCShareableContent
         do {
             content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
@@ -208,7 +211,7 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
     private static func isTheDock(_ pid: pid_t) -> Bool {
         var buffer = [CChar](repeating: 0, count: 4 * Int(MAXPATHLEN))
         guard proc_pidpath(pid, &buffer, UInt32(buffer.count)) > 0 else { return false }
-        return String(cString: buffer) == "/System/Library/CoreServices/Dock.app/Contents/MacOS/Dock"
+        return buffer.withUnsafeBufferPointer { String(cString: $0.baseAddress!) } == "/System/Library/CoreServices/Dock.app/Contents/MacOS/Dock"
     }
 
     /// Where the Dock is: its Accessibility bounds when they are on a display, else the
@@ -242,13 +245,13 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
 /// whole read gives up at `budget` between calls and at the first call that does not
 /// answer. A stalled Dock costs at most one call's timeout past the budget, and the
 /// reading is `.timedOut`.
-public struct SystemDockBounds: DockBounds {
+struct SystemDockBounds: DockBounds {
     static let timeout: Float = 0.05
     static let budget: TimeInterval = 0.15
 
-    public init() {}
+    init() {}
 
-    public func read(dockPID pid: pid_t) -> DockBoundsReading {
+    func read(dockPID pid: pid_t) -> DockBoundsReading {
         guard AXIsProcessTrusted() else { return .notTrusted }
         let deadline = Date().addingTimeInterval(Self.budget)
         /// One attribute, or the reason there is none: a timeout is told from absence.
@@ -296,21 +299,22 @@ public struct SystemDockBounds: DockBounds {
 /// is how a screenshot replaces one taken in the same second.
 ///
 /// A volume that does not do RENAME_EXCL may answer `ENOTSUP` (`renamex_np(2)`:
-/// «flags has a value that is not supported by the file system»), and a hard
+/// «flags has a value that is not supported by the file system») or `EINVAL`
+/// («flags has an invalid value»), and on either a hard
 /// link — which fails on an existing name just as atomically — takes its place.
 /// No such volume was tried here, so that branch is written from the manual and
 /// not exercised.
 ///
 /// Files get the process's ordinary umask, as macOS's own screenshots do; they
 /// are not `PrivateFile`, because the person is about to drag them into a chat.
-public struct FileShotWriter: ShotWriting {
-    public init() {}
+struct FileShotWriter: ShotWriting {
+    init() {}
 
     /// A seam for a test, run with the new name right after the move and before the answer is made: it swaps what
     /// stands under that name, to prove the reading is the descriptor's and not an `lstat` of the name. Nothing by default.
     var afterTheMove: @Sendable (URL) -> Void = { _ in }
 
-    public func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
+    func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDirectory)
         else { return .refused(.noFolder) }
@@ -359,13 +363,13 @@ public struct FileShotWriter: ShotWriting {
         return .refused(.namesExhausted)
     }
 
-    public func reading(of url: URL) -> ShotReading? {
+    func reading(of url: URL) -> ShotReading? {
         var info = stat()
         guard lstat(url.path, &info) == 0 else { return nil }
         return ShotReading(info)
     }
 
-    public func claim(_ written: URL, as name: URL) -> Bool {
+    func claim(_ written: URL, as name: URL) -> Bool {
         Self.move(written.path, toFreeName: name.path) == 0
     }
 
@@ -395,10 +399,10 @@ public struct FileShotWriter: ShotWriting {
 
 /// `FileManager.trashItem`, and nothing of its own: the rules of a removal are `HelmTrash.remove`'s, which is the
 /// only caller this has (`CaptureSession.replace`).
-public struct SystemShotTrash: ShotTrashing {
-    public init() {}
+struct SystemShotTrash: ShotTrashing {
+    init() {}
 
-    public func trash(_ url: URL) throws {
+    func trash(_ url: URL) throws {
         try FileManager.default.trashItem(at: url, resultingItemURL: nil)
     }
 }
@@ -417,15 +421,15 @@ public struct SystemShotTrash: ShotTrashing {
 ///
 /// The board is injectable by name so a test reads the types off a pasteboard of its own
 /// and never the person's.
-public struct SystemShotPasteboard: ShotPasteboard {
-    public static let concealedType = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
-    public static let transientType = NSPasteboard.PasteboardType("org.nspasteboard.TransientType")
+struct SystemShotPasteboard: ShotPasteboard {
+    static let concealedType = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
+    static let transientType = NSPasteboard.PasteboardType("org.nspasteboard.TransientType")
 
     private let name: NSPasteboard.Name
 
-    public init(named name: NSPasteboard.Name = .general) { self.name = name }
+    init(named name: NSPasteboard.Name = .general) { self.name = name }
 
-    public func copy(png: Data) -> PasteOutcome {
+    func copy(png: Data) -> PasteOutcome {
         let board = NSPasteboard(name: name)
         board.declareTypes([.png, Self.concealedType, Self.transientType], owner: nil)
         // The picture first: a refused picture is a refusal whatever the markers did.
@@ -437,7 +441,7 @@ public struct SystemShotPasteboard: ShotPasteboard {
 
     /// One item a picture, each with the two markers beside its data, in one `writeObjects`. An empty list is a
     /// refusal and leaves the board as it was.
-    public func copy(pngs: [Data]) -> PasteOutcome {
+    func copy(pngs: [Data]) -> PasteOutcome {
         guard !pngs.isEmpty else { return .refused }
         let items = pngs.map { png in
             let item = NSPasteboardItem()
@@ -452,7 +456,7 @@ public struct SystemShotPasteboard: ShotPasteboard {
     }
 
     /// The same marking on text: what was read off a picture is as likely not to be meant to outlive the moment.
-    public func copy(text: String) -> PasteOutcome {
+    func copy(text: String) -> PasteOutcome {
         let board = NSPasteboard(name: name)
         board.declareTypes([.string, Self.concealedType, Self.transientType], owner: nil)
         guard board.setString(text, forType: .string) else { return .refused }
@@ -466,9 +470,8 @@ public struct SystemShotPasteboard: ShotPasteboard {
 
 /// Vision's text request for the lines of a picture, and `NSDataDetector` over each line for what is in it.
 ///
-/// **Which of two ways, and why — measured, and asked again by `ScreenshotsTextReadingBenchmark`** (set
-/// `HELM_BENCH=1` and run `bash Scripts/test.sh --filter ScreenshotsTextReadingBenchmark`; it renders one picture of
-/// known text in a light and a dark theme at 1×, 2× and as a 5K frame, reads it each way and prints the time,
+/// **Which of two ways, and why — measured** (a benchmark rendered one picture of
+/// known text in a light and a dark theme at 1×, 2× and as a 5K frame, read it each way and printed the time,
 /// what each found and what it missed). The other way is `RecognizeDocumentsRequest` with its own data detector.
 /// On the window pictures (1× and 2×) the detector over the plain request found every place the documents request
 /// found and one more, a phone number spelled the Japanese way, and the two took about the same time; on the 5K
@@ -479,7 +482,7 @@ public struct SystemShotPasteboard: ShotPasteboard {
 /// that one, so they are not on the list (`PrivateKind`). The first read of a process loads the system's models
 /// and takes longer than the next.
 ///
-/// **`minimumTextHeightFraction` is left at the request's default.** The benchmark reads each picture a third way
+/// **`minimumTextHeightFraction` is left at the request's default.** The measure read each picture a third way
 /// with it set to 0 (the default is a fraction of the picture's height, a likely reason for the poor read of 5K light).
 /// On the Mac where it was tried, 0 found none of the 16 known places on the 5K light picture where the default
 /// found 3, 12 against 14 on the 5K dark one, and 15 against 16 on the 2× dark window; it was the same on the
@@ -499,10 +502,10 @@ public struct SystemShotPasteboard: ShotPasteboard {
 /// boxes are asked for one by one. The registry keeps one entry per label: two readings alive at once (a closed
 /// editor's reading still working when the next is asked) are one entry, and the first of them to end takes it away.
 /// The order is the request's, which is a reading order: in a picture of two columns the left one comes first. Nothing the picture says is logged: only that the request threw, and what kind of error.
-public struct VisionTextReader: ScreenTextReading {
-    public init() {}
+struct VisionTextReader: ScreenTextReading {
+    init() {}
 
-    public func read(_ image: CGImage) async -> TextReading {
+    func read(_ image: CGImage) async -> TextReading {
         var request = RecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.automaticallyDetectsLanguage = true
@@ -599,16 +602,16 @@ public struct SystemCapturePreferences: CapturePreferences {
 ///
 /// `NSSound` is touched on the main thread only: `play()` hops there and returns
 /// at once, so the freeze's caller is never held by the sound.
-public final class SystemShutter: ShutterPlaying, @unchecked Sendable {
+final class SystemShutter: ShutterPlaying, @unchecked Sendable {
     static let path = "/System/Library/Components/CoreAudio.component/Contents/SharedSupport/SystemSounds/system/Screen Capture.aif"
 
     /// Read and written on the main thread only.
     private var sound: NSSound?
     private var loaded = false
 
-    public init() {}
+    init() {}
 
-    public func play() {
+    func play() {
         DispatchQueue.main.async { [self] in
             if !loaded {
                 loaded = true

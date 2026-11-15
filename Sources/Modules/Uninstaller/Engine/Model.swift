@@ -1,39 +1,35 @@
 import Foundation
 import HelmRuntime
 
-public struct InstalledApp: Codable, Equatable, Sendable {
+public struct InstalledApp: Equatable, Sendable {
     public let name: String
     public let bundleID: String
     public let path: String
     public let sizeBytes: Int
-    public init(name: String, bundleID: String, path: String, sizeBytes: Int) {
+    init(name: String, bundleID: String, path: String, sizeBytes: Int) {
         self.name = name; self.bundleID = bundleID; self.path = path; self.sizeBytes = sizeBytes
     }
 }
 
-public enum LeftoverKind: String, Codable, Sendable, CaseIterable {
+public enum LeftoverKind: String, Sendable, CaseIterable {
     case appSupport, caches, preferences, containers, groupContainers,
          savedState, logs, httpStorages, webKit, cookies, appScripts, launchAgent
 }
 
-public struct Leftover: Codable, Equatable, Sendable {
+public struct Leftover: Equatable, Sendable {
     public let path: String
     public let kind: LeftoverKind
     public let sizeBytes: Int
     public let matchedByName: Bool
-    public init(path: String, kind: LeftoverKind, sizeBytes: Int, matchedByName: Bool) {
+    init(path: String, kind: LeftoverKind, sizeBytes: Int, matchedByName: Bool) {
         self.path = path; self.kind = kind; self.sizeBytes = sizeBytes; self.matchedByName = matchedByName
     }
 }
 
-public struct ScanResult: Codable, Equatable, Sendable {
-    public let bundleID: String
-    public let appPath: String
-    public let appSizeBytes: Int
+public struct ScanResult: Equatable, Sendable {
     public let leftovers: [Leftover]
     public let runningNow: Bool
-    public init(bundleID: String, appPath: String, appSizeBytes: Int, leftovers: [Leftover], runningNow: Bool) {
-        self.bundleID = bundleID; self.appPath = appPath; self.appSizeBytes = appSizeBytes
+    init(leftovers: [Leftover], runningNow: Bool) {
         self.leftovers = leftovers; self.runningNow = runningNow
     }
 }
@@ -41,12 +37,11 @@ public struct ScanResult: Codable, Equatable, Sendable {
 /// An app sitting in the Trash and what it left behind — one group in the window
 /// that offers to clean up after it.
 ///
-/// It crosses the transport because `HelmApp` cannot import this target: the host
-/// depends on the UI targets only, so that a direct edge is not "a door past the
-/// transport into an engine's internals" (Package.swift, at the HelmApp target).
-/// That is why the whole sweep is one command rather than the host listing the
-/// Trash itself and asking about each bundle it finds.
-public struct TrashedAppLeftovers: Codable, Equatable, Sendable {
+/// `HelmApp` cannot import this target: the host depends on the UI targets only
+/// (Package.swift, at the HelmApp target). That is why the whole sweep is one
+/// call on the module's model rather than the host listing the Trash itself and
+/// asking about each bundle it finds.
+public struct TrashedAppLeftovers: Equatable, Sendable {
     public let bundleID: String
     /// What the person will recognise, from the bundle's own `Info.plist`.
     public let name: String
@@ -56,7 +51,7 @@ public struct TrashedAppLeftovers: Codable, Equatable, Sendable {
     public let appPath: String
     public let leftovers: [Leftover]
 
-    public init(bundleID: String, name: String, appPath: String, leftovers: [Leftover]) {
+    init(bundleID: String, name: String, appPath: String, leftovers: [Leftover]) {
         self.bundleID = bundleID; self.name = name
         self.appPath = appPath; self.leftovers = leftovers
     }
@@ -78,24 +73,25 @@ public struct TrashedAppLeftovers: Codable, Equatable, Sendable {
 /// Leftovers held one of those in a field called `message` and nothing in the
 /// type said what it was; three screens here compared it against
 /// `.rawValue` by hand.
-public struct TrashFailureInfo: Codable, Equatable, Sendable, Identifiable {
+public struct TrashFailureInfo: Equatable, Sendable, Identifiable {
     public var id: String { path }
     public let path: String
     public let reason: TrashFailure.Reason
     /// What macOS said, verbatim — the sheet shows it under the reason.
     public let message: String
-    public init(path: String, reason: TrashFailure.Reason, message: String = "") {
+    init(path: String, reason: TrashFailure.Reason, message: String = "") {
         self.path = path; self.reason = reason; self.message = message
     }
 }
 
-public struct UninstallResult: Codable, Equatable, Sendable {
+public struct UninstallResult: Equatable, Sendable {
     public let trashed: [String]
     public let freedBytes: Int
     public let failures: [TrashFailureInfo]
 
     /// The application bundles in the batch that were still running when it came
-    /// to move them, and which nobody had allowed Helm to quit. Non-empty means
+    /// to move them, with no quit allowed or still up after the quit that was.
+    /// Non-empty means
     /// **nothing moved**: a leftover in the batch carries no link back to the app
     /// it belongs to, so there is no such thing as "the rest of it" — see
     /// `UninstallPlan.verdict`.
@@ -114,35 +110,19 @@ public struct UninstallResult: Codable, Equatable, Sendable {
     /// the person's own "no", which takes it off every screen Helm has.
     public var failed: [String] { failures.map(\.path) }
 
-    public init(trashed: [String], freedBytes: Int, failures: [TrashFailureInfo] = [],
+    init(trashed: [String], freedBytes: Int, failures: [TrashFailureInfo] = [],
                 stillRunning: [String] = []) {
         self.trashed = trashed; self.freedBytes = freedBytes
         self.failures = failures; self.stillRunning = stillRunning
     }
-
-    /// Hand-written for the field that arrived last, and the stored default above
-    /// is not what makes an older payload decode: Swift's synthesised `Decodable`
-    /// requires the coding key whatever the property's initial value is, and
-    /// `JSONDecoder` gives up on the *whole* document rather than filling in the
-    /// one field. A reply written by anything that does not know `stillRunning`
-    /// would then decode as nothing at all — which this module reads as «the
-    /// engine did not answer», the very silence the rest of this change is about.
-    /// `RefusedPathsAreOneListTests` is the guard, and it caught this.
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        trashed = try container.decode([String].self, forKey: .trashed)
-        freedBytes = try container.decode(Int.self, forKey: .freedBytes)
-        failures = try container.decode([TrashFailureInfo].self, forKey: .failures)
-        stillRunning = try container.decodeIfPresent([String].self, forKey: .stillRunning) ?? []
-    }
 }
 
 /// Leftovers grouped by the bundle id of an app that is no longer installed.
-public struct OrphanGroup: Codable, Equatable, Sendable {
+public struct OrphanGroup: Equatable, Sendable {
     public let bundleID: String
     public let leftovers: [Leftover]
     public var totalBytes: Int { leftovers.reduce(0) { $0 + $1.sizeBytes } }
-    public init(bundleID: String, leftovers: [Leftover]) {
+    init(bundleID: String, leftovers: [Leftover]) {
         self.bundleID = bundleID; self.leftovers = leftovers
     }
 }

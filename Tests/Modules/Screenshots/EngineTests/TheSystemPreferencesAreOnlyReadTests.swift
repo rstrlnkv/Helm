@@ -9,6 +9,8 @@ import XCTest
 /// every other program on the Mac does. The module only has a read port for
 /// them, but a port is a promise about one class: this is the promise about the
 /// module, read off its own source with comments and string insides blanked.
+///
+/// Mutant, red here: `SystemCapturePreferences` gains a `CFPreferencesSetAppValue` of `location`.
 final class TheSystemPreferencesAreOnlyReadTests: XCTestCase {
 
     private static let writers = [

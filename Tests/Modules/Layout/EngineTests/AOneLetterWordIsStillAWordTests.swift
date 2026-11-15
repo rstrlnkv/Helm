@@ -16,6 +16,8 @@ import XCTest
 /// and initials look like. The rule is the one the two- and three-letter words
 /// already use: convert only *towards* a word on the list, and only when what
 /// was typed is not on it.
+///
+/// Guards a past defect: every one-letter Russian word refused (fix commit `95da25a3`).
 final class AOneLetterWordIsStillAWordTests: XCTestCase {
 
     private func decide(_ word: String, _ translated: String,

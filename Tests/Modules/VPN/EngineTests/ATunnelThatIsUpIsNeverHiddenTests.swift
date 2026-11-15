@@ -14,6 +14,8 @@ import XCTest
 ///
 /// `isUp`, not `isConnected`: a handshake in flight is something happening on
 /// this Mac, and the card that can cancel it belongs on screen while it runs.
+///
+/// Past defect: commit 1eadc939, «feat(vpn): one card per configuration, with two doors».
 final class ATunnelThatIsUpIsNeverHiddenTests: XCTestCase {
 
     private func conn(_ name: String, _ status: VPNStatus) -> VPNConnection {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Helm
 
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
@@ -19,7 +20,7 @@ import HelmRuntime
 /// printed: `VPNCommandReply.of(_:name:)` sanitises the text, so `.refused` can
 /// only ever hold something already redacted. A rule enforced by the type is a
 /// rule the next call site cannot forget — and there is a second one waiting, the
-/// wire, since the reply's text is what any future «what did the tool say» screen
+/// published state, since the reply's text is what any future «what did the tool say» screen
 /// would read.
 ///
 /// What is *not* redacted, deliberately: `_lastFailure.name`. The screen is
@@ -96,28 +97,25 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
     // MARK: - Through the engine, which is what writes the file
 
     func testTheLogLineAboutARefusalNamesNothing() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         let runner = FakeRunner()
         runner.reply = "cannot start \(service): resource busy"
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
                                runner: runner, credentials: nil, apps: FakeApps(),
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
 
-        engine.connect(service)
+        engine.connect(service, auto: false)
 
-        let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
+        let lines = loggedLines("vpn")
         // The subject first: an absence proves nothing when nothing was written.
-        XCTAssertTrue(lines.contains { $0.message.contains("refused") },
+        XCTAssertTrue(lines.contains { $0.contains("refused") },
                       "precondition: the refusal reached the log at all")
-        XCTAssertFalse(lines.contains { $0.message.contains(service) },
+        XCTAssertFalse(lines.contains { $0.contains(service) },
                        "the configuration's name is in the diagnostic file: "
-                       + "\(lines.map(\.message))")
-        XCTAssertTrue(lines.contains { $0.message.contains("resource busy") },
+                       + "\(lines)")
+        XCTAssertTrue(lines.contains { $0.contains("resource busy") },
                       "…and the reason the tool gave is not")
     }
 
@@ -126,13 +124,12 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
     func testTheScreenStillKnowsWhichConfigurationItWas() {
         let runner = FakeRunner()
         runner.reply = "cannot start \(service): resource busy"
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
                                runner: runner, credentials: nil, apps: FakeApps(),
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
 
-        engine.connect(service)
+        engine.connect(service, auto: false)
 
         XCTAssertEqual(engine.lastFailure,
                        VPNFailure(name: service, reason: .refused, verb: .connect),

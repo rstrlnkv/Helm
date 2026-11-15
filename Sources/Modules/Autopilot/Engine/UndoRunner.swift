@@ -1,62 +1,6 @@
 import Foundation
 import HelmRuntime
 
-/// Everything a return asks of the disk.
-///
-/// A port for the reason `RuleRunner`'s `ancestry` is a seam and for one more:
-/// the states this has to tell apart are states a test cannot conjure on the
-/// machine running the suite. A volume that will not keep an extended
-/// attribute, a directory swapped for a symlink between two syscalls, a Trash
-/// emptied mid-decision — each is a branch that decides whether somebody's file
-/// moves, and each is unreachable from a temporary folder.
-protocol UndoFiles: Sendable {
-    /// Who is at `path`, by `lstat`, or nothing when there is nothing.
-    func identity(of path: String) -> PathCanonical.FileIdentity?
-    /// Where `path`'s resolved parent chain leads *now*.
-    func ancestry(of path: String) -> PathCanonical.AncestryIdentity?
-    func directoryExists(_ path: String) -> Bool
-    func move(_ from: String, to: String) throws
-    func tags(of path: String) throws -> [String]
-    func setTags(_ tags: [String], on path: String) throws
-    /// Whether the mark stuck.
-    func stamp(_ path: String, rule: String, key: Data) -> Bool
-}
-
-struct SystemUndoFiles: UndoFiles {
-    func identity(of path: String) -> PathCanonical.FileIdentity? {
-        PathCanonical.identity(of: path)
-    }
-
-    func ancestry(of path: String) -> PathCanonical.AncestryIdentity? {
-        PathCanonical.ancestryIdentity(of: path)
-    }
-
-    func directoryExists(_ path: String) -> Bool {
-        var directory: ObjCBool = false
-        let there = FileManager.default.fileExists(atPath: path, isDirectory: &directory)
-        return there && directory.boolValue
-    }
-
-    func move(_ from: String, to: String) throws {
-        try FileManager.default.moveItem(atPath: from, toPath: to)
-    }
-
-    func tags(of path: String) throws -> [String] {
-        try URL(fileURLWithPath: path).resourceValues(forKeys: [.tagNamesKey]).tagNames ?? []
-    }
-
-    func setTags(_ tags: [String], on path: String) throws {
-        var values = URLResourceValues()
-        values.tagNames = tags
-        var url = URL(fileURLWithPath: path)
-        try url.setResourceValues(values)
-    }
-
-    func stamp(_ path: String, rule: String, key: Data) -> Bool {
-        RuleStamp(key: key).stamp(path, by: rule)
-    }
-}
-
 /// One record, put back.
 ///
 /// **A record is a claim, not an instruction.** The history lives in the same

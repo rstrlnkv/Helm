@@ -6,7 +6,7 @@ import CoreGraphics
 /// was pressed and where the pointer is and none of it reads a keyboard: the
 /// overlay feeds it events and draws what it answers.
 public struct SelectionDrag: Sendable {
-    public let bounds: CGRect
+    let bounds: CGRect
     private(set) var anchor: CGPoint
     private(set) var pointer: CGPoint
     /// Shift was pressed: one axis stands where it was, and this says which and
@@ -17,7 +17,7 @@ public struct SelectionDrag: Sendable {
     /// empty but the drag is not a press any more.
     public private(set) var hasMoved = false
 
-    public enum Axis: Sendable { case horizontal, vertical }
+    enum Axis: Sendable { case horizontal, vertical }
 
     public init(start: CGPoint, bounds: CGRect) {
         let start = Self.clamp(start, to: bounds)

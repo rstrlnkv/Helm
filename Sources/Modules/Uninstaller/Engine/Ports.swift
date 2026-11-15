@@ -1,10 +1,11 @@
 import Foundation
+import HelmRuntime
 
 public protocol AppLister: Sendable {
     /// Apps from /Applications, ~/Applications, and any Setapp folder, with
     /// `sizeBytes` left at zero — see `appSizes`.
     func installedApps() -> [InstalledApp]
-    /// Bundle id → size on disk. Separate because measuring a bundle walks
+    /// Bundle path → size on disk. Separate because measuring a bundle walks
     /// every file in it: the list is worth showing before the numbers arrive.
     func appSizes(_ apps: [InstalledApp]) -> [String: Int]
     /// Just the ids. Sizing a bundle means walking every file inside it, and
@@ -58,9 +59,15 @@ public protocol AppLister: Sendable {
     /// deleted — is `[]` and not nil: nothing in it is the true answer for that
     /// one, and it must not be reported as a missing permission.
     func trashedApps() -> [TrashedApp]?
+
+    /// Whether the Trash can be read at all — the one question the switch asks on
+    /// a press, answered without opening a single bundle. Not readable is a refused
+    /// read (Full Disk Access); a Trash that is not there is readable and empty,
+    /// the same split `trashedApps()` makes.
+    func trashIsReadable() -> Bool
 }
 
-public extension AppLister {
+extension AppLister {
     /// What a lister that only lists can answer. `WorkspaceAppLister` overrides
     /// it, because the folders it lists are not where every app lives.
     func installedPaths(forBundleID id: String) -> [String] {
@@ -71,13 +78,17 @@ public extension AppLister {
     /// such a lister is not the one being refused a read.
     func trashedApps() -> [TrashedApp]? { [] }
 
+    /// What `trashedApps()` says, so a lister that only lists keeps its answer.
+    func trashIsReadable() -> Bool { trashedApps() != nil }
+
     /// No dates, for a lister that only lists — an answer, "no record".
     func lastOpened(path: String) -> Date? { nil }
 }
 
 public protocol FileSystemPort: Sendable {
     func exists(_ url: URL) -> Bool
-    /// Recursive byte size; 0 if missing.
+    /// Allocated bytes, the contents of a directory or package included and a hard
+    /// link counted once. 0 for a path that cannot be read, a missing one among them.
     func size(_ url: URL) -> Int
     /// Resolve a `*`-in-last-component pattern against its parent dir.
     func glob(_ pattern: URL) -> [URL]
@@ -86,18 +97,18 @@ public protocol FileSystemPort: Sendable {
 }
 
 public struct TrashOutcome: Sendable, Equatable {
-    public let succeeded: Bool
+    let succeeded: Bool
     /// Cocoa error code when it failed (0 when it succeeded or was unknown).
-    public let errorCode: Int
-    public let message: String
+    let errorCode: Int
+    let message: String
 
-    public init(succeeded: Bool, errorCode: Int = 0, message: String = "") {
+    init(succeeded: Bool, errorCode: Int = 0, message: String = "") {
         self.succeeded = succeeded
         self.errorCode = errorCode
         self.message = message
     }
 
-    public static let success = TrashOutcome(succeeded: true)
+    static let success = TrashOutcome(succeeded: true)
 }
 
 public protocol TrashPort: Sendable {
@@ -109,11 +120,8 @@ public protocol TrashPort: Sendable {
 /// System extensions block their host app from being moved; the UI needs to
 /// name that reason instead of reporting a bare failure.
 ///
-/// One question, because that is the one this module asks. It also had
-/// `installedExtensions()` — the whole list, reached only by a `systemExtensions`
-/// command no screen ever sent, so a port member and a `systemextensionsctl`
-/// call existed for nobody. The list is still read where somebody draws it:
-/// Leftovers has its own port for it, and answers `nil` when the tool did not.
+/// One question, because only one is asked; Leftovers has its own port for the
+/// whole list.
 public protocol SystemExtensionPort: Sendable {
     /// Bundle ids that currently have an activated system extension, or `nil` when
     /// `systemextensionsctl` did not answer at all.
@@ -127,6 +135,16 @@ public protocol SystemExtensionPort: Sendable {
     /// non-optionals, which is the `PowerSource.supply()` lesson one module over:
     /// the repair belongs on the port.
     func activeExtensionHosts() -> Set<String>?
+}
+
+/// Whether Helm may read what only Full Disk Access opens. The unattended orphan
+/// scan asks it before it lists anything.
+public protocol FullDiskAccessPort: Sendable {
+    /// `.granted` only when a protected file was actually read. `nil` is a probe
+    /// that could not be answered at all, and it is **not** granted: with nobody
+    /// watching, a grant nobody could confirm is not one to scan under, because
+    /// the listing below it answers empty for what it could not open.
+    func fullDiskAccess() -> PermissionState?
 }
 
 public protocol RunningAppsPort: Sendable {
@@ -147,4 +165,10 @@ public protocol RunningAppsPort: Sendable {
 public struct NoSystemExtensions: SystemExtensionPort {
     public init() {}
     public func activeExtensionHosts() -> Set<String>? { [] }
+}
+
+/// Default when no probe is injected (tests, previews): a Mac that granted it.
+public struct GrantedFullDiskAccess: FullDiskAccessPort {
+    public init() {}
+    public func fullDiskAccess() -> PermissionState? { .granted }
 }

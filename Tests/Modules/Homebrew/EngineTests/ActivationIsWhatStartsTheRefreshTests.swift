@@ -1,6 +1,5 @@
 import XCTest
 import HelmTestSupport
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// A store that answers nothing and records that it was asked to refresh.
@@ -11,30 +10,6 @@ private final class RefreshSpy: PopularityReading, @unchecked Sendable {
     let asked = XCTestExpectation(description: "the engine asked the store to refresh")
     func readings() -> PopularityReadings { .none }
     func refreshIfDue() async { asked.fulfill() }
-}
-
-private struct NoBrew: BrewLocator {
-    func brewPath() -> String? { nil }
-}
-
-private struct IdleRunner: ProcessRunner, @unchecked Sendable {
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        onExit(0)
-        return NoProcess()
-    }
-}
-
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
 /// **The one line that makes the whole feature run, held by a test.**
@@ -58,7 +33,7 @@ final class ActivationIsWhatStartsTheRefreshTests: XCTestCase {
 
     /// A wall-clock wait and not a cooperative yield: the ask lands on a task
     /// of its own, so a yield would buy a turn on the pool and no time at all
-    /// (CLAUDE.md § What not to do, and what breaks if you do).
+    /// (ARCHITECTURE.md § Fakes).
     func testActivationAsksTheStoreToRefresh() {
         let spy = RefreshSpy()
         // Held for the length of the wait: `deinit` cancels the refresh, so an
@@ -72,5 +47,19 @@ final class ActivationIsWhatStartsTheRefreshTests: XCTestCase {
                        + "ever fetches the install counts — the module ships inert with every "
                        + "other test green")
         engine.deactivate()
+    }
+
+    /// And only activation: `init` runs for every module the host knows about, and
+    /// a module the person has turned off must never reach the network. An engine
+    /// that is built and never activated stays silent for the length of the wait.
+    func testAnEngineThatIsNeverActivatedNeverAsks() {
+        let spy = RefreshSpy()
+        spy.asked.isInverted = true
+        let engine = self.engine(spy)
+
+        XCTAssertEqual(XCTWaiter.wait(for: [spy.asked], timeout: 1), .completed,
+                       "an engine nobody activated asked the store to refresh, so a module "
+                       + "that is switched off still fetches the install counts")
+        withExtendedLifetime(engine) {}
     }
 }

@@ -8,7 +8,7 @@ import HelmRuntime
 /// **Every way in ends at the three numbers clamped to 0…1, and a number that is not a number is no ink**
 /// (`init?(red:green:blue:)`), so a stored or a panel's NaN never reaches a layer.
 public struct AnnotationInk: Sendable, Hashable {
-    public let red: Double, green: Double, blue: Double
+    let red: Double, green: Double, blue: Double
 
     public init?(red: Double, green: Double, blue: Double) {
         guard let red = red.clampedIfFinite(to: 0...1), let green = green.clampedIfFinite(to: 0...1),
@@ -45,10 +45,6 @@ public struct AnnotationInk: Sendable, Hashable {
     /// The swatch that has exactly these numbers, which is how the screen tells a picked ink from a swatch's.
     public var swatch: AnnotationColor? { AnnotationColor.allCases.first { AnnotationInk($0) == self } }
 
-    public static let red = AnnotationInk(AnnotationColor.red)
-    public static let orange = AnnotationInk(AnnotationColor.orange)
-    public static let yellow = AnnotationInk(AnnotationColor.yellow)
-    public static let green = AnnotationInk(AnnotationColor.green)
-    public static let blue = AnnotationInk(AnnotationColor.blue)
-    public static let purple = AnnotationInk(AnnotationColor.purple)
+    static let red = AnnotationInk(AnnotationColor.red)
+    static let yellow = AnnotationInk(AnnotationColor.yellow)
 }

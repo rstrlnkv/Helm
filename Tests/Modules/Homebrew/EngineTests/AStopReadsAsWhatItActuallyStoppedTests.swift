@@ -1,4 +1,5 @@
 import Foundation
+import HelmTestSupport
 import XCTest
 import HelmContract
 import HelmRuntime
@@ -19,86 +20,39 @@ import HelmRuntime
 ///   run reports non-zero, and nothing is left in the temporary folder.
 ///
 /// Nothing here reaches the network, root or the real installer.
+/// Kept: guards the defect fixed in 4b5e0df9 feat(settings): … a Health page of its own.
 final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
 
     // MARK: - The page and the log
-
-    /// A child the way the real handle is: terminating it only records the
-    /// signal, and the exit arrives when the test says so.
-    private final class HeldRunner: ProcessRunner, @unchecked Sendable {
-        final class Handle: RunningProcess, @unchecked Sendable {
-            private let lock = NSLock()
-            private var n = 0
-            var terminations: Int { lock.lock(); defer { lock.unlock() }; return n }
-            func terminate() { lock.lock(); n += 1; lock.unlock() }
-        }
-        private let lock = NSLock()
-        private var _handles: [Handle] = []
-        private var _exits: [@Sendable (Int32) -> Void] = []
-        var handles: [Handle] { lock.lock(); defer { lock.unlock() }; return _handles }
-
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                     env: [String: String]) -> (status: Int32, output: String) { (0, "") }
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            let handle = Handle()
-            lock.lock(); _handles.append(handle); _exits.append(onExit); lock.unlock()
-            return handle
-        }
-        func exitAll(code: Int32) {
-            lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-            for exit in exits { exit(code) }
-        }
-    }
 
     private struct Rig {
         let tools = FakeCommandLineTools()
         let ticker = FakeWaitTicker()
         let privileged = ScriptedPrivileged(reply: .done, holds: false)
-        let runner = HeldRunner()
-        let transport = LocalTransport()
+        let runner = HangingRunner()
+        let news = EngineNews<HomebrewNews>()
         let engine: HomebrewEngine
-        let tape: AsyncStream<EngineEvent>
+        let tape: AsyncStream<HomebrewNews>
 
         init() {
-            engine = HomebrewEngine(locator: WaitRig.FixedLocator(), runner: runner,
+            engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
-                                    transport: transport, marker: InMemoryOpMarker(),
+                                    news: news, marker: InMemoryOpMarker(),
                                     tools: tools, ticker: ticker)
-            tape = transport.events
+            tape = news.stream()
         }
 
-        func terminalStates() async -> [OpState] {
-            transport.emit(EngineEvent(name: "test.sentinel", payload: Data()))
-            var out: [OpState] = []
-            for await event in tape {
-                if event.name == "test.sentinel" { break }
-                if event.name == HomebrewEvent.opState.rawValue,
-                   let s = try? JSONDecoder().decode(OpState.self, from: event.payload),
-                   s.phase != .running { out.append(s) }
-            }
-            return out
-        }
+        func terminalStates() async -> [OpState] { await replay(news, from: tape).states.filter { $0.phase != .running } }
     }
 
     override func setUp() {
         super.setUp()
         _ = HelmLog.shared.recentEntries()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var homebrewLines: [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == HomebrewEngine.moduleID }.map(\.message)
+        loggedLines(HomebrewEngine.moduleID)
     }
 
     /// Stop pressed while install.sh runs, and the wrapper then answers 0 —
@@ -113,7 +67,7 @@ final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
         rig.engine.stop()
         XCTAssertEqual(rig.runner.handles.first?.terminations, 1, "precondition: the Stop reached the handle")
         XCTAssertTrue(homebrewLines.contains("stop requested"), "precondition: the Stop was taken")
-        rig.runner.exitAll(code: 0)
+        rig.runner.finishAll(code: 0)
 
         let terminal = await rig.terminalStates()
         XCTAssertEqual(terminal.count, 1, "ended \(terminal.count) times: \(terminal)")
@@ -127,33 +81,6 @@ final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
     }
 
     // MARK: - The wrapper
-
-    private final class Run: @unchecked Sendable {
-        let done = DispatchSemaphore(value: 0)
-        private let lock = NSLock()
-        private var _status: Int32?
-        private var _lines: [String] = []
-        var status: Int32? { lock.lock(); defer { lock.unlock() }; return _status }
-        var lines: [String] { lock.lock(); defer { lock.unlock() }; return _lines }
-        func line(_ l: String) { lock.lock(); _lines.append(l); lock.unlock() }
-        func exit(_ s: Int32) { lock.lock(); _status = s; lock.unlock(); done.signal() }
-    }
-
-    private func composedInstaller() throws -> String {
-        let rig = WaitRig()
-        rig.tools.gitExecutable = true
-        rig.engine.installBrew()
-        return try XCTUnwrap(try XCTUnwrap(rig.runner.calls.first, "the engine launched nothing").args.last)
-    }
-
-    private func rehosted(_ command: String, source: URL, temporaries: URL) throws -> String {
-        let url = try XCTUnwrap(command.split(separator: " ").first { $0.hasPrefix("https://") },
-                                "the command downloads nothing over https any more")
-        return command
-            .replacingOccurrences(of: String(url), with: "file://\(source.path)")
-            .replacingOccurrences(of: "/usr/bin/mktemp",
-                                  with: "/usr/bin/mktemp -p \(temporaries.path) -t helm")
-    }
 
     private struct Ground {
         let temporaries: URL
@@ -176,13 +103,6 @@ final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
         try "#!/bin/bash\n\(body.replacingOccurrences(of: "$MARK", with: marks.path))\n"
             .write(to: installer, atomically: true, encoding: .utf8)
         return Ground(temporaries: temporaries, marks: marks, installer: installer)
-    }
-
-    private func start(_ command: String) -> (RunningProcess, Run) {
-        let run = Run()
-        let handle = ShellProcessRunner().stream("/bin/bash", ["-c", command], env: [:], reach: .wholeGroup,
-                                                 onLine: { run.line($0) }, onExit: { run.exit($0) })
-        return (handle, run)
     }
 
     /// An installer that answers the Stop by failing in its own way — exit 1

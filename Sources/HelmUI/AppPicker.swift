@@ -20,14 +20,14 @@ public enum AppInfo {
     /// LaunchServices for the path, `FileManager` for the display name and
     /// `NSWorkspace` for the icon — three trips to the system, about 0.14 ms
     /// together, and `HelmAppRuleRow` asks for them in its **initialiser**.
-    /// Three modules draw lists of those rows, so every filter keystroke and
+    /// Keep Awake's and Layout's lists draw those rows, so every filter keystroke and
     /// every scroll paid for the whole visible list again.
     ///
     /// Nothing invalidates it: an app renamed or moved while Helm is running
     /// keeps the name and icon it had until the next launch. That is the answer
-    /// this app has always given — the Uninstaller's own icon memo has never
-    /// invalidated either — and the price of the alternative is watching
-    /// LaunchServices for a change nobody has reported noticing.
+    /// this app has always given — the path-keyed memo below
+    /// (`AppInfo.icon(forFile:)`) has never invalidated either — and the price of the
+    /// alternative is watching LaunchServices for a change nobody has reported noticing.
     nonisolated(unsafe) private static let resolved = NSCache<NSString, Resolved>()
 
     public static func resolve(_ bundleID: String) -> (name: String, icon: NSImage) {
@@ -108,7 +108,7 @@ public enum AppPicker {
     /// without acting on their behalf still take `choose()`.
     @MainActor public static func chooseApps() -> [(bundleID: String, url: URL)] {
         let panel = NSOpenPanel()
-        panel.title = L("Choose apps")
+        panel.title = L(.chooseApps)
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.allowedContentTypes = [.application]
         panel.allowsMultipleSelection = true

@@ -1,25 +1,29 @@
 import XCTest
 @testable import HelmRuntime
 
-/// A background scan reads every file in its scope. It runs when that costs the
-/// person nothing, and the definition of "nothing" is this file.
-final class ScanScheduleTests: XCTestCase {
+/// The clock and the conditions builder both schedule classes below inherit.
+/// It holds no test of its own.
+class ScanScheduleRig: XCTestCase {
 
-    private let noon = Date(timeIntervalSince1970: 1_785_672_000)
+    fileprivate let noon = Date(timeIntervalSince1970: 1_785_672_000)
 
-    private func conditions(idle: TimeInterval = 600,
-                            onMains: Bool = true,
-                            ranToday: Int = 0,
-                            lastRun: Date? = nil,
-                            enabled: Bool = true,
-                            onConsole: Bool = true,
-                            screenLocked: Bool = false) -> ScanSchedule.Conditions {
+    fileprivate func conditions(idle: TimeInterval = 600,
+                                onMains: Bool = true,
+                                ranToday: Int = 0,
+                                lastRun: Date? = nil,
+                                enabled: Bool = true,
+                                onConsole: Bool = true,
+                                screenLocked: Bool = false) -> ScanSchedule.Conditions {
         ScanSchedule.Conditions(now: noon, lastRun: lastRun, idleSeconds: idle,
                                 onMains: onMains, runsToday: ranToday,
                                 isEnabled: enabled, onConsole: onConsole,
                                 screenLocked: screenLocked)
     }
+}
 
+/// A background scan reads every file in its scope. It runs when that costs the
+/// person nothing, and the definition of "nothing" is this file.
+final class ScanScheduleTests: ScanScheduleRig {
     func testRunsWhenEverythingIsFavourable() {
         XCTAssertEqual(ScanSchedule.verdict(conditions()), .run)
     }
@@ -60,23 +64,8 @@ final class ScanScheduleTests: XCTestCase {
     }
 }
 
-final class ScanScheduleClockAndPriorityTests: XCTestCase {
-
-    private let noon = Date(timeIntervalSince1970: 1_785_672_000)
+final class ScanScheduleClockAndPriorityTests: ScanScheduleRig {
     private let interval: TimeInterval = 24 * 3600
-
-    private func conditions(idle: TimeInterval = 600,
-                            onMains: Bool = true,
-                            ranToday: Int = 0,
-                            lastRun: Date? = nil,
-                            enabled: Bool = true,
-                            onConsole: Bool = true,
-                            screenLocked: Bool = false) -> ScanSchedule.Conditions {
-        ScanSchedule.Conditions(now: noon, lastRun: lastRun, idleSeconds: idle,
-                                onMains: onMains, runsToday: ranToday,
-                                isEnabled: enabled, onConsole: onConsole,
-                                screenLocked: screenLocked)
-    }
 
     /// Once a day. A scan that already ran is not due again because the app
     /// relaunched — which is what a naive "run at launch" would do to somebody

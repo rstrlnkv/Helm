@@ -8,8 +8,8 @@ import Foundation
 /// place in this module that may answer `.runnable`, and a command parsed out
 /// of a tool's output is data, not an instruction, until it has been through
 /// there.
-public struct DoctorFix: Codable, Equatable, Sendable {
-    public enum Kind: String, Codable, Sendable {
+public struct DoctorFix: Equatable, Sendable {
+    public enum Kind: String, Sendable {
         /// Safe for Helm to run through the module's own operation path.
         case runnable
         /// Shown to the person to copy; never executed by this app.
@@ -17,7 +17,7 @@ public struct DoctorFix: Codable, Equatable, Sendable {
     }
     public let argv: [String]
     public let kind: Kind
-    public init(argv: [String], kind: Kind) {
+    init(argv: [String], kind: Kind) {
         self.argv = argv
         self.kind = kind
     }

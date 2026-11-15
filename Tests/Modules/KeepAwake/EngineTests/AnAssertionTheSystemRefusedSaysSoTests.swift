@@ -16,9 +16,10 @@ import HelmRuntime
 /// word for, so no test of it could exist whatever anybody wrote.
 ///
 /// What is fixed here is that: the port answers, the engine reads the answer,
-/// and the trail carries it. The screen still says «holding», and deliberately
-/// so for now — saying otherwise is a new field on the payload and a sentence in
-/// eight languages, which is `HelmUI`'s tree.
+/// and the trail and the payload carry it. The hero and the panel tile draw the
+/// payload's flag as a notice (`KeepAwakeNotice.assertionRefused`).
+///
+/// Guards: bf6c973b (a refused IOKit assertion counted as held).
 final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
 
     private var store: NamespacedStore!
@@ -28,13 +29,10 @@ final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
         super.setUp()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         assertions = FakeAssertions()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
+        tailTheLog()
     }
 
     override func tearDown() {
-        HelmLog.shared.setEnabled(false)
-        HelmLog.shared.clearTail()
         store = nil
         assertions = nil
         super.tearDown()
@@ -47,7 +45,7 @@ final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: FakeApps(),
                         pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: FakeClock())
+                        clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     /// IOKit said no. The one place that can account for a Mac that slept
@@ -64,6 +62,8 @@ final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
                        "macOS refused to hold the Mac awake and the module wrote «holding "
                        + "sleep» over it; the log is the only account of a Mac that slept "
                        + "through a session it was asked to sit out")
+        XCTAssertEqual(entries(containing: "could not").map(\.level), [.warn],
+                       "the refusal is a warning: warn is what reaches a bug report, info does not")
     }
 
     /// The control, so the line above cannot be satisfied by a module that
@@ -77,9 +77,71 @@ final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
                        "…and the ordinary line is still written")
     }
 
-    private func lines(containing text: String) -> [String] {
+    /// The payload is what the screen reads: a refusal reaches it, and the
+    /// next assertion the system grants takes it away again.
+    func testARefusedAssertionIsInThePayloadUntilALaterOneSucceeds() async {
+        assertions.succeeds = false
+        let engine = engine()
+
+        engine.startSession(minutes: 0)
+        XCTAssertEqual(assertions.preventCount, 1, "precondition: the assertion was asked for")
+        var latest = await engine.stream().first { _ in true }
+        XCTAssertEqual(latest?.assertionRefused, true)
+
+        assertions.succeeds = true
+        engine.settingsChanged()
+        XCTAssertEqual(assertions.preventCount, 2, "precondition: it was asked for again")
+        latest = await engine.stream().first { _ in true }
+        XCTAssertEqual(latest?.assertionRefused, false)
+    }
+
+    /// Stopping the session that was refused takes the refusal with it: the
+    /// next payload is about a Mac that is no longer being asked to stay awake.
+    func testStoppingARefusedSessionTakesTheRefusalAwayFromThePayload() async {
+        assertions.succeeds = false
+        let engine = engine()
+        engine.startSession(minutes: 0)
+        var latest = await engine.stream().first { _ in true }
+        XCTAssertEqual(latest?.assertionRefused, true, "precondition: the refusal was published")
+
+        engine.stopSession()
+        latest = await engine.stream().first { _ in true }
+        XCTAssertEqual(latest?.isActive, false, "precondition: the session ended")
+        XCTAssertEqual(latest?.assertionRefused, false)
+    }
+
+    /// The battery guard ends a session by its own road, not through the branch
+    /// that `stopSession` reaches, and it takes the refusal with it too.
+    func testTheBatteryGuardStoppingARefusedSessionTakesTheRefusalAway() async {
+        assertions.succeeds = false
+        let power = FakePower()
+        let engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
+                                     assertions: assertions,
+                                     displayInfo: FakeDisplayInfo(),
+                                     displayObserver: FakeDisplayObserver(),
+                                     power: power, apps: FakeApps(),
+                                     pointer: FakePointer(), clamshell: FakeClamshell(),
+                                     clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine.activate()
+        engine.startSession(minutes: 0)
+        var latest = await engine.stream().first { _ in true }
+        XCTAssertEqual(latest?.assertionRefused, true, "precondition: the refusal was published")
+
+        power.snap = (onBattery: true, percent: 5)
+        power.says(.battery)
+        power.fire()
+        latest = await engine.stream().first { _ in true }
+        XCTAssertEqual(latest?.batteryStopped, true, "precondition: the guard stopped it")
+        XCTAssertEqual(latest?.isActive, false, "precondition: the session ended")
+        XCTAssertEqual(latest?.assertionRefused, false)
+    }
+
+    private func entries(containing text: String) -> [LogEntry] {
         HelmLog.shared.recentEntries()
             .filter { $0.category == KeepAwakeEngine.moduleID && $0.message.contains(text) }
-            .map(\.message)
+    }
+
+    private func lines(containing text: String) -> [String] {
+        entries(containing: text).map(\.message)
     }
 }

@@ -25,7 +25,7 @@ import XCTest
 /// And the second door is still open while that is true. The gesture is gone
 /// with the tap, but the global shortcut is not: `HotkeyManager` registers it
 /// through Carbon's `RegisterEventHotKey`, which needs no Accessibility grant at
-/// all, and it sends `LayoutCommand.fix` straight into the engine. So the
+/// all, and it calls `fix()` on the engine. So the
 /// sequence is: macOS revokes the grant, the person carries on typing for ten
 /// minutes with Helm blind, presses the shortcut — and six backspaces measured
 /// against a word from ten minutes ago land in the middle of a paragraph.
@@ -42,24 +42,14 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
     private var tap = FakeTap()
     private var sources = FakeSources()
 
-    /// No `settings:` store on purpose — nothing here is about what was saved,
-    /// and an engine with no store cannot reach `UserDefaults` to find out.
-    /// The chord these tests use to end a word without converting it — bound,
-    /// because only the recorded shortcut ends a word and leaves it remembered.
-    /// Every other chord may have changed the text in front of the caret (⌘V
-    /// pastes, ⌥V types `√`), so the word before it is dropped.
-    private static let shortcut: UInt16 = 9
-
     private func engine() -> LayoutEngine {
         typing = FakeTyping(); secure = FakeSecure(); tap = FakeTap(); sources = FakeSources()
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        store.set(Int(Self.shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
+        let store = layoutStore(bound: true)
         let engine = LayoutEngine(
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: secure, settings: store)
+            secure: secure, activation: FakeActivation(), settings: store)
         engine.activate()
         return engine
     }
@@ -74,7 +64,7 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
     func testAWordRememberedWhenTheGrantWentIsNotTheGesturesToConvert() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.handler?(.chord(Self.shortcut))
+        tap.handler?(.chord(layoutShortcut))
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing has been converted yet")
 
         tap.macOSTakesItAway()
@@ -86,7 +76,7 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
             Carbon shortcut, which needs no grant, types six backspaces measured against a \
             word from arbitrarily long ago into whatever the caret is in front of now.
             """)
-        engine.deactivate()   // drops the didBecomeActive observer this test registered
+        engine.deactivate()
     }
 
     /// The positive control for the two tests above and below it: with the tap
@@ -96,14 +86,14 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
     func testTheSameWordIsStillTheGesturesToConvertWhileTheTapIsAlive() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.handler?(.chord(Self.shortcut))
+        tap.handler?(.chord(layoutShortcut))
 
         engine.convertLastWord()
         XCTAssertEqual(typing.performed.count, 1,
                        "the harness never reaches a conversion, so the refusals it asserts "
                        + "elsewhere prove nothing")
         XCTAssertEqual(typing.performed.first?.backspaces, 6)
-        engine.deactivate()   // drops the didBecomeActive observer this test registered
+        engine.deactivate()
     }
 
     // MARK: - The word still being typed
@@ -125,7 +115,7 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
             went is invisible to the engine, so the plan deletes six characters from a field \
             that may hold sixty by now.
             """)
-        engine.deactivate()   // drops the didBecomeActive observer this test registered
+        engine.deactivate()
     }
 
     // MARK: - The conversion that could still be taken back
@@ -149,7 +139,7 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
             \(typing.performed.last?.backspaces ?? 0) characters wherever the caret had \
             got to and typed the mislayout word back.
             """)
-        engine.deactivate()   // drops the didBecomeActive observer this test registered
+        engine.deactivate()
     }
 
     /// …and the same undo is still offered while the tap is alive, so the
@@ -164,6 +154,6 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
         engine.undoLast()
         XCTAssertEqual(typing.performed.count, 2, "the harness never reaches an undo")
         XCTAssertEqual(typing.performed.last?.insert, "ghbdtn ")
-        engine.deactivate()   // drops the didBecomeActive observer this test registered
+        engine.deactivate()
     }
 }

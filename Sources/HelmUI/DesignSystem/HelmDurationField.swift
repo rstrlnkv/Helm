@@ -20,7 +20,7 @@ import SwiftUI
 /// `Clock.app/Contents/Resources/Localizable.loctable` read `ч` / `мин` in
 /// Russian and `Std.` / `Min.` in German, which is exactly what those two keys
 /// already say.
-public struct HelmDurationField: View {
+struct HelmDurationField: View {
     /// Splitting a duration and putting it back together, with the ceiling
     /// applied once.
     ///
@@ -28,10 +28,10 @@ public struct HelmDurationField: View {
     /// the part that can be wrong in a way nobody sees: a person types `90`
     /// into the minutes column and means an hour and a half, and every path
     /// that carries their number has to agree about that.
-    public enum Parts {
+    enum Parts {
         /// Whole hours and the remainder, from a total that is clamped first —
         /// so a number that arrived from a plist cannot draw a 700-hour field.
-        public static func split(_ minutes: Int, ceiling: Int) -> (hours: Int, minutes: Int) {
+        static func split(_ minutes: Int, ceiling: Int) -> (hours: Int, minutes: Int) {
             let total = max(0, min(minutes, ceiling))
             return (total / 60, total % 60)
         }
@@ -43,7 +43,7 @@ public struct HelmDurationField: View {
         /// own ceiling, once, at the end — the same one `startSession` clamps
         /// to, so a number this field accepts cannot be a session the engine
         /// then quietly shortens.
-        public static func total(hours: Int, minutes: Int, ceiling: Int) -> Int {
+        static func total(hours: Int, minutes: Int, ceiling: Int) -> Int {
             guard hours >= 0, minutes >= 0 else { return 0 }
             // Multiplied inside the ceiling rather than after it: `hours * 60`
             // on an hours field somebody pasted `999999999` into overflows,
@@ -68,7 +68,7 @@ public struct HelmDurationField: View {
 
     private enum Field { case hours, minutes }
 
-    public init(minutes: Binding<Int>, ceiling: Int,
+    init(minutes: Binding<Int>, ceiling: Int,
                 hourLabel: String, minuteLabel: String) {
         _minutes = minutes
         self.ceiling = ceiling
@@ -79,7 +79,7 @@ public struct HelmDurationField: View {
         _minuteText = State(initialValue: String(format: "%02d", parts.minutes))
     }
 
-    public var body: some View {
+    var body: some View {
         HStack(spacing: 6) {
             column(hourLabel, text: $hourText, field: .hours)
             // The colon carries a hidden label of its own, so it sits in the

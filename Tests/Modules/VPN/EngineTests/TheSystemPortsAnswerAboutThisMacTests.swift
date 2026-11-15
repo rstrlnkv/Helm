@@ -9,6 +9,8 @@ import XCTest
 /// The production ports, tested without a network: the trace parser is read
 /// against text the endpoint really prints, and the dynamic store is asked about
 /// this Mac, which answers whatever it answers.
+///
+/// Past defect: commit 237aa6f9, «fix(vpn): a measurement that cannot start says so, and four digits are grouped» (a port that answered nil to everything passed).
 final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
 
     func testTheRegionIsReadFromTheTracesOwnLine() {
@@ -82,7 +84,7 @@ final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
     /// Measured on this machine, 2026-08-18: `networkQuality -c -I utun6`
     /// against a live tunnel prints this and **exits 0** — an error object, no
     /// throughput keys at all. The guard on the status would have let it
-    /// through; what refuses it is the parser's «every field or nothing», and
+    /// through; what refuses it is the parser's «both throughput figures or nothing», and
     /// that is now a test rather than a thing somebody remembers.
     private static let minusOneThousandAndNine = """
     {"error_code": -1009, "error_domain": "NSURLErrorDomain", \

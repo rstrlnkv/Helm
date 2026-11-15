@@ -1,15 +1,16 @@
 import AppKit
 import HelmRuntime
+import HelmAppStrings
 
-/// Checks what Helm needs from macOS the first time it runs, and says so once.
+/// Checks at every launch what Helm needs from macOS, logs the three states, and
+/// puts up an alert only when the build's code identity differs from the last one
+/// seen and an enabled module's need is missing; a first run is silent.
 /// Discovered the hard way: without Full Disk Access an uninstall silently
 /// leaves app containers on disk.
 @MainActor enum PermissionAudit {
-    /// Set by the app delegate so the audit can ask which modules are on.
-    static var host: ModuleHost!
-
-    /// Holds the **identity** of the build that last showed the notice — not a
-    /// bare flag, and no longer its marketing version.
+    /// Holds the **identity** of the build that last ran this audit and could
+    /// read its signature — not a bare flag, and no longer its marketing
+    /// version.
     ///
     /// **The key string is historical and must not be renamed.** A fresh key
     /// reads as an empty last-seen value, `PermissionAuditPlan.shouldSpeak` is
@@ -65,19 +66,26 @@ import HelmRuntime
 
             // Asked for only what an enabled module actually uses: a permission
             // request with no reason behind it is one people deny.
-            let needs = ModuleRegistry.all
-                .filter { host.isEnabled($0) }
-                .flatMap { $0.currentPermissions() }
-            let missing = PermissionAuditPlan.missing(
-                fullDisk: fullDisk, accessibility: accessibility,
-                screenRecording: screenRecording,
-                needsFullDisk: needs.contains(.fullDisk),
-                needsAccessibility: needs.contains(.accessibility),
-                needsScreenRecording: needs.contains(.screenRecording))
+            let needs = PermissionSummary.needed()
+            let missing = missing(needs: needs, fullDisk: fullDisk,
+                                  accessibility: accessibility,
+                                  screenRecording: screenRecording)
 
             guard !missing.isEmpty else { return }
             present(missing)
         }
+    }
+
+    /// The needed permissions that are denied, as the alert lists them.
+    static func missing(needs: [PermissionNeed], fullDisk: PermissionState,
+                        accessibility: PermissionState,
+                        screenRecording: PermissionState) -> [PermissionNeed] {
+        PermissionAuditPlan.missing(
+            fullDisk: fullDisk, accessibility: accessibility,
+            screenRecording: screenRecording,
+            needsFullDisk: needs.contains(.fullDiskAccess),
+            needsAccessibility: needs.contains(.accessibility),
+            needsScreenRecording: needs.contains(.screenRecording))
     }
 
     /// One sheet naming everything that stopped working, and a button per

@@ -1,16 +1,14 @@
 import Foundation
 import XCTest
 import HelmTestSupport
-import HelmContract
 import HelmRuntime
-import HelmUI
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
 /// **A planted `last-scan.json`, opened the way the page opens it.**
 ///
-/// `ASavedFileCannotTrapTheSumsTests` and `TheBasketTotalSaturatesTests` each
-/// reach one sum from a value built in the test. This case reaches all four from
+/// `ASavedFileCannotTrapTheSumsTests` reaches one sum from a value built in the
+/// test. This case reaches all four from
 /// one file, through the road a person takes: the view model's own
 /// `restoreLastScan` at construction, the advice rows put in the basket, the
 /// removal question, and a removal answered by the engine so the tree is pruned.
@@ -27,6 +25,7 @@ import Module_Disk_Engine
 ///
 /// A sum that traps takes the test process with it, so a regression reads as a
 /// crashed bundle rather than one red case.
+/// Past defect: fixed in commit 4ce355a9.
 @MainActor
 final class APlantedScanOpensThroughTheRestoreTests: XCTestCase {
 
@@ -61,13 +60,14 @@ final class APlantedScanOpensThroughTheRestoreTests: XCTestCase {
                                                 withIntermediateDirectories: true)
         try Data(json.utf8).write(to: store.fileURL)
 
-        let wire = AnsweringTransport(volumes: [])
-        let dvm = DiskViewModel(vm: ModuleViewModel(transport: wire), store: store)
+        let work = AnsweringWork(volumes: [])
+        let dvm = DiskViewModel(work: work, store: store)
+        await dvm.appear()
         let start = Date()
         while !dvm.restored, Date().timeIntervalSince(start) < 10 {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
-        await settle()
+        await waitUntil("the restored tree is drawn") { dvm.result != nil }
 
         // The subject happened: the file was restored, whole, and drawn.
         XCTAssertTrue(dvm.restored, "precondition: the planted file was never restored")
@@ -94,9 +94,9 @@ final class APlantedScanOpensThroughTheRestoreTests: XCTestCase {
         XCTAssertEqual(question.bytes, .max, "the question's total")
 
         // A removal answered by the engine: the tree is pruned in hand.
-        wire.answerTrash(with: DiskRemoval(removed: [folder + "/0"], refused: [], freedBytes: 1))
+        work.answerTrash(with: DiskRemoval(removed: [folder + "/0"], refused: [], freedBytes: 1))
         await dvm.emptyBasket()
-        XCTAssertEqual(wire.trashRequests.count, 1, "precondition: the press reached the engine")
+        XCTAssertEqual(work.trashRequests.count, 1, "precondition: the press reached the engine")
         XCTAssertEqual(dvm.result?.root.children.first?.children.count, count - 1,
                        "the removed child is still in the tree, so no prune ran")
     }

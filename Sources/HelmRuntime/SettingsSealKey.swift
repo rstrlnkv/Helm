@@ -42,7 +42,27 @@ public enum SettingsSealKey {
     /// is closed at its own end; the name is kept because it says what the
     /// constant is, not because anything depends on it.
     public static let overScanSettings: SealKeyPort =
-        SealKeyCache(KeychainSealKey(service: "com.helm.app",
-                                     account: "settings-seal",
+        SealKeyCache(KeychainSealKey(service: SettingsSealItems.service,
+                                     account: SettingsSealItems.of(bundle: Bundle.main.bundleIdentifier).account,
                                      category: "scan"))
+}
+
+/// Which keychain account the scan settings are sealed under.
+///
+/// **Helm Dev has an account of its own**, because Dev shares the person's
+/// installed Helm's keychain and its saves would otherwise write seals under
+/// the key the installed Helm reads. Exactly `AppBuild.devIdentifier` moves to
+/// `dev-settings-seal`; anything else, a nil identifier included, reads the
+/// deployed `settings-seal`. The service stays `com.helm.app`; the deployed
+/// item is never re-keyed. A seal Dev wrote before this account existed is
+/// signed with the shared key, so Dev reads it as a broken seal and refuses safe;
+/// `defaults delete com.helm.app.dev` once starts Dev clean.
+struct SettingsSealItems: Equatable, Sendable {
+    /// Deployed: names the item on every Mac that has run a background scan.
+    static let service = "com.helm.app"
+    let account: String
+
+    static func of(bundle identifier: String?) -> SettingsSealItems {
+        SettingsSealItems(account: AppBuild.isDevIdentifier(identifier) ? "dev-settings-seal" : "settings-seal")
+    }
 }

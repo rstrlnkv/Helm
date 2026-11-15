@@ -8,6 +8,8 @@ import XCTest
 /// anything, a block that took a corner of its neighbour) is a colour the box's source holds and nothing else does,
 /// and a block that is not one colour is read straight off the file's bytes. The grid is the display's pixels at
 /// the block's size, so the box's edges cut blocks, and the edge blocks are read the same as the others.
+///
+/// Mutant, red here: `draw` skips the blur layers.
 final class TheBlurLeavesNoSourcePixelInTheFileTests: XCTestCase {
     private struct Case {
         let scale: CGFloat
@@ -48,17 +50,6 @@ final class TheBlurLeavesNoSourcePixelInTheFileTests: XCTestCase {
                        provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
     }
 
-    private func pixels(_ image: CGImage) -> [UInt32] {
-        let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8,
-                                bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        let bytes = context.data!.assumingMemoryBound(to: UInt8.self)
-        return (0..<(image.width * image.height)).map { index in
-            UInt32(bytes[index * 4]) << 16 | UInt32(bytes[index * 4 + 1]) << 8 | UInt32(bytes[index * 4 + 2])
-        }
-    }
-
     /// The grid block of pixel `v` in a run `from..<to`: the display's grid, but an end strip narrower than half a block
     /// belongs to the block beside it (a run inside one grid block is that block).
     private func key(_ v: Int, from: Int, to: Int, side: Int) -> Int {
@@ -69,9 +60,10 @@ final class TheBlurLeavesNoSourcePixelInTheFileTests: XCTestCase {
         return k
     }
 
-    /// A box that is one pixel cannot be hidden by a mean of its pixels: no file is made, and a box off the
-    /// display, which hides nothing, does not stop one.
-    func testABoxOfOnePixelRefusesTheFileAndABoxOffTheDisplayDoesNot() async throws {
+    /// A box that is one pixel is none the mosaic can hide as it is: it grows by a neighbouring pixel of the display
+    /// (`Pixelate.grown`), so the file is made (see `ABlurBoxOfOnePixelDoesNotCostTheWholeShotTests`) and the box's pixel
+    /// is not in it; a box off the display, which hides nothing, does not stop the file.
+    func testABoxOfOnePixelLeavesTheFileWithoutItsSourcePixelAndABoxOffTheDisplayDoesNot() async throws {
         let source = pattern(width: 400, height: 240)
         let freeze = Freeze(displays: [.image(FrozenDisplay(id: DisplayID(1), frame: CGRect(x: 0, y: 0, width: 200, height: 120),
                                                             scale: 2, image: source))], windows: [])
@@ -82,7 +74,22 @@ final class TheBlurLeavesNoSourcePixelInTheFileTests: XCTestCase {
         }
         let one = await rig.session.annotated(freeze, display: DisplayID(1), local: whole,
                                               layers: [blur(CGRect(x: 60, y: 40, width: 0.5, height: 0.5))])
-        XCTAssertNil(one, "a one-pixel box left a file with its source pixel in it")
+        let out = packedRGB(try XCTUnwrap(one, "a one-pixel box must not cost the whole file")), was = packedRGB(source)
+        XCTAssertEqual(out.count, was.count)
+        // The box is pixel (120, 80) of the display; it grew into (121, 80). Neither is in the file as it was, and
+        // the two are one colour, their mean.
+        let at = 80 * 400 + 120
+        XCTAssertNotEqual(out[at], was[at], "the source pixel of a one-pixel box is in the file")
+        XCTAssertNotEqual(out[at + 1], was[at + 1], "the pixel the box grew into is in the file as it was")
+        XCTAssertEqual(out[at], out[at + 1], "the grown box is one block")
+        for shift in [16, 8, 0] {
+            let mean = (Int(was[at] >> UInt32(shift) & 0xFF) + Int(was[at + 1] >> UInt32(shift) & 0xFF)) / 2
+            XCTAssertLessThanOrEqual(abs(Int(out[at] >> UInt32(shift) & 0xFF) - mean), 1, "channel \(shift) is not the mean of the two")
+        }
+        XCTAssertEqual(Set(was).count, was.count, "the pattern repeats a colour")
+        var strayed = 0
+        for index in 0..<out.count where index != at && index != at + 1 && out[index] != was[index] { strayed += 1 }
+        XCTAssertEqual(strayed, 0, "\(strayed) pixels outside the grown box changed")
         let away = await rig.session.annotated(freeze, display: DisplayID(1), local: whole,
                                                layers: [blur(CGRect(x: 500, y: 40, width: 20, height: 20))])
         XCTAssertNotNil(away, "a box off the display hides nothing and must not refuse the file")
@@ -99,7 +106,7 @@ final class TheBlurLeavesNoSourcePixelInTheFileTests: XCTestCase {
                                    end: CGPoint(x: test.rect.maxX, y: test.rect.maxY), style: AnnotationStyle(thickness: test.step))
             let drawn = await rig.session.annotated(freeze, display: DisplayID(1), local: CGRect(x: 0, y: 0, width: 200, height: 120),
                                                     layers: [layer])
-            let out = pixels(try XCTUnwrap(drawn, test.name)), was = pixels(source)
+            let out = packedRGB(try XCTUnwrap(drawn, test.name)), was = packedRGB(source)
             XCTAssertEqual(out.count, was.count, test.name)
 
             // The box in whole pixels, rounded outward, and the display's grid at the block's size.

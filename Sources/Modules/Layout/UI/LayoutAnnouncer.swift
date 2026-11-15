@@ -35,7 +35,7 @@ final class LayoutAnnouncer: AnnouncePort, @unchecked Sendable {
             guard NSWorkspace.shared.isVoiceOverEnabled else { return }
             HelmA11y.announce(text(for: what))
             if case .converted = what,
-               !store.bool(LayoutKey.audible, default: false) {
+               !store.layoutAudible {
                 sound.playSwitch()
             }
         }
@@ -48,9 +48,8 @@ final class LayoutAnnouncer: AnnouncePort, @unchecked Sendable {
             // bound tap key, or the recorded chord. Read at announce time —
             // rare and off the typing path — so the sentence tracks the
             // binding the way `undoHint` on the page does.
-            let tapKey = TapKey.from(store.string(LayoutKey.tapKey,
-                                                  default: TapKey.rightCommand.rawValue))
-            let chord = store.string("\(LayoutHotkey.storePrefix)Label", default: "")
+            let tapKey = store.layoutTapKey
+            let chord = store.string(HotkeyStoreKeys(prefix: LayoutHotkey.storePrefix).label, default: "")
             return LyStr.fixedAnnouncement(before: event.before, after: event.after,
                                            undoable: tapKey != .off || !chord.isEmpty)
         case .securePause:

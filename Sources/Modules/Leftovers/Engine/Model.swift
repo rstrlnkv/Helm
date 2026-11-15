@@ -1,16 +1,16 @@
 import Foundation
 
-public enum StaleKind: String, Codable, Sendable, CaseIterable {
+public enum StaleKind: String, Sendable, CaseIterable {
     case launchAgent      // ~/Library/LaunchAgents, /Library/LaunchAgents
     case launchDaemon     // /Library/LaunchDaemons
     case preference       // ~/Library/Preferences/*.plist
-    case systemExtension   // an extension whose host app is gone
+    case systemExtension   // every system extension, live or not
     case plugin           // QuickLook, PreferencePanes, Internet Plug-Ins, Audio
 }
 
 /// Why an item appears in the list. Everything found is shown — hiding what
 /// is in use leaves the user trusting a list they cannot check.
-public enum ItemStatus: String, Codable, Sendable, Equatable {
+public enum ItemStatus: String, Sendable, Equatable {
     /// The owner is gone: safe to remove.
     case orphaned
     /// Belongs to installed software, or points at a file that exists.
@@ -36,11 +36,11 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
     ///
     /// **Its own case rather than `.unreadable`**, which is the sentence
     /// «Helm could not read this file» — false of both of these, and drawn over a
-    /// plist that reads perfectly. ARCHITECTURE.md § Module pattern is the rule
+    /// plist that reads perfectly. (ARCHITECTURE.md § Module pattern) is the rule
     /// being followed: a reason that
     /// needs telling apart gets named, not read out of a shared one.
     case undetermined
-    /// The row is not an item at all: it is one of the scan's seven **source**
+    /// The row is not an item at all: it is one of the scan's eight **source**
     /// directories, which was not the directory it names, so the scan refused to
     /// walk it (`LeftoversScanner.isItsOwnPlace`).
     ///
@@ -49,7 +49,7 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
     /// whole enumeration somewhere else, under Helm's Full Disk Access — and it
     /// used to leave nothing behind: the rows were *missing* rather than unjudged,
     /// `uncheckedCount` was zero, and the page drew «No leftovers found» under a
-    /// green check over a source it had never read. One of the seven is enough,
+    /// green check over a source it had never read. One of the eight is enough,
     /// because it is the filtered list that has to be empty for that message and
     /// not the scan.
     case sourceRedirected
@@ -81,8 +81,8 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
 
     /// Whether this status is a verdict about the item at all.
     ///
-    /// Two of the five are the *absence* of one, and the page had no way to ask:
-    /// neither is `.orphaned`, so the default filter drops both, the list comes
+    /// Four of the seven are the *absence* of one, and the page had no way to ask:
+    /// none is `.orphaned`, so the default filter drops them all, the list comes
     /// out empty and «No leftovers found» — this module's strongest claim about
     /// somebody's Mac — was drawn under a green check over items nobody had
     /// judged. `LeftoversEmpty.reason` counts the unjudged ones through this.
@@ -100,7 +100,7 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
     }
 }
 
-public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
+public struct StaleItem: Equatable, Sendable, Identifiable {
     public var id: String { path }
     public let path: String
     public let identifier: String
@@ -109,12 +109,12 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     /// What the job points at, when it names an executable that is missing.
     public let missingTarget: String?
     /// Loaded at login — worth flagging, since removing it changes behaviour.
-    public let runAtLoad: Bool
+    let runAtLoad: Bool
     public let status: ItemStatus
     /// Switched off through launchd's own disabled list, not deleted.
     public let disabled: Bool
     /// Whether Helm can move this file without an admin password.
-    public let writable: Bool
+    let writable: Bool
     /// Where a **source** row's directory actually leads, when it is not the
     /// directory it names. Nil on every other row.
     ///
@@ -206,8 +206,8 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
 /// another job's — so the engine, which is the last word on what happens to
 /// somebody's login items, needs the path to ask whether this label is the one that
 /// file would register (`LaunchLabel.mayBeSwitched`).
-public struct LeftoversToggle: Codable, Sendable {
-    public let label: String
+public struct LeftoversToggle: Sendable {
+    let label: String
     public let path: String
     public let disabled: Bool
     public init(label: String, path: String, disabled: Bool) {

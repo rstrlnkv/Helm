@@ -51,9 +51,8 @@ struct ConversionLedger: Codable, Equatable, Sendable {
         /// the whole document rather than filling one field in — so a ledger
         /// written before this change would have thrown, `LedgerStore` would have
         /// read nil, and somebody's whole count would have been replaced by an
-        /// empty file without a word. `PanelLayout.Tab` and
-        /// `KeepAwakeEngine.StatePayload` are the same repair for the same reason
-        /// (CLAUDE.md § What not to do, and what breaks if you do).
+        /// empty file without a word. `PanelLayout.Tab` is the same repair for the same
+        /// reason (ARCHITECTURE.md § A value read back whole).
         ///
         /// The old instant is converted in the current zone. A row written far
         /// from here may land a day out — once, on the rows that already exist,
@@ -93,33 +92,6 @@ struct ConversionLedger: Codable, Equatable, Sendable {
 
     init() {}
 
-    /// The first day this ledger has anything for, which is what «all time»
-    /// means to the person reading it. Nil when nothing has been fixed yet —
-    /// and nil rather than «now», because a figure with no scale is worse than
-    /// no figure: 40 words is a lot in a week and nothing in three years.
-    ///
-    /// Guarded like every other reader: a row written by a clock that was
-    /// running fast is in the future, and «since a date that has not happened»
-    /// is not a scale.
-    /// Takes the calendar for the reason every other reader does: a stamp is a
-    /// calendar day, and turning one back into a date is a question about a
-    /// zone. `.current` is the default because that is what the app runs in;
-    /// a test that fixes the zone gets the day it wrote.
-    func since(now: Date = Date(), calendar: Calendar = .current) -> Date? {
-        let today = Self.stamp(of: now, calendar: calendar)
-        guard let first = days.first(where: { $0.stamp <= today }) else { return nil }
-        return Self.date(of: first.stamp, calendar: calendar)
-    }
-
-    /// Back from a stamp, for the one reader that hands a date outward.
-    static func date(of stamp: Int, calendar: Calendar) -> Date? {
-        var parts = DateComponents()
-        parts.year = stamp / 10_000
-        parts.month = (stamp / 100) % 100
-        parts.day = stamp % 100
-        return calendar.date(from: parts)
-    }
-
     /// `words` is more than one only for a selection: a sentence put right in
     /// one gesture is several words of saved typing, and counting it as one
     /// would understate the estimate by exactly the number of switches the
@@ -133,9 +105,8 @@ struct ConversionLedger: Codable, Equatable, Sendable {
             return
         }
         days.append(Day(stamp: start, words: words, characters: characters))
-        // Kept in order so the file reads as a history and «since» is the first
-        // row rather than a scan. A day out of order is ordinary: a clock can
-        // go backwards.
+        // Kept in order so the file reads as a history. A day out of order is
+        // ordinary: a clock can go backwards.
         days.sort { $0.stamp < $1.stamp }
     }
 
@@ -187,7 +158,7 @@ struct ConversionLedger: Codable, Equatable, Sendable {
         }
         return ConversionTotals(today: figures(.today), week: figures(.week),
                                 month: figures(.month), year: figures(.year),
-                                allTime: figures(.allTime), since: since(now: now, calendar: calendar),
+                                allTime: figures(.allTime),
                                 recent: recent(days: 14, now: now, calendar: calendar))
     }
 }

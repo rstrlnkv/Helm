@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Helm
 
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
@@ -23,7 +24,8 @@ final class ARefusalNamesNoConfigurationTests: XCTestCase {
         let reply = VPNCommandReply.of(.init(status: 0, output: output),
                                        name: name, knownNames: known)
         guard case .refused(let text) = reply else {
-            throw XCTSkip("expected a refusal, got \(reply)")
+            XCTFail("expected a refusal, got \(reply)")
+            throw NSError(domain: "fixture", code: 1, userInfo: [NSLocalizedDescriptionKey: "expected a refusal, got \(reply)"])
         }
         return text
     }
@@ -75,9 +77,7 @@ final class ARefusalNamesNoConfigurationTests: XCTestCase {
     /// Through the engine, which is what fills the list of names and writes the
     /// file. Without this the sweep could be perfect and wired to nothing.
     func testTheEngineHandsOverEveryNameItKnows() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         let runner = FakeRunner()
         runner.listOutput = ["Available network connection services:",
@@ -85,20 +85,19 @@ final class ARefusalNamesNoConfigurationTests: XCTestCase {
                              "* (Connected) 22222222-2222-2222-2222-222222222222 IKEv2 \"\(other)\" [IKEv2]"]
             .joined(separator: "\n")
         runner.replies = [asked: "cannot start \(asked): \(other) holds the interface"]
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
                                runner: runner, apps: FakeApps(),
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
         engine.refresh()
 
-        engine.connect(asked)
+        engine.connect(asked, auto: false)
 
-        let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
-        XCTAssertTrue(lines.contains { $0.message.contains("refused") },
+        let lines = loggedLines("vpn")
+        XCTAssertTrue(lines.contains { $0.contains("refused") },
                       "precondition: the refusal reached the log at all")
-        XCTAssertFalse(lines.contains { $0.message.contains(other) },
+        XCTAssertFalse(lines.contains { $0.contains(other) },
                        "a second configuration is named in the diagnostic file: "
-                       + "\(lines.map(\.message))")
+                       + "\(lines)")
     }
 }

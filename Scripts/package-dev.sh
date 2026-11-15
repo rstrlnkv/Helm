@@ -19,7 +19,11 @@ set -euo pipefail
 # `Scripts/package-dev.sh` is tracked by git like the rest of the tree, so a
 # change here travels with a commit and can be recovered from one.
 #
-# Run: bash Scripts/package-dev.sh
+# Run: bash Scripts/package-dev.sh [--no-launch]
+#
+# `--no-launch` (or HELM_DEV_NO_LAUNCH=1) installs without opening the app:
+# a launch writes state (preferences, hotkeys, logs), and a run that wants to
+# start from the installed bundle untouched has to be able to ask for that.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -29,6 +33,16 @@ STAGE="${TMPDIR:-/tmp}/helm-package"
 SRC="$STAGE/Helm.app"
 DEV="$STAGE/Helm Dev.app"
 INSTALLED="/Applications/Helm Dev.app"
+
+NO_LAUNCH="${HELM_DEV_NO_LAUNCH:-}"
+for arg in "$@"; do
+  if [ "$arg" = "--no-launch" ]; then
+    NO_LAUNCH=1
+  else
+    echo "!! unknown argument '$arg'; usage: bash Scripts/package-dev.sh [--no-launch]" >&2
+    exit 2
+  fi
+done
 
 bash "$SCRIPT_DIR/package-app.sh"
 
@@ -51,10 +65,27 @@ echo "==> Signature verified"
 
 echo "==> Installing to $INSTALLED"
 pkill -f 'Helm Dev.app/Contents/MacOS/HelmApp' 2>/dev/null || true
-sleep 1
+# Wait for the old process to be gone, up to about 10 s; never replace a bundle
+# that is still running. `pgrep` says 1 for "no match" and 2 or 3 for an error:
+# only 1 means gone, anything else leaves the install untouched.
+for _ in $(seq 1 20); do
+  status=0
+  pgrep -f 'Helm Dev.app/Contents/MacOS/HelmApp' >/dev/null || status=$?
+  [ "$status" -eq 0 ] || break
+  sleep 0.5
+done
+status=0
+pgrep -f 'Helm Dev.app/Contents/MacOS/HelmApp' >/dev/null || status=$?
+if [ "$status" -eq 0 ]; then
+  echo "!! Helm Dev is still running after 10 s; $INSTALLED left untouched" >&2
+  exit 1
+elif [ "$status" -ne 1 ]; then
+  echo "!! pgrep failed (status $status); cannot tell whether Helm Dev is running; $INSTALLED left untouched" >&2
+  exit 1
+fi
 rm -rf "$INSTALLED"
 ditto "$DEV" "$INSTALLED"
 xattr -dr com.apple.quarantine "$INSTALLED"
-open "$INSTALLED"
+[ -n "$NO_LAUNCH" ] || open "$INSTALLED"
 
-echo "==> Running: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INSTALLED/Contents/Info.plist") build $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$INSTALLED/Contents/Info.plist")"
+echo "==> $([ -n "$NO_LAUNCH" ] && echo Installed || echo Running): $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INSTALLED/Contents/Info.plist") build $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$INSTALLED/Contents/Info.plist")"

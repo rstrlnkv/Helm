@@ -16,7 +16,7 @@ import XCTest
 /// the settings window *before the window had drawn anything*, twice blocking
 /// the screenshot harness.
 ///
-/// This is ARCHITECTURE.md § Sealed settings arriving through the
+/// This is (ARCHITECTURE.md § Sealed settings) arriving through the
 /// second door. `clamshellEnabled` is unsealed because `init` reads it;
 /// `disabledScans` is sealed because it is read rarely and never at launch —
 /// and a `@State` initializer on the settings page is a read at construction,
@@ -37,34 +37,7 @@ import XCTest
 /// written. What these hold is that the keychain is never asked on the thread
 /// that draws, and that the page draws while it is still being asked.
 @MainActor
-final class ThePageDrawsBeforeTheKeychainTests: XCTestCase {
-
-    private let key = "disabledScans"
-    private var macKey: String { SettingGuard.macKey(for: key) }
-    private var savedValue: Any?
-    private var savedMac: Any?
-    private var savedGuard: SettingGuard!
-
-    override func setUp() async throws {
-        savedValue = AppSettings.store.object(key)
-        savedMac = AppSettings.store.object(macKey)
-        savedGuard = AppSettings.scanGuard
-    }
-
-    override func tearDown() async throws {
-        AppSettings.store.set(savedValue, for: key)
-        AppSettings.store.set(savedMac, for: macKey)
-        AppSettings.scanGuard = savedGuard
-    }
-
-    /// A Mac nobody has configured: no stored value, no MAC, no keychain item.
-    private func freshMac(gate: DispatchSemaphore? = nil) -> SealKeyProbe {
-        AppSettings.store.set(nil, for: key)
-        AppSettings.store.set(nil, for: macKey)
-        let keychain = SealKeyProbe(gate: gate)
-        AppSettings.scanGuard = SettingGuard(keys: SealKeyCache(keychain))
-        return keychain
-    }
+final class ThePageDrawsBeforeTheKeychainTests: DisabledScansTestCase {
 
     /// A drawn page: the frame it produced, and the two objects that have to
     /// outlive the measurement for it to mean anything.
@@ -92,7 +65,7 @@ final class ThePageDrawsBeforeTheKeychainTests: XCTestCase {
     /// Day one, which is the worst case: nothing is stored, so the getter's
     /// answer is the default — and it establishes the key on the way past.
     func testDrawingThePageNeverAsksTheKeychainOnTheDrawingThread() {
-        let keychain = freshMac()
+        let keychain = freshMac(cached: true)
         let drawn = drawThePage()
         XCTAssertGreaterThan(drawn.frame.pixelsWide, 0,
                              "nothing was drawn, so nothing was measured")
@@ -105,7 +78,7 @@ final class ThePageDrawsBeforeTheKeychainTests: XCTestCase {
     /// And the ordinary case: a value this installation sealed itself, which
     /// still costs a key to verify.
     func testDrawingThePageWithASealedValueStoredAsksNothingOnThatThread() {
-        let keychain = freshMac()
+        let keychain = freshMac(cached: true)
         AppSettings.disabledScans = ["disk"]
         // Assert the subject happened, or an absence proves nothing: the write
         // really did seal, and the value really does read back as Helm's own.
@@ -138,7 +111,7 @@ final class ThePageDrawsBeforeTheKeychainTests: XCTestCase {
     /// there when the watchdog fires.
     func testThePageDrawsWhileTheKeychainIsStillAnswering() {
         let gate = DispatchSemaphore(value: 0)
-        let keychain = freshMac(gate: gate)
+        let keychain = freshMac(cached: true, gate: gate)
         defer { gate.signal() }
         DispatchQueue.global().asyncAfter(deadline: .now() + 5) { gate.signal() }
         let drawn = drawThePage()
@@ -152,7 +125,7 @@ final class ThePageDrawsBeforeTheKeychainTests: XCTestCase {
     /// the keychain answers, the page does read the off-list. An absence that is
     /// permanent is a section that never appears.
     func testThePageReadsTheOffListOnceTheKeychainAnswers() {
-        let keychain = freshMac()
+        let keychain = freshMac(cached: true)
         let drawn = drawThePage()
         for _ in 0..<200 where keychain.reads == 0 {
             drawn.host.layoutSubtreeIfNeeded()

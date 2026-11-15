@@ -60,3 +60,46 @@ final class TypingBufferLimitTests: XCTestCase {
         XCTAssertEqual(buffer.accept(.space)?.word.count, TypingBuffer.maxLength - 2)
     }
 }
+
+/// The buffer's honesty about its own count, once it has stopped describing
+/// the field.
+final class TypingBufferOverflowRecoveryTests: XCTestCase {
+
+    /// Deleting back under the limit does not make an over-long token honest.
+    ///
+    /// The buffer stopped at 64 while the field went on to 70, so after six
+    /// backspaces the field holds 64 characters and the buffer holds 58. The
+    /// two counts agree at no point until the next boundary, and a word
+    /// reported here would delete 58 of 64. The flag is per-word and must
+    /// survive every backspace in it.
+    func testBackspacingAfterAnOverflowDoesNotMakeTheWordReportable() {
+        var buffer = TypingBuffer()
+        for _ in 0..<(TypingBuffer.maxLength + 6) { _ = buffer.accept(.character("g")) }
+        for _ in 0..<6 { _ = buffer.accept(.backspace) }
+        XCTAssertNil(buffer.accept(.space),
+                     "the buffer holds \(TypingBuffer.maxLength - 6) characters and the "
+                     + "field holds \(TypingBuffer.maxLength)")
+    }
+
+    /// Even emptying it by hand does not, because the field is not empty: 70
+    /// characters were typed and 64 backspaces take the field to six.
+    func testDeletingEverythingTheBufferHoldsDoesNotClearTheOverflow() {
+        var buffer = TypingBuffer()
+        for _ in 0..<(TypingBuffer.maxLength + 6) { _ = buffer.accept(.character("g")) }
+        for _ in 0..<TypingBuffer.maxLength { _ = buffer.accept(.backspace) }
+        XCTAssertEqual(buffer.word, "")
+        for character in "abc" { _ = buffer.accept(.character(character)) }
+        XCTAssertNil(buffer.accept(.space),
+                     "six characters of the old token are still in front of `abc`")
+    }
+
+    /// …and the boundary clears it, so one pasted line of base64 does not kill
+    /// conversions until relaunch.
+    func testTheBoundaryClearsTheOverflow() {
+        var buffer = TypingBuffer()
+        for _ in 0..<(TypingBuffer.maxLength + 6) { _ = buffer.accept(.character("g")) }
+        _ = buffer.accept(.space)
+        for character in "ghbdtn" { _ = buffer.accept(.character(character)) }
+        XCTAssertEqual(buffer.accept(.space)?.word, "ghbdtn")
+    }
+}

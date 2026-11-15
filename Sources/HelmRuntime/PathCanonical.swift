@@ -15,8 +15,9 @@ import Foundation
 /// stale alias asks for. It is an *ancestor* that redirects that makes the
 /// spelling a lie, so only the parent chain is resolved.
 ///
-/// This is the rule `WatchScope.canonical` already applies inside Autopilot,
-/// written once here now that a second and third gate need it.
+/// `RemovableScope` and `UserFileScope` both need it, so it is written once
+/// here. `WatchScope` canonicalises on its own and resolves the leaf too, as far
+/// as it exists.
 ///
 /// The trailing separator below is the same subject one layer down — not where
 /// a path leads but which of several strings names the same place.
@@ -45,11 +46,15 @@ public enum PathCanonical {
     /// (the scan and the click are minutes apart), which is a steady state, not a
     /// change, so two `nil`s compare equal.
     public struct AncestryIdentity: Equatable, Sendable {
-        public let device: UInt64
+        let device: UInt64
         public let inode: UInt64
         public init(device: UInt64, inode: UInt64) {
             self.device = device
             self.inode = inode
+        }
+        /// The one conversion of a signed `st_dev` to the unsigned bit pattern kept.
+        public init(status: stat) {
+            self.init(device: UInt64(bitPattern: Int64(status.st_dev)), inode: status.st_ino)
         }
     }
 
@@ -61,12 +66,22 @@ public enum PathCanonical {
     /// thing I acted on". A move *across* volumes changes the inode, and the
     /// two callers here fail in the same direction when it does: a mark stops
     /// matching, and a return refuses rather than moving a stranger's file.
-    public struct FileIdentity: Equatable, Sendable, Codable {
+    ///
+    /// The device is `UInt64(bitPattern: st_dev)` and stays so. It is lossless;
+    /// it is deployed in `ActionRecord.device` (`ActionHistory.swift`) and in the
+    /// stamp MAC (`StampMark.of(rule:device:inode:key:)`); and converting it would
+    /// read every stamped file on a volume with a negative `st_dev` as unstamped.
+    public struct FileIdentity: Equatable, Sendable {
         public let device: UInt64
         public let inode: UInt64
         public init(device: UInt64, inode: UInt64) {
             self.device = device
             self.inode = inode
+        }
+        /// The same bit pattern as `AncestryIdentity(status:)`, and what Autopilot's history stores.
+        public init(status: stat) {
+            let ancestry = AncestryIdentity(status: status)
+            self.init(device: ancestry.device, inode: ancestry.inode)
         }
     }
 
@@ -79,14 +94,14 @@ public enum PathCanonical {
     public static func identity(of path: String) -> FileIdentity? {
         var info = stat()
         guard lstat(path, &info) == 0 else { return nil }
-        return FileIdentity(device: UInt64(bitPattern: Int64(info.st_dev)), inode: info.st_ino)
+        return FileIdentity(status: info)
     }
 
     /// The identity of the directory `path`'s resolved parent chain leads to.
     ///
-    /// Read once at the gate and once immediately before the move: if the two
+    /// Read as a reference and again immediately before the move: if the two
     /// disagree, a symlinked ancestor was swapped in between (`HelmTrash.remove`
-    /// says what that narrows and what it does not).
+    /// says where it takes the reference and what that narrows).
     public static func ancestryIdentity(of path: String) -> AncestryIdentity? {
         let resolved = resolvingAncestors(path)
         let parent = (resolved as NSString).deletingLastPathComponent
@@ -95,8 +110,7 @@ public enum PathCanonical {
         // `stat`, not `lstat`: the parent chain is already symlink-resolved, so
         // the two agree — and what is wanted is the object the name leads to.
         guard stat(parent, &info) == 0 else { return nil }
-        return AncestryIdentity(device: UInt64(bitPattern: Int64(info.st_dev)),
-                                inode: info.st_ino)
+        return AncestryIdentity(status: info)
     }
 
     /// The directory a path names, with the leaf resolved too.
@@ -186,7 +200,7 @@ public enum PathCanonical {
     /// A path that does not exist yet is still answered — the scan and the
     /// click are separated by however long the user takes — by resolving the
     /// deepest ancestor that does exist and re-appending the missing tail.
-    public static func resolvingAncestors(_ path: String) -> String {
+    static func resolvingAncestors(_ path: String) -> String {
         // A relative path is handed back untouched. `URL(fileURLWithPath:)`
         // resolves one against the process's working directory, so resolving
         // first and validating afterwards silently promotes `""` and

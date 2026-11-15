@@ -8,12 +8,12 @@ import Foundation
 /// nothing to say so. The bundle in the Trash is intact, so its own `Info.plist`
 /// answers the only question that matters for finding those files: which bundle id.
 public struct TrashedApp: Equatable, Sendable {
-    public let bundleID: String
+    let bundleID: String
     /// What the person will recognise, which is not always what the file is called.
-    public let name: String
-    public let path: String
+    let name: String
+    let path: String
 
-    public init(bundleID: String, name: String, path: String) {
+    init(bundleID: String, name: String, path: String) {
         self.bundleID = bundleID
         self.name = name
         self.path = path

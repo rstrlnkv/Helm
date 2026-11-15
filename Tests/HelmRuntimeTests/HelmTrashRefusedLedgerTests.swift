@@ -20,7 +20,7 @@ final class HelmTrashRefusedLedgerTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = trashScratchDirectory("trash-ledger")
+        root = scratchDirectory("trash-ledger")
     }
 
     /// Two names for one allocation: the first is refused mid-batch, the second

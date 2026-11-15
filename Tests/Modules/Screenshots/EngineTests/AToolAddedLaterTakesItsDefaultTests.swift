@@ -13,6 +13,7 @@ import XCTest
 /// The family: the read walks the cases and asks the table, never the other way; a name the table holds that is no case
 /// (a later release's item read by an older one, or `"colours"`) is neither read nor kept; and a write keeps the picks
 /// of the others and bounds the record by the cases.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/PaletteItems.swift`: `picks[$0] ?? $0.shownByDefault` -> `picks[$0] ?? !$0.shownByDefault`.
 final class AToolAddedLaterTakesItsDefaultTests: XCTestCase {
 
     private func store(_ table: Any? = nil) -> NamespacedStore {
@@ -28,7 +29,7 @@ final class AToolAddedLaterTakesItsDefaultTests: XCTestCase {
         XCTAssertGreaterThan(PaletteItem.allCases.count, 0, "the subject: there are cases")
         XCTAssertEqual(PaletteItems.visible(fresh), PaletteItem.allCases.filter(\.shownByDefault))
         XCTAssertTrue(PaletteItems.picks(fresh).isEmpty)
-        for item in PaletteItem.allCases { XCTAssertEqual(PaletteItems.isShown(item, in: fresh), item.shownByDefault, "\(item)") }
+        for item in PaletteItem.allCases { XCTAssertEqual(PaletteItems.visible(fresh).contains(item), item.shownByDefault, "\(item)") }
     }
 
     /// Every case as the one that "came later": the table hides all the others, and the one it never heard of is shown.
@@ -39,10 +40,10 @@ final class AToolAddedLaterTakesItsDefaultTests: XCTestCase {
             for item in PaletteItem.allCases where item != later { table[item.rawValue] = false }
             let read = store(table)
             XCTAssertEqual(PaletteItems.visible(read), [later].filter(\.shownByDefault), "\(later) came later and the person's picks hid it")
-            XCTAssertEqual(PaletteItems.isShown(later, in: read), later.shownByDefault, "\(later)")
+            XCTAssertEqual(PaletteItems.visible(read).contains(later), later.shownByDefault, "\(later)")
             XCTAssertNil(PaletteItems.picks(read)[later], "\(later): a pick was invented for an item that had none")
             for other in PaletteItem.allCases where other != later {
-                XCTAssertFalse(PaletteItems.isShown(other, in: read), "\(other) was picked hidden and shows")
+                XCTAssertFalse(PaletteItems.visible(read).contains(other), "\(other) was picked hidden and shows")
             }
         }
     }
@@ -52,7 +53,7 @@ final class AToolAddedLaterTakesItsDefaultTests: XCTestCase {
         for later in PaletteItem.allCases {
             var table: [String: Bool] = [:]
             for item in PaletteItem.allCases where item != later { table[item.rawValue] = true }
-            XCTAssertEqual(PaletteItems.isShown(later, in: store(table)), later.shownByDefault, "\(later)")
+            XCTAssertEqual(PaletteItems.visible(store(table)).contains(later), later.shownByDefault, "\(later)")
         }
     }
 
@@ -60,7 +61,6 @@ final class AToolAddedLaterTakesItsDefaultTests: XCTestCase {
         for item in PaletteItem.allCases {
             for shown in [true, false] {
                 let read = store([item.rawValue: shown])
-                XCTAssertEqual(PaletteItems.isShown(item, in: read), shown, "\(item) picked \(shown)")
                 XCTAssertEqual(PaletteItems.visible(read).contains(item), shown, "\(item) picked \(shown)")
                 XCTAssertEqual(PaletteItems.visible(read).count, PaletteItem.allCases.count - (shown ? 0 : 1),
                                "\(item) picked \(shown) moved another item")

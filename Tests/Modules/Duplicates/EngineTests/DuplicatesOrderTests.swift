@@ -9,11 +9,18 @@ import XCTest
 /// asserts a count of 2 and that `/realcopy` is in there; it never asks which
 /// of the two linked names came with it, which is the only part that decides
 /// what gets trashed.
+///
+/// Guards a past defect: 6dec5f2f fix: eight defects a second agent pass turned up.
 final class DuplicatesOrderTests: XCTestCase {
 
-    private func day(_ n: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(n) * 86_400) }
     private func file(_ path: String, id: UInt64, added: Int) -> FileFacts {
         FileFacts(path: path, bytes: 5_000_000, fileID: id, added: day(added))
+    }
+
+    /// What the scanner makes of facts whose content is known to agree: size groups, each assembled as a group.
+    private func offer(_ files: [FileFacts]) -> [DuplicateGroup] {
+        Duplicates.sizeGroups(files, minBytes: 1_000_000, by: KeepRule(.standard))
+            .map { Duplicates.group($0, by: KeepRule(.standard)) }
     }
 
     // MARK: - The walk's order is not a decision
@@ -35,12 +42,8 @@ final class DuplicatesOrderTests: XCTestCase {
         let oldName = file("/h/old.bin", id: 7, added: 100)
         let realCopy = file("/h/other.bin", id: 9, added: 300)
 
-        let asWalkedForwards = Duplicates.groups(
-            files: [newName, oldName, realCopy], minBytes: 1_000_000, by: KeepRule(.standard),
-            partial: { _ in "p" }, full: { _ in "f" })
-        let asWalkedBackwards = Duplicates.groups(
-            files: [oldName, newName, realCopy], minBytes: 1_000_000, by: KeepRule(.standard),
-            partial: { _ in "p" }, full: { _ in "f" })
+        let asWalkedForwards = offer([newName, oldName, realCopy])
+        let asWalkedBackwards = offer([oldName, newName, realCopy])
 
         XCTAssertEqual(asWalkedForwards.map(\.paths), asWalkedBackwards.map(\.paths),
                        "the same three files, reached in a different order, must not "
@@ -59,9 +62,7 @@ final class DuplicatesOrderTests: XCTestCase {
         let oldName = file("/h/old.bin", id: 7, added: 100)
         let realCopy = file("/h/other.bin", id: 9, added: 300)
 
-        let groups = Duplicates.groups(
-            files: [newName, oldName, realCopy], minBytes: 1_000_000, by: KeepRule(.standard),
-            partial: { _ in "p" }, full: { _ in "f" })
+        let groups = offer([newName, oldName, realCopy])
 
         XCTAssertEqual(groups.count, 1)
         let offered = groups.first?.paths.dropFirst() ?? []

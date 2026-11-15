@@ -20,10 +20,6 @@ final class ScreenshotsMeetsAnArrangedSidebarTests: XCTestCase {
     private let shot = ScreenshotsDescriptor.id.rawValue
     private let utilities = "seed.utilities"
 
-    private func store() -> NamespacedStore {
-        NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore())
-    }
-
     /// The registry of the build before Screenshots existed.
     private var before: [(String, ModuleCategory)] {
         SidebarLayoutStore.registry().filter { $0.0 != shot }
@@ -31,7 +27,7 @@ final class ScreenshotsMeetsAnArrangedSidebarTests: XCTestCase {
 
     /// What the stored sidebar reads as on the first launch of the new build.
     private func arrive(_ arranged: SidebarLayout) -> SidebarLayout {
-        let s = store()
+        let s = NamespacedStore.scratch()
         SidebarLayoutStore.write(arranged, to: s)
         XCTAssertFalse(SidebarLayoutStore.read(from: s, registry: before)
             .sections.flatMap(\.modules).contains(shot), "the fixture must predate the module")
@@ -215,7 +211,7 @@ final class ScreenshotsMeetsAnArrangedSidebarTests: XCTestCase {
     /// The same answer on every read of the same bytes, and after a write.
     func testAHeadCountArrivalIsStableAcrossReadsAndAWrite() throws {
         let arranged = SidebarLayout.seeded(from: before).removingSection(utilities)
-        let s = store()
+        let s = NamespacedStore.scratch()
         SidebarLayoutStore.write(arranged, to: s)
         let first = SidebarLayoutStore.read(from: s, registry: SidebarLayoutStore.registry())
         XCTAssertEqual(try section(holding: shot, in: first).id,
@@ -292,7 +288,7 @@ final class ScreenshotsMeetsAnArrangedSidebarTests: XCTestCase {
         // A machine with no stored arrangement: the seed is spelled by the registry's order, and the
         // owner decided Screenshots stands directly before Homebrew. The relation is asserted, not the list.
         let brew = HomebrewDescriptor.id.rawValue
-        let read = SidebarLayoutStore.read(from: store(), registry: SidebarLayoutStore.registry())
+        let read = SidebarLayoutStore.read(from: NamespacedStore.scratch(), registry: SidebarLayoutStore.registry())
         let home = try section(holding: shot, in: read)
         let shotAt = try XCTUnwrap(home.modules.firstIndex(of: shot))
         let brewAt = try XCTUnwrap(home.modules.firstIndex(of: brew), "Homebrew shares the section")
@@ -301,7 +297,7 @@ final class ScreenshotsMeetsAnArrangedSidebarTests: XCTestCase {
 
     func testTheArrivalIsStableAcrossReadsAndAWrite() {
         let arranged = SidebarLayout.seeded(from: before).removingSection(utilities)
-        let s = store()
+        let s = NamespacedStore.scratch()
         SidebarLayoutStore.write(arranged, to: s)
         let first = SidebarLayoutStore.read(from: s, registry: SidebarLayoutStore.registry())
         XCTAssertEqual(SidebarLayoutStore.read(from: s, registry: SidebarLayoutStore.registry()), first)

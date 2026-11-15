@@ -3,8 +3,8 @@ import Foundation
 /// One line of the log, before it becomes a line.
 ///
 /// The file gets a formatted string; a reader wants the parts back, so the tail
-/// keeps them apart rather than parsing them out again. `LogLine.format` remains
-/// the one place a line is spelled — this is what it is spelled *from*.
+/// keeps them apart rather than parsing them out again. `LogLine` remains the one
+/// place a line is spelled — this is what it is spelled *from*.
 ///
 /// **All five parts, and it used to be four.** `site` was the one the file had
 /// and the tail did not, so the page could not draw where a warning came from and
@@ -37,7 +37,7 @@ public struct LogEntry: Sendable, Equatable, Identifiable {
     }
 }
 
-/// The last N lines, kept in memory so a dev build can watch them arrive.
+/// The last N lines, kept in memory so the Log page can show them arriving.
 ///
 /// Bounded on purpose: a window for finding memory bugs must not be one. The
 /// oldest line goes when the newest arrives, which is the behaviour of every

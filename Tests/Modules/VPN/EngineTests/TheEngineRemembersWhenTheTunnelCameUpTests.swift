@@ -30,30 +30,12 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     private let other = "22222222-2222-2222-2222-222222222222"
     private let at = Date(timeIntervalSince1970: 1_700_000_000)
 
-    private func list(_ status: String, _ name: String = "A", id: String? = nil) -> String {
-        "(\(status)) \(id ?? uuid) IPSec \"\(name)\""
-    }
-
-    /// A speed command **names its tunnel**, the way connect and disconnect
-    /// already do: an unbound run follows the default route, so which tunnel a
-    /// figure belongs to is the command's to say and the engine's to check
-    /// (`VPNExitVerdict.carriesTheDefaultRoute`).
-    private func measureCommand(_ name: String) throws -> EngineCommand {
-        EngineCommand(name: VPNCommand.measureSpeed.rawValue,
-                      payload: try JSONEncoder().encode(VPNConnectionRef(name: name)))
-    }
-
-    private func makeSettings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                           backing: InMemoryKeyValueStore()))
-    }
-
     /// Every port named, including the three this feature added: their production
     /// defaults reach the network and a subprocess that runs for fifteen seconds,
     /// and a construction that forgets one of them is an integration test nobody
-    /// asked for (CLAUDE.md § What not to do, and what breaks if you do).
+    /// asked for (ARCHITECTURE.md § Fakes).
     private func makeEngine(_ runner: FakeRunner,
-                            transport: LocalTransport,
+                            news: EngineNews<VPNEngine.StatePayload>,
                             interfaces: FakeInterfaces,
                             exit: FakeExit = FakeExit(),
                             speed: FakeSpeed = FakeSpeed()) -> VPNEngine {
@@ -63,10 +45,10 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         // not the same for a NetworkExtension tunnel, and the strip was absent
         // on every Mac for exactly that reason (`VPNStatusParser`). A test that
         // needs another answer sets `statusOutput` itself.
-        if runner.statusOutput["A"] == nil { runner.statusOutput["A"] = statusNaming("utun4") }
+        if runner.statusOutput["A"] == nil { runner.statusOutput["A"] = scutilStatus("utun4", primary: true) }
         let at = at
-        return VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
-                         transport: transport, interfaces: interfaces, exit: exit,
+        return VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
+                         news: news, interfaces: interfaces, exit: exit,
                          speed: speed, now: { at }, work: .inline)
     }
 
@@ -78,34 +60,17 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         return interfaces
     }
 
-    /// What `scutil --nc status "<name>"` prints for a tunnel that is up on this
-    /// interface — the shape of the real thing, trimmed to the two lines the
-    /// parser reads. `TheInterfaceComesFromTheToolTests` carries the whole
-    /// captured output, decoys and all.
-    private func statusNaming(_ interface: String, primary: Bool = true) -> String {
-        """
-        Connected
-        Extended Status <dictionary> {
-          IPv4 : <dictionary> {
-            InterfaceName : \(interface)
-          }
-          IsPrimaryInterface : \(primary ? 1 : 0)
-        }
-        """
-    }
-
     // MARK: - Since when
 
     func test_a_tunnel_already_up_at_the_first_reading_carries_no_stamp() async {
-        let runner = FakeRunner()
-        runner.listOutput = list("Connected")
-        let transport = LocalTransport()
-        let engine = makeEngine(runner, transport: transport,
+        let runner = FakeRunner(list: scutilListRow("Connected"))
+        let news = EngineNews<VPNEngine.StatePayload>()
+        let engine = makeEngine(runner, news: news,
                                 interfaces: tunnelIsTheDefaultRoute())
 
         engine.refresh()
 
-        let facts = await lastState(on: transport)?.tunnels.first
+        let facts = await lastState(on: news)?.tunnels.first
         XCTAssertNotNil(facts, "the strip is about a tunnel that is up, and this one is")
         XCTAssertNil(facts?.since,
                      "Helm was launched after this tunnel came up and stamped it anyway — "
@@ -135,9 +100,8 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     /// *because of* the start, which is the one thing a fixed `listOutput`
     /// cannot express.
     func test_a_tunnel_helm_raised_itself_is_stamped() async {
-        let runner = FakeRunner()
-        runner.listOutput = list("Disconnected")
-        let connected = list("Connected")
+        let runner = FakeRunner(list: scutilListRow("Disconnected"))
+        let connected = scutilListRow("Connected")
         // The tool's answer changes *because of* the command, which is the one
         // thing a fixed `listOutput` and a `listScript` both cannot express: a
         // script is indexed by how many reads have happened, and how many have
@@ -147,8 +111,8 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
             guard args == ["--nc", "start", "A"] else { return }
             hook.value.listOutput = connected
         }
-        let transport = LocalTransport()
-        let engine = makeEngine(runner, transport: transport,
+        let news = EngineNews<VPNEngine.StatePayload>()
+        let engine = makeEngine(runner, news: news,
                                 interfaces: tunnelIsTheDefaultRoute())
         XCTAssertTrue(runner.issued.isEmpty,
                       "precondition: something read the list before the connect, so this is "
@@ -157,12 +121,12 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         // Waited for, not read at once: `connect` hands the work to the
         // engine's queue and returns, so the read that followed it was of
         // whatever had arrived by then — nothing, on a loaded machine.
-        let up = await stepped(on: transport, until: { !$0.tunnels.isEmpty }) {
+        let up = await stepped(on: news, until: { !$0.tunnels.isEmpty }) {
             engine.connect("A", auto: true)
         }
         XCTAssertTrue(up, "precondition: the tunnel never reached the strip at all")
 
-        let facts = await lastState(on: transport)?.tunnels.first
+        let facts = await lastState(on: news)?.tunnels.first
         XCTAssertEqual(facts?.since, at,
                        "Helm raised this tunnel and stamped nothing, so the strip draws no "
                        + "uptime for the tunnel every rule on this Mac brings up")
@@ -177,21 +141,20 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     /// launches three minutes apart, both firing `connect` over tunnels that
     /// were up throughout.
     func test_a_tunnel_already_up_when_a_rule_asks_for_it_carries_no_stamp() async {
-        let runner = FakeRunner()
-        runner.listOutput = list("Connected")
-        let transport = LocalTransport()
-        let engine = makeEngine(runner, transport: transport,
+        let runner = FakeRunner(list: scutilListRow("Connected"))
+        let news = EngineNews<VPNEngine.StatePayload>()
+        let engine = makeEngine(runner, news: news,
                                 interfaces: tunnelIsTheDefaultRoute())
 
         // The wait is for the tunnel to *exist*, never for the stamp: this
         // test asserts an absence, and waiting for the thing it denies would
         // spend five seconds proving nothing on every green run.
-        let up = await stepped(on: transport, until: { !$0.tunnels.isEmpty }) {
+        let up = await stepped(on: news, until: { !$0.tunnels.isEmpty }) {
             engine.connect("A", auto: true)
         }
         XCTAssertTrue(up, "precondition: the tunnel never reached the strip at all")
 
-        let facts = await lastState(on: transport)?.tunnels.first
+        let facts = await lastState(on: news)?.tunnels.first
         XCTAssertNotNil(facts, "precondition: no strip at all, so the absence below is free")
         XCTAssertNil(facts?.since,
                      "the tunnel was up before Helm asked for it and was stamped anyway — the "
@@ -199,22 +162,21 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     }
 
     func test_a_tunnel_that_comes_up_between_two_readings_is_stamped() async {
-        let runner = FakeRunner()
-        runner.listOutput = list("Disconnected")
-        let transport = LocalTransport()
-        let engine = makeEngine(runner, transport: transport,
+        let runner = FakeRunner(list: scutilListRow("Disconnected"))
+        let news = EngineNews<VPNEngine.StatePayload>()
+        let engine = makeEngine(runner, news: news,
                                 interfaces: tunnelIsTheDefaultRoute())
 
         // Each reading is waited for. Without that, the second `refresh` could
         // overtake the first and the engine never saw the tunnel down — which
         // is the whole of what this test is about.
-        let down = await refreshed(engine, on: transport) { $0.tunnels.isEmpty }
+        let down = await refreshed(engine, on: news) { $0.tunnels.isEmpty }
         XCTAssertTrue(down, "precondition: the first reading never landed, so nothing was «down»")
-        runner.listOutput = list("Connected")
-        let up = await refreshed(engine, on: transport) { !$0.tunnels.isEmpty }
+        runner.listOutput = scutilListRow("Connected")
+        let up = await refreshed(engine, on: news) { !$0.tunnels.isEmpty }
         XCTAssertTrue(up, "precondition: the tunnel never came up")
 
-        let facts = await lastState(on: transport)?.tunnels.first
+        let facts = await lastState(on: news)?.tunnels.first
         XCTAssertEqual(facts?.since, at,
                        "the one moment Helm can honestly report is the one it watched")
     }
@@ -223,19 +185,18 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     /// is a new tunnel, on a new `utunN`, and reading the old stamp against it
     /// would report an uptime that spans the gap.
     func test_a_stamp_does_not_outlive_the_tunnel_it_belongs_to() async {
-        let runner = FakeRunner()
-        runner.listOutput = list("Disconnected")
-        let transport = LocalTransport()
+        let runner = FakeRunner(list: scutilListRow("Disconnected"))
+        let news = EngineNews<VPNEngine.StatePayload>()
         let interfaces = tunnelIsTheDefaultRoute()
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces)
+        let engine = makeEngine(runner, news: news, interfaces: interfaces)
 
         engine.refresh()
-        runner.listOutput = list("Connected")
+        runner.listOutput = scutilListRow("Connected")
         engine.refresh()                     // stamped
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = scutilListRow("Disconnected")
         engine.refresh()                     // and dropped
 
-        let facts = await lastState(on: transport)?.tunnels.first
+        let facts = await lastState(on: news)?.tunnels.first
         XCTAssertNil(facts, "nothing is up, so there is no tunnel to draw a strip about")
     }
 
@@ -246,19 +207,19 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     /// honestly mean.
     func test_the_strip_is_about_the_tunnel_carrying_the_default_route() async {
         let runner = FakeRunner()
-        runner.listOutput = list("Connected", "Split", id: uuid) + "\n"
-            + list("Connected", "Full", id: other)
-        let transport = LocalTransport()
+        runner.listOutput = scutilListRow("Connected", "Split", id: uuid) + "\n"
+            + scutilListRow("Connected", "Full", id: other)
+        let news = EngineNews<VPNEngine.StatePayload>()
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun5"
         interfaces.counters = ["utun4": (in: 1, out: 1), "utun5": (in: 2_000, out: 3_000)]
-        runner.statusOutput = ["Split": statusNaming("utun4", primary: false),
-                               "Full": statusNaming("utun5")]
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces)
+        runner.statusOutput = ["Split": scutilStatus("utun4", primary: false),
+                               "Full": scutilStatus("utun5", primary: true)]
+        let engine = makeEngine(runner, news: news, interfaces: interfaces)
 
         engine.refresh()
 
-        let facts = await lastState(on: transport)?.tunnels.first
+        let facts = await lastState(on: news)?.tunnels.first
         XCTAssertEqual(facts?.name, "Full")
         XCTAssertEqual(facts?.interface, "utun5")
         XCTAssertEqual(facts?.bytesIn, 2_000, "the counters are the named tunnel's own")
@@ -269,18 +230,17 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     /// Routing alone answers this one: the tunnel is up, the default route is
     /// the Wi-Fi, and nobody had to be asked where the Mac appears to be.
     func test_a_tunnel_beside_the_default_route_needs_no_request_to_be_reported() async {
-        let runner = FakeRunner()
-        runner.listOutput = list("Connected")
-        let transport = LocalTransport()
+        let runner = FakeRunner(list: scutilListRow("Connected"))
+        let news = EngineNews<VPNEngine.StatePayload>()
         let interfaces = tunnelIsTheDefaultRoute()
         interfaces.primary = "en0"
         let exit = FakeExit()
         exit.answer = nil
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces, exit: exit)
+        let engine = makeEngine(runner, news: news, interfaces: interfaces, exit: exit)
 
         engine.refresh()
 
-        let facts = await lastState(on: transport)?.tunnels.first
+        let facts = await lastState(on: news)?.tunnels.first
         XCTAssertEqual(facts?.exit, .besideTunnel,
                        "the tunnel is up and the traffic is going round it — the one state "
                        + "this check exists for")
@@ -291,20 +251,19 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     /// yields: the request is asynchronous, and a fixed count of yields asserts
     /// on whichever half of the work had finished.
     func test_the_country_reaches_the_page_when_the_exit_answers() async {
-        let runner = FakeRunner()
-        runner.listOutput = list("Disconnected")
-        let transport = LocalTransport()
+        let runner = FakeRunner(list: scutilListRow("Disconnected"))
+        let news = EngineNews<VPNEngine.StatePayload>()
         let exit = FakeExit()
         exit.answer = "NL"
-        let engine = makeEngine(runner, transport: transport,
+        let engine = makeEngine(runner, news: news,
                                 interfaces: tunnelIsTheDefaultRoute(), exit: exit)
 
         let arrived = expectation(description: "the country reached the page")
-        let watcher = watchState(transport,
+        let watcher = watchState(news,
                                  until: { $0.tunnels.first?.exit == .throughTunnel(countryCode: "NL") },
                                  then: arrived)
         engine.refresh()
-        runner.listOutput = list("Connected")
+        runner.listOutput = scutilListRow("Connected")
         engine.refresh()                     // came up: the answer is news
 
         await fulfillment(of: [arrived], timeout: 5)
@@ -326,9 +285,8 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     /// `.inline` the work queue is the caller's own thread and there is no queue
     /// to block.
     func test_a_connect_is_answered_while_a_measurement_is_in_flight() async throws {
-        let runner = FakeRunner()
-        runner.listOutput = list("Connected")
-        let transport = LocalTransport()
+        let runner = FakeRunner(list: scutilListRow("Connected"))
+        let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
         speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
         speed.blocksUntilReleased = true
@@ -337,19 +295,19 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         speed.onStart = { measuring.fulfill() }
         let answered = expectation(description: "the connect reached the tool")
         runner.onRun = { args in if args == ["--nc", "start", "A"] { answered.fulfill() } }
-        runner.statusOutput = ["A": statusNaming("utun4")]
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
-                               transport: transport, interfaces: tunnelIsTheDefaultRoute(),
+        runner.statusOutput = ["A": scutilStatus("utun4", primary: true)]
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
+                               news: news, interfaces: tunnelIsTheDefaultRoute(),
                                exit: FakeExit(), speed: speed, work: .background)
         let ready = expectation(description: "the engine has read the list once")
-        let watcher = watchState(transport, until: { $0.tunnels.first != nil }, then: ready)
+        let watcher = watchState(news, until: { $0.tunnels.first != nil }, then: ready)
         engine.refresh()
         await fulfillment(of: [ready], timeout: 5)
         watcher.cancel()
 
-        _ = try await engine.transport.send(measureCommand("A"))
+        engine.measureSpeed("A")
         await fulfillment(of: [measuring], timeout: 5)
-        engine.connect("A")
+        engine.connect("A", auto: false)
 
         await fulfillment(of: [answered], timeout: 5)
     }
@@ -357,16 +315,15 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     /// Nothing up is nothing to measure: the tool runs for fifteen seconds and
     /// reaches the network, and a strip nobody is drawing has no use for it.
     func test_nothing_up_is_not_measured() async throws {
-        let runner = FakeRunner()
-        runner.listOutput = list("Disconnected")
-        let transport = LocalTransport()
+        let runner = FakeRunner(list: scutilListRow("Disconnected"))
+        let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
         speed.answer = VPNSpeedReading(down: 1, up: 1, rpm: 1, at: at)
-        let engine = makeEngine(runner, transport: transport,
+        let engine = makeEngine(runner, news: news,
                                 interfaces: tunnelIsTheDefaultRoute(), speed: speed)
         engine.refresh()
 
-        _ = try await engine.transport.send(measureCommand("A"))
+        engine.measureSpeed("A")
 
         XCTAssertTrue(speed.askedFor.isEmpty)
     }
@@ -383,33 +340,32 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     /// early return as well, the way `connectNow` does, for the paths that reach
     /// it without one.
     func test_a_press_after_the_tunnel_went_measures_nothing() async throws {
-        let runner = FakeRunner()
-        runner.listOutput = list("Connected")
-        let transport = LocalTransport()
+        let runner = FakeRunner(list: scutilListRow("Connected"))
+        let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
         speed.answer = VPNSpeedReading(down: 1, up: 1, rpm: 1, at: at)
-        let engine = makeEngine(runner, transport: transport,
+        let engine = makeEngine(runner, news: news,
                                 interfaces: tunnelIsTheDefaultRoute(), speed: speed)
         engine.refresh()
-        let onScreen = await lastState(on: transport)?.tunnels.first
+        let onScreen = await lastState(on: news)?.tunnels.first
         XCTAssertNotNil(onScreen, "precondition: the strip was never on screen, so the press "
                         + "this test is about could not have been made")
 
         // The tunnel goes, and the network watcher's refresh notices — which is
         // what happens in the app, and what the press is racing.
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = scutilListRow("Disconnected")
         engine.refresh()
-        _ = try await engine.transport.send(measureCommand("A"))
+        engine.measureSpeed("A")
 
         XCTAssertTrue(speed.askedFor.isEmpty,
                       "fifteen seconds of somebody's traffic spent measuring a tunnel that "
                       + "is not there")
-        let after = await lastState(on: transport)?.tunnels.first
+        let after = await lastState(on: news)?.tunnels.first
         XCTAssertNil(after, "the page keeps a strip for a tunnel that has gone")
     }
 
     /// **The dedup could strand the spinner, and this is why «measuring» is on
-    /// the wire rather than in the page's head.**
+    /// the state rather than in the page's head.**
     ///
     /// A payload equal in every field to the last one sent is withheld — which
     /// is what stops a night of polling re-rendering every page. Now take the
@@ -426,42 +382,41 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     /// then «not measuring» itself, and no page has to infer it from a press it
     /// may not even have been there for.
     func test_a_refused_run_over_a_quiet_tunnel_still_says_it_has_stopped() async throws {
-        let runner = FakeRunner()
-        runner.listOutput = list("Connected")
-        let transport = LocalTransport()
+        let runner = FakeRunner(list: scutilListRow("Connected"))
+        let news = EngineNews<VPNEngine.StatePayload>()
         let interfaces = tunnelIsTheDefaultRoute()
         interfaces.carriesPerRead = 0            // a tunnel with nothing on it
         let speed = FakeSpeed()
         speed.answer = nil                       // the tool refused
         speed.blocksUntilReleased = true
         defer { speed.release() }
-        runner.statusOutput = ["A": statusNaming("utun4")]
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
-                               transport: transport, interfaces: interfaces,
+        runner.statusOutput = ["A": scutilStatus("utun4", primary: true)]
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
+                               news: news, interfaces: interfaces,
                                exit: FakeExit(), speed: speed, work: .background)
 
         let ready = expectation(description: "the engine has read the list once")
-        let first = watchState(transport, until: { $0.tunnels.first != nil }, then: ready)
+        let first = watchState(news, until: { $0.tunnels.first != nil }, then: ready)
         engine.refresh()
         await fulfillment(of: [ready], timeout: 5)
         first.cancel()
 
         let started = expectation(description: "the page was told a run is in flight")
-        let running = watchState(transport, until: { $0.tunnels.first?.measuring == true }, then: started)
-        _ = try await engine.transport.send(measureCommand("A"))
+        let running = watchState(news, until: { $0.tunnels.first?.measuring == true }, then: started)
+        engine.measureSpeed("A")
         await fulfillment(of: [started], timeout: 5)
         running.cancel()
 
         // Registered before the run is let go, and the replayed last payload
         // says «measuring», so nothing here can be satisfied by the state that
-        // is already on the wire.
+        // is already in the state.
         let stopped = expectation(description: "the page was told the run has ended")
-        let ended = watchState(transport, until: { $0.tunnels.first?.measuring == false }, then: stopped)
+        let ended = watchState(news, until: { $0.tunnels.first?.measuring == false }, then: stopped)
         speed.release()
 
         await fulfillment(of: [stopped], timeout: 5)
         ended.cancel()
-        let facts = await lastState(on: transport)?.tunnels.first
+        let facts = await lastState(on: news)?.tunnels.first
         XCTAssertNil(facts?.speed, "precondition: this is the run that answered nothing")
     }
 
@@ -471,7 +426,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     ///
     /// The payload is withheld only when it is equal in every field to the last
     /// one sent, and a byte counter moves on its own — so a raw count makes
-    /// every re-read news. The count goes on the wire in whole kilobytes
+    /// every re-read news. The count goes into the state in whole kilobytes
     /// (`VPNInterfaceCounters.onTheWire`), which is the granularity the strip is
     /// drawn at, and this is the measurement: a connect over a live tunnel polls
     /// 26 times, each read finding another packet carried.
@@ -480,18 +435,18 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         // One tunnel up and carrying the traffic, and a second the person has
         // just asked for that never comes up: the poll behind it re-reads 26
         // times, and each of those readings finds the live tunnel a packet older.
-        runner.listOutput = list("Connected", "Full", id: other) + "\n" + list("Disconnected")
-        let transport = LocalTransport()
+        runner.listOutput = scutilListRow("Connected", "Full", id: other) + "\n" + scutilListRow("Disconnected")
+        let news = EngineNews<VPNEngine.StatePayload>()
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun5"
         interfaces.counters = ["utun5": (in: 2_000, out: 2_000)]
-        runner.statusOutput = ["Full": statusNaming("utun5")]
+        runner.statusOutput = ["Full": scutilStatus("utun5", primary: true)]
         interfaces.carriesPerRead = 40          // a keepalive between two readings
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces)
+        let engine = makeEngine(runner, news: news, interfaces: interfaces)
 
-        let events = await stateEvents(on: transport) {
+        let events = await stateEvents(on: news) {
             engine.refresh()                    // the page's baseline
-            engine.connect("A")                 // accepted; the poll re-reads 26 times
+            engine.connect("A", auto: false)                 // accepted; the poll re-reads 26 times
         }
 
         XCTAssertGreaterThan(runner.listReadCount, 25,
@@ -499,20 +454,19 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
                              + "this test would pass against an engine that never polls")
         XCTAssertLessThan(events.count, 5,
                           "\(events.count) state events behind one connect: the raw byte counter is "
-                          + "on the wire, so every one of the poll's 26 re-reads re-rendered "
+                          + "in the state, so every one of the poll's 26 re-reads re-rendered "
                           + "every mounted page for a figure no screen can draw")
     }
 
     /// The other half, without which the first is a strip that has gone still: a
     /// kilobyte is a figure the screen can draw, and it goes out.
     func test_a_kilobyte_carried_is_news_and_a_packet_is_not() async {
-        let runner = FakeRunner()
-        runner.listOutput = list("Connected")
-        let transport = LocalTransport()
+        let runner = FakeRunner(list: scutilListRow("Connected"))
+        let news = EngineNews<VPNEngine.StatePayload>()
         let interfaces = tunnelIsTheDefaultRoute()
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces)
+        let engine = makeEngine(runner, news: news, interfaces: interfaces)
 
-        let events = await stateEvents(on: transport) {
+        let events = await stateEvents(on: news) {
             engine.refresh()                                          // baseline
             interfaces.counters = ["utun4": (in: 1_000_400, out: 500_000)]
             engine.refresh()                                          // under a kilobyte

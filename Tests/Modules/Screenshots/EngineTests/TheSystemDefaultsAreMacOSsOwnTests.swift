@@ -8,6 +8,7 @@ import XCTest
 /// `DefaultShortcutsTable.xml`, and this reads that file on the Mac running the
 /// suite. A number remembered from one macOS and never compared is how a
 /// "conflict" gets reported for a combination the system moved.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/SystemShortcuts.swift`: `case .saveScreen: (20, 1_179_648)` -> `case .saveScreen: (20, 1_179_649)`. Stays optional: reads DefaultShortcutsTable.xml of the Mac running the suite, so it answers for that macOS, not for the code.
 final class TheSystemDefaultsAreMacOSsOwnTests: XCTestCase {
 
     private let table = "/System/Library/ExtensionKit/Extensions/KeyboardSettings.appex/Contents/Resources/en.lproj/DefaultShortcutsTable.xml"

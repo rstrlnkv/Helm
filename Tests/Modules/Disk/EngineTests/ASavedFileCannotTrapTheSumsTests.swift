@@ -45,6 +45,17 @@ final class ASavedFileCannotTrapTheSumsTests: XCTestCase {
         return store.load()
     }
 
+    /// A negative count and a duration of 1e300 are read as 0 and one day, the
+    /// bound every other figure in the file already has.
+    func testTheCountAndTheDurationDecodedFromAFileAreBounded() throws {
+        let json = saved(root: entry("/v", bytes: "1"))
+            .replacingOccurrences(of: #""filesScanned":1,"seconds":1"#,
+                                  with: #""filesScanned":-5,"seconds":1e300"#)
+        let result = try XCTUnwrap(try load(json), "precondition: the planted file did not decode").result
+        XCTAssertEqual(result.filesScanned, 0, "a negative count is read as 0")
+        XCTAssertEqual(result.seconds, 86_400, "a duration of 1e300 is read as one day")
+    }
+
     /// One target at `Int.max` is held to the ceiling every other figure in the file
     /// is held to; unbounded, a basket holding two such rows sums past an integer.
     func testATargetFigureDecodedFromAFileIsBounded() throws {
@@ -101,17 +112,20 @@ final class ASavedFileCannotTrapTheSumsTests: XCTestCase {
         XCTAssertEqual(row.bytes, Int.max, "the total is held at the top of an integer")
     }
 
-    /// Two rows that each weigh nearly an integer, both in the basket: the question
-    /// the dialog asks sums them.
-    func testTheRemovalQuestionOverTwoHugeRowsSaturates() {
-        let heavy = DiskAdvice(name: "a", path: "/v/a", bytes: Int.max - 1, kind: .cache)
-        let other = DiskAdvice(name: "b", path: "/v/b", bytes: Int.max - 1, kind: .cache)
-        let basket = [heavy, other].map {
+    /// More rows at the ceiling than an integer holds, all in the basket: the
+    /// question the dialog asks sums them. Each row is held to the ceiling by
+    /// `Target`, so two rows can no longer overflow it.
+    func testTheRemovalQuestionOverManyHugeRowsSaturates() {
+        let count = Int.max / DiskEntry.byteCeiling + 2
+        let rows = (0..<count).map {
+            DiskAdvice(name: "a\($0)", path: "/v/a\($0)", bytes: Int.max - 1, kind: .cache)
+        }
+        let basket = rows.map {
             DiskEntry(name: $0.name, path: $0.path, bytes: 1, isDirectory: true,
                       noAccess: false, children: [])
         }
-        let question = DiskRemovalPlan.question(basket: basket, advice: [heavy, other])
-        XCTAssertEqual(question.paths.count, 2, "precondition: both rows are asked about")
+        let question = DiskRemovalPlan.question(basket: basket, advice: rows)
+        XCTAssertEqual(question.paths.count, count, "precondition: every row is asked about")
         XCTAssertEqual(question.bytes, Int.max)
     }
 }

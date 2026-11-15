@@ -80,8 +80,7 @@ public struct HelmWidgetHeader: View {
                     .truncationMode(.tail)
                 if let subtitle {
                     Text(subtitle)
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmText.quiet)
+                        .helmQuietDetail()
                         .lineLimit(1)
                 }
             }
@@ -118,8 +117,7 @@ public struct HelmWidgetFigure: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(label)
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.quiet)
+                .helmQuietDetail()
                 .lineLimit(2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -4,6 +4,27 @@ import HelmRuntime
 import HelmTestSupport
 @testable import Module_Autopilot_Engine
 
+/// The fixture both root-check classes below stand on: a scratch home with one
+/// real PDF in Downloads, and an engine over it.
+class RootCheckRig: XCTestCase {
+
+    fileprivate var home: URL!
+    fileprivate var engine: AutopilotEngine!
+
+    override func setUpWithError() throws {
+        home = scratchDirectory("home")
+        try write("Downloads/invoice.pdf", in: home)
+        engine = AutopilotEngine.scratch(home: home.path)
+    }
+
+    fileprivate func watch(_ path: String, id: String = "f") -> WatchedFolder {
+        WatchedFolder(id: id, path: path, enabled: true, rules: [
+            Rule(id: "r", name: "Sort", enabled: true, conditions: [.fileExtension(["pdf"])],
+                 action: .move(to: home.appendingPathComponent("Sorted").path)),
+        ], depth: 1)
+    }
+}
+
 /// The engine asks `WatchScope` about a watched folder's root before it reads it.
 ///
 /// A root check refuses in the safe direction, and the cost of refusing too much
@@ -15,27 +36,9 @@ import HelmTestSupport
 /// after the rules were saved.
 ///
 /// Everything is on disk: a scratch home, real folders, real links.
-final class TheRootCheckLetsThePersonsOwnFolderThroughTests: XCTestCase {
+final class TheRootCheckLetsThePersonsOwnFolderThroughTests: RootCheckRig {
 
-    private var home: URL!
-    private var engine: AutopilotEngine!
     private let secret = "passport-scan-2026.pdf"
-
-    override func setUpWithError() throws {
-        home = scratchDirectory("home")
-        try write("Downloads/invoice.pdf", in: home)
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
-    }
-
-    private func watch(_ path: String, id: String = "f") -> WatchedFolder {
-        WatchedFolder(id: id, path: path, enabled: true, rules: [
-            Rule(id: "r", name: "Sort", enabled: true, conditions: [.fileExtension(["pdf"])],
-                 action: .move(to: home.appendingPathComponent("Sorted").path)),
-        ], depth: 1)
-    }
 
     private func storedText() -> String {
         engine.history.compactMap { try? JSONEncoder().encode($0) }
@@ -82,6 +85,25 @@ final class TheRootCheckLetsThePersonsOwnFolderThroughTests: XCTestCase {
         XCTAssertEqual(report?.folder, .refused)
         XCTAssertFalse(storedText().contains(secret), storedText())
         XCTAssertTrue(fm.fileExists(atPath: home.appendingPathComponent("Library/Inbox/\(secret)").path))
+    }
+
+    /// **The engine's gate is its own.** The reader asks the same question of every
+    /// directory it opens, so with both asking, either one alone would hide the
+    /// other's removal. A reader with no `home` asks none, which leaves the
+    /// engine's gate the only thing between the link and the rules.
+    func testTheEnginesOwnGateRefusesALinkWhenTheReaderAsksNone() throws {
+        let fm = FileManager.default
+        try write("Library/Inbox/\(secret)", in: home)
+        try fm.createSymbolicLink(at: home.appendingPathComponent("Inbox"),
+                                  withDestinationURL: home.appendingPathComponent("Library/Inbox"))
+        let folder = watch(home.appendingPathComponent("Inbox").path)
+        engine.reader.home = nil
+
+        XCTAssertEqual(engine.preview(folder), [])
+        let report = engine.sweep(folder)
+        XCTAssertEqual(report.examined, 0)
+        XCTAssertEqual(report.folder, .refused)
+        XCTAssertFalse(storedText().contains(secret), storedText())
     }
 
     /// The same, one link further: `~/Inbox -> ~/Hop -> ~/Library/Inbox`.
@@ -135,26 +157,9 @@ final class TheRootCheckLetsThePersonsOwnFolderThroughTests: XCTestCase {
 /// Everything is on disk: a scratch home, real folders, real links. The scratch
 /// home lives under `/var/folders`, so its `/private` spelling is a real second
 /// spelling of the same directory.
-final class ThePersonsOwnFolderReadsUnderEverySpellingTests: XCTestCase {
-
-    private var home: URL!
-    private var engine: AutopilotEngine!
-
-    override func setUpWithError() throws {
-        home = scratchDirectory("home")
-        try write("Downloads/invoice.pdf", in: home)
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
-    }
-
-    private func watch(_ path: String, id: String = "f") -> WatchedFolder {
-        WatchedFolder(id: id, path: path, enabled: true, rules: [
-            Rule(id: "r", name: "Sort", enabled: true, conditions: [.fileExtension(["pdf"])],
-                 action: .move(to: home.appendingPathComponent("Sorted").path)),
-        ], depth: 1)
-    }
+///
+/// Past defect: fixed in 4ce355a9.
+final class ThePersonsOwnFolderReadsUnderEverySpellingTests: RootCheckRig {
 
     /// Read, and acted on: the move happened, so the rules really ran.
     private func assertRead(_ path: String, _ what: String,
@@ -188,10 +193,7 @@ final class ThePersonsOwnFolderReadsUnderEverySpellingTests: XCTestCase {
     /// The engine's own home spelled through `/private`, the folder not.
     func testAHomeSpelledThroughPrivateStillHoldsDownloads() throws {
         try XCTSkipUnless(home.path.hasPrefix("/var/"), "the scratch home is not under /var")
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: "/private" + home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: "/private" + home.path)
         assertRead(home.appendingPathComponent("Downloads").path, "home through /private")
     }
 

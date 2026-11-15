@@ -5,46 +5,47 @@ import XCTest
 @testable import Module_Layout_Engine
 
 /// **«Helm never reads a password: a field the system marks as secure is
-/// skipped whole.»** That is the page's own sentence (`LyStr.suspended`), and
-/// the gesture reads the field first and refuses afterwards.
+/// skipped whole.»** That is the page's own sentence (`LyStr.deniedGuarantee`), and
+/// the gesture read the field first and refused afterwards.
 ///
-/// `fix()` opens with
+/// `fix()` opened with
 ///
 /// ```
 /// let readIn = secure.frontmostBundleID()
 /// let selected = selection?.selectedTextWithoutClipboard()
 /// ```
 ///
-/// and asks nothing about the field. The refusal is two hops later, inside
-/// `transform`, by which time the text has been pulled out of the accessibility
+/// and asked nothing about the field. The refusal came two hops later, inside
+/// `convertSelection`, by which time the text had been pulled out of the accessibility
 /// tree, carried across a queue hop and held as a `String`. `AXSelection`
 /// applies no role check of its own — it copies `kAXSelectedTextAttribute` off
 /// the focused element — while `AXSecureContext.isSecure()` reads
 /// `kAXRoleAttribute` off *the same element* and answers `AXSecureTextField`.
-/// The two questions are one round trip apart and asked in the wrong order.
+/// The two questions were one round trip apart and asked in the wrong order.
 ///
 /// What a person does: types their password into a login form the browser never
 /// escalated for — so `IsSecureEventInputEnabled()` is false, which is the whole
 /// reason the expensive role check exists — selects it, and taps the key they
-/// bound, because tapping it is a reflex by then. What they get: the password
-/// read out of the field and dropped a moment later. What they should get: the
-/// question asked before the reading, which is free — both calls go to the same
-/// accessibility element, and one of them is already being paid.
+/// bound, because tapping it is a reflex by then. What they got: the password
+/// read out of the field and dropped a moment later. What they get now: the
+/// question asked before the reading: both calls go to the same
+/// accessibility element.
 ///
-/// The same move settles a second thing. `transform` runs on main, and
-/// `isSecure()` «reaches the accessibility server, and a hung app there blocks
-/// for the messenger's timeout» — `emitState` carries that sentence and keeps
-/// the call outside its lock for it. The gesture pays that round trip on the
-/// main thread, which is the thread `fix()`'s background hop exists to keep
-/// clear and the thread the tap callback runs on. Asking in the background
-/// block removes both.
+/// The same move was meant to settle a second thing. `convertSelection` runs on
+/// main, and `isSecure()` «reaches the accessibility server, and a hung app
+/// there blocks for the messenger's timeout» — `emitState` carries that
+/// sentence and keeps the call outside its lock for it. The gesture paid that
+/// round trip on the main thread, which is the thread `fix()`'s background hop
+/// exists to keep clear and the thread the tap callback runs on. Asking in the
+/// background block put one ask off main; `convertSelection` still asks again
+/// on main.
 final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
 
     /// Both halves apart, as the port keeps them: `isSecureInput` is the
     /// system-wide syscall and cannot see an app's own password field, which is
     /// the case this suite is about. `onExpensiveCheck` fires when the
     /// accessibility round trip is made, which is the one point in the gesture
-    /// both the present order and the repaired one pass through — **once**,
+    /// both the old order and the repaired one pass through — **once**,
     /// because `emitState` asks the same question and an expectation fulfilled
     /// twice is a failure of its own.
     private final class Context: SecureContextPort, @unchecked Sendable {
@@ -66,21 +67,13 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
         func frontmostBundleID() -> String { lock.lock(); defer { lock.unlock() }; return bundle }
     }
 
-    /// Counts the readings, and keeps the tree and the clipboard apart the way
-    /// the port does: `selectedTextWithoutClipboard` is the tree alone, and
-    /// `selectedText` falls through to ⌘C when the tree says nothing.
+    /// Counts the readings: `selectedTextWithoutClipboard` is the tree alone.
     private final class Selection: SelectionPort, @unchecked Sendable {
         private let lock = NSLock()
         var treeText: String?
-        var clipboardText: String?
         private var treeReads = 0
         private var written: [String] = []
         var onReplace: (@Sendable () -> Void)?
-        func selectedText() -> String? {
-            lock.lock(); treeReads += 1; let tree = treeText, board = clipboardText
-            lock.unlock()
-            return tree ?? board
-        }
         func selectedTextWithoutClipboard() -> String? {
             lock.lock(); treeReads += 1; let tree = treeText; lock.unlock()
             return tree
@@ -95,26 +88,13 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
         var replaced: [String] { lock.lock(); defer { lock.unlock() }; return written }
     }
 
-    private struct Translation: TranslationPort {
-        func translate(_ word: String, from: String, to: String) -> String? {
-            word.isEmpty ? nil : String(repeating: "п", count: word.count)
-        }
-    }
-
-    private struct Spell: SpellPort {
-        func isWord(_ word: String, sourceID: String) -> Bool? {
-            word.unicodeScalars.allSatisfy { $0.value > 0x400 }
-        }
-    }
-
     private func engine(_ context: Context, _ selection: Selection) -> LayoutEngine {
         let engine = LayoutEngine(
             tap: FakeTap(), typing: FakeTyping(), sources: FakeSources(current: "en"),
-            translation: Translation(), spell: Spell(),
-            secure: context, selection: selection,
+            translation: SameLengthTranslation(), spell: CyrillicSpell(),
+            secure: context, activation: FakeActivation(), selection: selection,
             ledger: LedgerStore(),
-            settings: NamespacedStore(namespace: LayoutEngine.moduleID,
-                                      backing: InMemoryKeyValueStore()))
+            settings: layoutStore())
         engine.activate()
         return engine
     }
@@ -153,7 +133,7 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
         selection.treeText = "hunter2"
         let engine = engine(context, selection)
 
-        // The expensive check is the one point both the present order and the
+        // The expensive check is the one point both the old order and the
         // repaired one pass through, which makes it the synchronisation point:
         // when it has been asked, the gesture has decided.
         let asked = expectation(description: "the gesture asked whether it may act")
@@ -165,7 +145,7 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
             the password was pulled out of the accessibility tree before anybody \
             asked whether the field was a password. The role check and the \
             selection read go to the same focused element one round trip apart, \
-            so asking first is free — and the page promises a secure field is \
+            and the page promises a secure field is \
             «skipped whole», not read and then discarded.
             """)
         XCTAssertEqual(selection.replaced, [],

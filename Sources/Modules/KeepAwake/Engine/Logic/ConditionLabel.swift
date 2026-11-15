@@ -10,7 +10,7 @@ import Foundation
 /// before what their hardware happens to be doing.
 ///
 /// No names anywhere — these are enum cases, not the app or display a rule names,
-/// so the line satisfies the rule that the log carries no names by construction.
+/// so the line carries no names by construction.
 enum ConditionLabel {
 
     /// The fixed order.

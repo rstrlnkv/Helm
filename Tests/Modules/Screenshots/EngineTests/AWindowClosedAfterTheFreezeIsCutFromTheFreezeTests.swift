@@ -8,6 +8,7 @@ import XCTest
 /// asked again at the click; if the window has gone since, what was on screen at
 /// the freeze is cut from the freeze — which is what the person was looking at
 /// when they clicked.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/CaptureSession.swift`: `case .gone: return cutFromFreeze(id, in: freeze)` -> `case .gone: return .refused(.windowGone)`.
 final class AWindowClosedAfterTheFreezeIsCutFromTheFreezeTests: XCTestCase {
     override func setUp() { super.setUp(); ScreenshotsLog.begin() }
     override func tearDown() { ScreenshotsLog.end(); super.tearDown() }

@@ -5,13 +5,58 @@ import Module_Uninstaller_Engine
 
 /// Two steps, AppCleaner-style: tick the apps, then review what was found for
 /// them. Which one the person is on belongs to the module, not to the page.
-public enum UninstallStep: Equatable, Sendable { case pick, review }
+enum UninstallStep: Equatable, Sendable { case pick, review }
 
-/// Typed async façade over the engine's request/response transport, and the
-/// module's own state — see `step` and below.
+/// What the model asks of the engine. A port, so the model's tests hold the
+/// engine's place without a Mac's applications in reach.
+///
+/// Every answer is the return value, so there is nothing to subscribe to and no
+/// reply that can be lost. The one thing the engine says unasked, "look at the
+/// Trash again", does not come through here: the descriptor hands the model
+/// a stream of it (`UninstallerViewModel.listenForTrash`).
+protocol UninstallerWork: AnyObject, Sendable {
+    func listApps() async -> [InstalledApp]
+    func appSizes(_ list: [InstalledApp]) async -> [String: Int]
+    func lastOpened(_ list: [InstalledApp], deadline: TimeInterval, ceiling: Int,
+                    now: Date) async -> AppOpenedReading
+    var sortOrder: AppSortOrder { get }
+    func setSortOrder(_ order: AppSortOrder)
+    func scan(bundleID: String, appName: String) async -> ScanResult
+    func scanOrphans() async -> [OrphanGroup]
+    func trashPaths(_ paths: [String], quittingRunningApps: Bool) async -> UninstallResult
+    var trashWatch: TrashWatch { get }
+    func setWatchingTrash(_ on: Bool)
+    func trashedAppLeftovers() async -> [TrashedAppLeftovers]
+    func dismissTrashedApp(bundleID: String)
+    func backgroundScan() async -> ScanReport?
+}
+
+extension UninstallerEngine: UninstallerWork {}
+
+/// The module's own state — see `step` and below — and the one door to its
+/// engine: the page, the Leftovers tab and the Trash offer all call the engine
+/// through here.
 @MainActor public final class UninstallerViewModel: ObservableObject {
-    private let client: TransportClient
-    private let vm: ModuleViewModel
+    private let work: any UninstallerWork
+    /// The engine's "look at the Trash again", one value per signal. The
+    /// descriptor makes it with the engine; `listenForTrash` reads it.
+    private let arrivals: AsyncStream<Void>
+    private var listening: Task<Void, Never>?
+    private var onTrashArrival: (@MainActor () -> Void)?
+    /// The Trash offer on screen, if one is: it takes an arrival into the list it
+    /// shows, and the host's handler (which would open a second window) is not
+    /// called. Weak: the window owns the offer, and registering it here must not
+    /// keep it alive. It is registered **before** its first read, so an arrival
+    /// between the read and the registration is not lost.
+    weak var openOffer: TrashedLeftoversModel?
+    /// Set by `stop()`. The host stops the model before the engine's
+    /// `deactivate()`, and a page still on screen — or a task already queued —
+    /// may press a control after that; a stopped model reaches no work.
+    private(set) var closed = false
+
+    /// The Leftovers tab's state, kept here so that it outlives a sidebar click;
+    /// `stop()` clears it.
+    lazy var orphans = OrphansModel(uvm: self)
 
     /// The installed apps, and their sizes once those have been measured.
     ///
@@ -22,58 +67,51 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// took four seconds, nine on a cold cache — paid on every visit, for a
     /// list that had not changed. Caching the view model alone would not have
     /// helped while the list it produced lived on the page.
-    @Published public private(set) var apps: [InstalledApp] = []
+    @Published private(set) var apps: [InstalledApp] = []
     /// Which sizes have been measured, by path. **Absent means "not measured"**,
     /// which `InstalledApp.sizeBytes == 0` cannot say: the list arrives with
     /// zeros and a bundle that could not be read measures as zero too.
-    @Published public private(set) var measuredSizes: [String: Int] = [:]
+    @Published private(set) var measuredSizes: [String: Int] = [:]
     /// When Spotlight says each app was last opened; `nil` until it has been
     /// asked. An app missing from an answered table has no record.
-    @Published public private(set) var lastOpened: [String: Date]?
+    @Published private(set) var lastOpened: [String: Date]?
     /// Paths the last-opened read did not reach: neither a date nor "no record".
-    @Published public private(set) var lastOpenedUnread: Set<String> = []
+    @Published private(set) var lastOpenedUnread: Set<String> = []
     /// The remembered order, as the engine last said it. The engine owns it.
-    @Published public private(set) var sortOrder: AppSortOrder = .standard
+    @Published private(set) var sortOrder: AppSortOrder = .standard
 
     /// What the list is really ordered by — a stored date order over a Mac where
     /// Spotlight said nothing reads as the name order.
-    public var effectiveSortOrder: AppSortOrder {
+    var effectiveSortOrder: AppSortOrder {
         AppSort.effective(sortOrder, opened: lastOpened)
     }
 
     /// The list in the person's order; search narrows this and never reorders it.
-    public var sortedApps: [InstalledApp] {
+    var sortedApps: [InstalledApp] {
         AppSort.sorted(apps, order: sortOrder, sizes: measuredSizes, opened: lastOpened,
                        unread: lastOpenedUnread)
     }
 
-    public var dateOrderAvailable: Bool { AppSort.dateOrderAvailable(lastOpened) }
+    var dateOrderAvailable: Bool { AppSort.dateOrderAvailable(lastOpened) }
 
     /// True while the names are being fetched. Sizes land afterwards and do not
     /// hold the list back — the names are what somebody is looking for.
-    @Published public private(set) var loadingApps = false
+    @Published private(set) var loadingApps = false
+    /// Which reload of the list is the newest, so an older answer does not land
+    /// on a newer list.
+    private var latestList = LatestRequest()
     /// Whether the list has ever been **answered**, which is not the same as
-    /// having been asked for. It used to be set whatever came back, so one lost
-    /// reply left the module holding «you have no applications» for the life of
-    /// the process — `loadAppsIfNeeded` would not ask again, and only the Refresh
-    /// button would.
+    /// having been asked for: before the page's first `.task` there is no list
+    /// and no reason to say «0 apps».
     private var loadedApps = false
 
     /// Whether the list has been answered at all, for the page to read.
     ///
-    /// Published rather than spelled a second
-    /// time: two sources of "has anybody answered" would drift into a page whose
-    /// count says «Counting apps…» over a body claiming the Mac holds no
-    /// applications.
-    ///
-    /// **And drift they did, in the other direction.** The body drew
-    /// `AppsEmpty.reason(answered:apps:shown:)` off this flag while the footer
-    /// drew `UnStr.appsCount` off a count folded from the same flag — one flag, two readings, and the
-    /// nil in the middle of the second meant both «not yet» and «never». The
-    /// footer reads the body's own `AppsEmpty.Reason` now
-    /// (`AppsEmpty.status(_:loading:apps:)`), so there is one reading and not
-    /// two agreeing by hand.
-    public var listAnswered: Bool { loadedApps }
+    /// One flag for the body (`AppsEmpty.reason(answered:apps:shown:)`) and the
+    /// footer (`AppsEmpty.status(answered:loading:apps:)`) alike: two sources of
+    /// "has anybody answered" would drift into a page whose count says
+    /// «Counting apps…» over a body claiming the Mac holds no applications.
+    var listAnswered: Bool { loadedApps }
 
     // MARK: - Where the person is, and what they chose
 
@@ -83,152 +121,151 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// screen threw away a leftovers scan of every ticked app; doing it on the
     /// failure report threw away the only record of what macOS refused and why,
     /// which nothing in the app can produce a second time.
-    @Published public private(set) var step: UninstallStep = .pick
-    /// Bundle ids ticked on the picker.
-    @Published public private(set) var checked: Set<String> = []
-    @Published public private(set) var groups: [UninstallGroup] = []
-    @Published public private(set) var selectedLeftovers: Set<String> = []
-    @Published public private(set) var failures: [TrashFailureInfo] = []
-    @Published public var forceQuit = false
-    @Published public private(set) var scanning = false
-    @Published public private(set) var busy = false
-    @Published public private(set) var resultBanner: String?
-    @Published public private(set) var replyLost = false
+    @Published private(set) var step: UninstallStep = .pick
+    /// Bundle paths ticked on the picker: two copies of one app share an id and
+    /// are two rows, so a tick belongs to the copy on disk.
+    @Published private(set) var checked: Set<String> = []
+    @Published private(set) var groups: [UninstallGroup] = []
+    @Published private(set) var selectedLeftovers: Set<String> = []
+    @Published private(set) var failures: [TrashFailureInfo] = []
+    @Published var forceQuit = false
+    @Published private(set) var scanning = false
+    @Published private(set) var busy = false
+    @Published private(set) var resultBanner: String?
 
     /// What the Trash-offer switch is doing, from the engine — the switch's own
     /// position and, when it is on, whether either of the two things it depends on
     /// has refused. See `TrashWatch`.
-    @Published public private(set) var trashWatch: TrashWatch = .off
+    @Published private(set) var trashWatch: TrashWatch = .off
 
-    /// One instance per host view model, for the app's lifetime. Keyed to the
-    /// view model rather than merely "exists": turning the module off drops the
-    /// engine, and a cache held past that answers every request with empty Data
-    /// for as long as the app runs.
-    private static var cached: UninstallerViewModel?
-    public static func shared(vm: ModuleViewModel) -> UninstallerViewModel {
-        if let cached, cached.vm === vm { return cached }
-        let created = UninstallerViewModel(vm: vm)
-        cached = created
-        ModuleUICache.dropWhenDisabled(UninstallerDescriptor.id.rawValue) { cached = nil }
-        return created
+    init(work: any UninstallerWork, trashArrivals: AsyncStream<Void>) {
+        self.work = work
+        self.arrivals = trashArrivals
     }
 
-    public init(vm: ModuleViewModel) {
-        self.vm = vm
-        self.client = TransportClient(vm.transport)
+    /// Closes the model: the host calls it before the engine's `deactivate()`.
+    /// Whatever is pressed after reaches no work, and a list, its readings or a
+    /// review still in flight is not shown; a removal, an orphan scan or a Trash
+    /// sweep already handed to the engine still lands. The arrival subscription
+    /// and the open offer let go.
+    /// Saving a chosen sort order is not refused — it is the person's setting,
+    /// not work.
+    public func stop() {
+        closed = true
+        listening?.cancel()
+        listening = nil
+        onTrashArrival = nil
+        openOffer = nil
+        orphans.clear()
+    }
+
+    /// Takes the engine's "look at the Trash again" while the model lives. With
+    /// an offer open the signal is the offer's; without one it is `arrived`,
+    /// which is the host's sweep. One iteration of the stream, ever: a second
+    /// call only replaces the handler.
+    public func listenForTrash(_ arrived: @escaping @MainActor () -> Void) {
+        guard !closed else { return }
+        onTrashArrival = arrived
+        guard listening == nil else { return }
+        let stream = arrivals
+        listening = Task { [weak self] in
+            for await _ in stream {
+                guard let self, !self.closed else { break }
+                if let offer = self.openOffer {
+                    await offer.refresh()
+                } else {
+                    self.onTrashArrival?()
+                }
+            }
+        }
     }
 
     /// What the page asks for on appear: the first visit does the work, later
     /// visits show what is already here.
-    public func loadAppsIfNeeded() async {
-        guard !loadedApps else { return }
+    func loadAppsIfNeeded() async {
+        guard !closed, !loadedApps else { return }
         await reloadApps()
     }
 
     /// What the Refresh button asks for, and what a removal asks for once it
     /// has changed the list.
-    ///
-    /// **A list nobody answered is not a Mac with no applications on it.** Folded
-    /// with `??`, this drew «0 apps» over somebody's Mac and set the flag anyway,
-    /// so nothing asked again — and a Refresh that went unanswered emptied the list
-    /// the person was looking at. It keeps what it has and stays in the state the
-    /// footer already has a sentence for.
-    public func reloadApps() async {
+    func reloadApps() async {
+        guard !closed else { return }
+        let mine = latestList.take()
         loadingApps = true
-        if let list = await listApps() {
-            apps = list
-            // The readings belong to the list they were taken for.
-            measuredSizes = [:]
-            lastOpened = nil
-            lastOpenedUnread = []
-            loadedApps = true
-        } else {
-            // Counts and outcomes are free; nothing here names an application.
-            HelmLog.shared.info(UninstallerEngine.moduleID, "app list reply lost")
-        }
+        let list = await work.listApps()
+        // An older answer is dropped whole, `loadingApps` included: the newer
+        // reload is still out and clears it when it lands.
+        guard latestList.isLatest(mine) else { return }
         loadingApps = false
+        guard !closed else { return }
+        apps = list
+        // The readings belong to the list they were taken for.
+        measuredSizes = [:]
+        lastOpened = nil
+        lastOpenedUnread = []
+        loadedApps = true
         // Independent: the dates take milliseconds and must not wait behind sizes
         // that take seconds, nor the other way round.
         await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.fillInSizes() }
-            group.addTask { await self.fillInDates() }
+            group.addTask { await self.fillInSizes(for: mine) }
+            group.addTask { await self.fillInDates(for: mine) }
         }
     }
 
-    private func fillInDates() async {
-        guard let reading = await lastOpened(for: apps) else {
-            // Not answered is not "no record": the reading stays where it was.
-            HelmLog.shared.info(UninstallerEngine.moduleID, "last-opened reply lost")
-            return
-        }
+    private func fillInDates(for token: Int) async {
+        let reading = await work.lastOpened(apps, deadline: UninstallerEngine.lastOpenedDeadline,
+                                            ceiling: UninstallerEngine.lastOpenedCeiling,
+                                            now: Date())
+        guard !closed, latestList.isLatest(token) else { return }
         lastOpened = reading.opened
         lastOpenedUnread = Set(reading.unread)
     }
 
-    /// How many times the person has chosen an order. A reading of the stored
-    /// order is only as new as the count it was taken at.
-    private var sortChoices = 0
-
-    /// The remembered order, read again on every appearance of the page.
-    ///
-    /// **An answer older than a choice does not overwrite it.** The reading is
-    /// asked for from the page's `.task`, and a press that lands before the
-    /// engine answers is newer than what the engine is about to say — assigned
-    /// anyway, it put the screen back on the old order while the engine already
-    /// held the new one, and the next visit "changed its mind".
-    public func refreshSortOrder() async {
-        let asked = sortChoices
-        guard let order: AppSortOrder = await client.request(UninstallerCommand.sortOrder) else {
-            HelmLog.shared.info(UninstallerEngine.moduleID, "sort order reply lost")
-            return
-        }
-        guard asked == sortChoices else { return }
-        sortOrder = order
+    /// The remembered order, read again on every appearance of the page. The
+    /// read is a store's and does not suspend, so no press can land between
+    /// asking and assigning.
+    func refreshSortOrder() async {
+        guard !closed else { return }
+        sortOrder = work.sortOrder
     }
 
     /// The press answers at once and the engine remembers it.
-    public func setSortOrder(_ order: AppSortOrder) async {
-        sortChoices += 1
+    func setSortOrder(_ order: AppSortOrder) async {
         sortOrder = order
-        await client.send(UninstallerCommand.setSortOrder, encoding: order)
+        work.setSortOrder(order)
     }
 
     /// The list is drawn from names alone and the numbers land a moment later.
-    private func fillInSizes() async {
-        let sizes = await appSizes(for: apps)
-        guard !sizes.isEmpty else { return }
+    private func fillInSizes(for token: Int) async {
+        let sizes = await work.appSizes(apps)
+        guard !closed, latestList.isLatest(token), !sizes.isEmpty else { return }
+        // By path: two copies of one app share a bundle id and each has its own size.
         measuredSizes = sizes
-        apps = apps.map { app in
-            // By path: two copies of one app share a bundle id and each has its
-            // own size.
-            guard let size = sizes[app.path], size != app.sizeBytes else { return app }
-            return InstalledApp(name: app.name, bundleID: app.bundleID,
-                                path: app.path, sizeBytes: size)
-        }
     }
 
     // MARK: - Picking
 
-    public func isChecked(_ bundleID: String) -> Bool { checked.contains(bundleID) }
+    func isChecked(_ app: InstalledApp) -> Bool { checked.contains(app.path) }
 
     /// A `com.apple.` app is refused rather than merely undrawn. The row leaves
     /// the checkbox out (`SystemApp.isSystem`), and this is the same rule at the
-    /// only place that can put an id into the set — a tick macOS will refuse
+    /// only place that can put a path into the set — a tick macOS will refuse
     /// costs the person a scan, a click and a failure report to find that out.
-    public func setChecked(_ bundleID: String, _ on: Bool) {
-        guard !SystemApp.isSystem(bundleID: bundleID) else { return }
-        if on { checked.insert(bundleID) } else { checked.remove(bundleID) }
+    func setChecked(_ app: InstalledApp, _ on: Bool) {
+        guard !SystemApp.isSystem(bundleID: app.bundleID) else { return }
+        if on { checked.insert(app.path) } else { checked.remove(app.path) }
     }
 
-    public func toggleChecked(_ bundleID: String) { setChecked(bundleID, !isChecked(bundleID)) }
+    func toggleChecked(_ app: InstalledApp) { setChecked(app, !isChecked(app)) }
 
-    public func clearChecked() { checked.removeAll() }
+    func clearChecked() { checked.removeAll() }
 
     // MARK: - Reviewing
 
-    public func isSelected(leftover path: String) -> Bool { selectedLeftovers.contains(path) }
+    func isSelected(leftover path: String) -> Bool { selectedLeftovers.contains(path) }
 
-    public func setSelected(leftover path: String, _ on: Bool) {
+    func setSelected(leftover path: String, _ on: Bool) {
         if on { selectedLeftovers.insert(path) } else { selectedLeftovers.remove(path) }
     }
 
@@ -236,39 +273,33 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// measured — a sum with one term missing is a smaller number nobody
     /// measured. Read from `measuredSizes`, which keeps arriving after the review
     /// opened; `groups` is a snapshot and carries the list's zero.
-    public var reviewBytes: Int? {
+    var reviewBytes: Int? {
         guard !groups.isEmpty,
               groups.allSatisfy({ measuredSizes[$0.app.path] != nil }) else { return nil }
-        let measured = groups.map { group in
-            UninstallGroup(app: InstalledApp(name: group.app.name, bundleID: group.app.bundleID,
-                                             path: group.app.path,
-                                             sizeBytes: measuredSizes[group.app.path] ?? 0),
-                           leftovers: group.leftovers, running: group.running)
-        }
-        return UninstallPlan.totalBytes(measured, selectedLeftovers: selectedLeftovers)
+        return UninstallPlan.totalBytes(groups, appBytes: measuredSizes, selectedLeftovers: selectedLeftovers)
     }
 
     /// Leaving the review ends the round, so the report of the last press goes
     /// with it — the pick screen's own footer draws `resultBanner`, and a
     /// sentence about a batch that was refused for a running app has nothing to
     /// say there.
-    public func backToPick() {
+    func backToPick() {
         step = .pick
         forceQuit = false
         resultBanner = nil
-        replyLost = false
     }
 
-    public func dismissFailures() { failures = [] }
+    func dismissFailures() { failures = [] }
 
     /// Scans every ticked app, then shows the review screen.
-    public func prepareReview() async {
+    func prepareReview() async {
+        guard !closed, !scanning else { return }
         scanning = true
         resultBanner = nil
-        replyLost = false
         defer { scanning = false }
-        let chosen = apps.filter { checked.contains($0.bundleID) }
-        let built = await scanned(chosen, keeping: [])
+        let chosen = apps.filter { checked.contains($0.path) }
+        let built = await scanned(chosen)
+        guard !closed else { return }
         groups = built
         selectedLeftovers = Set(UninstallPlan.defaultSelection(built))
         forceQuit = false
@@ -283,27 +314,20 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// Concurrently: the scans are independent, each already hops to a background
     /// queue, and awaiting them in a row stacked every delay. Order comes from the
     /// list handed in, not from whichever finishes first.
-    ///
-    /// **A scan that was not answered leaves its group as it was.** `scan()` is a
-    /// request like any other and comes back nil for an engine that is gone or a
-    /// reply that would not decode; folded to `[]` it would report "this app left
-    /// nothing behind" — and on the rescan below that reads as *the removal
-    /// worked*, over a list that is the person's own review.
-    private func scanned(_ chosen: [InstalledApp],
-                         keeping previous: [UninstallGroup]) async -> [UninstallGroup] {
-        var scans: [String: ScanResult] = [:]
-        await withTaskGroup(of: (String, ScanResult?).self) { group in
-            for app in chosen {
-                group.addTask { (app.bundleID, await self.scan(app)) }
+    private func scanned(_ chosen: [InstalledApp]) async -> [UninstallGroup] {
+        let work = self.work
+        var done: [(Int, ScanResult)] = []
+        await withTaskGroup(of: (Int, ScanResult).self) { group in
+            for (index, app) in chosen.enumerated() {
+                group.addTask {
+                    (index, await work.scan(bundleID: app.bundleID, appName: app.name))
+                }
             }
-            for await (id, scan) in group { scans[id] = scan }
+            for await item in group { done.append(item) }
         }
-        return chosen.map { app in
-            guard let scan = scans[app.bundleID] else {
-                return previous.first { $0.app.path == app.path }
-                    ?? UninstallGroup(app: app, leftovers: [], running: false)
-            }
-            return UninstallGroup(app: app, leftovers: scan.leftovers, running: scan.runningNow)
+        let ordered = done.sorted { $0.0 < $1.0 }.map(\.1)
+        return zip(chosen, ordered).map { app, scan in
+            UninstallGroup(app: app, leftovers: scan.leftovers, running: scan.runningNow)
         }
     }
 
@@ -314,10 +338,11 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// read when the review was built, so an app the person had since quit left
     /// the button dead and an app started since then was never asked to quit at
     /// all, and had its bundle moved out from under it.
-    public func removeSelection() async {
+    func removeSelection() async {
         // The model refuses a second run itself rather than trusting the page
         // to have dimmed the button: `.disabled(model.busy)` is a redraw away,
         // and the row menu reaches this by another road.
+        guard !closed else { return }
         guard !busy else { return }
         let paths = UninstallPlan.paths(groups, selectedLeftovers: selectedLeftovers)
         // An empty batch would come back as "moved 0 items, 0 bytes" — a success
@@ -327,37 +352,14 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
         defer { busy = false }
 
         HelmLog.shared.info(UninstallerEngine.moduleID, "trashing \(paths.count) paths")
-        let result = await trashPaths(paths, quittingRunningApps: forceQuit)
+        // Nil only when the module was stopped under the page: nothing moved, and
+        // the review stays as it is.
+        guard let result = await trashPaths(paths, quittingRunningApps: forceQuit) else { return }
 
-        // **A batch nobody answered is not a batch that moved nothing.** Folded
-        // with `??`, this said «Moved to the Trash — 0 bytes» over applications
-        // that are exactly where they were, and cleared the review — the scan of
-        // every ticked app — on the strength of it. Nor is it a batch that
-        // failed: the engine may have moved everything and the reply been lost.
-        // So it claims nothing, keeps what the person is looking at, and says
-        // that it does not know.
-        guard let result else {
-            resultBanner = nil
-            failures = []
-            replyLost = true
-            // Counts and outcomes are free; nothing here names an application.
-            // It was the one branch that reached the screen without reaching the
-            // file a person attaches to a bug report.
-            HelmLog.shared.info(UninstallerEngine.moduleID, "trash reply lost")
-            // What the report over the review says is that the list under it is
-            // where the files are now, so the list is read again — and a scan
-            // that is also unanswered leaves each group as it was rather than
-            // reporting it empty.
-            groups = await scanned(groups.map(\.app), keeping: groups)
-            selectedLeftovers.formIntersection(groups.flatMap(\.leftovers).map(\.path))
-            return
-        }
-        replyLost = false
-
-        // Nothing moved: an app in the batch was up and nobody had allowed Helm
-        // to quit it. The review stays, its `running` flags are replaced by what
-        // the engine has just read, and the offer the person needs — quit it, or
-        // tick the force quit — is the one already on this screen.
+        // Nothing moved: an app in the batch was up, with no quit allowed or
+        // still up after the quit. The review stays, its `running` flags are replaced by what
+        // the engine has just read, and the offer the person needs — quit it, or,
+        // where no quit was allowed, tick the force quit — is the one already on this screen.
         guard result.stillRunning.isEmpty else {
             let up = Set(result.stillRunning)
             groups = groups.map {
@@ -379,14 +381,11 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
             // Leftovers that stayed put are the whole point of the module, so
             // they get a screen of their own rather than a line to overlook.
             //
-            // There used to be a fallback here, building a failure per path with
-            // the reason `"unknown"`, for a result whose `failed` held paths its
-            // `failures` did not. That was already unreachable — `failed` is
-            // `failures.map(\.path)` — and `"unknown"` was not one of the
-            // reasons, so what it drew was the sentence for a cause nobody knew.
+            // No fallback: `failed` is `failures.map(\.path)`, so every failed
+            // path already has its reason.
             failures = result.failures
         } else {
-            resultBanner = UnStr.movedToTrash(moved)
+            resultBanner = HelmBasket.movedToTrash(moved)
             failures = []
         }
 
@@ -398,42 +397,12 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
         await reloadApps()
     }
 
-    // MARK: - Transport
+    // MARK: - The engine's other doors
 
-    // The three request shapes are the engine's own — they were declared here
-    // as well, and `QuitReq` had already drifted: `force` was `Bool` on this
-    // side and `Bool?` on the other. See `UninstallerCommand.swift`.
-
-    /// The installed apps, or nil for a request the engine did not answer — an
-    /// engine that has gone under a page that is still up, a command it could not
-    /// parse, a reply that would not decode. The nil is the caller's to read; it
-    /// used to be folded here, where the difference stopped existing.
-    public func listApps() async -> [InstalledApp]? {
-        HelmLog.shared.info(UninstallerEngine.moduleID, "listApps requested")
-        let apps: [InstalledApp]? = await client.request(UninstallerCommand.listApps)
-        HelmLog.shared.info(UninstallerEngine.moduleID,
-                            "listApps returned \(apps.map { "\($0.count)" } ?? "nothing")")
-        return apps
-    }
-
-    /// Sizes arrive after the list: measuring a bundle walks every file inside
-    /// it, and the names are what the user is looking at first. The list goes
-    /// with the request — the engine had been enumerating the app folders a
-    /// second time to rebuild what the caller already had.
-    public func appSizes(for list: [InstalledApp]) async -> [String: Int] {
-        await client.request(UninstallerCommand.appSizes, encoding: list) ?? [:]
-    }
-
-    public func lastOpened(for list: [InstalledApp]) async -> AppOpenedReading? {
-        await client.request(UninstallerCommand.lastOpened, encoding: list)
-    }
-
-    public func scan(_ app: InstalledApp) async -> ScanResult? {
-        await client.request(UninstallerCommand.scan, encoding: UninstallScanRequest(bundleID: app.bundleID, appPath: app.path, appName: app.name))
-    }
-
-    public func scanOrphans() async -> [OrphanGroup] {
-        await client.request(UninstallerCommand.scanOrphans) ?? []
+    /// Leftovers whose app is gone, or nil when the module has been stopped.
+    func scanOrphans() async -> [OrphanGroup]? {
+        guard !closed else { return nil }
+        return await work.scanOrphans()
     }
 
     /// Whether Helm offers to clean up after an app the person drags to the
@@ -444,37 +413,51 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// It lives here rather than in two `@State`s, which is where it was: the page
     /// kept one for its permission note and the Leftovers tab another for the
     /// switch, and the fact is the module's.
-    public func refreshTrashWatch() async {
-        // A request nobody answered leaves the last reading where it is. Folded to
-        // `false`, an unanswered read drew the switch as off — which is a claim
-        // about a setting, on the control the person would press to change it.
-        guard let state: TrashWatch = await client.request(UninstallerCommand.watchingTrash)
-        else {
-            HelmLog.shared.info(UninstallerEngine.moduleID, "trash watch reply lost")
-            return
-        }
-        trashWatch = state
+    func refreshTrashWatch() async {
+        guard !closed else { return }
+        trashWatch = work.trashWatch
     }
 
-    /// The press answers the switch at once — waiting for the round trip would let
-    /// a `Toggle` snap back under the pointer — and the engine's own reading of what
-    /// it is now doing arrives immediately after.
-    public func setWatchingTrash(_ on: Bool) async {
+    /// The press answers the switch at once — a `Toggle` would snap back under the
+    /// pointer otherwise — and the engine's own reading of what it is now doing
+    /// follows immediately.
+    func setWatchingTrash(_ on: Bool) async {
+        guard !closed else { return }
         trashWatch = on ? .on : .off
-        await client.send(UninstallerCommand.setWatchingTrash, encoding: on)
+        work.setWatchingTrash(on)
         await refreshTrashWatch()
     }
 
     /// Trash a batch of paths — leftovers alone from the orphans view, or a
-    /// review's app bundles and everything ticked with them.
+    /// review's app bundles and everything ticked with them. Nil only when the
+    /// module has been stopped: nothing moved.
     ///
     /// `quittingRunningApps` is the person's answer to «Force quit and remove
     /// anyway», and it travels with the batch because the engine is what asks
     /// whether the app is *still* up. The alternative was what this module did:
     /// quit here, from a flag the scan read minutes ago.
-    public func trashPaths(_ paths: [String],
+    func trashPaths(_ paths: [String],
                            quittingRunningApps mayQuit: Bool = false) async -> UninstallResult? {
-        await client.request(UninstallerCommand.trashPaths,
-                             encoding: TrashBatchRequest(paths: paths, quitRunningApps: mayQuit))
+        guard !closed else { return nil }
+        return await work.trashPaths(paths, quittingRunningApps: mayQuit)
+    }
+
+    /// What is sitting in the Trash that left something behind, or nil when the
+    /// module has been stopped.
+    func trashedAppLeftovers() async -> [TrashedAppLeftovers]? {
+        guard !closed else { return nil }
+        return await work.trashedAppLeftovers()
+    }
+
+    /// Remembers a "no" to the offer for this app.
+    func dismissTrashedApp(bundleID: String) async {
+        guard !closed else { return }
+        work.dismissTrashedApp(bundleID: bundleID)
+    }
+
+    /// The unattended orphan scan, asked by the descriptor; nil is no answer.
+    func backgroundScan() async -> ScanReport? {
+        guard !closed else { return nil }
+        return await work.backgroundScan()
     }
 }

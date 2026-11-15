@@ -12,27 +12,7 @@ import HelmTestSupport
 /// afterwards. Every assertion below is a directory listing — a count or a
 /// `SweepReport` field can be satisfied by the rules never having matched, and
 /// that is exactly the way a fix like this ships inert.
-final class AutopilotSealTests: XCTestCase {
-
-    private var home: URL!
-    private var root: URL!
-    private var backing: InMemoryKeyValueStore!
-    private var namespace: String!
-    private var keys: TestRuleKey!
-
-    override func setUpWithError() throws {
-        home = scratchDirectory("home")
-        root = home.appendingPathComponent("Downloads")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        backing = InMemoryKeyValueStore()
-        namespace = "autopilot.test.\(UUID().uuidString)"
-        keys = TestRuleKey()
-    }
-
-    private func engine() -> AutopilotEngine {
-        AutopilotEngine(store: NamespacedStore(namespace: namespace, backing: backing),
-                        home: home.path, keys: keys, sequence: TestRuleSequence())
-    }
+final class AutopilotSealTests: SealedRulesRig {
 
     // MARK: - The plist, as something else sees it
 
@@ -43,21 +23,6 @@ final class AutopilotSealTests: XCTestCase {
     /// preferences. No Helm involved, no keychain, no TCC grant of its own.
     private func plant(_ folders: [WatchedFolder]) throws {
         backing.raw[payloadKey] = try JSONEncoder().encode(folders)
-    }
-
-    /// A rule that empties the folder — the reviewer's demonstration, shrunk to
-    /// one file. `.trash` rather than `.move` because what it did is then
-    /// visible as an absence and nothing else.
-    private func emptyingRules() -> [WatchedFolder] {
-        [WatchedFolder(id: "planted", path: root.path, enabled: true, rules: [
-            Rule(id: "r", name: "take it", enabled: true, match: .all,
-                 conditions: [.fileExtension(["pdf"])], action: .trash),
-        ], depth: 1)]
-    }
-
-    private func tree() -> [String] {
-        let all = FileManager.default.enumerator(atPath: root.path)?.allObjects as? [String]
-        return (all ?? []).sorted()
     }
 
     private func writeAFile() throws {
@@ -72,16 +37,16 @@ final class AutopilotSealTests: XCTestCase {
     func testRulesSavedThroughHelmStillRun() throws {
         try writeAFile()
         let helm = engine()
-        helm.folders = emptyingRules()
+        helm.folders = emptyingRules(in: root)
 
         helm.sweepAll()
 
-        XCTAssertEqual(tree(), [], "the rules do act on this file when Helm saved them")
+        XCTAssertEqual(tree(under: root), [], "the rules do act on this file when Helm saved them")
     }
 
     func testSavingRulesAndReadingThemBackRoundTrips() {
         let helm = engine()
-        let saved = emptyingRules()
+        let saved = emptyingRules(in: root)
 
         helm.folders = saved
 
@@ -96,15 +61,15 @@ final class AutopilotSealTests: XCTestCase {
     /// into the plist and waits an hour for Helm to carry the file out.
     func testAPlantedRuleSetIsNotRun() throws {
         try writeAFile()
-        try plant(emptyingRules())
+        try plant(emptyingRules(in: root))
         keys = TestRuleKey(established: true)
 
         let helm = engine()
         helm.sweepAll()
 
-        XCTAssertEqual(tree(), ["statement.pdf"], "a planted rule ran")
+        XCTAssertEqual(tree(under: root), ["statement.pdf"], "a planted rule ran")
         XCTAssertTrue(helm.folders.isEmpty, "the engine handed the planted rules out")
-        XCTAssertTrue(helm.rulesRefused)
+        XCTAssertNotNil(helm.status.refusal)
     }
 
     /// The subtler edit: Helm's own rule set, with one rule's action changed in
@@ -116,11 +81,11 @@ final class AutopilotSealTests: XCTestCase {
         helm.folders = [WatchedFolder(id: "planted", path: root.path, enabled: true,
                                       rules: [], depth: 1)]
 
-        try plant(emptyingRules())
+        try plant(emptyingRules(in: root))
         helm.sweepAll()
 
-        XCTAssertEqual(tree(), ["statement.pdf"], "the edited rule ran")
-        XCTAssertTrue(helm.rulesRefused)
+        XCTAssertEqual(tree(under: root), ["statement.pdf"], "the edited rule ran")
+        XCTAssertNotNil(helm.status.refusal)
     }
 
     /// And a seal cannot be moved onto a different rule set either: the MAC
@@ -132,11 +97,11 @@ final class AutopilotSealTests: XCTestCase {
                                       rules: [], depth: 1)]
         let stolen = backing.raw[macKey]
 
-        try plant(emptyingRules())
+        try plant(emptyingRules(in: root))
         backing.raw[macKey] = stolen
         helm.sweepAll()
 
-        XCTAssertEqual(tree(), ["statement.pdf"])
+        XCTAssertEqual(tree(under: root), ["statement.pdf"])
     }
 
     // MARK: - The upgrade
@@ -147,14 +112,14 @@ final class AutopilotSealTests: XCTestCase {
     /// what it finds and seals it.
     func testRulesFromBeforeTheSealAreAdoptedOnceAndThenSealed() throws {
         try writeAFile()
-        try plant(emptyingRules())
+        try plant(emptyingRules(in: root))
 
         let helm = engine()
         XCTAssertEqual(helm.folders.map(\.id), ["planted"], "an existing rule set was destroyed")
-        XCTAssertFalse(helm.rulesRefused)
+        XCTAssertNil(helm.status.refusal)
         helm.sweepAll()
 
-        XCTAssertEqual(tree(), [], "the person's own rules stopped working after the upgrade")
+        XCTAssertEqual(tree(under: root), [], "the person's own rules stopped working after the upgrade")
         XCTAssertNotNil(backing.raw[macKey] as? String, "adopted and not sealed: it will be refused next launch")
     }
 
@@ -170,12 +135,12 @@ final class AutopilotSealTests: XCTestCase {
         let helm = engine()
         XCTAssertEqual(helm.folders.map(\.id), ["planted"], "the premise: these were adopted")
 
-        try plant(emptyingRules())
+        try plant(emptyingRules(in: root))
         backing.raw[macKey] = nil
         helm.sweepAll()
 
-        XCTAssertEqual(tree(), ["statement.pdf"], "deleting the seal re-armed the migration")
-        XCTAssertTrue(helm.rulesRefused)
+        XCTAssertEqual(tree(under: root), ["statement.pdf"], "deleting the seal re-armed the migration")
+        XCTAssertNotNil(helm.status.refusal)
     }
 
     // MARK: - No key at all
@@ -185,13 +150,13 @@ final class AutopilotSealTests: XCTestCase {
     /// can tell whose rules these are.
     func testRulesAreNotRunWhileTheKeyIsUnavailable() throws {
         try writeAFile()
-        try plant(emptyingRules())
+        try plant(emptyingRules(in: root))
         keys = TestRuleKey(available: false)
 
         let helm = engine()
         helm.sweepAll()
 
-        XCTAssertEqual(tree(), ["statement.pdf"])
+        XCTAssertEqual(tree(under: root), ["statement.pdf"])
         XCTAssertTrue(helm.folders.isEmpty)
     }
 
@@ -201,7 +166,7 @@ final class AutopilotSealTests: XCTestCase {
         keys = TestRuleKey(available: false)
         let helm = engine()
 
-        helm.folders = emptyingRules()
+        helm.folders = emptyingRules(in: root)
 
         XCTAssertNil(backing.raw[payloadKey], "an unsealed rule set was written to the plist")
     }

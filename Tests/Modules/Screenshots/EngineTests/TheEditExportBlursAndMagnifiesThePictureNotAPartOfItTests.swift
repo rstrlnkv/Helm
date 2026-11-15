@@ -12,6 +12,8 @@ import XCTest
 /// Measured off the file, on a picture of a gradient (a mosaic differs from it): the pixels under a
 /// blur in the lower right of the picture are not the picture's own; the pixels
 /// away from the blur are. Total failure of the subject prints a file equal to the picture under the layer.
+///
+/// Mutant, red here: `annotated` hands `draw` the cut as `display` (red in the case of a part of the picture).
 final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCase {
 
     private let srgb = CGColorSpace(name: CGColorSpace.sRGB)!
@@ -33,17 +35,6 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
         let display = FrozenDisplay(id: DisplayID(1), frame: CGRect(x: 0, y: 0, width: 100, height: 60), scale: 2,
                                     image: gradient(200, 120))
         return try XCTUnwrap(PictureOnScreen.place(picture, over: Freeze(displays: [.image(display)], windows: []), on: nil))
-    }
-
-    private func bytes(_ image: CGImage) -> [UInt8] {
-        var out = [UInt8](repeating: 0, count: image.width * image.height * 4)
-        out.withUnsafeMutableBytes { raw in
-            let context = CGContext(data: raw.baseAddress, width: image.width, height: image.height, bitsPerComponent: 8,
-                                    bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
-                                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        }
-        return out
     }
 
     /// The share of the pixels in `region` (picture pixels) that differ between two pictures of one size.
@@ -80,7 +71,7 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
             let picture = gradient(w, h)
             let shown = try placed(picture)
             let r = shown.rect
-            let source = bytes(picture)
+            let source = rgbaBytes(picture)
             // The pixels of a rectangle of the display's points on the picture.
             func pixels(_ rect: CGRect) -> CGRect {
                 CGRect(x: ((rect.minX - r.minX) / r.width * CGFloat(w)).rounded(), y: ((rect.minY - r.minY) / r.height * CGFloat(h)).rounded(),
@@ -96,7 +87,7 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
                 let out = try XCTUnwrap(exported(rig.session, shown, local: r, layer: layer), "\(w)×\(h) \(name)")
                 XCTAssertEqual(out.width, w)
                 XCTAssertEqual(out.height, h)
-                let file = bytes(out)
+                let file = rgbaBytes(out)
                 XCTAssertGreaterThan(region.width * region.height, 400, "the control: the region has pixels")
                 let under = differing(file, source, width: w, in: region)
                 XCTAssertGreaterThan(under, 0.5, "\(w)×\(h): the pixels under the \(name) are the picture's own (\(under)): it was not drawn from the picture")
@@ -104,5 +95,90 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
                 XCTAssertEqual(away, 0, "\(w)×\(h): the \(name) changed pixels far from itself")
             }
         }
+    }
+
+    /// The same, with the area a part of the picture: the blur is cut from the whole picture, so its pixels are the
+    /// picture's own where the cut has them, and a mosaic made from the cut alone would find no pixel under it.
+    func testABlurInAPartOfThePictureIsMadeOfThePicturesPixels() throws {
+        let (w, h) = (1200, 700)
+        let picture = gradient(w, h)
+        let shown = try placed(picture)
+        let r = shown.rect
+        let part = CGRect(x: r.minX + 0.5 * r.width, y: r.minY + 0.5 * r.height, width: 0.5 * r.width, height: 0.5 * r.height)
+        let box = CGRect(x: r.minX + 0.6 * r.width, y: r.minY + 0.6 * r.height, width: 0.3 * r.width, height: 0.3 * r.height)
+        let layer = Annotation(tool: .blur, start: box.origin, end: CGPoint(x: box.maxX, y: box.maxY))
+        XCTAssertTrue(layer.isUsable, "the control: the blur is usable")
+        let rig = Rig(home: scratchDirectory("shots-export-part"))
+        let out = try XCTUnwrap(exported(rig.session, shown, local: part, layer: layer))
+        let (offsetX, offsetY) = (w / 2, h / 2)
+        XCTAssertEqual(out.width, w - offsetX)
+        XCTAssertEqual(out.height, h - offsetY)
+        let file = rgbaBytes(out), source = rgbaBytes(picture)
+        // The box in the cut's own pixels: 0.6 to 0.9 of the picture is 0.2 to 0.8 of the half that is cut.
+        let region = CGRect(x: 0.2 * Double(out.width), y: 0.2 * Double(out.height),
+                            width: 0.6 * Double(out.width), height: 0.6 * Double(out.height)).integral
+        var different = 0, total = 0
+        for y in Int(region.minY)..<Int(region.maxY) {
+            for x in Int(region.minX)..<Int(region.maxX) {
+                let i = (y * out.width + x) * 4, j = ((y + offsetY) * w + x + offsetX) * 4
+                total += 1
+                if file[i] != source[j] || file[i + 1] != source[j + 1] || file[i + 2] != source[j + 2] { different += 1 }
+            }
+        }
+        XCTAssertGreaterThan(Double(different) / Double(total), 0.5, "the pixels under the blur are the picture's own: it was not drawn from the picture")
+    }
+
+    /// A lens shows the picture twice as large, so under it a gradient is not its own pixels; far from it the file is the picture.
+    func testAMagnifierInTheFileShowsThePictureLargerAndTouchesNothingFarFromIt() throws {
+        let (w, h) = (1200, 700)
+        let picture = gradient(w, h)
+        let shown = try placed(picture)
+        let r = shown.rect
+        let side = 0.3 * r.height
+        let box = CGRect(x: r.minX + 0.55 * r.width, y: r.minY + 0.5 * r.height, width: side, height: side)
+        let layer = Annotation(tool: .magnifier, start: box.origin, end: CGPoint(x: box.maxX, y: box.maxY))
+        XCTAssertTrue(layer.isUsable, "the control: the magnifier is usable")
+        let rig = Rig(home: scratchDirectory("shots-export-lens"))
+        let out = try XCTUnwrap(exported(rig.session, shown, local: r, layer: layer))
+        let file = rgbaBytes(out), source = rgbaBytes(picture)
+        let k = CGFloat(w) / r.width
+        let inner = CGRect(x: (box.midX - r.minX) * k - side * k * 0.25, y: (box.midY - r.minY) * k - side * k * 0.25,
+                           width: side * k * 0.5, height: side * k * 0.5).integral
+        XCTAssertGreaterThan(inner.width * inner.height, 400, "the control: the region has pixels")
+        let under = differing(file, source, width: w, in: inner)
+        XCTAssertGreaterThan(under, 0.5, "the pixels in the lens are the picture's own (\(under)): the lens was not drawn")
+        let away = differing(file, source, width: w, in: CGRect(x: 0, y: 0, width: Double(w) * 0.4, height: Double(h) * 0.4))
+        XCTAssertEqual(away, 0, "the lens changed pixels far from itself")
+    }
+
+    /// A spotlight is a hole in one dim: under its box the file is the picture; away from it every pixel is darker.
+    func testASpotlightInTheFileDimsThePictureAwayFromItAndLeavesItsInsideAlone() throws {
+        let (w, h) = (1200, 700)
+        let picture = gradient(w, h)
+        let shown = try placed(picture)
+        let r = shown.rect
+        let box = CGRect(x: r.minX + 0.55 * r.width, y: r.minY + 0.5 * r.height, width: 0.3 * r.width, height: 0.3 * r.height)
+        let layer = Annotation(tool: .spotlight, start: box.origin, end: CGPoint(x: box.maxX, y: box.maxY))
+        XCTAssertTrue(layer.isUsable, "the control: the spotlight is usable")
+        let rig = Rig(home: scratchDirectory("shots-export-spotlight"))
+        let out = try XCTUnwrap(exported(rig.session, shown, local: r, layer: layer))
+        let file = rgbaBytes(out), source = rgbaBytes(picture)
+        let k = CGFloat(w) / r.width
+        let inner = CGRect(x: (box.minX - r.minX) * k, y: (box.minY - r.minY) * k, width: box.width * k, height: box.height * k)
+            .insetBy(dx: 50, dy: 50).integral
+        XCTAssertGreaterThan(inner.width * inner.height, 400, "the control: the region has pixels")
+        XCTAssertEqual(differing(file, source, width: w, in: inner), 0, "the spotlight dimmed its own inside")
+        let away = CGRect(x: 0, y: 0, width: Double(w) * 0.4, height: Double(h) * 0.4)
+        var darker = 0, total = 0
+        for y in Int(away.minY)..<Int(away.maxY) {
+            for x in Int(away.minX)..<Int(away.maxX) {
+                let i = (y * w + x) * 4
+                guard Int(source[i]) + Int(source[i + 1]) + Int(source[i + 2]) > 30 else { continue }
+                total += 1
+                if Int(file[i]) + Int(file[i + 1]) + Int(file[i + 2]) < Int(source[i]) + Int(source[i + 1]) + Int(source[i + 2]) { darker += 1 }
+            }
+        }
+        XCTAssertGreaterThan(total, 400, "the control: the region has lit pixels")
+        XCTAssertEqual(darker, total, "the pixels away from the spotlight are not all dimmed (\(darker) of \(total)): the dim was not drawn")
     }
 }

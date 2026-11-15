@@ -2,12 +2,9 @@ import Foundation
 
 /// Why the Apps tab has no rows on it — or nothing, when it has some.
 ///
-/// **The page branched on `loading` alone.** A search that matched nothing, a
-/// list the engine never answered and a Mac whose app folders really came back
-/// empty all drew the same empty inset `List`, under a footer still counting
-/// apps. Three facts, one picture — and one of them, the unanswered list, is
-/// the state the footer's count already refused to fold, so the body was
-/// undoing the footer's honesty.
+/// **The page branched on `loading` alone.** A search that matched nothing and a
+/// Mac whose app folders really came back empty drew the same empty inset
+/// `List`, under a footer still counting apps. Two facts, one picture.
 ///
 /// Here rather than in the view, and over counts rather than over the rows, for
 /// the reason `DuplicatesEmpty` and `HistoryEmpty` give: it is the module's
@@ -15,12 +12,9 @@ import Foundation
 public enum AppsEmpty {
 
     /// Exhaustive on purpose, like `DuplicatesEmpty.Reason`: a `default` at the
-    /// caller is how a fourth state would come to be drawn as one of these
-    /// three, which is the defect this type exists for.
+    /// caller is how a third state would come to be drawn as one of these two,
+    /// which is the defect this type exists for.
     public enum Reason: Equatable, Sendable {
-        /// The request went out and nothing came back — an engine that is gone,
-        /// or a reply that was lost. Not a claim about the Mac.
-        case neverAnswered
         /// The engine answered, and the app folders held nothing to list.
         case noApps
         /// There is a list; the search hid every row of it. The sentence
@@ -28,77 +22,35 @@ public enum AppsEmpty {
         case searchHidesAll
     }
 
-    /// Whether this screen is an **invitation** — nothing here, and something to
-    /// do about it — or a statement of what was found.
-    ///
-    /// `HelmEmptyState` splits its arguments along exactly this line, and
-    /// `LeftoversEmpty.invites` is the same answer one module over: a verb on the
-    /// answered-and-empty screen offers to repeat a question that has just been
-    /// answered, and on the filtered one it offers to reload the Mac when what
-    /// the person wants is the search field directly above the message.
-    ///
-    /// The unanswered list is the one dead end of the three — nothing came back,
-    /// and the toolbar's Refresh is the only way out of it — so it is the one
-    /// that gets the verb.
-    ///
-    /// Exhaustive on purpose. A `default` here is how a fourth state would come
-    /// to be given a verb, or lose one, without anybody deciding.
-    public static func invites(_ reason: Reason) -> Bool {
-        switch reason {
-        case .neverAnswered: true
-        case .noApps, .searchHidesAll: false
-        }
-    }
-
-    /// What the footer's status line has to say beside one of these screens.
-    ///
-    /// **One state was being told twice, in two voices.** With the list never
-    /// answered the centre read «Helm could not read the list of applications»
-    /// over a *Reload list* button while the footer 600 pt below read «Counting
-    /// apps…» — a failure and a claim of progress on one screen. The fold is in
-    /// `UnStr.appsCount`, which takes an optional and says «Counting apps…» for
-    /// it: nil means *both* «the reply has not arrived» and «the reply never
-    /// will», and only the first of those is progress.
-    ///
-    /// So this takes the body's **own** `Reason` rather than deriving a second
-    /// answer from the same flags. The two cannot disagree, because there is one
-    /// value — the discipline `listAnswered` was published for and which the
-    /// footer then went around.
-    ///
-    /// Exhaustive with no `default`, like everything else here: a fourth reason
-    /// is a build error rather than a screen quietly given somebody else's
-    /// footer.
+    /// What the footer's status line has to say.
     public enum Status: Equatable, Sendable {
-        /// The list is still on its way. «Counting apps…», which is true.
+        /// The list is still on its way, or has not been asked for yet.
+        /// «Counting apps…», which is true.
         case counting
         /// Helm knows, and the number is it. An answer of «none» is an answer
         /// and reads as zero.
         case counted(Int)
-        /// Nothing came back. The body already says so in the middle of the
-        /// pane; a footer saying it again in other words is one state told
-        /// twice, and saying it in the *wrong* words is what this closes.
-        case silent
     }
 
+    /// **Not answered yet is «counting», not «0 apps».** The page draws its first
+    /// frame before its `.task` has asked for the list, and `apps` is empty
+    /// then; a count read off it would say «0 apps» about a Mac nobody has
+    /// looked at. `answered` is the view model's `listAnswered`, the flag the body
+    /// reads too, so the two cannot disagree.
+    ///
     /// - Parameters:
-    ///   - reason: what the body is drawing, or nil when it is drawing a list.
-    ///   - loading: whether the query is still out. Asked first, because the
-    ///     body draws a spinner while it holds and there is no empty screen yet
-    ///     for the footer to contradict.
+    ///   - answered: whether the list has ever been answered.
+    ///   - loading: whether the query is out now.
     ///   - apps: what the module holds.
-    public static func status(_ reason: Reason?, loading: Bool, apps: Int) -> Status {
-        if loading { return .counting }
-        guard let reason else { return .counted(apps) }
-        switch reason {
-        case .neverAnswered: return .silent
-        case .noApps, .searchHidesAll: return .counted(apps)
-        }
+    public static func status(answered: Bool, loading: Bool, apps: Int) -> Status {
+        loading || !answered ? .counting : .counted(apps)
     }
 
     /// - Parameters:
     ///   - answered: whether the list has ever been answered — the view model's
     ///     flag, not `apps.isEmpty`: a Mac with no applications on it is an
-    ///     answer and reads as «0 apps».
+    ///     answer and reads as «0 apps». Not answered yet is no empty screen:
+    ///     the page draws its spinner.
     ///   - apps: what the module holds.
     ///   - shown: what survives the search filter. Any at all and this screen
     ///     is a list, not a statement.
@@ -107,6 +59,6 @@ public enum AppsEmpty {
         // Rows behind the filter first: a hidden list is a fact about the
         // search whatever the engine did or did not say since.
         if apps > 0 { return .searchHidesAll }
-        return answered ? .noApps : .neverAnswered
+        return answered ? .noApps : nil
     }
 }

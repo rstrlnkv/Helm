@@ -1,5 +1,4 @@
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import XCTest
@@ -20,6 +19,8 @@ import XCTest
 ///
 /// A fake that returned the store unfiltered is what made the question look
 /// open. These hold the real engine's answer.
+///
+/// Past defect: fixed in 4ce355a9.
 final class AStaleHistoryIsNeverHandedToThePageTests: XCTestCase {
 
     private var store: NamespacedStore!
@@ -62,9 +63,7 @@ final class AStaleHistoryIsNeverHandedToThePageTests: XCTestCase {
         XCTAssertFalse(engine.historyRefused, "precondition: it is Helm's own")
 
         XCTAssertEqual(engine.history, [])
-        let command = EngineCommand(name: AutopilotCommand.history.rawValue)
-        let reply = try await engine.transport.send(command)
-        let handed = try JSONDecoder().decode([ActionRecord].self, from: reply)
+        let handed = await engine.readHistory()
         XCTAssertEqual(handed, [], "the page was handed a record older than the window")
     }
 

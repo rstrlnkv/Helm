@@ -1,9 +1,7 @@
 import XCTest
 import HelmTestSupport
-import HelmContract
 import HelmRuntime
-import HelmUI
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
 /// «A day-old tree is a guess, not a measurement.»
@@ -17,6 +15,7 @@ import Module_Disk_Engine
 ///
 /// `now:` is a parameter of the method for exactly this reason — the clock is
 /// not something a test may wait for — so nothing here sleeps.
+/// Past defect: fixed in commit 841b9c26.
 @MainActor
 final class ADayOldTreeIsAGuessTests: XCTestCase {
 
@@ -28,13 +27,10 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
 
     /// A model showing a finished measurement, with the store it saved it to.
     private func showingAFinishedScan() async -> (DiskViewModel, ScanStore) {
-        let transport = HeldTransport()
+        let work = HeldWork()
         let store = ScanStore(directory: scratchDirectory("disk-stale"))
-        let dvm = DiskViewModel(vm: ModuleViewModel(transport: transport), store: store)
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.release(0, with: result())
-        await settle()
+        let dvm = DiskViewModel(work: work, store: store)
+        await scanned(dvm, over: work, answering: result())
         XCTAssertEqual(dvm.phase, .result, "precondition: a tree is on screen")
         XCTAssertNotNil(dvm.completedAt, "precondition: it is dated")
         return (dvm, store)
@@ -45,11 +41,9 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
         let measuredAt = try XCTUnwrap(dvm.completedAt)
         // Asserted before it is asked to go: «the file is not there» is green
         // over a save that never landed.
-        for _ in 0..<200 where !FileManager.default.fileExists(atPath: store.fileURL.path) {
-            await Task.yield()
+        await waitUntil("precondition: the measurement was written down", within: .seconds(5)) {
+            FileManager.default.fileExists(atPath: store.fileURL.path)
         }
-        XCTAssertTrue(FileManager.default.fileExists(atPath: store.fileURL.path),
-                      "precondition: the measurement was written down")
 
         dvm.expireIfStale(now: measuredAt + DiskViewModel.cacheLifetime + 1)
 
@@ -57,10 +51,9 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
         XCTAssertNil(dvm.result)
         // And the file goes with it: the module reopens on the store, so a tree
         // too old to draw is too old to keep.
-        for _ in 0..<200 where FileManager.default.fileExists(atPath: store.fileURL.path) {
-            await Task.yield()
+        await waitUntil("the file went with the tree", within: .seconds(5)) {
+            !FileManager.default.fileExists(atPath: store.fileURL.path)
         }
-        XCTAssertFalse(FileManager.default.fileExists(atPath: store.fileURL.path))
     }
 
     /// The boundary itself. A tree exactly one lifetime old is still the
@@ -80,13 +73,13 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
     /// running. There is no completed measurement to judge, and expiring here
     /// would empty the screen out from under a scan the person is watching.
     func testAWalkInFlightIsNeverExpired() async {
-        let transport = HeldTransport()
+        let work = HeldWork()
         let store = ScanStore(directory: scratchDirectory("disk-stale-live"))
-        let dvm = DiskViewModel(vm: ModuleViewModel(transport: transport), store: store)
+        let dvm = DiskViewModel(work: work, store: store)
         Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.emitPartial(scan: transport.scanID(0), result: result())
-        await settle()
+        await untilParked(work, count: 1)
+        work.emitPartial(0, result: result())
+        await waitUntil("the snapshot is drawn") { dvm.phase == .result }
         XCTAssertTrue(dvm.live, "precondition: the walk is running and the ring is drawn")
 
         dvm.expireIfStale(now: Date() + 10 * DiskViewModel.cacheLifetime)

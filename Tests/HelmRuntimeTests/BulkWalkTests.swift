@@ -221,17 +221,11 @@ final class BulkWalkTests: XCTestCase {
     func testAWalkStoppedPartWayThroughIsNotReportedAsFinished() throws {
         for index in 0..<40 { try write("d\(index)/file.bin", in: root, bytes: 1000) }
 
-        let stop = Stopped()
+        let stop = Locked(false)
         let completed = BulkWalk.walk(root: root.path, isCancelled: { stop.value },
-                                      consume: { _ in stop.stop() })
+                                      consume: { _ in stop.value = true })
 
         XCTAssertFalse(completed, "a cancelled walk reported itself finished")
     }
 
-    private final class Stopped: @unchecked Sendable {
-        private let lock = NSLock()
-        private var stopped = false
-        var value: Bool { lock.lock(); defer { lock.unlock() }; return stopped }
-        func stop() { lock.lock(); stopped = true; lock.unlock() }
-    }
 }

@@ -73,16 +73,37 @@ public enum Plural {
         }
     }
 
+    /// Which of a noun's three forms a language writes after `count`. Russian
+    /// has all three; French counts 0 with the singular; every other language
+    /// has two, so its middle form is the last one, and Japanese and Chinese
+    /// write one form whatever this says. A catalog that cannot hold a plural
+    /// without `%lld` (which groups digits and so changes bytes) holds one key
+    /// per form, and the caller picks the key from this.
+    public enum Form { case one, few, many }
+
+    public static func form(_ count: Int, language: String) -> Form {
+        switch language {
+        case "ru":
+            let magnitude = abs(count)
+            if (11...14).contains(magnitude % 100) { return .many }
+            switch magnitude % 10 {
+            case 1: return .one
+            case 2...4: return .few
+            default: return .many
+            }
+        case "fr": return count <= 1 ? .one : .many
+        default: return count == 1 ? .one : .many
+        }
+    }
+
     /// Russian picks its form from the last two digits: 11–14 always take the
-    /// "many" form, whatever their final digit says.
+    /// "many" form, whatever their final digit says (`form`).
     public static func russian(_ count: Int, _ one: String, _ few: String,
                                _ many: String) -> String {
-        let magnitude = abs(count)
-        if (11...14).contains(magnitude % 100) { return many }
-        switch magnitude % 10 {
-        case 1: return one
-        case 2...4: return few
-        default: return many
+        switch form(count, language: "ru") {
+        case .one: return one
+        case .few: return few
+        case .many: return many
         }
     }
 }

@@ -15,8 +15,8 @@ import AppKit
 /// went with it, and the first use with text selected took the process down.
 ///
 /// So the same answer `RunningApps` already gives: AppKit is read on the main
-/// thread, from the workspace notification that arrives there anyway, and every
-/// other thread reads the snapshot. There is no way to offer "who is in front,
+/// thread and every other thread reads the snapshot. This one is refreshed from
+/// the workspace notification that arrives on the main thread anyway. There is no way to offer "who is in front,
 /// right now, from a background queue", so this does not offer one. A caller off
 /// the main thread gets who was in front a moment ago — which, for deciding
 /// whether a conversion may touch the app the person is typing in, is the same
@@ -43,7 +43,7 @@ public final class FrontmostApp: @unchecked Sendable {
     /// perform one to report that a wrong-thread read happened. Debug builds
     /// trap so the caller is found here rather than in a crash log.
     @discardableResult
-    public func refresh() -> String {
+    func refresh() -> String {
         guard Thread.isMainThread else {
             assertionFailure("FrontmostApp.refresh() off the main thread")
             lock.lock(); defer { lock.unlock() }
@@ -93,7 +93,7 @@ public final class FrontmostApp: @unchecked Sendable {
     ///
     /// Outside deliberately: a handler is other people's code and may call
     /// straight back into this type, and a lock held across a call out is the
-    /// shape `LocalTransport.setHandler` is on record for.
+    /// shape that would deadlock a handler that calls back into this type.
     private func tell(_ bundleID: String) {
         lock.lock(); let handlers = Array(watchers.values); lock.unlock()
         for handler in handlers { handler(bundleID) }

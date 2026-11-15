@@ -24,3 +24,21 @@ public struct HotkeyFallback: Equatable, Sendable {
         self.label = label
     }
 }
+
+/// The three store keys a recorded shortcut lives under: `<prefix>KeyCode`,
+/// `<prefix>Modifiers`, `<prefix>Label`.
+///
+/// Written by the recorder, read by the host, the engines and the pages, in
+/// four targets that cannot see each other. **Deployed stored data: the
+/// suffixes never move**, which is why they are spelled here and nowhere else.
+public struct HotkeyStoreKeys: Equatable, Sendable {
+    public let keyCode: String
+    public let modifiers: String
+    public let label: String
+
+    public init(prefix: String) {
+        keyCode = "\(prefix)KeyCode"
+        modifiers = "\(prefix)Modifiers"
+        label = "\(prefix)Label"
+    }
+}

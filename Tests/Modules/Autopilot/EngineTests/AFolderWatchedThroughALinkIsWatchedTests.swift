@@ -11,6 +11,8 @@ import HelmTestSupport
 /// `~/Downloads/photo.jpg`, and a leg that matched it to the watched folder by
 /// the folder's *spelling* found no folder at all: the sweep read the folder and
 /// the watcher never acted on anything arriving in it.
+///
+/// Past defect: fixed in 4ce355a9.
 final class AFolderWatchedThroughALinkIsWatchedTests: XCTestCase {
 
     private var home: URL!
@@ -22,10 +24,7 @@ final class AFolderWatchedThroughALinkIsWatchedTests: XCTestCase {
         try FileManager.default.createSymbolicLink(
             at: home.appendingPathComponent("DL"),
             withDestinationURL: home.appendingPathComponent("Downloads"))
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func watch(_ path: String) -> WatchedFolder {

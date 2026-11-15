@@ -15,6 +15,8 @@ import HelmRuntime
 /// `Int(left / 60)`. `SessionRestore.decide` refuses everything at or past the
 /// deadline — `endDate > now`, then `bounded > 0`, both strict — and the first
 /// case here is what says so rather than leaving it to be re-derived from a log.
+///
+/// Guards: bf6c973b (a restored session with seconds left read as over).
 final class ASessionWithSecondsLeftIsNotOverTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!
@@ -42,7 +44,7 @@ final class ASessionWithSecondsLeftIsNotOverTests: XCTestCase {
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: FakeApps(),
                         pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: clock)
+                        clock: clock, lidInfo: FakeLidInfo())
     }
 
     /// A session with 39 seconds left is a session. It comes back, it holds the

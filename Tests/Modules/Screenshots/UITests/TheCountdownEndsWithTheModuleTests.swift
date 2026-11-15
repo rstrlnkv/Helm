@@ -1,11 +1,9 @@
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **A countdown that was cancelled freezes nothing.** The timer's wait is a
@@ -19,6 +17,8 @@ import Module_Screenshots_Engine
 /// that ends normally is no evidence that nobody cancelled during it, and a
 /// controller that only ever read its own flag after the whole loop would look
 /// right against a tick that returns at once.
+///
+/// Mutant, red here: the countdown does not ask after its wait whether it was cancelled.
 @MainActor
 final class TheCountdownEndsWithTheModuleTests: XCTestCase {
 
@@ -43,47 +43,23 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
         func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
     }
 
-    private final class Disk: ShotWriting, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var written: Int { lock.withLock { count } }
-        // A disk that counts its writes and keeps no file: nothing is read at any path and no name is claimed.
-        func reading(of url: URL) -> ShotReading? { nil }
-        func claim(_ written: URL, as name: URL) -> Bool { false }
-        func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
-            lock.withLock { count += 1 }
-            return .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
-        }
-    }
+    private typealias Disk = FakeWorkDisk
 
     private typealias Board = CountingBoard
-    private struct NoPreferences: CapturePreferences {
-        func location() -> RawSetting { RawSetting(nil) }
-        func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
-        func uiSounds() -> RawSetting { RawSetting(nil) }
-    }
-    private struct NoShutter: ShutterPlaying { func play() {} }
-
-    private final class Ticks: @unchecked Sendable {
-        private let lock = NSLock()
-        private var n = 0
-        var count: Int { lock.withLock { n } }
-        func bump() { lock.withLock { n += 1 } }
-    }
 
     private struct Rig {
         let controller: CaptureController
         let capture: Freezes
         let disk: Disk
-        let ticks: Ticks
-        let shown: Ticks
+        let ticks: LockedCount
+        let shown: LockedCount
     }
 
-    private func rig(timer: CaptureTimer, tick: @escaping (Ticks) -> (Duration) async throws -> Void) throws -> Rig {
+    private func rig(timer: CaptureTimer, tick: @escaping (LockedCount) -> (Duration) async throws -> Void) throws -> Rig {
         let context = try XCTUnwrap(CGContext(data: nil, width: 20, height: 10, bitsPerComponent: 8, bytesPerRow: 0,
                                               space: CGColorSpaceCreateDeviceRGB(),
                                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        let capture = Freezes(try XCTUnwrap(context.makeImage())), disk = Disk(), ticks = Ticks(), shown = Ticks()
+        let capture = Freezes(try XCTUnwrap(context.makeImage())), disk = Disk(), ticks = LockedCount(), shown = LockedCount()
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
@@ -92,7 +68,7 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
         let session = CaptureSession(capture: capture, writer: disk, trash: NoTrash(), pasteboard: Board(), preferences: NoPreferences(),
                                      shutter: NoShutter(), textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
                                      naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
-        let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
+        let controller = CaptureController(store: store,
                                            session: session, presentOverlay: { _ in false },
                                            presentBar: { _ in shown.bump() }, tick: tick(ticks))
         return Rig(controller: controller, capture: capture, disk: disk, ticks: ticks, shown: shown)
@@ -103,12 +79,12 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
     func testACountdownLeftAloneFreezesOnlyAfterItsLastSecond() async throws {
         var atFreeze = -1
         let box = try rig(timer: .five) { ticks in { _ in ticks.bump() } }
-        box.capture.onFreeze = { atFreeze = box.ticks.count }
+        box.capture.onFreeze = { atFreeze = box.ticks.value }
         box.controller.begin(.panel)
-        XCTAssertEqual(box.shown.count, 1, "the panel shortcut did not put the bar up")
+        XCTAssertEqual(box.shown.value, 1, "the panel shortcut did not put the bar up")
         box.controller.capture(from: .screen)
         await waitUntil("the press was delivered") { box.disk.written == 1 }
-        XCTAssertEqual(box.ticks.count, 5, "five seconds are five waits")
+        XCTAssertEqual(box.ticks.value, 5, "five seconds are five waits")
         XCTAssertEqual(atFreeze, 5, "the screen was frozen before the countdown was over")
         XCTAssertEqual(box.capture.freezes, 1)
     }
@@ -144,7 +120,7 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
         box.controller.begin(.panel)
         box.controller.capture(from: .screen)
         await waitUntil("the press was delivered") { box.disk.written == 1 }
-        XCTAssertEqual(box.ticks.count, 0)
+        XCTAssertEqual(box.ticks.value, 0)
     }
 
     /// The module's switch, the close control and Esc — the last two are the bar's
@@ -160,13 +136,13 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
             box.controller.begin(.panel)
             box.controller.capture(from: .screen)
             await gate.reached()
-            XCTAssertEqual(box.ticks.count, 1, "\(way): the countdown never started, so nothing was proved")
+            XCTAssertEqual(box.ticks.value, 1, "\(way): the countdown never started, so nothing was proved")
             cancel(box.controller)
             await gate.open()
             await grace(0.4)
             XCTAssertEqual(box.capture.freezes, 0, "\(way): a cancelled countdown still froze the screen")
             XCTAssertEqual(box.disk.written, 0, "\(way): a cancelled countdown still wrote a file")
-            XCTAssertEqual(box.ticks.count, 1, "\(way): the countdown went on counting after it was cancelled")
+            XCTAssertEqual(box.ticks.value, 1, "\(way): the countdown went on counting after it was cancelled")
         }
     }
 
@@ -177,7 +153,7 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
         let box = try rig(timer: .five) { ticks in { _ in ticks.bump(); try await Task.sleep(for: .seconds(3600)) } }
         box.controller.begin(.panel)
         box.controller.capture(from: .screen)
-        await waitUntil("the countdown started") { box.ticks.count == 1 }
+        await waitUntil("the countdown started") { box.ticks.value == 1 }
         box.controller.cancel()
         await grace(0.2)
         XCTAssertEqual(box.capture.freezes, 0)
@@ -194,7 +170,7 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
         box.controller.begin(.panel)
         box.controller.begin(.panel)
         box.controller.begin(.fullScreen)
-        XCTAssertEqual(box.shown.count, 1, "a second panel press raised a second bar")
+        XCTAssertEqual(box.shown.value, 1, "a second panel press raised a second bar")
         box.controller.capture(from: .screen)
         box.controller.capture(from: .screen)
         await gate.reached()

@@ -11,9 +11,48 @@ import SystemConfiguration
 
 /// Production `VPNRunnerPort`: shells out to `/usr/sbin/scutil`.
 public final class ScutilRunner: VPNRunnerPort {
-    public init() {}
+    init() {}
     public func run(_ args: [String]) -> HelmProcess.Result {
         HelmProcess.run("/usr/sbin/scutil", args)
+    }
+    /// The query form: a `scutil` still running at `timeout` is terminated and
+    /// the answer is `HelmProcess.timedOutStatus` with no output.
+    public func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result {
+        HelmProcess.run("/usr/sbin/scutil", args, timeout: timeout)
+    }
+
+    /// The start that carries a secret, in this process: `scutil --nc start`
+    /// takes `--user`, `--password` and `--secret` only as arguments, which every
+    /// process of this user can read while the child lives.
+    ///
+    /// Called on the module's work queue like `run`, and it does not block:
+    /// `SCNetworkConnectionStart` hands the start to the system and returns
+    /// (`linger` true, or the start would be undone when `connection` is
+    /// released at the end of this function). Nothing here is logged: a name
+    /// would be, and the answer is a code.
+    public func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer {
+        // Unreadable and absent are different news: only a list that was read
+        // and held no such name is `.noSuchService`.
+        guard let prefs = SCPreferencesCreate(nil, "Helm" as CFString, nil),
+              let set = SCNetworkSetCopyCurrent(prefs),
+              let services = SCNetworkSetCopyServices(set) as? [SCNetworkService]
+        else { return .unreadable }
+        guard let service = services.first(where: { SCNetworkServiceGetName($0) as String? == name })
+        else { return .noSuchService }
+        guard let serviceID = SCNetworkServiceGetServiceID(service),
+              let connection = SCNetworkConnectionCreateWithServiceID(nil, serviceID, nil, nil)
+        else { return .unreadable }
+        // `scutil` hands over by the service's own interface type; a PPP service
+        // says nothing about its transport, the interface under it does.
+        let outer = SCNetworkServiceGetInterface(service)
+        let kind = outer.flatMap { SCNetworkInterfaceGetInterfaceType($0) as String? } ?? ""
+        let inner = outer.flatMap { SCNetworkInterfaceGetInterface($0) }
+            .flatMap { SCNetworkInterfaceGetInterfaceType($0) as String? }
+        let options = VPNStartOptions.userOptions(credentials, interface: kind, inner: inner)
+        guard SCNetworkConnectionStart(connection, options as CFDictionary?, true) else {
+            return .refused(code: SCError())
+        }
+        return .started
     }
 }
 
@@ -25,7 +64,7 @@ public final class ScutilRunner: VPNRunnerPort {
 public final class WorkspaceAppObserver: AppObserverPort {
     private var observation: NSKeyValueObservation?
 
-    public init() {}
+    init() {}
 
     /// Through `RunningApps`, never straight to AppKit: the engine calls this
     /// from its own serial queue, and reading the live list from there
@@ -46,12 +85,18 @@ public final class WorkspaceAppObserver: AppObserverPort {
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         // No .initial: the engine seeds already-running apps itself, so firing
         // on registration would just cause a redundant full app-list scan.
+        observation?.invalidate()
         observation = NSWorkspace.shared.observe(\.runningApplications) { _, _ in
             // KVO arrives on the thread that changed the list — the main one.
             // The snapshot is taken here, while it is safe to read, so that the
             // engine's queue has something correct to read a moment later.
             RunningApps.shared.refreshOnMain(then: onChange)
         }
+    }
+
+    public func stopObserving() {
+        observation?.invalidate()
+        observation = nil
     }
 }
 
@@ -73,8 +118,8 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
     /// when the session goes — measured, not assumed: one retain on create, one
     /// release on drop. So a notification already sitting on the queue when the
     /// module is switched off resolves to a live object rather than to freed
-    /// memory, which is what ARCHITECTURE.md § "An observer outlives the thing
-    /// it points at" is about. Clearing the action is what makes that late
+    /// memory, which is what (ARCHITECTURE.md § "An observer outlives the thing
+    /// it points at") is about. Clearing the action is what makes that late
     /// notification a no-op.
     private final class Sink: @unchecked Sendable {
         private let lock = NSLock()
@@ -91,7 +136,7 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
     /// its own serial queue to run `scutil` anyway.
     private let queue = DispatchQueue(label: "helm.vpn.network", qos: .utility)
 
-    public init() {}
+    init() {}
     deinit { stopObserving() }
 
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
@@ -156,20 +201,62 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
 // MARK: - KeychainCredentials
 
 /// Production `VPNCredentialsPort`: reads the shared-secret/password an
-/// L2TP/IPSec VPN needs so `scutil --nc start` connects silently instead of
-/// prompting for the IPSec shared secret.
+/// L2TP/IPSec VPN needs, so that a start does not prompt for the IPSec shared
+/// secret.
 ///
 /// macOS gates every read of a VPN secret in the System keychain by a
 /// third-party app behind a prompt (System Settings is exempt as an Apple
 /// binary). So we read the System keychain at most ONCE, cache the values in
 /// Helm's own login-keychain items (which we can read back without a prompt),
-/// and use the cache thereafter. Returns nil for VPNs without a stored shared
-/// secret (e.g. IKEv2). Secrets stay in memory / the keychain, never logged.
+/// and use the cache thereafter. Answers `.notNeeded` for VPNs without a stored
+/// shared secret (e.g. IKEv2). Secrets stay in memory / the keychain, never logged.
 public final class KeychainCredentials: VPNCredentialsPort {
-    /// Service used for Helm's own cached copy of a VPN's credentials.
-    private let helmVPNKeychainService = "com.helm.vpn"
+    /// Service used for Helm's own cached copy of a VPN's credentials, spelled
+    /// in this one place for the cache and for its one-time purge. Both literals
+    /// are data on the owner's Mac once written and are never re-keyed: the real
+    /// Helm's is `com.helm.vpn`, Helm Dev's is `com.helm.vpn.dev`, so Dev's cache
+    /// writes never rebind the real item's access list to Dev's identity.
+    static func service(for bundleIdentifier: String?) -> String {
+        AppBuild.isDevIdentifier(bundleIdentifier) ? "com.helm.vpn.dev" : "com.helm.vpn"
+    }
 
-    public convenience init() { self.init(purge: Self.purgeItemsWithTheOldAccessList) }
+    /// Whether this build may run the one-time purge; Helm Dev may not, the
+    /// deployed items with the old access list are the real Helm's; Dev's own
+    /// service never held any.
+    static func mayPurge(for bundleIdentifier: String?) -> Bool {
+        !AppBuild.isDevIdentifier(bundleIdentifier)
+    }
+
+    /// The keychain query for Helm's cache: every item of the service, or one
+    /// account's item. The read, the write and the purge all build it here.
+    static func cacheQuery(account: String? = nil,
+                           bundleIdentifier: String? = Bundle.main.bundleIdentifier) -> [String: Any] {
+        var q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                kSecAttrService as String: service(for: bundleIdentifier)]
+        if let account { q[kSecAttrAccount as String] = account }
+        return q
+    }
+
+    /// The purge's delete, with the keychain call as a parameter so a test can
+    /// read the query it sends without touching the keychain.
+    static func deleteEveryCacheItem(_ delete: (CFDictionary) -> OSStatus = SecItemDelete) -> OSStatus {
+        delete(cacheQuery() as CFDictionary)
+    }
+
+    /// Asks `scutil --nc show` through the module's runner, so the read has the
+    /// same deadline and the same seam as every other.
+    private let runner: VPNRunnerPort
+
+    /// How long the System-keychain read may wait. The read can sit behind a
+    /// dialog a person is reading, so this is long: it bounds a hang, not the
+    /// person. Without it a dialog nobody answers parks `VPNWorkQueue` for the
+    /// life of the process.
+    static let systemKeychainDeadline: TimeInterval = 600
+
+    private let keychainTool: String
+    private let keychainDeadline: TimeInterval
+
+    convenience init() { self.init(purge: Self.purgeItemsWithTheOldAccessList) }
 
     /// The purge as an action, so a test can watch when it runs without ever
     /// reaching a keychain.
@@ -181,7 +268,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// than public: no other target may forget which one it is taking.
     ///
     /// **And it runs off the thread that built this.** That thread is the main
-    /// one — `VPNDescriptor.makeEngine` is `@MainActor` and builds
+    /// one — `VPNDescriptor.makeModule` is `@MainActor` and builds
     /// `VPNSystemPorts()` while the module list is assembled — so a
     /// `SecItemDelete` there is a launch-time keychain call, the family of the
     /// 19,09 s hang fixed in 4dcc5fb6, and on an ad-hoc-signed bundle a dialog
@@ -195,7 +282,15 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// holds whatever thread it is on for as long as a person looks at it,
     /// which is the one thing the cooperative pool's thread-per-core must never
     /// be spent on.
-    init(purge: @escaping @Sendable () -> Void) {
+    ///
+    /// The tool and its deadline are parameters so a test can put a stub that
+    /// sleeps in place of `security` and wait a second instead of ten minutes.
+    init(purge: @escaping @Sendable () -> Void, runner: VPNRunnerPort = ScutilRunner(),
+         keychainTool: String = "/usr/bin/security",
+         keychainDeadline: TimeInterval = KeychainCredentials.systemKeychainDeadline) {
+        self.runner = runner
+        self.keychainTool = keychainTool
+        self.keychainDeadline = keychainDeadline
         DispatchQueue.global(qos: .utility).async(execute: purge)
     }
 
@@ -210,14 +305,21 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// on every `swift test` run with a latch that could not remember it had.
     private static func purgeItemsWithTheOldAccessList() {
         let marker = CredentialCachePurge.markerURL
-        let fm = FileManager.default
         // The bundle question first, so a test runner reaches neither the disk nor
         // the keychain.
         guard CredentialCachePurge.shouldRun(bundledApp: AppBuild.isBundledApp,
-                                             recorded: fm.fileExists(atPath: marker.path))
+                                             recorded: FileManager.default.fileExists(atPath: marker.path))
         else { return }
-        let status = SecItemDelete([kSecClass as String: kSecClassGenericPassword,
-                                    kSecAttrService as String: "com.helm.vpn"] as CFDictionary)
+        purgeTheCache(bundleIdentifier: Bundle.main.bundleIdentifier, marker: marker)
+    }
+
+    /// The deleting and the recording, with the keychain call and the marker as
+    /// parameters so a test reads the query sent without a keychain. A build that
+    /// may not purge (Helm Dev) sends nothing and records nothing.
+    static func purgeTheCache(bundleIdentifier: String?, marker: URL,
+                              delete: (CFDictionary) -> OSStatus = SecItemDelete) {
+        guard mayPurge(for: bundleIdentifier) else { return }
+        let status = KeychainCredentials.deleteEveryCacheItem(delete)
         // Only once it is actually gone. Helm starts at login, when the keychain
         // can still be locked (`errSecInteractionNotAllowed`); marking the purge
         // done first would leave the readable-by-anything item in place forever,
@@ -238,8 +340,24 @@ public final class KeychainCredentials: VPNCredentialsPort {
         }
     }
 
+    /// Answers `.unreadable` when `--nc show` timed out or exited non-zero (a
+    /// warning names the status or the timeout, the name redacted);
+    /// `.notNeeded` only for a show that ran to the end and kept no secret —
+    /// no `AuthPassword` field, or no output at all.
     public func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentialRead {
-        let show = HelmProcess.run("/usr/sbin/scutil", ["--nc", "show", name]).output
+        let shown = runner.read(["--nc", "show", name], timeout: vpnReadDeadline)
+        // A read that ran out of time or failed is not an empty one: nobody knows
+        // whether a secret is kept, and a connect that went without it would
+        // report success whether it worked or not (`--nc start` answers nothing
+        // either way) — so a rule connect recorded and announced "connected" with
+        // no tunnel. The engine neither starts nor announces on `.unreadable`.
+        if shown.status != 0 {
+            HelmLog.shared.warn(VPNEngine.moduleID, "the configuration of \(Redact.vpn(name)) could not be read "
+                + "(\(vpnReadFailureReason(shown.status))); "
+                + "the secret is not known")
+            return .unreadable
+        }
+        let show = shown.output
         // No `AuthPassword` line: this configuration keeps no secret Helm has to
         // supply, and `--nc start` connects it on its own. `.notNeeded` rather
         // than the nil this used to be — see `VPNCredentialRead`, and the
@@ -279,15 +397,15 @@ public final class KeychainCredentials: VPNCredentialsPort {
                 + "automatic connect does not ask the System keychain")
             return .behindAPrompt
         }
-        let secret = Self.keychainSecret(service: "\(uuid).SS", account: nil,
-                                         keychain: "/Library/Keychains/System.keychain")
+        let secret = keychainSecret(service: "\(uuid).SS", account: nil,
+                                    keychain: "/Library/Keychains/System.keychain")
         // Still `.behindAPrompt`: there *is* a secret — the configuration named
         // the keychain item that holds it — and this read did not come back with
         // it. A declined dialog and a locked keychain both land here, and both
         // leave the same fact behind for the screen to say.
         guard let secret, !secret.isEmpty else { return .behindAPrompt }
-        let password = Self.keychainSecret(service: uuid, account: authName,
-                                           keychain: "/Library/Keychains/System.keychain")
+        let password = keychainSecret(service: uuid, account: authName,
+                                      keychain: "/Library/Keychains/System.keychain")
 
         // 3. Cache in Helm's login keychain so future connects need no prompt.
         helmCacheWrite("\(uuid).ss", secret)
@@ -297,9 +415,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
     }
 
     private func query(_ account: String) -> [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: helmVPNKeychainService,
-         kSecAttrAccount as String: account]
+        Self.cacheQuery(account: account)
     }
 
     /// What a read of Helm's own cache found — **three answers, for the reason
@@ -311,11 +427,10 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// new identity in every build. A caller that cannot tell them apart reports
     /// «no cached credentials» for a cache that is full.
     ///
-    /// **`KeychainSealKey.Read` in `HelmRuntime` is this same triage**, down to the
-    /// `errSecItemNotFound` branch and the `HelmFailure.osStatus` line — the second
-    /// spelling of it, and therefore a hoist that is owed rather than a shape to
-    /// copy a third time. Not taken here: it would refactor an untested,
-    /// security-critical read outside this fix.
+    /// **`KeychainItem.read` in `HelmRuntime` is this same triage**, and it stays a
+    /// second spelling on purpose: this read is an untested, security-critical
+    /// path the VPN area keeps as it is, and moving it would change it outside
+    /// the fix that wrote it.
     ///
     /// **What this cannot tell you**, and it matters for the rule above about
     /// automatic connects never summoning a dialog: whether macOS raises the
@@ -382,7 +497,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// available yet: it needs the flag on the write, the read *and* the delete
     /// (they must agree or the read stops finding the write), and it needs an
     /// `application-identifier` entitlement this ad-hoc-signed bundle has not got
-    /// — the same Developer ID already blocking `NEVPNManager`, the seal on
+    /// — the same Developer ID already blocking the seal on
     /// `clamshellEnabled` and notarization. It would also be a change to the
     /// credential path that cannot be tested without writing to somebody's real
     /// keychain. `ASecretsProtectionIsNotClaimedTwiceTests` holds the pair
@@ -412,14 +527,21 @@ public final class KeychainCredentials: VPNCredentialsPort {
     }
 
     /// Reads a generic password value (`security -w`) from `keychain` (nil = the
-    /// default/login keychain). Returns nil if absent or unreadable. Never logs
+    /// default/login keychain). Returns nil if absent, unreadable or not answered
+    /// within `keychainDeadline`; a timeout is logged, with no name. Never logs
     /// the value.
-    private static func keychainSecret(service: String, account: String?, keychain: String?) -> String? {
+    private func keychainSecret(service: String, account: String?, keychain: String?) -> String? {
         var args = ["find-generic-password", "-w", "-s", service]
         if let account, !account.isEmpty { args += ["-a", account] }
         if let keychain { args.append(keychain) }
-        let result = HelmProcess.run("/usr/bin/security", args)
-        guard result.status == 0 else { return nil }
+        let result = HelmProcess.run(keychainTool, args, timeout: keychainDeadline)
+        guard result.status == 0 else {
+            if result.status == HelmProcess.timedOutStatus {
+                HelmLog.shared.warn(VPNEngine.moduleID, "the System keychain did not answer within "
+                    + "\(Int(keychainDeadline)) s; the secret is not known")
+            }
+            return nil
+        }
         let value = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
     }
@@ -506,8 +628,7 @@ public final class TraceExit: VPNExitPort {
 
     /// The phase is named here rather than by the caller: this is the shared path
     /// every exit check goes through, and a wait of up to eight seconds should say
-    /// what it is while it runs (CLAUDE.md § What not to do, and what breaks if you
-    /// do).
+    /// what it is while it runs (ARCHITECTURE.md § The activity registry).
     public func regionCode() async -> String? {
         await HelmActivity.phase("vpn.exit") {
             guard let (data, response) = try? await session.data(from: url),
@@ -595,7 +716,7 @@ public final class NetworkQualitySpeed: VPNSpeedPort {
             // exits **0**, and carries no throughput keys at all. So this guard
             // catches only the tool that could not be launched or was killed at
             // its deadline; what refuses an answer that is not one is the
-            // parser's «every field or nothing», which is where the check
+            // parser's «both throughput figures or nothing», which is where the check
             // belongs — the tool has more ways to fail successfully than a
             // status can enumerate.
             guard result.status == 0 else { return nil }

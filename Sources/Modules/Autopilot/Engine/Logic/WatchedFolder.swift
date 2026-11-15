@@ -28,7 +28,7 @@ public struct WatchedFolder: Codable, Equatable, Identifiable, Sendable {
 
     /// The rules that would actually run: a folder switched off runs none of
     /// them, whatever each rule's own switch says.
-    public var activeRules: [Rule] { enabled ? rules : [] }
+    var activeRules: [Rule] { enabled ? rules : [] }
 
     /// This folder as a dry run of one rule has to see it: the whole list, in
     /// the order it is read, with the rule being written in its own place and
@@ -60,8 +60,8 @@ public struct WatchedFolder: Codable, Equatable, Identifiable, Sendable {
 }
 
 /// What a sweep did, per folder.
-public struct SweepReport: Codable, Equatable, Sendable {
-    public let folderID: String
+public struct SweepReport: Equatable, Sendable {
+    let folderID: String
     public let examined: Int
     public let acted: Int
     public let refused: Int
@@ -71,7 +71,7 @@ public struct SweepReport: Codable, Equatable, Sendable {
     /// permission, and the person is owed which.
     public let folder: FolderState
 
-    public init(folderID: String, examined: Int, acted: Int, refused: Int, failed: Int,
+    init(folderID: String, examined: Int, acted: Int, refused: Int, failed: Int,
                 folder: FolderState = .read) {
         self.folderID = folderID
         self.examined = examined

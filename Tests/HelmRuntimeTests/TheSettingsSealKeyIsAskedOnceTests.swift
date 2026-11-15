@@ -30,11 +30,34 @@ final class TheSettingsSealKeyIsAskedOnceTests: XCTestCase {
     func testTheKeychainItemIsTheOneThatShipped() throws {
         let source = try sealKeySource()
 
-        XCTAssertTrue(source.contains(#"service: "com.helm.app""#),
+        XCTAssertTrue(source.contains(#"static let service = "com.helm.app""#),
                       "the app's own namespace, deliberately not Autopilot's")
-        XCTAssertTrue(source.contains(#"account: "settings-seal""#))
+        XCTAssertTrue(source.contains(#""settings-seal""#))
         XCTAssertTrue(source.contains(#"category: "scan""#),
                       "the log category names the feature that lost its key")
+    }
+
+    /// The deployed account is what everything but Helm Dev reads; Dev has an
+    /// account of its own so its saves never touch the installed Helm's item.
+    func testOnlyHelmDevSealsUnderAnAccountOfItsOwn() {
+        for identifier in [Optional("com.helm.app"), nil, "com.apple.dt.xctest.tool"] {
+            XCTAssertEqual(SettingsSealItems.of(bundle: identifier).account, "settings-seal")
+        }
+        XCTAssertEqual(SettingsSealItems.of(bundle: "com.helm.app.dev").account, "dev-settings-seal")
+        XCTAssertEqual(SettingsSealItems.service, "com.helm.app")
+    }
+
+    /// The mapping above is only worth its test if the item is built over it: a
+    /// call site that spells the account out again puts Helm Dev back on the
+    /// installed Helm's keychain item, and the mapping stays green.
+    func testTheItemIsBuiltOverTheMapping() throws {
+        let code = try RepoSource.lines(of: "Sources/HelmRuntime/SettingsSealKey.swift")
+            .map(RepoSource.code)
+            .joined(separator: "\n")
+
+        XCTAssertTrue(code.contains("service: SettingsSealItems.service"))
+        XCTAssertTrue(code.contains("account: SettingsSealItems.of(bundle: Bundle.main.bundleIdentifier).account"),
+                      "the account must come from the mapping, with the running bundle's identifier")
     }
 
     /// And nowhere else. Two spellings of one item is the defect this file is

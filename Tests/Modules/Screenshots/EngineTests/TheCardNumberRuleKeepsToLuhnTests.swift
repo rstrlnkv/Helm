@@ -3,6 +3,7 @@ import XCTest
 
 /// **Helm's own card-number rule**: thirteen to nineteen ASCII digits, in groups with one space or hyphen
 /// between them, that pass the Luhn check — and what it deliberately does not find.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/CardNumbers.swift`: `doubled > 9 ? doubled - 9 : doubled` -> `doubled > 9 ? doubled - 8 : doubled`.
 final class TheCardNumberRuleKeepsToLuhnTests: XCTestCase {
 
     private func found(in text: String) -> [String] {

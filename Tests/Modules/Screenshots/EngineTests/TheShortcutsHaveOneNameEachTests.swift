@@ -6,6 +6,7 @@ import XCTest
 /// refused it; the prefix is where the combination lives in the module's store.
 /// Two shortcuts sharing either would be one shortcut drawn twice, and a prefix
 /// that moved would forget somebody's combination without a word.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/ScreenshotsHotkey.swift`: `"\(rawValue)Hotkey"` -> `"\(rawValue)Key"`.
 final class TheShortcutsHaveOneNameEachTests: XCTestCase {
 
     func testEveryNameIsUniqueAndBelongsToThisModule() {

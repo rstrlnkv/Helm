@@ -12,49 +12,15 @@ import XCTest
 ///
 /// These assert on *which paths* the scan claims, never on how many, because
 /// the count is satisfied by any two of them.
-private struct GlobFS: FileSystemPort {
-    /// Everything that exists, path → size.
-    let entries: [String: Int]
-    func exists(_ url: URL) -> Bool { entries[url.path] != nil }
-    func size(_ url: URL) -> Int { entries[url.path] ?? 0 }
-    /// A real resolution against siblings, which is what the system port does —
-    /// a fake that answers `[]` cannot see this defect at all.
-    func glob(_ pattern: URL) -> [URL] {
-        let dir = pattern.deletingLastPathComponent().path
-        let name = pattern.lastPathComponent
-        return entries.keys
-            .filter { ($0 as NSString).deletingLastPathComponent == dir }
-            .filter { GlobMatch.matches(($0 as NSString).lastPathComponent, pattern: name) }
-            .sorted()
-            .map { URL(fileURLWithPath: $0) }
-    }
-    func children(of url: URL) -> [URL] {
-        entries.keys
-            .filter { ($0 as NSString).deletingLastPathComponent == url.path }
-            .sorted()
-            .map { URL(fileURLWithPath: $0) }
-    }
-}
-
-private struct Installed: AppLister {
-    let ids: Set<String>
-    func installedApps() -> [InstalledApp] {
-        ids.map { InstalledApp(name: $0, bundleID: $0, path: "/Applications/\($0).app", sizeBytes: 0) }
-    }
-    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-    func installedBundleIDs() -> Set<String> { ids }
-    func isKnownToSystem(bundleID: String) -> Bool { ids.contains(bundleID) }
-}
-
 final class SiblingPrefixTests: XCTestCase {
     private let lib = "/Users/x/Library"
 
     private func scan(_ id: String, installed: Set<String>, entries: [String: Int]) async throws -> ScanResult {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                       apps: Installed(ids: installed),
-                                       fs: GlobFS(entries: entries),
+                                       apps: FakeApps.installed(installed),
+                                       fs: GlobbingFS(entries: entries),
                                        trash: NoTrash(), running: NoRunning())
-        return try await engine.scan(bundleID: id, appPath: "/Applications/Tool.app", appName: "Tool")
+        return await engine.scan(bundleID: id, appName: "Tool")
     }
 
     /// The trap. `com.acme.toolPro` is installed and has a container of its own;

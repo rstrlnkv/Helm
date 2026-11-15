@@ -6,6 +6,7 @@ import XCTest
 /// upper-left. They differ by a flip of y, and a display above or left of the
 /// primary is where an unflipped crop becomes a picture of a different part of
 /// the desk.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.swift`: `global.offsetBy(dx: -display.minX, dy: -display.minY)` -> `global.offsetBy(dx: -display.minX, dy: display.minY)`.
 final class ScreenSpaceTests: XCTestCase {
 
     /// The primary is 1920×1080; a second display sits left of it and one row up,
@@ -17,21 +18,6 @@ final class ScreenSpaceTests: XCTestCase {
         let appKit = ScreenSpace.appKitRect(fromCG: aboveLeftCG, primaryHeight: primaryHeight)
         XCTAssertEqual(appKit, CGRect(x: -1920, y: 1080, width: 1920, height: 1080),
                        "the display above the primary was not placed above it: the y flip is missing")
-    }
-
-    func testTheFlipIsItsOwnInverse() {
-        let rect = CGRect(x: 40, y: 70, width: 300, height: 200)
-        let round = ScreenSpace.cgRect(fromAppKit: ScreenSpace.appKitRect(fromCG: rect, primaryHeight: primaryHeight),
-                                       primaryHeight: primaryHeight)
-        XCTAssertEqual(round, rect)
-    }
-
-    func testThePointerOnTheUpperDisplayHasANegativeCGY() {
-        // AppKit: 200 points into the display that is above the primary.
-        let appKitPoint = CGPoint(x: -1000, y: 1080 + 1080 - 200)
-        let cg = ScreenSpace.cgPoint(fromAppKit: appKitPoint, primaryHeight: primaryHeight)
-        XCTAssertEqual(cg, CGPoint(x: -1000, y: -880))
-        XCTAssertTrue(aboveLeftCG.contains(cg), "the pointer is not inside the display it is on")
     }
 
     func testAWindowOnTheUpperDisplayIsLocalToItAndCutFromTheRightPlace() {

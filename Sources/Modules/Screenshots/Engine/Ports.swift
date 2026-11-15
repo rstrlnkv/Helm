@@ -8,12 +8,12 @@ import HelmRuntime
 // proves nothing about what a denied grant does.
 
 /// Whether this process may read the screen.
-public enum CaptureAccess: Sendable, Equatable {
+enum CaptureAccess: Sendable, Equatable {
     case granted, denied
 }
 
 /// What taking the frozen frame came back with.
-public enum FreezeOutcome: @unchecked Sendable {
+enum FreezeOutcome: @unchecked Sendable {
     case frozen(Freeze)
     /// The grant was withdrawn between the preflight and the capture. macOS can
     /// do that, and the answer is a refusal and not an empty file: the pictures
@@ -23,7 +23,7 @@ public enum FreezeOutcome: @unchecked Sendable {
 }
 
 /// What asking for one window came back with.
-public enum WindowShot: @unchecked Sendable {
+enum WindowShot: @unchecked Sendable {
     /// The window's own pixels — its shadow unless the caller asked for none, a transparent background, and
     /// whatever covers it left out. **A protected window comes back black, and
     /// that is this case:** macOS hands the same black to every program, and the
@@ -41,7 +41,7 @@ public enum WindowShot: @unchecked Sendable {
 /// reasons, because a window that closed and a grant that was withdrawn are
 /// acted on differently — the first is cut from the freeze, the second ends the
 /// capture.
-public protocol ScreenCapturing: Sendable {
+protocol ScreenCapturing: Sendable {
     /// A reading that never prompts.
     func access() -> CaptureAccess
     /// Asks macOS for the grant, once per installation. A process that has been
@@ -81,14 +81,14 @@ public enum WriteRefusal: Sendable, Equatable {
 /// would not do: a program that writes into the file in place keeps the inode, so the size and the modification time
 /// are compared too. The time is carried as the two integers `stat` gives, never added up.
 public struct ShotReading: Sendable, Equatable {
-    public let identity: PathCanonical.FileIdentity
-    public let size: Int64
-    public let modifiedSeconds: Int64
-    public let modifiedNanoseconds: Int64
+    let identity: PathCanonical.FileIdentity
+    let size: Int64
+    let modifiedSeconds: Int64
+    let modifiedNanoseconds: Int64
     /// False for a link, a folder and everything else that is not a plain file.
-    public let isRegularFile: Bool
+    let isRegularFile: Bool
 
-    public init(identity: PathCanonical.FileIdentity, size: Int64, modifiedSeconds: Int64,
+    init(identity: PathCanonical.FileIdentity, size: Int64, modifiedSeconds: Int64,
                 modifiedNanoseconds: Int64, isRegularFile: Bool) {
         self.identity = identity
         self.size = size
@@ -98,8 +98,8 @@ public struct ShotReading: Sendable, Equatable {
     }
 
     /// What `fstat` or `lstat` answered.
-    public init(_ info: stat) {
-        self.init(identity: PathCanonical.FileIdentity(device: UInt64(bitPattern: Int64(info.st_dev)), inode: info.st_ino),
+    init(_ info: stat) {
+        self.init(identity: PathCanonical.FileIdentity(status: info),
                   size: Int64(info.st_size), modifiedSeconds: Int64(info.st_mtimespec.tv_sec),
                   modifiedNanoseconds: Int64(info.st_mtimespec.tv_nsec),
                   isRegularFile: info.st_mode & S_IFMT == S_IFREG)
@@ -117,14 +117,9 @@ public struct WrittenShot: Sendable, Equatable {
     }
 }
 
-public enum ShotWrite: Sendable, Equatable {
+enum ShotWrite: Sendable, Equatable {
     case written(WrittenShot)
     case refused(WriteRefusal)
-
-    /// The file that was written, nil for a refusal.
-    public var url: URL? {
-        if case .written(let shot) = self { shot.url } else { nil }
-    }
 }
 
 /// Writing one picture into a folder without ever replacing a file.
@@ -133,7 +128,7 @@ public enum ShotWrite: Sendable, Equatable {
 /// are in ("png", "jpg"); the port finds the first free one with `ShotNames.candidate`, and **a name taken is not an error**. The
 /// answer is the file actually written, because the name asked for may not be it, with the reading of it taken
 /// from the descriptor it was written through, before it was given its name.
-public protocol ShotWriting: Sendable {
+protocol ShotWriting: Sendable {
     func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite
     /// What is at `url` now, by `lstat`: a link answers for itself, not for what it points at. **Every reason there
     /// is nothing to read is `nil`:** no such name, a folder above it gone, a folder above it that may not be
@@ -148,18 +143,18 @@ public protocol ShotWriting: Sendable {
 /// The move to the Trash, as a port: `CaptureSession` hands it to `HelmTrash.remove` as its `trashing`, which keeps
 /// the batch's rules there and lets a fake say what was moved and when. It throws what `FileManager.trashItem`
 /// throws, because `HelmTrash` reads the error's code.
-public protocol ShotTrashing: Sendable {
+protocol ShotTrashing: Sendable {
     func trash(_ url: URL) throws
 }
 
-public enum PasteOutcome: Sendable, Equatable {
+enum PasteOutcome: Sendable, Equatable {
     case accepted, refused
 }
 
 /// The clipboard. **Every entry marks what it puts there as not for a clipboard history** (see
 /// `SystemShotPasteboard`): a picture of a screen and the words read off one are the same kind of thing, and
 /// both are often what a person did not mean to keep.
-public protocol ShotPasteboard: Sendable {
+protocol ShotPasteboard: Sendable {
     func copy(png: Data) -> PasteOutcome
     /// Several pictures in **one write**, each an item of its own, in the order given. A group copied picture by
     /// picture would be as many writes, each taking the board from the one before, and only the last would be
@@ -172,7 +167,7 @@ public protocol ShotPasteboard: Sendable {
 /// What a match found in a line of text is. This list is what the blur that finds personal text blurs, and the
 /// hint of its menu item names exactly it: a postal address is not here, because it was not measured to be found
 /// in every language, and a kind the reader finds that is not here is dropped by the reader.
-public enum PrivateKind: Sendable, Equatable {
+enum PrivateKind: Sendable, Equatable {
     case emailAddress, phoneNumber, cardNumber, link
 }
 
@@ -181,11 +176,11 @@ public enum PrivateKind: Sendable, Equatable {
 /// The engine acts alike on every kind (each is one blur), so `kind` is the reading's account of what was found and
 /// is read by the tests and the benchmark, not by a branch in `Sources`; it stays for the next one that must tell them apart.
 /// **A find that wraps over two lines is one match on its first line only** (see `VisionTextReader`).
-public struct PrivateMatch: Sendable, Equatable {
-    public let kind: PrivateKind
-    public let box: CGRect
+struct PrivateMatch: Sendable, Equatable {
+    let kind: PrivateKind
+    let box: CGRect
 
-    public init(kind: PrivateKind, box: CGRect) {
+    init(kind: PrivateKind, box: CGRect) {
         self.kind = kind
         self.box = box
     }
@@ -194,11 +189,11 @@ public struct PrivateMatch: Sendable, Equatable {
 /// One line of text as the system read it, with the matches found in it. `box` is normalised like a match's.
 /// Never in a log line and never stored: `string` is somebody's words.
 public struct RecognizedLine: Sendable, Equatable {
-    public let string: String
-    public let box: CGRect
-    public let matches: [PrivateMatch]
+    let string: String
+    let box: CGRect
+    let matches: [PrivateMatch]
 
-    public init(string: String, box: CGRect, matches: [PrivateMatch] = []) {
+    init(string: String, box: CGRect, matches: [PrivateMatch] = []) {
         self.string = string
         self.box = box
         self.matches = matches
@@ -206,7 +201,7 @@ public struct RecognizedLine: Sendable, Equatable {
 }
 
 /// What reading a picture's text came back with.
-public enum TextReading: Sendable, Equatable {
+enum TextReading: Sendable, Equatable {
     /// The lines, **in reading order**. An empty list is a reading that found nothing.
     case read([RecognizedLine])
     /// The system could not be asked, or did not answer.
@@ -220,7 +215,7 @@ public enum TextReading: Sendable, Equatable {
 /// of text. All of them are "nothing was found", and none is "there is nothing there" — a caller never says the
 /// second. `.failed` is the request throwing, being cancelled, or the system's models not being there. The
 /// call may take long the first time on a Mac, and it is awaited off the cooperative pool.
-public protocol ScreenTextReading: Sendable {
+protocol ScreenTextReading: Sendable {
     func read(_ image: CGImage) async -> TextReading
 }
 
@@ -228,8 +223,8 @@ public protocol ScreenTextReading: Sendable {
 /// `@unchecked` because a property-list value is immutable and the only things
 /// in one are value types and their immutable Foundation bridges.
 public struct RawSetting: @unchecked Sendable {
-    public let value: Any?
-    public init(_ value: Any?) { self.value = value }
+    let value: Any?
+    init(_ value: Any?) { self.value = value }
 }
 
 /// What macOS says about itself in three preference reads Helm only **reads**.
@@ -255,7 +250,7 @@ public protocol CapturePreferences: Sendable {
 /// The shutter. Fire and forget: it returns at once and says nothing, because a
 /// sound that could not be played is not worth a refusal toast. Whether to play
 /// is the session's decision (`CaptureSession.shutter`) and when is the caller's.
-public protocol ShutterPlaying: Sendable {
+protocol ShutterPlaying: Sendable {
     func play()
 }
 
@@ -265,6 +260,6 @@ public protocol ShutterPlaying: Sendable {
 /// asks for it; a Mac that has granted it to Helm for another module gets the Dock's
 /// exact bounds, any other gets `.notTrusted` and the strip. Main thread only, because
 /// it is an AppKit-side system call. `pid` is the Dock's process, from the window list.
-public protocol DockBounds: Sendable {
+protocol DockBounds: Sendable {
     func read(dockPID pid: pid_t) -> DockBoundsReading
 }

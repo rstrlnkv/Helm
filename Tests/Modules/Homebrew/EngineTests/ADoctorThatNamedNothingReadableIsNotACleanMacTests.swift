@@ -1,5 +1,4 @@
 import XCTest
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// **`brew doctor` exiting 1 is brew saying the Mac is not clean**, and an
@@ -57,14 +56,7 @@ private final class ColouringDoctor: ProcessRunner, @unchecked Sendable {
     }
 }
 
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
+/// Kept: guards the defect fixed in 4b5e0df9 feat(settings): … a Health page of its own.
 final class ADoctorThatNamedNothingReadableIsNotACleanMacTests: XCTestCase {
 
     private static let esc = "\u{1B}"

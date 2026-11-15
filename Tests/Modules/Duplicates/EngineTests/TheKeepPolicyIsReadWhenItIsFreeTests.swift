@@ -3,6 +3,34 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_Engine
 
+/// The store, the probe and the guard both halves read the keep policy through:
+/// one rig under the warm and the cold class, which stay two classes under their
+/// own names.
+class KeepPolicyCacheRig: XCTestCase {
+
+    var store: NamespacedStore!
+    var probe: SealKeyProbe!
+    /// The production wiring: the cache is what makes a warm read memory rather
+    /// than a second round trip, so a test of «if warm» without it is a test of
+    /// something the app does not have.
+    var settings: SettingGuard!
+
+    override func setUp() {
+        super.setUp()
+        store = NamespacedStore(namespace: DuplicatesEngine.moduleID,
+                                backing: InMemoryKeyValueStore())
+        probe = SealKeyProbe()
+        settings = SettingGuard(keys: SealKeyCache(probe))
+    }
+
+    /// Sealed through the probe directly, so the value is planted without warming
+    /// the cache the reading below goes through.
+    func plant(_ policy: KeepPolicy) {
+        DuplicatesSettings.setKeepPolicy(policy, in: store,
+                                         guardedBy: SettingGuard(keys: probe))
+    }
+}
+
 /// **Reading what is in force costs a keychain round trip, and one of its two
 /// readers is the thread that draws.**
 ///
@@ -17,29 +45,7 @@ import XCTest
 /// Nil is a third answer, kept apart from a broken seal on purpose. Folding them
 /// would be the same reading twice over: a slow keychain reported as a forged
 /// setting.
-final class TheKeepPolicyIsReadWhenItIsFreeTests: XCTestCase {
-
-    private var store: NamespacedStore!
-    private var probe: SealKeyProbe!
-    /// The production wiring: the cache is what makes a warm read memory rather
-    /// than a second round trip, so a test of «if warm» without it is a test of
-    /// something the app does not have.
-    private var settings: SettingGuard!
-
-    override func setUp() {
-        super.setUp()
-        store = NamespacedStore(namespace: DuplicatesEngine.moduleID,
-                                backing: InMemoryKeyValueStore())
-        probe = SealKeyProbe()
-        settings = SettingGuard(keys: SealKeyCache(probe))
-    }
-
-    /// Sealed through the probe directly, so the value is planted without warming
-    /// the cache the reading below goes through.
-    private func plant(_ policy: KeepPolicy) {
-        DuplicatesSettings.setKeepPolicy(policy, in: store,
-                                         guardedBy: SettingGuard(keys: probe))
-    }
+final class TheKeepPolicyIsReadWhenItIsFreeTests: KeepPolicyCacheRig {
 
     // MARK: - Warm
 
@@ -93,29 +99,7 @@ final class TheKeepPolicyIsReadWhenItIsFreeTests: XCTestCase {
 /// The cold half of `TheKeepPolicyIsReadWhenItIsFreeTests`: while the seal key
 /// has not been fetched, `keepPolicyIfWarm` answers nil, and does not go to the
 /// keychain to find out, because one of its two callers is the thread that draws.
-final class TheKeepPolicyIsNotAnsweredWhileTheKeyIsColdTests: XCTestCase {
-
-    private var store: NamespacedStore!
-    private var probe: SealKeyProbe!
-    /// The production wiring: the cache is what makes a warm read memory rather
-    /// than a second round trip, so a test of «if warm» without it is a test of
-    /// something the app does not have.
-    private var settings: SettingGuard!
-
-    override func setUp() {
-        super.setUp()
-        store = NamespacedStore(namespace: DuplicatesEngine.moduleID,
-                                backing: InMemoryKeyValueStore())
-        probe = SealKeyProbe()
-        settings = SettingGuard(keys: SealKeyCache(probe))
-    }
-
-    /// Sealed through the probe directly, so the value is planted without warming
-    /// the cache the reading below goes through.
-    private func plant(_ policy: KeepPolicy) {
-        DuplicatesSettings.setKeepPolicy(policy, in: store,
-                                         guardedBy: SettingGuard(keys: probe))
-    }
+final class TheKeepPolicyIsNotAnsweredWhileTheKeyIsColdTests: KeepPolicyCacheRig {
 
     // MARK: - Cold
 

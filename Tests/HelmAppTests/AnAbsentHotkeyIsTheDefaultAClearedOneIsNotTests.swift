@@ -15,19 +15,13 @@ final class AnAbsentHotkeyIsTheDefaultAClearedOneIsNotTests: XCTestCase {
 
     private let fallback = HotkeyFallback(keyCode: 18, modifiers: cmdKey | shiftKey, label: "⇧⌘1")
 
-    private func store(_ values: [String: Any] = [:]) -> NamespacedStore {
-        let backing = InMemoryKeyValueStore()
-        for (key, value) in values { backing.set(value, forKey: "module.test.\(key)") }
-        return NamespacedStore(namespace: "test", backing: backing)
-    }
-
     private func combination(_ store: NamespacedStore, fallback: HotkeyFallback? = nil,
                              isLive: Bool = true) -> HotkeyCombination? {
         HotkeyManager.combination(store: store, prefix: "hotkey", fallback: fallback, isLive: isLive)
     }
 
     func testAnAbsentKeyIsTheDefault() throws {
-        let answer = try XCTUnwrap(combination(store(), fallback: fallback), "an untouched store registered nothing")
+        let answer = try XCTUnwrap(combination(NamespacedStore.scratch(), fallback: fallback), "an untouched store registered nothing")
         XCTAssertEqual(Int(answer.code), fallback.keyCode)
         XCTAssertEqual(Int(answer.modifiers), fallback.modifiers)
     }
@@ -46,6 +40,17 @@ final class AnAbsentHotkeyIsTheDefaultAClearedOneIsNotTests: XCTestCase {
         // And a row built afterwards, as a page reopened, draws the empty one too.
         XCTAssertEqual(HelmHotkeyRecorder(store: store, prefix: "hotkey", fallbackLabel: fallback.label).label, "",
                        "a reopened page showed the default the person had cleared")
+    }
+
+    /// What `clear()` leaves in the store, key by key: an assigned shortcut then a cleared one.
+    func testClearingWritesEachOfTheThreeKeys() {
+        let store = NamespacedStore.scratch()
+        let recorder = HelmHotkeyRecorder(store: store, prefix: "hotkey", fallbackLabel: fallback.label)
+        recorder.assign(keyCode: 21, carbonModifiers: cmdKey | shiftKey, label: "⇧⌘4")
+        recorder.clear()
+        XCTAssertEqual(store.int("hotkeyKeyCode", default: 99), -1)
+        XCTAssertEqual(store.int("hotkeyModifiers", default: 99), 0)
+        XCTAssertEqual(store.string("hotkeyLabel", default: "x"), "")
     }
 
     func testARecordedCombinationIsWhatWasRecorded() throws {
@@ -68,7 +73,7 @@ final class AnAbsentHotkeyIsTheDefaultAClearedOneIsNotTests: XCTestCase {
             heard.count += 1
         }
         defer { NotificationCenter.default.removeObserver(token) }
-        let recorder = HelmHotkeyRecorder(store: NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore()),
+        let recorder = HelmHotkeyRecorder(store: NamespacedStore.scratch(),
                                           prefix: "hotkey", fallbackLabel: fallback.label)
         recorder.assign(keyCode: 21, carbonModifiers: cmdKey | shiftKey, label: "⇧⌘4")
         XCTAssertEqual(heard.count, 1, "assign() did not tell the host")
@@ -77,7 +82,7 @@ final class AnAbsentHotkeyIsTheDefaultAClearedOneIsNotTests: XCTestCase {
     }
 
     func testAModuleWithNoDefaultRegistersNothingWhenNothingWasRecorded() {
-        XCTAssertNil(combination(store(), fallback: nil),
+        XCTAssertNil(combination(NamespacedStore.scratch(), fallback: nil),
                      "a binding with no default registered a combination nobody chose")
     }
 
@@ -85,7 +90,7 @@ final class AnAbsentHotkeyIsTheDefaultAClearedOneIsNotTests: XCTestCase {
     /// the file can say reaches Carbon's conversion unbounded.
     func testAStoredPairThatIsNotACombinationIsNothing() {
         for (key, modifiers) in [(Int.max, 256), (-5, 256), (20, 0), (20, -1), (20, Int.max), (999, 256)] {
-            XCTAssertNil(combination(store(["hotkeyKeyCode": key, "hotkeyModifiers": modifiers]), fallback: fallback),
+            XCTAssertNil(combination(NamespacedStore.scratch(["hotkeyKeyCode": key, "hotkeyModifiers": modifiers]), fallback: fallback),
                          "\(key) / \(modifiers)")
         }
     }

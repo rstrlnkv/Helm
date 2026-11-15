@@ -105,7 +105,7 @@ final class TheMainThreadNeverWaitsForTheKeychainTests: XCTestCase {
         let gate = DispatchSemaphore(value: 0)
         let source = SealKeyProbe(gate: gate)
         let cache = SealKeyCache(source)
-        let box = KeyBox()
+        let box = Locked<SealKey??>(nil)  // what a background caller answered, across a queue boundary
 
         let fetchReturned = expectation(description: "the fetch returned")
         DispatchQueue.global().async {
@@ -116,11 +116,11 @@ final class TheMainThreadNeverWaitsForTheKeychainTests: XCTestCase {
 
         let answered = expectation(description: "the second caller was answered")
         DispatchQueue.global().async {
-            box.put(cache.keyIfWarm())
+            box.value = .some(cache.keyIfWarm())
             answered.fulfill()
         }
         wait(for: [answered], timeout: 2)
-        XCTAssertNil(box.taken ?? nil, "a key was handed out that no fetch had stored")
+        XCTAssertNil(box.value ?? nil, "a key was handed out that no fetch had stored")
 
         gate.signal()
         wait(for: [fetchReturned], timeout: 5)
@@ -171,13 +171,5 @@ final class TheMainThreadNeverWaitsForTheKeychainTests: XCTestCase {
         XCTAssertNil(cache.key())
         XCTAssertNil(cache.keyIfWarm())
         XCTAssertEqual(source.reads, 1, "the warm ask went back to a keychain that had refused")
-    }
-
-    /// What a background caller answered, across a queue boundary.
-    private final class KeyBox: @unchecked Sendable {
-        private let lock = NSLock()
-        private var stored: SealKey??
-        func put(_ key: SealKey?) { lock.withLock { stored = key } }
-        var taken: SealKey?? { lock.withLock { stored } }
     }
 }

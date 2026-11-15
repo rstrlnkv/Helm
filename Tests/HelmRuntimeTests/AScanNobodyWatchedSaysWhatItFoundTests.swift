@@ -3,7 +3,7 @@ import XCTest
 
 /// What a background scan may interrupt somebody for.
 ///
-/// Three modules walk the volume twice a day and the whole user-visible product
+/// Three modules walk the volume once a day and the whole user-visible product
 /// of it was a relative date on a settings page — `ScanJournal.change(module:)`
 /// computed the delta and nothing in `Sources/` ever called it. This is the rule
 /// that decides when that delta is worth a banner, and every refusal below is a
@@ -58,7 +58,7 @@ final class AScanNobodyWatchedSaysWhatItFoundTests: XCTestCase {
     }
 
     /// Space that was *freed* is not news either, and it is the case a rule
-    /// written against `isSomething` alone would get wrong: the person emptied
+    /// that asked only whether anything changed would get wrong: the person emptied
     /// their Downloads folder and Helm congratulated them for it.
     func testSpaceThatWentIsNotAnnounced() {
         let freed = change(previous: [item("/gone", 90_000_000_000)], current: [])

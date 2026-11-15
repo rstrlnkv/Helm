@@ -13,6 +13,8 @@ import XCTest
 ///
 /// The three log lines the owner's Mac had for this read
 /// `selection left alone: no conversion for 24 characters`.
+///
+/// Guards a past defect: a space refusing a whole selection (fix commit `bf3302b4`).
 final class ASelectionIsMoreThanOneWordTests: XCTestCase {
 
     /// Toy tables, in the shape `UCTranslation.buildTable` produces: key code →

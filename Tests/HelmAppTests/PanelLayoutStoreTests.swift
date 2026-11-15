@@ -21,12 +21,6 @@ final class PanelLayoutStoreTests: XCTestCase {
 @MainActor
 final class PanelLayoutStoreRoundTripTests: XCTestCase {
 
-    /// In memory, always. Writing a test arrangement into the real domain
-    /// rearranges the panel of whoever runs it.
-    private func store() -> NamespacedStore {
-        NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore())
-    }
-
     /// The control for `PanelLayoutStoreTests.testTheKeyIsNotOneThatGetsPurgedAtLaunch`:
     /// the check is real, and the retired list is not empty or unreachable.
     func testTheRetiredListIsTheOneThatWouldHaveCaughtIt() {
@@ -35,13 +29,13 @@ final class PanelLayoutStoreRoundTripTests: XCTestCase {
     }
 
     func testAFreshStoreSeedsTodaysPanel() {
-        let layout = PanelLayoutStore.read(from: store(), offered: ["vpn", "disk"])
+        let layout = PanelLayoutStore.read(from: NamespacedStore.scratch(), offered: ["vpn", "disk"])
         XCTAssertEqual(layout.allSlots.map(\.widget), ["vpn", "disk"])
         XCTAssertEqual(Set(layout.allSlots.map(\.size)), [.wide])
     }
 
     func testWhatIsWrittenIsWhatIsRead() {
-        let s = store()
+        let s = NamespacedStore.scratch()
         let written = PanelLayout(tabs: [.init(id: "t", widgets: [
             .init(widget: "vpn", size: .compact), .init(widget: "disk", size: .tall),
         ])])
@@ -53,7 +47,7 @@ final class PanelLayoutStoreRoundTripTests: XCTestCase {
     /// A module that arrived with this update joins the panel the first time it
     /// is opened, without anything being rearranged first.
     func testAModuleThatArrivedWithThisBuildJoins() {
-        let s = store()
+        let s = NamespacedStore.scratch()
         PanelLayoutStore.write(PanelLayout(tabs: [.init(id: "t", widgets: [
             .init(widget: "vpn", size: .compact),
         ])]), to: s)
@@ -64,7 +58,7 @@ final class PanelLayoutStoreRoundTripTests: XCTestCase {
     /// Bytes that are not a layout at all — a half-written save, or a key that
     /// used to mean something else — read as the seed rather than as nothing.
     func testRubbishInTheStoreReadsAsTheSeed() {
-        let s = store()
+        let s = NamespacedStore.scratch()
         s.set(Data("not a layout".utf8), for: PanelLayoutStore.key)
         XCTAssertEqual(PanelLayoutStore.read(from: s, offered: ["vpn"]).allSlots.map(\.widget),
                        ["vpn"])
@@ -74,7 +68,7 @@ final class PanelLayoutStoreRoundTripTests: XCTestCase {
     /// come back — and it is still off. The store is where the two halves meet,
     /// so it is where the regression is pinned as well as in the model.
     func testAWidgetTakenOffIsStillOffAfterARestart() {
-        let s = store()
+        let s = NamespacedStore.scratch()
         let offered = ["vpn", "disk", "keep-awake"]
         let first = PanelLayoutStore.read(from: s, offered: offered)
         PanelLayoutStore.write(first.removing("disk"), to: s)

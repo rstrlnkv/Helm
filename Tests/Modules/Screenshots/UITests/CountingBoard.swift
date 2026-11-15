@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 
 /// The clipboard of a scene that copies one picture at a time: it takes every single copy and counts it. **It was
 /// taught no group, and says so:** a group written to it fails the test that wrote it, as a port that was never

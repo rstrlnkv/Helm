@@ -34,7 +34,7 @@ import Foundation
 /// it exists to distrust: a file edited while keeping its size and mtime is the
 /// one change the key cannot see, and there the price is a deleted file rather
 /// than a slow scan.
-public final class HashCache: Codable, @unchecked Sendable {
+final class HashCache: Codable, @unchecked Sendable {
 
     /// Identity is inode, size and modification time together.
     ///
@@ -46,11 +46,11 @@ public final class HashCache: Codable, @unchecked Sendable {
         "\(fileID)-\(bytes)-\(modified.map { String(format: "%.6f", $0) } ?? "?")"
     }
 
-    public struct Digests: Codable, Equatable, Sendable {
+    struct Digests: Codable, Equatable, Sendable {
         /// The first 128 KB, which is what thins the field.
-        public var prefix: String?
+        var prefix: String?
         /// The whole file, which is what decides.
-        public var full: String?
+        var full: String?
     }
 
     /// The map as of the last compaction.
@@ -67,7 +67,7 @@ public final class HashCache: Codable, @unchecked Sendable {
     /// behaviour rather than a wrong answer.
     private let lock = NSLock()
 
-    public init(now: TimeInterval = Date().timeIntervalSince1970) {
+    init(now: TimeInterval = Date().timeIntervalSince1970) {
         settled = [:]
         fresh = [:]
         settledAt = now
@@ -80,14 +80,14 @@ public final class HashCache: Codable, @unchecked Sendable {
 
     private enum CodingKeys: String, CodingKey { case settled, fresh, settledAt }
 
-    public required init(from decoder: Decoder) throws {
+    required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         settled = try container.decode([String: Digests].self, forKey: .settled)
         fresh = try container.decode([String: Digests].self, forKey: .fresh)
         settledAt = try container.decode(TimeInterval.self, forKey: .settledAt)
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try lock.withLock {
             try container.encode(settled, forKey: .settled)
@@ -103,13 +103,13 @@ public final class HashCache: Codable, @unchecked Sendable {
     /// A `storedCount` sat beside this — everything across both segments, «what
     /// the file on disk costs» — and nothing in the app or the tests ever asked
     /// it. A figure nobody reads is not a diagnostic.
-    public var count: Int { lock.withLock { fresh.count } }
+    var count: Int { lock.withLock { fresh.count } }
 
-    public func prefix(fileID: UInt64, bytes: Int, modified: TimeInterval?) -> String? {
+    func prefix(fileID: UInt64, bytes: Int, modified: TimeInterval?) -> String? {
         promote(Self.key(fileID: fileID, bytes: bytes, modified: modified)) { $0.prefix }
     }
 
-    public func full(fileID: UInt64, bytes: Int, modified: TimeInterval?) -> String? {
+    func full(fileID: UInt64, bytes: Int, modified: TimeInterval?) -> String? {
         promote(Self.key(fileID: fileID, bytes: bytes, modified: modified)) { $0.full }
     }
 
@@ -141,13 +141,13 @@ public final class HashCache: Codable, @unchecked Sendable {
         }
     }
 
-    public func setPrefix(_ digest: String, fileID: UInt64, bytes: Int,
+    func setPrefix(_ digest: String, fileID: UInt64, bytes: Int,
                           modified: TimeInterval?) {
         let key = Self.key(fileID: fileID, bytes: bytes, modified: modified)
         lock.withLock { fresh[key, default: Digests()].prefix = digest }
     }
 
-    public func setFull(_ digest: String, fileID: UInt64, bytes: Int,
+    func setFull(_ digest: String, fileID: UInt64, bytes: Int,
                         modified: TimeInterval?) {
         let key = Self.key(fileID: fileID, bytes: bytes, modified: modified)
         lock.withLock { fresh[key, default: Digests()].full = digest }
@@ -158,7 +158,7 @@ public final class HashCache: Codable, @unchecked Sendable {
     /// Thirty days. A settled segment older than that is holding digests for
     /// files nobody has seen in a month, and the scans since have promoted
     /// everything that still exists.
-    public static let maximumAge: TimeInterval = 30 * 24 * 3600
+    static let maximumAge: TimeInterval = 30 * 24 * 3600
 
     /// `settled := fresh`, and `fresh` starts again.
     ///
@@ -166,7 +166,7 @@ public final class HashCache: Codable, @unchecked Sendable {
     /// touched — which, because every hit is promoted, is the set of files that
     /// still exist. Nothing is chosen for eviction and nothing is chosen for
     /// survival: the disk decides.
-    public func compacted(now: TimeInterval = Date().timeIntervalSince1970) -> HashCache {
+    func compacted(now: TimeInterval = Date().timeIntervalSince1970) -> HashCache {
         let out = HashCache(now: now)
         lock.withLock { out.settled = fresh }
         return out
@@ -178,7 +178,7 @@ public final class HashCache: Codable, @unchecked Sendable {
     /// Deferring it is what makes a file that left and came back cheap: its
     /// digest is still in `settled` for up to a month, so the scan that finds it
     /// again does not read it.
-    public func compactedIfStale(now: TimeInterval = Date().timeIntervalSince1970,
+    func compactedIfStale(now: TimeInterval = Date().timeIntervalSince1970,
                                  maximumAge: TimeInterval = HashCache.maximumAge) -> HashCache {
         guard lock.withLock({ now - settledAt }) > maximumAge else { return self }
         return compacted(now: now)

@@ -26,10 +26,6 @@ final class AutopilotLaunchTests: XCTestCase {
         namespace = "autopilot.test.\(UUID().uuidString)"
     }
 
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: home)
-    }
-
     private func store() -> NamespacedStore {
         NamespacedStore(namespace: namespace, backing: backing)
     }
@@ -79,16 +75,12 @@ final class AutopilotLaunchTests: XCTestCase {
         helm.deactivate()
 
         backing.raw["module.\(namespace!).folders"] = try JSONEncoder().encode(
-            [WatchedFolder(id: "planted", path: root.path, enabled: true, rules: [
-                Rule(id: "r", name: "take it", enabled: true, match: .all,
-                     conditions: [.fileExtension(["pdf"])], action: .trash),
-            ], depth: 1)])
+            emptyingRules(in: root))
         helm.sweepAll()
 
-        XCTAssertEqual((FileManager.default.enumerator(atPath: root.path)?
-            .allObjects as? [String])?.sorted(), ["statement.pdf"],
+        XCTAssertEqual(tree(under: root), ["statement.pdf"],
                        "rules planted after the first launch were adopted and run")
-        XCTAssertTrue(helm.rulesRefused)
+        XCTAssertNotNil(helm.status.refusal)
     }
 }
 
@@ -98,6 +90,8 @@ final class AutopilotLaunchTests: XCTestCase {
 /// fast machine by luck. These assert the structure instead: whether the call
 /// completes while the port has not answered at all. A port that never answers
 /// cannot be beaten by a race.
+///
+/// Past defect: fixed in 4a526944.
 final class TheLaunchNeverWaitsForTheKeyPortTests: XCTestCase {
 
     private var home: URL!
@@ -114,7 +108,6 @@ final class TheLaunchNeverWaitsForTheKeyPortTests: XCTestCase {
 
     override func tearDownWithError() throws {
         stalled.release()
-        try? FileManager.default.removeItem(at: home)
     }
 
     private func store() -> NamespacedStore {
@@ -164,23 +157,5 @@ final class TheLaunchNeverWaitsForTheKeyPortTests: XCTestCase {
 
         wait(for: [returned], timeout: 5)
         helm.deactivate()
-    }
-
-    /// The lock the prompt must not be held under. `trustLock` also answers
-    /// `rulesRefused`, which the settings page reads on the main actor: holding
-    /// it across the port call put the modal prompt between the UI and its own
-    /// state.
-    func testRefusalCanBeReadWhileTheKeyPortHasNotAnswered() throws {
-        let helm = try engineOffThread(stalled)
-        DispatchQueue.global().async { _ = helm.folders }
-        XCTAssertTrue(stalled.waitUntilAsked(), "the premise: something is inside key()")
-
-        let answered = expectation(description: "rulesRefused answered")
-        DispatchQueue.global().async {
-            _ = helm.rulesRefused
-            answered.fulfill()
-        }
-
-        wait(for: [answered], timeout: 5)
     }
 }

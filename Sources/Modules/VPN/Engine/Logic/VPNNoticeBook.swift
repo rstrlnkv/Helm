@@ -8,7 +8,9 @@ import Foundation
 ///
 /// **Absence means inherit.** The three settings this sits over — the rules'
 /// notice, a drop's notice, the ring — are single values an installed build
-/// already holds, and every card reads them until somebody changes that card.
+/// already holds, and every card reads them until somebody changes that card
+/// (a card's choice writes only its own book entry, see
+/// `VPNSettings.noticeBook`).
 /// Moving them into per-connection records would take a one-time migration
 /// keyed to whichever configuration happened to be first, and this repository
 /// has paid for one-time writes before: they run twice, or never, and the
@@ -17,7 +19,7 @@ import Foundation
 ///
 /// **Keyed by the configuration's id, never its name.** The module learned this
 /// the expensive way on the rules: a name is what somebody types in System
-/// Settings and can retype, and `VPNRules.orphaned` exists because of it.
+/// Settings and can retype, and `VPNTenants.orphaned` exists because of it.
 /// `scutil --nc list` gives each service a UUID, `VPNConnection.id` carries it,
 /// and a rename costs nothing here.
 ///
@@ -30,23 +32,23 @@ public struct VPNNoticeBook: Equatable, Codable {
     /// One configuration's overrides. Every field is optional, and `nil` is the
     /// whole mechanism: it means «this one was never set, use what the app
     /// says».
-    public struct Entry: Equatable, Codable {
-        public var notice: VPNNotice?
-        public var drop: VPNNotice?
-        public var spin: Bool?
+    struct Entry: Equatable, Codable {
+        var notice: VPNNotice?
+        var drop: VPNNotice?
+        var spin: Bool?
         /// The colour the ring turns for a tunnel going **up**, and for one
         /// going down. Two fields for three kinds, the same arithmetic
         /// `VPNSettings.spinTint` does with its two keys: the ring says which
         /// way the tunnel went, and there are two ways.
-        public var tintUp: String?
-        public var tintDown: String?
+        var tintUp: String?
+        var tintDown: String?
 
         /// **Every field optional is the mechanism, and it is also what lets an
         /// older document decode.** Swift synthesises `decodeIfPresent` for an
         /// optional property, so a book written before these two fields existed
         /// reads back with them `nil` — which means inherit. A non-optional
         /// field with a default would have thrown instead, and `JSONDecoder`
-        /// gives up on the whole document rather than the one key (CLAUDE.md).
+        /// gives up on the whole document rather than the one key (ARCHITECTURE.md § A value read back whole).
         var isEmpty: Bool {
             notice == nil && drop == nil && spin == nil
                 && tintUp == nil && tintDown == nil
@@ -55,11 +57,7 @@ public struct VPNNoticeBook: Equatable, Codable {
 
     private var entries: [String: Entry]
 
-    public init(entries: [String: Entry] = [:]) { self.entries = entries }
-
-    /// For the tests, and for a screen that wants to say «3 of your
-    /// configurations speak differently».
-    public var entryCount: Int { entries.count }
+    init(entries: [String: Entry] = [:]) { self.entries = entries }
 
     // MARK: - Reading
 
@@ -68,7 +66,7 @@ public struct VPNNoticeBook: Equatable, Codable {
     /// The kind→setting question stays `VPNNotice.mode`'s, so a teardown Helm
     /// performed and a tunnel that fell over cannot come to mean different
     /// things here than they do everywhere else.
-    public func notice(for id: String, kind: VPNAutomation.Kind,
+    func notice(for id: String, kind: VPNAutomation.Kind,
                        rules: VPNNotice, drop: VPNNotice) -> VPNNotice {
         let entry = entries[id]
         return VPNNotice.mode(for: kind,
@@ -125,18 +123,9 @@ public struct VPNNoticeBook: Equatable, Codable {
         kind.goingUp ? setting(id, tintUp: token) : setting(id, tintDown: token)
     }
 
-    /// Back to inheriting. Removes the record rather than storing agreement with
-    /// today's default — a book that grows an entry per glance pins that default
-    /// for ever.
-    public func clearing(_ id: String) -> VPNNoticeBook {
-        var copy = self
-        copy.entries[id] = nil
-        return copy
-    }
-
     // MARK: - The store
 
-    public static func encode(_ book: VPNNoticeBook) -> String {
+    static func encode(_ book: VPNNoticeBook) -> String {
         guard let data = try? JSONEncoder().encode(book.entries.filter { !$0.value.isEmpty }),
               let text = String(data: data, encoding: .utf8)
         else { return "{}" }
@@ -146,7 +135,7 @@ public struct VPNNoticeBook: Equatable, Codable {
     /// Anything that is not a book reads as an empty one, which **inherits**.
     /// The dangerous failure would be reading rubbish as silence: a person whose
     /// store was hand-edited would stop being told their tunnel fell over.
-    public static func decode(_ text: String) -> VPNNoticeBook {
+    static func decode(_ text: String) -> VPNNoticeBook {
         guard let data = text.data(using: .utf8),
               let entries = try? JSONDecoder().decode([String: Entry].self, from: data)
         else { return VPNNoticeBook() }

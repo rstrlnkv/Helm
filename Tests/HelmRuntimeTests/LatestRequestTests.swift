@@ -5,6 +5,8 @@ import XCTest
 /// down.** Two view models had counted this out by hand — Duplicates, and then
 /// Leftovers after two quick toggles were found handing `items` to the last
 /// *completion* rather than the last request.
+///
+/// Guards: 4c8bbed9 (two quick toggles handed items to the last completion, not the last request).
 final class LatestRequestTests: XCTestCase {
 
     func testTheTokenJustTakenIsTheLatest() {

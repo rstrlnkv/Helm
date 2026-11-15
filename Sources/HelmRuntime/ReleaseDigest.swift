@@ -17,13 +17,9 @@ import CryptoKit
 /// is not installed silently at all: the release page opens instead, and the
 /// user decides.
 public enum ReleaseDigest {
-    /// The line the release notes carry, e.g.
-    /// `sha256 Helm-0.7.1-dev.10.zip 3f9a…`
-    public static func line(asset: String, sha256: String) -> String {
-        "sha256 \(asset) \(sha256)"
-    }
-
-    /// Finds the digest published for `asset`. Case-insensitive on the hex,
+    /// Finds the digest published for `asset`, in the line the release notes
+    /// carry — `sha256 Helm-0.7.1-dev.10.zip 3f9a…`, which `Scripts/make-zip.sh`
+    /// and `Scripts/make-dmg.sh` print. Case-insensitive on the hex,
     /// exact on the file name — a digest for a different asset is not a digest
     /// for this one.
     public static func parse(notes: String, asset: String) -> String? {
@@ -41,7 +37,7 @@ public enum ReleaseDigest {
 
     /// 64 lowercase hex characters and nothing else: a truncated or decorated
     /// digest must not compare equal to anything.
-    public static func isHexDigest(_ value: String) -> Bool {
+    static func isHexDigest(_ value: String) -> Bool {
         value.count == 64 && value.allSatisfy { $0.isHexDigit && !$0.isUppercase }
     }
 
@@ -55,7 +51,7 @@ public enum ReleaseDigest {
     /// 1204 MB of growth without the pool against 1.0 MB with it. This is the
     /// same defect the duplicate scanner's hash loop had, in a loop that is not
     /// even parallel — see ARCHITECTURE.md § Module pattern.
-    public static func sha256(ofFileAt url: URL) throws -> String {
+    static func sha256(ofFileAt url: URL) throws -> String {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         var hasher = SHA256()

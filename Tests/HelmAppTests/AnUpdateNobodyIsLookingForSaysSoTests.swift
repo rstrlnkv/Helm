@@ -2,8 +2,12 @@ import HelmRuntime
 import HelmTestSupport
 import XCTest
 @testable import HelmApp
+import HelmAppStrings
 
 /// The other half of the update check.
+///
+/// **Past defect: a release found while nobody looked left only a log line** (866b17a0,
+/// the commit that added the announcement and this class).
 ///
 /// `UpdateCheck` decides what a GitHub response means and eight suites hold it —
 /// and the answer went into a published property that exactly one view reads, on
@@ -25,7 +29,9 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
     private func build(_ port: FakeAutomationNotice = FakeAutomationNotice(state: .authorized)) {
         notices = port
         store = AppSettings.store.over(InMemoryKeyValueStore())
-        service = UpdateService(notices: port, store: store)
+        service = UpdateService(notices: port, store: store,
+                                feed: { _ in throw URLError(.notConnectedToInternet) },
+                                channelBacking: InMemoryKeyValueStore())
     }
 
     /// The banner is posted from a task of its own — the check does not wait for
@@ -129,7 +135,10 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         // network. The daily guard itself is `UpdateCheck.lastChecked`, held
         // next door.
         store.set(Int(Date().timeIntervalSince1970), for: UpdateService.lastCheckKey)
-        let service = UpdateService(notices: FakeAutomationNotice(), store: store)
+        // The feed fails the test if it is asked: the stamp above is why it is not.
+        let service = UpdateService(notices: FakeAutomationNotice(), store: store,
+                                    feed: { _ in XCTFail("the hourly tick asked GitHub inside the day"); throw URLError(.badURL) },
+                                    channelBacking: InMemoryKeyValueStore())
 
         service.startChecking()
         XCTAssertTrue(service.isWatchingForUpdates, "the check happened once and never again")

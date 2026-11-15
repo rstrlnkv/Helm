@@ -26,7 +26,7 @@ final class EveryEngineNamesItsPortsTests: XCTestCase {
     func testEveryConstructionInThisModulesTestsNamesEveryPort() throws {
         try PortsAtConstruction.check("LeftoversEngine",
                                       under: "Tests/Modules/Leftovers",
-                                      naming: ["home", "files", "apps", "loaded", "switcher"],
+                                      naming: ["home", "files", "apps", "loaded", "switcher", "store"],
                                       atLeast: 8)
     }
 }

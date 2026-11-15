@@ -10,7 +10,7 @@ import Foundation
 public struct SealKey: Equatable, Sendable {
     public let material: Data
     /// True only for the run that created the key. Spent after one verdict —
-    /// see `AutopilotEngine`.
+    /// see `SealedRules.takeTheOneAdoption`.
     public let firstUse: Bool
 
     public init(material: Data, firstUse: Bool) {
@@ -54,7 +54,7 @@ public enum SettingSeal {
         /// No seal, and this installation has never had one: the rules predate
         /// sealing. Accept them once and seal them — see
         /// `testRulesWithNoSealAreAdoptedOnTheRunThatCreatedTheKey` and the
-        /// paragraph on trust-on-first-use in `AutopilotEngine`.
+        /// paragraph on trust-on-first-use in `SealedRules`.
         case adopt
         /// Something other than Helm wrote these. Do not run them.
         case broken
@@ -63,9 +63,9 @@ public enum SettingSeal {
     public static func mac(for payload: Data, key: Data) -> String {
         let code = HMAC<SHA256>.authenticationCode(for: payload,
                                                    using: SymmetricKey(data: key))
-        // The same spelling every digest in Helm gets, and here it is a
-        // compatibility surface: this string is compared against one an earlier
-        // build wrote into somebody's settings.
+        // The same spelling every digest in Helm gets. A seal is checked by its
+        // decoded bytes in `verdict`, but a rule's mark is this string compared
+        // as a string against one an earlier build wrote onto a file.
         return HexDigest.string(of: code)
     }
 

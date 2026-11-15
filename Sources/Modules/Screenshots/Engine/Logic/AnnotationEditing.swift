@@ -32,7 +32,7 @@ public struct AnnotationEditing: Sendable {
 
     /// Where a layer may be: the selection, in display-local points. It changes only through
     /// `reshape(bounds:)`; the layers do not move with it.
-    public private(set) var bounds: CGRect
+    private(set) var bounds: CGRect
     public private(set) var layers: [Annotation] = []
     /// The layer under the pointer; not a layer until `end`.
     public private(set) var draft: Annotation?
@@ -469,7 +469,7 @@ public struct AnnotationEditing: Sendable {
 
     /// Takes away the layers with these ids: **one undo step** however many go, and none when none of them is on the
     /// picture. A selected one that goes is no longer selected; the area, the others and the selection of any other stay.
-    public mutating func remove(_ ids: Set<Annotation.ID>) {
+    mutating func remove(_ ids: Set<Annotation.ID>) {
         disarm()
         guard !held, layers.contains(where: { ids.contains($0.id) }) else { return }
         record(layers)
