@@ -95,6 +95,7 @@ import HelmUI
     weak var window: NSWindow? {
         didSet {
             watchBarPresses()
+            watchFlatSearch()
             watchWindowResize()
             refresh()
         }
@@ -132,6 +133,8 @@ import HelmUI
     /// gesture anywhere on the bar — see `watchBarPresses()`'s own header for
     /// why one monitor carries both.
     nonisolated(unsafe) private var barPressMonitor: Any?
+    /// ⌘F and the press that ends a Flat search's editing (`watchFlatSearch()`).
+    nonisolated(unsafe) private var flatSearchMonitor: Any?
     nonisolated(unsafe) private var windowResizeWatch: NSObjectProtocol?
     nonisolated(unsafe) private var windowEndLiveResizeWatch: NSObjectProtocol?
     nonisolated(unsafe) private var splitResizeWatch: NSObjectProtocol?
@@ -355,6 +358,7 @@ import HelmUI
             if bar.shape.look == .liquidGlass { rebuildActionsHost(bar) }
             // The tabs' plate (Flat only) dims and undims by this value, handed in.
             bar.tabsPlate?.isActive = active
+            bar.flatSearch?.plate.isActive = active
         }
         // The name zone's own ink: a plain SwiftUI value, not glass, so the
         // one bar actually on screen redrawing is enough — `patchName`'s own
@@ -740,6 +744,17 @@ import HelmUI
         return full
     }
 
+    /// The folded tabs' width, kept like `wholeTabsWidth(_:_:)`'s; what `settleFlat` charges for tabs about to fold.
+    private func foldedTabsWidth(_ bar: PageBar, _ content: HelmPageToolbarContent) -> CGFloat {
+        let key = TabsWidthKey(tabs: content.tabs, style: AppSettings.toolbarSwitcherStyle,
+                               language: AppLanguage.current, selectedID: content.selectedTab?.wrappedValue)
+        if let measured = bar.tabsFoldedWidth, measured.key == key { return measured.width }
+        let width = switcherWidth(tabs: content.tabs, style: key.style, look: bar.shape.look,
+                                  selectedID: key.selectedID, compact: true)
+        bar.tabsFoldedWidth = (key, width)
+        return width
+    }
+
     /// The lead of now for `bar`: `tabsLead(paneLeading:paneWidth:tabsWidth:gap:nameMaxX:)` over the pane as
     /// told, the tabs as laid out, `tabsGap` and where the name ends (`nameMaxX(_:)`, from the start of items
     /// of the placement told). 1 where no pane was told or the bar has no
@@ -843,7 +858,8 @@ import HelmUI
     /// which is active only while the field is idle, and returns whether the cap moved; a constant within a
     /// hundredth of a point is left alone. `tabsWidth` is the tabs' width to work out from, else the width they have.
     /// The cap is a ceiling: it does not move AppKit's own collapse of the field to the magnifier, read in a window
-    /// never shown under both looks: the field shown at a room of 160 and the magnifier at a room of 150.
+    /// never shown, under Liquid Glass: the field shown at a room of 160 and the magnifier at a room of 150 (a Flat
+    /// bar has no cap and no AppKit collapse, `ShellBarLayout.searchPlan` decides there).
     @discardableResult
     private func writeSearchOffer(_ bar: PageBar, tabsWidth width: CGFloat? = nil, actionsWidth: CGFloat? = nil) -> Bool {
         guard let cap = bar.searchOfferCap else { return false }
@@ -886,6 +902,7 @@ import HelmUI
         if let windowEndLiveResizeWatch { NotificationCenter.default.removeObserver(windowEndLiveResizeWatch) }
         if let splitResizeWatch { NotificationCenter.default.removeObserver(splitResizeWatch) }
         if let barPressMonitor { NSEvent.removeMonitor(barPressMonitor) }
+        if let flatSearchMonitor { NSEvent.removeMonitor(flatSearchMonitor) }
         // `graceWorkItem` and `settleWorkItem` are not cancelled here —
         // `DispatchWorkItem` is not `Sendable`, so a nonisolated `deinit`
         // (Swift 6 treats every `deinit` this way even on a `@MainActor`
@@ -1222,7 +1239,8 @@ import HelmUI
         if visibly {
             bar.isInteractive = false
             bar.actionsModel?.setInteractive(false)
-            bar.searchItem?.searchField.isEnabled = false
+            bar.searchField?.isEnabled = false
+            bar.flatSearch?.setEnabled(false)
         }
         patchTabs(bar)
         // `bar.isLive` just moved, and `actionMenuItem`'s own `isEnabled`
@@ -1418,7 +1436,8 @@ import HelmUI
         patchActions(bar, animated: animated)
         patchSearch(bar)
         bar.actionsModel?.setInteractive(true)
-        bar.searchItem?.searchField.isEnabled = true
+        bar.searchField?.isEnabled = true
+        bar.flatSearch?.setEnabled(true)
     }
 
     // MARK: - The name zone
@@ -1987,7 +2006,7 @@ import HelmUI
     /// was never read), and a lead
     /// that is not shown puts no room back by folding the tabs.
     private func watchedItems(_ bar: PageBar) -> [NSToolbarItem] {
-        [bar.nameItem, bar.tabsItem, bar.actionsItem].compactMap { $0 }
+        [bar.nameItem, bar.tabsItem, bar.actionsItem, bar.flatSearch?.item].compactMap { $0 }
     }
 
     /// Every watched item is reported by AppKit as showing (`isVisible`) or is hidden (`isHidden`), which nothing in this file writes.
@@ -2323,13 +2342,13 @@ import HelmUI
     /// measured beside it until nothing read it (`settle(_:)` bound it to
     /// `_`). Called only from `wholeTabsWidth(_:_:)`, behind `PageBar.tabsWidth`.
     private func switcherWidth(tabs: [HelmToolbarTab], style: ToolbarSwitcherStyle, look: HelmBarAppearance,
-                               selectedID: String?) -> CGFloat {
+                               selectedID: String?, compact: Bool = false) -> CGFloat {
         let view = HelmToolbarSwitcher(HelmA11y.whatToShow, selection: .constant(selectedID ?? ""),
                                        segments: tabs.map {
                                     HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol,
                                                         needsAttention: $0.needsAttention, attentionNote: $0.attentionNote)
                                 },
-                                       compact: false)
+                                       compact: compact)
             .environment(\.helmSwitcherStyle, style)
             .environment(\.helmSwitcherCell, look.switcherCell)
         return Self.measurementRig.measure(AnyView(view))
@@ -2988,6 +3007,7 @@ import HelmUI
         let leadMoved = writeTabsLead(bar)
         let offerMoved = writeSearchOffer(bar)
         if leadMoved || offerMoved { scheduleSettle(bar); return }
+        if bar.flatSearch != nil { settleFlat(bar); return }
         // **A search item is not a precondition for the tabs prediction
         // below — only for the search-specific gates in front of it.**
         // Before this pass, a page whose shape carried tabs but no search
@@ -2997,9 +3017,9 @@ import HelmUI
         // longer tab title, a third tab or another action ever made this
         // page's tabs overflow at all, the tabs would fold on the first
         // eviction and never unfold again for the rest of the session,
-        // however wide the window then grew. `searchItem` is `nil` exactly
+        // however wide the window then grew. Under Liquid Glass `searchItem` is `nil` exactly
         // when the page declares no search field at all (or before the
-        // toolbar has asked for the item on a page that does) — it is never
+        // toolbar has asked for the item on a page that does; a Flat bar has none, its search is `flatSearch`) — it is never
         // cleared once assigned (`makeSearchItem`'s own single `bar
         // .searchItem = item`), so the search-specific gates below simply do
         // not apply to a bar that has no field to be mid-edit or mid-open.
@@ -3326,6 +3346,10 @@ import HelmUI
         // tabs do fit).
         guard let tabsWidth = bar.tabsItem?.view?.frame.width, tabsWidth > 0 else { return }
         guard !watchedItemsAllVisible(bar) else { return }
+        // **Under Flat the settle is the one writer of the fold** (`settleFlat`): an eviction here is the plate's
+        // width still being the old one while the window narrows, and the toolbar takes the item back when the
+        // settle has set the plate to the plan. Folding here left the tabs folded, with nothing to unfold them.
+        if bar.flatSearch != nil { scheduleSettle(bar); return }
         // **Attribute this fold to our own recent unfold, if it is one** —
         // before the fold itself, using the room, the language and the
         // switcher style *as they stand right now* (all three are read fresh
@@ -3643,7 +3667,7 @@ import HelmUI
             if let button = window.standardWindowButton(kind),
                button.convert(button.bounds, to: nil).contains(point) { return false }
         }
-        if let field = attachedBar?.searchItem?.searchField, field.currentEditor() != nil,
+        if let field = attachedBar?.searchField, field.currentEditor() != nil,
            let superview = field.superview,
            superview.bounds.contains(superview.convert(point, from: nil)) {
             return false
@@ -3673,7 +3697,8 @@ import HelmUI
 
     // MARK: - Search
 
-    private func makeSearchItem(_ bar: PageBar) -> NSSearchToolbarItem {
+    private func makeSearchItem(_ bar: PageBar) -> NSToolbarItem {
+        if bar.shape.look == .flat { return makeFlatSearchItem(bar) }
         let item = NSSearchToolbarItem(itemIdentifier: Self.searchID)
         // "The field should be configured before assigned" (`NSSearchToolbarItem.h`)
         // — built here and handed over once, rather than mutated on the
@@ -3771,6 +3796,7 @@ import HelmUI
     }
 
     private func patchSearch(_ bar: PageBar) {
+        if bar.flatSearch != nil { patchFlatSearch(bar); return }
         guard let item = bar.searchItem else { return }
         item.label = HelmA11y.searchField
         item.paletteLabel = HelmA11y.searchField
@@ -3800,7 +3826,7 @@ import HelmUI
 
     @objc private func searchSubmitted(_ sender: NSSearchField) {
         guard let key = attachedPageKey, let bar = pageBars[key],
-              bar.searchItem?.searchField === sender else { return }
+              bar.searchField === sender else { return }
         bar.content?.search?.text.wrappedValue = sender.stringValue
         // The field's own clear button, pressed while nobody is editing —
         // VoiceOver's press and Full Keyboard Access's Space reach it as a
@@ -3809,6 +3835,7 @@ import HelmUI
         // already equal to the binding written above, so nothing else asks.
         // Only with no editor: mid-edit (Return, or the button clicked while
         // typing) the end of editing asks, a turn later, as it always did.
+        if bar.flatSearch != nil, sender.currentEditor() == nil { scheduleSettle(bar) }
         if sender.currentEditor() == nil {
             restSearch(bar)
             if bar.searchRestCap?.isActive == true { foldOpenedSearch(bar) }
@@ -3854,6 +3881,130 @@ import HelmUI
                                              userInfo: [NSText.movementUserInfoKey: NSTextMovement.other.rawValue]))
     }
 
+    // MARK: - The Flat search
+
+    /// **The Flat bar's search: `ShellBarSearch`, not an `NSSearchToolbarItem`** (the toolbar gives that one glass).
+    /// The field is wired as the Glass one is: Return alone submits, no recents, no autosave name.
+    private func makeFlatSearchItem(_ bar: PageBar) -> NSToolbarItem {
+        let flat = ShellBarSearch(identifier: Self.searchID, isActive: windowAppearsActive,
+                                  titlebarIsTransparent: titlebarIsTransparent)
+        let field = flat.field
+        field.delegate = self
+        field.target = self
+        field.action = #selector(searchSubmitted(_:))
+        field.placeholderString = bar.content?.search?.prompt ?? ""
+        field.stringValue = bar.content?.search?.text.wrappedValue ?? ""
+        flat.onOpen = { [weak self, weak bar] in
+            guard let self, let bar else { return }
+            self.openFlatSearch(bar)
+        }
+        bar.flatSearch = flat
+        return flat.item
+    }
+
+    private func patchFlatSearch(_ bar: PageBar) {
+        guard let flat = bar.flatSearch else { return }
+        flat.patchLabels()
+        guard let search = bar.content?.search else { return }
+        if flat.field.placeholderString != search.prompt { flat.field.placeholderString = search.prompt }
+        // Never while the field is being edited (the caret would jump to the end).
+        if flat.field.currentEditor() == nil, flat.field.stringValue != search.text.wrappedValue {
+            flat.field.stringValue = search.text.wrappedValue
+        }
+        scheduleSettle(bar)
+    }
+
+    /// **A press on the magnifier, ⌘F or a VoiceOver press: opens the field and focuses it.** Opened is
+    /// `editing` for `ShellBarLayout.searchPlan`, so in a narrow window the tabs fold for the editing and the
+    /// field is no narrower than `searchFloor`; the plan is applied now, not after the settle's wait, so the
+    /// field is shown before it is made first responder.
+    private func openFlatSearch(_ bar: PageBar) {
+        guard let flat = bar.flatSearch, flat.field.isEnabled else { return }
+        flat.isOpen = true
+        settleFlat(bar)
+        flat.field.window?.makeFirstResponder(flat.field)
+    }
+
+    /// **The settle of a bar with a Flat search: one plan from the room Helm lays out, and the one writer of the
+    /// fold of its tabs** (`checkOverflow` only asks for a settle). The room is `searchOffer`'s arithmetic over the
+    /// plate's trailing edge (assumed to be the bar's right end; not read in a window) with the tabs whole and with
+    /// them folded, the plan is `ShellBarLayout.searchPlan`, and the tabs and the plate are set to it on every pass:
+    /// folding the tabs first, then the width; widening the room back, the width first and the tabs in its
+    /// completion, which a pass that wants the tabs unfolded sets again. Where no room can be read (no pane told, no
+    /// name end) nothing is changed.
+    private func settleFlat(_ bar: PageBar) {
+        guard let flat = bar.flatSearch, let window, flat.plate.window != nil, let pane, let content = bar.content,
+              let nameEnd = nameMaxX(bar) ?? windowTitleMaxX(window)?.maxX else { return }
+        let hasTabs = !content.tabs.isEmpty
+        let barEnd = flat.plate.convert(NSPoint(x: flat.plate.bounds.width, y: 0), to: nil).x
+        let actions = bar.actionsItem?.view?.frame.width ?? 0
+        func room(tabsWidth: CGFloat) -> CGFloat {
+            let offer = hasTabs
+                ? Self.searchOffer(barEnd: barEnd, paneLeading: pane.leading, paneWidth: pane.width,
+                                   tabsWidth: tabsWidth,
+                                   tabsEarliest: nameEnd + Self.tabsLeadFloor + tabsGap(of: bar), actionsWidth: actions)
+                : Self.searchOffer(barEnd: barEnd, paneLeading: nameEnd, paneWidth: 0, tabsWidth: 0,
+                                   tabsEarliest: nameEnd + ShellBarLayout.itemGap, actionsWidth: actions)
+            return offer.slack + ShellBarLayout.searchFloor
+        }
+        let plan = ShellBarLayout.searchPlan(
+            roomWholeTabs: room(tabsWidth: hasTabs ? wholeTabsWidth(bar, content) : 0),
+            roomFoldedTabs: room(tabsWidth: hasTabs ? foldedTabsWidth(bar, content) : 0),
+            editing: flat.isEditing, hasQuery: !flat.field.stringValue.isEmpty,
+            alwaysCollapse: AppSettings.alwaysCollapseSearch)
+        let fold = hasTabs && plan.tabsFolded
+        // A pass that wants the tabs other than they are is never dropped, whatever the plate is doing: the
+        // unfold's completion may be one a later `apply` took the place of.
+        if let target = flat.target, target.width == plan.width, target.collapsed == plan.collapsed,
+           bar.tabsFolded == fold { return }
+        let animated = flat.target != nil
+        if fold {
+            setTabsFolded(true, bar: bar, layout: .window)
+            flat.apply(width: plan.width, collapsed: plan.collapsed, animated: animated)
+        } else if bar.tabsFolded {
+            flat.apply(width: plan.width, collapsed: plan.collapsed, animated: animated) { [weak self, weak bar] in
+                guard let self, let bar else { return }
+                self.setTabsFolded(false, bar: bar, layout: .window)
+            }
+        } else {
+            flat.apply(width: plan.width, collapsed: plan.collapsed, animated: animated)
+        }
+    }
+
+    /// **⌘F opens a Flat bar's search, and a press in the page ends its editing.** One local monitor, installed
+    /// with the window; a Glass bar has no `flatSearch`, so neither is taken there (AppKit's own item does
+    /// whatever it does for ⌘F, which this does not touch). The press outside the plate goes on to whatever was
+    /// clicked: it only ends the editing, so a field left empty folds back.
+    private func watchFlatSearch() {
+        if let flatSearchMonitor { NSEvent.removeMonitor(flatSearchMonitor) }
+        guard window != nil else { flatSearchMonitor = nil; return }
+        flatSearchMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown]) {
+            [weak self] event in
+            let press = FoldPress(event: event)
+            return MainActor.assumeIsolated { self?.flatSearchEvent(press.event) ?? false } ? nil : event
+        }
+    }
+
+    private func flatSearchEvent(_ event: NSEvent) -> Bool {
+        guard let window, event.window === window, let bar = attachedBar, let flat = bar.flatSearch else { return false }
+        switch event.type {
+        case .keyDown:
+            guard window.isKeyWindow, event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+                  event.charactersIgnoringModifiers == "f" else { return false }
+            openFlatSearch(bar)
+            return true
+        case .leftMouseDown:
+            let point = event.locationInWindow
+            if flat.field.currentEditor() != nil, window.contentLayoutRect.contains(point),
+               !flat.plate.bounds.contains(flat.plate.convert(point, from: nil)) {
+                window.makeFirstResponder(nil)
+            }
+            return false
+        default:
+            return false
+        }
+    }
+
     /// Re-arms `activityWatch` for whichever module `currentSelection` names,
     /// or drops it where there is none to watch.
     private func watchActivity() {
@@ -3878,10 +4029,20 @@ extension SettingsToolbar: NSMenuDelegate {
 }
 
 extension SettingsToolbar: NSSearchFieldDelegate {
+    /// Escape in an empty Flat field gives up the focus, so the editing ends and the field folds back; with a
+    /// query in it the field's own Escape (clearing it) runs.
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        guard commandSelector == #selector(NSResponder.cancelOperation(_:)), let field = control as? NSSearchField,
+              let key = attachedPageKey, let bar = pageBars[key], bar.flatSearch?.field === field,
+              field.stringValue.isEmpty else { return false }
+        field.window?.makeFirstResponder(nil)
+        return true
+    }
+
     func controlTextDidChange(_ obj: Notification) {
         guard let field = obj.object as? NSSearchField,
               let key = attachedPageKey, let bar = pageBars[key],
-              field === bar.searchItem?.searchField else { return }
+              field === bar.searchField else { return }
         bar.content?.search?.text.wrappedValue = field.stringValue
     }
 
@@ -3915,7 +4076,12 @@ extension SettingsToolbar: NSSearchFieldDelegate {
     func controlTextDidEndEditing(_ obj: Notification) {
         guard let field = obj.object as? NSSearchField,
               let key = attachedPageKey, let bar = pageBars[key],
-              field === bar.searchItem?.searchField else { return }
+              field === bar.searchField else { return }
+        if let flat = bar.flatSearch {
+            flat.isOpen = false
+            scheduleSettle(bar)
+            return
+        }
         bar.searchOpening = false
         bar.searchEditEndedDeadline = Date().addingTimeInterval(Self.searchCollapseWait)
         if field.stringValue.isEmpty {
@@ -4189,6 +4355,12 @@ private final class PageBar {
     var actionsReleaseWork: DispatchWorkItem?
     var actionsItem: NSToolbarItem?
     var searchItem: NSSearchToolbarItem?
+    /// The search under Flat (`ShellBarSearch`): `searchItem` stays nil there, which keeps every Liquid Glass
+    /// path inert; `searchField` is the field either look has.
+    var flatSearch: ShellBarSearch?
+    var searchField: NSSearchField? { searchItem?.searchField ?? flatSearch?.field }
+    /// The folded tabs' width, measured once per `TabsWidthKey` like `tabsWidth` (the whole tabs').
+    var tabsFoldedWidth: (key: SettingsToolbar.TabsWidthKey, width: CGFloat)?
     /// **Set by `SettingsToolbar.makeActionsItem` the moment it builds this
     /// bar's capsule under Liquid Glass while the window already reads inactive, and consumed —
     /// once — the moment `show(_:key:)` actually attaches this bar.** See

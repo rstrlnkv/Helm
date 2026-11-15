@@ -57,9 +57,15 @@ import XCTest
 @MainActor
 final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
 
-    override func setUp() async throws {
-        try await super.setUp()
-        PinnedBarSettings.pin(in: self)
+    /// **Both looks, both rows**: the field is AppKit's `NSSearchToolbarItem` one under Glass and Helm's own
+    /// (`ShellBarSearch`) under Flat, each wired by its own path to the same no-history rule.
+    private static let looks: [HelmBarAppearance] = [.flat, .liquidGlass]
+
+    private func underEachLook(_ body: (HelmBarAppearance) throws -> Void) rethrows {
+        for look in Self.looks {
+            PinnedBarSettings.pin(in: self, look: look)
+            try body(look)
+        }
     }
 
     /// The page's side: the binding that moves per keystroke and the press
@@ -92,17 +98,22 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     /// **The guard.** Nothing about the field this toolbar builds carries a
     /// history.
     func testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents() throws {
+        try underEachLook { look in try run_testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents(look) }
+    }
+
+    private func run_testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents(_ look: HelmBarAppearance) throws {
         let page = Page()
         let fixture = LivePageInTheToolbarFixture(Pane(page: page, token: "test.searchHistory"), selection: .module("test.searchHistory"),
                                                   width: 1060, height: 400)
         defer { fixture.drop() }
         fixture.settle(20)
+        PinnedBarSettings.assertWears(look, fixture)
 
         // The subject, before any absence is read off it. A walk that found no
         // control would satisfy every assertion below by never running, and an
         // empty history is exactly what "there was no field" looks like.
         let field = try XCTUnwrap(fixture.searchField, """
-            the window's toolbar holds no search field at all, so there is nothing here whose \
+            under \(look.rawValue) the window's toolbar holds no search field at all, so there is nothing here whose \
             history could be read and every reading below would be of nothing
             """)
         XCTAssertTrue(fixture.mount.searchField === field, """
@@ -186,11 +197,16 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     /// builds, and the cost of it is measured: the typed word in the settings
     /// domain, under the planted key.
     func testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile() throws {
+        try underEachLook { look in try run_testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile(look) }
+    }
+
+    private func run_testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile(_ look: HelmBarAppearance) throws {
         let page = Page()
         let fixture = LivePageInTheToolbarFixture(Pane(page: page, token: "test.searchHistoryCanary"), selection: .module("test.searchHistoryCanary"),
                                                   width: 1060, height: 400)
         defer { fixture.drop() }
         fixture.settle(20)
+        PinnedBarSettings.assertWears(look, fixture)
         let field = try XCTUnwrap(fixture.searchField, """
             no search field in the toolbar, so the guard beside this one has no subject either
             """)

@@ -1,7 +1,7 @@
 import CoreGraphics
 import HelmUI
 
-/// **The five numbers `SettingsToolbar` lays the actions and the search item out by.** `actionsToSearch` and
+/// **The seven numbers `SettingsToolbar` lays the actions and the search item out by.** `actionsToSearch` and
 /// `searchWidth` are readings of Helm's own toolbar in a 1060-point window; `itemGap` is the Figma Kit's,
 /// `actionsSearchPad` follows from it and `actionsToSearch`, and `searchFloor` is Helm's choice, not a reading.
 enum ShellBarLayout {
@@ -24,4 +24,52 @@ enum ShellBarLayout {
     /// The narrowest an open search field is made. Helm's choice, not a
     /// reading.
     nonisolated static let searchFloor: CGFloat = 120
+
+    /// The magnifier a Flat search folds to: its width and, as the plate holding the field, its height. The Figma
+    /// Kit's 36.
+    nonisolated static let searchCollapsedWidth: CGFloat = 36
+
+    /// The plate's height under Flat, the same 36.
+    nonisolated static let searchPlateHeight: CGFloat = 36
+
+    /// What the Flat search item and the tabs are set to: whether the tabs fold, how wide the plate is, whether it
+    /// shows the magnifier.
+    struct SearchPlan: Equatable {
+        let tabsFolded: Bool
+        let width: CGFloat
+        let collapsed: Bool
+    }
+
+    /// **The one rule for a Flat bar's search and tabs, from the room Helm itself lays out** (`SettingsToolbar
+    /// .settleFlat`), never from the field's own frame, so a plan does not depend on its own last output and
+    /// needs no margin against flicker. The order is the plan's. On the shown window (build 1701) the tabs were seen folding
+    /// early and staying folded, from `checkOverflow` folding them itself; under Flat that now asks for a settle
+    /// instead, and a shown window has not yet confirmed the order. `roomWholeTabs` and `roomFoldedTabs` are what is left of the bar for the
+    /// search with the tabs whole and with them folded. Magnifier first: the field gives way from `searchWidth` to
+    /// `searchFloor`, then collapses to the magnifier, and the tabs fold only when they still do not fit beside the
+    /// magnifier.
+    ///
+    /// `editing` is a press, ⌘F or a VoiceOver press that opened the field, or its editor being up. `hasQuery` is
+    /// a query left in the field, which counts as editing: **a query is never hidden behind a glyph** (the rule
+    /// `restSearch` holds under Glass). An editing field keeps the floor even where it overflows.
+    /// `alwaysCollapse` is the setting Always Collapse Search: with an empty, idle field the magnifier wherever the
+    /// room. A room that is not finite (NaN or ±∞) or below 0 reads as 0.
+    nonisolated static func searchPlan(roomWholeTabs: CGFloat, roomFoldedTabs: CGFloat,
+                                       editing isOpen: Bool, hasQuery: Bool, alwaysCollapse: Bool) -> SearchPlan {
+        let editing = isOpen || hasQuery
+        let rests = alwaysCollapse && !editing
+        func room(_ value: CGFloat) -> CGFloat { value.isFinite ? max(0, value) : 0 }
+        let whole = room(roomWholeTabs), folded = room(roomFoldedTabs)
+        let floor = searchFloor, widest = searchWidth, magnifier = searchCollapsedWidth
+        if editing {
+            if whole >= floor { return SearchPlan(tabsFolded: false, width: min(widest, whole), collapsed: false) }
+            return SearchPlan(tabsFolded: true, width: min(max(folded, floor), widest), collapsed: false)
+        }
+        if !rests, whole >= floor {
+            return SearchPlan(tabsFolded: false, width: min(widest, whole), collapsed: false)
+        }
+        if whole >= magnifier { return SearchPlan(tabsFolded: false, width: magnifier, collapsed: true) }
+        if !rests, folded >= floor { return SearchPlan(tabsFolded: true, width: min(widest, folded), collapsed: false) }
+        return SearchPlan(tabsFolded: true, width: magnifier, collapsed: true)
+    }
 }
