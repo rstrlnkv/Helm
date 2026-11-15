@@ -8,18 +8,8 @@ private final class DefaultsTyping: TypingPort, @unchecked Sendable {
     var performed = 0
     func perform(_ plan: SwitchPlan) -> Bool { performed += 1; return true }
 }
-private struct DefaultsContext: SecureContextPort {
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { "com.apple.Notes" }
-}
 private struct DefaultsTranslation: TranslationPort {
     func translate(_ word: String, from: String, to: String) -> String? { "привет" }
-}
-private struct DefaultsSpell: SpellPort {
-    func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 }
-    }
 }
 private final class DefaultsTap: KeyTapPort, @unchecked Sendable {
     var handler: (@Sendable (TypingBuffer.Event) -> Void)?
@@ -27,11 +17,6 @@ private final class DefaultsTap: KeyTapPort, @unchecked Sendable {
                onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
                died: @escaping @Sendable () -> Void) -> Bool { handler = onEvent; return true }
     func stop() { handler = nil }
-}
-private struct DefaultsSources: LayoutSourcePort {
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) {}
 }
 private final class DefaultsSound: SoundPort, @unchecked Sendable {
     var played = 0
@@ -88,9 +73,9 @@ final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
             let store = store()
             if let audible { store.set(audible, for: LayoutKey.audible) }
             let tap = DefaultsTap(), sound = DefaultsSound()
-            let engine = LayoutEngine(tap: tap, typing: DefaultsTyping(), sources: DefaultsSources(),
-                                      translation: DefaultsTranslation(), spell: DefaultsSpell(),
-                                      secure: DefaultsContext(), activation: FakeActivation(),
+            let engine = LayoutEngine(tap: tap, typing: DefaultsTyping(), sources: StuckSources(),
+                                      translation: DefaultsTranslation(), spell: CyrillicSpell(),
+                                      secure: FakeSecure(), activation: FakeActivation(),
                                       sound: sound, settings: store)
             engine.activate()
             XCTAssertEqual(engine.boundTapKey, .rightCommand)
@@ -107,9 +92,9 @@ final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
     /// writes `true` into the store first.
     func testAFreshStoreCorrectsASlippedCapital() {
         let tap = DefaultsTap(), typing = DefaultsTyping()
-        let engine = LayoutEngine(tap: tap, typing: typing, sources: DefaultsSources(),
-                                  translation: DefaultsTranslation(), spell: DefaultsSpell(),
-                                  secure: DefaultsContext(), activation: FakeActivation(),
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
+                                  translation: DefaultsTranslation(), spell: CyrillicSpell(),
+                                  secure: FakeSecure(), activation: FakeActivation(),
                                   sound: DefaultsSound(), settings: store())
         engine.activate()
         for c in "ПРивет" { tap.handler?(.character(c)) }
@@ -126,9 +111,9 @@ final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
             let store = store()
             store.set(audible, for: LayoutKey.audible)
             let tap = DefaultsTap(), sound = DefaultsSound()
-            let engine = LayoutEngine(tap: tap, typing: DefaultsTyping(), sources: DefaultsSources(),
-                                      translation: DefaultsTranslation(), spell: DefaultsSpell(),
-                                      secure: DefaultsContext(), activation: FakeActivation(),
+            let engine = LayoutEngine(tap: tap, typing: DefaultsTyping(), sources: StuckSources(),
+                                      translation: DefaultsTranslation(), spell: CyrillicSpell(),
+                                      secure: FakeSecure(), activation: FakeActivation(),
                                       sound: sound, selection: DefaultsSelection(), settings: store)
             engine.activate()
             for c in "ПРивет" { tap.handler?(.character(c)) }

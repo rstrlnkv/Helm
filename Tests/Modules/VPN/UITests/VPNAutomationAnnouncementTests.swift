@@ -39,7 +39,7 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
     /// that happens to come out right, which is the way a broken fix shipped
     /// green here once already.
     private func settle(_ model: VPNViewModel) async {
-        for _ in 0..<500 where model.lastAutomation == nil { await Task.yield() }
+        await waitUntil("the firing handled", within: .seconds(5)) { model.lastAutomation != nil }
         await model.announcement?.value
     }
 

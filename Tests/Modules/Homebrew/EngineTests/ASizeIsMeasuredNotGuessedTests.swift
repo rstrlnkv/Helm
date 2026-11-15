@@ -77,9 +77,6 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
     private struct FixedLocator: BrewLocator {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
     /// Nothing here runs a `brew`: every question in this file is about a
     /// directory. A runner that launches anything at all would be an
     /// integration test against the owner's own Homebrew.

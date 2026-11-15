@@ -28,10 +28,6 @@ private struct FixedLocator: BrewLocator {
     func brewPath() -> String? { "/opt/homebrew/bin/brew" }
 }
 
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
 /// Kept: guards the stored `module.homebrew.updateBeforeChecking`. A Mac that never wrote it must
 /// still run `brew outdated` with brew's own refresh, the bytes it ran with before the setting existed.
 final class AnAbsentUpdateSettingUpdatesAsBeforeTests: XCTestCase {

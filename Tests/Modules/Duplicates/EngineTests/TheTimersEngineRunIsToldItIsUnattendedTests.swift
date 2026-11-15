@@ -1,4 +1,5 @@
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_Engine
 
@@ -32,7 +33,7 @@ final class TheTimersEngineRunIsToldItIsUnattendedTests: XCTestCase {
         store.set(home.path, for: "folder")
         let fixture = home.path
         let engine = DuplicatesEngine(
-            store: store, settings: SettingGuard(keys: TestKey()), trashing: neverTrashes,
+            store: store, settings: SettingGuard(keys: SealKeyProbe(firstUse: true)), trashing: neverTrashes,
             verifying: { { _, _ in fatalError("nothing is verified by a scan") } },
             scanning: { DuplicateScanner(unattended: $0, home: fixture) })
         let answer = await engine.backgroundScan()

@@ -43,9 +43,6 @@ final class TheLogDoesNotNameThePackageTests: XCTestCase {
         let path: String
         func brewPath() -> String? { path }
     }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
 
     /// Lists one other package, and ends every child at once with `code`: the
     /// conclude path has run by the time the call returns.

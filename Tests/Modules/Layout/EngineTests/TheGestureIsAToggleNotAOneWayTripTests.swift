@@ -23,14 +23,14 @@ import XCTest
 /// Guards a past defect: the gesture was a one-way trip and its keys carried the held option key (fix commit `fcc7cb28`).
 final class TheGestureIsAToggleNotAOneWayTripTests: XCTestCase {
 
-    private var typing = ToggleTyping()
-    private var tap = ToggleTap()
-    private var context = ToggleContext()
-    private var sources = ToggleSources()
+    private var typing = FakeTyping()
+    private var tap = FakeTap()
+    private var context = FakeSecure()
+    private var sources = StuckSources()
 
     private func engine() -> LayoutEngine {
-        typing = ToggleTyping(); tap = ToggleTap()
-        context = ToggleContext(); sources = ToggleSources()
+        typing = FakeTyping(); tap = FakeTap()
+        context = FakeSecure(); sources = StuckSources()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: ToggleTranslation(), spell: ToggleSpell(),
                                   secure: context, activation: FakeActivation())
@@ -85,36 +85,6 @@ final class TheGestureIsAToggleNotAOneWayTripTests: XCTestCase {
 }
 
 // MARK: - Ports
-
-private final class ToggleTyping: TypingPort, @unchecked Sendable {
-    var performed: [SwitchPlan] = []
-    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return true }
-}
-
-private final class ToggleTap: KeyTapPort, @unchecked Sendable {
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        handler = onEvent
-        return true
-    }
-    func stop() { handler = nil }
-    func type(_ text: String) { for character in text { handler?(.character(character)) } }
-}
-
-private final class ToggleContext: SecureContextPort, @unchecked Sendable {
-    var bundle = "com.apple.Notes"
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { bundle }
-}
-
-private final class ToggleSources: LayoutSourcePort, @unchecked Sendable {
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) {}
-}
 
 private struct ToggleTranslation: TranslationPort {
     func translate(_ word: String, from: String, to: String) -> String? {

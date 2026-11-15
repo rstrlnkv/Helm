@@ -4,54 +4,6 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-// Fakes are per-file, as in every other suite here.
-
-private final class ReachTyping: TypingPort, @unchecked Sendable {
-    var performed: [SwitchPlan] = []
-    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return true }
-}
-
-private final class ReachContext: SecureContextPort, @unchecked Sendable {
-    var bundle = "com.apple.Notes"
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { bundle }
-}
-
-/// Latin in, Cyrillic of the same grapheme count out. This suite is about how
-/// many characters the plan deletes, not about which words a dictionary knows.
-private struct ReachTranslation: TranslationPort {
-    func translate(_ word: String, from: String, to: String) -> String? {
-        guard !word.isEmpty else { return nil }
-        return String(repeating: "п", count: word.count)
-    }
-}
-
-private struct ReachSpell: SpellPort {
-    func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 }
-    }
-}
-
-private final class ReachTap: KeyTapPort, @unchecked Sendable {
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        handler = onEvent
-        return true
-    }
-    func stop() { handler = nil }
-    func type(_ text: String) { for character in text { handler?(.character(character)) } }
-    func send(_ event: TypingBuffer.Event) { handler?(event) }
-}
-
-private final class ReachSources: LayoutSourcePort, @unchecked Sendable {
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) {}
-}
-
 /// How far back the gesture reaches, measured against what is actually in the
 /// field.
 ///
@@ -63,14 +15,14 @@ private final class ReachSources: LayoutSourcePort, @unchecked Sendable {
 /// `buffer.word` directly, and that property answers with whatever prefix the
 /// buffer is holding without saying it is a prefix.
 final class LayoutEngineGestureReachTests: XCTestCase {
-    private var typing = ReachTyping()
-    private var context = ReachContext()
-    private var tap = ReachTap()
+    private var typing = FakeTyping()
+    private var context = FakeSecure()
+    private var tap = FakeTap()
 
     private func engine() -> LayoutEngine {
-        typing = ReachTyping(); context = ReachContext(); tap = ReachTap()
-        let engine = LayoutEngine(tap: tap, typing: typing, sources: ReachSources(),
-                                  translation: ReachTranslation(), spell: ReachSpell(),
+        typing = FakeTyping(); context = FakeSecure(); tap = FakeTap()
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
+                                  translation: SameLengthTranslation(), spell: CyrillicSpell(),
                                   secure: context, activation: FakeActivation())
         engine.activate()
         return engine

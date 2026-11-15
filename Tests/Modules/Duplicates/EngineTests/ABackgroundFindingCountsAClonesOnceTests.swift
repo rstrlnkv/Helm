@@ -34,7 +34,7 @@ final class ABackgroundFindingCountsAClonesOnceTests: XCTestCase {
     private func scan() async throws -> ScanReport {
         let store = NamespacedStore(namespace: "duplicates", backing: InMemoryKeyValueStore())
         store.set(fixture.path, for: "folder")
-        let engine = DuplicatesEngine(store: store, settings: SettingGuard(keys: TestKey()),
+        let engine = DuplicatesEngine(store: store, settings: SettingGuard(keys: SealKeyProbe(firstUse: true)),
                                       trashing: neverTrashes)
         let report = await engine.backgroundScan()
         return try XCTUnwrap(report)

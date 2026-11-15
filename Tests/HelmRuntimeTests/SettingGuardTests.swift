@@ -1,15 +1,6 @@
 import XCTest
 @testable import HelmRuntime
-
-private struct FixedKey: SealKeyPort {
-    let material: Data
-    let firstUse: Bool
-    func key() -> SealKey? { SealKey(material: material, firstUse: firstUse) }
-}
-
-private struct NoKey: SealKeyPort {
-    func key() -> SealKey? { nil }
-}
+import HelmTestSupport
 
 /// A stored value that steers work nobody is watching has to be Helm's own.
 ///
@@ -20,11 +11,10 @@ private struct NoKey: SealKeyPort {
 /// were sealed, on a feature that walks the disk on a timer.
 final class SettingGuardTests: XCTestCase {
 
-    private let material = Data(repeating: 0x5A, count: 32)
     private let payload = Data("/Users/someone/Pictures".utf8)
 
     private func guarded(firstUse: Bool = false) -> SettingGuard {
-        SettingGuard(keys: FixedKey(material: material, firstUse: firstUse))
+        SettingGuard(keys: SealKeyProbe(firstUse: firstUse))
     }
 
     func testAValueHelmSealedIsTrusted() {
@@ -53,7 +43,7 @@ final class SettingGuardTests: XCTestCase {
     /// A locked keychain answers nothing, and nothing is not permission. This is
     /// the reachable case at login, before the person has typed anything.
     func testNoKeyMeansRefusal() {
-        let sealed = SettingGuard(keys: NoKey())
+        let sealed = SettingGuard(keys: SilentSealKey())
         XCTAssertEqual(sealed.verdict(payload: payload, mac: "whatever"), .broken)
         XCTAssertNil(sealed.seal(payload))
     }
@@ -63,5 +53,15 @@ final class SettingGuardTests: XCTestCase {
     func testASealIsSpecificToItsPayload() {
         let sealed = guarded()
         XCTAssertNotEqual(sealed.seal(payload), sealed.seal(Data("/Volumes".utf8)))
+    }
+
+    /// The probe's fixed `firstUse` is answered on every ask, later ones too:
+    /// a guard built fresh over a store that is the run that made the item must
+    /// not see the door shut by the second read.
+    func testAFixedFirstUseIsAnsweredOnEveryAsk() {
+        let probe = SealKeyProbe(firstUse: true)
+        XCTAssertEqual(probe.key()?.firstUse, true)
+        XCTAssertEqual(probe.key()?.firstUse, true)
+        XCTAssertEqual(SealKeyProbe().key()?.firstUse, true)
     }
 }

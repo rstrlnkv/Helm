@@ -16,9 +16,6 @@ final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
     private struct FixedLocator: BrewLocator {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
 
     /// What `ShellProcessRunner` answers once its deadline has passed.
     private final class TimedOutRunner: ProcessRunner, @unchecked Sendable {

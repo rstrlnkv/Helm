@@ -13,24 +13,6 @@ private final class ConcurrentTyping: TypingPort, @unchecked Sendable {
     }
 }
 
-private struct ConcurrentContext: SecureContextPort {
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { "com.apple.Notes" }
-}
-
-private struct ConcurrentTranslation: TranslationPort {
-    func translate(_ word: String, from: String, to: String) -> String? {
-        word.isEmpty ? nil : String(repeating: "п", count: word.count)
-    }
-}
-
-private struct ConcurrentSpell: SpellPort {
-    func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 }
-    }
-}
-
 private final class ConcurrentTap: KeyTapPort, @unchecked Sendable {
     private let lock = NSLock()
     private var starts = 0
@@ -48,12 +30,6 @@ private final class ConcurrentTap: KeyTapPort, @unchecked Sendable {
     func stop() { handler = nil; modifiers = nil }
 }
 
-private struct ConcurrentSources: LayoutSourcePort {
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) {}
-}
-
 /// The tap delivers on a run-loop source and the settings re-read runs on the
 /// engine's serial queue, and both touch the same fields behind one `NSLock`.
 final class LayoutEngineConcurrencyTests: XCTestCase {
@@ -61,9 +37,9 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
     private func engine(_ settings: NamespacedStore,
                         tap: ConcurrentTap,
                         typing: ConcurrentTyping) -> LayoutEngine {
-        LayoutEngine(tap: tap, typing: typing, sources: ConcurrentSources(),
-                     translation: ConcurrentTranslation(), spell: ConcurrentSpell(),
-                     secure: ConcurrentContext(), activation: FakeActivation(), settings: settings)
+        LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
+                     translation: SameLengthTranslation(), spell: CyrillicSpell(),
+                     secure: FakeSecure(), activation: FakeActivation(), settings: settings)
     }
 
     /// Two starts would build two taps and leave the first one enabled on the
@@ -154,9 +130,9 @@ final class LayoutEngineUnderTheSanitiserTests: XCTestCase {
     private func engine(_ settings: NamespacedStore,
                         tap: ConcurrentTap,
                         typing: ConcurrentTyping) -> LayoutEngine {
-        LayoutEngine(tap: tap, typing: typing, sources: ConcurrentSources(),
-                     translation: ConcurrentTranslation(), spell: ConcurrentSpell(),
-                     secure: ConcurrentContext(), activation: FakeActivation(), settings: settings)
+        LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
+                     translation: SameLengthTranslation(), spell: CyrillicSpell(),
+                     secure: FakeSecure(), activation: FakeActivation(), settings: settings)
     }
 
     /// The same storm, longer, for a thread sanitiser to look at.

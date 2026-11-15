@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import Module_Duplicates_Engine
 import XCTest
 @testable import Module_Duplicates_UI
@@ -209,33 +210,6 @@ final class HeldWork: DuplicatesWork, @unchecked Sendable {
     func backgroundScan() async -> ScanReport? { nil }
 }
 
-// MARK: - The key a setting is sealed with
-
-/// A seal key that is the same on both sides of the boundary.
-///
-/// **Not the login keychain**, which is what `DuplicatesSettings.guardOfScanSettings`
-/// reaches: a test that stores a policy through the real guard writes an item
-/// into the person's own keychain, and the machine is a boundary of its own.
-///
-/// It can also stop answering, because the real one does — a locked keychain at
-/// login returns nil, and `SettingGuard.seal` then hands back nothing while the
-/// value is still written. A fake that always has a key cannot be in that state,
-/// and «the policy was saved unsealed» is exactly what the engine refuses.
-final class PlantedSealKey: SealKeyPort, @unchecked Sendable {
-    private let material: Data?
-    private let firstUse: Bool
-
-    init(firstUse: Bool = false, available: Bool = true) {
-        self.firstUse = firstUse
-        self.material = available ? Data(repeating: 0x24, count: 32) : nil
-    }
-
-    func key() -> SealKey? {
-        guard let material else { return nil }
-        return SealKey(material: material, firstUse: firstUse)
-    }
-}
-
 // MARK: - Fixtures and waits
 
 /// Fixtures live under the home directory because `UserFileScope` judges the
@@ -266,7 +240,7 @@ func duplicatesStore(folder: String = "/some/folder") -> NamespacedStore {
 /// not write to it.
 ///
 /// **Behind `SealKeyCache`, because the page reads through `keyIfWarm()`.** A
-/// bare `PlantedSealKey` takes `SealKeyPort`'s default `keyIfWarm() -> nil`, so
+/// bare `SealKeyProbe` takes `SealKeyPort`'s default `keyIfWarm() -> nil`, so
 /// `SettingGuard.isWarm` is false for ever and `keepPolicyIfWarm` never answers
 /// — a keychain permanently mid-answer, which is a state the real one is never
 /// permanently in, and it made «the page opened on what is stored» unwritable
@@ -283,7 +257,7 @@ func duplicatesModel(over work: any DuplicatesWork,
                      chooseFolder: @escaping @MainActor () -> URL? = { nil }) -> DuplicatesViewModel {
     let dvm = DuplicatesViewModel(work: work,
                                   store: store ?? duplicatesStore(folder: folder),
-                                  settings: SettingGuard(keys: SealKeyCache(PlantedSealKey())),
+                                  settings: SettingGuard(keys: SealKeyCache(SealKeyProbe(firstUse: false))),
                                   chooseFolder: chooseFolder)
     dvm.appear()
     return dvm
@@ -335,8 +309,7 @@ func settle() async {
 @MainActor
 func untilParked(_ work: HeldWork, count: Int, file: StaticString = #filePath,
                  line: UInt = #line) async {
-    for _ in 0..<1000 where work.parkedCount < count { await Task.yield() }
-    if work.parkedCount < count {
-        XCTFail("never reached: \(count) search(es) parked on the work", file: file, line: line)
+    await waitUntilWithin("\(count) search(es) parked on the work", .seconds(5), file: file, line: line) {
+        work.parkedCount >= count
     }
 }

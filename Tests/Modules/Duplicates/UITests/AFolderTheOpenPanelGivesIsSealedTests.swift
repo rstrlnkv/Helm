@@ -1,4 +1,5 @@
 import HelmRuntime
+import HelmTestSupport
 import HelmUI
 import XCTest
 @testable import Module_Duplicates_Engine
@@ -22,7 +23,7 @@ final class AFolderTheOpenPanelGivesIsSealedTests: XCTestCase {
         dvm.use(folder: chosen)
 
         XCTAssertEqual(store.string("folder", default: ""), chosen.path)
-        let guardOfTheEngine = SettingGuard(keys: PlantedSealKey())
+        let guardOfTheEngine = SettingGuard(keys: SealKeyProbe(firstUse: false))
         let expected = guardOfTheEngine.seal(Data(chosen.path.utf8)) ?? ""
         XCTAssertFalse(expected.isEmpty, "precondition: the planted key seals")
         XCTAssertEqual(store.string("folderMAC", default: ""), expected,

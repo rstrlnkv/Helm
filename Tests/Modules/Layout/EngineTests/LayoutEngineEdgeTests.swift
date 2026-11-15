@@ -4,67 +4,11 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-// The fakes are per-file on purpose: the ones in LayoutEngineTests are
-// file-private, and a shared set would tempt the next person to change one
-// suite's world to suit another's.
-
-private final class EdgeTyping: TypingPort, @unchecked Sendable {
-    var performed: [SwitchPlan] = []
-    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return true }
-}
-
-private final class EdgeContext: SecureContextPort, @unchecked Sendable {
-    var bundle = "com.apple.Notes"
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { bundle }
-}
-
-/// Translates anything: this suite is about lengths and endings, not about
-/// which words a dictionary knows.
-private struct EdgeTranslation: TranslationPort {
-    let table: [String: String]
-    func translate(_ word: String, from: String, to: String) -> String? {
-        if let known = table[word] { return known }
-        return String(repeating: "п", count: word.count)
-    }
-}
-
-/// Anything Cyrillic is a word; anything typed in Latin is not. That is the
-/// shape of every real mislayout.
-private struct EdgeSpell: SpellPort {
-    func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 }
-    }
-}
-
-private final class EdgeTap: KeyTapPort, @unchecked Sendable {
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        handler = onEvent
-        modifiers = onModifier
-        return true
-    }
-    func stop() { handler = nil }
-    func type(_ text: String) { for character in text { handler?(.character(character)) } }
-    func send(_ event: TypingBuffer.Event) { handler?(event) }
-}
-
-private final class EdgeSources: LayoutSourcePort, @unchecked Sendable {
-    var selected: [String] = []
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) { selected.append(sourceID) }
-}
-
 final class LayoutEngineEdgeTests: XCTestCase {
-    private var typing = EdgeTyping()
-    private var context = EdgeContext()
-    private var tap = EdgeTap()
-    private var sources = EdgeSources()
+    private var typing = FakeTyping()
+    private var context = FakeSecure()
+    private var tap = FakeTap()
+    private var sources = StuckSources()
 
     /// The chord bound as «fix». Only the recorded one ends a word and leaves
     /// it remembered: every other chord may have changed the text in front of
@@ -82,10 +26,10 @@ final class LayoutEngineEdgeTests: XCTestCase {
 
     private func engine(                        settings: NamespacedStore? = nil,
                         table: [String: String] = [:]) -> LayoutEngine {
-        typing = EdgeTyping(); context = EdgeContext(); tap = EdgeTap(); sources = EdgeSources()
+        typing = FakeTyping(); context = FakeSecure(); tap = FakeTap(); sources = StuckSources()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
-                                  translation: EdgeTranslation(table: table),
-                                  spell: EdgeSpell(), secure: context, activation: FakeActivation(),
+                                  translation: SameLengthTranslation(table: table),
+                                  spell: CyrillicSpell(), secure: context, activation: FakeActivation(),
                                   settings: settings ?? Self.boundStore())
         engine.activate()
         return engine
@@ -218,10 +162,10 @@ final class SettingsAtStartTests: XCTestCase {
 
     func testTheBoundKeyWorksOnAFreshLaunchWithNothingStored() {
         let tap = CountingTap()
-        let sources = EdgeSources()
-        let engine = LayoutEngine(tap: tap, typing: EdgeTyping(), sources: sources,
-                                  translation: EdgeTranslation(table: ["ghbdtn": "привет"]),
-                                  spell: EdgeSpell(), secure: EdgeContext(), activation: FakeActivation(),
+        let sources = StuckSources()
+        let engine = LayoutEngine(tap: tap, typing: FakeTyping(), sources: sources,
+                                  translation: SameLengthTranslation(table: ["ghbdtn": "привет"]),
+                                  spell: CyrillicSpell(), secure: FakeSecure(), activation: FakeActivation(),
                                   settings: NamespacedStore(namespace: "layout",
                                                             backing: InMemoryKeyValueStore()))
         engine.activate()

@@ -26,42 +26,6 @@ import XCTest
 /// build that is not `-dev`.
 final class TheLogDoesNotCarryWhatYouTypeTests: XCTestCase {
 
-    private final class FakeTyping: TypingPort, @unchecked Sendable {
-        var performed: [SwitchPlan] = []
-        var succeeds = true
-        func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return succeeds }
-    }
-
-    private final class FakeSecure: SecureContextPort, @unchecked Sendable {
-        var secure = false
-        func isSecureInput() -> Bool { secure }
-        func isSecure() -> Bool { secure }
-        func frontmostBundleID() -> String { "com.acme.private-notes" }
-    }
-
-    private struct FakeTranslation: TranslationPort {
-        let table: [String: String]
-        func translate(_ word: String, from: String, to: String) -> String? { table[word] }
-    }
-
-    private struct FakeSpell: SpellPort {
-        let valid: Set<String>
-        func isWord(_ word: String, sourceID: String) -> Bool? { valid.contains(word) }
-    }
-
-    private final class FakeTap: KeyTapPort, @unchecked Sendable {
-        var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-        func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-                   onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-                   died: @escaping @Sendable () -> Void) -> Bool {
-            handler = onEvent
-            return true
-        }
-        func stop() { handler = nil }
-        func type(_ text: String) { for character in text { handler?(.character(character)) } }
-        func space() { handler?(.space) }
-    }
-
     /// A word nobody would type by accident, so finding it in a message cannot
     /// be a coincidence — and its replacement, which is just as much the
     /// person's text.
@@ -70,6 +34,11 @@ final class TheLogDoesNotCarryWhatYouTypeTests: XCTestCase {
 
     private var typing = FakeTyping()
     private var tap = FakeTap()
+    private let secure: FakeSecure = {
+        let secure = FakeSecure()
+        secure.bundle = "com.acme.private-notes"
+        return secure
+    }()
 
     override func setUp() {
         super.setUp()
@@ -91,7 +60,7 @@ final class TheLogDoesNotCarryWhatYouTypeTests: XCTestCase {
             tap: tap, typing: typing, sources: FakeSources(),
             translation: FakeTranslation(table: [typed: replacement]),
             spell: FakeSpell(valid: [replacement]),
-            secure: FakeSecure(), activation: FakeActivation(), automatic: true)
+            secure: secure, activation: FakeActivation(), automatic: true)
         engine.activate()
         return engine
     }

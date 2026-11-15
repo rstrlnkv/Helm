@@ -74,8 +74,7 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
             these build a type over a port whose default is the login keychain, so running them \
             reads — and where the item is absent, creates — an item in the keychain of whoever \
             runs the suite. Hand each one a double: SealKeyProbe or SilentSealKey \
-            (HelmTestSupport), TestRuleKey / TestRuleSequence (Autopilot), PlantedSealKey \
-            (Duplicates).
+            (HelmTestSupport), TestRuleKey / TestRuleSequence (Autopilot).
             """)
     }
 

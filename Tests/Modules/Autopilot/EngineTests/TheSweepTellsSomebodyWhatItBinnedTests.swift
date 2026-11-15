@@ -149,10 +149,7 @@ final class WhichTriggerSpeaksAfterASweepTests: XCTestCase {
     /// for macOS — so a read taken straight afterwards would pass an absence for
     /// free.
     private func waitForPosts(_ wanted: Int) async {
-        let deadline = Date().addingTimeInterval(2)
-        while notices.posted.count < wanted, Date() < deadline {
-            try? await Task.sleep(nanoseconds: 1_000_000)
-        }
+        await waitUntilReached("\(wanted) banner(s)") { notices.posted.count >= wanted }
     }
 
     // MARK: - The timer's sweep

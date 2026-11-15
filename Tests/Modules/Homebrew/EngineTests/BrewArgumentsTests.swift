@@ -64,9 +64,6 @@ private final class RecordingRunner: ProcessRunner, @unchecked Sendable {
 private struct FixedLocator: BrewLocator {
     func brewPath() -> String? { "/opt/homebrew/bin/brew" }
 }
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
 
 final class BrewArgumentsTests: XCTestCase {
 

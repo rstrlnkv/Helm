@@ -57,9 +57,6 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     private struct FixedLocator: BrewLocator {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
 
     /// A brew that answers a canned `(status, stdout)` per subcommand — and can
     /// answer *differently per call*, because the real one does: `listInstalled`

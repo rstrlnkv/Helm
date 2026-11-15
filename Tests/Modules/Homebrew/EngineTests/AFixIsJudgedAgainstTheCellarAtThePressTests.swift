@@ -30,9 +30,6 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     private struct FixedLocator: BrewLocator {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
 
     /// A brew whose Cellar can change between two calls, because that is the
     /// whole subject: `installed` is read on every `brew list --versions` run,

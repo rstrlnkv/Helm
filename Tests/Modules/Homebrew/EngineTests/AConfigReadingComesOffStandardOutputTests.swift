@@ -65,10 +65,6 @@ private struct NoBrew: BrewLocator {
     func brewPath() -> String? { nil }
 }
 
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
 final class AConfigReadingComesOffStandardOutputTests: XCTestCase {
 
     /// Byte-for-byte what `/tmp/cfg.out` held — captured independently of

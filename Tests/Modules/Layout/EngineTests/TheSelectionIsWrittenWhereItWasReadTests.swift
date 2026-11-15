@@ -113,23 +113,6 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
         }
     }
 
-    private final class DriftTap: KeyTapPort, @unchecked Sendable {
-        func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-                   onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-                   died: @escaping @Sendable () -> Void) -> Bool { true }
-        func stop() {}
-    }
-
-    private final class DriftTyping: TypingPort, @unchecked Sendable {
-        func perform(_ plan: SwitchPlan) -> Bool { true }
-    }
-
-    private struct DriftSources: LayoutSourcePort {
-        func installed() -> [String] { ["en", "ru"] }
-        func current() -> String? { "en" }
-        func select(_ sourceID: String) {}
-    }
-
     private struct DriftTranslation: TranslationPort {
         func translate(_ word: String, from: String, to: String) -> String? {
             from == "en" ? ["ghbdtn": "привет"][word] : nil
@@ -145,8 +128,8 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
 
     private func engine() -> LayoutEngine {
         context = DriftContext(); selection = DriftSelection()
-        let engine = LayoutEngine(tap: DriftTap(), typing: DriftTyping(),
-                                  sources: DriftSources(), translation: DriftTranslation(),
+        let engine = LayoutEngine(tap: FakeTap(), typing: FakeTyping(),
+                                  sources: StuckSources(), translation: DriftTranslation(),
                                   spell: DriftSpell(), secure: context, activation: FakeActivation(), selection: selection)
         engine.activate()
         return engine

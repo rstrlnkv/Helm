@@ -1,13 +1,7 @@
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import HelmApp
-
-private struct TestKey: SealKeyPort {
-    let firstUse: Bool
-    func key() -> SealKey? {
-        SealKey(material: Data(repeating: 0x77, count: 32), firstUse: firstUse)
-    }
-}
 
 /// The switch that decides whether an unattended reader reads at all.
 ///
@@ -40,7 +34,7 @@ final class DisabledScansMustBeHelmsOwnTests: XCTestCase {
     }
 
     private func use(firstUse: Bool = false) {
-        AppSettings.scanGuard = SettingGuard(keys: TestKey(firstUse: firstUse))
+        AppSettings.scanGuard = SettingGuard(keys: SealKeyProbe(firstUse: firstUse))
     }
 
     func testAListHelmWroteIsUsed() {

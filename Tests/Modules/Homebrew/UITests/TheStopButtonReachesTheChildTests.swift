@@ -15,9 +15,6 @@ final class TheStopButtonReachesTheChildTests: XCTestCase {
     private struct FixedLocator: BrewLocator {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
 
     private final class Handle: RunningProcess, @unchecked Sendable {
         private let lock = NSLock()
