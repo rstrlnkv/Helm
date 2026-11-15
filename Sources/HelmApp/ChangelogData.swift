@@ -70,7 +70,7 @@ enum Changelog {
     /// Computed so `L()` resolves against the current language each time.
     static var entries: [ChangelogEntry] {
         [
-            ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
+            ChangelogEntry(version: "0.11.1", date: "2026-11-16", items: [
                 ChangeItem(kind: .fix, text: L("Toolbar tabs no longer jump when Settings first opens.")),
                 ChangeItem(kind: .upd, text: L("Concurrency warnings cleared across the app.")),
                 ChangeItem(kind: .fix, text: L("Helm no longer says Full Disk Access is missing when macOS has granted it — one of the four files it read to find out was a folder, which nothing can read.")),
