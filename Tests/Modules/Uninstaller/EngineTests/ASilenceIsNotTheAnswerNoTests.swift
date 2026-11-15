@@ -14,6 +14,7 @@ import XCTest
 /// The rule takes the answer itself, not a count of failed paths taken out of
 /// it: a batch the engine held, or one macOS refused, answers for nobody it
 /// touched, and neither can be folded into "no path failed" at the call site.
+/// Past defect: fix commit 3195695e.
 final class ASilenceIsNotTheAnswerNoTests: XCTestCase {
 
     private static func group(_ id: String, _ paths: [String]) -> TrashedAppLeftovers {

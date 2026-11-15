@@ -3,6 +3,20 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
+private struct HostsExtension: SystemExtensionPort {
+    let hosts: Set<String>
+    /// A tool that answered. The silence — `nil` — is
+    /// `ASilentToolIsNotNoExtensionsTests`' subject, and it is a state
+    /// this file must not be able to plant by accident.
+    func activeExtensionHosts() -> Set<String>? { hosts }
+}
+private struct NoLister: AppLister {
+    func installedApps() -> [InstalledApp] { [] }
+    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
+    func installedBundleIDs() -> Set<String> { [] }
+    func isKnownToSystem(bundleID: String) -> Bool { false }
+}
+
 /// When a bundle refuses to move, the engine decides whether to blame an active
 /// system extension by testing the app's bundle id against the extension hosts
 /// with `hasPrefix`. A bundle id is dot-separated, and `hasPrefix` does not know
@@ -14,33 +28,7 @@ import HelmTestSupport
 /// `.needsFullDiskAccess` drive different buttons on the failure sheet, so the
 /// wrong verdict sends the user to disable an extension that is not theirs
 /// while the real remedy stays hidden.
-private final class BlamingTrash: TrashPort, @unchecked Sendable {
-    func trashItem(_ url: URL) -> TrashOutcome {
-        // 513 = NSFileWriteNoPermissionError, what macOS returns for a bundle
-        // it will not move.
-        TrashOutcome(succeeded: false, errorCode: 513, message: "denied")
-    }
-}
-private struct HostsExtension: SystemExtensionPort {
-    let hosts: Set<String>
-    /// A tool that answered. The silence — `nil` — is
-    /// `ASilentToolIsNotNoExtensionsTests`' subject, and it is a state
-    /// this file must not be able to plant by accident.
-    func activeExtensionHosts() -> Set<String>? { hosts }
-}
-private struct AnyFS: FileSystemPort {
-    func exists(_ url: URL) -> Bool { true }
-    func size(_ url: URL) -> Int { 0 }
-    func glob(_ pattern: URL) -> [URL] { [] }
-    func children(of url: URL) -> [URL] { [] }
-}
-private struct NoLister: AppLister {
-    func installedApps() -> [InstalledApp] { [] }
-    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-    func installedBundleIDs() -> Set<String> { [] }
-    func isKnownToSystem(bundleID: String) -> Bool { false }
-}
-
+/// Past defect: fix commit 5f196564.
 final class ExtensionHostBlameTests: XCTestCase {
     private var root: URL!
 
@@ -59,8 +47,8 @@ final class ExtensionHostBlameTests: XCTestCase {
     }
 
     private func engine(hosts: Set<String>) -> UninstallerEngine {
-        UninstallerEngine(home: root, apps: NoLister(), fs: AnyFS(),
-                          trash: BlamingTrash(), running: NoRunning(),
+        UninstallerEngine(home: root, apps: NoLister(), fs: EveryPathExists(),
+                          trash: RefusesEverything(), running: NoRunning(),
                           extensions: HostsExtension(hosts: hosts))
     }
 

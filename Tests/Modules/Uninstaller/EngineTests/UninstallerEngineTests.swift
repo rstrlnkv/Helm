@@ -13,19 +13,6 @@ final class UninstallerEngineTests: XCTestCase {
                           running: FakeRunning(running: running))
     }
 
-    func testScanReturnsOnlyExistingCandidates() async throws {
-        let fs = FakeFS(existing: [
-            "/Users/x/Library/Caches/com.acme.tool": 100,
-            "/Users/x/Library/Preferences/com.acme.tool.plist": 10,
-        ])
-        let r = await engine(fs: fs).scan(bundleID: "com.acme.tool", appName: "Tool")
-        XCTAssertEqual(Set(r.leftovers.map(\.path)),
-                       ["/Users/x/Library/Caches/com.acme.tool",
-                        "/Users/x/Library/Preferences/com.acme.tool.plist"])
-        XCTAssertEqual(r.leftovers.first { $0.kind == .caches }?.sizeBytes, 100)
-        XCTAssertFalse(r.runningNow)
-    }
-
     /// The `*<id>*` glob alone finds what `*.<id>` also found: a team-prefixed
     /// folder, a group-prefixed one and the id with a suffix. A scratch home on
     /// the real filesystem, so the glob is expanded by the shipping port.

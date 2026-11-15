@@ -19,6 +19,7 @@ import HelmTestSupport
 /// draw. What the switch's own row *says* in the two blind states is a sentence
 /// this file does not invent: the state is wired and the wording is the
 /// localizer's.
+/// Past defect: fix commit f710c8f9.
 final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
 
     /// A Trash that can refuse to be read, and change its mind — the grant is
@@ -45,13 +46,6 @@ final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
         func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
         func installedBundleIDs() -> Set<String> { [] }
         func isKnownToSystem(bundleID: String) -> Bool { false }
-    }
-
-    private struct NoFiles: FileSystemPort {
-        func exists(_ url: URL) -> Bool { false }
-        func size(_ url: URL) -> Int { 0 }
-        func glob(_ pattern: URL) -> [URL] { [] }
-        func children(of url: URL) -> [URL] { [] }
     }
 
     private var home: URL!

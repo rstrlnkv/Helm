@@ -29,13 +29,6 @@ final class TheOfferSwitchTakesEffectNowTests: XCTestCase {
         func trashedApps() -> [TrashedApp]? { [] }
     }
 
-    private struct NoFiles: FileSystemPort {
-        func exists(_ url: URL) -> Bool { false }
-        func size(_ url: URL) -> Int { 0 }
-        func glob(_ pattern: URL) -> [URL] { [] }
-        func children(of url: URL) -> [URL] { [] }
-    }
-
     /// How many times the engine said "look again".
     private final class Told: @unchecked Sendable {
         private let lock = NSLock()

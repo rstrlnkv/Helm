@@ -25,6 +25,7 @@ import XCTest
 /// The subject here is the close, so the tests drive what the close drives:
 /// `removeSelection()`, then `answered()`.
 @MainActor
+/// Past defect: fix commit f07a4c13.
 final class ARefusalIsNotADeclineAtTheCloseTests: XCTestCase {
 
     private func offer(_ id: String, matchedByName: Bool = false) -> TrashedAppLeftovers {
