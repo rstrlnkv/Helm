@@ -14,6 +14,7 @@ import Module_Screenshots_Engine
 /// `ScStr.refusal(_:)`.
 ///
 /// Total failure of the subject prints: a press that does nothing and says nothing, a copy of a blank picture.
+/// Mutant, red here: `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`: `toast.showRefusal(toast.currentFileIsGone ? .fileGone : .encoding)` -> `toast.showRefusal(.encoding)`.
 @MainActor
 final class TheCopyOfAShotWhoseFileIsGoneIsToldNotDrawnBlankTests: XCTestCase {
 

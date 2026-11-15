@@ -12,6 +12,7 @@ import XCTest
 /// sRGB. A bitmap that cannot be made in that space is a capture refused as
 /// "could not be encoded" under JPEG alone, with the PNG of the same pixels
 /// fine.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/CaptureSession+Drawing.swift`: `for space in Pixelate.spaces(for: image) {` -> `for space in Pixelate.spaces(for: image).prefix(1) {`.
 final class AJPEGIsMadeOfAnyPictureAPNGIsTests: XCTestCase {
 
     private func picture(space: CGColorSpace, bits: Int, info: UInt32, alpha: CGFloat = 0.5) throws -> CGImage {

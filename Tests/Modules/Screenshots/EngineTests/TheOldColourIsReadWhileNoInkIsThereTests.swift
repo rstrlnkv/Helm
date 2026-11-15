@@ -8,6 +8,7 @@ import XCTest
 /// numbers. The reader asks `editorInk` first; only a key that is *absent* sends it to the old one. A key that is there and damaged
 /// is a property list somebody wrote, and a colour from before it would be a guess shown as the person's pick. A read writes nothing:
 /// the store compared whole, before and after, so a write of any key is seen, not only of the two named.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/EditorMemory.swift`: `guard let parts = stored as? [Double], parts.count == 3 else { return nil }` -> `guard let parts = stored as? [Double], parts.count == 3 else { return AnnotationColor(rawValue: store.string(Key.editorColor, default: "")).map(AnnotationInk.init) }`.
 final class TheOldColourIsReadWhileNoInkIsThereTests: XCTestCase {
 
     private typealias Key = ScreenshotsSettings.Key

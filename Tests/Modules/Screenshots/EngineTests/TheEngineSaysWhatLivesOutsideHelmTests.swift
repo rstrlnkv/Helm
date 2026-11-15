@@ -58,6 +58,7 @@ final class TheEngineSaysWhatLivesOutsideHelmTests: XCTestCase {
 
 /// What the settings page is told: the folder macOS names, validated, and which
 /// system boxes are ticked. Through the news, as the page hears it.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/ScreenshotsEngine.swift`: `folderRefused: folder.refused` -> `folderRefused: nil`.
 final class TheEngineTellsThePageWhatItReadTests: XCTestCase {
 
     func testActivationPublishesTheReadingAndALateSubscriberStillGetsIt() async throws {

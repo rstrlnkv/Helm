@@ -10,6 +10,7 @@ import XCTest
 ///
 /// A state is told from the one before it by the save folder: the preferences answer nothing (the Desktop) and then
 /// a number (a refused folder), so an order that came out reversed or a replay that skipped a state is a different list.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/ScreenshotsEngine.swift`: `self.news.say(state)` -> `self.news.say(state); self.news.say(state)`.
 final class TheScreenshotsStreamCarriesTheStateTests: XCTestCase {
 
     private final class Collected: @unchecked Sendable {

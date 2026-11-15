@@ -923,6 +923,7 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
 
 /// `SystemShotTrash` on a file of this test's own, whose leaf carries a UUID so that its cleanup can only remove
 /// what this test put in the Trash. The file is really moved to the owner's Trash, and is taken out again.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/SystemPorts.swift`: `try FileManager.default.trashItem(at: url, resultingItemURL: nil)` -> `try FileManager.default.removeItem(at: url)`. Stays optional: moves a file into the owner's real Trash and takes it out again.
 final class TheRealTrashTakesTheEditedShotsOriginalTests: XCTestCase {
     func testTheRealTrashTakesTheOriginalAndTheEditTakesItsName() async throws {
         let unique = TheEditReplacesOnlyTheFileItWroteTests.name + " " + UUID().uuidString

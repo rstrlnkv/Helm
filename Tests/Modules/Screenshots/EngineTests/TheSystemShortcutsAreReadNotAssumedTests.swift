@@ -7,6 +7,7 @@ import XCTest
 /// default — and an *unreadable* reading is unknown. Reading absent as off tells
 /// a person ⌘⇧4 is free while it is taken; reading unreadable as free does the
 /// same from the other side.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/SystemShortcuts.swift`: `case .absent: return SystemBox.allCases.map { defaulted($0, state: .on) }` -> `case .absent: return SystemBox.allCases.map { defaulted($0, state: .off) }`.
 final class TheSystemShortcutsAreReadNotAssumedTests: XCTestCase {
 
     private func entry(enabled: Any, parameters: [Int]? = nil) -> [String: Any] {

@@ -12,6 +12,7 @@ import XCTest
 ///
 /// The thumbnail is switched off in every store here, because the toast is a real
 /// panel and this must not put one on the screen of whoever runs it.
+/// Mutant, red here: `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`: `let delivery = await session.deliver(shot.image, saves: saves, copies: copies,` -> `let delivery = await session.deliver(shot.image, saves: saves, copies: false,`.
 @MainActor
 final class TheHandOffCopiesAndSavesTests: XCTestCase {
 

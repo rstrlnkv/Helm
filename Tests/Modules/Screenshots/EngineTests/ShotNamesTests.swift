@@ -2,6 +2,7 @@ import Foundation
 import XCTest
 @testable import Module_Screenshots_Engine
 
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/ShotNames.swift`: `attempt == 0 ? base` -> `attempt == 1 ? base`.
 final class ShotNamesTests: XCTestCase {
 
     private let utc = TimeZone(identifier: "UTC")!

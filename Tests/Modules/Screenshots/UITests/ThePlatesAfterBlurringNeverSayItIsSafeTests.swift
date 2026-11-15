@@ -15,6 +15,7 @@ import XCTest
 /// "safe" in a word that is not on the list passes. What they catch is the plain regression — someone writing "Personal data hidden" — and
 /// the real guard is the sentences themselves, asserted whole. No plate carries a check mark either, and the plate is drawn white on dark,
 /// never green (`LabelLayer`).
+/// Mutant, red here: `Sources/Modules/Screenshots/UI/ScreenshotsStrings.swift`: `static var nothingBlurred: String { L(.nothingBlurred) }` -> `static var nothingBlurred: String { L(.textCopied) }`.
 @MainActor
 final class ThePlatesAfterBlurringNeverSayItIsSafeTests: XCTestCase {
 
