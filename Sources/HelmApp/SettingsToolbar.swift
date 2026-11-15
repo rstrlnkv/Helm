@@ -1620,8 +1620,8 @@ import HelmUI
     /// follows it when the strip is refilled or folded. The strip is Helm's
     /// cell, whose slide moves the pick. `PageBar.tabsSwitcherHost` is
     /// the hosting view under both looks; the item's view is `PageBar.tabsItemView`.
-    /// **Not seen on a screen:** the plate under the cell inside a toolbar item, and
-    /// that no platter of AppKit's is behind it, and that the item follows the strip when the
+    /// Seen on a shown window (Helm Dev, Flat, Light and Dark): the plate under the cell inside a toolbar item, with no platter of
+    /// AppKit's behind it (a plain `NSControl` gets none), and the cell's slide. **Not seen on a screen:** that the item follows the strip when the
     /// strip changes size (the plate's constraints hand the strip's size on; no window drew it).
     private func makeTabsItem(_ bar: PageBar) -> NSToolbarItem {
         let tabs = bar.content?.tabs ?? []

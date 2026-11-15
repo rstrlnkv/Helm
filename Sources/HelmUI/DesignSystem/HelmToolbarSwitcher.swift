@@ -78,8 +78,8 @@ public struct HelmSwitcherSegment<Value: Hashable> {
     }
 }
 
-/// **The switcher in the bar: an `NSSegmentedControl` sized to what it shows, wearing `HelmFlatSegmentedCell`
-/// unless its environment asks for AppKit's cell.**
+/// **The switcher in the bar: a control sized to what it shows (a plain `NSControl` under Flat, an `NSSegmentedControl`
+/// where the environment asks for AppKit's cell), wearing `HelmFlatSegmentedCell` unless it asks for AppKit's.**
 ///
 /// The strip is the neutral pill of the flat cell, unless the
 /// environment's `helmSwitcherCell` asks for AppKit's (a switcher in the window's toolbar does under Liquid
@@ -88,8 +88,9 @@ public struct HelmSwitcherSegment<Value: Hashable> {
 /// it brings (measured 2026-09-17 against Apple Music's toolbar: pressing a
 /// segment swells its glass and dragging carries that glass from segment to
 /// segment). Outside a toolbar it selected with the accent colour in a key window, so every other switcher,
-/// and the toolbar's under Flat, wears the flat cell, and there is no glass swell. Whether AppKit still draws any of its own under
-/// the flat cell was not seen on a screen (the cell's header).
+/// and the toolbar's under Flat, wears the flat cell, and there is no glass swell. Under Flat the control is not an
+/// `NSSegmentedControl` at all but a `HelmFlatSwitcherControl`, because the toolbar gives an `NSSegmentedControl` glass
+/// whatever cell it wears (seen on a shown window, 2026-11-15: a lens sliding over the pick, the words twice).
 /// Under the flat cell a press slides the pick from the old segment to the new one
 /// (`HelmFlatSegmentedCell.slide`), and AppKit's cell is not asked to; the page under the bar still changes
 /// at once.
@@ -117,7 +118,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// **Fold the whole strip into one segment — the current tab — with a
     /// menu for the rest**, rather than letting AppKit's own overflow move
     /// the strip into the toolbar's «»» menu the moment it stops fitting
-    /// beside an opening search field. One `NSSegmentedControl` instance can carry both forms:
+    /// beside an opening search field. One control can carry both forms:
     /// `updateNSView` refills the same control when this flips.
     /// `SettingsToolbar` flips it on a mounted control (`patchTabs` hands the hosted switcher `PageBar.tabsFolded`).
     private let compact: Bool
@@ -159,8 +160,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         compact ? (displaySegments.isEmpty ? nil : 0) : segments.firstIndex { $0.value == selection }
     }
 
-    public func makeNSView(context: Context) -> NSSegmentedControl {
-        let control = NSSegmentedControl()
+    public func makeNSView(context: Context) -> NSControl {
+        let control: NSControl = cell == .flat ? HelmFlatSwitcherControl() : NSSegmentedControl()
         context.coordinator.watch(control)
         Self.dress(control, cell: cell, coordinator: context.coordinator)
         Self.fill(control, segments: displaySegments, style: style,
@@ -174,7 +175,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         return control
     }
 
-    public static func dismantleNSView(_ control: NSSegmentedControl, coordinator: Coordinator) {
+    public static func dismantleNSView(_ control: NSControl, coordinator: Coordinator) {
         coordinator.stop()
     }
 
@@ -191,7 +192,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         }
     }
 
-    public func updateNSView(_ control: NSSegmentedControl, context: Context) {
+    public func updateNSView(_ control: NSControl, context: Context) {
         context.coordinator.pick = { index in
             guard segments.indices.contains(index) else { return }
             selection = segments[index].value
@@ -207,9 +208,9 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 
         let shown = displaySegments
         let selectedIndex = displaySelectedIndex
-        let isInitial = control.segmentCount == 0
+        let isInitial = control.segmentsCell.segmentCount == 0
         let styleChanged = context.coordinator.lastStyle != style
-        let countChanged = control.segmentCount != shown.count
+        let countChanged = control.segmentsCell.segmentCount != shown.count
         // A fold or an unfold always changes `shown.count` too (`N` down to
         // `1` or back), so it already takes the structural branch below —
         // this flag exists only so that branch is *entered* on a compact
@@ -259,7 +260,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             var labelsMatch = true
             let showsWord = style == .text || style == .iconsAndText
             for (idx, seg) in shown.enumerated() {
-                if control.label(forSegment: idx) != (showsWord ? seg.label : "") {
+                if control.segmentsCell.label(forSegment: idx) != (showsWord ? seg.label : "") {
                     labelsMatch = false
                     break
                 }
@@ -291,7 +292,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             // **A dot is an image, and an image cannot be read back** (`symbolsChanged`'s own reason), so what was
             // drawn is kept and compared.
             let attentionChanged = context.coordinator.lastAttention != shown.map(\.needsAttention)
-            let selectionMoved = selectedIndex.map { control.selectedSegment != $0 } ?? (control.selectedSegment != -1)
+            let selectionMoved = selectedIndex.map { control.segmentsCell.selectedSegment != $0 } ?? (control.segmentsCell.selectedSegment != -1)
             // Nothing structural changed, so this is the cheap path: when the
             // words and the selection both already read right — the first
             // update after `makeNSView` pre-populated the control, which is
@@ -341,7 +342,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// fitting size on every pass, so a width that changes — the style chosen
     /// for the bar puts words on the segments or takes them off — is a size
     /// SwiftUI can move between rather than a number it is handed once.
-    public func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSSegmentedControl,
+    public func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSControl,
                              context: Context) -> CGSize? {
         nsView.fittingSize
     }
@@ -350,15 +351,15 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// (`fill` and the coordinator's `picked` reach it through `control.cell`, to end and to start a slide, and
     /// do nothing to a cell that is not Helm's). A cell swap wipes what the control held (measured on a bare control: segment count 0, target nil, size regular),
     /// so the control's settings are written here, after the swap, and `makeNSView` fills the segments after it.
-    /// Nobody has seen the flat cell drawn in a window.
-    private static func dress(_ control: NSSegmentedControl, cell: HelmSwitcherCell, coordinator: Coordinator) {
+    /// The flat cell has been seen drawn in a shown window, Light and Dark, in the toolbar on `HelmFlatSwitcherControl`.
+    private static func dress(_ control: NSControl, cell: HelmSwitcherCell, coordinator: Coordinator) {
         switch cell {
         case .flat: control.cell = HelmFlatSegmentedCell()
         case .systems: control.cell = NSSegmentedCell()
         }
-        control.segmentStyle = .automatic
-        control.segmentDistribution = .fit
-        control.trackingMode = .selectOne
+        (control as? NSSegmentedControl)?.segmentStyle = .automatic
+        (control as? NSSegmentedControl)?.segmentDistribution = .fit
+        control.segmentsCell.trackingMode = .selectOne
         control.target = coordinator
         control.action = #selector(Coordinator.picked(_:))
         control.controlSize = .extraLarge
@@ -370,28 +371,29 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// moved something written here: the count, the style or the fold, or,
     /// on that method's cheap path, a drawn word, a name, a glyph or the
     /// selection that no longer matches the control.
-    private static func fill(_ control: NSSegmentedControl,
+    private static func fill(_ control: NSControl,
                              segments: [HelmSwitcherSegment<Value>],
                              style: ToolbarSwitcherStyle, selected: Int?, compact: Bool) {
         // A refill is not a press: a slide in flight ends where the strip stands now.
         (control.cell as? HelmFlatSegmentedCell)?.cancelSlide()
-        if control.segmentCount != segments.count { control.segmentCount = segments.count }
+        let cell = control.segmentsCell
+        if cell.segmentCount != segments.count { cell.segmentCount = segments.count }
         for (index, segment) in segments.enumerated() {
             let showsGlyph = style != .text
             let showsWord = style == .text || style == .iconsAndText
-            control.setLabel(showsWord ? segment.label : "", forSegment: index)
-            control.setImage(image(for: segment, showsGlyph: showsGlyph), forSegment: index)
-            control.setImageScaling(.scaleProportionallyDown, forSegment: index)
+            cell.setLabel(showsWord ? segment.label : "", forSegment: index)
+            cell.setImage(image(for: segment, showsGlyph: showsGlyph), forSegment: index)
+            cell.setImageScaling(.scaleProportionallyDown, forSegment: index)
             // The word, for a segment showing only its glyph — the pointer is
             // where a glyph-only control says what it is.
-            control.setToolTip(segment.label, forSegment: index)
+            cell.setToolTip(segment.label, forSegment: index)
             // 0 is «as wide as it needs», which `segmentDistribution` then
             // leaves alone.
-            control.setWidth(0, forSegment: index)
+            cell.setWidth(0, forSegment: index)
             // Written on every fill, compact or not, so no indicator ever
             // survives an unfold — a full-width segment carrying a menu
             // arrow from its last compact appearance was never asked for.
-            control.setShowsMenuIndicator(compact, forSegment: index)
+            control.setArrow(compact, segment: index)
         }
         // An index naming no segment — out of range on either side, which an
         // empty `segments` makes true of every index including `0` — is simply
@@ -399,12 +401,12 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         // refusing, so the bound has to sit here, where both callers' indices
         // are checked against the count that was just written above, and not
         // repeated at each call site.
-        if let selected, segments.indices.contains(selected), control.selectedSegment != selected {
-            control.setSelected(true, forSegment: selected)
+        if let selected, segments.indices.contains(selected), cell.selectedSegment != selected {
+            cell.setSelected(true, forSegment: selected)
         }
         // No index at all clears the selection: a press AppKit has already lit must not stay lit when the
         // selection names no segment. Through `selectedSegment`, not a second `setSelected(`.
-        if selected == nil, control.selectedSegment != -1 { control.selectedSegment = -1 }
+        if selected == nil, cell.selectedSegment != -1 { cell.selectedSegment = -1 }
     }
 
     /// **The segment's image, and the dot in it.** AppKit draws a segment's label and its image together and puts the
@@ -496,10 +498,10 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         var lastAttention: [Bool]?
         /// The index the control showed selected as of the last update or press: where a press's slide starts from.
         var shownSelection: Int?
-        private weak var control: NSSegmentedControl?
+        private weak var control: NSControl?
         private var monitor: Any?
 
-        func watch(_ control: NSSegmentedControl) {
+        func watch(_ control: NSControl) {
             self.control = control
             stop()
             monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) {
@@ -548,14 +550,14 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         /// AppKit's own click machinery fires this at all, so this branch is
         /// what a Space or Return key, or a VoiceOver activation, still
         /// reaches.
-        @objc func picked(_ sender: NSSegmentedControl) {
+        @objc func picked(_ sender: NSControl) {
             if compact, let tabsMenu {
                 tabsMenu.popUp(positioning: tabsMenu.items.first { $0.state == .on }, at: .zero, in: sender)
                 return
             }
             // The cell is asked to slide before the page's write is made;
             // that its animation group has also returned by then is by reading, held by no row.
-            let to = sender.selectedSegment
+            let to = sender.segmentsCell.selectedSegment
             (sender.cell as? HelmFlatSegmentedCell)?.slide(from: shownSelection, to: to)
             shownSelection = to
             pick(to)
@@ -590,11 +592,9 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 /// had its paint on screen, with the system's own selection capsule (accent
 /// when key, grey when not) still drawn under the selected segment. This cell
 /// also overrides `draw(withFrame:in:)` and never calls the system's.
-/// **Not seen on a screen:** this cell itself — whether the system's
-/// selection capsule shows under its pick, the exact widths, the pick's
-/// geometry, the dot and the fold's arrow, and that a press lands on the
-/// segment drawn there (the system's own hit-testing was not made to follow
-/// `segmentWidth`).
+/// **Seen on a screen** (Helm Dev, Homebrew, Flat, Light and Dark, 2026-11-15): this cell on a
+/// `HelmFlatSwitcherControl` draws the pick and the words with no system capsule or glass, and a press lands on the
+/// segment drawn there. **Not seen on a screen:** the dot and the fold's arrow under it.
 ///
 /// **A press slides the pick; nothing else does.** `slide(from:to:)` puts a temporary
 /// view the pick's size over the old segment and moves it to the new one through
@@ -606,9 +606,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 /// target; so a page whose answer to a press also renames a tab or moves its dot gets no
 /// slide. The temporary view is removed by `finishSlide`, reached from the animation's
 /// completion and from `cancelSlide`, or by the `slide` that takes it over; no row awaits the completion.
-/// **Not seen on a screen:** the slide itself, and the moving pick passing over
-/// the words (it is translucent, drawn above them, where the resting pick is
-/// below).
+/// The slide, and the moving translucent pick passing over the words (drawn above them, where the resting pick is
+/// below), were seen on a shown window, Light and Dark: one pill, no second label.
 final class HelmFlatSegmentedCell: NSSegmentedCell {
     /// One slide asked for: between which segments, and how long it takes.
     struct Slide: Equatable {
@@ -692,10 +691,9 @@ final class HelmFlatSegmentedCell: NSSegmentedCell {
         return parts.reduce(0, +) + HelmSpace.s3 * CGFloat(max(parts.count - 1, 0))
     }
 
-    /// The menu indicator is the control's own per-segment state; the cell has
-    /// no reading of it.
+    /// The menu indicator is the control's own per-segment state; the cell has no reading of it.
     private func showsArrow(_ segment: Int) -> Bool {
-        (controlView as? NSSegmentedControl)?.showsMenuIndicator(forSegment: segment) ?? false
+        (controlView as? NSControl)?.showsArrow(segment: segment) ?? false
     }
 
     /// A width set on the segment wins; 0 is as wide as the content.
@@ -718,6 +716,15 @@ final class HelmFlatSegmentedCell: NSSegmentedCell {
 
     private func pickRect(_ segment: Int, in cellFrame: NSRect) -> NSRect {
         pick(in: segmentFrame(segment, in: cellFrame))
+    }
+
+    /// The pick of the segment that has keyboard focus, for the focus ring: the cell keeps that segment itself
+    /// (`makeNextSegmentKey`) and says which in its accessibility focus, found here by its word.
+    func keyPick(in cellFrame: NSRect) -> NSRect? {
+        guard let focused = perform(NSSelectorFromString("accessibilityFocusedUIElement"))?.takeUnretainedValue(),
+              let word = (focused as? NSAccessibilityProtocol)?.accessibilityLabel(),
+              let segment = (0..<segmentCount).first(where: { label(forSegment: $0) == word }) else { return nil }
+        return pickRect(segment, in: cellFrame)
     }
 
     /// The pick's colour, resolved in the appearance it is read in.
@@ -829,6 +836,61 @@ final class HelmFlatSegmentedCell: NSSegmentedCell {
             rect.fill(using: .sourceIn)
             return true
         }
+    }
+}
+
+/// **The control under Flat: a plain `NSControl` wearing `HelmFlatSegmentedCell`, not an `NSSegmentedControl`.**
+/// The window's toolbar gives every `NSSegmentedControl` in an item its glass: a platter round it and a lift on a press
+/// that slides a lens over the old pick with the words twice (seen on a shown window, macOS 27.3, a probe with a flat cell
+/// in a toolbar item, and Helm Dev; hiding the control's hosted `_NSCoreHostingView<AppKitSegmentedControl>` did not
+/// remove it). The same cell on a plain `NSControl` in the same item drew none, selected on a click and reported the same
+/// accessibility (the cell's radio group). `intrinsicContentSize` is the cell's own, whose width and height are exact.
+final class HelmFlatSwitcherControl: NSControl {
+    override var intrinsicContentSize: NSSize { cell?.cellSize ?? .zero }
+    /// The segments showing a menu indicator: `NSSegmentedControl` keeps this itself, a plain control has none.
+    fileprivate var indicators: Set<Int> = []
+
+    /// **The keyboard, as the system's control has it** (seen under Liquid Glass, Full Keyboard Access): focus can be put on
+    /// a segment, Right and Left move it from segment to segment, Space selects the focused one and sends the action.
+    /// The cell keeps the focused segment (`makeNextSegmentKey`, wrapping at the ends) and draws no ring, so the ring is drawn
+    /// here; Space was seen to select through `super.keyDown` (a probe and Helm Dev), its source not read. `canBecomeKeyView` keeps
+    /// the control out of the Tab key's loop, as the system's is.
+    override var acceptsFirstResponder: Bool { isEnabled }
+    override var canBecomeKeyView: Bool { false }
+
+    override func keyDown(with event: NSEvent) {
+        guard let cell = cell as? NSSegmentedCell else { return super.keyDown(with: event) }
+        switch event.keyCode {
+        case 124: cell.makeNextSegmentKey()
+        case 123: cell.makePreviousSegmentKey()
+        default: return super.keyDown(with: event)
+        }
+        noteFocusRingMaskChanged()
+        NSAccessibility.post(element: self, notification: .focusedUIElementChanged)
+    }
+
+    override var focusRingMaskBounds: NSRect { (cell as? HelmFlatSegmentedCell)?.keyPick(in: bounds) ?? .zero }
+
+    override func drawFocusRingMask() {
+        guard let pick = (cell as? HelmFlatSegmentedCell)?.keyPick(in: bounds) else { return }
+        NSBezierPath(roundedRect: pick, xRadius: pick.height / 2, yRadius: pick.height / 2).fill()
+    }
+}
+
+private extension NSControl {
+    /// What both controls keep their segments in: `HelmFlatSegmentedCell` or AppKit's `NSSegmentedCell`, put there by `dress`.
+    var segmentsCell: NSSegmentedCell { cell as! NSSegmentedCell }
+
+    func setArrow(_ shows: Bool, segment: Int) {
+        if let segmented = self as? NSSegmentedControl { segmented.setShowsMenuIndicator(shows, forSegment: segment) }
+        else if let flat = self as? HelmFlatSwitcherControl {
+            if shows { flat.indicators.insert(segment) } else { flat.indicators.remove(segment) }
+        }
+    }
+
+    func showsArrow(segment: Int) -> Bool {
+        (self as? NSSegmentedControl)?.showsMenuIndicator(forSegment: segment)
+            ?? (self as? HelmFlatSwitcherControl)?.indicators.contains(segment) ?? false
     }
 }
 
