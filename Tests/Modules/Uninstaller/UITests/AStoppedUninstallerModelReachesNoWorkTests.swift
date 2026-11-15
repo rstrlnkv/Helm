@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import HelmUI
 import HelmContract
 import XCTest
@@ -20,8 +21,6 @@ final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
 
     private let app = InstalledApp(name: "Sample", bundleID: "com.example.sample",
                                    path: "/Applications/Sample.app", sizeBytes: 0)
-
-    private func settle() async { for _ in 0..<100 { await Task.yield() } }
 
     private func model(_ work: StoppedWork,
                        arrivals: AsyncStream<Void> = AsyncStream { _ in }) -> UninstallerViewModel {
@@ -75,7 +74,7 @@ final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
         XCTAssertTrue(live.closed)
         let before = work.calls
         let after = await pressEverything(live)
-        await settle()
+        await grace()
 
         XCTAssertNil(after.trash, "a removal was answered by a stopped model")
         XCTAssertNil(after.orphans)
@@ -90,13 +89,13 @@ final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
         let work = StoppedWork(apps: [app], parkingTheList: true)
         let live = model(work)
         let load = Task { await live.reloadApps() }
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("the list is parked") { work.parkedCount >= 1 }
         XCTAssertEqual(work.parkedCount, 1, "precondition: the list is really in flight")
 
         live.stop()
         work.releaseParked()
         await load.value
-        await settle()
+        await grace()
 
         XCTAssertTrue(live.apps.isEmpty, "an answer landed on a stopped model")
         XCTAssertFalse(live.listAnswered)
@@ -111,13 +110,13 @@ final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
         live.listenForTrash { heard.n += 1 }
 
         feed.yield()
-        for _ in 0..<1000 where heard.n < 1 { await Task.yield() }
+        await waitUntil("the handler heard it") { heard.n >= 1 }
         XCTAssertEqual(heard.n, 1, "control: an arrival reaches the handler before stop()")
 
         live.stop()
         feed.yield()
         feed.yield()
-        await settle()
+        await grace()
         XCTAssertEqual(heard.n, 1, "an arrival reached the handler after stop()")
     }
 
@@ -141,7 +140,7 @@ final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
                                             appPath: "/Users/x/.Trash/Sample.app", leftovers: [])]
         let asked = work.count("trashedAppLeftovers")
         feed.yield()
-        for _ in 0..<1000 where offer.groups.isEmpty { await Task.yield() }
+        await waitUntil("the offer took the arrival") { !offer.groups.isEmpty }
 
         XCTAssertEqual(offer.groups.map(\.bundleID), [app.bundleID], "the offer did not take the arrival")
         XCTAssertGreaterThan(work.count("trashedAppLeftovers"), asked, "the offer did not ask the work again")
@@ -150,7 +149,7 @@ final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
         // Control: with no offer the same arrival goes to the handler.
         live.openOffer = nil
         feed.yield()
-        for _ in 0..<1000 where heard.n < 1 { await Task.yield() }
+        await waitUntil("the handler heard it") { heard.n >= 1 }
         XCTAssertEqual(heard.n, 1, "control: without an offer the arrival reaches the handler")
     }
 
@@ -167,7 +166,7 @@ final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
             released = live
             live.stop()
         }
-        await settle()
+        await grace()
         XCTAssertNil(released, "a stopped model is still held after its owner let go")
     }
 }

@@ -1,4 +1,5 @@
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
@@ -65,7 +66,7 @@ final class TheLeftoversScanOutlivesTheSidebarTests: XCTestCase {
         let uvm = modelOver(held)
         let model = uvm.orphans
         let scan = Task { await model.scan() }
-        while !model.scanning { await Task.yield() }
+        await waitUntil("the scan is running") { model.scanning }
         uvm.stop()
         held.releaseScan()
         await scan.value

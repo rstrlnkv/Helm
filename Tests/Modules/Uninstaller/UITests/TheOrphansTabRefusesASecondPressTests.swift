@@ -1,4 +1,5 @@
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
@@ -36,7 +37,7 @@ final class TheOrphansTabRefusesASecondPressTests: XCTestCase {
         XCTAssertEqual(model.selected, [path], "precondition: the leftover is ticked")
 
         let first = Task { await model.trashSelected() }
-        for _ in 0..<50 where work.trashRequests == 0 { await Task.yield() }
+        await waitUntil("the first batch is in flight") { work.trashRequests > 0 }
         XCTAssertEqual(work.trashRequests, 1, "precondition: the first batch is in flight")
         XCTAssertTrue(model.busy, "nothing on the tab can tell that a removal is running")
 
@@ -45,7 +46,7 @@ final class TheOrphansTabRefusesASecondPressTests: XCTestCase {
         // wait on `HeldWork`'s one `released` stream, which is shared by every
         // call; what that does to the run was not tried.
         let second = Task { await model.trashSelected() }
-        for _ in 0..<50 { await Task.yield() }
+        await grace()
 
         XCTAssertEqual(work.trashRequests, 1, """
             the batch went out twice. The second round finds every path already in the \
