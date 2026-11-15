@@ -53,9 +53,9 @@ final class ARuleThatWillNotFireSaysSoTests: XCTestCase {
             apps.bundleIDs = [bundleID]
             apps.fire()
 
-            let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
-            XCTAssertTrue(lines.contains { $0.message.contains("did not fire: \(expected.rawValue)") },
-                          "precondition: the engine refuses for \(expected): \(lines.map(\.message))")
+            let lines = loggedLines("vpn")
+            XCTAssertTrue(lines.contains { $0.contains("did not fire: \(expected.rawValue)") },
+                          "precondition: the engine refuses for \(expected): \(lines)")
             let note = await published(engine)
             XCTAssertEqual(note, [bundleID: expected],
                            "the note and the refusal came from two different answers")

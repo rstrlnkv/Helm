@@ -21,16 +21,10 @@ final class AWaitThatNeverHappensFailsTests: XCTestCase {
     }
 
     func testAConditionSetFromADetachedTaskAfterAWhilePasses() async {
-        final class Flag: @unchecked Sendable {
-            private let lock = NSLock()
-            private var set = false
-            var value: Bool { lock.lock(); defer { lock.unlock() }; return set }
-            func raise() { lock.lock(); set = true; lock.unlock() }
-        }
-        let flag = Flag()
+        let flag = Locked(false)
         Task.detached {
             try? await Task.sleep(for: .milliseconds(50))
-            flag.raise()
+            flag.value = true
         }
         await waitUntil("the flag", within: .seconds(5)) { flag.value }
         XCTAssertTrue(flag.value)

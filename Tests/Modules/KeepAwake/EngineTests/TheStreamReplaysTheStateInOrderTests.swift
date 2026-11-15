@@ -55,13 +55,6 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
         var all: [Int] { lock.lock(); defer { lock.unlock() }; return numbers }
     }
 
-    private final class Count: @unchecked Sendable {
-        private let lock = NSLock()
-        private var n = 0
-        func bump() { lock.lock(); n += 1; lock.unlock() }
-        var value: Int { lock.lock(); defer { lock.unlock() }; return n }
-    }
-
     private enum Order { case emitFirst, subscribeFirst }
 
     /// One round of `total` numbered emits (0..<total). Returns what arrived.
@@ -105,7 +98,7 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
     private func racingRound(total: Int, subscribers: Int) async -> [[Int]] {
         let news = shared!
         let engine = raced!
-        let emitted = Count()
+        let emitted = LockedCount()
         let emitter = Task.detached {
             for n in 0..<total {
                 news.say(Self.state(n))

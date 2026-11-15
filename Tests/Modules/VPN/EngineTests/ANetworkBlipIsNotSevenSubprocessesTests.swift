@@ -4,6 +4,7 @@
 import Foundation
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
@@ -52,19 +53,6 @@ import XCTest
 /// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
 
-    /// A counter a `@Sendable` hook can add to.
-    ///
-    /// `ProgressBox` in `HelmTestSupport` is the same lock and the same `Int`
-    /// and it *records* rather than *adds*, so it cannot count calls. This
-    /// belongs beside it; it is here only because `Tests/Support` has another
-    /// writer in it today.
-    private final class Tally: @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        func add() { lock.lock(); count += 1; lock.unlock() }
-        var value: Int { lock.lock(); defer { lock.unlock() }; return count }
-    }
-
     /// What the store delivered when one tunnel came up, on the machine the log
     /// above came from. Twenty rather than seven so that «fewer than one
     /// subprocess each» is not a reading a lucky schedule can produce.
@@ -100,7 +88,7 @@ final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
     /// A single reading taken too early would be *low*, which is the direction
     /// that makes this test pass while the defect is there — so the count is
     /// held until it stops moving rather than read after a fixed sleep.
-    private func settled(_ tally: Tally, still: TimeInterval = 0.4,
+    private func settled(_ tally: LockedCount, still: TimeInterval = 0.4,
                          deadline: TimeInterval = 8) -> Int {
         let started = Date()
         var last = tally.value
@@ -122,11 +110,11 @@ final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput = list
         runner.statusOutput["work"] = status
-        let listReads = Tally()
+        let listReads = LockedCount()
         // Counted through the fake's own locked hook, on the thread that issued
         // the command: `issued` is a plain array the module's queue appends to,
         // and reading it from here would be both a race and a poll.
-        runner.onRun = { args in if args == ["--nc", "list"] { listReads.add() } }
+        runner.onRun = { args in if args == ["--nc", "list"] { listReads.bump() } }
 
         let network = FakeNetwork()
         let interfaces = FakeInterfaces()

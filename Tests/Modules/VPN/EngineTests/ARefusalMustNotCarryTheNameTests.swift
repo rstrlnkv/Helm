@@ -109,14 +109,14 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
 
         engine.connect(service, auto: false)
 
-        let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
+        let lines = loggedLines("vpn")
         // The subject first: an absence proves nothing when nothing was written.
-        XCTAssertTrue(lines.contains { $0.message.contains("refused") },
+        XCTAssertTrue(lines.contains { $0.contains("refused") },
                       "precondition: the refusal reached the log at all")
-        XCTAssertFalse(lines.contains { $0.message.contains(service) },
+        XCTAssertFalse(lines.contains { $0.contains(service) },
                        "the configuration's name is in the diagnostic file: "
-                       + "\(lines.map(\.message))")
-        XCTAssertTrue(lines.contains { $0.message.contains("resource busy") },
+                       + "\(lines)")
+        XCTAssertTrue(lines.contains { $0.contains("resource busy") },
                       "…and the reason the tool gave is not")
     }
 

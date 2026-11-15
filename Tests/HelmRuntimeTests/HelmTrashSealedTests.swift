@@ -13,7 +13,7 @@ final class HelmTrashSealedTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = trashScratchDirectory("trash-sealed")
+        root = scratchDirectory("trash-sealed")
     }
 
     private func file(_ base: String, bytes: Int = 300_000) throws -> String {

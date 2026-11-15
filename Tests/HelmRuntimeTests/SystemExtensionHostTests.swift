@@ -34,16 +34,13 @@ final class SystemExtensionHostTests: XCTestCase {
         XCTAssertEqual(parsed.first { $0.identifier.hasPrefix("com.example") }?.enabled, false)
     }
 
-    /// Version, team and state must each come from their own column — a name
+    /// Identifier and version must each come from their own column — a name
     /// carrying a version-looking string must not shift the others.
     func testEachFieldComesFromItsOwnColumn() {
         let parsed = SystemExtensionParser.parse(listing)
         let snitch = parsed.first { $0.identifier.hasPrefix("at.obdev") }
         XCTAssertEqual(snitch?.identifier, "at.obdev.littlesnitch.networkextension")
-        XCTAssertEqual(snitch?.teamID, "2XZUN9L63Z")
         XCTAssertEqual(snitch?.version, "6.1/6123")
-        XCTAssertEqual(snitch?.name, "Little Snitch Network Extension")
-        XCTAssertEqual(snitch?.state, "activated enabled")
     }
 
     /// The host is the extension id minus its last component. Both the

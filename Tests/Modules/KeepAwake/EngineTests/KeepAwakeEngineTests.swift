@@ -310,7 +310,7 @@ final class DisplayObserverStackingTests: XCTestCase {
 
     func testStartingTwiceLeavesOneObserver() {
         let observer = ScreenParamsObserver()
-        let calls = Counter()
+        let calls = LockedCount()
         observer.startObserving { calls.bump() }
         observer.startObserving { calls.bump() }
 
@@ -323,10 +323,3 @@ final class DisplayObserverStackingTests: XCTestCase {
     }
 }
 
-/// A counter a `@Sendable` block may touch.
-private final class Counter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var count = 0
-    func bump() { lock.lock(); count += 1; lock.unlock() }
-    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
-}

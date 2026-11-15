@@ -29,7 +29,7 @@ final class LeftoversRemovalTests: XCTestCase {
     /// `trashItem` is called with `resultingItemURL: nil`, so the name is all
     /// the cleanup has to go on — which is why every name `write` makes carries
     /// a UUID. A cleanup that removed `~/.Trash/cache.bin` would be deleting
-    /// somebody's file. `HelmTrashNestedBatchTests` is where this pattern is
+    /// somebody's file. `HelmTrashBatchOutcomeTests` is where this pattern is
     /// written down; this file is one of the eight that did not follow it.
     private var trashedNames: [String] = []
 

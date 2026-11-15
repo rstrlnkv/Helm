@@ -1,6 +1,7 @@
 import XCTest
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 
 /// `PermissionNeed.Feature` is the table that says what each capability needs
 /// before the user is allowed to believe a switch is doing something. It was
@@ -29,20 +30,12 @@ final class FeaturePermissionsTests: XCTestCase {
         .screenCapture: "Screenshots",
     ]
 
-    private var sourcesRoot: URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()    // HelmUITests
-            .deletingLastPathComponent()    // Tests
-            .deletingLastPathComponent()    // repo
-            .appendingPathComponent("Sources/Modules")
-    }
-
     func testEveryFeatureNamesAModuleThatExists() throws {
         for feature in PermissionNeed.Feature.allCases {
             let module = try XCTUnwrap(Self.providers[feature],
                                        "\(feature) names no module — nothing can ask for it")
             var isDirectory: ObjCBool = false
-            let path = sourcesRoot.appendingPathComponent(module).path
+            let path = RepoSource.root.appendingPathComponent("Sources/Modules/\(module)").path
             XCTAssertTrue(FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
                           && isDirectory.boolValue,
                           "\(feature) points at \(module), which is not a module")
@@ -80,9 +73,7 @@ final class FeaturePermissionsTests: XCTestCase {
     }
 
     private func declaredPermissions(ofModule module: String) throws -> [String] {
-        let descriptor = sourcesRoot
-            .appendingPathComponent("\(module)/UI/\(module)Descriptor.swift")
-        let source = try String(contentsOf: descriptor, encoding: .utf8)
+        let source = try RepoSource.text(of: "Sources/Modules/\(module)/UI/\(module)Descriptor.swift")
         guard let open = source.range(of: "permissions: ["),
               let close = source.range(of: "]", range: open.upperBound..<source.endIndex)
         else { return [] }

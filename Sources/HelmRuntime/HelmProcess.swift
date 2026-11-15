@@ -84,24 +84,17 @@ public enum HelmProcess {
     /// means the spawn itself failed.
     public static let timedOutStatus: Int32 = -2
 
-    @discardableResult
-    public static func run(_ path: String,
-                           _ arguments: [String],
-                           env: [String: String]? = nil) -> Result {
-        let r = runData(path, arguments, env: env, deadline: nil)
-        return Result(status: r.status, output: String(data: r.output, encoding: .utf8) ?? "")
-    }
-
-    /// The same run, bounded. A tool that has not closed its output by
-    /// `timeout` is terminated (TERM, then KILL after a two-second grace for
-    /// tools that trap it) and the result is `timedOutStatus` with no output —
-    /// a hung `brew` waiting on another brew's lock otherwise parks the calling
-    /// thread for the life of the process, and everything behind it queues.
+    /// A run with no `timeout` waits for the tool as long as it takes. With one,
+    /// a tool that has not closed its output by then is terminated (TERM, then
+    /// KILL after a two-second grace for tools that trap it) and the result is
+    /// `timedOutStatus` with no output — a hung `brew` waiting on another brew's
+    /// lock otherwise parks the calling thread for the life of the process, and
+    /// everything behind it queues.
     @discardableResult
     public static func run(_ path: String,
                            _ arguments: [String],
                            env: [String: String]? = nil,
-                           timeout: TimeInterval) -> Result {
+                           timeout: TimeInterval? = nil) -> Result {
         let r = runData(path, arguments, env: env, deadline: timeout)
         return Result(status: r.status, output: String(data: r.output, encoding: .utf8) ?? "")
     }

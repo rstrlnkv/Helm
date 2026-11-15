@@ -483,13 +483,6 @@ final class AStopReachesTheInstallerItselfTests: XCTestCase {
 /// is up it leaves nothing to launch after it.
 final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
 
-    private final class Count: @unchecked Sendable {
-        private let lock = NSLock()
-        private var n = 0
-        func next() -> Int { lock.lock(); defer { lock.unlock() }; n += 1; return n }
-        var value: Int { lock.lock(); defer { lock.unlock() }; return n }
-    }
-
     /// A child the way the real handle is: terminating it only records the
     /// signal — the exit arrives afterwards, when the test says the child died.
     private final class KillableRunner: ProcessRunner, @unchecked Sendable {
@@ -592,9 +585,9 @@ final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
         case closedWindowReReading
     }
 
-    private func arm(_ rig: Rig, at point: Point, with ending: Ending) -> Count {
-        let hit = Count()
-        let reads = Count()
+    private func arm(_ rig: Rig, at point: Point, with ending: Ending) -> LockedCount {
+        let hit = LockedCount()
+        let reads = LockedCount()
         let fire = { [weak engine = rig.engine] in _ = hit.next(); self.end(engine, ending) }
         switch point {
         case .pressReading:
@@ -1166,14 +1159,6 @@ final class StoppingTheWaitRaisesNoDialogTests: XCTestCase {
 /// app, not before or after the press.
 final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
 
-    /// Counts calls from inside a hook; the hooks are not `Sendable`, and run
-    /// on whatever thread the engine calls the port from.
-    private final class Count: @unchecked Sendable {
-        private let lock = NSLock()
-        private var n = 0
-        func next() -> Int { lock.lock(); defer { lock.unlock() }; n += 1; return n }
-    }
-
     // MARK: - A switch-off that finds no wait to take
 
     /// `deactivate()` while `xcode-select --install` is still being filed (the
@@ -1207,7 +1192,7 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
         rig.engine.installBrew()
         XCTAssertEqual(rig.ticker.live, 1, "precondition: the wait is armed")
         rig.tools.gitExecutable = true
-        let reads = Count()
+        let reads = LockedCount()
         // Read 1 is the tick's own look at `git`; read 2 is the reading one
         // line before the dialog, after the tick has taken the token.
         rig.tools.onRead = { [weak engine = rig.engine, tools = rig.tools] in
@@ -1240,7 +1225,7 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
         host.engine?.installBrew()
         XCTAssertEqual(ticker.live, 1, "precondition: the wait is armed")
         tools.gitExecutable = true
-        let reads = Count()
+        let reads = LockedCount()
         tools.onRead = { [host, tools] in
             guard reads.next() == 2 else { return }
             tools.onRead = nil
@@ -1337,7 +1322,7 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
         let rig = WaitRig()
         rig.engine.installBrew()
         rig.tools.gitExecutable = true
-        let reads = Count()
+        let reads = LockedCount()
         rig.tools.onRead = { [tools = rig.tools] in
             // Read 1 is the tick's and finds `git`; read 2, before the dialog, does not.
             guard reads.next() == 2 else { return }
@@ -1360,7 +1345,7 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
     func testAStopDuringTheReadingBeforeTheDialogRaisesNoDialog() async {
         let rig = WaitRig()
         rig.tools.gitExecutable = true
-        let reads = Count()
+        let reads = LockedCount()
         // Read 1 is the press's; read 2 is the one inside the step to the dialog.
         rig.tools.onRead = { [weak engine = rig.engine, tools = rig.tools] in
             guard reads.next() == 2 else { return }

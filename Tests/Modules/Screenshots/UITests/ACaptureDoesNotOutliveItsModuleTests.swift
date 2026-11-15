@@ -123,7 +123,7 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
     /// control first, because an absence is only worth something beside the same
     /// press that did present.
     func testAnAreaPressLeftAloneReachesTheOverlay() async throws {
-        let presented = Count()
+        let presented = LockedCount()
         let (controller, capture, _, _) = try rig(.desktop, presenting: { _ in presented.bump(); return false })
         controller.begin(.area)
         await capture.gate.reached()
@@ -132,7 +132,7 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
     }
 
     func testAnAreaPressWhoseModuleWentOffMidFreezeShowsNoOverlay() async throws {
-        let presented = Count()
+        let presented = LockedCount()
         let (controller, capture, _, _) = try rig(.desktop, presenting: { _ in presented.bump(); return false })
         controller.begin(.area)
         await capture.gate.reached()
@@ -181,10 +181,4 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
         var overlay: CaptureOverlay?
     }
 
-    private final class Count: @unchecked Sendable {
-        private let lock = NSLock()
-        private var n = 0
-        var value: Int { lock.withLock { n } }
-        func bump() { lock.withLock { n += 1 } }
-    }
 }

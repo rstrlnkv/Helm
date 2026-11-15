@@ -64,9 +64,9 @@ final class DiskTrashGateTests: XCTestCase {
         let path = "/usr/bin/true"
         XCTAssertTrue(FileManager.default.fileExists(atPath: path), "precondition: the path exists")
 
-        let attempted = ProgressBox()
+        let attempted = Locked(0)
 
-        let removal = await DiskEngine(capacity: SilentCapacity(), trashing: { _ in attempted.record(1) }).trash([path])
+        let removal = await DiskEngine(capacity: SilentCapacity(), trashing: { _ in attempted.value = 1 }).trash([path])
 
         XCTAssertEqual(attempted.value, 0, "the engine handed a path outside the user's files to the move")
         XCTAssertTrue(removal.removed.isEmpty, "\(removal.removed)")

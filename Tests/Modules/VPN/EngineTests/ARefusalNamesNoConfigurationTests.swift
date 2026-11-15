@@ -94,11 +94,11 @@ final class ARefusalNamesNoConfigurationTests: XCTestCase {
 
         engine.connect(asked, auto: false)
 
-        let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
-        XCTAssertTrue(lines.contains { $0.message.contains("refused") },
+        let lines = loggedLines("vpn")
+        XCTAssertTrue(lines.contains { $0.contains("refused") },
                       "precondition: the refusal reached the log at all")
-        XCTAssertFalse(lines.contains { $0.message.contains(other) },
+        XCTAssertFalse(lines.contains { $0.contains(other) },
                        "a second configuration is named in the diagnostic file: "
-                       + "\(lines.map(\.message))")
+                       + "\(lines)")
     }
 }

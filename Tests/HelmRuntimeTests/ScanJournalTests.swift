@@ -2,10 +2,12 @@ import XCTest
 import HelmTestSupport
 @testable import HelmRuntime
 
-final class ScanJournalTests: XCTestCase {
+/// The journal and its scratch folder, and an entry to put in it; both journal
+/// classes below inherit them. It holds no test of its own.
+class ScanJournalRig: XCTestCase {
 
-    private var directory: URL!
-    private var journal: ScanJournal!
+    fileprivate var directory: URL!
+    fileprivate var journal: ScanJournal!
 
     override func setUp() {
         super.setUp()
@@ -13,11 +15,13 @@ final class ScanJournalTests: XCTestCase {
         journal = ScanJournal(directory: directory)
     }
 
-    private func entry(_ bytes: Int, _ count: Int, at seconds: TimeInterval = 0) -> ScanEntry {
+    fileprivate func entry(_ bytes: Int, _ count: Int, at seconds: TimeInterval = 0) -> ScanEntry {
         ScanEntry(at: Date(timeIntervalSince1970: 1_785_600_000 + seconds),
                   bytes: bytes, count: count, seconds: 1.5)
     }
+}
 
+final class ScanJournalTests: ScanJournalRig {
     func testAModuleThatNeverScannedHasNothing() {
         XCTAssertTrue(journal.entries(module: "duplicates").isEmpty)
         XCTAssertNil(journal.list(module: "duplicates", .current))
@@ -94,22 +98,7 @@ final class ScanJournalTests: XCTestCase {
     }
 }
 
-final class ScanJournalOrderAndBoundTests: XCTestCase {
-
-    private var directory: URL!
-    private var journal: ScanJournal!
-
-    override func setUp() {
-        super.setUp()
-        directory = scratchDirectory("scan-journal")
-        journal = ScanJournal(directory: directory)
-    }
-
-    private func entry(_ bytes: Int, _ count: Int, at seconds: TimeInterval = 0) -> ScanEntry {
-        ScanEntry(at: Date(timeIntervalSince1970: 1_785_600_000 + seconds),
-                  bytes: bytes, count: count, seconds: 1.5)
-    }
-
+final class ScanJournalOrderAndBoundTests: ScanJournalRig {
     func testAnEntryRoundTrips() {
         let one = entry(2_480_000_000, 184)
         journal.record(one, items: [ScanItem(path: "/a", bytes: 10)], module: "duplicates")

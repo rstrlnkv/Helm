@@ -14,18 +14,10 @@ final class AnOldChannelsAnswerDoesNotLandTests: XCTestCase {
     private actor Gate {
         private var waiting: [CheckedContinuation<Void, Never>] = []
         private(set) var arrived = 0
-        nonisolated let count = Count()
+        nonisolated let count = LockedCount()
         func hold() async { arrived += 1; count.bump(); await withCheckedContinuation { waiting.append($0) } }
         func release() { waiting.forEach { $0.resume() }; waiting = [] }
         func releaseOldest() { if !waiting.isEmpty { waiting.removeFirst().resume() } }
-    }
-
-    /// `arrived`, readable from a wait's synchronous condition.
-    private final class Count: @unchecked Sendable {
-        private let lock = NSLock()
-        private var n = 0
-        var value: Int { lock.lock(); defer { lock.unlock() }; return n }
-        func bump() { lock.lock(); n += 1; lock.unlock() }
     }
 
     private let devList = """

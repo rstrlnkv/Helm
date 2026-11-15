@@ -123,7 +123,7 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
     }
 
     private func vpnLog() -> [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == "vpn" }.map { $0.message.lowercased() }
+        loggedLines("vpn").map { $0.lowercased() }
     }
 
     private func namesATimeout(_ lines: [String]) -> Bool {

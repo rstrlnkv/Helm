@@ -4,7 +4,7 @@ import XCTest
 
 /// The log, switched on for one test and put back after it.
 ///
-/// Written by hand in 45 test files as `setEnabled(true)` and `clearTail()` in
+/// Written by hand in dozens of test files as `setEnabled(true)` and `clearTail()` in
 /// `setUp` with the reverse in `tearDown`, or the same three lines behind a
 /// `defer` inside the test. The teardown block runs before any `tearDown()` of
 /// the class, so a test that still has one sees the same order as before.

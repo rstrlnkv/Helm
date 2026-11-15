@@ -1,5 +1,6 @@
 import XCTest
 @testable import HelmRuntime
+import HelmTestSupport
 
 /// **`LockedMemo` builds once per key, and remembers nothing about a build that
 /// found nothing.**
@@ -18,15 +19,6 @@ import XCTest
 /// channel to say otherwise (ARCHITECTURE.md § Ports and logic).
 final class OneBuildPerKeyTests: XCTestCase {
 
-    /// How many times a build ran. `ProgressBox` next door records a *last*
-    /// value, which is the other question.
-    private final class Builds: @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        func ran() { lock.lock(); count += 1; lock.unlock() }
-        var value: Int { lock.lock(); defer { lock.unlock() }; return count }
-    }
-
     /// The one that catches the divergence: a second caller arriving **while**
     /// the first build is still running gets the first one's answer, rather than
     /// building its own copy.
@@ -38,7 +30,7 @@ final class OneBuildPerKeyTests: XCTestCase {
     /// caller until there is something to find — deterministically one.
     func testASecondCallerDuringABuildDoesNotBuildAgain() {
         let memo = LockedMemo<String, String>()
-        let builds = Builds()
+        let builds = LockedCount()
         let inside = DispatchSemaphore(value: 0)
         let done = DispatchSemaphore(value: 0)
 
@@ -46,14 +38,14 @@ final class OneBuildPerKeyTests: XCTestCase {
             _ = memo.value(for: "layout") {
                 inside.signal()
                 Thread.sleep(forTimeInterval: 0.2)
-                builds.ran()
+                builds.bump()
                 return "table"
             }
             done.signal()
         }
         inside.wait()
 
-        XCTAssertEqual(memo.value(for: "layout") { builds.ran(); return "table" }, "table")
+        XCTAssertEqual(memo.value(for: "layout") { builds.bump(); return "table" }, "table")
         done.wait()
 
         XCTAssertEqual(builds.value, 1, """
@@ -78,18 +70,18 @@ final class OneBuildPerKeyTests: XCTestCase {
     /// port again.
     func testNothingBuiltIsNotRemembered() {
         let memo = LockedMemo<String, String>()
-        let builds = Builds()
+        let builds = LockedCount()
 
-        XCTAssertNil(memo.valueOrNothing(for: "layout") { builds.ran(); return nil })
-        XCTAssertNil(memo.valueOrNothing(for: "layout") { builds.ran(); return nil })
+        XCTAssertNil(memo.valueOrNothing(for: "layout") { builds.bump(); return nil })
+        XCTAssertNil(memo.valueOrNothing(for: "layout") { builds.bump(); return nil })
         XCTAssertEqual(builds.value, 2, """
             the second call did not reach the build, so the memo has stored «nothing» under \
             this key — and the port that would answer differently in a moment is never asked \
             again.
             """)
 
-        XCTAssertEqual(memo.valueOrNothing(for: "layout") { builds.ran(); return "table" }, "table")
-        XCTAssertEqual(memo.valueOrNothing(for: "layout") { builds.ran(); return "other" }, "table")
+        XCTAssertEqual(memo.valueOrNothing(for: "layout") { builds.bump(); return "table" }, "table")
+        XCTAssertEqual(memo.valueOrNothing(for: "layout") { builds.bump(); return "other" }, "table")
         XCTAssertEqual(builds.value, 3, "a success is remembered, or the memo caches nothing at all")
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import HelmTestSupport
 import XCTest
 
 /// Which operations can name themselves in the memory trail.
@@ -29,11 +30,7 @@ import XCTest
 final class MemoryTrailCoverageTests: XCTestCase {
 
     private var sources: URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // HelmRuntimeTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-            .appendingPathComponent("Sources")
+        RepoSource.root.appendingPathComponent("Sources")
     }
 
     /// Every bulk operation that has been found to matter, with the file it lives

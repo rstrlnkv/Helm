@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmContract
 
 /// What an engine says must reach a late subscriber as the current truth, in
@@ -20,14 +21,6 @@ import XCTest
 final class EngineNewsReplayTests: XCTestCase {
 
     private static let marker = Int.max
-
-    /// A flag two threads share.
-    private final class Flag: @unchecked Sendable {
-        private let lock = NSLock()
-        private var value = false
-        func raise() { lock.lock(); value = true; lock.unlock() }
-        var isRaised: Bool { lock.lock(); defer { lock.unlock() }; return value }
-    }
 
     /// Everything the stream carries, up to a marker said after `stream()`
     /// returned: no waiting on a clock, and a stream that lost its replay
@@ -53,13 +46,13 @@ final class EngineNewsReplayTests: XCTestCase {
         for index in 0..<fillers { news.say(-(index + 1), slot: "filler\(index)") }
         news.say(1, slot: "state")
 
-        let stop = Flag()
+        let stop = Locked(false)
         let started = DispatchSemaphore(value: 0)
         let finished = DispatchSemaphore(value: 0)
         Thread.detachNewThread {
             var counter = 1
             started.signal()
-            while !stop.isRaised && counter < 50_000 {
+            while !stop.value && counter < 50_000 {
                 counter += 1
                 news.say(counter, slot: "state")
             }
@@ -68,7 +61,7 @@ final class EngineNewsReplayTests: XCTestCase {
         started.wait()
 
         let stream = news.stream()
-        stop.raise()
+        stop.value = true
         finished.wait()
         return (news, stream)
     }

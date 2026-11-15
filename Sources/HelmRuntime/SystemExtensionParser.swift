@@ -1,21 +1,13 @@
 import Foundation
 
-public struct SystemExtensionInfo: Equatable, Sendable, Identifiable, Codable {
-    public var id: String { identifier }
+public struct SystemExtensionInfo: Equatable, Sendable {
     public let identifier: String
-    let teamID: String
-    let name: String
     public let version: String
-    let state: String
     public let enabled: Bool
 
-    public init(identifier: String, teamID: String, name: String,
-                version: String, state: String, enabled: Bool) {
+    public init(identifier: String, version: String, enabled: Bool) {
         self.identifier = identifier
-        self.teamID = teamID
-        self.name = name
         self.version = version
-        self.state = state
         self.enabled = enabled
     }
 }
@@ -33,13 +25,7 @@ enum SystemExtensionParser {
             let identifier = bundleField.components(separatedBy: " ").first ?? bundleField
             let version = bundleField
                 .drop(while: { $0 != "(" }).dropFirst().prefix(while: { $0 != ")" })
-            let state = columns[5].trimmingCharacters(in: .whitespaces)
-                .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
-            return SystemExtensionInfo(identifier: identifier,
-                                       teamID: columns[2].trimmingCharacters(in: .whitespaces),
-                                       name: columns[4].trimmingCharacters(in: .whitespaces),
-                                       version: String(version),
-                                       state: state,
+            return SystemExtensionInfo(identifier: identifier, version: String(version),
                                        enabled: columns[0].contains("*"))
         }
     }

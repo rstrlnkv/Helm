@@ -58,13 +58,11 @@ final class NoOrphanTranslationsTests: XCTestCase {
     }
 
     func testNoCallAndNoCommentLooksAWordUpByItsEnglish() throws {
-        let urls = try FileManager.default.subpathsOfDirectory(atPath: RepoSource.root.appendingPathComponent("Sources").path)
-            .filter { $0.hasSuffix(".swift") }
-        XCTAssertGreaterThan(urls.count, 100, "only \(urls.count) source files were found")
+        let paths = try RepoSource.swiftFiles(under: "Sources")
+        XCTAssertGreaterThan(paths.count, 100, "only \(paths.count) source files were found")
         var lines: [String] = []
-        for relative in urls {
-            let text = try String(contentsOf: RepoSource.root.appendingPathComponent("Sources/" + relative), encoding: .utf8)
-            for line in Self.englishLookups(in: text) { lines.append("  Sources/\(relative):\(line)") }
+        for path in paths {
+            for line in Self.englishLookups(in: try RepoSource.text(of: path)) { lines.append("  \(path):\(line)") }
         }
         XCTAssertTrue(lines.isEmpty,
                       "\(lines.count) line(s) still show `L(\"…\")` in Sources, in code or in prose:\n"

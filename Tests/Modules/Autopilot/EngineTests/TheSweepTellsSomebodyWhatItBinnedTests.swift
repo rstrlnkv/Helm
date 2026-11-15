@@ -31,7 +31,7 @@ final class TheSweepTellsSomebodyWhatItBinnedTests: XCTestCase {
         // A real folder inside a temporary home: `WatchScope` refuses anything
         // outside one, and a test exempted from that gate is a test of another
         // program.
-        home = trashScratchDirectory("home")
+        home = scratchDirectory("home")
         root = home.appendingPathComponent("helm-sweep-notice-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     }
@@ -114,7 +114,7 @@ final class WhichTriggerSpeaksAfterASweepTests: XCTestCase {
         // A real folder inside a temporary home: `WatchScope` refuses anything
         // outside one, and a test exempted from that gate is a test of another
         // program.
-        home = trashScratchDirectory("home")
+        home = scratchDirectory("home")
         root = home.appendingPathComponent("helm-sweep-notice-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     }

@@ -23,7 +23,7 @@ import HelmRuntime
 /// **Every field here is written on one thread and read on another.** The ask
 /// runs inside `shell.async` on the coordinator's own queue; the test reads the
 /// counts on the main actor. One lock and the fields behind it, the shape
-/// `ProgressBox` carries for the same reason — the barrier below orders the two,
+/// `Locked` carries for the same reason — the barrier below orders the two,
 /// and the lock is what makes the read of a plain `Int` legal rather than merely
 /// lucky.
 private final class RemovalPromptClamshell: ClamshellPort, @unchecked Sendable {

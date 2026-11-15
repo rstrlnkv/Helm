@@ -120,11 +120,11 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
         runner.reply = "No service"
         engine(runner).connect("Secret Office VPN", auto: false)
 
-        let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
+        let lines = loggedLines("vpn")
         XCTAssertFalse(lines.isEmpty, "precondition: something was logged at all")
-        XCTAssertFalse(lines.contains { $0.message.contains("Secret Office VPN") },
+        XCTAssertFalse(lines.contains { $0.contains("Secret Office VPN") },
                        "the connection's name reached the log file")
-        XCTAssertTrue(lines.contains { $0.message.contains("no such configuration") },
+        XCTAssertTrue(lines.contains { $0.contains("no such configuration") },
                       "…and the reason did not")
     }
 }

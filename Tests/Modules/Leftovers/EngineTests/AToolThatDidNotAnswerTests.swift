@@ -39,8 +39,7 @@ final class AToolThatDidNotAnswerTests: XCTestCase {
     }
 
     private var liveExtension: SystemExtensionInfo {
-        SystemExtensionInfo(identifier: label, teamID: "T", name: "Security", version: "1",
-                            state: "activated enabled", enabled: true)
+        SystemExtensionInfo(identifier: label, version: "1", enabled: true)
     }
 
     /// **The finding.** The tool did not answer, and the row is a leftover.

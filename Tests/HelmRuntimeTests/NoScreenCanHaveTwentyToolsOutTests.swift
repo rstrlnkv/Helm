@@ -3,6 +3,7 @@
 
 import XCTest
 @testable import HelmRuntime
+import HelmTestSupport
 
 /// **Nothing bounded how many tools Helm had out at once, and one screen found
 /// out.**
@@ -81,10 +82,4 @@ final class NoScreenCanHaveTwentyToolsOutTests: XCTestCase {
                        "\(asked - done.value) of \(asked) runs were dropped rather than queued")
     }
 
-    private final class LockedCount: @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        func bump() { lock.lock(); count += 1; lock.unlock() }
-        var value: Int { lock.lock(); defer { lock.unlock() }; return count }
-    }
 }

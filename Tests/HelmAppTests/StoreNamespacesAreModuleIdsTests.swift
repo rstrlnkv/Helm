@@ -1,5 +1,6 @@
 import XCTest
 import HelmContract
+import HelmTestSupport
 @testable import HelmApp
 
 /// A store namespace is a module's id, and the id has one spelling.
@@ -32,34 +33,17 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     /// decision somebody writes down.
     private static let hostNamespace = "app"
 
-    private func code(_ line: String) -> String {
-        guard let range = line.range(of: "//") else { return line }
-        return String(line[line.startIndex..<range.lowerBound])
-    }
-
-    /// Every line of Swift under `Sources/<subpath>`, comments stripped, with
-    /// somewhere to say it. Both tests below read the tree; only what they look
-    /// for differs.
+    /// Every line of Swift under `<subpath>`, comments blanked, with somewhere
+    /// to say it. Both tests below read the tree; only what they look for differs.
     private func eachSourceLine(under subpath: String,
-                                _ visit: (_ where: String, _ code: String) -> Void) -> Int {
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // HelmAppTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-            .appendingPathComponent(subpath)
-
-        var files = 0
-        let walk = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
-        while let url = walk?.nextObject() as? URL {
-            guard url.pathExtension == "swift",
-                  let source = try? String(contentsOf: url, encoding: .utf8)
-            else { continue }
-            files += 1
-            for (index, line) in source.components(separatedBy: "\n").enumerated() {
-                visit("\(url.lastPathComponent):\(index + 1)", code(line))
+                                _ visit: (_ where: String, _ code: String) -> Void) throws -> Int {
+        let reads = try SwiftSource.uncommented(under: subpath)
+        for read in reads {
+            for (index, line) in read.text.components(separatedBy: "\n").enumerated() {
+                visit("\(read.path):\(index + 1)", line)
             }
         }
-        return files
+        return reads.count
     }
 
     func testEveryNamespaceLiteralNamesARegisteredModule() throws {
@@ -71,7 +55,7 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
         var offenders: [String] = []
         var found = 0
         let marker = "NamespacedStore(namespace: \""
-        _ = eachSourceLine(under: "Sources") { site, text in
+        _ = try eachSourceLine(under: "Sources") { site, text in
             guard let start = text.range(of: marker),
                   let end = text.range(of: "\"", range: start.upperBound..<text.endIndex)
             else { return }
@@ -156,7 +140,7 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     func testNoModuleSpellsItsOwnIdAsALiteral() throws {
         var offenders: [String] = []
         var callSites = 0
-        let scanned = eachSourceLine(under: "Sources/Modules") { site, text in
+        let scanned = try eachSourceLine(under: "Sources/Modules") { site, text in
             for marker in ["module: ", "namespace: "] {
                 guard let start = text.range(of: marker) else { continue }
                 callSites += 1

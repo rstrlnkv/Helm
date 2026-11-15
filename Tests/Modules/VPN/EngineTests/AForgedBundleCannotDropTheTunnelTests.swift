@@ -135,10 +135,10 @@ final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
 
         XCTAssertTrue(runner.issued.filter { $0.count > 1 && $0[1] == "start" }.isEmpty,
                       "a rule with no identity on record fired anyway")
-        let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
-        XCTAssertTrue(lines.contains { $0.message.contains("noIdentityRecorded") },
-                      "nothing in the log says why the rule did nothing: \(lines.map(\.message))")
-        XCTAssertFalse(lines.contains { $0.message.contains(bundleID) },
+        let lines = loggedLines("vpn")
+        XCTAssertTrue(lines.contains { $0.contains("noIdentityRecorded") },
+                      "nothing in the log says why the rule did nothing: \(lines)")
+        XCTAssertFalse(lines.contains { $0.contains(bundleID) },
                        "and the bundle id reached the diagnostic file in clear")
         XCTAssertNil(engine.lastAutomation)
     }

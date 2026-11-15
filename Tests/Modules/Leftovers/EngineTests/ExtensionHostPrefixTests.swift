@@ -10,9 +10,7 @@ import HelmRuntime
 /// Past defect: fixed in `87b659b9`.
 final class ExtensionHostPrefixTests: XCTestCase {
     private func status(extensionID: String, installed: Set<String>) -> ItemStatus? {
-        let info = SystemExtensionInfo(identifier: extensionID, teamID: "T1",
-                                       name: "Ext", version: "1.0",
-                                       state: "activated enabled", enabled: true)
+        let info = SystemExtensionInfo(identifier: extensionID, version: "1.0", enabled: true)
         let scanner = LeftoversScanner(home: URL(fileURLWithPath: "/Users/x"),
                                        files: LeftoversFakeFiles(),
                                        apps: LeftoversFakeApps(ids: installed),

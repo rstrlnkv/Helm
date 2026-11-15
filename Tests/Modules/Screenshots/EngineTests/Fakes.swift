@@ -359,6 +359,10 @@ struct Rig {
 /// The log, read for this module only, with a subject-exists guard: an absence
 /// is green when nothing was logged at all, which is the default in a test
 /// process because the log is off outside a dev build.
+///
+/// Not `tailTheLog()` and `loggedLines`: those are `XCTestCase` methods that
+/// register their own teardown, and this enum is called from a `defer` and
+/// re-armed in the middle of a test (`TheChosenFolderIsJudgedLikeMacOSsTests`).
 enum ScreenshotsLog {
     static func begin() {
         HelmLog.shared.setEnabled(true)

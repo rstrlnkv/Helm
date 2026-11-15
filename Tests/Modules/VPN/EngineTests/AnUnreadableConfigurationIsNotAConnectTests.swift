@@ -100,7 +100,7 @@ final class AnUnreadableConfigurationIsNotAConnectTests: XCTestCase {
     }
 
     private func vpnLog() -> [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == "vpn" }.map { $0.message.lowercased() }
+        loggedLines("vpn").map { $0.lowercased() }
     }
 
     /// Rule connect, secret unreadable: no start, nothing announced, a line

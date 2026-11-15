@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import HelmTestSupport
 import XCTest
 @testable import Module_Disk_Engine
 
@@ -31,7 +32,7 @@ final class TheVolumeListsReverseChannelIsThePortsTests: XCTestCase {
 
     @MainActor
     func testTheSystemPortCallsOnAMountUntilTheTokenIsDropped() {
-        let calls = Counter()
+        let calls = LockedCount()
         var token: AnyObject? = SystemVolumeCapacity().observeChanges { calls.bump() }
         let center = NSWorkspace.shared.notificationCenter
         center.post(name: NSWorkspace.didMountNotification, object: nil)
@@ -51,10 +52,4 @@ final class TheVolumeListsReverseChannelIsThePortsTests: XCTestCase {
     /// The observers deliver on the main queue; let it run.
     private func settle() { RunLoop.main.run(until: Date().addingTimeInterval(0.3)) }
 
-    private final class Counter: @unchecked Sendable {
-        private let lock = NSLock()
-        private var n = 0
-        func bump() { lock.withLock { n += 1 } }
-        var value: Int { lock.withLock { n } }
-    }
 }

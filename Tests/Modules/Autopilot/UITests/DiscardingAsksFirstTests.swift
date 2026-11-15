@@ -100,10 +100,7 @@ final class DiscardingAsksFirstTests: XCTestCase {
     /// wiring is read from the source: each press says `ask`, and the only
     /// call to a drop in the views is the dialog's `confirmDiscard`.
     func testTheButtonsOnlyAsk() throws {
-        let ui = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent()
-            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Sources/Modules/Autopilot/UI")
+        let ui = RepoSource.root.appendingPathComponent("Sources/Modules/Autopilot/UI")
         func source(_ name: String) throws -> String {
             try String(contentsOf: ui.appendingPathComponent(name), encoding: .utf8)
         }
