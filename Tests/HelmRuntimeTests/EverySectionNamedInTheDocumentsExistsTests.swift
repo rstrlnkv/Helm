@@ -22,6 +22,14 @@ import XCTest
 /// that prose after a pointer with no punctuation (a pointer followed by a bare word)
 /// reads as dead; punctuate it.
 ///
+/// **Where `CLAUDE.md` comes from.** It is not in the repository: the owner's
+/// copy is `CLAUDE.local.md` (a link to Core), found by `StandingDocuments.requireRules()`
+/// beside `Package.swift` or, from a linked worktree, in the main checkout. A
+/// clone with neither skips the methods that read it (`XCTSkip`, naming the paths
+/// sought) and nothing more: the `ARCHITECTURE.md` checks always run, and no
+/// method both asserts about `ARCHITECTURE.md` and skips for the rules. A file that is there and unreadable
+/// or empty is not absent and stays red.
+///
 /// **Why headings come only from outside fenced blocks.** A `# comment` line
 /// in a shell block is not a section, and counting it would let a pointer at
 /// one resolve.
@@ -112,7 +120,7 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
     private static let notation = "\u{A7} X is a heading"
 
     func testEveryBarePointerOfClaudeNamesAHeadingOfArchitecture() throws {
-        let claude = try RepoSource.text(of: "CLAUDE.md")
+        let claude = try StandingDocuments.requireRules()
         let headings = try StandingDocuments.headings(of: "ARCHITECTURE")
         XCTAssertGreaterThan(headings.count, 20, "the hub's and its pages' headings were not read")
 
@@ -131,28 +139,49 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
             """)
     }
 
-    func testEveryNamedPointerOfTheStandingDocumentsNamesAHeading() throws {
-        let headingsByDocument = [
-            "ARCHITECTURE": try StandingDocuments.headings(of: "ARCHITECTURE"),
-            "CLAUDE": try StandingDocuments.headings(of: "CLAUDE"),
-        ]
+    /// The named pointers of `texts` that name a document in `headings`, read and
+    /// dead, each text with the documents it is read for.
+    private func namedPointers(in texts: [(file: String, text: String, documents: [String])],
+                               headings: [String: [String]]) -> (read: Int, dead: [String]) {
         var read = 0
         var dead: [String] = []
-        for file in StandingDocuments.all() {
-            for pointer in Parser.named(in: try RepoSource.text(of: file)) {
+        for (file, text, documents) in texts {
+            for pointer in Parser.named(in: text) where documents.contains(pointer.document) {
                 read += 1
-                if Parser.resolve(pointer.rest, headings: headingsByDocument[pointer.document] ?? []) == nil {
+                if Parser.resolve(pointer.rest, headings: headings[pointer.document] ?? []) == nil {
                     dead.append("\(file) — \(pointer.document) \u{A7}\(pointer.rest.prefix(50))")
                 }
             }
         }
-        XCTAssertGreaterThanOrEqual(read, 1,
+        return (read, dead)
+    }
+
+    func testEveryNamedPointerOfTheStandingDocumentsIntoArchitectureNamesAHeading() throws {
+        let texts = try StandingDocuments.all().map { ($0, try RepoSource.text(of: $0), ["ARCHITECTURE"]) }
+        let result = namedPointers(in: texts,
+            headings: ["ARCHITECTURE": try StandingDocuments.headings(of: "ARCHITECTURE")])
+        XCTAssertGreaterThanOrEqual(result.read, 1,
             "no named pointer read from the standing documents — ARCHITECTURE.md carries at least one")
-        XCTAssertTrue(dead.isEmpty, "\(dead.count) dead pointer(s):\n\(dead.joined(separator: "\n"))")
+        XCTAssertTrue(result.dead.isEmpty,
+            "\(result.dead.count) dead pointer(s):\n\(result.dead.joined(separator: "\n"))")
+    }
+
+    /// The rules' own named pointers (into either document) and the repository's
+    /// named pointers into the rules.
+    func testEveryNamedPointerOfTheStandingDocumentsIntoClaudeNamesAHeading() throws {
+        let rules = try StandingDocuments.requireRules()
+        let texts = try StandingDocuments.all().map { ($0, try RepoSource.text(of: $0), ["CLAUDE"]) }
+            + [("CLAUDE.md", rules, ["ARCHITECTURE", "CLAUDE"])]
+        let result = namedPointers(in: texts, headings: [
+            "ARCHITECTURE": try StandingDocuments.headings(of: "ARCHITECTURE"),
+            "CLAUDE": try StandingDocuments.headings(of: "CLAUDE")])
+        XCTAssertTrue(result.dead.isEmpty,
+            "\(result.dead.count) dead pointer(s):\n\(result.dead.joined(separator: "\n"))")
     }
 
     func testClaudeStaysInsideItsCeiling() throws {
-        let size = try RepoSource.text(of: "CLAUDE.md").utf8.count
+        let rules = try StandingDocuments.requireRules()
+        let size = rules.utf8.count
         XCTAssertGreaterThan(size, 4_000,
             "CLAUDE.md is \(size) bytes — an emptied file is under every ceiling, and the rules are gone")
         XCTAssertLessThanOrEqual(size, Self.claudeCeilingBytes,
@@ -310,5 +339,52 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
         let all = try StandingDocuments.headings(of: "ARCHITECTURE")
         XCTAssertEqual(all.count, owners.values.reduce(0) { $0 + $1.count },
             "headings(of: \"ARCHITECTURE\") lists \(all.count) headings; the hub and the pages hold \(owners.values.reduce(0) { $0 + $1.count })")
+    }
+
+    /// `requireRules` is the only thing that turns "no file" into a skip: with the
+    /// file there it answers the text, with none it throws `XCTSkip` and nothing else.
+    func testRequireRulesAnswersTheTextOrSkips() throws {
+        let dir = scratchDirectory("rules")
+        let present = dir.appendingPathComponent("CLAUDE.local.md")
+        try "the rules".write(to: present, atomically: true, encoding: .utf8)
+        let absent = dir.appendingPathComponent("none/CLAUDE.local.md")
+
+        XCTAssertEqual(try StandingDocuments.requireRules(candidates: [absent, present]), "the rules")
+        do {
+            _ = try StandingDocuments.requireRules(candidates: [absent])
+            XCTFail("no candidate exists and nothing was thrown")
+        } catch let skip as XCTSkip {
+            XCTAssertTrue("\(skip)".contains(absent.path) || (skip.message ?? "").contains(absent.path),
+                "the skip does not name the path sought: \(skip)")
+        }
+    }
+
+    /// The worktree branch of `rulesCandidates()` exists, whether or not any rules
+    /// file does. Without this, a resolver that lost the branch leaves every
+    /// worktree's CLAUDE halves skipped, and a skipped half reads as a pass.
+    /// Asserts the shape only, so a fresh clone (a `.git` directory) passes too:
+    /// there the list is the one path beside `Package.swift`; in a linked worktree
+    /// (`.git` is a file) it adds the same name in a main checkout that holds a
+    /// `.git` directory.
+    func testALinkedWorktreeSeeksTheRulesInTheMainCheckoutToo() throws {
+        let root = RepoSource.root
+        let name = "CLAUDE.local.md"
+        let candidates = StandingDocuments.rulesCandidates()
+        XCTAssertEqual(candidates.first?.standardizedFileURL, root.appendingPathComponent(name).standardizedFileURL)
+        var isDir: ObjCBool = false
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent(".git").path, isDirectory: &isDir),
+            "no .git beside Package.swift: the root is not a checkout")
+        if isDir.boolValue {
+            XCTAssertEqual(candidates.count, 1, "a clone has one place to look: \(candidates.map(\.path))")
+        } else {
+            XCTAssertEqual(candidates.count, 2, "a linked worktree must also seek the main checkout: \(candidates.map(\.path))")
+            let main = try XCTUnwrap(candidates.last).deletingLastPathComponent()
+            XCTAssertNotEqual(main.standardizedFileURL, root.standardizedFileURL)
+            XCTAssertEqual(candidates.last?.lastPathComponent, name)
+            var mainGitIsDir: ObjCBool = false
+            XCTAssertTrue(FileManager.default.fileExists(atPath: main.appendingPathComponent(".git").path,
+                                                         isDirectory: &mainGitIsDir) && mainGitIsDir.boolValue,
+                "\(main.path) is not a main checkout (no .git directory)")
+        }
     }
 }
