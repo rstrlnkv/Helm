@@ -12,7 +12,7 @@ import HelmTestSupport
 /// signed ad-hoc, because that key lives on one machine and every user's grants
 /// would hang on it.
 ///
-/// ChildResult for real, with a `codesign` stub on the path and a scratch `HOME` and
+/// Run for real, with a `codesign` stub on the path and a scratch `HOME` and
 /// `TMPDIR`, so neither this Mac's identity nor its staged bundle is read.
 final class OnlyThisMacsBuildsCarryItsSigningIdentityTests: XCTestCase {
 

@@ -108,19 +108,6 @@ final class SudoersPromptInFlightTests: XCTestCase {
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
     }
 
-    /// Everything already on the main queue has run. The engine posts its
-    /// install callback with `DispatchQueue.main.async`; this is enqueued after
-    /// it, and a serial queue runs them in order — so this is an ordering fact,
-    /// not a sleep.
-    ///
-    /// `await fulfillment` rather than `wait(for:)`: these tests are on the main
-    /// actor, and blocking it is what stops the queue draining at all.
-    private func drainMain() async {
-        let drained = expectation(description: "main queue drained")
-        DispatchQueue.main.async { drained.fulfill() }
-        await fulfillment(of: [drained], timeout: 5)
-    }
-
     /// Puts a prompt on screen and leaves it there.
     private func startSessionWithPromptUp() async {
         // The dialog comes only from the person's gesture on the lid switch,
@@ -164,7 +151,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
 
         // …and then the password is typed. The rule is installed now.
         clamshell.answerAllPrompts(granted: true)
-        await drainMain()
+        await drainMainQueue()
 
         XCTAssertFalse(clamshell.sudoersInstalled,
                        "a passwordless-sudo rule was left installed for a feature that is off")
@@ -179,7 +166,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
         engine.settingsChanged()
         clamshell.answerAllPrompts(granted: true)
-        await drainMain()
+        await drainMainQueue()
 
         XCTAssertFalse(clamshell.disableSleepCalls.contains(true))
         XCTAssertFalse(engine.clamshellActive)
@@ -207,7 +194,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
         // count only once that hop has landed, or it is green because the
         // second request has not been made yet.
         await engine.drainClamshellForTests()
-        await drainMain()
+        await drainMainQueue()
         XCTAssertEqual(clamshell.installCount, 1,
                        "a second admin password prompt was stacked on the one already up")
     }
@@ -221,7 +208,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
         await startSessionWithPromptUp()
 
         clamshell.answerAllPrompts(granted: true)
-        await drainMain()
+        await drainMainQueue()
 
         XCTAssertTrue(clamshell.sudoersInstalled)
         XCTAssertEqual(clamshell.disableSleepCalls, [true])
@@ -237,7 +224,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
         await startSessionWithPromptUp()
 
         clamshell.answerAllPrompts(granted: false)
-        await drainMain()
+        await drainMainQueue()
         engine.stopSession()
         engine.startSession(minutes: 0)
         // A Start press does not ask; the person's next turn of the switch does.

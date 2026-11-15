@@ -135,7 +135,7 @@ final class RenameIdempotenceTests: XCTestCase {
         for pattern in patterns {
             let first = RenamePattern.apply(pattern, to: facts("report.pdf"))
             if let expected = expectedFirst[pattern] {
-                XCTAssertEqual(first, expected, "pattern \(pattern.debugDescription): the first run renames")
+                XCTAssertEqual(first, expected, "pattern \(pattern.debugDescription): the first output")
             }
             guard let once = first else { continue }
             let twice = RenamePattern.apply(pattern, to: facts(once))

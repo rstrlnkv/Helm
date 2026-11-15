@@ -277,7 +277,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
 
         engine.startSession(minutes: 0)
         await engine.drainClamshellForTests()
-        await drainMain()
+        await drainMainQueue()
 
         XCTAssertTrue(engine.isActive, "precondition: the press started a session")
         XCTAssertEqual(clamshell.installCount, 0,
@@ -287,19 +287,10 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         engine.lidSwitchTurned(false)
         engine.lidSwitchTurned(true)
         await engine.drainClamshellForTests()
-        await drainMain()
+        await drainMainQueue()
 
         XCTAssertEqual(clamshell.installCount, 1,
                        "the person turned the lid switch on over a rule that is no longer "
                        + "there, and nothing went to ask for it")
-    }
-
-    /// Everything already on the main queue has run. The engine posts its
-    /// install callback with `DispatchQueue.main.async`; this is enqueued after
-    /// it, and a serial queue runs them in order — an ordering fact, not a sleep.
-    private func drainMain() async {
-        let drained = expectation(description: "main queue drained")
-        DispatchQueue.main.async { drained.fulfill() }
-        await fulfillment(of: [drained], timeout: 5)
     }
 }

@@ -303,15 +303,24 @@ extension XCTestCase {
     ///
     /// The engine posts a callback with `DispatchQueue.main.async` (`osascript`
     /// calls back on a background queue, and engine state belongs on main); this
-    /// is enqueued after it, and a serial queue runs them in order, so it is an
-    /// ordering fact, not a sleep. `await fulfillment` rather than `wait(for:)`:
-    /// these tests are on the main actor, and blocking it is what stops the
-    /// queue draining at all.
+    /// block is enqueued after it, and a serial queue runs them in order.
+    ///
+    /// What the tests prove with it is the assertion that the block ran on
+    /// main: a drain that skipped the hop is red. The ordering itself is not
+    /// shown to be needed by any caller, because `await fulfillment` yields to
+    /// the main queue anyway; no caller waits on this alone. `await fulfillment`
+    /// rather than `wait(for:)`: these tests are on the main actor, and blocking
+    /// it is what stops the queue draining at all.
     @MainActor
     func drainMainQueue() async {
         let drained = expectation(description: "main queue drained")
-        DispatchQueue.main.async { drained.fulfill() }
+        var ranOnMain = false
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated { ranOnMain = true }
+            drained.fulfill()
+        }
         await fulfillment(of: [drained], timeout: 5)
+        XCTAssertTrue(ranOnMain, "the drain block was not run from the main queue")
     }
 
     /// The withdrawal has been attempted, and its verdict has landed.
