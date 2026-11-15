@@ -333,61 +333,36 @@ struct AboutHelmView: View {
                     .frame(maxWidth: .infinity)
             }
         case .manualInstall:
-            HStack(spacing: HelmSpace.s5) {
-                statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
-                Text(AppStr.updateManualInstall).lineLimit(3)
-                Spacer()
-            }
+            noticeRow("exclamationmark.triangle.fill", HelmSignal.warning, AppStr.updateManualInstall, lines: 3, wraps: false)
         case .cannotReplaceItself:
-            HStack(spacing: HelmSpace.s5) {
-                statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
-                Text(AppStr.updateCannotReplaceItself).lineLimit(3)
-                Spacer()
-            }
+            noticeRow("exclamationmark.triangle.fill", HelmSignal.warning, AppStr.updateCannotReplaceItself, lines: 3, wraps: false)
         case .checkFailed:
-            HStack(spacing: HelmSpace.s5) {
-                statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
-                // Two lines, like the `ahead` arm below. At one this sentence
-                // was cut in five of the eight languages: a German whose update
-                // check failed read «Update-Prüfung fehl…», where the string
-                // wants 198 pt of the roughly 240 the row leaves it. French
-                // wants 253, Portuguese 234, Russian 225, Spanish 215. Only en,
-                // ja and zh ever fitted.
-                Text(AppStr.updateCheckFailed)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer()
-                Button(AppStr.retry) { updater.checkNow() }
-            }
+            // Two lines, like the `ahead` arm below. At one this sentence
+            // was cut in five of the eight languages: a German whose update
+            // check failed read «Update-Prüfung fehl…», where the string
+            // wants 198 pt of the roughly 240 the row leaves it. French
+            // wants 253, Portuguese 234, Russian 225, Spanish 215. Only en,
+            // ja and zh ever fitted.
+            noticeRow("exclamationmark.triangle.fill", HelmSignal.warning, AppStr.updateCheckFailed, lines: 2,
+                      button: (AppStr.retry, { updater.checkNow() }))
         case .ahead:
-            HStack(spacing: HelmSpace.s5) {
-                statusIcon("arrow.up.circle.fill", HelmSignal.warning)
-                Text(AppStr.aheadOfChannel(updater.aheadOfChannel ?? ""))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer()
-                Button(AppStr.checkNow) { updater.checkNow() }
-            }
+            noticeRow("arrow.up.circle.fill", HelmSignal.warning,
+                      AppStr.aheadOfChannel(updater.aheadOfChannel ?? ""), lines: 2,
+                      button: (AppStr.checkNow, { updater.checkNow() }))
         case .upToDate:
-            HStack(spacing: HelmSpace.s5) {
-                statusIcon("checkmark.circle.fill", HelmSignal.success)
-                // **The same repair as the two arms above, applied to the two
-                // that were left.** «Установлена последняя версия.» wants 203 pt
-                // and this row leaves it about 197 beside «Проверить» — six
-                // short, so the state somebody sees most often was the one that
-                // read «Установлена последняя верс…». Portuguese is 197 and
-                // French 180, so Russian is the first to fall and not the last.
-                //
-                // The comment on `.checkFailed` measured against «roughly 240 pt
-                // of the row», which is not this row: the column is 380 and the
-                // card takes 12 a side. A number carried in prose about a
-                // neighbour is a number about nothing.
-                Text(AppStr.upToDate)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer()
-                Button(AppStr.checkNow) { updater.checkNow() }
-            }
+            // **The same repair as the two arms above, applied to the two
+            // that were left.** «Установлена последняя версия.» wants 203 pt
+            // and this row leaves it about 197 beside «Проверить» — six
+            // short, so the state somebody sees most often was the one that
+            // read «Установлена последняя верс…». Portuguese is 197 and
+            // French 180, so Russian is the first to fall and not the last.
+            //
+            // The comment on `.checkFailed` measured against «roughly 240 pt
+            // of the row», which is not this row: the column is 380 and the
+            // card takes 12 a side. A number carried in prose about a
+            // neighbour is a number about nothing.
+            noticeRow("checkmark.circle.fill", HelmSignal.success, AppStr.upToDate, lines: 2,
+                      button: (AppStr.checkNow, { updater.checkNow() }))
         case .unfinishedUpdate:
             HStack(spacing: HelmSpace.s5) {
                 statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
@@ -399,17 +374,10 @@ struct AboutHelmView: View {
         case .lastChecked:
             // Nothing has been decided this session: report when the last
             // check happened rather than claiming to be current.
-            HStack(spacing: HelmSpace.s5) {
-                statusIcon("arrow.triangle.2.circlepath", HelmText.quiet)
-                // «Проверено 2 часа назад» is longer than the line above it in
-                // every language, so if that one did not fit, this one never did.
-                Text(lastCheckedText)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .foregroundStyle(HelmText.quiet)
-                Spacer()
-                Button(AppStr.checkNow) { updater.checkNow() }
-            }
+            // «Проверено 2 часа назад» is longer than the line above it in
+            // every language, so if that one did not fit, this one never did.
+            noticeRow("arrow.triangle.2.circlepath", HelmText.quiet, lastCheckedText, lines: 2,
+                      quiet: true, button: (AppStr.checkNow, { updater.checkNow() }))
         }
     }
 
@@ -438,6 +406,30 @@ struct AboutHelmView: View {
             ProgressView().controlSize(.small)
             Text(text).foregroundStyle(HelmText.quiet)
             Spacer()
+        }
+    }
+
+    /// One notice line: icon, sentence, and the button that answers it. Each
+    /// modifier is applied only where its arm had it, so a limit or a style
+    /// the arm never set is not forced on it.
+    @ViewBuilder
+    private func noticeRow(_ symbol: String, _ tint: Color, _ text: String, lines: Int,
+                           wraps: Bool = true, quiet: Bool = false,
+                           button: (title: String, action: () -> Void)? = nil) -> some View {
+        HStack(spacing: HelmSpace.s5) {
+            statusIcon(symbol, tint)
+            let words = Text(text).lineLimit(lines)
+            if wraps {
+                if quiet {
+                    words.fixedSize(horizontal: false, vertical: true).foregroundStyle(HelmText.quiet)
+                } else {
+                    words.fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                words
+            }
+            Spacer()
+            if let button { Button(button.title, action: button.action) }
         }
     }
 
