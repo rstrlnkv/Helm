@@ -62,8 +62,6 @@ import Module_Screenshots_Engine
     /// by that view once it is on a window.
     weak var anchor: NSView? { didSet { if anchor != nil { anchorAttached() } } }
     var anchorAttached: () -> Void = {}
-    /// The view of the row's shot the pointer came onto last.
-    weak var focused: NSView?
 
     // MARK: - What the window is
 
@@ -174,11 +172,10 @@ import Module_Screenshots_Engine
     /// The pointer's coming and going over one shot's view. In the row it moves the capsule to that shot. Folded, only
     /// the newest shot's view counts: the slivers of the sheets under it would answer an exit after the top
     /// sheet's enter, and take the capsule from under the pointer.
-    func pointer(over: Bool, shot id: Shot.ID, view: NSView?) {
+    func pointer(over: Bool, shot id: Shot.ID) {
         if unfolded {
             if over {
                 focus = id
-                focused = view
             } else if focus == id {
                 focus = nil
             }
