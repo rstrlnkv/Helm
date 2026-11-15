@@ -131,23 +131,8 @@ final class LayoutEngineEdgeTests: XCTestCase {
 /// itself first does the one thing a fresh launch does not.
 final class SettingsAtStartTests: XCTestCase {
 
-    private final class CountingTap: KeyTapPort, @unchecked Sendable {
-        var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
-        func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-                   onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-                   died: @escaping @Sendable () -> Void) -> Bool {
-            modifiers = onModifier
-            return true
-        }
-        func stop() {}
-        func tapKey(_ code: Int64) {
-            modifiers?(.down(code, at: 0, othersHeld: false))
-            modifiers?(.up(code, at: 0.05))
-        }
-    }
-
     func testTheBoundKeyWorksOnAFreshLaunchWithNothingStored() {
-        let tap = CountingTap()
+        let tap = FakeTap()
         let sources = StuckSources()
         let engine = LayoutEngine(tap: tap, typing: FakeTyping(), sources: sources,
                                   translation: SameLengthTranslation(table: ["ghbdtn": "привет"]),
@@ -160,7 +145,9 @@ final class SettingsAtStartTests: XCTestCase {
         // reach the engine — which it can only do if the key was ever read.
         XCTAssertNotEqual(engine.boundTapKey, .off,
                           "the engine never read its own settings at start")
-        tap.tapKey(TapKey.rightCommand.keyCode!)
+        let code = TapKey.rightCommand.keyCode!
+        tap.modifiers?(.down(code, at: 0, othersHeld: false))
+        tap.modifiers?(.up(code, at: 0.05))
         withExtendedLifetime(engine) {}
     }
 }

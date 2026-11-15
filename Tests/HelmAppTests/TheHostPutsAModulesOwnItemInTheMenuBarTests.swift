@@ -28,14 +28,8 @@ final class TheHostPutsAModulesOwnItemInTheMenuBarTests: XCTestCase {
     private static let moduleID = "test-menu-bar-presence"
 
     /// A descriptor that counts the two calls and does nothing else.
-    private final class Recorder: ModuleDescriptor {
+    private final class Recorder: StandInDescriptor {
         static let id = ModuleID(TheHostPutsAModulesOwnItemInTheMenuBarTests.moduleID)
-        static let metadata = ModuleMetadata(id: id, name: "Recorder", summary: "",
-                                             sfSymbol: "gear", permissions: [])
-        static let category: ModuleCategory = .utilities
-        static let tint = ModuleTint(ordinary: ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                                     increasedContrast: ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))
-        static let glyph = ShellGlyph.settings
 
         var attached = 0
         var detached = 0
@@ -43,11 +37,8 @@ final class TheHostPutsAModulesOwnItemInTheMenuBarTests: XCTestCase {
         func makeModule(store: NamespacedStore) -> ModuleParts<PageModel> {
             ModuleParts(engine: Stub(), model: PageModel())
         }
-        func stop(_ model: PageModel) {}
         func attachMenuBarPresence() { attached += 1 }
         func detachMenuBarPresence() { detached += 1 }
-        func menuBar(_ vm: PageModel) -> MenuBarContribution? { nil }
-        func settingsPage(_ vm: PageModel) -> AnyView { AnyView(EmptyView()) }
     }
 
     private final class PageModel {}

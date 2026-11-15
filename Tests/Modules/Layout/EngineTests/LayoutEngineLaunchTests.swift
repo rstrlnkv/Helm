@@ -4,10 +4,6 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-private final class LaunchSound: SoundPort, @unchecked Sendable {
-    func playSwitch() {}
-}
-
 /// Every field the engine caches has to be right on the launch that follows a
 /// setting being changed — not only in the session where it was changed.
 ///
@@ -27,7 +23,7 @@ final class LayoutEngineLaunchTests: XCTestCase {
     private var context = FakeSecure()
     private var tap = FakeTap()
     private var sources = StuckSources()
-    private var sound = LaunchSound()
+    private var sound = FakeSound()
 
     private func store(_ write: (NamespacedStore) -> Void = { _ in }) -> NamespacedStore {
         let store = layoutStore()
@@ -44,7 +40,7 @@ final class LayoutEngineLaunchTests: XCTestCase {
                         automatic: Bool = true,
                         audible: Bool = false) -> LayoutEngine {
         typing = FakeTyping(); context = FakeSecure()
-        tap = FakeTap(); sources = StuckSources(); sound = LaunchSound()
+        tap = FakeTap(); sources = StuckSources(); sound = FakeSound()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: SameLengthTranslation(), spell: CyrillicSpell(latin: ["Hello"]),
                                   secure: context, activation: FakeActivation(), sound: sound,

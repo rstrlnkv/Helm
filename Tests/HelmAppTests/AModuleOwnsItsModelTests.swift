@@ -47,17 +47,11 @@ final class AModuleOwnsItsModelTests: XCTestCase {
     private final class OwnModel {}
 
     private class Base {
-        static let category: ModuleCategory = .utilities
-        static let tint = ModuleTint(ordinary: ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                                     increasedContrast: ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))
-        static let glyph = ShellGlyph.settings
         let journal = Journal()
     }
 
-    private final class Converted: Base, ModuleDescriptor {
+    private final class Converted: Base, StandInDescriptor {
         static let id = ModuleID(AModuleOwnsItsModelTests.convertedID)
-        static let metadata = ModuleMetadata(id: id, name: "Converted", summary: "",
-                                             sfSymbol: "gear", permissions: [])
         let standsIn: Bool
         init(standsIn: Bool = false) { self.standsIn = standsIn }
 
@@ -76,7 +70,6 @@ final class AModuleOwnsItsModelTests: XCTestCase {
             builtEngine = engine
             return ModuleParts(engine: engine, model: model)
         }
-        func menuBar(_ model: OwnModel) -> MenuBarContribution? { nil }
         func settingsPage(_ model: OwnModel) -> AnyView {
             pageModel = model
             return AnyView(EmptyView())
@@ -92,16 +85,11 @@ final class AModuleOwnsItsModelTests: XCTestCase {
     }
 
     /// A second module with its own id, for the host-wide ask.
-    private final class Second: Base, ModuleDescriptor {
+    private final class Second: Base, StandInDescriptor {
         static let id = ModuleID(AModuleOwnsItsModelTests.secondID)
-        static let metadata = ModuleMetadata(id: id, name: "Second", summary: "",
-                                             sfSymbol: "gear", permissions: [])
         func makeModule(store: NamespacedStore) -> ModuleParts<OwnModel> {
             ModuleParts(engine: FakeEngine(journal: journal), model: OwnModel())
         }
-        func menuBar(_ model: OwnModel) -> MenuBarContribution? { nil }
-        func settingsPage(_ model: OwnModel) -> AnyView { AnyView(EmptyView()) }
-        func stop(_ model: OwnModel) {}
         func backgroundScan(_ parts: ModuleParts<OwnModel>) async -> ScanReport? { nil }
     }
 

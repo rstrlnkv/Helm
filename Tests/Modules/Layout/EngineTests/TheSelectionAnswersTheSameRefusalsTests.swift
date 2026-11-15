@@ -62,16 +62,6 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         }
     }
 
-    private final class Sources: LayoutSourcePort, @unchecked Sendable {
-        var selected: [String] = []
-        private var live: String
-        private let all: [String]
-        init(current: String, installed: [String]) { live = current; all = installed }
-        func installed() -> [String] { all }
-        func current() -> String? { live }
-        func select(_ sourceID: String) { selected.append(sourceID); live = sourceID }
-    }
-
     /// The selection is the accessibility tree alone, as it is in the port. The
     /// replace can be refused, which is the state an app that will not take
     /// synthesised edits is permanently in.
@@ -102,7 +92,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     private func engine(exceptions: [String],
                         typing: FakeTyping,
                         selection: Selection,
-                        sources: Sources) -> LayoutEngine {
+                        sources: FakeSources) -> LayoutEngine {
         let engine = LayoutEngine(
             tap: FakeTap(), typing: typing, sources: sources,
             translation: Translation(table: table),
@@ -127,7 +117,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         selection.treeText = "ghbdtn"
         let engine = engine(exceptions: [], typing: typing,
                             selection: selection,
-                            sources: Sources(current: "en", installed: ["en", "ru"]))
+                            sources: FakeSources())
         engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
         XCTAssertEqual(selection.replaced, ["привет"],
                        "precondition: the selection path converts an ordinary word")
@@ -146,7 +136,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         selection.treeText = "ghbdtn"
         let engine = engine(exceptions: ["ghbdtn"], typing: typing,
                             selection: selection,
-                            sources: Sources(current: "en", installed: ["en", "ru"]))
+                            sources: FakeSources())
         engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
         XCTAssertEqual(selection.replaced, [], """
             the word is on «Never change these words» and selecting it was \
@@ -166,7 +156,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         selection.treeText = "ghbdtn"
         let engine = engine(exceptions: ["привет"], typing: typing,
                             selection: selection,
-                            sources: Sources(current: "en", installed: ["en", "ru"]))
+                            sources: FakeSources())
         engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
         XCTAssertEqual(selection.replaced, [], """
             the list entry names the converted form and the selection was \
@@ -192,7 +182,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         selection.treeText = "дфых"
         let engine = engine(exceptions: [], typing: typing,
                             selection: selection,
-                            sources: Sources(current: "ru", installed: ["ru", "en"]))
+                            sources: FakeSources(current: "ru"))
         engine.convertSelection(selected: "дфых", readIn: "com.apple.Notes")
         XCTAssertEqual(selection.replaced, [], """
             four letters were replaced by three letters and a bracket. Both \

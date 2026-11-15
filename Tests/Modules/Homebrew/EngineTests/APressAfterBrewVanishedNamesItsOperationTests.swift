@@ -12,9 +12,6 @@ import HelmRuntime
 /// page prints next to the refusal.
 final class APressAfterBrewVanishedNamesItsOperationTests: XCTestCase {
 
-    private struct GoneBrew: BrewLocator {
-        func brewPath() -> String? { nil }
-    }
     private final class CountingRunner: ProcessRunner, @unchecked Sendable {
         private let lock = NSLock()
         private var n = 0
@@ -33,7 +30,7 @@ final class APressAfterBrewVanishedNamesItsOperationTests: XCTestCase {
     private func refusal(_ press: (HomebrewEngine) -> Void) async -> (OpState?, Int) {
         let news = EngineNews<HomebrewNews>()
         let runner = CountingRunner()
-        let engine = HomebrewEngine(locator: GoneBrew(), runner: runner, privileged: NoPrivileges(),
+        let engine = HomebrewEngine(locator: NoBrew(), runner: runner, privileged: NoPrivileges(),
                                     user: "tester", news: news)
         press(engine)
         let state = await replay(news).states.last

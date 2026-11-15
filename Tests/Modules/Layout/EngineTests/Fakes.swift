@@ -84,6 +84,12 @@ final class FakeSecure: SecureContextPort, @unchecked Sendable {
     func frontmostBundleID() -> String { bundle }
 }
 
+/// Counts the sounds played, for the suites where one is audible.
+final class FakeSound: SoundPort, @unchecked Sendable {
+    var played = 0
+    func playSwitch() { played += 1 }
+}
+
 struct FakeTranslation: TranslationPort {
     let table: [String: String]
     func translate(_ word: String, from: String, to: String) -> String? { table[word] }

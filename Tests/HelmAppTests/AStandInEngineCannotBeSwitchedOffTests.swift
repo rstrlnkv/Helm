@@ -43,23 +43,13 @@ final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
         func deactivate() { deactivateCalls += 1 }
     }
 
-    private class Base: ModuleDescriptor {
+    private class Base: StandInDescriptor {
         class var id: ModuleID { fatalError() }
-        static var metadata: ModuleMetadata {
-            ModuleMetadata(id: id, name: "Probe", summary: "", sfSymbol: "gear", permissions: [])
-        }
-        static let category: ModuleCategory = .utilities
-        static let tint = ModuleTint(ordinary: ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                                     increasedContrast: ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))
-        static let glyph = ShellGlyph.settings
         let engine: Probe
         init(standsIn: Bool) { engine = Probe(standsIn: standsIn) }
         func makeModule(store: NamespacedStore) -> ModuleParts<PageModel> {
             ModuleParts(engine: engine, model: PageModel())
         }
-        func stop(_ model: PageModel) {}
-        func menuBar(_ vm: PageModel) -> MenuBarContribution? { nil }
-        func settingsPage(_ vm: PageModel) -> AnyView { AnyView(EmptyView()) }
     }
     private final class StandIn: Base {
         override class var id: ModuleID { ModuleID(AStandInEngineCannotBeSwitchedOffTests.standInID) }

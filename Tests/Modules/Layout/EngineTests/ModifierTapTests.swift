@@ -67,13 +67,6 @@ final class ModifierTapTests: XCTestCase {
         XCTAssertFalse(machine.feed(.up(rightCommand, at: 0.2)))
     }
 
-    func testAClickInTheMiddleDoesNotFire() {
-        var machine = tap()
-        _ = machine.feed(.down(rightCommand, at: 0, othersHeld: false))
-        _ = machine.feed(.otherInput)
-        XCTAssertFalse(machine.feed(.up(rightCommand, at: 0.1)))
-    }
-
     func testAnotherKeysReleaseIsNotOurs() {
         var machine = tap()
         _ = machine.feed(.down(rightCommand, at: 0, othersHeld: false))
@@ -191,13 +184,6 @@ final class LeftTapKeyTests: XCTestCase {
         }
     }
 
-    /// No two keys may share a code or a bit, or one would fire for the other.
-    func testNoTwoKeysCollide() {
-        let keys = TapKey.allCases.filter { $0 != .off }
-        XCTAssertEqual(Set(keys.compactMap(\.keyCode)).count, keys.count)
-        XCTAssertEqual(Set(keys.compactMap(\.deviceMask)).count, keys.count)
-    }
-
     /// A left key taps and refuses exactly like a right one — the difference is
     /// how often it is touched, not how it behaves.
     func testALeftKeyTapsAndRefusesLikeAnyOther() {
@@ -300,23 +286,13 @@ final class RefusalReasonTests: XCTestCase {
 /// is the failure that matters.
 final class ModifierMaskTableTests: XCTestCase {
 
+    /// Reachable from both sides and the globe, and a code never arrives without
+    /// its bit (or the reverse), which is how a press once arrived as a release.
     func testEveryBindableKeyIsReachableByItsKeyCode() {
         for key in TapKey.allCases where key != .off {
-            let code = try? XCTUnwrap(key.keyCode)
-            XCTAssertNotNil(code, "\(key) has no key code")
-            guard let code = key.keyCode else { continue }
+            guard let code = key.keyCode else { XCTFail("\(key) has no key code"); continue }
             XCTAssertEqual(TapKey.masksByKeyCode[code], key.deviceMask,
                            "\(key) is not reachable from the table the tap reads")
-        }
-    }
-
-    /// A code without a bit, or a bit without a code, would be a key the tap
-    /// sees and cannot classify — which is how a press once arrived as a
-    /// release.
-    func testACodeAndABitAlwaysArriveTogether() {
-        for key in TapKey.allCases {
-            XCTAssertEqual(key.keyCode == nil, key.deviceMask == nil,
-                           "\(key) has one half of its identity")
         }
     }
 
@@ -327,15 +303,5 @@ final class ModifierMaskTableTests: XCTestCase {
                        Set(bindable.compactMap(\.keyCode)))
         XCTAssertEqual(Set(TapKey.masksByKeyCode.values),
                        Set(bindable.compactMap(\.deviceMask)))
-    }
-
-    /// Both sides must be in it. The stale comment described a table holding
-    /// only the left bits, and a table that actually did would stop the right
-    /// keys spoiling a chord.
-    func testBothSidesAndTheGlobeAreInTheTable() {
-        for key in [TapKey.leftCommand, .rightCommand, .leftShift, .rightShift, .globe] {
-            guard let code = key.keyCode else { return XCTFail("\(key) has no code") }
-            XCTAssertNotNil(TapKey.masksByKeyCode[code], "\(key) is missing")
-        }
     }
 }

@@ -4,23 +4,8 @@ import HelmContract
 import HelmRuntime
 import HelmTestSupport
 
-private final class DefaultsTyping: TypingPort, @unchecked Sendable {
-    var performed = 0
-    func perform(_ plan: SwitchPlan) -> Bool { performed += 1; return true }
-}
 private struct DefaultsTranslation: TranslationPort {
     func translate(_ word: String, from: String, to: String) -> String? { "привет" }
-}
-private final class DefaultsTap: KeyTapPort, @unchecked Sendable {
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool { handler = onEvent; return true }
-    func stop() { handler = nil }
-}
-private final class DefaultsSound: SoundPort, @unchecked Sendable {
-    var played = 0
-    func playSwitch() { played += 1 }
 }
 
 private final class DefaultsSelection: SelectionPort, @unchecked Sendable {
@@ -72,15 +57,15 @@ final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
         for (audible, expected) in [(nil, 0), (true, 1)] as [(Bool?, Int)] {
             let store = store()
             if let audible { store.set(audible, for: LayoutKey.audible) }
-            let tap = DefaultsTap(), sound = DefaultsSound()
-            let engine = LayoutEngine(tap: tap, typing: DefaultsTyping(), sources: StuckSources(),
+            let tap = FakeTap(), sound = FakeSound()
+            let engine = LayoutEngine(tap: tap, typing: FakeTyping(), sources: StuckSources(),
                                       translation: DefaultsTranslation(), spell: CyrillicSpell(),
                                       secure: FakeSecure(), activation: FakeActivation(),
                                       sound: sound, settings: store)
             engine.activate()
             XCTAssertEqual(engine.boundTapKey, .rightCommand)
-            for c in "ghbdtn" { tap.handler?(.character(c)) }
-            tap.handler?(.space)
+            tap.type("ghbdtn")
+            tap.space()
             XCTAssertEqual(sound.played, expected, "audible \(String(describing: audible))")
             withExtendedLifetime(engine) {}
         }
@@ -91,15 +76,15 @@ final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
     /// a test of the table alone cannot: every other test of the capital fix
     /// writes `true` into the store first.
     func testAFreshStoreCorrectsASlippedCapital() {
-        let tap = DefaultsTap(), typing = DefaultsTyping()
+        let tap = FakeTap(), typing = FakeTyping()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
                                   translation: DefaultsTranslation(), spell: CyrillicSpell(),
                                   secure: FakeSecure(), activation: FakeActivation(),
-                                  sound: DefaultsSound(), settings: store())
+                                  sound: FakeSound(), settings: store())
         engine.activate()
-        for c in "ПРивет" { tap.handler?(.character(c)) }
-        tap.handler?(.space)
-        XCTAssertEqual(typing.performed, 1, "the capital was left alone on a fresh store")
+        tap.type("ПРивет")
+        tap.space()
+        XCTAssertEqual(typing.performed.count, 1, "the capital was left alone on a fresh store")
         withExtendedLifetime(engine) {}
     }
 
@@ -110,14 +95,14 @@ final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
         for (audible, expected) in [(false, 0), (true, 1)] {
             let store = store()
             store.set(audible, for: LayoutKey.audible)
-            let tap = DefaultsTap(), sound = DefaultsSound()
-            let engine = LayoutEngine(tap: tap, typing: DefaultsTyping(), sources: StuckSources(),
+            let tap = FakeTap(), sound = FakeSound()
+            let engine = LayoutEngine(tap: tap, typing: FakeTyping(), sources: StuckSources(),
                                       translation: DefaultsTranslation(), spell: CyrillicSpell(),
                                       secure: FakeSecure(), activation: FakeActivation(),
                                       sound: sound, selection: DefaultsSelection(), settings: store)
             engine.activate()
-            for c in "ПРивет" { tap.handler?(.character(c)) }
-            tap.handler?(.space)
+            tap.type("ПРивет")
+            tap.space()
             XCTAssertEqual(sound.played, expected, "capital fix, audible \(audible)")
             engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
             XCTAssertEqual(sound.played, expected * 2, "selection, audible \(audible)")

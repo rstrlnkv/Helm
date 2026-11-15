@@ -19,11 +19,6 @@ final class InstallBrewTests: XCTestCase {
 
     // MARK: - Fakes
 
-    private struct FixedLocator: BrewLocator {
-        var path: String? = "/opt/homebrew/bin/brew"
-        func brewPath() -> String? { path }
-    }
-
     /// Records every script it is asked to run as root and answers what the
     /// test says the person answered at the dialog. It never runs anything.
     private final class RecordingPrivileged: PrivilegedRunner, @unchecked Sendable {
