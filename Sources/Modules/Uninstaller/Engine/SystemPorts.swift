@@ -5,10 +5,10 @@ import HelmRuntime
 
 // MARK: - App listing
 
-final class WorkspaceAppLister: AppLister {
+public final class WorkspaceAppLister: AppLister {
     private let home: URL
     private let fs: FileSystemPort
-    init(home: URL, fs: FileSystemPort) { self.home = home; self.fs = fs }
+    public init(home: URL, fs: FileSystemPort) { self.home = home; self.fs = fs }
 
     private var searchDirs: [URL] {
         [URL(fileURLWithPath: "/Applications"),
@@ -17,7 +17,7 @@ final class WorkspaceAppLister: AppLister {
          home.appendingPathComponent("Applications/Setapp")]
     }
 
-    func installedBundleIDs() -> Set<String> {
+    public func installedBundleIDs() -> Set<String> {
         var ids: Set<String> = []
         for dir in searchDirs {
             guard let items = try? FileManager.default.contentsOfDirectory(
@@ -35,7 +35,7 @@ final class WorkspaceAppLister: AppLister {
         return ids
     }
 
-    func isKnownToSystem(bundleID: String) -> Bool {
+    public func isKnownToSystem(bundleID: String) -> Bool {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
     }
 
@@ -50,7 +50,7 @@ final class WorkspaceAppLister: AppLister {
     /// second time to group it by id would double that for an answer
     /// LaunchServices gives more completely — it registers `/Applications`
     /// itself, so a bundle there that it has never heard of does not arise.
-    func installedPaths(forBundleID id: String) -> [String] {
+    public func installedPaths(forBundleID id: String) -> [String] {
         NSWorkspace.shared.urlsForApplications(withBundleIdentifier: id)
             .map(\.path)
             .filter { InstalledLocation.isInstalled(path: $0, home: home.path) }
@@ -69,7 +69,7 @@ final class WorkspaceAppLister: AppLister {
     /// the name list for the same 53; on an APFS volume with `mdutil -i off` a
     /// copy of Calculator with its mtime set to 2020-01-02 answered that mtime
     /// and its names (15) did not carry the attribute.
-    func lastOpened(path: String) -> Date? {
+    public func lastOpened(path: String) -> Date? {
         guard let item = MDItemCreate(kCFAllocatorDefault, path as CFString),
               let names = MDItemCopyAttributeNames(item) as? [String],
               names.contains(kMDItemLastUsedDate as String) else { return nil }
@@ -99,7 +99,7 @@ final class WorkspaceAppLister: AppLister {
     /// could see. A Trash that is simply *not there* — a fresh account has none
     /// until something is deleted — is empty rather than nil, or the page would
     /// report a missing permission to somebody who has all of them.
-    func trashedApps() -> [TrashedApp]? {
+    public func trashedApps() -> [TrashedApp]? {
         let trash = home.appendingPathComponent(".Trash", isDirectory: true)
         let items: [URL]
         do {
@@ -131,11 +131,11 @@ final class WorkspaceAppLister: AppLister {
 
     /// One `opendir`, so the press that asks reads no `Info.plist` on main. A
     /// missing Trash lists as empty and stays readable, as in `trashedApps()`.
-    func trashIsReadable() -> Bool {
+    public func trashIsReadable() -> Bool {
         DirectoryListing.contents(of: home.appendingPathComponent(".Trash", isDirectory: true)) != .refused
     }
 
-    func installedApps() -> [InstalledApp] {
+    public func installedApps() -> [InstalledApp] {
         let fm = FileManager.default
         var seen = Set<String>()
         var out: [InstalledApp] = []
@@ -222,7 +222,7 @@ final class WorkspaceAppLister: AppLister {
 
     /// Measured in parallel: the walks are independent, and one slow bundle
     /// (Xcode, 3.2 s here) otherwise holds up the other thirty-eight.
-    func appSizes(_ apps: [InstalledApp]) -> [String: Int] {
+    public func appSizes(_ apps: [InstalledApp]) -> [String: Int] {
         let fs = self.fs
         // `nonisolated(unsafe)`: the compiler cannot see `lock`, and the shape it
         // objects to is the one wanted — one write per index under the lock, and
@@ -313,18 +313,6 @@ public struct WorkspaceRunningApps: RunningAppsPort {
                 if force { app.forceTerminate() } else { app.terminate() }
             }
         }
-    }
-}
-
-// MARK: - Factory
-
-public struct UninstallerSystemPorts {
-    public let fs = FMFileSystem()
-    public let trash = FMTrash()
-    public let running = WorkspaceRunningApps()
-    public let apps: AppLister
-    public init(home: URL) {
-        self.apps = WorkspaceAppLister(home: home, fs: FMFileSystem())
     }
 }
 

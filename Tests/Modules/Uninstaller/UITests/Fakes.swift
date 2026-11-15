@@ -27,6 +27,19 @@ struct EveryPathExists: FileSystemPort {
     func children(of url: URL) -> [URL] { [] }
 }
 
+/// A lister that reports what is installed and what is in the Trash
+/// independently: an app can be in both, and `nil` is a Trash this process was not
+/// allowed to read, which is a different fact from an empty one.
+struct FakeApps: AppLister {
+    var apps: [InstalledApp] = []
+    var trashed: [TrashedApp]? = []
+    func installedApps() -> [InstalledApp] { apps }
+    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
+    func installedBundleIDs() -> Set<String> { Set(apps.map(\.bundleID)) }
+    func isKnownToSystem(bundleID: String) -> Bool { false }
+    func trashedApps() -> [TrashedApp]? { trashed }
+}
+
 /// **Nothing here removes anything.** These tests are about what the view model
 /// shows, and the engine behind it takes a `TrashPort` whether or not anybody
 /// is going to remove something.

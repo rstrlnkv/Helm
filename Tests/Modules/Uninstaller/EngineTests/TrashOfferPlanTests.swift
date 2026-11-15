@@ -1,6 +1,16 @@
 import XCTest
 @testable import Module_Uninstaller_Engine
 
+private func leftover(_ path: String, _ bytes: Int = 10,
+                      byName: Bool = false) -> Leftover {
+    Leftover(path: path, kind: .appSupport, sizeBytes: bytes, matchedByName: byName)
+}
+
+private func group(_ id: String, _ leftovers: [Leftover]) -> TrashedAppLeftovers {
+    TrashedAppLeftovers(bundleID: id, name: "App",
+                        appPath: "/Users/ann/.Trash/App.app", leftovers: leftovers)
+}
+
 /// What the unprompted window may act on.
 ///
 /// This window is different from the review screen in one way that decides all of
@@ -8,17 +18,6 @@ import XCTest
 /// and whatever it arrives with ticked is what one press removes — so the ticks
 /// have to be defensible without a person having read a single path.
 final class TrashOfferPlanTests: XCTestCase {
-
-    private func leftover(_ path: String, _ bytes: Int = 10,
-                          byName: Bool = false) -> Leftover {
-        Leftover(path: path, kind: .appSupport, sizeBytes: bytes, matchedByName: byName)
-    }
-
-    private func group(_ id: String, _ leftovers: [Leftover]) -> TrashedAppLeftovers {
-        TrashedAppLeftovers(bundleID: id, name: "App",
-                            appPath: "/Users/ann/.Trash/App.app", leftovers: leftovers)
-    }
-
     // MARK: - What arrives ticked
 
     func testALeftoverFoundByBundleIDArrivesTicked() {
@@ -213,17 +212,6 @@ final class TrashOfferPlanTests: XCTestCase {
 /// What the unprompted window's footer says about the size: the ticked paths' bytes,
 /// a path two apps share counted once, and zero when nothing is ticked.
 final class TrashOfferSizeTests: XCTestCase {
-
-    private func leftover(_ path: String, _ bytes: Int = 10,
-                          byName: Bool = false) -> Leftover {
-        Leftover(path: path, kind: .appSupport, sizeBytes: bytes, matchedByName: byName)
-    }
-
-    private func group(_ id: String, _ leftovers: [Leftover]) -> TrashedAppLeftovers {
-        TrashedAppLeftovers(bundleID: id, name: "App",
-                            appPath: "/Users/ann/.Trash/App.app", leftovers: leftovers)
-    }
-
     // MARK: - What the footer says
 
     func testTheSizeCountsWhatIsTicked() {

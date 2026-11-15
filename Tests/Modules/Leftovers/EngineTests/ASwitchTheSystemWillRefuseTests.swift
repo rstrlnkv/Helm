@@ -63,10 +63,7 @@ final class ASwitchTheSystemWillRefuseTests: XCTestCase {
         files.listing["/Users/x/Library/LaunchAgents"] = ["com.vendor.updater.plist"]
         files.plists["/Users/x/Library/LaunchAgents/com.vendor.updater.plist"] =
             PlistData(["Label": label, "Program": "/Applications/Gone.app/Contents/MacOS/updater"])
-        let items = LeftoversScanner(home: home, files: files, apps: LeftoversFakeApps(),
-                                     extensions: LeftoversFakeLoaded()).scan()
-        return try XCTUnwrap(items.first { $0.kind == .launchAgent },
-                            "precondition: the agent is listed at all")
+        return try firstAgent(home: home, files: files)
     }
 
     /// A label with a path separator in it: the switch refuses it, the row offers

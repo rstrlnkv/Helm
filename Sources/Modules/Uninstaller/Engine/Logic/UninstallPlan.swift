@@ -58,11 +58,6 @@ public enum UninstallPlan {
         /// The bundle in the batch, as the batch spells it.
         let path: String
         let bundleID: String
-
-        init(path: String, bundleID: String) {
-            self.path = path
-            self.bundleID = bundleID
-        }
     }
 
     /// What a batch may do about the applications that are up.

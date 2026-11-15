@@ -34,17 +34,6 @@ import XCTest
 final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
 
     /// Reports the Trash and the installed set independently — an app can be in
-    /// both, and `nil` is a Trash this process was not allowed to read.
-    private struct Lister: AppLister {
-        var installed: [InstalledApp] = []
-        var trashed: [TrashedApp]? = []
-        func installedApps() -> [InstalledApp] { installed }
-        func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-        func installedBundleIDs() -> Set<String> { Set(installed.map(\.bundleID)) }
-        func isKnownToSystem(bundleID: String) -> Bool { false }
-        func trashedApps() -> [TrashedApp]? { trashed }
-    }
-
     // MARK: -
 
     /// The unprompted window, end to end: the engine really does hand back two
@@ -56,7 +45,7 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
         store.set(true, for: "watchTrash")
         // Delete, reinstall, delete again: the Finder keeps both and renames the
         // second. One `Info.plist`, so one bundle id.
-        let lister = Lister(trashed: [
+        let lister = FakeApps(trashed: [
             TrashedApp(bundleID: "com.acme.tool", name: "Tool", path: "/Users/ann/.Trash/Tool.app"),
             TrashedApp(bundleID: "com.acme.tool", name: "Tool", path: "/Users/ann/.Trash/Tool 2.app"),
         ])

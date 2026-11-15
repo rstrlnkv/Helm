@@ -41,13 +41,6 @@ private final class ToolThatMaySayNothing: SystemExtensionPort, @unchecked Senda
 
 }
 
-private struct NoLister: AppLister {
-    func installedApps() -> [InstalledApp] { [] }
-    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-    func installedBundleIDs() -> Set<String> { [] }
-    func isKnownToSystem(bundleID: String) -> Bool { false }
-}
-
 /// Past defect: fix commit f710c8f9.
 final class ASilentToolIsNotNoExtensionsTests: XCTestCase {
     private var root: URL!
@@ -64,16 +57,11 @@ final class ASilentToolIsNotNoExtensionsTests: XCTestCase {
     /// A bundle whose `Info.plist` the engine can read — the id it blames a
     /// refusal on comes from there.
     private func makeApp(named name: String, bundleID: String) throws -> String {
-        let app = root.appendingPathComponent("\(name).app")
-        let contents = app.appendingPathComponent("Contents")
-        try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
-        try (["CFBundleIdentifier": bundleID] as NSDictionary)
-            .write(to: contents.appendingPathComponent("Info.plist"))
-        return app.path
+        try writeAppBundle(root.appendingPathComponent("\(name).app"), id: bundleID)
     }
 
     private func engine(_ tool: ToolThatMaySayNothing) -> UninstallerEngine {
-        UninstallerEngine(home: root, apps: NoLister(), fs: EveryPathExists(),
+        UninstallerEngine(home: root, apps: FakeApps(), fs: EveryPathExists(),
                           trash: RefusesEverything(), running: NoRunning(), extensions: tool)
     }
 

@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import XCTest
 @testable import Module_Leftovers_Engine
 
 /// The module's four ports, faked once for this target — the scanner's three
@@ -198,4 +199,14 @@ final class LeftoversGatedFiles: LeftoversFilePort, @unchecked Sendable {
     func size(_ url: URL) -> Int { inner.size(url) }
     func readPlist(_ url: URL) -> PlistData? { inner.readPlist(url) }
     func resolvingSymlinks(_ url: URL) -> URL { inner.resolvingSymlinks(url) }
+}
+
+/// The launch agent a scan over `files` lists, unwrapped with the precondition every
+/// such test shares: a test about what a row says first needs the row.
+func firstAgent(home: URL, files: LeftoversFakeFiles,
+                loaded: LeftoversFakeLoaded = LeftoversFakeLoaded()) throws -> StaleItem {
+    let items = LeftoversScanner(home: home, files: files, apps: LeftoversFakeApps(),
+                                 extensions: loaded).scan()
+    return try XCTUnwrap(items.first { $0.kind == .launchAgent },
+                         "precondition: the agent is listed at all")
 }

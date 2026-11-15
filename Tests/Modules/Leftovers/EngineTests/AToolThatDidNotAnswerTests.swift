@@ -32,10 +32,7 @@ final class AToolThatDidNotAnswerTests: XCTestCase {
         files.listing["/Users/x/Library/LaunchAgents"] = ["\(label).plist"]
         files.plists["/Users/x/Library/LaunchAgents/\(label).plist"] =
             PlistData(["Label": label, "RunAtLoad": true])
-        let items = LeftoversScanner(home: home, files: files, apps: LeftoversFakeApps(),
-                                     extensions: loaded).scan()
-        return try XCTUnwrap(items.first { $0.kind == .launchAgent },
-                             "precondition: the agent is listed at all")
+        return try firstAgent(home: home, files: files, loaded: loaded)
     }
 
     private var liveExtension: SystemExtensionInfo {

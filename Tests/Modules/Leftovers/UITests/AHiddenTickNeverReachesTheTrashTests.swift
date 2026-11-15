@@ -14,19 +14,6 @@ import Module_Leftovers_Engine
 @MainActor
 final class AHiddenTickNeverReachesTheTrashTests: XCTestCase {
 
-    /// Records the paths `trash` is handed, and answers nothing was moved.
-    private final class RecordingWork: LeftoversWork, @unchecked Sendable {
-        private(set) var trashed: [[String]] = []
-        let items: [StaleItem]
-        init(items: [StaleItem]) { self.items = items }
-        func scan() async -> [StaleItem] { items }
-        func trash(_ paths: [String]) async -> LeftoversRemoval {
-            trashed.append(paths)
-            return LeftoversRemoval(removed: [], refused: [], freedBytes: 0)
-        }
-        func setDisabled(_ request: LeftoversToggle) async {}
-    }
-
     private let orphaned = StaleItem(path: "/tmp/orphaned.plist", identifier: "com.acme.orphaned",
                                      kind: .launchAgent, sizeBytes: 4_096, status: .orphaned)
     private let inUse = StaleItem(path: "/tmp/in-use.plist", identifier: "com.acme.inuse",
@@ -35,7 +22,7 @@ final class AHiddenTickNeverReachesTheTrashTests: XCTestCase {
     /// The control: a tick on a row that is shown is sent, so the absence below
     /// is not a `trash` that never runs.
     func testAVisibleTickIsSent() async {
-        let work = RecordingWork(items: [orphaned, inUse])
+        let work = LeftoversFakeWork(items: [orphaned, inUse])
         let model = LeftoversViewModel(work: work)
         model.showAll = true
         await model.scan()
@@ -47,7 +34,7 @@ final class AHiddenTickNeverReachesTheTrashTests: XCTestCase {
     }
 
     func testAHiddenTickIsNotSent() async {
-        let work = RecordingWork(items: [orphaned, inUse])
+        let work = LeftoversFakeWork(items: [orphaned, inUse])
         let model = LeftoversViewModel(work: work)
         model.showAll = true
         await model.scan()
@@ -63,7 +50,7 @@ final class AHiddenTickNeverReachesTheTrashTests: XCTestCase {
     /// Nothing ticked is nothing sent: the press must not reach `trash` with an
     /// empty list, which would still run a removal and replace the banner.
     func testNothingTickedSendsNothing() async {
-        let work = RecordingWork(items: [orphaned, inUse])
+        let work = LeftoversFakeWork(items: [orphaned, inUse])
         let model = LeftoversViewModel(work: work)
         await model.scan()
 

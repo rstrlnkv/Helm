@@ -313,17 +313,22 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// five folders of entries ask about the same handful of ids, and each
     /// question is a round trip to the system.
     private func makeOwnership(bundleID: String) -> LeftoverOwnership {
-        var answers: [String: Bool] = [:]
-        return LeftoverOwnership(
+        LeftoverOwnership(
             bundleID: bundleID,
             installedBundleIDs: apps.installedBundleIDs(),
             installedPaths: apps.installedPaths(forBundleID: bundleID),
-            knownToSystem: { [apps] id in
-                if let remembered = answers[id] { return remembered }
-                let answer = apps.isKnownToSystem(bundleID: id)
-                answers[id] = answer
-                return answer
-            })
+            knownToSystem: rememberingLaunchServices())
+    }
+
+    /// One scan's LaunchServices answers, each asked once.
+    private func rememberingLaunchServices() -> (String) -> Bool {
+        var answers: [String: Bool] = [:]
+        return { [apps] id in
+            if let remembered = answers[id] { return remembered }
+            let answer = apps.isKnownToSystem(bundleID: id)
+            answers[id] = answer
+            return answer
+        }
     }
 
     /// A refusal that leaves no trace reads exactly like a scan that found
@@ -573,18 +578,13 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     private func scanOrphansSync() -> [OrphanGroup] {
         let installedIDs = apps.installedBundleIDs()
-        var known: [String: Bool] = [:]
+        let knownToSystem = rememberingLaunchServices()
         var byID: [String: [Leftover]] = [:]
         for (dir, kind) in Self.orphanScanDirs {
             for url in fs.children(of: library.appendingPathComponent(dir)) {
                 let name = url.lastPathComponent
                 guard OrphanDetector.isOrphan(name: name, installedBundleIDs: installedIDs,
-                                              knownToSystem: { id in
-                                                  if let remembered = known[id] { return remembered }
-                                                  let answer = self.apps.isKnownToSystem(bundleID: id)
-                                                  known[id] = answer
-                                                  return answer
-                                              })
+                                              knownToSystem: knownToSystem)
                 else { continue }
                 let id = OrphanDetector.bundleID(from: name)
                 byID[id, default: []].append(

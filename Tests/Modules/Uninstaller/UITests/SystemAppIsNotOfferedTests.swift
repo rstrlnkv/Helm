@@ -12,14 +12,6 @@ import XCTest
 @MainActor
 final class SystemAppIsNotOfferedTests: XCTestCase {
 
-    private struct FixedLister: AppLister {
-        let apps: [InstalledApp]
-        func installedApps() -> [InstalledApp] { apps }
-        func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-        func installedBundleIDs() -> Set<String> { Set(apps.map(\.bundleID)) }
-        func isKnownToSystem(bundleID: String) -> Bool { false }
-    }
-
     private let safari = InstalledApp(name: "Safari", bundleID: "com.apple.Safari",
                                       path: "/Applications/Safari.app", sizeBytes: 0)
     private let tool = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
@@ -28,7 +20,7 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
     private func viewModel() -> UninstallerViewModel {
         let engine = UninstallerEngine(
             home: URL(fileURLWithPath: "/Users/x"),
-            apps: FixedLister(apps: [
+            apps: FakeApps(apps: [
                 safari, tool,
             ]),
             fs: NoFiles(), trash: NoTrash(), running: NoRunning())

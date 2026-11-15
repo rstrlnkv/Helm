@@ -10,13 +10,6 @@ private struct HostsExtension: SystemExtensionPort {
     /// this file must not be able to plant by accident.
     func activeExtensionHosts() -> Set<String>? { hosts }
 }
-private struct NoLister: AppLister {
-    func installedApps() -> [InstalledApp] { [] }
-    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-    func installedBundleIDs() -> Set<String> { [] }
-    func isKnownToSystem(bundleID: String) -> Bool { false }
-}
-
 /// When a bundle refuses to move, the engine decides whether to blame an active
 /// system extension by testing the app's bundle id against the extension hosts
 /// with `hasPrefix`. A bundle id is dot-separated, and `hasPrefix` does not know
@@ -38,16 +31,11 @@ final class ExtensionHostBlameTests: XCTestCase {
 
     /// Writes a minimal app bundle whose Info.plist the engine can read.
     private func makeApp(named name: String, bundleID: String) throws -> String {
-        let app = root.appendingPathComponent("\(name).app")
-        let contents = app.appendingPathComponent("Contents")
-        try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
-        try (["CFBundleIdentifier": bundleID] as NSDictionary)
-            .write(to: contents.appendingPathComponent("Info.plist"))
-        return app.path
+        try writeAppBundle(root.appendingPathComponent("\(name).app"), id: bundleID)
     }
 
     private func engine(hosts: Set<String>) -> UninstallerEngine {
-        UninstallerEngine(home: root, apps: NoLister(), fs: EveryPathExists(),
+        UninstallerEngine(home: root, apps: FakeApps(), fs: EveryPathExists(),
                           trash: RefusesEverything(), running: NoRunning(),
                           extensions: HostsExtension(hosts: hosts))
     }

@@ -8,30 +8,12 @@ import HelmRuntime
 /// module's model (`UninstallerViewModel`), since `HelmApp` depends on no module's engine target (`Package.swift`, target `HelmApp`). The host triggers and draws; everything judged happens here.
 final class TrashSweepTests: XCTestCase {
 
-    /// A lister that reports what is installed and what is in the Trash
-    /// independently, which is the only combination that matters: an app can be in
-    /// both at once, and that is the case where offering would be wrong.
-    private struct Lister: AppLister {
-        var installed: [InstalledApp] = []
-        /// Optional, the way the port is: `nil` is a Trash this process was not
-        /// allowed to read, which is a different fact from an empty one and has its
-        /// own tests in `TheOfferSwitchSaysWhatItIsDoingTests`. A non-optional here
-        /// would satisfy nothing and hand every test in this file the protocol's
-        /// default of `[]` — with no error anywhere.
-        var trashed: [TrashedApp]? = []
-        func installedApps() -> [InstalledApp] { installed }
-        func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-        func installedBundleIDs() -> Set<String> { Set(installed.map(\.bundleID)) }
-        func isKnownToSystem(bundleID: String) -> Bool { false }
-        func trashedApps() -> [TrashedApp]? { trashed }
-    }
-
     private let home = URL(fileURLWithPath: "/Users/ann")
 
     /// `watching: true` unless a test says otherwise, because the offer is off
     /// until somebody turns it on and every test below is about what happens once
     /// they have. The one that checks the switch itself passes `false`.
-    private func engine(_ lister: Lister,
+    private func engine(_ lister: FakeApps,
                         store: NamespacedStore? = nil,
                         watching: Bool = true) -> UninstallerEngine {
         let store = store ?? NamespacedStore(namespace: "uninstaller",
@@ -53,7 +35,7 @@ final class TrashSweepTests: XCTestCase {
     // MARK: - What is offered
 
     func testAnAppInTheTrashWithLeftoversIsOffered() async {
-        let uninstaller = engine(Lister(trashed: [trashed("com.example.gone", "Gone")]))
+        let uninstaller = engine(FakeApps(trashed: [trashed("com.example.gone", "Gone")]))
 
         let groups = await uninstaller.trashedAppLeftovers()
 
@@ -66,7 +48,7 @@ final class TrashSweepTests: XCTestCase {
     /// The order the Trash listed is the order the window draws its groups in, so
     /// the sweep must not sort.
     func testTheOrderFoundIsKept() async {
-        let uninstaller = engine(Lister(trashed: [trashed("com.c", "C"), trashed("com.a", "A"),
+        let uninstaller = engine(FakeApps(trashed: [trashed("com.c", "C"), trashed("com.a", "A"),
                                         trashed("com.b", "B")]))
 
         let groups = await uninstaller.trashedAppLeftovers()
@@ -81,7 +63,7 @@ final class TrashSweepTests: XCTestCase {
     /// is not cleaning up after an uninstall, it is breaking an app the person still
     /// runs.
     func testAnAppStillInstalledElsewhereIsNotOffered() async {
-        let uninstaller = engine(Lister(installed: [installed("com.example.two", at: "/Applications/Two.app")],
+        let uninstaller = engine(FakeApps(apps: [installed("com.example.two", at: "/Applications/Two.app")],
                               trashed: [trashed("com.example.two", "Two")]))
 
         let groups = await uninstaller.trashedAppLeftovers()
@@ -94,7 +76,7 @@ final class TrashSweepTests: XCTestCase {
     /// The control for the test above: the same bundle id, nothing installed, and it
     /// *is* offered — so the refusal is the installed copy and not the fixture.
     func testTheSameAppWithNothingInstalledIsOffered() async {
-        let uninstaller = engine(Lister(trashed: [trashed("com.example.two", "Two")]))
+        let uninstaller = engine(FakeApps(trashed: [trashed("com.example.two", "Two")]))
         let groups = await uninstaller.trashedAppLeftovers()
         XCTAssertEqual(groups.count, 1)
     }
@@ -103,7 +85,7 @@ final class TrashSweepTests: XCTestCase {
     /// rather than as a group with no rows, which the host would have to special-case.
     func testAnAppWithNoLeftoversIsNotAGroup() async {
         let uninstaller = UninstallerEngine(home: home,
-                                  apps: Lister(trashed: [trashed("com.example.clean", "Clean")]),
+                                  apps: FakeApps(trashed: [trashed("com.example.clean", "Clean")]),
                                   fs: NoFiles(), trash: NoTrash(), running: NoRunning())
 
         let groups = await uninstaller.trashedAppLeftovers()
@@ -111,14 +93,14 @@ final class TrashSweepTests: XCTestCase {
     }
 
     func testAnEmptyTrashOffersNothing() async {
-        let groups = await engine(Lister()).trashedAppLeftovers()
+        let groups = await engine(FakeApps()).trashedAppLeftovers()
         XCTAssertTrue(groups.isEmpty)
     }
 
     // MARK: - No, remembered
 
     func testADismissedAppIsNotOfferedAgain() async {
-        let lister = Lister(trashed: [trashed("com.a", "A"), trashed("com.b", "B")])
+        let lister = FakeApps(trashed: [trashed("com.a", "A"), trashed("com.b", "B")])
         let uninstaller = engine(lister)
         let both = await uninstaller.trashedAppLeftovers()
         XCTAssertEqual(both.count, 2, "precondition")
@@ -134,7 +116,7 @@ final class TrashSweepTests: XCTestCase {
     func testTheNoSurvivesANewEngineOverTheSameStore() async {
         let backing = InMemoryKeyValueStore()
         let store = { NamespacedStore(namespace: "uninstaller", backing: backing) }
-        let lister = Lister(trashed: [trashed("com.a", "A")])
+        let lister = FakeApps(trashed: [trashed("com.a", "A")])
 
         engine(lister, store: store()).dismissTrashedApp(bundleID: "com.a")
 
@@ -150,7 +132,7 @@ final class TrashSweepTests: XCTestCase {
         let backing = InMemoryKeyValueStore()
         let store = NamespacedStore(namespace: "uninstaller", backing: backing)
         store.set(["com.acme.tool"], for: "trashOfferDismissed")
-        let lister = Lister(trashed: [trashed("com.acme.tool", "Tool")])
+        let lister = FakeApps(trashed: [trashed("com.acme.tool", "Tool")])
 
         let offered = await engine(lister, store: store).trashedAppLeftovers()
 
@@ -187,7 +169,7 @@ final class TrashSweepTests: XCTestCase {
         let store = NamespacedStore(namespace: "uninstaller", backing: backing)
         // "com.gone" left the Trash, so the prune drops it; "com.kept" stays.
         store.set(["com.gone", "com.kept"], for: "trashOfferDismissed")
-        let uninstaller = engine(Lister(trashed: [trashed("com.kept", "Kept")]), store: store)
+        let uninstaller = engine(FakeApps(trashed: [trashed("com.kept", "Kept")]), store: store)
 
         let swept = expectation(description: "the sweep finished")
         Task {
@@ -210,16 +192,16 @@ final class TrashSweepTests: XCTestCase {
         let store = { NamespacedStore(namespace: "uninstaller", backing: backing) }
         let one = trashed("com.a", "A")
 
-        let first = engine(Lister(trashed: [one]), store: store())
+        let first = engine(FakeApps(trashed: [one]), store: store())
         first.dismissTrashedApp(bundleID: "com.a")
         let afterNo = await first.trashedAppLeftovers()
         XCTAssertTrue(afterNo.isEmpty, "precondition: declined")
 
         // The person put it back, and the sweep sees an empty Trash.
-        _ = await engine(Lister(trashed: []), store: store()).trashedAppLeftovers()
+        _ = await engine(FakeApps(trashed: []), store: store()).trashedAppLeftovers()
 
         // Dragged there a second time.
-        let again = await engine(Lister(trashed: [one]), store: store()).trashedAppLeftovers()
+        let again = await engine(FakeApps(trashed: [one]), store: store()).trashedAppLeftovers()
         XCTAssertEqual(again.count, 1,
                        "a second removal of the same app was never asked about")
     }
@@ -231,7 +213,7 @@ final class TrashSweepTests: XCTestCase {
     /// that opens unasked has to be something somebody asked for, and the module
     /// is where that is decided, the same way it decides everything else here.
     func testNothingIsOfferedWhileTheOfferIsOff() async {
-        let lister = Lister(trashed: [trashed("com.a", "A")])
+        let lister = FakeApps(trashed: [trashed("com.a", "A")])
         let groups = await engine(lister, watching: false).trashedAppLeftovers()
         XCTAssertTrue(groups.isEmpty, "the offer answered while it was switched off")
     }
@@ -239,7 +221,7 @@ final class TrashSweepTests: XCTestCase {
     /// And the same Trash, with the switch on, is an offer — so the test above is
     /// about the switch and not about a Trash that had nothing in it.
     func testTheSameTrashIsOfferedWhenItIsOn() async {
-        let lister = Lister(trashed: [trashed("com.a", "A")])
+        let lister = FakeApps(trashed: [trashed("com.a", "A")])
         let groups = await engine(lister, watching: true).trashedAppLeftovers()
         XCTAssertEqual(groups.count, 1)
     }

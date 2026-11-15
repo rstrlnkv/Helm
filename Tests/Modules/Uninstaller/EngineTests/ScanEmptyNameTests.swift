@@ -1,13 +1,6 @@
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-private struct NoApps: AppLister {
-    func installedBundleIDs() -> Set<String> { [] }
-    func isKnownToSystem(bundleID: String) -> Bool { false }
-    func installedApps() -> [InstalledApp] { [] }
-    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-}
-
 /// The end-to-end consequence of `LeftoverMatcherHostileNamesTests`: proves the
 /// bad candidate survives the engine's existence filter and reaches the review
 /// screen as a real, sized, selectable row. Kept separate from the matcher unit
@@ -23,7 +16,7 @@ final class ScanEmptyNameTests: XCTestCase {
             "/Users/x/Library/Logs": 500_000_000,
         ])
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                       apps: NoApps(), fs: fs,
+                                       apps: FakeApps(), fs: fs,
                                        trash: NoTrash(), running: NoRunning())
         let result = await engine.scan(bundleID: "com.acme.tool",
                                            appName: "")
@@ -39,7 +32,7 @@ final class ScanEmptyNameTests: XCTestCase {
             "/Users/x/Library/Logs": 500_000_000,
         ])
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                       apps: NoApps(), fs: fs,
+                                       apps: FakeApps(), fs: fs,
                                        trash: NoTrash(), running: NoRunning())
         let result = await engine.scan(bundleID: "com.acme.tool",
                                            appName: "Tool")
