@@ -34,9 +34,16 @@ import HelmUI
 @MainActor
 final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
 
-    override func setUp() async throws {
-        try await super.setUp()
-        PinnedBarSettings.pin(in: self)
+    /// **Both looks, every row**: the Glass bar's search is AppKit's `NSSearchToolbarItem` and the Flat bar's is
+    /// Helm's own item (`ShellBarSearch`), two different fields wired by two different paths, and the contract
+    /// under test is the same for both. Each row's body runs once per look, the settings pinned before it.
+    private static let looks: [HelmBarAppearance] = [.flat, .liquidGlass]
+
+    private func underEachLook(_ body: (HelmBarAppearance) async -> Void) async {
+        for look in Self.looks {
+            PinnedBarSettings.pin(in: self, look: look)
+            await body(look)
+        }
     }
 
     /// Counts what was asked and answers from a table. Named at construction;
@@ -105,6 +112,10 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
     }
 
     func testTypingAsksNothingAtOnceThenTheLastWordAfterThePause() async {
+        await underEachLook { look in await run_testTypingAsksNothingAtOnceThenTheLastWordAfterThePause(look) }
+    }
+
+    private func run_testTypingAsksNothingAtOnceThenTheLastWordAfterThePause(_ look: HelmBarAppearance) async {
         let transport = Counter()
         defer { withExtendedLifetime(transport) {} }
         let mvm = ModuleViewModel(transport: transport)
@@ -117,13 +128,14 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
         defer { fixture.drop() }
         await hb.loadIfNeeded()
         await turn(mount, 25)
+        PinnedBarSettings.assertWears(look, fixture)
 
         XCTAssertNotNil(fixture.searchField, """
-            the fixture's window wears no toolbar that lists a search item, so there is no field \
+            under \(look.rawValue) the fixture's window wears no toolbar that lists a search item, so there is no field \
             of the toolbar to type into
             """)
         XCTAssertTrue(mount.searchField === fixture.searchField, """
-            the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
+            under \(look.rawValue) the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
             toolbar's field — they would type into another control and nothing below would be \
             about the toolbar's
             """)
@@ -155,6 +167,10 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
     /// Return asks before a pause set to ten seconds could ever have fired on
     /// its own.
     func testReturnAsksAtOnceWithoutWaitingForThePause() async {
+        await underEachLook { look in await run_testReturnAsksAtOnceWithoutWaitingForThePause(look) }
+    }
+
+    private func run_testReturnAsksAtOnceWithoutWaitingForThePause(_ look: HelmBarAppearance) async {
         let transport = Counter()
         defer { withExtendedLifetime(transport) {} }
         let mvm = ModuleViewModel(transport: transport)
@@ -167,13 +183,14 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
         defer { fixture.drop() }
         await hb.loadIfNeeded()
         await turn(mount, 25)
+        PinnedBarSettings.assertWears(look, fixture)
 
         XCTAssertNotNil(fixture.searchField, """
-            the fixture's window wears no toolbar that lists a search item, so there is no field \
+            under \(look.rawValue) the fixture's window wears no toolbar that lists a search item, so there is no field \
             of the toolbar to type into
             """)
         XCTAssertTrue(mount.searchField === fixture.searchField, """
-            the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
+            under \(look.rawValue) the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
             toolbar's field — they would type into another control and nothing below would be \
             about the toolbar's
             """)
@@ -191,6 +208,10 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
     /// own: the trigger is "the local filter found nothing", and typing
     /// `wget` against an installed `wget` finds a row.
     func testAWordThatMatchesAnInstalledPackageAsksNothingOnItsOwn() async {
+        await underEachLook { look in await run_testAWordThatMatchesAnInstalledPackageAsksNothingOnItsOwn(look) }
+    }
+
+    private func run_testAWordThatMatchesAnInstalledPackageAsksNothingOnItsOwn(_ look: HelmBarAppearance) async {
         let transport = Counter(installed: [BrewPackage(name: "wget", version: "1.25.0",
                                                         isCask: false)])
         defer { withExtendedLifetime(transport) {} }
@@ -204,13 +225,14 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
         defer { fixture.drop() }
         await hb.loadIfNeeded()
         await turn(mount, 25)
+        PinnedBarSettings.assertWears(look, fixture)
 
         XCTAssertNotNil(fixture.searchField, """
-            the fixture's window wears no toolbar that lists a search item, so there is no field \
+            under \(look.rawValue) the fixture's window wears no toolbar that lists a search item, so there is no field \
             of the toolbar to type into
             """)
         XCTAssertTrue(mount.searchField === fixture.searchField, """
-            the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
+            under \(look.rawValue) the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
             toolbar's field — they would type into another control and nothing below would be \
             about the toolbar's
             """)

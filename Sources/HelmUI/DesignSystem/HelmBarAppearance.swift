@@ -11,7 +11,7 @@ import SwiftUI
 ///
 /// The toolbar the window wears reads the stored value (`SettingsToolbar`, in the shape of each bar it
 /// builds): under `flat` its tabs are `HelmFlatSegmentedCell` drawing the pick, `HelmSurface.barPick`
-/// (`HelmToolbarSwitcher`'s header), on a flat plate, and its actions capsule is the flat one; under
+/// (`HelmToolbarSwitcher`'s header), on a flat plate, and its actions capsule is the flat one, one `barPlate` capsule behind the visible entries; under
 /// `liquidGlass` its tabs wear AppKit's cell and its capsule is glass.
 ///
 /// **The key is its own, and it is not `appearance`.** That key, in the same

@@ -24,7 +24,7 @@ import SwiftUI
 /// label when its window stopped being key, only its selection capsule turned grey (in a toolbar
 /// AppKit's own control does dim when the app is inactive). The strip
 /// on this plate is `HelmFlatSegmentedCell`, whose inks are fixed.
-/// **Not seen on a screen:** this plate with a control on it — that the flat
+/// Seen on a shown window (Helm Dev, Flat, Light and Dark): this plate with the control on it. **Not seen on a screen:** that the flat
 /// cell's fixed inks do not dim by themselves in an inactive window, how the
 /// dimmed plate reads beside the name, and that a fill at `barPlate` is what
 /// AppKit's inactive platter looks like.

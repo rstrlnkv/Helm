@@ -1,4 +1,5 @@
 import Foundation
+import XCTest
 
 /// The standing documents, named once.
 ///
@@ -8,11 +9,14 @@ import Foundation
 /// one place that says which documents stand and what their headings are.
 public enum StandingDocuments {
 
-    /// The four core documents of the standard, and nothing else.
+    /// The core documents that live in the repository, and nothing else.
     ///
-    /// The crew's briefs are not here: they live in a sibling repository behind the
-    /// `.claude/agents` link, a symlink rather than a repo-relative path.
-    private static let core = ["ARCHITECTURE.md", "CLAUDE.md", "README.md", "CHANGELOG.md"]
+    /// The rules document is the fourth of the standard and is not here: it left
+    /// the repository (it is the owner's private `CLAUDE.local.md`, a link to
+    /// Core), so `requireRules()` finds it. The crew's briefs are not here either: they
+    /// live in a sibling repository behind the `.claude/agents` link, a symlink
+    /// rather than a repo-relative path.
+    private static let core = ["ARCHITECTURE.md", "README.md", "CHANGELOG.md"]
 
     /// `core` and the pages `ARCHITECTURE.md` links.
     public static func all() -> [String] {
@@ -27,6 +31,55 @@ public enum StandingDocuments {
         let ns = hub as NSString
         return regex.matches(in: hub, range: NSRange(location: 0, length: ns.length))
             .map { ns.substring(with: $0.range(at: 1)) }
+    }
+
+    /// The places the rules document may be, in the order they are tried, with no
+    /// path of anybody's home written down (the repository is public).
+    ///
+    /// `CLAUDE.local.md` beside `Package.swift`; and, when this checkout is a
+    /// linked worktree, the same name in the main checkout. A worktree's `.git` is
+    /// a file reading `gitdir: <main>/.git/worktrees/<name>`; that directory's
+    /// `commondir` (relative to it) names `<main>/.git`, whose parent is the main
+    /// checkout. A fresh clone has a `.git` directory, so only the first is tried.
+    public static func rulesCandidates() -> [URL] {
+        let name = "CLAUDE.local.md"
+        var found = [RepoSource.root.appendingPathComponent(name)]
+        let dotGit = RepoSource.root.appendingPathComponent(".git")
+        if let pointer = try? String(contentsOf: dotGit, encoding: .utf8),
+           pointer.hasPrefix("gitdir:") {
+            let gitdir = URL(fileURLWithPath: String(pointer.dropFirst("gitdir:".count))
+                .trimmingCharacters(in: .whitespacesAndNewlines))
+            if let common = try? String(contentsOf: gitdir.appendingPathComponent("commondir"),
+                                        encoding: .utf8) {
+                let mainGit = URL(fileURLWithPath: common.trimmingCharacters(in: .whitespacesAndNewlines),
+                                  relativeTo: gitdir).standardizedFileURL
+                found.append(mainGit.deletingLastPathComponent().appendingPathComponent(name))
+            }
+        }
+        return found
+    }
+
+    /// The rules document's text. **The one place a check learns the rules are
+    /// absent**: it throws `XCTSkip` (reason `rulesAbsent`) when no candidate
+    /// exists, and nothing else does, so a check's CLAUDE half has no condition
+    /// of its own to get wrong. A file that is there and cannot be read throws a
+    /// plain failure, and an empty one comes back empty: both stay red.
+    public static func requireRules(candidates: [URL] = rulesCandidates()) throws -> String {
+        guard let url = candidates.first(where: {
+            FileManager.default.fileExists(atPath: $0.path) }) else {
+            throw XCTSkip(rulesAbsent(candidates))
+        }
+        do {
+            return try String(contentsOf: url, encoding: .utf8)
+        } catch {
+            throw RepoSource.Failure("\(url.path) could not be read: \(error)")
+        }
+    }
+
+    /// Why a check skips its rules half: the paths sought.
+    public static func rulesAbsent(_ candidates: [URL]) -> String {
+        "the rules document is not at " + candidates.map(\.path).joined(separator: " or ")
+            + " (a clone of the public repository does not carry the owner's private rules)"
     }
 
     /// The lines of a document with a flag for each: is it a heading outside
@@ -60,7 +113,9 @@ public enum StandingDocuments {
     }
 
     /// The headings of a document by the bare name a pointer writes before the
-    /// section sign: `ARCHITECTURE` (the hub and every page it links) or `CLAUDE`.
+    /// section sign: `ARCHITECTURE` (the hub and every page it links) or `CLAUDE`,
+    /// which skips (`requireRules()`) when the rules are absent, so an empty list
+    /// is never read as "the rules have no headings".
     public static func headings(of document: String) throws -> [String] {
         switch document {
         case "ARCHITECTURE":
@@ -69,7 +124,7 @@ public enum StandingDocuments {
                 + linkedPages(in: hub).flatMap { headings(in: try RepoSource.text(of: $0)) })
                 .sorted { $0.count > $1.count }
         case "CLAUDE":
-            return headings(in: try RepoSource.text(of: "CLAUDE.md"))
+            return headings(in: try requireRules())
         default:
             throw RepoSource.Failure("\(document) is not a document whose headings pointers name")
         }

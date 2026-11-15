@@ -126,11 +126,9 @@ public struct HelmToolbarAction {
     /// **Whether this action belongs on the tab currently showing at all.**
     /// `true` for an action every tab offers (Homebrew's Refresh); `false`
     /// leaves it out of `HelmToolbarActionsModel.visibleIDs`, so the capsule
-    /// simply does not draw a button for it — the capsule's own back layer
-    /// still reserves its width from the *declared* set regardless, which is
-    /// what keeps every other button still when this one appears or
-    /// disappears (`HelmToolbarActionsCapsule`'s own header) rather than
-    /// sliding the way an `NSToolbarItem` collapsing to `isHidden` used to.
+    /// simply does not draw a button for it — and the capsule's host is as wide
+    /// as the buttons it draws (`HelmToolbarActionsCapsule`'s own header), one SwiftUI
+    /// morph rather than the `NSToolbarItem` collapsing to `isHidden` that used to slide.
     public let isVisible: Bool
     /// Spinning in the capsule while `true` — `.helmSteadySpin`, which
     /// already honours Reduce Motion (`HelmMotion.swift`). Only the plain

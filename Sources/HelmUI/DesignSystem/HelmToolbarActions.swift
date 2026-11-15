@@ -11,16 +11,21 @@ import SwiftUI
 /// relayout AppKit itself animates: Refresh visibly slid to make room, on
 /// every visit to the Updates tab. `SettingsToolbar` now builds a single
 /// `helm.actions` item hosting this capsule instead, so the whole shape is
-/// one SwiftUI subtree AppKit lays out once and never reflows.
+/// one SwiftUI subtree, so no item of AppKit's own enters or leaves the bar.
 ///
-/// **The reserve.** The back layer is every *declared* action, hidden and
-/// laid out at its natural width — that is what the hosted item's own
-/// intrinsic size answers, so the capsule never resizes as actions come and
-/// go, which is what keeps a still action still: `ZStack(alignment:
-/// .trailing)` puts the front layer's visible buttons flush with the
-/// trailing edge of that reserve, so a button already there (Refresh) never
-/// moves and a button that appears (Upgrade) grows out of the space already
-/// reserved to its left.
+/// **No reserve: the hosted item is as wide as the entries it shows.** (The owner, 2026-11-15: «Дыры быть не
+/// должно, капсула должна увеличиваться и сжимать поиск если он развернут в поле, если поиск свернут в круглую
+/// кнопку, то тогда капсула действий находится рядом с ней.») This file used to lay out one clear square per
+/// *declared* action behind the visible ones and trail the visible ones in it, so the item's width never moved
+/// and a button already there (Refresh) never moved; the price was an empty slot of 36 points per hidden action
+/// between the tabs and the capsule (Homebrew Installed and Health, one entry of two declared). The item's
+/// intrinsic width is now `Self.side` per visible entry (or per entry held, `heldCount`, while a leaving one animates out: `.frame(minWidth: side * heldCount)`), and the settle follows it: `SettingsToolbar` watches
+/// the host's frame and re-arms itself, so the room the search field is offered (`searchOffer`) is worked out
+/// from the width the capsule has now, and a wider capsule takes its room from the field, a narrower one gives it
+/// back. The trade: a button that stays when another comes no longer stands still, because the item's trailing
+/// edge follows the field's leading edge, which moves with the offer. **Seen on a screen (Homebrew, 1060, both looks):** the capsule moves once, over ~0.19 s, and the field once, in a
+/// one-frame jump, so for ~0.19 s the gap between them is up to 43 points; the owner accepted that for now, the follow-up is that
+/// the field's width follows the capsule's edge on the same curve (defects log). Not judged: how the morph of the entry reads.
 ///
 /// **The model is `@Observable`, changed synchronously — not
 /// `ObservableObject`.** Helm has no other `@Observable` model; this is the
@@ -95,7 +100,7 @@ public final class HelmToolbarActionsModel {
     }
 
     /// Every action the page has declared, in the order it declared them —
-    /// the fixed reserve the capsule's back layer draws from. Not `public`:
+    /// what `visible` filters, so the order holds however many are shown. Not `public`:
     /// `HelmToolbarActionsCapsule.body`, in this same module, is the only
     /// non-test reader — a test reaches it through `@testable import HelmUI`,
     /// which internal access already answers for.
@@ -156,6 +161,15 @@ public final class HelmToolbarActionsModel {
         declared = entries
     }
 
+    /// How many entries' width the host keeps at least (0 holds nothing). `SettingsToolbar.patchActions` holds the
+    /// old count while a leaving entry animates out and lets go in the pass that also gives the search field its room.
+    public private(set) var heldCount = 0
+
+    public func setHeldCount(_ count: Int) {
+        guard heldCount != count else { return }
+        heldCount = count
+    }
+
     public func setVisibleIDs(_ ids: [String]) {
         guard visibleIDs != ids else { return }
         visibleIDs = ids
@@ -200,7 +214,7 @@ public final class HelmToolbarActionsModel {
 /// active appearance, which in a real app equals `isKeyWindow || isMainWindow`
 /// — no SwiftUI environment read back out of it changed the reading either
 /// way; a fixture built line-for-line from this type's own shape (the
-/// `ZStack`, the hidden reserve,
+/// `GlassEffectContainer`,
 /// `glassEffectID`/`glassEffectUnion`/`glassEffectTransition`, all of it) read
 /// its glass moving with the window with no override and no rebuild, across a
 /// same-process deactivate and a genuine switch to a second, independently
@@ -243,13 +257,14 @@ public struct HelmToolbarActionsCapsule: View {
     /// 4.0 pt from the window's trailing edge at 1060 pt where a bordered one ended 8.0 pt.
     /// The capsule carries an inset of its own only where its caller hands one
     /// (`trailingInset`, 0 by default): `SettingsToolbar.actionsHost(_:for:)` hands this number
-    /// where no search follows the capsule.
+    /// where no search follows the capsule, and where one follows it hands
+    /// `ShellBarLayout.actionsSearchPad`.
     public static let edgeMargin: CGFloat = 4
 
     /// **36 pt — AppKit's own bordered toolbar button's height**, measured
     /// against a live window, so the two zones draw level rather than each
     /// choosing a size of its own.
-    static let side: CGFloat = 36
+    public static let side: CGFloat = 36
 
     /// **The glyph's own dim, when the model reads inactive — a second gap
     /// from the same measurement, separate from the glass.** A plain SwiftUI
@@ -299,9 +314,9 @@ public struct HelmToolbarActionsCapsule: View {
     static let disabledInactiveGlyphOpacityDark: Double = 0.35
     static let disabledInactiveGlyphOpacityLight: Double = 0.50
 
-    /// Non-zero exactly when this capsule is a toolbar's own last item (no
-    /// search follows it) — see `edgeMargin`'s own header for the measurement
-    /// this closes.
+    /// What the host adds on its trailing side, the caller's: `edgeMargin` when this capsule is
+    /// the toolbar's own last item (no search follows it; see its header for the measurement),
+    /// `ShellBarLayout.actionsSearchPad` when a search follows, 0 by default.
     public let trailingInset: CGFloat
 
     /// **The two numbers a flat capsule dims by in a window that is not active,
@@ -357,34 +372,20 @@ public struct HelmToolbarActionsCapsule: View {
     }
 
     public var body: some View {
-        ZStack(alignment: .trailing) {
-            // The fixed reserve: every declared action, laid out and never
-            // drawn — its width is the capsule's own intrinsic width, which
-            // is what stops the hosted item resizing as `visibleIDs` moves.
-            // Every kind costs `Self.side`.
+        // The hosted view's intrinsic width is `Self.side` per visible entry (every kind costs it), at least `Self.side` per
+        // entry held while a leaving one animates out (`heldCount`), and
+        // `trailingInset`, the caller's, which `SettingsToolbar.actionsHost(_:for:)` decides from `content.search`.
+        GlassEffectContainer(spacing: HelmSpace.s4) {
             HStack(spacing: 0) {
-                ForEach(model.declared, id: \.id) { _ in
-                    Color.clear.frame(width: Self.side, height: Self.side)
+                ForEach(visible, id: \.id) { entry in
+                    backing(entryControl(entry).help(entry.title)
+                                .disabled(!entry.isEnabled || !model.isInteractive),
+                            for: entry)
                 }
             }
-            .hidden()
-            .accessibilityHidden(true)
-
-            GlassEffectContainer(spacing: HelmSpace.s4) {
-                HStack(spacing: 0) {
-                    ForEach(visible, id: \.id) { entry in
-                        backing(entryControl(entry).help(entry.title)
-                                    .disabled(!entry.isEnabled || !model.isInteractive),
-                                for: entry)
-                    }
-                }
-            }
+            .background { flatPlate }
+            .frame(minWidth: Self.side * CGFloat(model.heldCount), alignment: .leading)
         }
-        // Outside the `ZStack`, so it widens the hosted view's own intrinsic
-        // size rather than reserving room the buttons' trailing alignment
-        // would swallow. The hidden reserve row above is unaffected: it is
-        // laid out from `model.declared`, and the inset is the caller's,
-        // which `SettingsToolbar.actionsHost(_:for:)` decides from `content.search`.
         .padding(.trailing, trailingInset)
     }
 
@@ -395,12 +396,24 @@ public struct HelmToolbarActionsCapsule: View {
         model.declared.filter { model.visibleIDs.contains($0.id) }
     }
 
+    /// Under `.flat` one capsule of `HelmSurface.barPlate` behind the visible entries, drawn
+    /// here rather than by a `ShellBarPlate` around the host: the host carries `trailingInset` beside
+    /// its entries and, with no entry, none to wrap, so a plate around it would show the inset or an
+    /// empty capsule. It dims with the glyphs when the window is inactive; under
+    /// `.liquidGlass` nothing.
+    @ViewBuilder private var flatPlate: some View {
+        if appearance == .flat {
+            Capsule(style: .continuous).fill(HelmSurface.barPlate)
+                .opacity(model.appearsActive ? 1 : inactiveGlyphOpacity)
+        }
+    }
+
     /// **What sits behind one entry: under `.liquidGlass` the glass chain below,
-    /// under `.flat` nothing.** Every kind takes `.regular.interactive()`: each
+    /// under `.flat` nothing (the plate behind them all is `flatPlate`).** Every kind takes `.regular.interactive()`: each
     /// is pure SwiftUI (`Button`, `Toggle`, `Menu`), so whatever that adds is
     /// shared with the control's own press, which is what Homebrew's Upgrade and
     /// Refresh already rely on. Under `.flat` the container around the entries
-    /// holds no glass; that it then draws nothing, and that the entries'
+    /// holds no glass; that `flatPlate` behind them reads right, and that the entries'
     /// appearing and leaving reads acceptably without the glass morph, were not
     /// seen on a screen.
     @ViewBuilder
@@ -447,7 +460,7 @@ public struct HelmToolbarActionsCapsule: View {
     /// button's 14.5 × 17.5. With no font of its own the `Label` takes
     /// the hosting view's default body size, smaller again — the owner's "very
     /// small". The glyph sits inside the same `Self.side` frame whatever its
-    /// size, so no reserve, fold prediction or edge margin reads it.
+    /// size, so no width, fold prediction or edge margin reads it.
     @ViewBuilder
     private func glyph(_ entry: HelmToolbarActionsModel.Entry, symbol: String? = nil) -> some View {
         let isDisabled = !entry.isEnabled || !model.isInteractive
@@ -525,11 +538,10 @@ public struct HelmToolbarActionsCapsule: View {
             .menuIndicator(.hidden)
             // Without these two, AppKit draws a `Menu` as its own bordered
             // pull-down button — measured at 60×44 against every other
-            // entry's 36×36 — so the capsule's reserve (every declared
-            // action laid out at `Self.side`) stopped matching what a menu
-            // entry actually occupies, and the capsule resized whenever one
-            // came in or out of `visibleIDs`, which is the relayout the
-            // reserve exists to prevent. `.buttonStyle(.plain)` alone is not
+            // entry's 36×36 — so the capsule's width (`Self.side` per
+            // visible entry, which `searchOffer` charges) stopped matching what a menu
+            // entry actually occupies, and the capsule resized by more than the entry
+            // that came in or out of `visibleIDs`. `.buttonStyle(.plain)` alone is not
             // enough: it is `.menuStyle(.button)` that drops the pull-down
             // bezel.
             .menuStyle(.button)

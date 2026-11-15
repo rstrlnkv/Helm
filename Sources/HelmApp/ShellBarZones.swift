@@ -35,6 +35,8 @@ extension HelmToolbarActionsCapsule.InactiveInk {
 /// beside the name here draws in `StatusZoneView` instead**, at the bar's
 /// trailing edge (the owner, 2026-09-28: «Давай вернем его в правую часть») —
 /// this view no longer knows a module has one.
+/// **It keeps no distance from the card's edge:** the plate (or, Without Icon, the title)
+/// starts where `SettingsToolbar.nameInset` puts the host, 14 points past the card.
 struct NameZoneView: View {
     let symbol: String
     let tint: Color
@@ -104,7 +106,6 @@ struct NameZoneView: View {
                 .tracking(-0.2)
                 .lineLimit(1)
         }
-        .padding(.leading, HelmSpace.s5)
         // Hosted outside the pane's own view tree, so the style this reads
         // has to be handed in explicitly rather than inherited.
         .environment(\.helmModuleIconStyle, iconStyle)

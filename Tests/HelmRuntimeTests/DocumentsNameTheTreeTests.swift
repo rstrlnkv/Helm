@@ -9,8 +9,8 @@ import XCTest
 /// read by `TheMapNamesRealDirectoriesTests`, any other, outside `CHANGELOG.md`,
 /// by the removal's `command grep` (ARCHITECTURE.md § Removal takes its traces).
 ///
-/// **Why this is a test and not a habit.** `ARCHITECTURE.md` and `CLAUDE.md`
-/// describe the app as it is now, and nothing checked that claim: on 2026-08-03
+/// **Why this is a test and not a habit.** The standing documents of the repository
+/// (`ARCHITECTURE.md` among them) describe the app as it is now, and nothing checked that claim: on 2026-08-03
 /// an audit found the file count seven out of date, "there are three gates"
 /// after a fourth had been added, a line number that had moved by a hundred
 /// lines, and two design records still describing four modules that had been
@@ -107,6 +107,12 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// asked whether *all* of them were gone, so this class read three documents
     /// out of four, passed, and said nothing: `VERSIONING.md` had been named for
     /// a week and does not exist — it has no history in this repository at all.
+    ///
+    /// **The rules document is not read here.** It is not in the repository (the
+    /// owner's `CLAUDE.local.md`, see `StandingDocuments.requireRules()`), and it names
+    /// files this tree does not hold: the one run that read it failed on
+    /// `agents/engineer.md`, the crew's. Its § pointers are checked by the two
+    /// `EverySectionNamed…` classes.
     ///
     /// **One skip stays**: none of the standing documents beside
     /// `Package.swift`, which is the state of a checkout and not a finding.

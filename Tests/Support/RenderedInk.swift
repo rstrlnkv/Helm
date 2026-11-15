@@ -85,13 +85,18 @@ public final class MountedRender {
         return root.everyView(ofType: NSSearchField.self).first { !$0.isDescendant(of: host) }
     }
 
-    /// The field of the search item on the window's own `NSToolbar` — the first `NSSearchToolbarItem` among
-    /// its items.
+    /// The field of the search item on the window's own `NSToolbar` — the field of the first
+    /// `NSSearchToolbarItem` among its items (Liquid Glass), else the first `NSSearchField` inside an item's view
+    /// (the Flat bar's own search item).
     ///
     /// Nil when the window has no toolbar, or its toolbar lists no search item; a caller that means «a field
     /// must be here» says so itself and tells the two apart by reading `window?.toolbar` first.
     public var toolbarSearchField: NSSearchField? {
-        (window?.toolbar?.items ?? []).compactMap { $0 as? NSSearchToolbarItem }.first?.searchField
+        for item in window?.toolbar?.items ?? [] {
+            if let field = (item as? NSSearchToolbarItem)?.searchField { return field }
+            if let field = item.view?.everyView(ofType: NSSearchField.self).first { return field }
+        }
+        return nil
     }
 
     /// Type `text` into the bar's search field the way AppKit delivers a
