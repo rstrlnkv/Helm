@@ -9,26 +9,20 @@ enum ScStr {
     static var moduleName: String { L(.moduleName) }
     static var summary: String { L(.summary) }
 
-    static var needsAccess: String {
-        L(.needsAccess)
-    }
+    static var needsAccess: String { L(.needsAccess) }
 
     /// The system's own term, the kit's `HelmWord`, which Keyboard's page reads too.
     static var shortcuts: String { HelmWord.keyboardShortcuts }
     static var captureArea: String { L(.captureArea) }
     static var captureScreen: String { L(.captureScreen) }
     static var openPanel: String { L(.openPanel) }
-    static var conflict: String {
-        L(.conflict)
-    }
+    static var conflict: String { L(.conflict) }
 
     static var systemSection: String { L(.systemSection) }
     /// Over the boxes — ⇧⌘3 and ⇧⌘4, box 184 and a clipboard twin while it conflicts — so the title names none of the
     /// combinations.
     static var replaceTitle: String { L(.replaceTitle) }
-    static var replaceBody: String {
-        L(.replaceBody)
-    }
+    static var replaceBody: String { L(.replaceBody) }
     static var stillOn: String { L(.stillOn) }
     static var isOff: String { L(.isOff) }
     static var unknown: String { L(.unknown) }
@@ -53,9 +47,7 @@ enum ScStr {
 
     /// Under macOS's box 184, which is ⇧⌘5: that shortcut is also how screen
     /// recording is reached from the keyboard, and Helm has no recording.
-    static var panelBoxWarning: String {
-        L(.panelBoxWarning)
-    }
+    static var panelBoxWarning: String { L(.panelBoxWarning) }
 
     /// macOS's own words for the bar — the tooltips of its three capture buttons,
     /// «Options», «Timer», «Capture», «Show Floating Thumbnail» and «Remember Last
@@ -85,21 +77,16 @@ enum ScStr {
     /// macOS's own words — Save to, Desktop, Documents, Clipboard, Other… — read
     /// out of `screencaptureui`'s `Localizable.loctable`, where the same menu is drawn.
     static var saveTo: String { L(.saveTo) }
-    static var targetMacOS: String { L(.targetMacOS) }
-    static var targetDesktop: String { L(.targetDesktop) }
-    static var targetDocuments: String { L(.targetDocuments) }
-    static var targetClipboard: String { HelmWord.clipboard }
-    /// Its own key, not KeepAwake's «Other…»: one key means one thing, and
-    /// Portuguese says «Outra» for a folder where a duration is «Outro».
-    /// The seven translations are macOS's «Other…» from the same table.
-    static var targetOther: String { L(.targetOther) }
     static func target(_ target: SaveTarget) -> String {
         switch target {
-        case .macOS: targetMacOS
-        case .desktop: targetDesktop
-        case .documents: targetDocuments
-        case .clipboard: targetClipboard
-        case .other: targetOther
+        case .macOS: L(.targetMacOS)
+        case .desktop: L(.targetDesktop)
+        case .documents: L(.targetDocuments)
+        case .clipboard: HelmWord.clipboard
+        // Its own key, not KeepAwake's «Other…»: one key means one thing, and
+        // Portuguese says «Outra» for a folder where a duration is «Outro».
+        // The seven translations are macOS's «Other…» from the same table.
+        case .other: L(.targetOther)
         }
     }
 
@@ -119,12 +106,8 @@ enum ScStr {
 
     static var folder: String { L(.folder) }
     static var folderNote: String { L(.folderNote) }
-    static var folderRefused: String {
-        L(.folderRefused)
-    }
-    static var chosenRefused: String {
-        L(.chosenRefused)
-    }
+    static var folderRefused: String { L(.folderRefused) }
+    static var chosenRefused: String { L(.chosenRefused) }
 
     // MARK: - The settings tabs and the editor's settings
 
@@ -133,9 +116,7 @@ enum ScStr {
     static var tabEditor: String { L(.tabEditor) }
     /// `Colour` is already the adjective of «Colour» printing, so the row has its own key.
     static var defaultColour: String { L(.defaultColour) }
-    static var defaultColourNote: String {
-        L(.defaultColourNote)
-    }
+    static var defaultColourNote: String { L(.defaultColourNote) }
     static var toolsInPalette: String { L(.toolsInPalette) }
     /// The ⋯ is the menu button's own name; each language's table quotes it as that language does.
     static var hiddenToolsNote: String { L(.hiddenToolsNote) }
@@ -257,9 +238,7 @@ enum ScStr {
     /// What it blurs is the four kinds in the hint: the name says less than the item does.
     static var blurPersonalText: String { L(.blurPersonalText) }
     /// The item's hint: the whole list of what is found, and what is not. A kind added later is a new key.
-    static var blurPersonalTextHint: String {
-        L(.blurPersonalTextHint)
-    }
+    static var blurPersonalTextHint: String { L(.blurPersonalTextHint) }
     /// The plates after a reading say what was **done**, never what the picture now is: no word for safe, hidden or clean, and a zero is not good news.
     static var nothingBlurred: String { L(.nothingBlurred) }
     static var textCopied: String { L(.textCopied) }
@@ -305,15 +284,12 @@ enum ScStr {
     static var dismissToast: String { HelmWord.close }
     static var openSettings: String { L(.openSettings) }
     static var noPermissionTitle: String { L(.noPermissionTitle) }
-    static var noPermissionBody: String {
-        L(.noPermissionBody)
-    }
     static var failedTitle: String { L(.failedTitle) }
 
     /// One sentence per thing that can go wrong, and none of them carries a path.
     static func refusal(_ reason: CaptureRefusal) -> String {
         switch reason {
-        case .noPermission: noPermissionBody
+        case .noPermission: L(.noPermissionBody)
         case .captureFailed: L(.refusalCaptureFailed)
         case .displayGone: L(.refusalDisplayGone)
         case .windowGone: L(.refusalWindowGone)

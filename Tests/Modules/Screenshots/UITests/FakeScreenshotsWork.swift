@@ -64,10 +64,6 @@ final class FakeWorkDisk: ShotWriting, @unchecked Sendable {
     }
 }
 
-private struct FakeWorkShutter: ShutterPlaying {
-    func play() {}
-}
-
 final class FakeScreenshotsWork: ScreenshotsWork, @unchecked Sendable {
     private let lock = NSLock()
     private var _calls: [String] = []
@@ -114,7 +110,7 @@ final class FakeScreenshotsWork: ScreenshotsWork, @unchecked Sendable {
         lock.withLock { _calls.append("session") }
         let home = FileManager.default.temporaryDirectory
         return CaptureSession(capture: screen, writer: disk, trash: NoTrash(), pasteboard: board,
-                              preferences: NoPreferences(), shutter: FakeWorkShutter(), textReader: NoTextReader(),
+                              preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
                               settings: { ScreenshotsSettings.read(store) }, naming: naming,
                               locations: ScreenshotsLocations(home: home, desktop: home))
     }

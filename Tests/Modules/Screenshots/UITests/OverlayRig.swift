@@ -13,14 +13,16 @@ struct NoTextReader: ScreenTextReading {
 /// drawn on the first.
 @MainActor
 enum OverlayRig {
-    /// One blank 1000×800-point frame at `scale` per real screen, in screen order, 100 000 points apart.
-    static func frames(scale: CGFloat = 1) throws -> [FrozenDisplay] {
+    /// One blank (or, given a `ground`, filled) 1000×800-point frame at `scale` per real screen, in screen order,
+    /// 100 000 points apart.
+    static func frames(scale: CGFloat = 1, ground: CGColor? = nil) throws -> [FrozenDisplay] {
         var frames: [FrozenDisplay] = []
         for (index, screen) in NSScreen.screens.enumerated() {
             let number = try XCTUnwrap(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32)
             let context = try XCTUnwrap(CGContext(data: nil, width: Int(1000 * scale), height: Int(800 * scale), bitsPerComponent: 8,
                                                   bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
                                                   bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            if let ground { context.setFillColor(ground); context.fill(CGRect(x: 0, y: 0, width: context.width, height: context.height)) }
             frames.append(FrozenDisplay(id: DisplayID(number), frame: CGRect(x: 100_000 * CGFloat(index), y: 0, width: 1000, height: 800),
                                         scale: scale, image: try XCTUnwrap(context.makeImage())))
         }

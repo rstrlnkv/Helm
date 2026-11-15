@@ -50,17 +50,6 @@ final class TheBlurLeavesNoSourcePixelInTheFileTests: XCTestCase {
                        provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
     }
 
-    private func pixels(_ image: CGImage) -> [UInt32] {
-        let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8,
-                                bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        let bytes = context.data!.assumingMemoryBound(to: UInt8.self)
-        return (0..<(image.width * image.height)).map { index in
-            UInt32(bytes[index * 4]) << 16 | UInt32(bytes[index * 4 + 1]) << 8 | UInt32(bytes[index * 4 + 2])
-        }
-    }
-
     /// The grid block of pixel `v` in a run `from..<to`: the display's grid, but an end strip narrower than half a block
     /// belongs to the block beside it (a run inside one grid block is that block).
     private func key(_ v: Int, from: Int, to: Int, side: Int) -> Int {
@@ -85,7 +74,7 @@ final class TheBlurLeavesNoSourcePixelInTheFileTests: XCTestCase {
         }
         let one = await rig.session.annotated(freeze, display: DisplayID(1), local: whole,
                                               layers: [blur(CGRect(x: 60, y: 40, width: 0.5, height: 0.5))])
-        let out = pixels(try XCTUnwrap(one, "a one-pixel box must not cost the whole file")), was = pixels(source)
+        let out = packedRGB(try XCTUnwrap(one, "a one-pixel box must not cost the whole file")), was = packedRGB(source)
         XCTAssertEqual(out.count, was.count)
         // The box is pixel (120, 80) of the display; it grew into (121, 80). Neither is in the file as it was, and
         // the two are one colour, their mean.
@@ -117,7 +106,7 @@ final class TheBlurLeavesNoSourcePixelInTheFileTests: XCTestCase {
                                    end: CGPoint(x: test.rect.maxX, y: test.rect.maxY), style: AnnotationStyle(thickness: test.step))
             let drawn = await rig.session.annotated(freeze, display: DisplayID(1), local: CGRect(x: 0, y: 0, width: 200, height: 120),
                                                     layers: [layer])
-            let out = pixels(try XCTUnwrap(drawn, test.name)), was = pixels(source)
+            let out = packedRGB(try XCTUnwrap(drawn, test.name)), was = packedRGB(source)
             XCTAssertEqual(out.count, was.count, test.name)
 
             // The box in whole pixels, rounded outward, and the display's grid at the block's size.

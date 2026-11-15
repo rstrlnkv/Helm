@@ -8,18 +8,9 @@ import XCTest
 @MainActor
 final class TheModuleOffTakesTheOpenRowTests: XCTestCase {
 
-    private var scenes: [PileScene] = []
-
-    override func tearDown() {
-        for scene in scenes { scene.teardown() }
-        scenes = []
-        super.tearDown()
-    }
-
     /// The window's end with the row open: the row is not open any more, and no state of it is left to be keyed by.
     func testTheEndOfTheWindowAndTheModuleSwitchedOffTakeTheRowAndEverythingItHeld() async throws {
         let s = try PileScene(self, name: "key-off")
-        scenes.append(s)
         for width in [400, 420, 440] { try await s.take(width: width) }
         s.toast.unfold()
         s.toast.model.focus = s.toast.model.shot(0)?.id ?? -1

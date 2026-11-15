@@ -11,17 +11,11 @@ import XCTest
 /// follows anything but the target.
 final class TheSaveTargetIsOneSettingTests: XCTestCase {
 
-    private func store(_ values: [String: Any]) -> NamespacedStore {
-        let backing = InMemoryKeyValueStore()
-        for (key, value) in values { backing.set(value, forKey: "module.screenshots.\(key)") }
-        return NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: backing)
-    }
-
     func testTheKeyTheOldSettingWroteDecidesNothing() {
-        let read = ScreenshotsSettings.read(store([ScreenshotsSettings.Key.saveTarget: "desktop",
+        let read = ScreenshotsSettings.read(screenshotsStore([ScreenshotsSettings.Key.saveTarget: "desktop",
                                                    "afterFullScreen": "clipboard"]))
         XCTAssertEqual(read.saveTarget, .desktop)
-        XCTAssertEqual(ScreenshotsSettings.read(store(["afterFullScreen": "clipboard"])).saveTarget, .macOS,
+        XCTAssertEqual(ScreenshotsSettings.read(screenshotsStore(["afterFullScreen": "clipboard"])).saveTarget, .macOS,
                        "the old key still steers a capture")
     }
 
@@ -48,7 +42,7 @@ final class TheSaveTargetIsOneSettingTests: XCTestCase {
 
     /// The folder and the target land together, and the target reads back as `other` with that folder.
     func testChoosingAFolderStoresItAndTheOtherTarget() {
-        let chosen = store([ScreenshotsSettings.Key.saveTarget: "desktop"])
+        let chosen = screenshotsStore([ScreenshotsSettings.Key.saveTarget: "desktop"])
         ScreenshotsSettings.chooseOtherFolder("/tmp/Chosen", in: chosen)
         let read = ScreenshotsSettings.read(chosen)
         XCTAssertEqual(read.saveTarget, .other)
@@ -59,14 +53,14 @@ final class TheSaveTargetIsOneSettingTests: XCTestCase {
     func testTheAccessRequestIsMadeOnceAndRecordedUnderTheDeployedKey() {
         final class Count: @unchecked Sendable { var n = 0 }
         let count = Count()
-        let fresh = store([:])
+        let fresh = screenshotsStore([:])
         let capture = SCKCapture(store: fresh, request: { count.n += 1 })
         capture.requestAccess()
         capture.requestAccess()
         XCTAssertEqual(count.n, 1)
         XCTAssertEqual(fresh.bool("screenRecordingAsked", default: false), true)
 
-        let asked = SCKCapture(store: store(["screenRecordingAsked": true]), request: { count.n += 1 })
+        let asked = SCKCapture(store: screenshotsStore(["screenRecordingAsked": true]), request: { count.n += 1 })
         asked.requestAccess()
         XCTAssertEqual(count.n, 1, "a store from before that holds the key was asked again")
     }
@@ -79,7 +73,7 @@ final class TheSaveTargetIsOneSettingTests: XCTestCase {
         let preferences = FakePreferences()
         preferences.savedLocation = folder.path
         let engine = ScreenshotsEngine(preferences: preferences)
-        let session = engine.session(store: store([ScreenshotsSettings.Key.saveTarget: "macOS"]), naming: { .english })
+        let session = engine.session(store: screenshotsStore([ScreenshotsSettings.Key.saveTarget: "macOS"]), naming: { .english })
         let delivery = await session.deliver(makeImage(width: 8, height: 8), saves: true, copies: false)
         XCTAssertEqual(delivery.refusals, [])
         XCTAssertEqual(delivery.files.map { $0.deletingLastPathComponent().path }, [folder.path])

@@ -15,31 +15,8 @@ import XCTest
 final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
 
     private typealias Board = CountingBoard
-    private final class Disk: ShotWriting, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var written: Int { lock.withLock { count } }
-        // A disk that counts its writes and keeps no file: nothing is read at any path and no name is claimed.
-        func reading(of url: URL) -> ShotReading? { nil }
-        func claim(_ written: URL, as name: URL) -> Bool { false }
-        func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
-            lock.withLock { count += 1 }
-            return .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
-        }
-    }
-    private struct Frames: ScreenCapturing {
-        let freeze: Freeze
-        func access() -> CaptureAccess { .granted }
-        func requestAccess() {}
-        func freeze(cursor: Bool) async -> FreezeOutcome { .frozen(freeze) }
-        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
-    }
-    private final class Shutter: ShutterPlaying, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var plays: Int { lock.withLock { count } }
-        func play() { lock.withLock { count += 1 } }
-    }
+    private typealias Disk = FakeWorkDisk
+    private typealias Shutter = CountingShutter
 
     /// One 1000×800-point frame at 1× per real screen, in screen order.
     private func freeze(windows: [FrozenWindow] = []) throws -> (Freeze, [DisplayID]) {
@@ -67,7 +44,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: Frames(freeze: freeze), writer: disk, trash: NoTrash(), pasteboard: board,
+        let session = CaptureSession(capture: FakeScreen(outcome: .frozen(freeze)), writer: disk, trash: NoTrash(), pasteboard: board,
                                      preferences: NoPreferences(), shutter: shutter, textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))

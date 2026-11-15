@@ -18,20 +18,6 @@ import Module_Screenshots_Engine
 @MainActor
 final class TheCopyOfAShotWhoseFileIsGoneIsToldNotDrawnBlankTests: XCTestCase {
 
-    private var scenes: [PileScene] = []
-
-    override func tearDown() {
-        for scene in scenes { scene.teardown() }
-        scenes = []
-        super.tearDown()
-    }
-
-    private func scene() throws -> PileScene {
-        let scene = try PileScene(self, name: "copy-gone")
-        scenes.append(scene)
-        return scene
-    }
-
     private func refusalBody(_ s: PileScene) -> String? {
         if case .refusal(_, let body, _)? = s.toast.model.refusal { body } else { nil }
     }
@@ -39,7 +25,7 @@ final class TheCopyOfAShotWhoseFileIsGoneIsToldNotDrawnBlankTests: XCTestCase {
     /// The full picture is what the single Copy asks for: for a gone file it is none, not a blank one,
     /// and the single Copy says the sentence.
     func testTheFullPictureOfAGoneFileIsNilAndTheCopyOfItSaysTheFileIsGone() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-gone")
         let shot = try await s.take(width: 400)
         try FileManager.default.removeItem(at: try XCTUnwrap(shot.file))
         let singles = s.board.singles
