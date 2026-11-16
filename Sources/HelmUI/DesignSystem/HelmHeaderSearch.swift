@@ -165,12 +165,12 @@ private struct HelmHeaderSearchField: NSViewRepresentable {
             self.focusRequests = focusRequests
         }
 
-        /// **⌘F opens and focuses the field, whatever the setting, whenever its window is key** (Caps Lock does not
-        /// matter; a field already being edited keeps its editor and only has its text selected) (no other ⌘F handler
-        /// exists in the app, so the key is consumed on every page with a search). **Under Always Collapse Search a
-        /// press outside it ends its editing**, so a field left empty folds back (the press goes on to whatever was
-        /// clicked); with the setting off the press is left alone. One local monitor, installed with the field and
-        /// removed with it (`unwatch`, and the `Monitor`'s `deinit`); it sees only this field's window.
+        /// **⌘F opens and focuses the field, whatever the setting, whenever its window is key.** Caps Lock does not
+        /// matter, and a field already being edited keeps its editor and only has its text selected. No other ⌘F
+        /// handler exists in the app, so the key is consumed on every page with a search. **Under Always Collapse
+        /// Search a press outside it ends its editing**, so a field left empty folds back and the press goes on to
+        /// whatever was clicked; with the setting off the press is left alone. One local monitor, installed with the
+        /// field and removed with it (`unwatch`, and the `Monitor`'s `deinit`); it sees only this field's window.
         func watch(_ field: NSSearchField) {
             self.field = field
             unwatch()
@@ -217,15 +217,20 @@ private struct HelmHeaderSearchField: NSViewRepresentable {
             search.text.wrappedValue = field.stringValue
         }
 
-        /// The editor is up (the first change of an editing session): the slot is held open by it, even when the
-        /// person deletes the query and the text is empty again.
+        /// The first change of an editing session: the slot is held open, even when the person deletes the query and
+        /// the text is empty again. A field opened by a press or ⌘F is already held open before this.
         func controlTextDidBeginEditing(_ obj: Notification) {
             isOpen.wrappedValue = true
         }
 
-        /// The editing is over, wherever the focus went: the slot is no longer held open by it (a query still holds it).
+        /// An editing session ended, but not always for good: a click inside the open field, or a focus request while
+        /// its editor is up, ends one session and starts the next, and no begin notice follows until a keystroke. So
+        /// the slot is let go only if, on the next turn, the field has no editor (a query still holds it open).
         func controlTextDidEndEditing(_ obj: Notification) {
-            isOpen.wrappedValue = false
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let field = self.field, field.currentEditor() == nil else { return }
+                self.isOpen.wrappedValue = false
+            }
         }
 
         /// Escape in an empty field gives up the focus, so the editing ends and the field folds back; with a query in
