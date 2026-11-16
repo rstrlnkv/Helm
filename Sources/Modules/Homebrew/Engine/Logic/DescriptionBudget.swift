@@ -41,6 +41,7 @@ final class DescriptionBudget: @unchecked Sendable {
 
     private let lock = NSLock()
     private var remaining: Int
+    private var refused = false
 
     /// What a batch of this many names was allowed, kept so the caller can say
     /// it in the log without deriving the same number a second time.
@@ -53,7 +54,9 @@ final class DescriptionBudget: @unchecked Sendable {
 
     /// Whether the split gave up with names still unasked — the caller says so
     /// in the log, once, rather than every node of the recursion saying it.
-    var exhausted: Bool { lock.lock(); defer { lock.unlock() }; return remaining <= 0 }
+    /// A spend that was refused is the signal: spending the last call of the
+    /// allowance on the last name asked everything.
+    var exhausted: Bool { lock.lock(); defer { lock.unlock() }; return refused }
 
     private var sawTimeout = false
 
@@ -66,7 +69,7 @@ final class DescriptionBudget: @unchecked Sendable {
     /// Whether one more `brew desc` may be spent.
     func spend() -> Bool {
         lock.lock(); defer { lock.unlock() }
-        guard remaining > 0 else { return false }
+        guard remaining > 0 else { refused = true; return false }
         remaining -= 1
         return true
     }

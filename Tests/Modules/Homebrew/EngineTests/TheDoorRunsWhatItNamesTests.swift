@@ -146,7 +146,7 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
         _ = await readEngine.readInstalled()
         _ = await readEngine.readOutdated()
         _ = await readEngine.find("wget")
-        _ = await readEngine.readDescriptions(of: ["wget"], isCask: false)
+        _ = await readEngine.readDescriptions(of: ["wget"], isCask: false, stillWanted: { true })
         _ = await readEngine.readDoctor()
         _ = await readEngine.readConfig()
 

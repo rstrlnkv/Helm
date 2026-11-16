@@ -143,7 +143,8 @@ final class FakeHomebrewWork: HomebrewWork, @unchecked Sendable {
     func readOutdated() async -> [OutdatedPackage]? {
         await read("readOutdated", member: "readOutdated") { outdated }
     }
-    func readDescriptions(of names: [String], isCask: Bool) async -> [String: String] {
+    func readDescriptions(of names: [String], isCask: Bool,
+                          stillWanted: @escaping @Sendable () -> Bool) async -> [String: String] {
         await read("readDescriptions", member: "readDescriptions") { described }
     }
     func find(_ query: String) async -> [SearchHit]? {

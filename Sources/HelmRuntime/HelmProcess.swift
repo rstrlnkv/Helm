@@ -43,7 +43,7 @@ public enum HelmProcess {
     /// `brew desc` per kind — so ten presses were twenty-odd Ruby processes and
     /// the thread that started the twenty-first is the one in the crash report.
     ///
-    /// The `LatestRequest` that now sits in `HomebrewViewModel` stops that
+    /// The `SharedLatestRequest` that now sits in `HomebrewViewModel` stops that
     /// particular screen from asking. This is the floor under every screen that
     /// has not been written yet and goes through `run` or `runData`: a caller
     /// may still ask for more than eight, and what it gets is a queue rather

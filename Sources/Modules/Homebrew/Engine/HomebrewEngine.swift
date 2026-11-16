@@ -467,9 +467,14 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// as brew refusing the batch.
     ///
     /// The batches stop after the first one that showed a property of the tool
-    /// rather than of a name: one that timed out, or one refused wholesale (its
-    /// budget ran out). Each further batch would cost a full deadline or up to
+    /// rather than of a name: one that timed out, or one refused wholesale (a
+    /// call past its allowance was refused). Each further batch would cost a full deadline or up to
     /// `n + 1` launches to learn the same thing.
+    ///
+    /// They stop too when `stillWanted` says no, asked before each batch after
+    /// the first: a search typed over has nobody waiting for its descriptions,
+    /// and the newer search queues behind this call. The batch in flight
+    /// finishes; a launched `brew` is not interrupted.
     ///
     /// Within a batch, the batch does not fail as a unit.
     ///
@@ -483,7 +488,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// A failure splits the batch and asks again. A single bad name in fifty
     /// costs about a dozen calls instead of fifty, and a good batch is still
     /// exactly one call.
-    func descriptions(names: [String], isCask: Bool) -> [String: String] {
+    func descriptions(names: [String], isCask: Bool,
+                      stillWanted: () -> Bool = { true }) -> [String: String] {
         guard let brew = locator.brewPath(), !names.isEmpty else { return [:] }
         // `["desc", kind, "--"]` ahead of the names count against the limit.
         let perCall = HelmProcess.maxArguments - 3
@@ -492,6 +498,13 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         let found = HelmActivity.phase("homebrew.descriptions") { () -> [String: String] in
             var found: [String: String] = [:]
             for start in stride(from: 0, to: names.count, by: perCall) {
+                if start > 0, !stillWanted() {
+                    // Counts, never names; not brew's doing.
+                    HelmLog.shared.info(Self.moduleID,
+                                        "descriptions: \(names.count - start) names left undescribed "
+                                        + "— no longer wanted")
+                    break
+                }
                 let batch = Array(names[start..<min(start + perCall, names.count)])
                 // Bounded per batch: the split is a bisection, and a batch
                 // refused wholesale walks to a leaf per name
@@ -1369,8 +1382,12 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     public func readStatus() async -> BrewStatus { await offTheCooperativePool { self.status() } }
     public func readInstalled() async -> [BrewPackage]? { await offTheCooperativePool { self.listInstalled() } }
     public func readOutdated() async -> [OutdatedPackage]? { await offTheCooperativePool { self.outdated() } }
-    public func readDescriptions(of names: [String], isCask: Bool) async -> [String: String] {
-        await offTheCooperativePool { self.descriptions(names: names, isCask: isCask) }
+    /// `stillWanted` is read on the pool thread, so it must be callable from
+    /// any thread: Swift task cancellation does not cross `offTheCooperativePool`,
+    /// and the caller's own state is not ours to read.
+    public func readDescriptions(of names: [String], isCask: Bool,
+                                 stillWanted: @escaping @Sendable () -> Bool) async -> [String: String] {
+        await offTheCooperativePool { self.descriptions(names: names, isCask: isCask, stillWanted: stillWanted) }
     }
     public func find(_ query: String) async -> [SearchHit]? { await offTheCooperativePool { self.search(query) } }
     /// Which installed packages still need a given one — asked once, at the

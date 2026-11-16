@@ -21,7 +21,10 @@ protocol HomebrewWork: AnyObject, Sendable {
     func readStatus() async -> BrewStatus
     func readInstalled() async -> [BrewPackage]?
     func readOutdated() async -> [OutdatedPackage]?
-    func readDescriptions(of names: [String], isCask: Bool) async -> [String: String]
+    /// `stillWanted` is asked between batches, from any thread; false stops the
+    /// batches not yet launched.
+    func readDescriptions(of names: [String], isCask: Bool,
+                          stillWanted: @escaping @Sendable () -> Bool) async -> [String: String]
     func find(_ query: String) async -> [SearchHit]?
     func readDependents(of package: PackageRef) async -> [String]?
     func readInfo(about package: PackageRef) async -> PackageInfo?
@@ -40,6 +43,16 @@ enum DependentsReading: Equatable {
     case notAsked
     case read([String])
     case unread
+}
+
+/// `LatestRequest` behind a lock: the search counter is taken on the main
+/// actor and asked from the engine's thread between `brew desc` batches, so
+/// there is one counter and one answer, not a copy kept in step.
+private final class SharedLatestRequest: @unchecked Sendable {
+    private let lock = NSLock()
+    private var request = LatestRequest()
+    func take() -> Int { lock.lock(); defer { lock.unlock() }; return request.take() }
+    func isLatest(_ token: Int) -> Bool { lock.lock(); defer { lock.unlock() }; return request.isLatest(token) }
 }
 
 @MainActor public final class HomebrewViewModel: ObservableObject {
@@ -1128,7 +1141,7 @@ enum DependentsReading: Equatable {
     /// presses were ten of those at once; the crash report that started this
     /// shows ten threads inside one `brew` call and nine more waiting on a
     /// pipe, with the twenty-first launch the one that raised.
-    private var searches = LatestRequest()
+    private let searches = SharedLatestRequest()
 
     func search(_ q: String) async {
         let mine = searches.take()
@@ -1185,7 +1198,9 @@ enum DependentsReading: Equatable {
     private func load(_ names: [String], isCask: Bool, token: Int? = nil) async {
         let wanted = names.filter { descriptions[BrewKey.of(name: $0, isCask: isCask)] == nil }
         guard !wanted.isEmpty,
-              let found = await door?.readDescriptions(of: wanted, isCask: isCask)
+              let found = await door?.readDescriptions(
+                of: wanted, isCask: isCask,
+                stillWanted: { [searches] in token.map(searches.isLatest) ?? true })
         else { return }
         // A description is keyed by the package it describes, so a late batch
         // is not *wrong* — but writing it republishes the whole dictionary and

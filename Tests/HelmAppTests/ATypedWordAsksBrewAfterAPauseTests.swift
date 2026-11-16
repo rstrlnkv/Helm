@@ -50,7 +50,8 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
         }
         func readInstalled() async -> [BrewPackage]? { installedList }
         func readOutdated() async -> [OutdatedPackage]? { [] }
-        func readDescriptions(of names: [String], isCask: Bool) async -> [String: String] { [:] }
+        func readDescriptions(of names: [String], isCask: Bool,
+                              stillWanted: @escaping @Sendable () -> Bool) async -> [String: String] { [:] }
         func find(_ query: String) async -> [SearchHit]? {
             lock.withLock { asked.append(query) }
             return []
