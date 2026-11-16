@@ -88,7 +88,7 @@ public enum Changelog {
     /// Computed so `line(_:)` resolves against the current language each time.
     public static var entries: [ChangelogEntry] {
         [
-            ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
+            ChangelogEntry(version: "0.11.1", date: "2026-11-16", items: [
                 ChangeItem(kind: .fix, text: line(.Changelog.toolbarTabsNoLongerJumpWhenSettingsFirstOpens)),
                 ChangeItem(kind: .upd, text: line(.Changelog.concurrencyWarningsClearedAcrossTheApp)),
                 ChangeItem(kind: .fix, text: line(.Changelog.helmNoLongerSaysFullDiskAccessIsMissingWhenMacOSHasGrantedItOneOfTheFourFilesItReadToFindOutWasAFolderWhichNothingCanRead)),
