@@ -39,8 +39,8 @@ final class TheHeaderBarMenuTests: XCTestCase {
 
     func testTabLabelsArePresentOnlyWhereThePageHasTabs() {
         let app = AppSettings.store.over(InMemoryKeyValueStore())
-        let with = HeaderBarMenu.items(hasTabs: true, in: app)
-        let without = HeaderBarMenu.items(hasTabs: false, in: app)
+        let with = HeaderBarMenu.items(hasTabs: true, hasSearch: false, in: app)
+        let without = HeaderBarMenu.items(hasTabs: false, hasSearch: false, in: app)
         XCTAssertEqual(with.count, 12)
         XCTAssertEqual(without.count, 7)
         XCTAssertTrue(titles(with).contains(AppStr.tabLabels))
@@ -51,18 +51,21 @@ final class TheHeaderBarMenuTests: XCTestCase {
     func testTheTickIsTheStoredChoiceAndEachItemWritesItsSetting() {
         let app = AppSettings.store.over(InMemoryKeyValueStore())
         func item(_ title: String, tabs: Bool = true) -> NSMenuItem {
-            HeaderBarMenu.items(hasTabs: tabs, in: app).first { $0.title == title && $0.action != nil }!
+            HeaderBarMenu.items(hasTabs: tabs, hasSearch: true, in: app).first { $0.title == title && $0.action != nil }!
         }
         func ticked(_ title: String) -> Bool { item(title).state == .on }
         XCTAssertTrue(ticked(AppStr.pageBarWithIcon))
         XCTAssertFalse(ticked(AppStr.pageBarWithoutIcon))
         XCTAssertTrue(ticked(AppStr.tabLabelsText))
         XCTAssertTrue(ticked(AppStr.barAppearanceFlat))
+        XCTAssertFalse(ticked(AppStr.alwaysCollapseSearch))
 
         func choose(_ item: NSMenuItem) { _ = item.target?.perform(item.action, with: item) }
         choose(item(AppStr.pageBarWithoutIcon))
         choose(item(AppStr.tabLabelsIcons))
         choose(item(AppStr.barAppearanceLiquidGlass))
+        choose(item(AppStr.alwaysCollapseSearch))
+        XCTAssertTrue(AppSettings.alwaysCollapseSearch(in: app))
         XCTAssertEqual(AppSettings.pageBarStyle(in: app), .windowTitle)
         XCTAssertEqual(AppSettings.toolbarSwitcherStyle(in: app), .icons)
         XCTAssertEqual(AppSettings.barAppearance(in: app), .liquidGlass)
@@ -70,6 +73,36 @@ final class TheHeaderBarMenuTests: XCTestCase {
         XCTAssertFalse(ticked(AppStr.pageBarWithIcon))
         XCTAssertTrue(ticked(AppStr.tabLabelsIcons))
         XCTAssertTrue(ticked(AppStr.barAppearanceLiquidGlass))
+        XCTAssertTrue(ticked(AppStr.alwaysCollapseSearch))
+        choose(item(AppStr.alwaysCollapseSearch))
+        XCTAssertFalse(AppSettings.alwaysCollapseSearch(in: app))
+    }
+
+    /// Always Collapse Search is the fourth part, after a separator of its own, and absent (not dimmed) where the
+    /// page has no search.
+    func testAlwaysCollapseSearchIsOfferedOnlyWhereThePageHasASearch() {
+        let app = AppSettings.store.over(InMemoryKeyValueStore())
+        let with = titles(HeaderBarMenu.items(hasTabs: false, hasSearch: true, in: app))
+        let without = titles(HeaderBarMenu.items(hasTabs: false, hasSearch: false, in: app))
+        XCTAssertEqual(with.suffix(2), ["-", AppStr.alwaysCollapseSearch])
+        XCTAssertFalse(without.contains(AppStr.alwaysCollapseSearch))
+        XCTAssertEqual(with.count, without.count + 2)
+    }
+
+    /// The menu's has-search fact is the declaration too.
+    func testTheHasSearchFactIsTheDeclaredContent() {
+        let model = SettingsModel(host: .shared)
+        func hosted(_ content: HelmPageToolbarContent?) -> Bool {
+            let view = Color.clear.helmWindowToolbar(content).mirrorsHeaderFacts(into: model)
+            let host = NSHostingView(rootView: view.frame(width: 200, height: 100))
+            host.frame = NSRect(x: 0, y: 0, width: 200, height: 100)
+            host.layoutSubtreeIfNeeded()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+            return model.pageHasSearch
+        }
+        XCTAssertTrue(hosted(HelmPageToolbarContent(search: HelmToolbarSearch(prompt: "p", text: .constant("")))))
+        XCTAssertFalse(hosted(HelmPageToolbarContent()))
+        XCTAssertFalse(hosted(nil))
     }
 
     /// The menu's has-tabs fact is what the page on screen declared for the row, not a guess from the selection:
@@ -79,7 +112,7 @@ final class TheHeaderBarMenuTests: XCTestCase {
         model.selection = .module("homebrew")
         let tab = HelmToolbarTab(id: "a", title: "A", symbol: "tray")
         func hosted(_ content: HelmPageToolbarContent?) -> Bool {
-            let view = Color.clear.helmWindowToolbar(content).mirrorsHeaderTabs(into: model)
+            let view = Color.clear.helmWindowToolbar(content).mirrorsHeaderFacts(into: model)
             let host = NSHostingView(rootView: view.frame(width: 200, height: 100))
             host.frame = NSRect(x: 0, y: 0, width: 200, height: 100)
             host.layoutSubtreeIfNeeded()

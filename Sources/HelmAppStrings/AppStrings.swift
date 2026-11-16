@@ -23,8 +23,9 @@ public enum AppStr {
     /// macOS's own name for its material, spelled as System Settings spells it.
     public static var barAppearanceFlat: String { L(.barAppearanceFlat) }
     public static var barAppearanceLiquidGlass: String { L(.barAppearanceLiquidGlass) }
-    /// The header row's two choices (`HelmHeaderChoices`): the row's name and its two answers, then the tabs' name and
-    /// their three. The page header's two are offered in General (`PageHeaderRow`) and both in the row's right-click menu (`HeaderBarMenu`).
+    /// The header row's three choices (`HelmHeaderChoices`): the row's name and its two answers, then the tabs' name and
+    /// their three, then Always Collapse Search. Only the page header's is offered in General (`PageHeaderRow`); all three
+    /// are in the row's right-click menu (`HeaderBarMenu`).
     public static var pageBar: String { L(.pageBar) }
     public static var pageBarWithIcon: String { L(.pageBarWithIcon) }
     public static var pageBarWithoutIcon: String { L(.pageBarWithoutIcon) }
@@ -32,6 +33,8 @@ public enum AppStr {
     public static var tabLabelsText: String { L(.tabLabelsText) }
     public static var tabLabelsIcons: String { L(.tabLabelsIcons) }
     public static var tabLabelsIconsAndText: String { L(.tabLabelsIconsAndText) }
+    /// The row's right-click menu's fourth part, offered only where the page has a search (`HeaderBarMenu`).
+    public static var alwaysCollapseSearch: String { L(.alwaysCollapseSearch) }
     /// The General row choosing between them (`BarAppearanceRow`).
     public static var barAppearanceTitle: String { L(.barAppearanceTitle) }
 

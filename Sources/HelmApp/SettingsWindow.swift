@@ -198,7 +198,8 @@ import HelmAppStrings
                           width: card.width, height: HelmCardHeaderBand.height)
         guard HeaderBarMenu.opens(type: event.type, modifiers: event.modifierFlags, at: event.locationInWindow,
                                   band: band, excluding: HeaderBarMenu.excluded(in: window)) else { return false }
-        NSMenu.popUpContextMenu(HeaderBarMenu.menu(hasTabs: model.pageHasTabs), with: event, for: content)
+        let menu = HeaderBarMenu.menu(hasTabs: model.pageHasTabs, hasSearch: model.pageHasSearch)
+        NSMenu.popUpContextMenu(menu, with: event, for: content)
         return true
     }
 
@@ -284,9 +285,11 @@ enum SettingsSelection: Hashable {
     private var liveWatch: AnyCancellable?
 
     /// Whether the page on screen declared tabs in its header row, mirrored from what the row draws
-    /// (`HelmPageHasTabsKey`, through `mirrorsHeaderTabs`): a module's page declares its own (Homebrew's three,
+    /// (`HelmPageHasTabsKey`, through `mirrorsHeaderFacts`): a module's page declares its own (Homebrew's three,
     /// Leftovers' two only while its list is not empty), General, Log and About the settings tabs.
     @Published var pageHasTabs = false
+    /// Whether it declared a search (`HelmPageHasSearchKey`): the menu's Always Collapse Search is offered only then.
+    @Published var pageHasSearch = false
 
     init(host: ModuleHost) {
         self.host = host
@@ -413,7 +416,7 @@ enum SettingsSelection: Hashable {
                 .onPreferenceChange(HelmPageTitleKey.self) { [model] title in
                     model.pageTitle = title
                 }
-                .mirrorsHeaderTabs(into: model)
+                .mirrorsHeaderFacts(into: model)
                 .environment(\.helmHeaderInCard, true)
                 .modifier(RebuiltOnLanguageChange(model: model))
                 .helmRoot()
@@ -618,10 +621,13 @@ private struct RebuiltOnLanguageChange: ViewModifier {
 }
 
 extension View {
-    /// Keeps `model.pageHasTabs` equal to what the page on screen declared for the row.
-    func mirrorsHeaderTabs(into model: SettingsModel) -> some View {
+    /// Keeps `model.pageHasTabs` and `model.pageHasSearch` equal to what the page on screen declared for the row.
+    func mirrorsHeaderFacts(into model: SettingsModel) -> some View {
         onPreferenceChange(HelmPageHasTabsKey.self) { [model] hasTabs in
             model.pageHasTabs = hasTabs ?? false
+        }
+        .onPreferenceChange(HelmPageHasSearchKey.self) { [model] hasSearch in
+            model.pageHasSearch = hasSearch ?? false
         }
     }
 }

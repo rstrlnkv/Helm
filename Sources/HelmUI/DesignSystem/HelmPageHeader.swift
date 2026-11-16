@@ -644,7 +644,7 @@ private struct CardHeader: ViewModifier {
                                standsOnStillContent: standsOnStillContent, status: status,
                                dimmed: !windowAppearsActive, leadingInset: Self.leadingInset,
                                trailingInset: Self.trailingInset) {
-                    HelmHeaderControls(content: controls)
+                    HelmHeaderControls(content: controls, page: title)
                 }
                 .frame(height: Self.height)
                 .background { Color.clear.contentShape(Rectangle()).gesture(WindowDragGesture()) }
@@ -660,6 +660,8 @@ private struct CardHeader: ViewModifier {
 /// declaration gets exactly the room of what it declared, as the row had before.
 private struct HelmHeaderControls: View {
     let content: HelmPageToolbarContent?
+    /// The page's name: the search slot's identity, so what it holds open does not leak to the next page. Never the tabs'.
+    let page: String
 
     var body: some View {
         if let content {
@@ -673,7 +675,7 @@ private struct HelmHeaderControls: View {
                             HelmHeaderActions(actions: content.actions)
                         }
                         if let search = content.search {
-                            HelmHeaderSearch(search: search)
+                            HelmHeaderSearch(search: search).id(page)
                         }
                     }
                     .frame(minWidth: content.reserves?.width ?? 0, alignment: .trailing)

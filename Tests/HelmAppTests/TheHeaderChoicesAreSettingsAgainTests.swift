@@ -3,17 +3,18 @@ import HelmUI
 import XCTest
 @testable import HelmApp
 
-/// **The page header's two choices are settings again, and the launch purge no longer deletes them.**
+/// **The page header's three choices are settings again, and the launch purge no longer deletes them.**
 ///
-/// `module.app.pageBarStyle` and `module.app.toolbarSwitcherStyle` were listed in `ObsoleteDefaults.retired`
+/// `module.app.pageBarStyle`, `module.app.toolbarSwitcherStyle` and `module.app.alwaysCollapseSearch` were listed in `ObsoleteDefaults.retired`
 /// while the header row had no such choices; a key still listed is purged at the next launch, which is
 /// indistinguishable from never having restored it. `ObsoleteDefaultsTests` scans only `Sources/HelmApp` for
-/// the literal, so this is where the two spellings are put side by side.
+/// the literal, so this is where the spellings are put side by side.
 @MainActor
 final class TheHeaderChoicesAreSettingsAgainTests: XCTestCase {
 
     func testTheRestoredHeaderKeysAreNoLongerRetired() {
-        for key in ["module.app." + PageBarStyle.storageKey, "module.app." + ToolbarSwitcherStyle.storageKey] {
+        for key in ["module.app." + PageBarStyle.storageKey, "module.app." + ToolbarSwitcherStyle.storageKey,
+                    "module.app.alwaysCollapseSearch"] {
             XCTAssertFalse(ObsoleteDefaults.retired.contains(key), """
                 \(key) is a setting again and is still on the purge list, so the launch \
                 after the one that saves it deletes it.
@@ -23,11 +24,13 @@ final class TheHeaderChoicesAreSettingsAgainTests: XCTestCase {
 
     func testAChoiceSurvivesTheLaunchPurge() {
         let store = InMemoryKeyValueStore()
-        store.raw = ["module.app.pageBarStyle": "windowTitle", "module.app.toolbarSwitcherStyle": "icons"]
+        store.raw = ["module.app.pageBarStyle": "windowTitle", "module.app.toolbarSwitcherStyle": "icons",
+                     "module.app.alwaysCollapseSearch": true]
         AppSettings.migrateAndPurge(in: store)
         let app = AppSettings.store.over(store)
         XCTAssertEqual(AppSettings.pageBarStyle(in: app), .windowTitle)
         XCTAssertEqual(AppSettings.toolbarSwitcherStyle(in: app), .icons)
+        XCTAssertTrue(AppSettings.alwaysCollapseSearch(in: app))
     }
 
     func testTheLongGoneFourthSpellingReadsAsText() {
@@ -44,10 +47,13 @@ final class TheHeaderChoicesAreSettingsAgainTests: XCTestCase {
         defer { NotificationCenter.default.removeObserver(token) }
         AppSettings.setPageBarStyle(.moduleName, in: app)
         AppSettings.setToolbarSwitcherStyle(.text, in: app)
+        AppSettings.setAlwaysCollapseSearch(false, in: app)
         XCTAssertEqual(posted, 0, "writing the value already read posted a change")
         AppSettings.setPageBarStyle(.windowTitle, in: app)
         AppSettings.setToolbarSwitcherStyle(.iconsAndText, in: app)
-        XCTAssertEqual(posted, 2)
+        AppSettings.setAlwaysCollapseSearch(true, in: app)
+        XCTAssertEqual(posted, 3)
+        XCTAssertTrue(AppSettings.headerChoices.collapseSearch == AppSettings.alwaysCollapseSearch)
         XCTAssertEqual(AppSettings.pageBarStyle(in: app), .windowTitle)
     }
 }

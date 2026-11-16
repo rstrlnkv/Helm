@@ -248,6 +248,16 @@ public struct HelmPageHasTabsKey: PreferenceKey {
     }
 }
 
+/// **Whether the page on screen declared a search in the header row**, nil where it declared nothing: the same
+/// reading as `HelmPageHasTabsKey`, for the window's right-click menu's fourth part.
+public struct HelmPageHasSearchKey: PreferenceKey {
+    public static let defaultValue: Bool? = nil
+
+    public static func reduce(value: inout Bool?, nextValue: () -> Bool?) {
+        value = nextValue() ?? value
+    }
+}
+
 /// **What the page on screen declared for the header row**, nil where it declared nothing.
 ///
 /// The last declaration in tree order wins, as the title's does (`HelmPageTitleKey`). The default is computed:
@@ -270,6 +280,7 @@ extension View {
     public func helmWindowToolbar(_ content: HelmPageToolbarContent?) -> some View {
         preference(key: HelmPageToolbarKey.self, value: content)
             .preference(key: HelmPageHasTabsKey.self, value: content.map { !$0.tabs.isEmpty })
+            .preference(key: HelmPageHasSearchKey.self, value: content.map { $0.search != nil })
     }
 }
 

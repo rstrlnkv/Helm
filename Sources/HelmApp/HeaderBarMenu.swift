@@ -14,7 +14,8 @@ import HelmUI
 /// first, and `opens(type:modifiers:at:band:excluding:)` decides it from a point alone.
 ///
 /// **Top to bottom**: Page header (With Icon, Without Icon) on every page; Tab labels (Text Only, Icon Only,
-/// Icon and Text) only where the page has tabs; Appearance (Flat, Liquid Glass) on every page. Absent rather than
+/// Icon and Text) only where the page has tabs; Appearance (Flat, Liquid Glass) on every page; Always Collapse Search,
+/// a plain tick, only where the page has a search, after a separator of its own. Absent rather than
 /// dimmed where a part does not apply: a context menu hides what cannot act (HIG, context menus). Appearance is the
 /// mirror of General's `BarAppearanceRow`, Page header of `PageHeaderRow`.
 ///
@@ -51,15 +52,15 @@ enum HeaderBarMenu {
         return rects
     }
 
-    /// The menu for a page; `tabLabels` is offered only where `hasTabs`.
-    static func menu(hasTabs: Bool, in store: NamespacedStore = AppSettings.store) -> NSMenu {
+    /// The menu for a page; `tabLabels` is offered only where `hasTabs`, Always Collapse Search only where `hasSearch`.
+    static func menu(hasTabs: Bool, hasSearch: Bool, in store: NamespacedStore = AppSettings.store) -> NSMenu {
         let menu = NSMenu(title: AppStr.pageBar)
         menu.autoenablesItems = false
-        for item in items(hasTabs: hasTabs, in: store) { menu.addItem(item) }
+        for item in items(hasTabs: hasTabs, hasSearch: hasSearch, in: store) { menu.addItem(item) }
         return menu
     }
 
-    static func items(hasTabs: Bool, in store: NamespacedStore) -> [NSMenuItem] {
+    static func items(hasTabs: Bool, hasSearch: Bool, in store: NamespacedStore) -> [NSMenuItem] {
         var items = [NSMenuItem.sectionHeader(title: AppStr.pageBar)]
         let pageBar = AppSettings.pageBarStyle(in: store)
         items += [(PageBarStyle.moduleName, AppStr.pageBarWithIcon), (.windowTitle, AppStr.pageBarWithoutIcon)]
@@ -81,6 +82,13 @@ enum HeaderBarMenu {
         items += [(HelmBarAppearance.flat, AppStr.barAppearanceFlat),
                   (.liquidGlass, AppStr.barAppearanceLiquidGlass)].map { choice, title in
             tick(title, choice == look) { AppSettings.setBarAppearance(choice, in: store) }
+        }
+        if hasSearch {
+            let collapses = AppSettings.alwaysCollapseSearch(in: store)
+            items.append(.separator())
+            items.append(tick(AppStr.alwaysCollapseSearch, collapses) {
+                AppSettings.setAlwaysCollapseSearch(!collapses, in: store)
+            })
         }
         return items
     }

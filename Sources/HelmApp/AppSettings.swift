@@ -84,9 +84,30 @@ extension Notification.Name {
         NotificationCenter.default.post(name: .helmHeaderChoicesChanged, object: nil)
     }
 
-    /// Both choices as the header row reads them.
+    /// **Whether the header row's search rests as a 36 pt magnifier** while it is empty and nobody is editing it
+    /// (`HelmHeaderSearch.rests`): chosen from the row's right-click menu (`HeaderBarMenu`). Off unless somebody
+    /// turns it on. A query left in the field keeps it open. A `Bool` is bounded by its type and nothing
+    /// unattended reads it, so it is not sealed; a write equal to the stored value is refused, so nothing is posted
+    /// for it. The key is the toolbar's day one (`HelmHeaderChoices`), spelt here so `ObsoleteDefaultsTests`' scan covers it.
+    static var alwaysCollapseSearch: Bool {
+        get { alwaysCollapseSearch(in: store) }
+        set { setAlwaysCollapseSearch(newValue, in: store) }
+    }
+
+    static func alwaysCollapseSearch(in store: NamespacedStore) -> Bool {
+        store.bool("alwaysCollapseSearch", default: false)
+    }
+
+    static func setAlwaysCollapseSearch(_ value: Bool, in store: NamespacedStore) {
+        guard value != alwaysCollapseSearch(in: store) else { return }
+        store.set(value, for: "alwaysCollapseSearch")
+        NotificationCenter.default.post(name: .helmHeaderChoicesChanged, object: nil)
+    }
+
+    /// The three choices as the header row reads them.
     static var headerChoices: HelmHeaderChoices {
-        HelmHeaderChoices(pageBar: pageBarStyle, tabLabels: toolbarSwitcherStyle)
+        HelmHeaderChoices(pageBar: pageBarStyle, tabLabels: toolbarSwitcherStyle,
+                          collapseSearch: alwaysCollapseSearch)
     }
 
     /// **Whether the settings window's sidebar is folded to the rail**, as a person last left it
