@@ -20,6 +20,9 @@ public struct HelmToolbarTab {
     /// looked up once, at the page; `HelmHeaderTabs` draws `title` and speaks it to
     /// VoiceOver as it is given and looks nothing up.
     public let title: String
+    /// The SF Symbol the tab draws when the row's tabs are labelled by glyphs (`ToolbarSwitcherStyle`): alone, with the
+    /// word in the tooltip, or beside the word (`HelmHeaderTabs`). Required, so no page has a tab without one.
+    public let symbol: String
     /// **A dot on the tab: this tab has something to say that the page below it does not shout.** False for every
     /// tab that has nothing, so the pages that never say it draw as before. The tabs draw the dot beside the word
     /// (`HelmHeaderTabs`). The page switches it by the same reading its own rows say the thing from, or the dot and the tab say different things.
@@ -27,9 +30,11 @@ public struct HelmToolbarTab {
     /// What the dot says, localised already, for VoiceOver (the tab's accessibility value); nil is the dot alone.
     let attentionNote: String?
 
-    public init(id: String, title: String, needsAttention: Bool = false, attentionNote: String? = nil) {
+    public init(id: String, title: String, symbol: String, needsAttention: Bool = false,
+                attentionNote: String? = nil) {
         self.id = id
         self.title = title
+        self.symbol = symbol
         self.needsAttention = needsAttention
         self.attentionNote = attentionNote
     }
@@ -233,6 +238,16 @@ public struct HelmPageToolbarContent {
     }
 }
 
+/// **Whether the page on screen declared tabs in the header row**, nil where it declared nothing: the same
+/// declaration the row draws, for what outside the row must agree with it (the window's right-click menu).
+public struct HelmPageHasTabsKey: PreferenceKey {
+    public static let defaultValue: Bool? = nil
+
+    public static func reduce(value: inout Bool?, nextValue: () -> Bool?) {
+        value = nextValue() ?? value
+    }
+}
+
 /// **What the page on screen declared for the header row**, nil where it declared nothing.
 ///
 /// The last declaration in tree order wins, as the title's does (`HelmPageTitleKey`). The default is computed:
@@ -254,6 +269,7 @@ extension View {
     /// `Equatable`.
     public func helmWindowToolbar(_ content: HelmPageToolbarContent?) -> some View {
         preference(key: HelmPageToolbarKey.self, value: content)
+            .preference(key: HelmPageHasTabsKey.self, value: content.map { !$0.tabs.isEmpty })
     }
 }
 

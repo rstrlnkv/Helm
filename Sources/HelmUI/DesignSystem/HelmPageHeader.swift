@@ -371,6 +371,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     let leadingInset: CGFloat
     let trailingInset: CGFloat
     let trailing: Trailing
+    @Environment(\.helmHeaderChoices) private var choices
 
     public init(symbol: String, tint: Color, title: String,
                 bleeds: Bool = false, standsOnStillContent: Bool = false,
@@ -425,7 +426,10 @@ public struct HelmPageHeader<Trailing: View>: View {
     private var row: some View {
         HStack(spacing: 12) {
             // 24, the Kit's `Toolbar` (Figma 309:216): the plate is 24 and the title starts 12 after it.
-            HelmIconPlate(symbol: symbol, tint: tint, size: 24)
+            // Without Icon (`HelmHeaderChoices`) draws the name alone; the status after it stays.
+            if choices.pageBar == .moduleName {
+                HelmIconPlate(symbol: symbol, tint: tint, size: 24)
+            }
             // 16, the redesign's «заголовок» step. It was 20, which is not on
             // the ladder at all — the six sizes are 10 · 11 · 13 · 16 · 22 · 40
             // — and with the summary gone the name no longer has to hold a
@@ -599,9 +603,18 @@ extension View {
     /// (`LogView`'s Copy captures `page.lines`).
     ///
     /// The empty part of the row drags the window, since there is no title bar under it any more.
+    ///
+    /// **The row has no right-click menu of its own**: it lies in the window's title bar zone, where a SwiftUI
+    /// `.contextMenu` is never reached; the window pops one up (`HeaderBarMenu`) over the band
+    /// `HelmCardHeaderBand.height` names.
     public func helmCardHeader(symbol: String, tint: Color, title: String, status: HelmHeaderStatus?) -> some View {
         modifier(CardHeader(symbol: symbol, tint: tint, title: title, status: status))
     }
+}
+
+/// The header row's height, for the window that decides which presses are the row's.
+@MainActor public enum HelmCardHeaderBand {
+    public static let height = CardHeader.height
 }
 
 private struct CardHeader: ViewModifier {

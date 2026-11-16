@@ -292,6 +292,7 @@ struct MenuBarSettingsView: View {
                 // not what anybody is choosing between.
                 AppearancePicker(selection: $appearance, title: AppStr.lightOrDark)
                     .onChange(of: appearance) { _, choice in AppSettings.appearance = choice }
+                PageHeaderRow()
                 BarAppearanceRow()
                 // The picker carries its own title for VoiceOver, hidden here
                 // because the row beside it says it: a labelled control inside
@@ -445,8 +446,9 @@ struct MenuBarSettingsView: View {
 
 /// **Flat or Liquid Glass**, written to `AppSettings.barAppearance`, whose setter posts
 /// `.helmBarAppearanceChanged` for the window's ground (`helmTracksBarAppearance`,
-/// `ShellContentView`). Its own `@State`, so the page holds nothing for it. The row is
-/// the setter's only caller, so the row listens for nothing: no write comes from anywhere else.
+/// `ShellContentView`). Its own `@State`, so the page holds nothing for it. The header row's right-click menu
+/// (`HeaderBarMenu`) writes the same setting, so the row listens for the notification and takes the value
+/// the store holds.
 struct BarAppearanceRow: View {
     @State private var choice = AppSettings.barAppearance
 
@@ -461,6 +463,35 @@ struct BarAppearanceRow: View {
             .fixedSize()
             .onChange(of: choice) { _, new in
                 AppSettings.barAppearance = new
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .helmBarAppearanceChanged)) { _ in
+                choice = AppSettings.barAppearance
+            }
+        }
+    }
+}
+
+/// **With Icon or Without Icon**, written to `AppSettings.pageBarStyle` (`PageBarStyle`), whose setter posts
+/// `.helmHeaderChoicesChanged` for the header row (`helmTracksHeaderChoices`). The row's right-click menu
+/// (`HeaderBarMenu`) writes the same setting, so this row listens for the notification and takes the value the
+/// store holds; the page is not rebuilt for it.
+struct PageHeaderRow: View {
+    @State private var choice = AppSettings.pageBarStyle
+
+    var body: some View {
+        HelmSettingRow(AppStr.pageBar) {
+            Picker(AppStr.pageBar, selection: $choice) {
+                Text(AppStr.pageBarWithIcon).tag(PageBarStyle.moduleName)
+                Text(AppStr.pageBarWithoutIcon).tag(PageBarStyle.windowTitle)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .onChange(of: choice) { _, new in
+                AppSettings.pageBarStyle = new
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .helmHeaderChoicesChanged)) { _ in
+                choice = AppSettings.pageBarStyle
             }
         }
     }

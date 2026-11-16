@@ -49,6 +49,46 @@ extension Notification.Name {
         NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
     }
 
+    /// How the header row names its page (`PageBarStyle`): with its plate unless Without Icon is stored.
+    /// Nothing unattended reads it, so it is not sealed. A write equal to the stored value is refused, so
+    /// nothing is posted for it.
+    static var pageBarStyle: PageBarStyle {
+        get { pageBarStyle(in: store) }
+        set { setPageBarStyle(newValue, in: store) }
+    }
+
+    static func pageBarStyle(in store: NamespacedStore) -> PageBarStyle {
+        PageBarStyle(stored: store.string(PageBarStyle.storageKey, default: ""))
+    }
+
+    static func setPageBarStyle(_ value: PageBarStyle, in store: NamespacedStore) {
+        guard value != pageBarStyle(in: store) else { return }
+        store.set(value.rawValue, for: PageBarStyle.storageKey)
+        NotificationCenter.default.post(name: .helmHeaderChoicesChanged, object: nil)
+    }
+
+    /// How the header row's tabs are labelled (`ToolbarSwitcherStyle`): by text unless another is stored.
+    /// Nothing unattended reads it, so it is not sealed; writes equal to the stored value are refused.
+    static var toolbarSwitcherStyle: ToolbarSwitcherStyle {
+        get { toolbarSwitcherStyle(in: store) }
+        set { setToolbarSwitcherStyle(newValue, in: store) }
+    }
+
+    static func toolbarSwitcherStyle(in store: NamespacedStore) -> ToolbarSwitcherStyle {
+        ToolbarSwitcherStyle(stored: store.string(ToolbarSwitcherStyle.storageKey, default: ""))
+    }
+
+    static func setToolbarSwitcherStyle(_ value: ToolbarSwitcherStyle, in store: NamespacedStore) {
+        guard value != toolbarSwitcherStyle(in: store) else { return }
+        store.set(value.rawValue, for: ToolbarSwitcherStyle.storageKey)
+        NotificationCenter.default.post(name: .helmHeaderChoicesChanged, object: nil)
+    }
+
+    /// Both choices as the header row reads them.
+    static var headerChoices: HelmHeaderChoices {
+        HelmHeaderChoices(pageBar: pageBarStyle, tabLabels: toolbarSwitcherStyle)
+    }
+
     /// **Whether the settings window's sidebar is folded to the rail**, as a person last left it
     /// (`SettingsShellViewController.flipSidebar`). A stored string, or a number other than 0 and 1, reads as
     /// expanded; a stored number 1 reads as folded. Read once, when a window is built, and nothing unattended reads it, so it is not

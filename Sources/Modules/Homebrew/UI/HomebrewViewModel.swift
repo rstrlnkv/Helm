@@ -215,6 +215,16 @@ enum DependentsReading: Equatable {
             case .health: return HbStr.segHealth
             }
         }
+
+        /// The glyph the header row's tab draws when the tabs are labelled by glyphs (`HelmToolbarTab.symbol`).
+        /// Updates keeps the module's own "an update exists" symbol.
+        var symbol: String {
+            switch self {
+            case .installed: return "shippingbox"
+            case .updates: return "arrow.up.circle"
+            case .health: return "stethoscope"
+            }
+        }
     }
     /// Written by the segmented picker's own binding, which never goes through
     /// `select(_:)` — so this half of the subject carries its own retirement.

@@ -96,10 +96,10 @@ struct ToolbarBoard: View {
 
     private func full(enabled: Bool = true, attention: Bool = false, busy: Bool = false) -> HelmPageToolbarContent {
         HelmPageToolbarContent(
-            tabs: [HelmToolbarTab(id: "one", title: Sample.short),
-                   HelmToolbarTab(id: "two", title: Sample.russianTitle,
+            tabs: [HelmToolbarTab(id: "one", title: Sample.short, symbol: "circle"),
+                   HelmToolbarTab(id: "two", title: Sample.russianTitle, symbol: "square",
                                   needsAttention: attention, attentionNote: attention ? Sample.note : nil),
-                   HelmToolbarTab(id: "three", title: Sample.title)],
+                   HelmToolbarTab(id: "three", title: Sample.title, symbol: "triangle")],
             selectedTab: .constant("one"), tabsEnabled: enabled,
             actions: [HelmToolbarAction(id: "refresh", title: Sample.short, symbol: "arrow.clockwise",
                                         isEnabled: enabled, isBusy: busy) {},
