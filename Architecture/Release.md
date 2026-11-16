@@ -17,11 +17,14 @@ the compile it guards, and `Scripts/package-app.sh:297` writes the same number i
 plist *of the assembled bundle*, so the tree's copy and a shipped bundle's copy disagree
 by design.
 
-A release tag is `vMAJOR.MINOR.PATCH`; a prerelease tag is `vMAJOR.MINOR.PATCH-dev.N`.
+A release tag is `vMAJOR.MINOR.PATCH`; a prerelease tag cut before 2026-11-14 is
+`vMAJOR.MINOR.PATCH-dev.N`. Since 2026-11-14 (versioning standard, rule 6) a build is tagged `vX.Y.Z.DEV.<build>` or
+`vX.Y.Z.BETA.<build>`; the `-dev.N` form stays on every tag cut before that date.
 `git tag --list 'v*' --sort=v:refname` is the list and `git tag --list 'v*' | wc -l` the
-count. `-dev` is the only suffix the scheme has: `UpdateVersion.prereleaseOrdinal`
-reads the trailing number of the suffix and nothing else, so `-dev.2` and `-beta.2` are
-indistinguishable to it.
+count. In the old form (a tag after a `-`) `-dev` is the only suffix the scheme has:
+`UpdateVersion.prereleaseOrdinal` reads the trailing number of the suffix and nothing
+else, so `-dev.2` and `-beta.2` are indistinguishable to it. The new form names its
+channel (`DEV`/`BETA`) and `UpdateVersion.buildTag` reads it.
 
 MAJOR marks a milestone — a new architecture, a breaking redesign. MINOR is a new
 capability or a reworking of an existing one. PATCH is a fix, and it is also the step of
@@ -44,22 +47,38 @@ set: "1.0" is the claim that the program is ready for other people.
 Two releases carrying one version are invisible to the updater: `UpdateVersion.isNewer`
 requires a strictly greater version, so a release without a bump reaches nobody, and
 nothing published can pull a user back to an earlier build — there is no rollback, and
-that is the shape of the comparison rather than a missing feature.
+that is the shape of the comparison rather than a missing feature. The one exception is
+a tag of the form `vX.Y.Z.DEV.<build>` / `vX.Y.Z.BETA.<build>` (versioning.md rule 6,
+from 2026-11-14; tags before that keep `-dev.N`): on an equal `X.Y.Z`, with the running
+build known, the tag is newer only when its `<build>` is greater than that build,
+whatever suffix the running version has. The running build is `CFBundleVersion`, which
+`Scripts/package-app.sh` writes as `git rev-list --count HEAD` in this tree; a tag's
+`<build>` must be that same number for the build it was cut from to go unoffered. So the
+tag's `<build>` is the number the packaged app carries (read it from the built bundle's
+`CFBundleVersion`), not the three-branch count `git rev-list --count origin/dev
+origin/beta origin/main HEAD` of versioning.md rule 2: that count can be larger, and a
+tag cut with it is newer than the app built from it, which then offers its own tag. With
+the build unknown, a running `-dev.N` is offered the tag and a bare `X.Y.Z` is not.
 
 There are two channels, `beta` and `dev`, and `UpdateCheck.Channel` is where they and
 the reason for the name `beta` live. In the app the switch is About → Update channel,
 and switching re-checks at once.
 
-Everything reaches the dev channel first, as a `vX.Y.Z-dev.N` prerelease, and the same
-code goes out as the beta `vX.Y.Z` release once the count of known problems is zero. A dev
-build writes its log itself and a beta build does not (ARCHITECTURE.md § Diagnostics log),
-so the dev round is the only round with evidence in it to triage against `helm.log`. A
-`-dev.N` prerelease leaves the beta numbering alone: the eventual `vX.Y.Z` supersedes
-every `-dev.N` before it. Two consequences of that arrangement look like faults and are
+Everything reaches the dev channel first, as a prerelease tagged `vX.Y.Z.DEV.<build>`, and
+the same code goes out as the beta, `vX.Y.Z.BETA.<build>`, once the count of known problems
+is zero; the bare `vX.Y.Z` is the STABLE release (versioning.md rule 6). A dev build writes
+its log itself and a beta build does not (ARCHITECTURE.md § Diagnostics log), so the dev
+round is the only round with evidence in it to triage against `helm.log`. A bare `vX.Y.Z`
+does not supersede a `vX.Y.Z.DEV.<build>` or `vX.Y.Z.BETA.<build>` of the same `X.Y.Z`:
+`UpdateVersion.isNewer` finds the two cores equal and answers false, and
+`UpdateVersion.ranksAbove` puts a build tag above a bare tag of one core. Only a higher
+`X.Y.Z` is offered over a running build tag. (For tags cut before 2026-11-14 the old
+arrangement holds: a `-dev.N` prerelease sorts below its own `vX.Y.Z`, which supersedes
+every `-dev.N` before it.) Two consequences of that arrangement look like faults and are
 not. A release published with `--prerelease` is invisible to the Beta channel, because
 `releases/latest` skips every prerelease — so the flag, or its absence, is what decides
 reachability rather than presentation. And in the window between a beta shipping and the
-next `-dev` build being cut, the newest entry in the whole releases list *is* the beta, so
+next dev build being cut, the newest entry in the whole releases list *is* the beta, so
 the Dev channel answers "up to date" and is right.
 
 One release is one `CHANGELOG.md` section, one git tag, and both a `.dmg` and a `.zip`

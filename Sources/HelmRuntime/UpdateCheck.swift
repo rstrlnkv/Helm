@@ -87,17 +87,19 @@ public enum UpdateCheck {
         let draft: Bool?
     }
 
-    public static func evaluate(statusCode: Int, data: Data, currentVersion: String) -> Outcome {
+    public static func evaluate(statusCode: Int, data: Data, currentVersion: String,
+                                currentBuild: Int? = nil) -> Outcome {
         if statusCode == 404 { return .upToDate }   // no releases published yet
         guard statusCode == 200 else { return .error }
         guard let gh = try? JSONDecoder().decode(GHRelease.self, from: data) else { return .error }
-        return outcome(for: gh, currentVersion: currentVersion)
+        return outcome(for: gh, currentVersion: currentVersion, currentBuild: currentBuild)
     }
 
     /// Evaluates a releases LIST response (dev channel): the newest published
     /// release the channel accepts wins. Drafts never count.
     public static func evaluateList(statusCode: Int, data: Data,
-                                    currentVersion: String, channel: Channel) -> Outcome {
+                                    currentVersion: String, currentBuild: Int? = nil,
+                                    channel: Channel) -> Outcome {
         if statusCode == 404 { return .upToDate }
         guard statusCode == 200 else { return .error }
         guard let all = try? JSONDecoder().decode([GHRelease].self, from: data) else { return .error }
@@ -105,9 +107,9 @@ public enum UpdateCheck {
             guard r.draft != true else { return false }
             return channel == .dev || r.prerelease != true
         }
-        guard let newest = eligible.max(by: { UpdateVersion.isNewer($1.tag_name, than: $0.tag_name) })
+        guard let newest = eligible.max(by: { UpdateVersion.ranksAbove($1.tag_name, $0.tag_name) })
         else { return .upToDate }
-        return outcome(for: newest, currentVersion: currentVersion)
+        return outcome(for: newest, currentVersion: currentVersion, currentBuild: currentBuild)
     }
 
     /// Every URL that leaves here is one the app is willing to open, and the
@@ -120,8 +122,9 @@ public enum UpdateCheck {
         return raw
     }
 
-    private static func outcome(for gh: GHRelease, currentVersion: String) -> Outcome {
-        guard UpdateVersion.isNewer(gh.tag_name, than: currentVersion) else {
+    private static func outcome(for gh: GHRelease, currentVersion: String,
+                                currentBuild: Int?) -> Outcome {
+        guard UpdateVersion.isNewer(gh.tag_name, than: currentVersion, currentBuild: currentBuild) else {
             // Only a prerelease reports being ahead. A *final* release ahead of
             // its own channel is a state the release flow does not produce
             // (ARCHITECTURE.md § Release: everything ships to dev first), and

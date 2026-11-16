@@ -59,7 +59,8 @@ enum Installer {
 
         // Sanity: the downloaded bundle must actually be the version we expect.
         let got = version(ofBundleAt: newApp) ?? ""
-        guard sameVersion(got, expectedVersion) else { throw InstallError.versionMismatch(got) }
+        guard accepts(version: got, build: build(ofBundleAt: newApp), expected: expectedVersion)
+        else { throw InstallError.versionMismatch(got) }
 
         // The swap goes to Bundle.main.bundlePath, whatever is standing there —
         // so before it moves anything, the downloaded bundle must call itself
@@ -99,6 +100,13 @@ enum Installer {
         info(ofBundleAt: app)?["CFBundleShortVersionString"] as? String
     }
 
+    /// The build number a bundle carries, read from the same plist as its version.
+    private static func build(ofBundleAt app: URL) -> String? {
+        let plist = app.appendingPathComponent("Contents/Info.plist")
+        guard let dict = NSDictionary(contentsOf: plist) else { return nil }
+        return dict["CFBundleVersion"] as? String
+    }
+
     /// What a bundle on disk calls itself. Read exactly the way its version is
     /// read one function up, so the two answers come from one plist.
     static func identifier(ofBundleAt app: URL) -> String? {
@@ -110,6 +118,19 @@ enum Installer {
     static func isSameProgram(_ app: URL, as installedID: String?) -> Bool {
         guard let installedID, let got = identifier(ofBundleAt: app) else { return false }
         return got == installedID
+    }
+
+    /// Whether a downloaded bundle (its CFBundleShortVersionString and
+    /// CFBundleVersion) is the release `expected` names. A build tag
+    /// (`v0.11.1.BETA.1620`) names a version and a build, and a bundle carries
+    /// the two apart, so both must match; a missing build refuses. Any other
+    /// tag is compared with the short version alone.
+    static func accepts(version: String, build: String?, expected: String) -> Bool {
+        guard let tag = UpdateVersion.buildTag(expected) else {
+            return sameVersion(version, expected)
+        }
+        return sameVersion(version, tag.core.map(String.init).joined(separator: "."))
+            && build == String(tag.build)
     }
 
     /// Compares versions ignoring a leading "v" (tag "v0.4.0" vs bundle "0.4.0").

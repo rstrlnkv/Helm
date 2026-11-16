@@ -9,7 +9,7 @@ Releases with a `-dev.N` suffix go out on the Dev channel first; everything they
 carry is listed under the version they lead to. The Beta channel gets a version
 only once it has no known problems left.
 
-## 0.11.1 — 2026-08-26
+## 0.11.1 — 2026-11-16
 
 *0.11.0 never shipped a build of any kind; everything written under it goes out here.*
 
