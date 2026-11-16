@@ -166,6 +166,15 @@ final class ThePackagedBundleNamesItsChannelTests: XCTestCase {
         }
     }
 
+    /// A variable that is set and empty is a channel that is present and wrong,
+    /// not an absent one: a CI step that exports `HELM_CHANNEL=` from an unset
+    /// secret must not fall through to the branch and package silently.
+    func testAnEmptyChannelVariableRefusesRatherThanFallingToTheBranch() throws {
+        assertRefusedBeforeCompile(try package(repo(branch: "beta", label: "ch-empty"), channel: ""),
+                                   mentioning: "HELM_CHANNEL",
+                                   because: "HELM_CHANNEL is set to the empty string on branch beta")
+    }
+
     // MARK: - make-dmg.sh: which background the key picks
 
     /// A minimal ad-hoc-signed bundle the staged-bundle check accepts, and a
