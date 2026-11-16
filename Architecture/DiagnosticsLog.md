@@ -2,7 +2,7 @@
 
 `~/Library/Logs/Helm/helm.log` (Helm Dev: `~/Library/Logs/Helm Dev/helm.log`), two megabytes and then one rollover (`HelmLog.sizeLimit`),
 in a folder created 0700 (`PrivateFile.directory(at:)`). `LogPolicy.isEnabled` answers
-whether it logs at all and `LogDestination` where it lives (`LogDestination.relativePath(folder:)`, spelled from the build's `DataFolder`): every `-dev` build logs
+whether it logs at all and `LogDestination` where it lives (`LogDestination.relativePath(folder:)`, spelled from the build's `DataFolder`): every DEV build (`HelmChannel` DEV, or a `-dev` version in a bundle packaged before the key) logs
 whatever was saved, and a beta build stays silent until its owner turns on the «Write a
 log file» item of the «More actions» menu in the Log page's header row.
 

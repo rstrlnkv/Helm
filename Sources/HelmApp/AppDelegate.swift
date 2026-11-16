@@ -28,7 +28,7 @@ import Module_Uninstaller_UI
         // Dev builds always log: the file is the evidence we triage before a
         // build graduates to the stable channel.
         let version = AppBuild.shortVersion ?? "0"
-        HelmLog.shared.start(version: version, override: AppSettings.loggingOverride)
+        HelmLog.shared.start(version: version, override: AppSettings.loggingOverride, isDev: AppBuild.isDev)
         // Straight after the log opens, because this is the one thing that can
         // have gone wrong while there was no log: an update swap that never
         // completed leaves its note behind, and this launch is either the copy

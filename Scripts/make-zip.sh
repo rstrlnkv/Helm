@@ -10,6 +10,7 @@ cd "$REPO_ROOT"
 
 source "$SCRIPT_DIR/staged-bundle.sh"
 ZIP="$REPO_ROOT/build/Helm-$VERSION.zip"
+echo "==> Channel: $(/usr/libexec/PlistBuddy -c 'Print :HelmChannel' "$APP_DIR/Contents/Info.plist" 2>/dev/null || echo 'none (bundle predates the key)')"
 
 echo "==> Zipping $ZIP"
 rm -f "$ZIP"

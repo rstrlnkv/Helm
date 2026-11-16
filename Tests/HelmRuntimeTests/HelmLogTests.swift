@@ -22,6 +22,20 @@ final class LogPolicyTests: XCTestCase {
     }
 }
 
+/// `start` takes the build's answer instead of reading the bundle, so a start
+/// that ignored it (and asked `Bundle.main`, which a test is never DEV in) is red.
+final class StartFollowsTheBuildItIsToldTests: XCTestCase {
+    func testADevBuildWritesItsStartLineAndAStableOneStaysSilent() {
+        let dev = HelmLog(seedFiles: [])
+        dev.start(version: "0.0.0", override: nil, isDev: true)
+        XCTAssertEqual(dev.recentEntries().count, 1, "a DEV build told so wrote no start line")
+
+        let stable = HelmLog(seedFiles: [])
+        stable.start(version: "0.0.0", override: nil, isDev: false)
+        XCTAssertEqual(stable.recentEntries().count, 0, "a build told it is not DEV logged unasked")
+    }
+}
+
 /// The one-line-per-event spelling `LogSeed` and «Copy log» read back, and the
 /// only test that flattening a newline is asserted: the Copy-log defect named at
 /// `LogLine.line`.
@@ -93,7 +107,7 @@ final class TheLogFileIsAsPrivateAsItsFolderTests: XCTestCase {
         XCTAssertEqual(try mode(of: HelmLog.fileURL), 0o644,
                        "the fixture is already private, so nothing below is a test")
 
-        HelmLog.shared.start(version: "0.0.0", override: false)
+        HelmLog.shared.start(version: "0.0.0", override: false, isDev: AppBuild.isDev)
         _ = HelmLog.shared.recentEntries()   // drains the queue the hardening is on
 
         XCTAssertEqual(try mode(of: HelmLog.fileURL), 0o600,

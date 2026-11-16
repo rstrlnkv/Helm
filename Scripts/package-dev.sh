@@ -44,7 +44,8 @@ for arg in "$@"; do
   fi
 done
 
-bash "$SCRIPT_DIR/package-app.sh"
+# Helm Dev says DEV whatever branch this checkout is on.
+HELM_CHANNEL=DEV bash "$SCRIPT_DIR/package-app.sh"
 
 echo "==> Rewriting the bundle as Helm Dev"
 rm -rf "$DEV"

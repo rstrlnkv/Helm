@@ -9,6 +9,7 @@ cd "$REPO_ROOT"
 
 source "$SCRIPT_DIR/staged-bundle.sh"
 DMG="$REPO_ROOT/build/Helm-$VERSION.dmg"
+echo "==> Channel: $(/usr/libexec/PlistBuddy -c 'Print :HelmChannel' "$APP_DIR/Contents/Info.plist" 2>/dev/null || echo 'none (bundle predates the key)')"
 # Outside the checkout, for the same reason package-app.sh signs there: a
 # bundle that passes through a provider-synced folder comes out carrying
 # com.apple.FinderInfo, and the dmg would ship a bundle codesign rejects.
@@ -28,11 +29,12 @@ BACKGROUND="$STAGE/background.png"
 # Which of the three drawings the window uses. One edit switches it; see
 # Scripts/design/make-dmg-background.swift for what each one is.
 STYLE="${HELM_DMG_STYLE:-bezel}"
-# A dev image says so on its face, and says it from the version rather than
+# A dev image says so on its face, and says it from the bundle rather than
 # from anyone remembering to pass a flag: a screenshot of a dev window turns up
 # in an issue sooner or later and must not be mistaken for a release.
 # The bundle's own HelmChannel says it (package-app.sh writes it; a dev build's
-# version carries no suffix). A bundle with no key predates it: the old rule.
+# version carries no suffix). A bundle with no key predates it: the version's
+# -dev suffix is the fallback.
 CHANNEL="$(/usr/libexec/PlistBuddy -c 'Print :HelmChannel' "$APP_DIR/Contents/Info.plist" 2>/dev/null || true)"
 case "$CHANNEL:$VERSION" in
   DEV:*)    DEV_FLAG="--dev" ;;

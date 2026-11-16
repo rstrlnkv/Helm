@@ -13,9 +13,11 @@ not git's own top level, one whose own `.git` an ancestor's `core.worktree` can 
 for, or one steered by a `GIT_DIR`/`GIT_WORK_TREE` from the environment; or a history a
 graft or a replacement ref has given a shorter parent chain — rather than substituting a
 number. The gate announces what it computed (`==> Build number: N`) right after, before
-the compile it guards, and `Scripts/package-app.sh:297` writes the same number into the
+the compile it guards, and `Scripts/package-app.sh` (the step that sets `CFBundleVersion`) writes the same number into the
 plist *of the assembled bundle*, so the tree's copy and a shipped bundle's copy disagree
 by design.
+
+`make-zip.sh` and `make-dmg.sh` print the staged bundle's channel (`==> Channel: BETA`) beside its version: a release build checks that line against the tag's channel before publishing, and a release from anything but its own branch sets `HELM_CHANNEL` explicitly.
 
 A release tag is `vMAJOR.MINOR.PATCH`; a prerelease tag cut before 2026-11-14 is
 `vMAJOR.MINOR.PATCH-dev.N`. Since 2026-11-14 (versioning standard, rule 6) a build is tagged `vX.Y.Z.DEV.<build>` or

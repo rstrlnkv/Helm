@@ -80,7 +80,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// of turning every card into one long earlier launch.
     func testTheLineHelmLogWritesAtLaunchIsTheOneThePageReads() {
         let log = HelmLog(seedFiles: [])
-        log.start(version: "9.9.9-dev.1", override: true)
+        log.start(version: "9.9.9-dev.1", override: true, isDev: AppBuild.isDev)
 
         let written = log.recentEntries()
 
@@ -94,7 +94,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// `terminating()`, the seed reads it back, and the split ends the launch there.
     func testTheLineHelmLogWritesAtTerminationIsTheOneThePageReads() {
         let log = HelmLog(seedFiles: [])
-        log.start(version: "9.9.9-dev.1", override: true)
+        log.start(version: "9.9.9-dev.1", override: true, isDev: AppBuild.isDev)
         log.terminating()
         log.info("host", "after")
 
@@ -915,7 +915,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
             try (LogLine.lines(earlier) + "\n").write(to: file, atomically: true, encoding: .utf8)
 
             let log = HelmLog(seedFiles: [file])
-            log.start(version: "0.11.0", override: false)   // stable, logging off: no start line
+            log.start(version: "0.11.0", override: false, isDev: AppBuild.isDev)   // stable, logging off: no start line
             log.setEnabled(true)                              // «More actions → Write a log file», pressed today
             log.warn("layout", "gesture declined: the layouts have no shared reading")
 
@@ -959,7 +959,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// day back and handed to the later one as its file.
     func testLoggingSwitchedOffInOneLaunchAndOnInTheNextIsTwoLaunches() throws {
         let earlierLog = HelmLog(seedFiles: [])
-        earlierLog.start(version: "0.10.0", override: true)
+        earlierLog.start(version: "0.10.0", override: true, isDev: AppBuild.isDev)
         earlierLog.info("host", "enable vpn")
         earlierLog.setEnabled(false)                     // «More actions → Write a log file», switched off
         earlierLog.info("host", "written by nobody: logging is off")
@@ -979,7 +979,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         try (LogLine.lines(earlier) + "\n").write(to: file, atomically: true, encoding: .utf8)
 
         let log = HelmLog(seedFiles: [file])
-        log.start(version: "0.11.0", override: false)   // the saved «off»: no start line
+        log.start(version: "0.11.0", override: false, isDev: AppBuild.isDev)   // the saved «off»: no start line
         log.setEnabled(true)                              // switched back on, today
         log.warn("layout", "gesture declined: the layouts have no shared reading")
 
@@ -1449,10 +1449,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         let zone = TimeZone(identifier: "UTC")!
         for version in ["0.11.0", "1.0 (beta)", "1.0 beta", "0.11.1+local", "1.0  (5)", "2.0)"] {
             let earlierLog = HelmLog(seedFiles: [])
-            earlierLog.start(version: "0.10.0", override: true)
+            earlierLog.start(version: "0.10.0", override: true, isDev: AppBuild.isDev)
             earlierLog.setEnabled(false)
             let log = HelmLog(seedFiles: [])
-            log.start(version: version, override: false)
+            log.start(version: version, override: false, isDev: AppBuild.isDev)
             log.setEnabled(true)
             log.warn("layout", "gesture declined")
             let live = earlierLog.recentEntries() + log.recentEntries()
@@ -1540,7 +1540,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// the version the run itself named earlier is the one read.
     func testARunOpenedByItsOwnLoggingEnabledIsNotJoinedByTheNextVersion() throws {
         let first = HelmLog(seedFiles: [])
-        first.start(version: "0.11.0", override: false)   // stable, saved «off»: no start line
+        first.start(version: "0.11.0", override: false, isDev: AppBuild.isDev)   // stable, saved «off»: no start line
         first.setEnabled(true)
         first.warn("vpn", "never connected")
         first.setEnabled(false)
@@ -1560,7 +1560,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         try (LogLine.lines(yesterday) + "\n").write(to: file, atomically: true, encoding: .utf8)
 
         let log = HelmLog(seedFiles: [file])
-        log.start(version: "0.12.0", override: false)
+        log.start(version: "0.12.0", override: false, isDev: AppBuild.isDev)
         log.setEnabled(true)
         log.warn("layout", "gesture declined: the layouts have no shared reading")
 

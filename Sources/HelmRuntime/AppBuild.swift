@@ -84,7 +84,7 @@ public enum AppBuild {
     public static let releaseIdentifier = "com.helm.app"
 
     /// What `Scripts/package-dev.sh` rewrites the bundle to: Helm Dev and nothing else.
-    /// **Not `isDev`**, which is the version string and true of every published
+    /// **Not `isDev`**, which is the bundle's channel (`HelmChannel`) and true of every published
     /// dev-channel build, the person's own installed Helm among them.
     public static let devIdentifier = "com.helm.app.dev"
 

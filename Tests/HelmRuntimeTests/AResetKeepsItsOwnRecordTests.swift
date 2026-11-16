@@ -32,7 +32,7 @@ final class AResetKeepsItsOwnRecordTests: XCTestCase {
         _ = HelmLog.shared.recentEntries()   // drains the queue
         XCTAssertTrue(logText().contains(marker), "nothing was written, so nothing below is a test")
 
-        HelmLog.shared.start(version: "0.0.0", override: true)
+        HelmLog.shared.start(version: "0.0.0", override: true, isDev: AppBuild.isDev)
         _ = HelmLog.shared.recentEntries()
 
         XCTAssertTrue(logText().contains(marker),
@@ -50,7 +50,7 @@ final class AResetKeepsItsOwnRecordTests: XCTestCase {
         _ = HelmLog.shared.recentEntries()
         XCTAssertTrue(logText().contains(marker))
 
-        HelmLog.shared.start(version: "0.0.0", override: true)
+        HelmLog.shared.start(version: "0.0.0", override: true, isDev: AppBuild.isDev)
         _ = HelmLog.shared.recentEntries()
 
         XCTAssertTrue(logText().contains(marker))
@@ -65,7 +65,7 @@ final class AResetKeepsItsOwnRecordTests: XCTestCase {
         let old = "before redact \(UUID().uuidString)"
         try Data((old + "\n").utf8).write(to: HelmLog.fileURL)
 
-        HelmLog.shared.start(version: "0.0.0", override: true)
+        HelmLog.shared.start(version: "0.0.0", override: true, isDev: AppBuild.isDev)
         _ = HelmLog.shared.recentEntries()
 
         XCTAssertFalse(logText().contains(old), "the old log was not purged")
@@ -76,7 +76,7 @@ final class AResetKeepsItsOwnRecordTests: XCTestCase {
         let fresh = "after purge \(UUID().uuidString)"
         HelmLog.shared.info("app", fresh)
         _ = HelmLog.shared.recentEntries()
-        HelmLog.shared.start(version: "0.0.0", override: true)
+        HelmLog.shared.start(version: "0.0.0", override: true, isDev: AppBuild.isDev)
         _ = HelmLog.shared.recentEntries()
         XCTAssertTrue(logText().contains(fresh))
     }

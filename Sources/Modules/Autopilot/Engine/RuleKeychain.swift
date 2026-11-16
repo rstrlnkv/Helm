@@ -15,7 +15,7 @@ import Security
 /// installed Helm's keychain and `rule-seq` is a counter: a rule saved in Dev
 /// would raise the mark, and Helm could then read its own rules as rolled back. Exactly
 /// `AppBuild.devIdentifier` moves; anything else, a nil identifier included,
-/// reads the deployed items. Not `AppBuild.isDev`, which is the version string
+/// reads the deployed items. Not `AppBuild.isDev`, which is the bundle's channel (`HelmChannel`)
 /// and true of the person's own installed Helm.
 struct RuleKeychainItems: Equatable, Sendable {
     /// Deployed: names items on every Mac that has run Autopilot.

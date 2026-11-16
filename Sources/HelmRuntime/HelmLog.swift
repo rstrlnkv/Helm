@@ -237,9 +237,10 @@ public final class HelmLog: @unchecked Sendable {
     }
 
     /// Called once at launch with the running version; `override` comes from
-    /// the user-facing switch (nil = follow the build type).
-    public func start(version: String, override: Bool?) {
-        let on = LogPolicy.isEnabled(isDev: AppBuild.isDev, override: override)
+    /// the user-facing switch (nil = follow the build type); `isDev` is the
+    /// running build's (`AppBuild.isDev`), taken so a test can name either.
+    public func start(version: String, override: Bool?, isDev: Bool) {
+        let on = LogPolicy.isEnabled(isDev: isDev, override: override)
         queue.async { self.enabled = on; self.runVersion = version }
         discardPreRedactionLog()
         // Once a launch, not once a line. `append` creates the file privately,
