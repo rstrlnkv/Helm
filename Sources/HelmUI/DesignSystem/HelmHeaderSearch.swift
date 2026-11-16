@@ -165,7 +165,8 @@ private struct HelmHeaderSearchField: NSViewRepresentable {
             self.focusRequests = focusRequests
         }
 
-        /// **⌘F opens and focuses the field, whatever the setting, whenever its window is key** (no other ⌘F handler
+        /// **⌘F opens and focuses the field, whatever the setting, whenever its window is key** (Caps Lock does not
+        /// matter; a field already being edited keeps its editor and only has its text selected) (no other ⌘F handler
         /// exists in the app, so the key is consumed on every page with a search). **Under Always Collapse Search a
         /// press outside it ends its editing**, so a field left empty folds back (the press goes on to whatever was
         /// clicked); with the setting off the press is left alone. One local monitor, installed with the field and
@@ -188,10 +189,17 @@ private struct HelmHeaderSearchField: NSViewRepresentable {
             guard let field, let window = field.window, event.window === window else { return false }
             switch event.type {
             case .keyDown:
-                guard window.isKeyWindow, event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+                // Only the modifiers a person holds for a shortcut: Caps Lock (and Fn, numeric pad) do not count.
+                guard window.isKeyWindow,
+                      event.modifierFlags.intersection([.command, .shift, .option, .control]) == .command,
                       event.keyCode == Self.fKey else { return false }
                 isOpen.wrappedValue = true
-                focusRequests.wrappedValue += 1
+                if let editor = field.currentEditor() {
+                    // Already being typed in: a new focus request would end the editing and restart it.
+                    editor.selectAll(nil)
+                } else {
+                    focusRequests.wrappedValue += 1
+                }
                 return true
             case .leftMouseDown:
                 if collapses, field.currentEditor() != nil,
@@ -207,6 +215,12 @@ private struct HelmHeaderSearchField: NSViewRepresentable {
         func controlTextDidChange(_ obj: Notification) {
             guard let field = obj.object as? NSSearchField else { return }
             search.text.wrappedValue = field.stringValue
+        }
+
+        /// The editor is up (the first change of an editing session): the slot is held open by it, even when the
+        /// person deletes the query and the text is empty again.
+        func controlTextDidBeginEditing(_ obj: Notification) {
+            isOpen.wrappedValue = true
         }
 
         /// The editing is over, wherever the focus went: the slot is no longer held open by it (a query still holds it).
