@@ -119,13 +119,25 @@ public enum AppBuild {
         identifier == releaseIdentifier
     }
 
-    /// A prerelease off the dev channel.
+    /// A build off the dev channel.
     ///
     /// The **build**, never the update channel: the channel is a picker anybody
     /// can move, and a shipped beta build must not change what it says it is
-    /// because somebody asked for updates sooner. A bundle that will not say is
-    /// not a dev build — the safe direction, since this gates the log.
-    public static var isDev: Bool { shortVersion?.contains("-dev") ?? false }
+    /// because somebody asked for updates sooner. The bundle names its channel in
+    /// `HelmChannel`, which `Scripts/package-app.sh` writes, because a dev build
+    /// carries a bare version (versioning standard, rule 1). A bundle that will
+    /// not say is not a dev build — the safe direction, since this gates the log.
+    public static var isDev: Bool {
+        isDev(channel: Bundle.main.infoDictionary?["HelmChannel"] as? String, shortVersion: shortVersion)
+    }
+
+    /// The rule behind `isDev`, on values a test can hand it. The key wins when
+    /// present; only a bundle packaged before the key (or a test host, which has
+    /// neither) falls back to the old `-dev` suffix.
+    static func isDev(channel: String?, shortVersion: String?) -> Bool {
+        if let channel { return channel == "DEV" }
+        return shortVersion?.contains("-dev") ?? false
+    }
 }
 
 /// Which of Helm's folders a build keeps its state in. Closed, so no caller can

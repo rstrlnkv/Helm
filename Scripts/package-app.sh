@@ -232,6 +232,29 @@ fi
 # what lets a caller (or a test) see an undercount without paying for a
 # release build to find out.
 echo "==> Build number: $BUILD_NO"
+
+# The channel this bundle belongs to, written below as HelmChannel. Versioning
+# standard rule 1 took the `-dev` suffix off dev builds, so a bare version can no
+# longer say it; AppBuild.isDev and make-dmg.sh read the key instead.
+# HELM_CHANNEL (exactly DEV, BETA or STABLE) wins; otherwise the branch decides:
+# beta is BETA, main is STABLE, any other named branch is DEV. A detached HEAD
+# names nothing, so it refuses. Before the compile, like the build number.
+if [ -n "${HELM_CHANNEL+x}" ]; then
+  CHANNEL="$HELM_CHANNEL"
+  case "$CHANNEL" in
+    DEV|BETA|STABLE) ;;
+    *) echo "!! Channel: HELM_CHANNEL is \"$CHANNEL\"; it must be exactly DEV, BETA or STABLE." >&2; exit 1 ;;
+  esac
+else
+  BRANCH="$(git -C "$REPO_ROOT" symbolic-ref --short -q HEAD 2>/dev/null || true)"
+  case "$BRANCH" in
+    beta) CHANNEL=BETA ;;
+    main) CHANNEL=STABLE ;;
+    "")   echo "!! Channel: HEAD is detached, so no branch names the channel. Set HELM_CHANNEL to DEV, BETA or STABLE." >&2; exit 1 ;;
+    *)    CHANNEL=DEV ;;
+  esac
+fi
+echo "==> Channel: $CHANNEL"
 # The bundle is assembled and signed OUTSIDE the repo.
 #
 # This checkout is meant to stay out from under a file provider (Architecture/Release.md § Signing and grants); one that
@@ -295,6 +318,7 @@ printf 'APPL????' > "$CONTENTS_DIR/PkgInfo"
 # fail, but a bad target path would, and that failure must stop the build
 # rather than ship the placeholder `1` with nothing said.
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NO" "$CONTENTS_DIR/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :HelmChannel string $CHANNEL" "$CONTENTS_DIR/Info.plist"
 
 echo "==> Compiling Liquid Glass app icon (Icon Composer .icon → Assets.car)"
 ICONOUT="$BUILD_DIR/iconout"

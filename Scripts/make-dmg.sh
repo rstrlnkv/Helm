@@ -31,9 +31,13 @@ STYLE="${HELM_DMG_STYLE:-bezel}"
 # A dev image says so on its face, and says it from the version rather than
 # from anyone remembering to pass a flag: a screenshot of a dev window turns up
 # in an issue sooner or later and must not be mistaken for a release.
-case "$VERSION" in
-  *-dev.*) DEV_FLAG="--dev" ;;
-  *)       DEV_FLAG="" ;;
+# The bundle's own HelmChannel says it (package-app.sh writes it; a dev build's
+# version carries no suffix). A bundle with no key predates it: the old rule.
+CHANNEL="$(/usr/libexec/PlistBuddy -c 'Print :HelmChannel' "$APP_DIR/Contents/Info.plist" 2>/dev/null || true)"
+case "$CHANNEL:$VERSION" in
+  DEV:*)    DEV_FLAG="--dev" ;;
+  :*-dev.*) DEV_FLAG="--dev" ;;
+  *)        DEV_FLAG="" ;;
 esac
 swift "$SCRIPT_DIR/design/make-dmg-background.swift" \
   "$BACKGROUND" "$STYLE" $DEV_FLAG >/dev/null

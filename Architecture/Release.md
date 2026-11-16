@@ -44,6 +44,11 @@ set: "1.0" is the claim that the program is ready for other people.
 
 ## Channels and publishing
 
+A bundle names its channel in the Info.plist key `HelmChannel` (`DEV`, `BETA` or `STABLE`), because
+a dev build carries a bare version. `Scripts/package-app.sh` takes it from `HELM_CHANNEL` when set,
+else from the branch (`beta` BETA, `main` STABLE, any other DEV; a detached HEAD refuses);
+`AppBuild.isDev` and `Scripts/make-dmg.sh` read it, and a bundle without the key falls back to the `-dev` suffix.
+
 Two releases carrying one version are invisible to the updater: `UpdateVersion.isNewer`
 requires a strictly greater version, so a release without a bump reaches nobody, and
 nothing published can pull a user back to an earlier build — there is no rollback, and

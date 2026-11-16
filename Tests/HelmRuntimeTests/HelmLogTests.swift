@@ -4,21 +4,21 @@ import XCTest
 /// Guards the dev build that an «off» saved by the beta silenced (fix 4ce355a9).
 final class LogPolicyTests: XCTestCase {
     func testDevBuildsLogByDefault() {
-        XCTAssertTrue(LogPolicy.isEnabled(version: "0.7.0-dev.2", override: nil))
-        XCTAssertTrue(LogPolicy.isEnabled(version: "1.0.0-dev", override: nil))
+        XCTAssertTrue(LogPolicy.isEnabled(isDev: true, override: nil))
+        XCTAssertTrue(LogPolicy.isEnabled(isDev: true, override: nil))
     }
 
     func testStableBuildsStaySilentUnlessAskedTo() {
-        XCTAssertFalse(LogPolicy.isEnabled(version: "0.7.0", override: nil))
-        XCTAssertTrue(LogPolicy.isEnabled(version: "0.7.0", override: true))
-        XCTAssertFalse(LogPolicy.isEnabled(version: "0.7.0", override: false))
+        XCTAssertFalse(LogPolicy.isEnabled(isDev: false, override: nil))
+        XCTAssertTrue(LogPolicy.isEnabled(isDev: false, override: true))
+        XCTAssertFalse(LogPolicy.isEnabled(isDev: false, override: false))
     }
 
     /// The page greys the switch on a dev build, so a «off» saved by the beta
     /// that shares the settings domain must not silence it with no way back.
     func testADevBuildLogsWhateverWasSaved() {
-        XCTAssertTrue(LogPolicy.isEnabled(version: "0.7.0-dev.2", override: false))
-        XCTAssertTrue(LogPolicy.isEnabled(version: "0.7.0-dev.2", override: true))
+        XCTAssertTrue(LogPolicy.isEnabled(isDev: true, override: false))
+        XCTAssertTrue(LogPolicy.isEnabled(isDev: true, override: true))
     }
 }
 

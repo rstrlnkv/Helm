@@ -18,8 +18,8 @@ public enum LogPolicy {
     /// reaches a dev build all the same: the installed Helm on the dev channel
     /// shares its settings domain with the beta, where the switch is live.
     /// Everywhere else the saved choice wins.
-    public static func isEnabled(version: String, override: Bool?) -> Bool {
-        if version.contains("-dev") { return true }
+    public static func isEnabled(isDev: Bool, override: Bool?) -> Bool {
+        if isDev { return true }
         return override ?? false
     }
 }
@@ -239,7 +239,7 @@ public final class HelmLog: @unchecked Sendable {
     /// Called once at launch with the running version; `override` comes from
     /// the user-facing switch (nil = follow the build type).
     public func start(version: String, override: Bool?) {
-        let on = LogPolicy.isEnabled(version: version, override: override)
+        let on = LogPolicy.isEnabled(isDev: AppBuild.isDev, override: override)
         queue.async { self.enabled = on; self.runVersion = version }
         discardPreRedactionLog()
         // Once a launch, not once a line. `append` creates the file privately,

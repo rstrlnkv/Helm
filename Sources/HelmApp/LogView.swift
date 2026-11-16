@@ -72,7 +72,7 @@ struct LogView: View {
     @State private var openStartups: Set<LogEntry.ID> = []
     @State private var tick: RepeatingTick?
     @State private var loggingOn = LogPolicy.isEnabled(
-        version: AppBuild.shortVersion ?? "0",
+        isDev: AppBuild.isDev,
         override: AppSettings.loggingOverride)
 
     /// Read once per body: the split, the filters and the folds are one pass
