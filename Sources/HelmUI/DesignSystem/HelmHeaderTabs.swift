@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// **The page's tabs in the header row: always whole, text only, never folded.**
+/// **The page's tabs in the header row: always whole, never folded.** Labelled by their word, a glyph or both
+/// (`ToolbarSwitcherStyle`, `HelmHeaderChoices`).
 ///
 /// Under `.flat` a plate of `HelmSurface.barPlate` holds the tabs and the pick is `HelmSurface.barPick`;
 /// under `.liquidGlass` the group is one glass container and the pick is a clear capsule with an outline. The pick slides to
@@ -17,6 +18,9 @@ struct HelmHeaderTabs: View {
     @Namespace private var space
     @Environment(\.helmBarAppearance) private var appearance
     @Environment(\.helmTraits) private var traits
+    /// How a tab is labelled (`HelmHeaderChoices`), read from the environment and never made an identity, so a
+    /// change of label keeps the pick where it is and sliding.
+    @Environment(\.helmHeaderChoices) private var choices
 
     init(tabs: [HelmToolbarTab], selection: Binding<String>, enabled: Bool) {
         self.tabs = tabs
@@ -25,7 +29,10 @@ struct HelmHeaderTabs: View {
         _shown = State(initialValue: selection.wrappedValue)
     }
 
-    private static let height: CGFloat = 28
+    /// The Kit's Segmented tabs (Figma 8:91): a 36 pt strip, 4 inside it a pill of 28 (radius 14, a capsule), 9 pt
+    /// either side of a word, 5 between two tabs. The same numbers under both looks.
+    private static let plate: CGFloat = 4
+    private static let pill = HelmHeaderActions.side - 2 * plate
 
     var body: some View {
         group
@@ -39,16 +46,16 @@ struct HelmHeaderTabs: View {
     private var group: some View {
         switch appearance {
         case .flat:
-            strip.padding(2).background(HelmSurface.barPlate, in: Capsule())
+            strip.padding(Self.plate).background(HelmSurface.barPlate, in: Capsule())
         case .liquidGlass:
             GlassEffectContainer(spacing: 0) {
-                strip.padding(2).glassEffect(.regular.interactive(), in: Capsule())
+                strip.padding(Self.plate).glassEffect(.regular.interactive(), in: Capsule())
             }
         }
     }
 
     private var strip: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 5) {
             ForEach(tabs, id: \.id) { tab in
                 Button { press(tab) } label: { label(tab) }
                     .buttonStyle(.plain)
@@ -60,17 +67,30 @@ struct HelmHeaderTabs: View {
     }
 
     private func label(_ tab: HelmToolbarTab) -> some View {
-        HStack(spacing: 5) {
-            // Never cut: a tab keeps its whole word, and `SettingsWindow.minSize` is measured with it. The
-            // selected tab reads by its ink as well as by its pick, (`.labelColor` over `.secondaryLabelColor`); one weight for both, so a pick does not change a width.
-            Text(tab.title).font(.system(size: 13, weight: .medium)).lineLimit(1).fixedSize()
-                .foregroundStyle(tab.id == shown ? Color(nsColor: .labelColor) : Color(nsColor: .secondaryLabelColor))
-            if tab.needsAttention {
-                Circle().fill(HelmSignal.warning(increased: traits.increasedContrast)).frame(width: 6, height: 6).accessibilityHidden(true)
+        let style = choices.tabLabels
+        let ink = tab.id == shown ? Color(nsColor: .labelColor) : Color(nsColor: .secondaryLabelColor)
+        return HStack(spacing: 5) {
+            switch style {
+            case .text:
+                word(tab, ink)
+                dot(tab)
+            case .icons:
+                // The Kit's glyph: SF Symbol, Regular, 15. The dot sits on the glyph, since there is no word
+                // to stand beside; the word is the tooltip and, as ever, the accessibility label.
+                Image(systemName: tab.symbol).font(.system(size: 15)).foregroundStyle(ink)
+                    .frame(width: 20)
+                    .overlay(alignment: .topTrailing) { dot(tab).offset(x: 3, y: -1) }
+                    .help(tab.title)
+            case .iconsAndText:
+                HStack(spacing: 6) {
+                    Image(systemName: tab.symbol).font(.system(size: 13)).foregroundStyle(ink)
+                    word(tab, ink)
+                }
+                dot(tab)
             }
         }
-        .padding(.horizontal, 12)
-        .frame(height: Self.height - 4)
+        .padding(.horizontal, 9)
+        .frame(height: Self.pill)
         .background {
             if tab.id == shown {
                 Capsule().fill(appearance == .flat ? AnyShapeStyle(HelmSurface.barPick) : AnyShapeStyle(.clear))
@@ -79,6 +99,20 @@ struct HelmHeaderTabs: View {
             }
         }
         .contentShape(Capsule())
+    }
+
+    /// Never cut: a tab keeps its whole word, and `SettingsWindow.minSize` is measured with it. The selected tab
+    /// reads by its ink as well as by its pick, (`.labelColor` over `.secondaryLabelColor`); the Kit's one weight,
+    /// Regular, for every state, so a pick does not change a width.
+    private func word(_ tab: HelmToolbarTab, _ ink: Color) -> some View {
+        Text(tab.title).font(.system(size: 13)).lineLimit(1).fixedSize().foregroundStyle(ink)
+    }
+
+    @ViewBuilder
+    private func dot(_ tab: HelmToolbarTab) -> some View {
+        if tab.needsAttention {
+            Circle().fill(HelmSignal.warning(increased: traits.increasedContrast)).frame(width: 6, height: 6).accessibilityHidden(true)
+        }
     }
 
     private func press(_ tab: HelmToolbarTab) {

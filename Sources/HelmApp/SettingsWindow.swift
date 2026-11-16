@@ -27,7 +27,7 @@ import HelmAppStrings
     /// (`DiskLayout.barWithStatement`), and at 940 the pane, the window less
     /// `ShellGeometry.defaultSidebarWidth` and `ShellGeometry.inset`, is under it, so the
     /// statement never appeared out of the box and nothing suggested widening
-    /// the window would reveal it. 1060 cleared it; the default is now `minSize` and a margin, because the
+    /// the window would reveal it. 1060 cleared it; the default is now `minSize` and a margin of 4, because the
     /// Log page's header in German needs more than that (`minSize`).
     ///
     /// Not private: `SidebarComposerSheet` caps itself at this height, because
@@ -39,20 +39,26 @@ import HelmAppStrings
     /// module (Screenshots, in Utilities) made the shipped composer measure 723,
     /// which 700 could not hold. With Hosts archived (the tag `archive/hosts`)
     /// there are ten, one 40 pt row fewer; the height was left at 760.
-    nonisolated static let defaultSize = NSSize(width: 1100, height: 760)
-    /// Below this the Log page's header row, the fullest one, no longer fits the card in German.
+    nonisolated static let defaultSize = NSSize(width: 1211, height: 760)
+    /// Below this the Log page's header row, the fullest one, no longer fits the card in German with its tabs
+    /// labelled by glyph and word (`ToolbarSwitcherStyle.iconsAndText`, the widest of the three labellings).
     ///
-    /// **1096 is that row in German at the default sidebar** (`ShellGeometry.defaultSidebarWidth`, 200, which
-    /// nothing in the window changes): «Einstellungen», the tabs «Grundlagen | Protokoll | Über Helm», five
-    /// actions and the search at `HelmHeaderSearch.width`. Read from `HelmReadout ax` frames on Helm Dev at the
-    /// old 1045 minimum, where the row overflowed and was centred, as the row width the frames add up to
-    /// (the plate's left edge, 40 left of the name, to the search's right edge) — German 850, French 838,
-    /// Spanish 810, Russian 805, English, Portuguese, Japanese and Chinese 801 (the room): 850 pt of row,
-    /// 20 pt of gutter each side, 200 of sidebar and 4 of window inset: 1094, and 2 more for a frame rounded
-    /// to whole points. The search could not give way instead: French's «Rechercher dans le journal»
-    /// has about 8 pt to spare in the 200. A sidebar stored wider than the default
+    /// **1207 is that row in German at the default sidebar** (`ShellGeometry.defaultSidebarWidth`, 200, which
+    /// nothing in the window changes): «Einstellungen», the tabs «Grundlagen | Protokoll | Über Helm» each with its
+    /// glyph, five actions and the search at `HelmHeaderSearch.width`, with the Kit's insets (plate 14 from the
+    /// left, controls 10 from the right). Read from `HelmReadout ax` frames on 2026-11-16, Helm Dev 0.11.2 build 2024,
+    /// on the Log page in each of the eight languages with `-module.app.toolbarSwitcherStyle iconsAndText`: the
+    /// name's frame plus the tab group's (the buttons' span plus the strip's 4 either side), whose sum is what
+    /// changes with the language: German 426, French 414, Spanish 387, Russian 382, Portuguese 373, English 333,
+    /// Japanese 299, Chinese 282. (Text only, as measured earlier the same day, was German 361 … Chinese 217; the
+    /// glyph and its 6 pt gap add 65 to the German row.) The rest is the same in all eight: 14 + 24 plate + 12 +
+    /// the name + 36 (12, the spacer's least 12, 12) + the tabs + 8 + 471 (five 36 pt actions, 8, the search's 283)
+    /// + 10, which is 575 + 426 = 1001 in German; the card is the window less 200 of sidebar and 4 of window inset,
+    /// so 1205, and 2 more for a frame rounded to whole points. (Text only, 1142, and the old row, with 20 of
+    /// gutter each side and a 200 pt search, 1096, were narrower; raised, never lowered, by the owner's decision.)
+    /// The search could not give way instead. A sidebar stored wider than the default
     /// (`ShellGeometry.sidebarRange` goes to 320) is not held by this number.
-    private static let minSize = NSSize(width: 1096, height: 540)
+    private static let minSize = NSSize(width: 1207, height: 540)
 
     /// The header row's band is the running system's decision (`HelmBandChoice.running`), handed to the pane.
     init(host: ModuleHost) {
@@ -135,6 +141,7 @@ import HelmAppStrings
             counted = true
             HostWindow.windowOpened()
         }
+        watchHeaderPresses()
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
         // A window ordered front without the app's activation gets no key or main notification until
@@ -143,10 +150,57 @@ import HelmAppStrings
     }
 
     func windowWillClose(_ notification: Notification) {
+        stopWatchingHeaderPresses()
         if counted {
             counted = false
             HostWindow.windowClosed()
         }
+    }
+
+    // MARK: - The header row's right-click menu
+
+    /// Read in `deinit`, which Swift 6 treats as nonisolated even on a main-actor class.
+    nonisolated(unsafe) private var headerPressMonitor: Any?
+
+    deinit {
+        if let headerPressMonitor { NSEvent.removeMonitor(headerPressMonitor) }
+    }
+
+    /// One press, across the line between a monitor's `@Sendable` handler and the main actor it already runs on.
+    private struct HeaderPress: @unchecked Sendable {
+        let event: NSEvent
+    }
+
+    /// **A local monitor, installed while the window is shown and removed when it closes** (`deinit` too): the
+    /// header row lies in the title bar zone, where AppKit takes a right-click before the hosting view
+    /// (`HeaderBarMenu`'s header). A press the menu takes is swallowed, any other goes on.
+    private func watchHeaderPresses() {
+        guard headerPressMonitor == nil else { return }
+        headerPressMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
+            [weak self] event in
+            let press = HeaderPress(event: event)
+            let taken = MainActor.assumeIsolated { self?.popUpHeaderMenu(press.event) ?? false }
+            return taken ? nil : event
+        }
+    }
+
+    private func stopWatchingHeaderPresses() {
+        if let headerPressMonitor { NSEvent.removeMonitor(headerPressMonitor) }
+        headerPressMonitor = nil
+    }
+
+    /// Pops the menu up if `event` is the gesture on the header row; whether it did.
+    private func popUpHeaderMenu(_ event: NSEvent) -> Bool {
+        guard event.window === window, let content = window.contentView,
+              let shell = (window.contentViewController as? SettingsShellViewController)?.shell else { return false }
+        let card = shell.paneFrameInWindow
+        let band = NSRect(x: card.minX, y: card.maxY - HelmCardHeaderBand.height,
+                          width: card.width, height: HelmCardHeaderBand.height)
+        guard HeaderBarMenu.opens(type: event.type, modifiers: event.modifierFlags, at: event.locationInWindow,
+                                  band: band, excluding: HeaderBarMenu.excluded(in: window)) else { return false }
+        let menu = HeaderBarMenu.menu(hasTabs: model.pageHasTabs, hasSearch: model.pageHasSearch)
+        NSMenu.popUpContextMenu(menu, with: event, for: content)
+        return true
     }
 
     // MARK: - Whether AppKit draws this window's chrome active
@@ -229,6 +283,13 @@ enum SettingsSelection: Hashable {
     /// the whole subtree is made again.
     @Published private(set) var languageRevision = 0
     private var liveWatch: AnyCancellable?
+
+    /// Whether the page on screen declared tabs in its header row, mirrored from what the row draws
+    /// (`HelmPageHasTabsKey`, through `mirrorsHeaderFacts`): a module's page declares its own (Homebrew's three,
+    /// Leftovers' two only while its list is not empty), General, Log and About the settings tabs.
+    @Published var pageHasTabs = false
+    /// Whether it declared a search (`HelmPageHasSearchKey`): the menu's Always Collapse Search is offered only then.
+    @Published var pageHasSearch = false
 
     init(host: ModuleHost) {
         self.host = host
@@ -346,12 +407,16 @@ enum SettingsSelection: Hashable {
                 // The look of the header row's tabs and actions, from the stored choice and live
                 // (`HelmBarAppearance`).
                 .helmTracksBarAppearance { AppSettings.barAppearance }
+                // How the row names its page and labels its tabs, from the stored choices and live
+                // (`HelmHeaderChoices`).
+                .helmTracksHeaderChoices { AppSettings.headerChoices }
                 // Whether the row wears Helm's band at all, as the system's decision.
                 .environment(\.helmBandChoice, band)
                 .modifier(TellsWindowActivity(model: model))
                 .onPreferenceChange(HelmPageTitleKey.self) { [model] title in
                     model.pageTitle = title
                 }
+                .mirrorsHeaderFacts(into: model)
                 .environment(\.helmHeaderInCard, true)
                 .modifier(RebuiltOnLanguageChange(model: model))
                 .helmRoot()
@@ -552,5 +617,17 @@ private struct RebuiltOnLanguageChange: ViewModifier {
 
     func body(content: Content) -> some View {
         content.id(model.languageRevision)
+    }
+}
+
+extension View {
+    /// Keeps `model.pageHasTabs` and `model.pageHasSearch` equal to what the page on screen declared for the row.
+    func mirrorsHeaderFacts(into model: SettingsModel) -> some View {
+        onPreferenceChange(HelmPageHasTabsKey.self) { [model] hasTabs in
+            model.pageHasTabs = hasTabs ?? false
+        }
+        .onPreferenceChange(HelmPageHasSearchKey.self) { [model] hasSearch in
+            model.pageHasSearch = hasSearch ?? false
+        }
     }
 }

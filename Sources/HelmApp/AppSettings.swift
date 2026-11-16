@@ -49,6 +49,67 @@ extension Notification.Name {
         NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
     }
 
+    /// How the header row names its page (`PageBarStyle`): with its plate unless Without Icon is stored.
+    /// Nothing unattended reads it, so it is not sealed. A write equal to the stored value is refused, so
+    /// nothing is posted for it.
+    static var pageBarStyle: PageBarStyle {
+        get { pageBarStyle(in: store) }
+        set { setPageBarStyle(newValue, in: store) }
+    }
+
+    static func pageBarStyle(in store: NamespacedStore) -> PageBarStyle {
+        PageBarStyle(stored: store.string(PageBarStyle.storageKey, default: ""))
+    }
+
+    static func setPageBarStyle(_ value: PageBarStyle, in store: NamespacedStore) {
+        guard value != pageBarStyle(in: store) else { return }
+        store.set(value.rawValue, for: PageBarStyle.storageKey)
+        NotificationCenter.default.post(name: .helmHeaderChoicesChanged, object: nil)
+    }
+
+    /// How the header row's tabs are labelled (`ToolbarSwitcherStyle`): by text unless another is stored.
+    /// Nothing unattended reads it, so it is not sealed; writes equal to the stored value are refused.
+    static var toolbarSwitcherStyle: ToolbarSwitcherStyle {
+        get { toolbarSwitcherStyle(in: store) }
+        set { setToolbarSwitcherStyle(newValue, in: store) }
+    }
+
+    static func toolbarSwitcherStyle(in store: NamespacedStore) -> ToolbarSwitcherStyle {
+        ToolbarSwitcherStyle(stored: store.string(ToolbarSwitcherStyle.storageKey, default: ""))
+    }
+
+    static func setToolbarSwitcherStyle(_ value: ToolbarSwitcherStyle, in store: NamespacedStore) {
+        guard value != toolbarSwitcherStyle(in: store) else { return }
+        store.set(value.rawValue, for: ToolbarSwitcherStyle.storageKey)
+        NotificationCenter.default.post(name: .helmHeaderChoicesChanged, object: nil)
+    }
+
+    /// **Whether the header row's search rests as a 36 pt magnifier** while it is empty and nobody is editing it
+    /// (`HelmHeaderSearch.rests`): chosen from the row's right-click menu (`HeaderBarMenu`). Off unless somebody
+    /// turns it on. A query left in the field keeps it open. A `Bool` is bounded by its type and nothing
+    /// unattended reads it, so it is not sealed; a write equal to the stored value is refused, so nothing is posted
+    /// for it. The key is the toolbar's day one (`HelmHeaderChoices`), spelt here so `ObsoleteDefaultsTests`' scan covers it.
+    static var alwaysCollapseSearch: Bool {
+        get { alwaysCollapseSearch(in: store) }
+        set { setAlwaysCollapseSearch(newValue, in: store) }
+    }
+
+    static func alwaysCollapseSearch(in store: NamespacedStore) -> Bool {
+        store.bool("alwaysCollapseSearch", default: false)
+    }
+
+    static func setAlwaysCollapseSearch(_ value: Bool, in store: NamespacedStore) {
+        guard value != alwaysCollapseSearch(in: store) else { return }
+        store.set(value, for: "alwaysCollapseSearch")
+        NotificationCenter.default.post(name: .helmHeaderChoicesChanged, object: nil)
+    }
+
+    /// The three choices as the header row reads them.
+    static var headerChoices: HelmHeaderChoices {
+        HelmHeaderChoices(pageBar: pageBarStyle, tabLabels: toolbarSwitcherStyle,
+                          collapseSearch: alwaysCollapseSearch)
+    }
+
     /// **Whether the settings window's sidebar is folded to the rail**, as a person last left it
     /// (`SettingsShellViewController.flipSidebar`). A stored string, or a number other than 0 and 1, reads as
     /// expanded; a stored number 1 reads as folded. Read once, when a window is built, and nothing unattended reads it, so it is not

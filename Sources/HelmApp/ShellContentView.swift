@@ -106,6 +106,9 @@ final class ShellContentView: NSView {
     private let sidebar: NSView
     private let pane: NSView
 
+    /// The card's page area in window coordinates, for the window to place presses on the header row.
+    var paneFrameInWindow: NSRect { pane.convert(pane.bounds, to: nil) }
+
     /// The Flat look's ground: the system's flat material behind the window (probe: it follows the window's
     /// activity by itself).
     private let flat = NSVisualEffectView()

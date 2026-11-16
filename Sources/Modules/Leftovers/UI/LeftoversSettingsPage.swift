@@ -159,8 +159,9 @@ struct LeftoversSettingsPage: View {
     private var toolbarContent: HelmPageToolbarContent {
         let hasList = !lvm.items.isEmpty
         return HelmPageToolbarContent(
-            tabs: hasList ? [HelmToolbarTab(id: "onlyLeftovers", title: HelmWord.leftovers),
-                            HelmToolbarTab(id: "all", title: LfStr.filterAll)] : [],
+            tabs: hasList ? [HelmToolbarTab(id: "onlyLeftovers", title: HelmWord.leftovers,
+                                            symbol: "doc.badge.ellipsis"),
+                            HelmToolbarTab(id: "all", title: LfStr.filterAll, symbol: "list.bullet")] : [],
             selectedTab: hasList ? Binding(get: { lvm.showAll ? "all" : "onlyLeftovers" },
                                            set: { lvm.showAll = ($0 == "all") }) : nil,
             actions: [

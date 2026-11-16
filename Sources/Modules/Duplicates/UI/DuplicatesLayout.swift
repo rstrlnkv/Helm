@@ -6,10 +6,10 @@ import Module_Duplicates_Engine
 /// symbol and no control goes, because every width the page can have holds all
 /// of them.
 ///
-/// The settings window is 1096 pt wide at its minimum (`SettingsWindow`'s
+/// The settings window is 1207 pt wide at its minimum (`SettingsWindow`'s
 /// `minSize`), and the card takes the window less the sidebar and a 4 pt inset
 /// (`ShellGeometry.inset`). A sidebar stored at its widest, 320
-/// (`ShellGeometry.sidebarRange`), leaves 1096 − 320 − 4 = 772 pt, the narrowest
+/// (`ShellGeometry.sidebarRange`), leaves 1207 − 320 − 4 = 883 pt, the narrowest
 /// pane the page is ever given.
 ///
 /// What the page needs is under that. The toolbar was measured by drawing the
@@ -23,7 +23,7 @@ import Module_Duplicates_Engine
 /// | toolbar: path and three labelled controls             |  721 pt   | fr     |
 /// | basket: count, labelled clear control, trash button   |  587.3 pt | de     |
 ///
-/// Both fit in 772 pt, so the toolbar's controls and the basket's keep their
+/// Both fit in 883 pt (the narrowest pane, 1207 − 320 − 4), so the toolbar's controls and the basket's keep their
 /// words at every width, and the path is the one piece that truncates — down to
 /// `pathWidth`'s floor, because `/…re` is not a location.
 enum DuplicatesLayout {
