@@ -4,7 +4,7 @@ The number is `MAJOR.MINOR.PATCH`. It lives in one place,
 `Resources/HelmApp/Info.plist` under `CFBundleShortVersionString`, and
 `/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/HelmApp/Info.plist`
 is what the tree currently says it is. `CFBundleVersion` in that file is a placeholder:
-`Scripts/package-app.sh:222` computes the build number as `git rev-list --count HEAD`
+`Scripts/package-app.sh` computes the build number (the `BUILD_NO` assignment) as `git rev-list --count HEAD`
 (`--no-replace-objects` and `-c core.commitGraph=false` alongside it, so neither a
 replacement ref nor a forged or stale commit-graph cache can shorten the history it
 walks), after refusing a checkout whose history cannot be trusted — none at all; a
@@ -17,7 +17,7 @@ the compile it guards, and `Scripts/package-app.sh` (the step that sets `CFBundl
 plist *of the assembled bundle*, so the tree's copy and a shipped bundle's copy disagree
 by design.
 
-`make-zip.sh` and `make-dmg.sh` print the staged bundle's channel (`==> Channel: BETA`) beside its version: a release build checks that line against the tag's channel before publishing, and a release from anything but its own branch sets `HELM_CHANNEL` explicitly.
+`make-zip.sh` and `make-dmg.sh` print the staged bundle's channel on a line of its own (`==> Channel: BETA`, read from its `HelmChannel` key; the version appears only in the zipping or building line and the `sha256` line): a release build checks that line against the tag's channel before publishing, and a release from anything but its own branch sets `HELM_CHANNEL` explicitly.
 
 A release tag is `vMAJOR.MINOR.PATCH`; a prerelease tag cut before 2026-11-14 is
 `vMAJOR.MINOR.PATCH-dev.N`. Since 2026-11-14 (versioning standard, rule 6) a build is tagged `vX.Y.Z.DEV.<build>` or

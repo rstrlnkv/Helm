@@ -193,7 +193,7 @@ empty states; a verdict's plate is `HelmSignalPlate`.
 split by hairlines — and the one place the product draws it is About's instrument row,
 inside a `helmCard`. `Sources/HelmUI/DesignSystem/HelmAppMark.swift` draws the mark from
 `Resources/Icon/Helm.icon/Assets/helm-ring.svg` — the artwork the app icon is built from,
-copied in by `Scripts/package-app.sh:269` — rather than reading the icon back, because macOS
+copied in by the `cp` of `helm-ring.svg` in `Scripts/package-app.sh` — rather than reading the icon back, because macOS
 26 resolves `.icon` variants at the system level and the light variant's white slab reads
 as a hole inside Helm's surfaces. `Sources/HelmUI/DesignSystem/HelmBadge.swift` is the one
 pill, its tint colouring the fill and nothing else. `HelmAppHero.swift` is About's mark in its bezel over the wordmark, whose bezel rotates only
