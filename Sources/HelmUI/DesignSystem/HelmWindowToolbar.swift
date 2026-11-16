@@ -184,12 +184,15 @@ public struct HelmTrailingRun: Sendable {
         self.search = search
     }
 
-    /// The run's width: the actions' buttons (`HelmHeaderActions.side` each), the row's 12 pt gap, the
+    /// **The one gap of the header row**: tabs to actions, actions to search, tabs to search. The Kit's 8.
+    nonisolated static let gap = HelmSpace.s4
+
+    /// The run's width: the actions' buttons (`HelmHeaderActions.side` each), `gap`, the
     /// search's fixed width (`HelmHeaderSearch.width`); language-independent, all three.
     var width: CGFloat {
         let buttons = HelmHeaderActions.side * CGFloat(actions)
         let field = search ? HelmHeaderSearch.width : 0
-        return buttons + field + (actions > 0 && search ? 12 : 0)
+        return buttons + field + (actions > 0 && search ? Self.gap : 0)
     }
 }
 

@@ -6,8 +6,8 @@ import SwiftUI
 /// every declared one is kept, so the ones that stay do not slide when another comes or goes (the old
 /// capsule's 2026-11-15 "no empty slot" rule is not carried: here the reserve is the design, and
 /// `HelmPageToolbarContent.reserves` is where a shared strip widens it; see `ThePageHeader`). Under
-/// `.liquidGlass` each button wears the system's glass, joined into one group; under `.flat` the glyphs
-/// stand bare. Pressing runs the action's own closure — there is no model between.
+/// `.liquidGlass` each button wears the system's glass, joined into one group; under `.flat` one capsule of
+/// `HelmSurface.barPlate`, 36 high, stands behind the visible glyphs only. Pressing runs the action's own closure — there is no model between.
 struct HelmHeaderActions: View {
     let actions: [HelmToolbarAction]
 
@@ -15,8 +15,7 @@ struct HelmHeaderActions: View {
     @Environment(\.helmBarAppearance) private var appearance
     @Environment(\.helmTraits) private var traits
 
-    /// 36 pt — AppKit's own bordered toolbar button's height, measured against a live window. The tab strip beside them is 28 pt
-    /// (`HelmHeaderTabs`); the row's `HStack` centres both on one line.
+    /// 36 pt — the Kit's control height (the row is this with 8 above and below, `CardHeader.height`), the tab strip's and the search's too.
     nonisolated static let side = CGFloat(36)
     /// A disabled glyph's dimming, fit to what AppKit's own disabled toolbar glyph reads back on screen (a
     /// measurement of the old toolbar's capsule, taken per appearance; the display moves it by a few hundredths).
@@ -35,6 +34,11 @@ struct HelmHeaderActions: View {
                 HStack(spacing: 0) {
                     ForEach(actions.filter(\.isVisible), id: \.id) { action in
                         backing(control(action).help(action.title).disabled(!action.isEnabled), for: action)
+                    }
+                }
+                .background {
+                    if appearance == .flat, actions.contains(where: \.isVisible) {
+                        Capsule(style: .continuous).fill(HelmSurface.barPlate)
                     }
                 }
             }

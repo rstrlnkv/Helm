@@ -185,8 +185,8 @@ background instantly while the disappearing rows keep drawing over what sits bel
 ## The visual language
 
 Every screen speaks one visual language derived from the app's subject.
-`Sources/HelmUI/DesignSystem/HelmPageHeader.swift` is icon plate, title, the module's status, and at the far end
-the page's own controls (`HelmHeaderControls`: tabs, actions, search); it has no summary line. `HelmIconPlate` is the
+`Sources/HelmUI/DesignSystem/HelmPageHeader.swift` is a 24 pt icon plate, title, the module's status, and at the far end
+the page's own controls (`HelmHeaderControls`: tabs, actions, search, 36 pt high, 8 pt apart, in a 52 pt row: the Kit's `Toolbar`, numbers in `ThePageHeader`); it has no summary line. `HelmIconPlate` is the
 symbol on the module's own colour (`descriptor.moduleTint.colour`) and stands alone in
 empty states; a verdict's plate is `HelmSignalPlate`.
 `HelmMetricStrip` is an instrument readout — monospaced figures over small-caps labels,

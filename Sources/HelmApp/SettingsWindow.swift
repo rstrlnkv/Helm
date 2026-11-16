@@ -27,7 +27,7 @@ import HelmAppStrings
     /// (`DiskLayout.barWithStatement`), and at 940 the pane, the window less
     /// `ShellGeometry.defaultSidebarWidth` and `ShellGeometry.inset`, is under it, so the
     /// statement never appeared out of the box and nothing suggested widening
-    /// the window would reveal it. 1060 cleared it; the default is now `minSize` and a margin, because the
+    /// the window would reveal it. 1060 cleared it; the default is now `minSize` and a margin of 4, because the
     /// Log page's header in German needs more than that (`minSize`).
     ///
     /// Not private: `SidebarComposerSheet` caps itself at this height, because
@@ -39,20 +39,22 @@ import HelmAppStrings
     /// module (Screenshots, in Utilities) made the shipped composer measure 723,
     /// which 700 could not hold. With Hosts archived (the tag `archive/hosts`)
     /// there are ten, one 40 pt row fewer; the height was left at 760.
-    nonisolated static let defaultSize = NSSize(width: 1100, height: 760)
+    nonisolated static let defaultSize = NSSize(width: 1146, height: 760)
     /// Below this the Log page's header row, the fullest one, no longer fits the card in German.
     ///
-    /// **1096 is that row in German at the default sidebar** (`ShellGeometry.defaultSidebarWidth`, 200, which
+    /// **1142 is that row in German at the default sidebar** (`ShellGeometry.defaultSidebarWidth`, 200, which
     /// nothing in the window changes): «Einstellungen», the tabs «Grundlagen | Protokoll | Über Helm», five
-    /// actions and the search at `HelmHeaderSearch.width`. Read from `HelmReadout ax` frames on Helm Dev at the
-    /// old 1045 minimum, where the row overflowed and was centred, as the row width the frames add up to
-    /// (the plate's left edge, 40 left of the name, to the search's right edge) — German 850, French 838,
-    /// Spanish 810, Russian 805, English, Portuguese, Japanese and Chinese 801 (the room): 850 pt of row,
-    /// 20 pt of gutter each side, 200 of sidebar and 4 of window inset: 1094, and 2 more for a frame rounded
-    /// to whole points. The search could not give way instead: French's «Rechercher dans le journal»
-    /// has about 8 pt to spare in the 200. A sidebar stored wider than the default
+    /// actions and the search at `HelmHeaderSearch.width`, with the Kit's insets (plate 14 from the left,
+    /// controls 10 from the right). Read from `HelmReadout ax` frames on 2026-11-16, Helm Dev 0.11.2 build 2023, at the default size, on the
+    /// Log page in each of the eight languages: the name's frame and the tab group's, whose sum is what changes
+    /// with the language: German 361, French 349, Spanish 322, Russian 317, Portuguese 308, English 268,
+    /// Japanese 234, Chinese 217. The rest is the same in all eight: 14 + 24 plate + 12 + the name + 36
+    /// (12, the spacer's least 12, 12) + the tabs + 8 + 471 (five 36 pt actions, 8, the search's 283) + 10, which is
+    /// 575 + 361 = 936 in German; the card is the window less 200 of sidebar and 4 of window inset, so 1140, and
+    /// 2 more for a frame rounded to whole points. (The old row, with 20 of gutter each side and a 200 pt search,
+    /// was 850: 1096.) The search could not give way instead. A sidebar stored wider than the default
     /// (`ShellGeometry.sidebarRange` goes to 320) is not held by this number.
-    private static let minSize = NSSize(width: 1096, height: 540)
+    private static let minSize = NSSize(width: 1142, height: 540)
 
     /// The header row's band is the running system's decision (`HelmBandChoice.running`), handed to the pane.
     init(host: ModuleHost) {

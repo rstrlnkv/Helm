@@ -25,7 +25,10 @@ struct HelmHeaderTabs: View {
         _shown = State(initialValue: selection.wrappedValue)
     }
 
-    private static let height: CGFloat = 28
+    /// The Kit's Segmented tabs (Figma 8:91): a 36 pt strip, 4 inside it a pill of 28 (radius 14, a capsule), 9 pt
+    /// either side of a word, 5 between two tabs. The same numbers under both looks.
+    private static let plate: CGFloat = 4
+    private static let pill = HelmHeaderActions.side - 2 * plate
 
     var body: some View {
         group
@@ -39,16 +42,16 @@ struct HelmHeaderTabs: View {
     private var group: some View {
         switch appearance {
         case .flat:
-            strip.padding(2).background(HelmSurface.barPlate, in: Capsule())
+            strip.padding(Self.plate).background(HelmSurface.barPlate, in: Capsule())
         case .liquidGlass:
             GlassEffectContainer(spacing: 0) {
-                strip.padding(2).glassEffect(.regular.interactive(), in: Capsule())
+                strip.padding(Self.plate).glassEffect(.regular.interactive(), in: Capsule())
             }
         }
     }
 
     private var strip: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 5) {
             ForEach(tabs, id: \.id) { tab in
                 Button { press(tab) } label: { label(tab) }
                     .buttonStyle(.plain)
@@ -62,15 +65,15 @@ struct HelmHeaderTabs: View {
     private func label(_ tab: HelmToolbarTab) -> some View {
         HStack(spacing: 5) {
             // Never cut: a tab keeps its whole word, and `SettingsWindow.minSize` is measured with it. The
-            // selected tab reads by its ink as well as by its pick, (`.labelColor` over `.secondaryLabelColor`); one weight for both, so a pick does not change a width.
-            Text(tab.title).font(.system(size: 13, weight: .medium)).lineLimit(1).fixedSize()
+            // selected tab reads by its ink as well as by its pick, (`.labelColor` over `.secondaryLabelColor`); the Kit's one weight, Regular, for every state, so a pick does not change a width.
+            Text(tab.title).font(.system(size: 13)).lineLimit(1).fixedSize()
                 .foregroundStyle(tab.id == shown ? Color(nsColor: .labelColor) : Color(nsColor: .secondaryLabelColor))
             if tab.needsAttention {
                 Circle().fill(HelmSignal.warning(increased: traits.increasedContrast)).frame(width: 6, height: 6).accessibilityHidden(true)
             }
         }
-        .padding(.horizontal, 12)
-        .frame(height: Self.height - 4)
+        .padding(.horizontal, 9)
+        .frame(height: Self.pill)
         .background {
             if tab.id == shown {
                 Capsule().fill(appearance == .flat ? AnyShapeStyle(HelmSurface.barPick) : AnyShapeStyle(.clear))

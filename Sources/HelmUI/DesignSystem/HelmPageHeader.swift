@@ -366,6 +366,10 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// The row's elements — name, status, tabs, actions, search — dim as one; the ground under them does not,
     /// so a header over content hides what passes behind it as well in a window that is not the active one.
     let dimmed: Bool
+    /// The plate's distance from the row's left edge and the controls' from its right. 20 and 20 (`HelmLayout.formInset`)
+    /// where the row heads a page on its own; the card's row passes the Kit's 14 and 10 (`CardHeader`).
+    let leadingInset: CGFloat
+    let trailingInset: CGFloat
     let trailing: Trailing
 
     public init(symbol: String, tint: Color, title: String,
@@ -383,7 +387,8 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// no `helmPageHeader` to declare it through.
     init(symbol: String, tint: Color, title: String, bleeds: Bool,
          overContent: Bool, scrolled: Bool, standsOnStillContent: Bool, status: HelmHeaderStatus? = nil,
-         dimmed: Bool = false,
+         dimmed: Bool = false, leadingInset: CGFloat = HelmLayout.formInset,
+         trailingInset: CGFloat = HelmLayout.formInset,
          @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.symbol = symbol
         self.tint = tint
@@ -394,6 +399,8 @@ public struct HelmPageHeader<Trailing: View>: View {
         self.standsOnStillContent = standsOnStillContent
         self.status = status
         self.dimmed = dimmed
+        self.leadingInset = leadingInset
+        self.trailingInset = trailingInset
         self.trailing = trailing()
     }
 
@@ -417,12 +424,8 @@ public struct HelmPageHeader<Trailing: View>: View {
 
     private var row: some View {
         HStack(spacing: 12) {
-            // 28, asked of the mockup itself rather than counted off a picture:
-            // `.pagehead` measures 46 tall and its plate 28. Ours was the 44 pt
-            // plate the About window uses for the app's own icon, and a 44 pt
-            // square with 18 pt above and below is an 80 pt strip — a third of
-            // the height before the first control, on every page.
-            HelmIconPlate(symbol: symbol, tint: tint, size: 28)
+            // 24, the Kit's `Toolbar` (Figma 309:216): the plate is 24 and the title starts 12 after it.
+            HelmIconPlate(symbol: symbol, tint: tint, size: 24)
             // 16, the redesign's «заголовок» step. It was 20, which is not on
             // the ladder at all — the six sizes are 10 · 11 · 13 · 16 · 22 · 40
             // — and with the summary gone the name no longer has to hold a
@@ -445,33 +448,26 @@ public struct HelmPageHeader<Trailing: View>: View {
             trailing
         }
         .opacity(dimmed ? HelmText.inactiveOpacity : 1)
-        // **20 across, not the redesign's 18.** The mockups draw this strip and
-        // the pane below it at one gutter, and moving only the header to 18
-        // breaks the rule that matters more: a bleeding page's content starts
-        // at 20, and the two have to begin at the same x. The gutter is an
-        // app-wide number; changing it is its own pass, not a side effect of
-        // restyling a header.
-        .padding(.horizontal, HelmLayout.formInset)
-        // 12 above and below a 28 pt plate is **52** — System Settings' own
-        // strip, measured on the Accessibility pane at 2× as 11,5 over a 29,0
-        // pt back-forward control and 11,5 under it.
-        //
-        // The *sum* is taken and the parts are not. 11,5 is a step of nothing
-        // and 29 is not a size this app has; 12 is `HelmSpace.s5` and 28 is
-        // `HelmIconPlate`'s, and they happen to add to the system's total —
-        // which is the one arrangement of this strip that is both the system's
-        // height and on Helm's ladders. It was 9 and 46, the mockup's strip,
-        // derived the same way from the same plate.
-        .padding(.vertical, HelmSpace.s5)
+        // **The row's insets are the caller's.** The Kit's card row has its plate 14 from the card's edge and its
+        // controls 10 from the other (`CardHeader`), while the content below starts at 20
+        // (`HelmLayout.formInset`): the row is chrome and the page's gutter is content's, and the two no longer
+        // begin at one x. A header over a page on its own keeps 20 and 20.
+        .padding(.leading, leadingInset)
+        .padding(.trailing, trailingInset)
+        // The row is **52**: the Kit's 36 pt controls with 8 above and below. `minHeight` holds the 36 on a page
+        // whose row has no control (24 pt plate alone), so no page's row is shorter than another's.
+        .frame(minHeight: HelmHeaderActions.side)
+        .padding(.vertical, HelmSpace.s4)
         // On the same column as the content below it. Which column that is
         // depends on the page: outside the card a grouped Form is capped at 744 pt
-        // and centred, so its header is too — but a full-bleed page draws its toolbar at a
-        // flat 20 pt inset across the whole pane, and a centred header above
-        // it walks away as the window grows. Measured on a 1400 pt window: the
-        // title sat 203 pt right of the controls beneath it. It has never
-        // been seen because at the default window the pane is 690 pt —
-        // narrower than the column, where the two rules agree. Only a header
-        // drawn in the page can get `false` here; the card's passes `true`.
+        // and centred, so its header is too — but a full-bleed page draws its toolbar
+        // across the whole pane, and a centred header above it walks away as the
+        // window grows. Measured on a 1400 pt window: the title sat 203 pt right of
+        // the controls beneath it (with the old 20 pt insets). It has never been seen
+        // because at the default window the pane is 690 pt — narrower than the
+        // column, where the two rules agree. Only a header drawn in the page can get
+        // `false` here; the card's passes `true`, and its row's insets are the Kit's
+        // 14 and 10, not the 20 of the page's gutter (above).
         .frame(maxWidth: bleeds ? .infinity : HelmLayout.settingsColumn)
         // The lighting goes on the pane-wide frame and not the one above it:
         // macOS lights the whole strip, and on a grouped-`Form` page drawn outside
@@ -618,8 +614,11 @@ private struct CardHeader: ViewModifier {
     @State private var standsOnStillContent = false
     @Environment(\.helmWindowAppearsActive) private var windowAppearsActive
 
-    /// The 28 pt plate and `HelmSpace.s5` above and below it: System Settings' own strip (`HelmPageHeader`).
-    static let height = HelmSpace.s5 * 2 + 28
+    /// The Kit's 36 pt controls (`HelmHeaderActions.side`) with `HelmSpace.s4` above and below (`HelmPageHeader`).
+    static let height = HelmSpace.s4 * 2 + HelmHeaderActions.side
+    /// The Kit's `Toolbar` (Figma 309:216): the plate 14 from the card's left edge, the controls 10 from its right.
+    static let leadingInset = CGFloat(14)
+    static let trailingInset = CGFloat(10)
 
     func body(content: Content) -> some View {
         content
@@ -630,7 +629,8 @@ private struct CardHeader: ViewModifier {
                 HelmPageHeader(symbol: symbol, tint: tint, title: title, bleeds: true,
                                overContent: true, scrolled: scrolled,
                                standsOnStillContent: standsOnStillContent, status: status,
-                               dimmed: !windowAppearsActive) {
+                               dimmed: !windowAppearsActive, leadingInset: Self.leadingInset,
+                               trailingInset: Self.trailingInset) {
                     HelmHeaderControls(content: controls)
                 }
                 .frame(height: Self.height)
@@ -643,19 +643,19 @@ private struct CardHeader: ViewModifier {
 ///
 /// **The tab strip's place is the owner's, not the page's.** Where pages share one strip and declare different
 /// runs (the settings window's three), the owner declares the widest (`HelmPageToolbarContent.reserves`) and the
-/// run keeps at least that width, so the strip ends 12 pt before it on every one of them. A page without a
+/// run keeps at least that width, so the strip ends `HelmTrailingRun.gap` before it on every one of them. A page without a
 /// declaration gets exactly the room of what it declared, as the row had before.
 private struct HelmHeaderControls: View {
     let content: HelmPageToolbarContent?
 
     var body: some View {
         if let content {
-            HStack(spacing: 12) {
+            HStack(spacing: HelmTrailingRun.gap) {
                 if !content.tabs.isEmpty, let selected = content.selectedTab {
                     HelmHeaderTabs(tabs: content.tabs, selection: selected, enabled: content.tabsEnabled)
                 }
                 if !content.actions.isEmpty || content.search != nil || content.reserves != nil {
-                    HStack(spacing: 12) {
+                    HStack(spacing: HelmTrailingRun.gap) {
                         if !content.actions.isEmpty {
                             HelmHeaderActions(actions: content.actions)
                         }
