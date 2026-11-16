@@ -180,10 +180,20 @@ final class ThePackagedBundleNamesItsChannelTests: XCTestCase {
     /// A minimal ad-hoc-signed bundle the staged-bundle check accepts, and a
     /// `swift` that records the arguments of the background drawing.
     private func dmgArguments(channel: String?, version: String) throws -> String {
+        let r = try stagedRun(script: "make-dmg.sh", channel: channel, version: version)
+        guard let args = r.args else {
+            throw SetupFailure(description: "make-dmg.sh never reached the background drawing: \(r.output)")
+        }
+        return args
+    }
+
+    /// Runs `Scripts/<script>` (make-dmg.sh or make-zip.sh) in a scratch repo on
+    /// the staged bundle; returns its merged output and the `swift` arguments, if any.
+    private func stagedRun(script: String, channel: String?, version: String) throws -> (output: String, args: String?) {
         let repo = scratchDirectory("ch-dmg-repo")
         let scripts = repo.appendingPathComponent("Scripts")
         try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
-        for name in ["make-dmg.sh", "staged-bundle.sh"] {
+        for name in [script, "staged-bundle.sh"] {
             try FileManager.default.copyItem(at: realScripts.appendingPathComponent(name),
                                              to: scripts.appendingPathComponent(name))
         }
@@ -209,13 +219,10 @@ final class ThePackagedBundleNamesItsChannelTests: XCTestCase {
         let bin = scratchDirectory("ch-dmg-stubs")
         let record = tmp.appendingPathComponent("swift-args.txt")
         try stub("swift", "echo \"$*\" >> '\(record.path)'; exit 17", in: bin)
-        let r = try runChild("/bin/bash", [scripts.appendingPathComponent("make-dmg.sh").path],
+        let r = try runChild("/bin/bash", [scripts.appendingPathComponent(script).path],
                              environment: ["PATH": "\(bin.path):/usr/bin:/bin", "TMPDIR": tmp.path,
                                            "HOME": NSHomeDirectory()], mergeStderr: true)
-        guard let args = try? String(contentsOf: record, encoding: .utf8) else {
-            throw SetupFailure(description: "make-dmg.sh never reached the background drawing: \(r.output)")
-        }
-        return args
+        return (r.output, try? String(contentsOf: record, encoding: .utf8))
     }
 
     func testADevChannelWithABareVersionDrawsTheDevWindow() throws {
@@ -236,5 +243,52 @@ final class ThePackagedBundleNamesItsChannelTests: XCTestCase {
     func testABundleWithNoKeyKeepsTheVersionSuffixRule() throws {
         XCTAssertTrue(try dmgArguments(channel: nil, version: "0.11.1-dev.17").contains("--dev"))
         XCTAssertFalse(try dmgArguments(channel: nil, version: "0.11.1").contains("--dev"))
+    }
+
+    // MARK: - the channel line the release notes are checked against
+
+    private func channelLines(_ output: String) -> [String] {
+        output.components(separatedBy: "\n").filter { $0.hasPrefix("==> Channel:") }
+    }
+
+    func testMakeZipPrintsTheBundlesChannel() throws {
+        let r = try stagedRun(script: "make-zip.sh", channel: "BETA", version: "0.11.1")
+        XCTAssertEqual(channelLines(r.output), ["==> Channel: BETA"], r.output)
+    }
+
+    func testMakeDmgPrintsTheBundlesChannel() throws {
+        let r = try stagedRun(script: "make-dmg.sh", channel: "DEV", version: "0.11.2")
+        XCTAssertEqual(channelLines(r.output), ["==> Channel: DEV"], r.output)
+    }
+
+    func testBothScriptsSayWhenTheBundlePredatesTheKey() throws {
+        for script in ["make-zip.sh", "make-dmg.sh"] {
+            let r = try stagedRun(script: script, channel: nil, version: "0.11.1")
+            XCTAssertEqual(channelLines(r.output), ["==> Channel: none (bundle predates the key)"],
+                           "\(script): \(r.output)")
+        }
+    }
+
+    // MARK: - package-dev.sh: Helm Dev says DEV on any branch
+
+    /// `package-dev.sh` is copied beside a `package-app.sh` that records the
+    /// `HELM_CHANNEL` it was handed and stops the run.
+    func testPackageDevHandsPackageAppTheDevChannelWhateverTheEnvironmentSays() throws {
+        for inherited in [nil, "BETA", "STABLE"] {
+            let scripts = scratchDirectory("ch-pkgdev").appendingPathComponent("Scripts")
+            try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
+            try FileManager.default.copyItem(at: realScripts.appendingPathComponent("package-dev.sh"),
+                                             to: scripts.appendingPathComponent("package-dev.sh"))
+            let tmp = scratchDirectory("ch-pkgdev-tmp")
+            let record = tmp.appendingPathComponent("channel.txt")
+            try "echo \"channel=[${HELM_CHANNEL-unset}]\" > '\(record.path)'; exit 19\n"
+                .write(to: scripts.appendingPathComponent("package-app.sh"), atomically: true, encoding: .utf8)
+            var env = ["PATH": "/usr/bin:/bin", "TMPDIR": tmp.path, "HOME": NSHomeDirectory()]
+            if let inherited { env["HELM_CHANNEL"] = inherited }
+            _ = try runChild("/bin/bash", [scripts.appendingPathComponent("package-dev.sh").path, "--no-launch"],
+                             environment: env, mergeStderr: true)
+            XCTAssertEqual(try? String(contentsOf: record, encoding: .utf8), "channel=[DEV]\n",
+                           "inherited HELM_CHANNEL=\(inherited ?? "unset")")
+        }
     }
 }
