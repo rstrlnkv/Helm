@@ -459,8 +459,19 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         return parsed
     }
 
-    /// One `brew desc` call per kind covers a whole list of names.
-    /// Descriptions for a batch, and the batch does not fail as a unit.
+    /// One `brew desc` call per batch of names, a batch being no more than one
+    /// argv carries (`HelmProcess.maxArguments`): a list that fits is one call,
+    /// as before. A search that matched everything handed over 8742 formulae
+    /// (`brew search --formula -- яяйчнл | wc -l`, Homebrew 7.0.14, 2026-11-16),
+    /// and `NSTask` raises on that many arguments, which `describe` would read
+    /// as brew refusing the batch.
+    ///
+    /// The batches stop after the first one that showed a property of the tool
+    /// rather than of a name: one that timed out, or one refused wholesale (its
+    /// budget ran out). Each further batch would cost a full deadline or up to
+    /// `n + 1` launches to learn the same thing.
+    ///
+    /// Within a batch, the batch does not fail as a unit.
     ///
     /// `brew desc` validates every name before it prints anything, so one name
     /// it can no longer resolve — installed from a tap since removed, renamed
@@ -471,22 +482,42 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// A failure splits the batch and asks again. A single bad name in fifty
     /// costs about a dozen calls instead of fifty, and a good batch is still
-    /// exactly one.
+    /// exactly one call.
     func descriptions(names: [String], isCask: Bool) -> [String: String] {
         guard let brew = locator.brewPath(), !names.isEmpty else { return [:] }
-        // Bounded: the split is a bisection, and a batch refused wholesale
-        // walks to a leaf per name (`DescriptionBudget`).
-        let budget = DescriptionBudget(forBatchOf: names.count)
-        // Named while it runs, like the two list queries: one batch covers the
-        // whole installed set, and a bad name in it turns into a dozen calls.
-        let found = HelmActivity.phase("homebrew.descriptions") {
-            describe(names, isCask: isCask, brew: brew, budget: budget)
-        }
-        if budget.exhausted {
-            // Counts, never names.
-            HelmLog.shared.warn(Self.moduleID,
-                                "descriptions: brew refused \(names.count) names wholesale "
-                                + "— gave up after \(budget.allowance) calls")
+        // `["desc", kind, "--"]` ahead of the names count against the limit.
+        let perCall = HelmProcess.maxArguments - 3
+        // Named while it runs, like the two list queries: a bad name in a
+        // batch turns into a dozen calls.
+        let found = HelmActivity.phase("homebrew.descriptions") { () -> [String: String] in
+            var found: [String: String] = [:]
+            for start in stride(from: 0, to: names.count, by: perCall) {
+                let batch = Array(names[start..<min(start + perCall, names.count)])
+                // Bounded per batch: the split is a bisection, and a batch
+                // refused wholesale walks to a leaf per name
+                // (`DescriptionBudget`). One budget over all batches would be
+                // `n + 1` for `n` names while the optimistic calls alone are
+                // one per batch.
+                let budget = DescriptionBudget(forBatchOf: batch.count)
+                found.merge(describe(batch, isCask: isCask, brew: brew, budget: budget)) { a, _ in a }
+                if budget.exhausted {
+                    // Counts, never names.
+                    HelmLog.shared.warn(Self.moduleID,
+                                        "descriptions: brew refused \(batch.count) names wholesale "
+                                        + "— gave up after \(budget.allowance) calls")
+                }
+                if budget.exhausted || budget.timedOut {
+                    // The timeout line came from `timedOut(_:query:)`. Counts, never names.
+                    let left = names.count - (start + batch.count)
+                    if left > 0 {
+                        HelmLog.shared.warn(Self.moduleID,
+                                            "descriptions: \(left) names left undescribed "
+                                            + "— the batch before them showed brew will not answer")
+                    }
+                    break
+                }
+            }
+            return found
         }
         HelmLog.shared.memory("homebrew.descriptions")
         return found
@@ -501,7 +532,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // A timeout, never split: each half would hang for the same full
         // deadline, so a fifty-name batch would park the queue for hours.
         // Descriptions are a nicety; the rows draw without them.
-        guard completed(result, query: "descriptions") != nil else { return [:] }
+        guard completed(result, query: "descriptions") != nil else {
+            budget.noteTimeout()
+            return [:]
+        }
         // One name and it still failed: that is the name brew cannot resolve.
         // Nothing to say about it, and nothing it should cost the others.
         guard names.count > 1 else { return [:] }

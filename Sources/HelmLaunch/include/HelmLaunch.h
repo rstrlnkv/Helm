@@ -33,7 +33,8 @@ extern NSString *const HelmLaunchExceptionNameKey;
 /// `-[NSConcreteTask launchWithDictionary:error:]`.
 ///
 /// Measured on macOS 27, and this is the shape of the fault: a NUL byte in an
-/// argument or in an environment value raises, while a missing file, a bad
+/// argument or in an environment value raises, and so do more than 4096
+/// arguments (`HelmProcess.maxArguments`), while a missing file, a bad
 /// working directory, `EMFILE`, `EAGAIN` and `E2BIG` all come back as an
 /// `NSError` the Swift call already handled. So the throwing paths are neither
 /// enumerable nor rare enough to check for one by one — the crash in the field

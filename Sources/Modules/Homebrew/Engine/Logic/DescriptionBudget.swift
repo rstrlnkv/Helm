@@ -1,7 +1,8 @@
 import Foundation
 
-/// How many `brew desc` runs one batch of descriptions may spend, and the count
-/// of what is left of it.
+/// How many `brew desc` runs one batch of descriptions may spend (one batch is
+/// as many names as one argv carries; `descriptions` makes a budget for each),
+/// and the count of what is left of it.
 ///
 /// `HomebrewEngine.describe` asks for a whole batch and, on a non-zero exit,
 /// halves it and asks again — right for the case it was written for, which is
@@ -53,6 +54,14 @@ final class DescriptionBudget: @unchecked Sendable {
     /// Whether the split gave up with names still unasked — the caller says so
     /// in the log, once, rather than every node of the recursion saying it.
     var exhausted: Bool { lock.lock(); defer { lock.unlock() }; return remaining <= 0 }
+
+    private var sawTimeout = false
+
+    /// Whether a call of this batch hit the deadline — a fact about brew, not
+    /// about a name, so the caller stops asking further batches.
+    var timedOut: Bool { lock.lock(); defer { lock.unlock() }; return sawTimeout }
+
+    func noteTimeout() { lock.lock(); sawTimeout = true; lock.unlock() }
 
     /// Whether one more `brew desc` may be spent.
     func spend() -> Bool {

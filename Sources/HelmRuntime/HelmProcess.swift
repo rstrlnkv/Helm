@@ -84,6 +84,16 @@ public enum HelmProcess {
     /// means the spawn itself failed.
     public static let timedOutStatus: Int32 = -2
 
+    /// The most arguments one launch takes, the executable path not counted.
+    /// `NSTask` raises `NSInvalidArgumentException` ("too many arguments (N) --
+    /// limit is 4096") past it, and `HelmLaunchTask` turns that into status -1.
+    /// It is `NSTask`'s own count limit, not `ARG_MAX` bytes (one run, macOS
+    /// 27.3, 2026-11-16: a Swift `Process` on `/usr/bin/true` with 4096 arguments
+    /// launched and with 4097 raised). Here
+    /// because this type owns launching for every caller; the one caller whose
+    /// argv grows with the data cuts its list by it.
+    public static let maxArguments = 4096
+
     /// A run with no `timeout` waits for the tool as long as it takes. With one,
     /// a tool that has not closed its output by then is terminated (TERM, then
     /// KILL after a two-second grace for tools that trap it) and the result is
