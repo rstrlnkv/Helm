@@ -220,6 +220,9 @@ final class StringsCoverageTests: XCTestCase {
         "Audio": [.es, .fr, .de],
         "Auto": [.fr],
         "Autopilot": [.de],
+        // The Tweaks entry's name. The owner kept the English word in German: «Tweaks» is what
+        // German-speaking Mac users call these small system adjustments, and the other six differ.
+        "Tweaks": [.de],
         // The Keyboard module's app-row picker. Portuguese borrowed the word
         // whole, the way German borrowed «Filter»: macOS pt-BR says «Layout de
         // Teclado» throughout `KeyboardSettings.appex` — «Alterar Layout de

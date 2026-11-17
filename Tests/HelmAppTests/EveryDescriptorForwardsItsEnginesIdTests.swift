@@ -21,6 +21,8 @@ import Module_Uninstaller_Engine
 import Module_Uninstaller_UI
 import Module_VPN_Engine
 import Module_VPN_UI
+import Tweak_DisplayCorners_Engine
+import Tweak_DisplayCorners_UI
 @testable import HelmApp
 
 /// Every module's id has one spelling, and the engine owns it.
@@ -50,6 +52,12 @@ final class EveryDescriptorForwardsItsEnginesIdTests: XCTestCase {
         (ScreenshotsDescriptor.self, ScreenshotsEngine.moduleID),
         (UninstallerDescriptor.self, UninstallerEngine.moduleID),
         (VPNDescriptor.self, VPNEngine.moduleID),
+        (TweaksDescriptor.self, TweaksEngine.moduleID),
+    ]
+
+    /// The tweaks' rows, tied to `TweakRegistry.all` the same way.
+    private static let tweakRows: [(descriptor: any TweakDescriptor.Type, engineID: String)] = [
+        (DisplayCornersDescriptor.self, DisplayCornersEngine.moduleID),
     ]
 
     /// The list above covers exactly the modules the app registers — a module
@@ -71,6 +79,25 @@ final class EveryDescriptorForwardsItsEnginesIdTests: XCTestCase {
                            + "\"\(row.descriptor.id.rawValue)\" diverged from the engine's "
                            + "\"\(row.engineID)\" — the store namespace and the log would "
                            + "then name two different modules")
+        }
+    }
+
+    func testTheTweakRowsAreTheRegistry() {
+        let listed = Set(Self.tweakRows.map { ObjectIdentifier($0.descriptor) })
+        let registered = Set(TweakRegistry.all.map { ObjectIdentifier(type(of: $0)) })
+        XCTAssertEqual(listed.count, Self.tweakRows.count,
+                       "two rows name the same descriptor, so one tweak is unguarded")
+        XCTAssertEqual(listed, registered,
+                       "the rows and TweakRegistry.all disagree about which tweaks exist — "
+                       + "a tweak missing from the rows has no id guard at all")
+    }
+
+    func testEveryTweakDescriptorAnswersWithItsEnginesId() {
+        for row in Self.tweakRows {
+            XCTAssertEqual(row.descriptor.id, ModuleID(row.engineID),
+                           "\(row.descriptor): the descriptor's id \"\(row.descriptor.id.rawValue)\" "
+                           + "diverged from the engine's \"\(row.engineID)\" — the `tweak.<id>` namespace "
+                           + "and the log would then name two different tweaks")
         }
     }
 }
