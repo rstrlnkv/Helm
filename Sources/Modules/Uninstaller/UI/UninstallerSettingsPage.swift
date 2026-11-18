@@ -114,7 +114,7 @@ struct UninstallerSettingsPage: View {
                 },
             ],
             // No `onSubmit`: the term filters the Apps list live, on every keystroke.
-            search: HelmToolbarSearch(prompt: UnStr.searchApps, text: $search))
+            search: HelmToolbarSearch(prompt: HelmControlName.searchApps, text: $search))
     }
 
     private var pageBody: some View {

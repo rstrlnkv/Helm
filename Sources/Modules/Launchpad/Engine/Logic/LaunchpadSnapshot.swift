@@ -2,19 +2,19 @@ import Foundation
 
 /// One read of the world: what is installed, what the person arranged, reconciled in memory.
 /// `layout` is already reconciled; resolve ids through `apps` and skip those that are not there.
-struct LaunchpadSnapshot: Sendable {
-    let apps: [AppID: CatalogApp]
+public struct LaunchpadSnapshot: Equatable, Sendable {
+    public let apps: [AppID: CatalogApp]
     /// Catalog ids in presentation order.
-    let order: [AppID]
-    let layout: LaunchpadLayout
+    public let order: [AppID]
+    public let layout: LaunchpadLayout
     let catalogComplete: Bool
     let layoutRead: LayoutRead
     /// False when this snapshot follows an edit whose save did not land.
-    var saved = true
+    public internal(set) var saved = true
 
     /// Ids matching `query` in layout order, folders looked into, hidden excluded;
     /// nil for a blank query (the caller shows the layout).
-    func search(_ query: String) -> [AppID]? {
+    public func search(_ query: String) -> [AppID]? {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return nil }
         var ids: [AppID] = []

@@ -103,7 +103,7 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     /// are still on machines, and the tag `archive/hosts` holds the module that
     /// read them.
     private static let registeredIDs: Set<String> = [
-        "autopilot", "disk", "duplicates", "homebrew", "keep-awake",
+        "autopilot", "disk", "duplicates", "homebrew", "keep-awake", "launchpad",
         "layout", "leftovers", "screenshots", "uninstaller", "vpn",
     ]
 

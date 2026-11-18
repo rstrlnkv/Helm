@@ -130,7 +130,7 @@ final class LaunchpadHostileEditsTests: XCTestCase {
     private func engine(reading ids: [String], file json: String, complete: Bool = true) throws -> (LaunchpadEngine, URL) {
         let dir = scratchDirectory("hostile")
         try Data(json.utf8).write(to: dir.appendingPathComponent("layout.json"))
-        return (LaunchpadEngine(catalog: FakeAppCatalog(ids, complete: complete), store: LayoutStore(directory: dir)), dir)
+        return (LaunchpadEngine(catalog: FakeAppCatalog(ids, complete: complete), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir)), dir)
     }
 
     func testAFolderWhoseAppsAreAllHiddenIsGoneAndTheAppsStayHidden() throws {
@@ -197,7 +197,7 @@ final class LaunchpadHostileEditsTests: XCTestCase {
         let store = LayoutStore(directory: dir)
         XCTAssertTrue(store.save(flat(["a", "gone"])))
         let before = try Data(contentsOf: store.fileURL)
-        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a"]), store: store)
+        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a"]), launcher: FakeAppLauncher(), store: store)
         _ = engine.read()
         XCTAssertNil(engine.apply(.hide("gone")))
         XCTAssertNil(engine.apply(.move("gone", toIndex: 0)))

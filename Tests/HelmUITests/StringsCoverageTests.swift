@@ -228,6 +228,11 @@ final class StringsCoverageTests: XCTestCase {
         // Belegung, Disposition, Distribución, 配列, 布局), which is what makes
         // this an identity rather than a row nobody filled in.
         "Layout": [.pt],
+        // The module's name is the macOS app's name, and macOS spells it «Launchpad» in
+        // every one of these six; only Chinese has its own (启动台). The displayed table that holds it is
+        // KeyboardSettingsIntents.appex's Localizable.loctable, key «Launchpad»
+        // (/System/Library/ExtensionKit/Extensions/): zh_CN 启动台; ru, de, es, pt_BR, pt_PT, fr, ja «Launchpad».
+        "Launchpad": [.fr, .de, .es, .ja, .pt, .ru],
         // The severity badge over a `brew doctor` finding that is an `Error:`
         // rather than a `Warning:`. German spells it exactly as English does —
         // Duden lists «Problem» and the alternatives («Schwierigkeit»,

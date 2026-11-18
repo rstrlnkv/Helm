@@ -4,18 +4,28 @@ import XCTest
 
 /// A real temporary tree through the real port: bundles with no id, a non-string id, garbage plists, an
 /// oversize name, a symlink loop, a folder that will not open, an `.app` inside an `.app`, the same id
-/// twice, and folders deeper than the walk goes.
+/// twice, folders deeper than the walk goes, a pipe where a file should be, and an `InfoPlist.strings` that is
+/// garbage, huge or over the ceiling: what a file another process planted can hand the walk.
 final class ACatalogUnderOddBundlesTests: XCTestCase {
 
     @discardableResult
-    private func bundle(_ relative: String, in root: URL, plist: [String: Any]? = nil, raw: Data? = nil) throws -> URL {
+    private func bundle(_ relative: String, in root: URL, plist: [String: Any]? = nil, raw: Data? = nil,
+                        strings: [String: Data] = [:]) throws -> URL {
         let app = root.appendingPathComponent(relative)
         let contents = app.appendingPathComponent("Contents")
         try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
         let data = try raw ?? PropertyListSerialization.data(fromPropertyList: plist ?? [:], format: .xml, options: 0)
         try data.write(to: contents.appendingPathComponent("Info.plist"))
+        for (code, text) in strings {
+            let lproj = contents.appendingPathComponent("Resources/\(code).lproj")
+            try FileManager.default.createDirectory(at: lproj, withIntermediateDirectories: true)
+            try text.write(to: lproj.appendingPathComponent("InfoPlist.strings"))
+        }
         return app
     }
+
+    private static let codes = ["en", "de", "fr", "ja", "ru", "zh-Hans", "es", "pt"]
+    private func inEveryLanguage(_ data: Data) -> [String: Data] { Dictionary(uniqueKeysWithValues: Self.codes.map { ($0, data) }) }
 
     private func read(_ roots: URL...) -> CatalogReading { FileSystemAppCatalog(roots: roots).read() }
 
@@ -45,6 +55,22 @@ final class ACatalogUnderOddBundlesTests: XCTestCase {
         let r = read(root)
         XCTAssertEqual(r.apps.map(\.id), ["ok"])
         XCTAssertTrue(r.complete)
+    }
+
+    /// A file that parses whole inside the ceiling and is padded with blanks past it is still over the ceiling:
+    /// the cut-off read would parse, so only the size check refuses it; one byte under the line it is read.
+    func testAValidInfoPlistPaddedOneByteOverTheCeilingIsSkippedAndAtTheCeilingIsRead() throws {
+        let root = scratchDirectory("cat-padded-plist")
+        func padded(_ id: String, to total: Int) throws -> Data {
+            let head = try PropertyListSerialization.data(fromPropertyList: ["CFBundleIdentifier": id], format: .xml, options: 0)
+            return head + Data(repeating: 0x20, count: total - head.count)
+        }
+        XCTAssertEqual(LaunchpadLimits.maxFileBytes, 2 * 1024 * 1024)
+        try bundle("Over.app", in: root, raw: padded("over", to: 2 * 1024 * 1024 + 1))
+        try bundle("At.app", in: root, raw: padded("at", to: 2 * 1024 * 1024))
+        let r = read(root)
+        XCTAssertEqual(r.apps.map(\.id), ["at"])
+        XCTAssertEqual(r.apps.map { URL(fileURLWithPath: $0.path).lastPathComponent }, ["At.app"])
     }
 
     func testAnOversizeNameAndIdAreCut() throws {
@@ -132,5 +158,77 @@ final class ACatalogUnderOddBundlesTests: XCTestCase {
         let r = read(root)
         XCTAssertEqual(r.apps.count, 50)
         XCTAssertTrue(r.complete)
+    }
+
+    func testALocalizedNameOverTheCeilingIsCut() throws {
+        let root = scratchDirectory("odd-long-name")
+        let long = String(repeating: "n", count: 50_000)
+        try bundle("Long.app", in: root, plist: ["CFBundleIdentifier": "x.long", "CFBundleName": "FromPlist"],
+                   strings: inEveryLanguage(Data("\"CFBundleDisplayName\" = \"\(long)\";".utf8)))
+        XCTAssertEqual(read(root).apps.map(\.name), [String(repeating: "n", count: LaunchpadLimits.maxStringLength)])
+    }
+
+    func testAGarbageInfoPlistStringsFallsBackToTheInfoPlistName() throws {
+        let root = scratchDirectory("odd-garbage-strings")
+        let garbage = Data([0xFF, 0xFE, 0x00, 0x80, 0x7B, 0x22, 0x00, 0xC3, 0x28]) + Data(repeating: 0x41, count: 1_000)
+        try bundle("Junk.app", in: root, plist: ["CFBundleIdentifier": "x.junk", "CFBundleName": "FromPlist"], strings: inEveryLanguage(garbage))
+        let r = read(root)
+        XCTAssertEqual(r.apps.map(\.id), ["x.junk"], "the app is listed, not dropped")
+        XCTAssertEqual(r.apps.map(\.name), ["FromPlist"])
+        XCTAssertTrue(r.complete)
+    }
+
+    /// Over the ceiling the file is not parsed at all: the name is the `Info.plist` one, and the read comes back at once.
+    func testAHugeInfoPlistStringsIsNotReadAndTheNameFallsBack() throws {
+        let root = scratchDirectory("odd-huge-strings")
+        var text = ""
+        text.reserveCapacity(8_000_000)
+        for n in 0..<200_000 { text += "\"k\(n)\" = \"v\(n)\";\n" }
+        text += "\"CFBundleDisplayName\" = \"FromStrings\";\n"
+        try bundle("Huge.app", in: root, plist: ["CFBundleIdentifier": "x.huge", "CFBundleName": "FromPlist"], strings: inEveryLanguage(Data(text.utf8)))
+        let started = Date()
+        let r = read(root)
+        XCTAssertEqual(r.apps.map(\.name), ["FromPlist"])
+        XCTAssertLessThan(Date().timeIntervalSince(started), 5)
+    }
+
+    /// A pipe nobody writes to blocks whoever opens it for reading. The read runs on a thread of its own under a deadline,
+    /// so a regression fails this test instead of hanging the suite.
+    func testAPipeWhereAnInfoPlistOrItsStringsShouldBeDoesNotHoldTheWalk() throws {
+        let root = scratchDirectory("odd-fifo")
+        let pipe = try bundle("Pipe.app", in: root, plist: ["CFBundleIdentifier": "x.pipe"])
+        let pipeInfo = pipe.appendingPathComponent("Contents/Info.plist").path
+        try FileManager.default.removeItem(atPath: pipeInfo)
+        XCTAssertEqual(mkfifo(pipeInfo, 0o600), 0)
+        let named = try bundle("Named.app", in: root, plist: ["CFBundleIdentifier": "x.named", "CFBundleName": "FromPlist"])
+        var pipes = [pipeInfo]
+        for code in Self.codes {
+            let lproj = named.appendingPathComponent("Contents/Resources/\(code).lproj")
+            try FileManager.default.createDirectory(at: lproj, withIntermediateDirectories: true)
+            XCTAssertEqual(mkfifo(lproj.appendingPathComponent("InfoPlist.strings").path, 0o600), 0)
+            pipes.append(lproj.appendingPathComponent("InfoPlist.strings").path)
+        }
+        // A regressed reader sits in `open` for a pipe; opening it for both ends here lets that thread go.
+        addTeardownBlock { for path in pipes { let fd = open(path, O_RDWR | O_NONBLOCK); if fd >= 0 { close(fd) } } }
+        let answer = Answer()
+        let finished = DispatchSemaphore(value: 0)
+        let catalog = FileSystemAppCatalog(roots: [root])
+        Thread.detachNewThread {
+            answer.set(catalog.read(), catalog.bundleID(atPath: pipe.path))
+            finished.signal()
+        }
+        XCTAssertEqual(finished.wait(timeout: .now() + 5), .success, "the walk is held by a pipe")
+        let (reading, id) = answer.get()
+        XCTAssertEqual(reading?.apps.map(\.id), ["x.named"])
+        XCTAssertEqual(reading?.apps.map(\.name), ["FromPlist"])
+        XCTAssertNil(id)
+    }
+
+    private final class Answer: @unchecked Sendable {
+        private let lock = NSLock()
+        private var reading: CatalogReading?
+        private var id: String?
+        func set(_ reading: CatalogReading, _ id: String?) { lock.lock(); self.reading = reading; self.id = id; lock.unlock() }
+        func get() -> (CatalogReading?, String?) { lock.lock(); defer { lock.unlock() }; return (reading, id) }
     }
 }

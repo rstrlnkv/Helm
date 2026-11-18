@@ -28,7 +28,7 @@ final class AnIncompleteReadDropsNothingTests: XCTestCase {
         let before = try Data(contentsOf: store.fileURL)
         let mtime = try FileManager.default.attributesOfItem(atPath: store.fileURL.path)[.modificationDate] as? Date
         let catalog = FakeAppCatalog(["b", "new"], complete: false)
-        let engine = LaunchpadEngine(catalog: catalog, store: store)
+        let engine = LaunchpadEngine(catalog: catalog, launcher: FakeAppLauncher(), store: store)
         for _ in 0..<3 { _ = engine.read() }
         catalog.reading = CatalogReading(apps: [], complete: true)
         _ = engine.read()
@@ -39,7 +39,7 @@ final class AnIncompleteReadDropsNothingTests: XCTestCase {
     func testAnEditDuringAnIncompleteReadSavesTheAppsTheReadCouldNotSee() throws {
         let store = LayoutStore(directory: scratchDirectory("incomplete-edit"))
         XCTAssertTrue(store.save(LaunchpadLayout(items: [.app("a"), .app("b"), .app("c")])))
-        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "c"], complete: false), store: store)
+        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "c"], complete: false), launcher: FakeAppLauncher(), store: store)
         _ = engine.read()
         XCTAssertNotNil(engine.apply(.hide("a")))
         XCTAssertEqual(store.load(), .loaded(LaunchpadLayout(items: [.app("b"), .app("c")], hidden: ["a"])), "b was in a folder that would not open")
@@ -49,7 +49,7 @@ final class AnIncompleteReadDropsNothingTests: XCTestCase {
         let dir = scratchDirectory("incomplete-snap")
         let store = LayoutStore(directory: dir)
         XCTAssertTrue(store.save(LaunchpadLayout(items: [.app("a"), .app("b")])))
-        let snap = LaunchpadEngine(catalog: FakeAppCatalog(["a"], complete: false), store: store).read()
+        let snap = LaunchpadEngine(catalog: FakeAppCatalog(["a"], complete: false), launcher: FakeAppLauncher(), store: store).read()
         XCTAssertEqual(snap.layout.items, [.app("a"), .app("b")])
         XCTAssertFalse(snap.catalogComplete)
     }

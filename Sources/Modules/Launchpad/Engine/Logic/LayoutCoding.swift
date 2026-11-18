@@ -10,7 +10,7 @@ extension LaunchpadLayout: Codable {
     private enum ItemKeys: String, CodingKey { case app, folder }
     private enum FolderKeys: String, CodingKey { case id, name, apps }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Keys.self)
         let version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 1
         guard version <= Self.version else {
@@ -34,7 +34,7 @@ extension LaunchpadLayout: Codable {
         self.init(items: items, hidden: hidden)
     }
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: Keys.self)
         try c.encode(Self.version, forKey: .version)
         try c.encode(items.map(Entry.init), forKey: .items)

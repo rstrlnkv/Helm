@@ -13,7 +13,7 @@ final class TheLayoutFileIsPrivateAndOnlyAnEditWritesItTests: XCTestCase {
 
     func testTheFileAndItsFolderArePrivate() throws {
         let dir = scratchDirectory("private").appendingPathComponent("Launchpad")
-        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "b"]), store: LayoutStore(directory: dir))
+        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "b"]), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir))
         _ = engine.read()
         XCTAssertNotNil(engine.apply(.hide("a")))
         XCTAssertEqual(try mode(dir.appendingPathComponent("layout.json")), 0o600)
@@ -22,7 +22,7 @@ final class TheLayoutFileIsPrivateAndOnlyAnEditWritesItTests: XCTestCase {
 
     func testAReadWritesNothingAndARefusedEditWritesNothing() throws {
         let dir = scratchDirectory("only-edit")
-        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a"]), store: LayoutStore(directory: dir))
+        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a"]), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir))
         _ = engine.read()
         XCTAssertEqual(tree(under: dir), [])
         XCTAssertNil(engine.apply(.hide("vanished")))
@@ -33,7 +33,7 @@ final class TheLayoutFileIsPrivateAndOnlyAnEditWritesItTests: XCTestCase {
         let blocker = scratchDirectory("blocked").appendingPathComponent("Launchpad")
         try Data("a file where the folder should be".utf8).write(to: blocker)
         tailTheLog()
-        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "b"]), store: LayoutStore(directory: blocker))
+        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "b"]), launcher: FakeAppLauncher(), store: LayoutStore(directory: blocker))
         let snap = try XCTUnwrap(engine.apply(.hide("a")))
         XCTAssertFalse(snap.saved)
         XCTAssertEqual(snap.layout.hidden, ["a"])
@@ -45,7 +45,7 @@ final class TheLayoutFileIsPrivateAndOnlyAnEditWritesItTests: XCTestCase {
         let file = dir.appendingPathComponent("layout.json")
         let aside = dir.appendingPathComponent("layout.json.unreadable")
         try Data("{ broken".utf8).write(to: file)
-        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["b", "a"]), store: LayoutStore(directory: dir))
+        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["b", "a"]), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir))
         let snap = engine.read()
         XCTAssertEqual(snap.layoutRead, .unreadable)
         XCTAssertEqual(snap.layout.items, [.app("b"), .app("a")], "the catalog's order, nothing lost")
@@ -63,7 +63,7 @@ final class TheLayoutFileIsPrivateAndOnlyAnEditWritesItTests: XCTestCase {
         let dir = scratchDirectory("aside-twice")
         let file = dir.appendingPathComponent("layout.json")
         let aside = dir.appendingPathComponent("layout.json.unreadable")
-        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "b"]), store: LayoutStore(directory: dir))
+        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "b"]), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir))
         try Data("first".utf8).write(to: file)
         XCTAssertNotNil(engine.apply(.hide("a")))
         XCTAssertEqual(try Data(contentsOf: aside), Data("first".utf8))
@@ -85,7 +85,7 @@ final class TheLayoutFileIsPrivateAndOnlyAnEditWritesItTests: XCTestCase {
         XCTAssertEqual(chflags(aside.path, UInt32(UF_IMMUTABLE)), 0)
         addTeardownBlock { _ = chflags(aside.path, 0) }
         tailTheLog()
-        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "b"]), store: LayoutStore(directory: dir))
+        let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "b"]), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir))
         let snap = try XCTUnwrap(engine.apply(.hide("a")))
         XCTAssertFalse(snap.saved, "the edit is not on disk")
         XCTAssertEqual(snap.layout.hidden, ["a"], "the returned snapshot holds the edit")

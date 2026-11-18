@@ -1,5 +1,8 @@
 ABatchThatAskedEveryNameDidNotGiveUpTests
 ACaskIsNeverAskedWhatUsesItTests
+ACatalogNamesAnAppAsFinderDoesTests
+ACatalogUnderOddLocalizationTests
+ACatalogWatchLetsGoWhenDroppedTests
 ACommentIsNotAUseOfAKeyTests
 AConfigReadingComesOffStandardOutputTests
 ADurationTypedInTwoColumnsTests
@@ -35,6 +38,7 @@ AutopilotDateBucketTests
 BrewConfigParserTests
 BrewDescAndSearchShapeTests
 BrewInfoParserTests
+CatalogChangeFilterTests
 ConversionTriggersTests
 DelayedWorkTests
 DirectoryListingTests

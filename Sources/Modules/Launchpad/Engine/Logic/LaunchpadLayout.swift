@@ -1,26 +1,26 @@
 import Foundation
 import HelmRuntime
 
-typealias AppID = String
+public typealias AppID = String
 
 /// **What the person arranged: top-level items, folders, and hidden apps — by bundle id only.**
 ///
 /// No path is stored: a path belongs to the latest catalog read, so a planted layout
 /// file cannot make Helm launch an arbitrary one, and an app that moved keeps its place.
-struct LaunchpadLayout: Equatable, Sendable {
-    struct Folder: Equatable, Sendable {
-        var id: UUID
-        var name: String
-        var apps: [AppID]
+public struct LaunchpadLayout: Equatable, Sendable {
+    public struct Folder: Equatable, Sendable {
+        public internal(set) var id: UUID
+        public internal(set) var name: String
+        public internal(set) var apps: [AppID]
     }
 
-    enum Item: Equatable, Sendable {
+    public enum Item: Equatable, Sendable {
         case app(AppID)
         case folder(Folder)
     }
 
-    var items: [Item] = []
-    var hidden: Set<AppID> = []
+    public internal(set) var items: [Item] = []
+    public internal(set) var hidden: Set<AppID> = []
 
     static let empty = LaunchpadLayout()
 }
@@ -42,7 +42,7 @@ enum LaunchpadEdit: Equatable, Sendable {
 
 extension LaunchpadLayout.Item {
     /// An app's id, or a folder's UUID string.
-    var itemID: String {
+    public var itemID: String {
         switch self {
         case .app(let id): id
         case .folder(let f): f.id.uuidString

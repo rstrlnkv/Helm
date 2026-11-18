@@ -13,17 +13,19 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     public static let moduleID = "launchpad"
 
     private let catalog: AppCatalogPort
+    private let launcher: AppLauncherPort
     private let store: LayoutStore
     private let lock = NSLock()
     /// The latest catalog read, so an edit reconciles against what the person was looking at.
     private var lastCatalog: CatalogReading?
 
-    public convenience init(catalog: AppCatalogPort = FileSystemAppCatalog()) {
-        self.init(catalog: catalog, store: LayoutStore())
+    public convenience init() {
+        self.init(catalog: FileSystemAppCatalog(), launcher: SystemAppLauncher(), store: LayoutStore())
     }
 
-    init(catalog: AppCatalogPort, store: LayoutStore) {
+    init(catalog: AppCatalogPort, launcher: AppLauncherPort, store: LayoutStore) {
         self.catalog = catalog
+        self.launcher = launcher
         self.store = store
     }
 
@@ -31,7 +33,7 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     public func deactivate() {}
 
     /// Reconciled in memory; writes nothing.
-    func read() -> LaunchpadSnapshot {
+    public func read() -> LaunchpadSnapshot {
         lock.lock(); defer { lock.unlock() }
         let reading = catalog.read()
         lastCatalog = reading
@@ -49,6 +51,39 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
         guard let edited = base.applying(edit) else { return nil }
         let saved = (stored != .unreadable || store.moveUnreadableAside()) && store.save(edited)
         return snapshot(reading, stored: saved ? .loaded(edited) : stored, layout: edited, saved: saved)
+    }
+
+    public func hide(_ id: AppID) -> LaunchpadSnapshot? { apply(.hide(id)) }
+    public func unhide(_ id: AppID) -> LaunchpadSnapshot? { apply(.unhide(id)) }
+
+    /// Calls `onChange` when the installed apps may have changed, until the token is let go.
+    /// The engine holds nothing: the token's lifetime is the caller's.
+    public func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject {
+        catalog.observeChanges(onChange)
+    }
+
+    /// Opens the app with this id **if a fresh read still finds it** and the bundle at its path
+    /// still answers the id. The read does not become `lastCatalog`: it is for this launch only.
+    /// Blocking disk work goes off the cooperative pool and no lock is held across a suspension.
+    public func launch(_ id: AppID) async -> LaunchOutcome {
+        let catalog = self.catalog
+        let resolution = await offTheCooperativePool {
+            LaunchResolution.resolve(id: id, reading: catalog.read(), bundleID: { catalog.bundleID(atPath: $0) })
+        }
+        switch resolution {
+        case .gone:
+            HelmLog.shared.info(Self.moduleID, "a launch was refused: the app is no longer installed")
+            return .gone
+        case .unreadable:
+            HelmLog.shared.info(Self.moduleID, "a launch was refused: the app was not among those that could be read")
+            return .unreadable
+        case .open(let url):
+            guard await launcher.open(url) else {
+                HelmLog.shared.warn(Self.moduleID, "a launch was refused by the system")
+                return .failed
+            }
+            return .launched
+        }
     }
 
     private static func layout(of read: LayoutRead) -> LaunchpadLayout {
