@@ -126,7 +126,7 @@ sealed (§ Sealed settings); a number read from a file is bounded (§ A number t
 | Leftovers | the login items Helm switched off, so a reset can give them back | a `NamespacedStore` over the property list (`Sources/Modules/Leftovers/Engine/LeftoversEngine.swift`) |
 | Screenshots | where a capture goes, and the other settings of the page | `Sources/Modules/Screenshots/Engine/Logic/ScreenshotsSettings.swift` |
 | Tweaks | whether each tweak is switched on, `module.tweak.<id>.enabled`, off until switched on | a `NamespacedStore` per tweak (`Sources/HelmApp/TweakHost.swift`) |
-| Display Corners | nothing of its own yet; the switch above | `Sources/Tweaks/DisplayCorners/Engine/DisplayCornersEngine.swift` |
+| Display Corners | its two switches, the radius in pixels, the built-in display's last scale, as `module.tweak.display-corners.<key>`, not sealed, with the host's `enabled` beside them (the switch above) | `Sources/Tweaks/DisplayCorners/Engine/StoredCornerSettings.swift` |
 | Uninstaller | its settings | `Architecture/Uninstaller.md` § Keys, gates, guards and files |
 | VPN | its rules, and the credentials it caches for a tunnel | `Sources/Modules/VPN/Engine/VPNSettings.swift`, `Sources/Modules/VPN/Engine/SystemPorts.swift` |
 | the scan settings of every scannable module | one sealed value | `Sources/HelmRuntime/SettingGuard.swift` |

@@ -85,14 +85,23 @@ public struct CornerState: Equatable, Sendable {
     public var referenceScale: CGFloat
     public var pointer: PointerMode
     public var calibrating: Bool
+    /// The two switches, and the calibration colour while one is previewed: what the card shows, declared
+    /// here once beside the rest of what the engine says.
+    public var builtIn: Bool
+    public var external: Bool
+    public var calibrationColour: CalibrationColour?
 
     public init(masks: [MaskSpec] = [], rounded: [UInt32: Bool] = [:], radiusPixels: Double = 0,
-                referenceScale: CGFloat = 1, pointer: PointerMode = .off, calibrating: Bool = false) {
+                referenceScale: CGFloat = 1, pointer: PointerMode = .off, calibrating: Bool = false,
+                builtIn: Bool = false, external: Bool = false, calibrationColour: CalibrationColour? = nil) {
         self.masks = masks
         self.rounded = rounded
         self.radiusPixels = radiusPixels
         self.referenceScale = referenceScale
         self.pointer = pointer
         self.calibrating = calibrating
+        self.builtIn = builtIn
+        self.external = external
+        self.calibrationColour = calibrationColour
     }
 }

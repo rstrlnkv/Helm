@@ -43,6 +43,7 @@ DiskAdvisorTests
 DiskFocusTests
 DiskNamesAVolumeUsedOfTotalTests
 DiskSaysTheKitsWordsForARowTests
+DisplayCornersEngineTests
 DuplicatesTests
 EachTunnelKeepsItsOwnVoiceTests
 EveryDescriptorForwardsItsEnginesIdTests

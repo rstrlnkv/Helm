@@ -1,5 +1,6 @@
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import HelmUI
 import SwiftUI
 import XCTest
@@ -88,7 +89,9 @@ final class TweakHostUnfedInputsTests: XCTestCase {
     /// `NSNumber`, which `as? Bool` accepts: found, not fixed, so this pins the answer a person editing the
     /// plist by hand gets. Only 0 and 1 bridge.
     func testRealUserDefaultsHandsBackNumbersThatBridgeToBool() throws {
-        let suite = "helm.test.tweak-flag-\(UUID().uuidString)"
+        // A suite named by an absolute path keeps its file in a scratch directory that is swept, not under
+        // ~/Library/Preferences, where a named suite leaves an empty plist after `removePersistentDomain`.
+        let suite = scratchDirectory("tweak-flag").appendingPathComponent("suite").path
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let calls = Calls()

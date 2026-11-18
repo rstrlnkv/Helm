@@ -1,9 +1,9 @@
 import Foundation
 
 /// A display's masks are rounded while its windows rest, and shrink while a Space slides.
-/// The clock is injected, so the rule is tested without a timer. Part 2b's port supplies a monotonic
-/// clock (`ProcessInfo.systemUptime` or `CACurrentMediaTime`); should one go backwards or not be a
-/// number all the same, that sample counts as motion, so the masks cannot stay unrounded.
+/// The clock is injected, so the rule is tested without a timer. The live port is `UptimeClock`
+/// (`ProcessInfo.systemUptime`, monotonic); should a clock go backwards or not be a number all the same,
+/// that sample counts as motion, so the masks cannot stay unrounded.
 struct DisplayMotion {
     /// A display counts as settled this long after its windows last moved.
     static let settle: TimeInterval = 0.05
