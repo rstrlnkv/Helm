@@ -1,4 +1,5 @@
 import Foundation
+import HelmContract
 import HelmRuntime
 import Module_Launchpad_Engine
 
@@ -6,6 +7,7 @@ import Module_Launchpad_Engine
 protocol LaunchpadWork: AnyObject, Sendable {
     func read() -> LaunchpadSnapshot
     func hide(_ id: AppID) -> LaunchpadSnapshot?
+    func resetArrangement() -> LaunchpadSnapshot?
     func unhide(_ id: AppID) -> LaunchpadSnapshot?
     func launch(_ id: AppID) async -> LaunchOutcome
     func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject
@@ -20,7 +22,11 @@ enum LaunchNotice: Equatable {
     case notSaved
 }
 
-/// The module's state and the one door to its engine.
+/// The module's state, the one door to its engine and the one door to its window.
+///
+/// The window is opened only here (`showLaunchpad`, `toggleLaunchpad`), by the hotkey and by the page's button; `present`
+/// is what builds it, set by the descriptor, and a model without it (a test) opens nothing. Whatever shows a snapshot
+/// runs `whileShown()`: the snapshot is held only while somebody does, so a closed window holds no list of apps.
 ///
 /// `snapshot` is nil until the engine has answered once — busy, not empty. Every answer
 /// from a hop off the main actor is dropped when a newer request exists or the model is closed — a
@@ -34,18 +40,58 @@ enum LaunchNotice: Equatable {
     /// Which edit or launch may still say how it went: a newer one has the say.
     private var acts = LatestRequest()
     private var launching = false
-    private var changes: AsyncStream<Void>.Continuation?
+    /// One continuation per `whileShown()` running, so the page and the window watch together and either may leave.
+    private var watchers: [UUID: AsyncStream<Void>.Continuation] = [:]
     private var closed = false
+    /// The reset the person was asked about and has not answered.
+    @Published private(set) var pendingReset = false
+    /// Builds the window; nil in a test, and the window then never opens.
+    var present: (@MainActor (LaunchpadViewModel) -> any LaunchpadWindowHandle)?
+    private var window: (any LaunchpadWindowHandle)?
+    /// The module's own settings store, for the page's shortcut row.
+    let store: NamespacedStore
 
-    init(work: any LaunchpadWork) { self.work = work }
+    init(work: any LaunchpadWork, store: NamespacedStore) {
+        self.work = work
+        self.store = store
+    }
 
     /// Closes the model: the host calls it before the engine's `deactivate()`. Whatever is still out lands nowhere.
     func stop() {
+        closeLaunchpad()
         closed = true
-        changes?.finish()
-        changes = nil
+        for continuation in watchers.values { continuation.finish() }
+        watchers = [:]
         snapshot = nil
         notice = nil
+        pendingReset = false
+    }
+
+    // MARK: - The window's door
+
+    /// Opens the window, or brings the open one forward. Nothing after `stop()`.
+    func showLaunchpad() {
+        guard !closed else { return }
+        if let window { window.bringForward(); return }
+        guard let present else { return }
+        let opened = present(self)
+        window = opened
+        opened.onClose = { [weak self, weak opened] in
+            guard let self, let opened, self.window === opened else { return }
+            self.window = nil
+        }
+        opened.present()
+    }
+
+    /// The shortcut's press: closes the window when it is open, opens it when it is not.
+    func toggleLaunchpad() {
+        if window != nil { closeLaunchpad() } else { showLaunchpad() }
+    }
+
+    func closeLaunchpad() {
+        guard let open = window else { return }
+        window = nil
+        open.close()
     }
 
     func refresh() async {
@@ -58,6 +104,18 @@ enum LaunchNotice: Equatable {
 
     func hide(_ id: AppID) async { await edit { $0.hide(id) } }
     func unhide(_ id: AppID) async { await edit { $0.unhide(id) } }
+
+    /// Asking changes nothing on disk: only `confirmReset` after it does.
+    func askToReset() { if !closed { pendingReset = true } }
+    func cancelReset() { pendingReset = false }
+
+    /// Reads and clears the question first, so one answer resets once; nothing when it was not asked or the model is closed.
+    func confirmReset() async {
+        let asked = pendingReset
+        pendingReset = false
+        guard asked, !closed else { return }
+        await edit { $0.resetArrangement() }
+    }
 
     /// Refused (the app is gone since the page was drawn) reads again; a save that did not land is said.
     private func edit(_ change: @escaping @Sendable (any LaunchpadWork) -> LaunchpadSnapshot?) async {
@@ -72,39 +130,47 @@ enum LaunchNotice: Equatable {
     }
 
     private func land(_ read: LaunchpadSnapshot, _ mine: Int) {
-        guard !closed, latest.isLatest(mine), read != snapshot else { return }
+        guard !closed, !watchers.isEmpty, latest.isLatest(mine), read != snapshot else { return }
         snapshot = read
     }
 
     /// One launch at a time: a second press while one is out is ignored. `name` is the one on the tile that was pressed.
-    func launch(_ id: AppID, name: String) async {
-        guard !closed, !launching else { return }
+    /// True only when the app was opened: the window closes then, and on anything else it stays with the notice.
+    @discardableResult func launch(_ id: AppID, name: String) async -> Bool {
+        guard !closed, !launching else { return false }
         launching = true
         defer { launching = false }
         let act = acts.take()
         let outcome = await work.launch(id)
-        guard !closed, acts.isLatest(act) else { return }
+        guard !closed, acts.isLatest(act) else { return outcome == .launched }
         switch outcome {
         case .launched: notice = nil
         case .gone: notice = .gone(name); await refresh()
         case .unreadable: notice = .couldNotOpen(name); await refresh()
         case .failed: notice = .couldNotOpen(name)
         }
+        return outcome == .launched
     }
 
-    /// What the page runs while it is on screen. The token is local to this task, so cancelling the task (the page leaving) stops
-    /// the watch; it is taken **before** the first read, so a change between the two is not lost.
+    /// What the page and the window run while they are on screen. The token is local to this task, so cancelling the task
+    /// stops the watch; it is taken **before** the first read, so a change between the two is not lost. When the last
+    /// watcher leaves, the snapshot and the notice go with it.
     func whileShown() async {
         guard !closed else { return }
         notice = nil
+        let id = UUID()
         let (stream, continuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
-        changes = continuation
+        watchers[id] = continuation
         let token = work.observeChanges { continuation.yield() }
+        defer {
+            withExtendedLifetime(token) {}
+            watchers[id] = nil
+            if watchers.isEmpty { snapshot = nil; notice = nil }
+        }
         await refresh()
         for await _ in stream {
             guard !closed else { break }
             await refresh()
         }
-        withExtendedLifetime(token) {}
     }
 }

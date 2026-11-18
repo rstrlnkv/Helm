@@ -38,6 +38,8 @@ enum LaunchpadEdit: Equatable, Sendable {
     case rename(UUID, to: String)
     case hide(AppID)
     case unhide(AppID)
+    /// Order and folders go; hidden stays. The engine reconciles the result, which puts every shown app back in catalog order.
+    case resetArrangement
 }
 
 extension LaunchpadLayout.Item {
@@ -91,6 +93,8 @@ extension LaunchpadLayout {
         case .unhide(let app):
             guard out.hidden.remove(app) != nil else { return nil }
             out.items.append(.app(app))
+        case .resetArrangement:
+            out.items = []
         }
         return out.normalized()
     }

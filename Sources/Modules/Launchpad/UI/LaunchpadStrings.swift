@@ -9,6 +9,23 @@ enum LpStr {
     static var noApps: String { L(.noAppsToShow) }
     static var noMatch: String { L(.noAppMatches) }
     static var notSaved: String { L(.arrangementNotSaved) }
+    static var openLaunchpad: String { L(.openLaunchpad) }
+    static var toggleLaunchpad: String { L(.toggleLaunchpad) }
+    static var arrangement: String { L(.arrangement) }
+    static var resetArrangement: String { L(.resetArrangement) }
+    static var resetQuestion: String { L(.resetQuestion) }
+    static var resetNote: String { L(.resetNote) }
+    static var noHiddenApps: String { L(.noHiddenApps) }
+    /// "Page 2 of 5" for a page dot; the numbers are strings, so a language's own digits and grouping are not this key's business.
+    static func pageNumber(_ page: Int, of count: Int) -> String { L(.pageNumber("\(page)", "\(count)"), remembered: false) }
+    /// What the last thing that did not go through says, for the window and for the page.
+    static func text(of notice: LaunchNotice) -> String {
+        switch notice {
+        case .gone(let name): appIsGone(name)
+        case .couldNotOpen(let name): couldNotOpen(name)
+        case .notSaved: notSaved
+        }
+    }
     static func appIsGone(_ name: String) -> String { L(.appIsGone(name)) }
     static func couldNotOpen(_ name: String) -> String { L(.appCouldNotBeOpened(name)) }
     /// A folder tile's name for VoiceOver: what it is called, then what it is.

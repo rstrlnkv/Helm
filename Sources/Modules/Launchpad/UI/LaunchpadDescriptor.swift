@@ -4,6 +4,15 @@ import HelmRuntime
 import HelmUI
 import Module_Launchpad_Engine
 
+/// The global shortcut's two names, in one place for the host's registration and the page's row. Both fail quietly when they drift.
+enum LaunchpadHotkey {
+    /// The slot `HotkeyManager` files the binding under. Not stored anywhere.
+    static let open = "\(LaunchpadEngine.moduleID).open"
+
+    /// Where the recorded combination is kept inside the module's store. **Deployed stored data: this name never moves.**
+    static let storePrefix = "openHotkey"
+}
+
 @MainActor public final class LaunchpadDescriptor: ModuleDescriptor {
     public typealias Model = LaunchpadViewModel
 
@@ -25,8 +34,17 @@ import Module_Launchpad_Engine
 
     public func makeModule(store: NamespacedStore) -> ModuleParts<LaunchpadViewModel> {
         let engine = LaunchpadEngine()
-        return ModuleParts(engine: engine, model: LaunchpadViewModel(work: engine))
+        let model = LaunchpadViewModel(work: engine, store: store)
+        model.present = { model in
+            LaunchpadWindow(model: model)
+        }
+        return ModuleParts(engine: engine, model: model)
     }
+
+    /// No default combination: the shortcut holds nothing until the person records one.
+    public static var hotkeys: [ModuleHotkey] { [ModuleHotkey(slot: LaunchpadHotkey.open, prefix: LaunchpadHotkey.storePrefix)] }
+
+    public func hotkeyPressed(_ hotkey: ModuleHotkey, _ model: LaunchpadViewModel) { model.toggleLaunchpad() }
 
     /// Closes the model; the host calls it before the engine's `deactivate()`, on the person's switch and on quit.
     public func stop(_ model: LaunchpadViewModel) { model.stop() }

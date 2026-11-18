@@ -48,13 +48,16 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
         lastCatalog = reading
         let stored = store.load()
         let base = Self.layout(of: stored).reconciled(catalog: reading.apps.map(\.id), complete: reading.complete)
-        guard let edited = base.applying(edit) else { return nil }
+        // Reconciled again so an edit that empties the arrangement (a reset) returns the apps in catalog order, as a read would.
+        guard let edited = base.applying(edit)?.reconciled(catalog: reading.apps.map(\.id), complete: reading.complete) else { return nil }
         let saved = (stored != .unreadable || store.moveUnreadableAside()) && store.save(edited)
         return snapshot(reading, stored: saved ? .loaded(edited) : stored, layout: edited, saved: saved)
     }
 
     public func hide(_ id: AppID) -> LaunchpadSnapshot? { apply(.hide(id)) }
     public func unhide(_ id: AppID) -> LaunchpadSnapshot? { apply(.unhide(id)) }
+    /// Folders and order go back to the catalog's; hidden apps stay hidden. Never refused.
+    public func resetArrangement() -> LaunchpadSnapshot? { apply(.resetArrangement) }
 
     /// Calls `onChange` when the installed apps may have changed, until the token is let go.
     /// The engine holds nothing: the token's lifetime is the caller's.
