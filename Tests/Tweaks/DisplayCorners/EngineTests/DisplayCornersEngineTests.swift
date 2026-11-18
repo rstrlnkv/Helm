@@ -84,6 +84,131 @@ final class DisplayCornersEngineTests: XCTestCase {
         XCTAssertEqual(rig.engine.state.rounded, [1: true])
     }
 
+    func testADisplayWhoseMasksAreAllOffScreenIsAwayAndDoesNotRaiseTheRate() {
+        let rig = Rig()
+        rig.engine.activate()
+        rig.settle()
+        rig.clock.time = 101
+        rig.ticker.tick()
+        XCTAssertEqual(rig.engine.state.rounded, [1: true], "the subject did not happen: the masks did not start at rest")
+
+        // A native full-screen Space: the window list lists the masks but not on screen, and `onScreenBounds` drops them.
+        rig.windows.bounds = [:]
+        rig.clock.time = 102
+        rig.ticker.tick()
+        XCTAssertEqual(rig.engine.state.rounded, [1: false], "an away display stays rounded")
+        XCTAssertEqual(rig.ticker.hz, 20, "an away display kept the sampler fast")
+        XCTAssertTrue(rig.masks.standing.values.allSatisfy { rig.windows.bounds[$0] == nil })
+
+        // Back on screen, the masks grow back once the settle wait is over, which a long stay away has passed.
+        rig.settle()
+        rig.clock.time = 103
+        rig.ticker.tick()
+        XCTAssertEqual(rig.engine.state.rounded, [1: true])
+        XCTAssertEqual(rig.ticker.hz, 20)
+    }
+
+    /// A rig whose masks are at rest and rounded, then all gone from the window list: display 1 is away.
+    private func awayRig() -> Rig {
+        let rig = Rig()
+        rig.engine.activate()
+        rig.settle()
+        rig.clock.time = 101
+        rig.ticker.tick()
+        XCTAssertEqual(rig.engine.state.rounded, [1: true], "the subject did not happen: the masks did not start at rest")
+        XCTAssertEqual(rig.masks.standing.count, 2, "the subject did not happen: not two masks")
+        rig.windows.bounds = [:]
+        rig.clock.time = 102
+        rig.ticker.tick()
+        XCTAssertEqual(rig.engine.state.rounded, [1: false], "the subject did not happen: the display is not away")
+        XCTAssertEqual(rig.ticker.hz, 20, "the subject did not happen: the away display kept the sampler fast")
+        return rig
+    }
+
+    func testADisplayWithOnlyOneMaskOffScreenIsNotAwayAndRaisesTheRate() {
+        let rig = Rig()
+        rig.engine.activate()
+        rig.settle()
+        rig.clock.time = 101
+        rig.ticker.tick()
+        XCTAssertEqual(rig.masks.standing.count, 2, "the subject did not happen: not two masks")
+        XCTAssertEqual(rig.engine.state.rounded, [1: true])
+        let one = rig.masks.standing.values.sorted()[0]
+        rig.windows.bounds[one] = nil
+        rig.clock.time = 102
+        rig.ticker.tick()
+        XCTAssertEqual(rig.engine.state.rounded, [1: false])
+        XCTAssertEqual(rig.ticker.hz, 120, "a display with a mask still listed was taken for away")
+    }
+
+    func testMasksBackOnScreenButMovingRaiseTheRateAgain() {
+        let rig = awayRig()
+        for number in rig.masks.standing.values { rig.windows.bounds[number] = CGRect(x: 900, y: 0, width: 28, height: 28) }
+        rig.clock.time = 103
+        rig.ticker.tick()
+        XCTAssertEqual(rig.engine.state.rounded, [1: false])
+        XCTAssertEqual(rig.ticker.hz, 120, "a display back on screen and moving was still taken for away")
+        rig.settle()
+        rig.clock.time = 104
+        rig.ticker.tick()
+        XCTAssertEqual(rig.engine.state.rounded, [1: true])
+        XCTAssertEqual(rig.ticker.hz, 20)
+    }
+
+    func testASpaceChangeWhileAwayKeepsTheRateUpOnlyForAWhile() {
+        let rig = awayRig()
+        rig.events.fire(.spaceChanged)
+        XCTAssertEqual(rig.ticker.hz, 120)
+        rig.clock.time += 2
+        rig.ticker.tick()
+        XCTAssertEqual(rig.ticker.hz, 20, "an away display kept the rate up after the Space settled")
+        XCTAssertEqual(rig.engine.state.rounded, [1: false])
+    }
+
+    func testAStepOfTheRadiusWhileAwayAsksAgainAtTheFastRateUntilTheNextSample() {
+        let rig = awayRig()
+        rig.engine.stepRadius(direction: 1)
+        XCTAssertEqual(rig.ticker.hz, 120, "relayout kept the old verdict of what is away")
+        rig.clock.time = 103
+        rig.ticker.tick()
+        XCTAssertEqual(rig.ticker.hz, 20)
+    }
+
+    func testAnAwayDisplayIsFreshAfterSleepAndWake() {
+        let rig = awayRig()
+        rig.events.fire(.displaysSlept)
+        XCTAssertFalse(rig.ticker.isRunning)
+        rig.events.fire(.displaysWoke)
+        XCTAssertTrue(rig.ticker.isRunning)
+        XCTAssertEqual(rig.engine.state.rounded, [1: true], "masks reopen rounded")
+        XCTAssertEqual(rig.ticker.hz, 20)
+        rig.settle()
+        rig.clock.time = 103
+        rig.ticker.tick()
+        XCTAssertEqual(rig.engine.state.rounded, [1: true])
+        for number in rig.masks.standing.values { rig.windows.bounds[number] = CGRect(x: 900, y: 0, width: 28, height: 28) }
+        rig.clock.time = 104
+        rig.ticker.tick()
+        XCTAssertEqual(rig.ticker.hz, 120)
+    }
+
+    func testAnAwayDisplayIsFreshAfterDeactivateAndActivate() {
+        let rig = awayRig()
+        rig.engine.deactivate()
+        rig.engine.activate()
+        XCTAssertEqual(rig.engine.state.rounded, [1: true])
+        XCTAssertEqual(rig.ticker.hz, 20)
+        rig.settle()
+        rig.clock.time = 103
+        rig.ticker.tick()
+        XCTAssertEqual(rig.engine.state.rounded, [1: true])
+        rig.windows.bounds = [:]
+        rig.clock.time = 104
+        rig.ticker.tick()
+        XCTAssertEqual(rig.engine.state.rounded, [1: false], "the second stay away was not seen")
+        XCTAssertEqual(rig.ticker.hz, 20)
+    }
+
     func testASpaceChangeSamplesAtOnceAndKeepsTheRateUpForAWhile() {
         let rig = Rig()
         rig.engine.activate()

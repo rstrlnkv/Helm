@@ -65,6 +65,10 @@ import HelmRuntime
     private var geometry: [MaskKey: CornerGeometry] = [:]
     /// Per display: rounded and at rest, the state in which its masks hold the pointer.
     private var holding: [UInt32: Bool] = [:]
+    /// The displays whose masks were all off screen at the last sample: away, as in a native full-screen Space,
+    /// where the masks are not shown (`.fullScreenNone`). An away display is not rounded and holds no pointer,
+    /// but it is not unsettled either: nothing on it moves, so it does not raise the sampling rate.
+    private var away: Set<UInt32> = []
     private var activeCorners: [(key: MaskKey, window: Int, frame: CGRect)] = []
     private var contact: CursorContact?
     private var currentHz: Double?
@@ -216,6 +220,7 @@ import HelmRuntime
         resting = [:]
         geometry = [:]
         holding = [:]
+        away = [] // no mask stands, so none is away; `relayout()` resets it too, this keeps the teardown whole
         activeCorners = []
         contact = nil
     }
@@ -258,6 +263,7 @@ import HelmRuntime
             masks.setRounded(false, display: id)
         }
         holding = [:]
+        away = []
         activeCorners = []
         contact = nil
 
@@ -319,7 +325,7 @@ import HelmRuntime
     /// The ticker at the rate the displays need now; started again only when the rate differs.
     private func tune() {
         let now = clock.now()
-        let unsettled = motion.values.contains { !$0.rounded } || (now.isFinite && now < fastUntil)
+        let unsettled = motion.contains { !$0.value.rounded && !away.contains($0.key) } || (now.isFinite && now < fastUntil)
         let hz = SamplingRate.next(unsettled: unsettled, maxFPS: specs.map(\.maxFPS).max() ?? 60)
         guard hz != currentHz || !ticker.isRunning else { return }
         currentHz = hz
@@ -332,8 +338,10 @@ import HelmRuntime
         let now = clock.now()
         var roundedChanged = false
         var holdingNow: [UInt32: Bool] = [:]
+        var awayNow: Set<UInt32> = []
         for id in motion.keys {
             let own = specs.filter { $0.key.display == id }.compactMap { windows[$0.key] }
+            if !own.isEmpty && own.allSatisfy({ sampled[$0] == nil }) { awayNow.insert(id) }
             let atRest = !own.isEmpty && own.allSatisfy { resting[$0] != nil && sampled[$0] == resting[$0] }
             if let rounded = motion[id]?.update(atRest: atRest, now: now) {
                 masks.setRounded(rounded, display: id)
@@ -341,6 +349,7 @@ import HelmRuntime
             }
             holdingNow[id] = atRest && motion[id]?.rounded == true
         }
+        away = awayNow
         if holdingNow != holding {
             holding = holdingNow
             activeCorners = specs.compactMap { spec in

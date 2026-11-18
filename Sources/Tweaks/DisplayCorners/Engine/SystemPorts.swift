@@ -66,6 +66,18 @@ private struct Tokens: @unchecked Sendable {
 
 /// The live pointer: a listen-only event tap on the main run loop, and the warp.
 ///
+/// **The suppression interval.** After a warp the system holds back pointer movement for 0.25 s, which the
+/// owner measured (2026-11-18, Helm Dev build 2034) as the pointer sticking a little at the curve. While the
+/// pointer guard runs the interval is 0, and it is put back to the system default of 0.25 s when the guard
+/// stops (`stop()`, so `deactivate()` and `deinit`; a tap stood down with no monitor to take its place). The
+/// only call that sets it, `CGSetLocalEventsSuppressionInterval`, is deprecated and not in the Swift
+/// overlay, so it is looked up with `dlsym` as the standalone app did, here and nowhere else; a missing
+/// symbol or a refusal is logged and the guard runs without it. Its scope is not known here: the header
+/// (`CGRemoteOperation.h`) says only that the call is obsolete, the standalone app's comment calls it
+/// process-local, and it was not measured here. A crash skips the restore, and what is left then is unknown.
+/// The flag below says whether this object changed it, so a restore never runs for a change it did not make;
+/// a failed restore keeps the flag, so the next `stop()` or `deinit` tries again.
+///
 /// **A tap or the monitors, never both.** The tap is made first, and only when Input Monitoring is already
 /// granted (`CGPreflightListenEventAccess`, which only reads the grant: `CGRequestListenEventAccess` would
 /// raise the dialog nobody asked for, and the monitors need no grant). Without the grant, when the system
@@ -88,6 +100,11 @@ final class EventPointer: @unchecked Sendable {
     private var tokens: [Any] = []
     private var onMove: (@MainActor (CGPoint) -> Void)?
     private var onModeChange: (@MainActor (PointerMode) -> Void)?
+    /// Whether this object set the interval to 0 and has not put it back.
+    private var intervalChanged = false
+
+    /// What the system sets the interval to when nobody has.
+    private static let defaultInterval = 0.25
 
     init() {}
 
@@ -102,12 +119,48 @@ final class EventPointer: @unchecked Sendable {
             self.onModeChange = onModeChange
         }
         if CGPreflightListenEventAccess() {
-            if installTap() { return .tap }
+            if installTap() {
+                changeInterval(toZero: true)
+                return .tap
+            }
             HelmLog.shared.warn(DisplayCornersEngine.moduleID, "the system refused the pointer tap; watching the pointer through monitors")
         } else {
             HelmLog.shared.warn(DisplayCornersEngine.moduleID, "no Input Monitoring; watching the pointer through monitors")
         }
-        return standInWithMonitors()
+        let mode = standInWithMonitors()
+        if mode != .unavailable { changeInterval(toZero: true) }
+        return mode
+    }
+
+    /// Idempotent: sets only what is not yet set, restores only what this object set. The call runs outside the lock.
+    private func changeInterval(toZero: Bool) {
+        let proceed = lock.withLock {
+            guard intervalChanged != toZero else { return false }
+            intervalChanged = toZero
+            return true
+        }
+        guard proceed else { return }
+        let value = toZero ? 0 : Self.defaultInterval
+        guard Self.setSuppressionInterval(value) else {
+            // A failed restore leaves the flag true, so the next `stop()` or `deinit` tries again; a failed set leaves nothing to restore.
+            lock.withLock { intervalChanged = !toZero }
+            HelmLog.shared.warn(DisplayCornersEngine.moduleID, toZero
+                ? "the pointer suppression interval could not be changed; the pointer may stick at a curve"
+                : "the pointer suppression interval could not be put back to 0.25 s")
+            return
+        }
+        HelmLog.shared.info(DisplayCornersEngine.moduleID, toZero
+            ? "pointer suppression interval set to 0 while the pointer is guarded"
+            : "pointer suppression interval put back to 0.25 s")
+    }
+
+    /// `CGSetLocalEventsSuppressionInterval`, which only `dlsym` reaches; false when the symbol is missing or refuses.
+    private static func setSuppressionInterval(_ seconds: Double) -> Bool {
+        guard let process = dlopen(nil, RTLD_LAZY) else { return false }
+        defer { dlclose(process) }
+        guard let symbol = dlsym(process, "CGSetLocalEventsSuppressionInterval") else { return false }
+        let set = unsafeBitCast(symbol, to: (@convention(c) (Double) -> Int32).self)
+        return set(seconds) == 0
     }
 
     /// The mode the monitors give, and a line when they could not be made either: the line above says why the
@@ -116,6 +169,7 @@ final class EventPointer: @unchecked Sendable {
         installMonitors()
         if lock.withLock({ tokens.isEmpty }) {
             HelmLog.shared.warn(DisplayCornersEngine.moduleID, "no pointer monitor could be made; the pointer is not watched")
+            changeInterval(toZero: false)
             return .unavailable
         }
         return .monitorsOnly
@@ -203,6 +257,7 @@ final class EventPointer: @unchecked Sendable {
         }
         tearDown(tap: taken.0, source: taken.1)
         remove(Tokens(values: taken.2))
+        changeInterval(toZero: false)
     }
 
     /// The tap and its source only, for standing down: the handlers stay.
@@ -238,9 +293,8 @@ final class EventPointer: @unchecked Sendable {
 
     func location() -> CGPoint? { CGEvent(source: nil)?.location }
 
-    /// Neither the suppression interval nor a reassociation is set: another app may have dissociated the
-    /// pointer on purpose, and a call here would override it. The order is to measure first whether the pointer
-    /// sticks after a warp, then reassociate, and only then reach for the interval.
+    /// No reassociation is set: another app may have dissociated the pointer on purpose, and a call here would
+    /// override it. The suppression interval is 0 while the guard runs (see the class comment).
     func warp(to point: CGPoint) -> Bool {
         CGWarpMouseCursorPosition(point) == .success
     }

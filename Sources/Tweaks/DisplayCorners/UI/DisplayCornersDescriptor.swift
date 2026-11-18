@@ -46,7 +46,7 @@ import Tweak_DisplayCorners_Engine
     public init() {}
 
     public func makeTweak(store: NamespacedStore) -> ModuleParts<DisplayCornersModel> {
-        let masks = NoCornerMasks()
+        let masks = CornerMaskWindows()
         let engine = DisplayCornersEngine(store: store, masks: masks)
         return ModuleParts(engine: engine, model: DisplayCornersModel(engine: engine, masks: masks))
     }

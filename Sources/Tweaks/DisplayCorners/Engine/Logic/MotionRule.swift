@@ -25,7 +25,10 @@ struct DisplayMotion {
 
 /// How often the window list is asked for. Review finding 4: the standalone app asked WindowServer at
 /// up to 120 Hz for every mask window with nothing moving; at rest the sampler runs slowly and speeds up
-/// only while a display is unsettled.
+/// only while a display is unsettled. A display whose masks are all off screen is away, not unsettled: the
+/// engine leaves it unrounded and holding no pointer, and it does not raise the rate by itself. The rate is
+/// still fast for one second after a Space change, and from a relayout (which forgets which displays are
+/// away) until the next sample finds them away again.
 enum SamplingRate {
     static let idleHz = 20.0
 
