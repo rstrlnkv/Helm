@@ -1,7 +1,7 @@
 # Helm — architecture
 
 Helm is a menu-bar utility suite for macOS: one accessory application that hosts
-its independent modules, which `ls Sources/Modules` lists. A module is a
+its independent modules: the directories of `Sources/Modules`, and Tweaks, one more registered in `Sources/HelmApp`. A module is a
 headless engine and a settings page with its model, which calls the engine's methods. Around them stand four foundation targets — `Sources/HelmContract`
 for what crosses the engine/host boundary,
 `Sources/HelmRuntime` for plumbing without UI, `Sources/HelmUI` for the design
@@ -29,6 +29,7 @@ comment, not on a page.
 | a module's pure logic | a `Logic` folder under `Sources/Modules/<Module>/Engine/`, where it has any |
 | its engine, its store | `Sources/Modules/<Module>/Engine/` |
 | its screen, and its descriptor with the module's tint and glyph | `Sources/Modules/<Module>/UI/` |
+| a tweak's engine, and its descriptor with the rows its card is made of | `Sources/Tweaks/<Tweak>/Engine/` and `Sources/Tweaks/<Tweak>/UI/` |
 | a module's kept tests, each directory flagged on its row in `Package.swift` | `Tests/Modules/` |
 | what crosses the engine/host boundary | `Sources/HelmContract/` |
 | plumbing two modules both want | `Sources/HelmRuntime/` |
@@ -84,7 +85,15 @@ A page lists its own headings on the line below its link.
 
 - [Module pattern](Architecture/ModulePattern.md) — how a module is built from two source directories and the test directories it keeps, and what holds its parts apart; § The boundaries, § Ports and logic, § The stream and the store, § Bulk reads, § A value crossing to the main thread.
 
-One page per module, in the order `ls Sources/Modules` prints.
+A tweak is a second, smaller kind of part: `Sources/Tweaks/<Name>/Engine` and `UI`, declared by a `Tweak` row in
+`Package.swift`, with no menu-bar presence, hotkey, scan or panel widget. The same three holds keep it apart from every
+module and every other tweak (Architecture/ModulePattern.md § The boundaries), and `ls Sources/Tweaks` lists them.
+Every tweak lives under the one entry, Tweaks, which is a module: its descriptor and engine are in `Sources/HelmApp`, and
+the entry has no page of its own here, because it holds nothing a module's page would. A tweak that holds reasons of its own has one:
+
+- [Display Corners](Architecture/DisplayCorners.md) — the masks over a display's corners and the pointer held off them; § The masks and the capture, § The pointer guard, § The suppression interval, § The sampling rate and away, § Calibration is temporary, § What is stored.
+
+One page per directory of `Sources/Modules`, in the order `ls Sources/Modules` prints.
 
 - [Autopilot](Architecture/Autopilot.md) — the refusals that bound acting on files unasked, starting with sealed rules; its model calls the engine directly (Architecture/Autopilot.md § How Autopilot's model reaches its engine, § The states of the Autopilot page).
 - [Disk](Architecture/Disk.md) — reading where the space went on an APFS volume group without leaving the largest folder out; its model calls the engine directly (Architecture/Disk.md § How Disk's model reaches its engine, § The states of the Disk page).
@@ -118,6 +127,8 @@ sealed (§ Sealed settings); a number read from a file is bounded (§ A number t
 | Layout | its ledger of words put right | `Sources/Modules/Layout/Engine/LedgerStore.swift` |
 | Leftovers | the login items Helm switched off, so a reset can give them back | a `NamespacedStore` over the property list (`Sources/Modules/Leftovers/Engine/LeftoversEngine.swift`) |
 | Screenshots | where a capture goes, and the other settings of the page | `Sources/Modules/Screenshots/Engine/Logic/ScreenshotsSettings.swift` |
+| Tweaks | whether each tweak is switched on, `module.tweak.<id>.enabled`, off until switched on | a `NamespacedStore` per tweak (`Sources/HelmApp/TweakHost.swift`) |
+| Display Corners | its two switches, the radius in pixels, the built-in display's last scale, as `module.tweak.display-corners.<key>`, not sealed, with the host's `enabled` beside them (the switch above) | `Sources/Tweaks/DisplayCorners/Engine/StoredCornerSettings.swift` |
 | Uninstaller | its settings | `Architecture/Uninstaller.md` § Keys, gates, guards and files |
 | VPN | its rules, and the credentials it caches for a tunnel | `Sources/Modules/VPN/Engine/VPNSettings.swift`, `Sources/Modules/VPN/Engine/SystemPorts.swift` |
 | the scan settings of every scannable module | one sealed value | `Sources/HelmRuntime/SettingGuard.swift` |

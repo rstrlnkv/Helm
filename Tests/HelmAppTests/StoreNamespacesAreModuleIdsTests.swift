@@ -104,7 +104,7 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     /// read them.
     private static let registeredIDs: Set<String> = [
         "autopilot", "disk", "duplicates", "homebrew", "keep-awake",
-        "layout", "leftovers", "screenshots", "uninstaller", "vpn",
+        "layout", "leftovers", "screenshots", "tweaks", "uninstaller", "vpn",
     ]
 
     @MainActor func testNoModuleIdChangesUnderneathItsStoredSettings() {
@@ -133,26 +133,35 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     /// (`static let id = ModuleID(DuplicatesEngine.moduleID)`), the direction
     /// the descriptors already carry their command enums. That makes the two
     /// spellings one by construction; what this test does is stop a third
-    /// growing back. It scans `Sources/Modules` alone: outside a module a
+    /// growing back. It scans `Sources/Modules` and `Sources/Tweaks` alone: outside a module a
     /// `module:` argument may legitimately name something that is not one —
     /// `ResetEverything` passes `"reset"` — and inside one there is nothing to
     /// name but itself.
     func testNoModuleSpellsItsOwnIdAsALiteral() throws {
         var offenders: [String] = []
         var callSites = 0
-        let scanned = try eachSourceLine(under: "Sources/Modules") { site, text in
-            for marker in ["module: ", "namespace: "] {
-                guard let start = text.range(of: marker) else { continue }
-                callSites += 1
-                guard text[start.upperBound...].hasPrefix("\"") else { continue }
-                offenders.append("\(site) — \(text.trimmingCharacters(in: .whitespaces))")
+        var scanned = 0
+        var scannedTweaks = 0
+        // A tweak is a part too, and names the same store and log with its id.
+        for root in ["Sources/Modules", "Sources/Tweaks"] {
+            let read = try eachSourceLine(under: root) { site, text in
+                for marker in ["module: ", "namespace: "] {
+                    guard let start = text.range(of: marker) else { continue }
+                    callSites += 1
+                    guard text[start.upperBound...].hasPrefix("\"") else { continue }
+                    offenders.append("\(site) — \(text.trimmingCharacters(in: .whitespaces))")
+                }
             }
+            scanned += read
+            if root == "Sources/Tweaks" { scannedTweaks = read }
         }
 
         // Two controls, because a scan that reaches nothing reports nothing.
         XCTAssertGreaterThan(scanned, 50,
                              "only \(scanned) files under Sources/Modules were read, so this "
                              + "scan is looking somewhere that has moved")
+        XCTAssertGreaterThan(scannedTweaks, 0,
+                             "no file under Sources/Tweaks was read, so tweaks are not scanned")
         XCTAssertGreaterThan(callSites, 0,
                              "no `module:` or `namespace:` argument was found at all, so the "
                              + "markers this scan looks for have changed shape")

@@ -6,7 +6,12 @@ module's `Module` entry in `Package.swift`; the reasons, and why the manifest le
 above `struct Module`. A directory with no flag is not compiled and nothing warns, so
 `Tests/HelmAppTests/ListsAgreeWithTheTreeTests.swift` reads the two against each other, and a scanning module needs its UI tests,
 because the same file looks for its stopped-model test there.
-`ls Sources/Modules` gives the modules.
+`ls Sources/Modules` gives the modules that have a directory; Tweaks, the one more in `ModuleRegistry.all`, has its descriptor in `Sources/HelmApp`.
+
+A tweak is the same shape one size down: `Sources/Tweaks/<Name>/Engine` and `UI`, a `Tweak` entry in `Package.swift` and
+`TweakDescriptor` in place of `ModuleDescriptor`, which asks for no menu-bar presence, hotkey, scan or panel widget; the
+host that runs it and why it is not `ModuleHost` are the doc comments of `Sources/HelmApp/TweakHost.swift` and
+`Sources/HelmApp/TweaksDescriptor.swift`.
 
 ## The boundaries
 
@@ -18,16 +23,17 @@ engine, its own, and no engine imports another. The build holds it:
 target outside the importing target's dependencies, direct or through another.
 The check runs on a target only when it recompiles, so a rerun after a refusal
 builds green and the refusing run can end on "Build complete!": its exit code is
-the verdict. A fresh build folder compiles, and so checks, every target the build
+the verdict. The same holds apply to a tweak: its UI target imports its own engine alone, and no tweak's target and no module's can see the other's.
+A fresh build folder compiles, and so checks, every target the build
 asks for; the release's fresh clone asks for the targets `HelmApp` depends on —
-the shared ones and every module's engine and UI, no test target.
+the shared ones, every module's engine and UI and every tweak's, no test target.
 
 **Engines carry no UI, and the host imports no engine.** The build holds
 neither: SwiftUI is a system module rather than a target, and the check passes
 an import of a target reached through a declared one, which is how `HelmApp`,
-declaring every module's UI target, could import every engine.
+declaring every module's and every tweak's UI target, could import every engine.
 `Tests/HelmRuntimeTests/TheBoundariesTheBuildCannotHoldTests.swift` reads the
-imports instead; its doc comment lists the spellings it counts. AppKit reaches
+imports instead, in `Sources/Modules` and in `Sources/Tweaks`; its doc comment lists the spellings it counts. AppKit reaches
 only system calls, and its place is a module's
 Sources/Modules/<Name>/Engine/SystemPorts.swift, directly under `Engine`:
 `testEngineAppKitImportsStandOnlyInSystemPorts` in the same test refuses an
@@ -79,9 +85,9 @@ publishes is declared there a second time; the doc comment of
 **A module's id is the engine's constant.**
 `command grep -rn 'public static let moduleID' Sources/Modules/*/Engine/` prints
 one line per engine; the descriptor forwards the id upward.
-`Tests/HelmAppTests/StoreNamespacesAreModuleIdsTests.swift:121` records the
+`StoreNamespacesAreModuleIdsTests` (`Tests/HelmAppTests/`) records the
 registered ids and fails on a rename, since a rename orphans everything anybody
-has configured.
+has configured; its `testNoModuleSpellsItsOwnIdAsALiteral` reads `Sources/Tweaks` as it reads `Sources/Modules`.
 
 **A module may own windows over the displays.** Screenshots' overlay and toast are panels its UI target builds itself; a window a module needs and the host owns is the other shape, `Architecture/AWindowAModuleNeedsAndTheHostOwns.md`.
 

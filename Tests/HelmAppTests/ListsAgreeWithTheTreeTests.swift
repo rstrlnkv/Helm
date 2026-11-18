@@ -106,30 +106,70 @@ final class ListsAgreeWithTheTreeTests: XCTestCase {
     /// `testTargets`, is not read, so a lost half of it stays green here, and a `HELM_FULL_SUITE=1` run names it
     /// through `Tests/optional-tests.txt` while each directory holds a listed class (`Scripts/test.sh`).
     func testEveryTestDirectoryOfAModuleIsDeclaredInTheManifest() throws {
+        let checked = try checkedTestDirectories(kind: "Module", list: "modules", root: "Tests/Modules")
+        XCTAssertGreaterThan(checked, 0, "no module test directory was read: the path is wrong")
+    }
+
+    /// The same for tweaks. A tweak with no kept test has no `Tests/Tweaks` at all, which is the ordinary state and
+    /// reads zero directories; the composition line is held all the same.
+    func testEveryTestDirectoryOfATweakIsDeclaredInTheManifest() throws {
+        _ = try checkedTestDirectories(kind: "Tweak", list: "tweaks", root: "Tests/Tweaks")
+    }
+
+    /// The manifest's code lines: block comments gone, every line cut at `//`, and empty lines dropped.
+    private func manifestCode() throws -> [String] {
         let text = try RepoSource.text(of: "Package.swift")
             .replacingOccurrences(of: #"/\*[\s\S]*?\*/"#, with: "", options: .regularExpression)
-        let code = text.split(separator: "\n").compactMap { line -> String? in
+        return text.split(separator: "\n").compactMap { line -> String? in
             let kept = line.components(separatedBy: "//")[0]
             return kept.trimmingCharacters(in: .whitespaces).isEmpty ? nil : kept
         }
-        XCTAssertTrue(code.contains { $0.contains("modules.flatMap(\\.testTargets)") },
-                      "Package.swift does not put `modules.flatMap(\\.testTargets)` into `targets:`: "
+    }
+
+    /// Holds one kind's rows (`kind(name: "X"`) against the directories under `root`; returns how many it checked.
+    private func checkedTestDirectories(kind: String, list: String, root: String) throws -> Int {
+        let code = try manifestCode()
+        XCTAssertTrue(code.contains { $0.contains("\(list).flatMap(\\.testTargets)") },
+                      "Package.swift does not put `\(list).flatMap(\\.testTargets)` into `targets:`: "
                       + "the flags on the rows switch on nothing")
-        let root = RepoSource.root.appendingPathComponent("Tests/Modules")
         let manager = FileManager.default
+        let directory = RepoSource.root.appendingPathComponent(root)
+        guard manager.fileExists(atPath: directory.path) else { return 0 }
         var checked = 0
-        for module in try manager.contentsOfDirectory(atPath: root.path) where !module.hasPrefix(".") {
-            let row = code.first { $0.contains("Module(name: \"\(module)\"") } ?? ""
-            XCTAssertFalse(row.isEmpty, "`Tests/Modules/\(module)` has no `Module(name: \"\(module)\"` row in Package.swift: "
+        for name in try manager.contentsOfDirectory(atPath: directory.path) where !name.hasPrefix(".") {
+            let row = code.first { $0.contains("\(kind)(name: \"\(name)\"") } ?? ""
+            XCTAssertFalse(row.isEmpty, "`\(root)/\(name)` has no `\(kind)(name: \"\(name)\"` row in Package.swift: "
                            + "the flags below would fail for the wrong reason")
-            for (directory, flag) in [("EngineTests", "engineTests"), ("UITests", "uiTests")] {
-                guard manager.fileExists(atPath: root.appendingPathComponent("\(module)/\(directory)").path) else { continue }
+            for (sub, flag) in [("EngineTests", "engineTests"), ("UITests", "uiTests")] {
+                guard manager.fileExists(atPath: directory.appendingPathComponent("\(name)/\(sub)").path) else { continue }
                 checked += 1
-                XCTAssertTrue(row.contains("\(flag): true"), "`Tests/Modules/\(module)/\(directory)` exists and its row "
+                XCTAssertTrue(row.contains("\(flag): true"), "`\(root)/\(name)/\(sub)` exists and its row "
                               + "in Package.swift does not set `\(flag): true` in code, so whatever it holds is never compiled")
             }
         }
-        XCTAssertGreaterThan(checked, 0, "no module test directory was read: the path is wrong")
+        return checked
+    }
+
+    /// The tweaks the manifest lists are the directories of `Sources/Tweaks`, and `TweakRegistry.all` registers
+    /// exactly them, each id once and none with a dot (the store's namespace is `tweak.<id>`, and the dot is its mark).
+    @MainActor func testTheTweaksAreTheDirectoriesTheManifestAndTheRegistryList() throws {
+        let rows = try manifestCode().compactMap { line -> String? in
+            guard let start = line.range(of: "Tweak(name: \"") else { return nil }
+            return String(line[start.upperBound...].prefix { $0 != "\"" })
+        }
+        let directory = RepoSource.root.appendingPathComponent("Sources/Tweaks")
+        let entries = try FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles])
+        let onDisk = Set(try entries.filter { try $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true }
+            .map(\.lastPathComponent))
+        XCTAssertFalse(onDisk.isEmpty, "no tweak directory was read: the path is wrong")
+        XCTAssertEqual(Set(rows), onDisk, "Package.swift's `Tweak(name:` rows and Sources/Tweaks disagree")
+        XCTAssertEqual(rows.count, Set(rows).count, "a tweak is listed twice in Package.swift")
+        let ids = TweakRegistry.all.map(\.idRaw)
+        XCTAssertEqual(ids.count, TweakRegistry.all.count)
+        XCTAssertEqual(Set(ids).count, ids.count, "duplicate tweak ids: \(ids)")
+        XCTAssertFalse(ids.contains { $0.contains(".") }, "a tweak id holds a dot: \(ids)")
+        XCTAssertEqual(ids.count, rows.count, "TweakRegistry.all and the manifest's rows list different numbers of tweaks")
     }
 
     // MARK: - The registry
