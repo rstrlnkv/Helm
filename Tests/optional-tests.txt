@@ -36,6 +36,7 @@ BrewConfigParserTests
 BrewDescAndSearchShapeTests
 BrewInfoParserTests
 ConversionTriggersTests
+CornerLogicTests
 DelayedWorkTests
 DirectoryListingTests
 DiskAdvisorTests

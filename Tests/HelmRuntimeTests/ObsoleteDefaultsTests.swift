@@ -38,6 +38,31 @@ final class ObsoleteDefaultsTests: XCTestCase {
         }
     }
 
+    /// Where a retired key's constant would be declared, and the name it would carry. A tweak's key is
+    /// `module.tweak.<id>.<name>` (its store's namespace is `tweak.<id>`), so reading `tweak` as a module
+    /// pointed at `Sources/Modules/Tweak`, which is absent, and the key was skipped as "module gone".
+    private static func declaringDirectory(of parts: [Substring]) -> (directory: String, name: String) {
+        func pascal(_ word: Substring) -> String { word.prefix(1).uppercased() + word.dropFirst() }
+        if parts[1] == "tweak", parts.count >= 4 {
+            let tweak = parts[2].split(separator: "-").map(pascal).joined()
+            return ("Sources/Tweaks/\(tweak)", parts.dropFirst(3).joined(separator: "."))
+        }
+        let namespace = parts[1]
+        return (namespace == "app" ? "Sources/HelmApp" : "Sources/Modules/\(pascal(namespace))",
+                parts.dropFirst(2).joined(separator: "."))
+    }
+
+    /// The mapping above, on a fixture: a tweak's key reaches its own folder, and a module's still does.
+    func testATweaksKeyIsLookedForInItsOwnFolder() {
+        let tweak = Self.declaringDirectory(of: "module.tweak.display-corners.radiusPixels".split(separator: "."))
+        XCTAssertEqual(tweak.directory, "Sources/Tweaks/DisplayCorners")
+        XCTAssertEqual(tweak.name, "radiusPixels")
+        let module = Self.declaringDirectory(of: "module.layout.automatic".split(separator: "."))
+        XCTAssertEqual(module.directory, "Sources/Modules/Layout")
+        XCTAssertEqual(module.name, "automatic")
+        XCTAssertEqual(Self.declaringDirectory(of: "module.app.x".split(separator: ".")).directory, "Sources/HelmApp")
+    }
+
     /// **A retired key's constant must be gone**, because the purge really
     /// deletes and it runs at every launch.
     ///
@@ -81,11 +106,7 @@ final class ObsoleteDefaultsTests: XCTestCase {
             guard parts.count >= 3, parts[0] == "module" else {
                 return XCTFail("\(key) is not `module.<namespace>.<name>`")
             }
-            let namespace = String(parts[1])
-            let name = parts.dropFirst(2).joined(separator: ".")
-            let directory = namespace == "app"
-                ? "Sources/HelmApp"
-                : "Sources/Modules/\(namespace.prefix(1).uppercased() + namespace.dropFirst())"
+            let (directory, name) = Self.declaringDirectory(of: parts)
             let files = (try? RepoSource.swiftFiles(under: directory)) ?? []
             guard !files.isEmpty else { continue }   // the module itself is gone
             checked += 1

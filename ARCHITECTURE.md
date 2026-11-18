@@ -29,7 +29,7 @@ comment, not on a page.
 | a module's pure logic | a `Logic` folder under `Sources/Modules/<Module>/Engine/`, where it has any |
 | its engine, its store | `Sources/Modules/<Module>/Engine/` |
 | its screen, and its descriptor with the module's tint and glyph | `Sources/Modules/<Module>/UI/` |
-| a tweak's engine, and its descriptor with the card it draws | `Sources/Tweaks/`, an `Engine` and a `UI` folder per tweak |
+| a tweak's engine, and its descriptor with the card it draws | `Sources/Tweaks/<Tweak>/Engine/` and `Sources/Tweaks/<Tweak>/UI/` |
 | a module's kept tests, each directory flagged on its row in `Package.swift` | `Tests/Modules/` |
 | what crosses the engine/host boundary | `Sources/HelmContract/` |
 | plumbing two modules both want | `Sources/HelmRuntime/` |
