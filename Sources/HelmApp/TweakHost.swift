@@ -12,7 +12,7 @@ import SwiftUI
 /// `ModuleHost` already runs *its* lifecycle: the store, the switch, `shutdown`, the reset, the
 /// sidebar's off-means-General rule. What a module costs the host beyond that is `ModuleHost.Live`'s
 /// hotkeys, scans, menu bar and panel, and a tweak has none of them; sharing the code would carry
-/// eight closures a tweak never fills (`ModuleHost.Live` has ten; a tweak fills `stop` and, as `card`, `page`). A tweak needs build, activate, then stop and deactivate, and this is
+/// eight closures a tweak never fills (`ModuleHost.Live` has ten; a tweak fills `stop` and, as `rows`, `page`). A tweak needs build, activate, then stop and deactivate, and this is
 /// that. The entry's `Model` is this object, and its engine (`TweaksEngine`) calls `activateEnabled()`
 /// and `stopAll()`, so a tweak stops whenever the entry does: on its own switch, on `shutdown`, on reset.
 ///
@@ -27,7 +27,7 @@ import SwiftUI
         /// The tweak's own model, held so it lives and dies with this entry; everything that draws from it
         /// goes through the closures below.
         let model: AnyObject
-        let card: @MainActor () -> AnyView
+        let rows: @MainActor () -> [AnyView]
         let stop: @MainActor () -> Void
     }
 
@@ -103,7 +103,7 @@ import SwiftUI
         let model = parts.model
         parts.engine.activate()
         return Live(engine: parts.engine, model: model,
-                    card: { d.card(model) },
+                    rows: { d.rows(model) },
                     stop: { d.stop(model) })
     }
 }

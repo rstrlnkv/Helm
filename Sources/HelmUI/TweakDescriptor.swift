@@ -34,8 +34,10 @@ import HelmRuntime
     /// **And nothing else**, as `ModuleDescriptor.makeModule`: it builds objects and starts nothing, touches no
     /// window, observer or display. `activate()` is where a tweak reaches the machine.
     func makeTweak(store: NamespacedStore) -> ModuleParts<Model>
-    /// The tweak's settings, drawn under its header while it is on; empty when it has none.
-    func card(_ model: Model) -> AnyView
+    /// The tweak's settings, drawn under its header while it is on: one view per row of the card, none when it has
+    /// none. Rows and not one view, because the page's section pads each direct child and draws a hairline between
+    /// two, and a view that holds the rows (an `AnyView`, or a `Group` in one) is expected to be read as one row (not tried).
+    func rows(_ model: Model) -> [AnyView]
     /// The model's own end: the host calls it on the person's switch and on stopping, before the engine's
     /// `deactivate()`, and drops the model right after.
     func stop(_ model: Model)

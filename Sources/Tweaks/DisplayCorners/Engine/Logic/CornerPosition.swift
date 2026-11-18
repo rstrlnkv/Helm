@@ -90,10 +90,20 @@ public struct CornerState: Equatable, Sendable {
     public var builtIn: Bool
     public var external: Bool
     public var calibrationColour: CalibrationColour?
+    /// The first of `presetPoints` whose radius at `referenceScale` is the current one, within a thousandth of a
+    /// pixel; nil when none is. A fact of the engine, which owns the scale: at a scale of 5, 28 pt and 32 pt both
+    /// clamp to 128 px and the first wins.
+    public var selectedPreset: Int?
+
+    /// The presets the card offers, in points of the built-in display.
+    public static let presetPoints = RadiusMath.presetPoints
+    /// The radius the engine accepts, in pixels.
+    public static let radiusBounds = RadiusMath.bounds
 
     public init(masks: [MaskSpec] = [], rounded: [UInt32: Bool] = [:], radiusPixels: Double = 0,
                 referenceScale: CGFloat = 1, pointer: PointerMode = .off, calibrating: Bool = false,
-                builtIn: Bool = false, external: Bool = false, calibrationColour: CalibrationColour? = nil) {
+                builtIn: Bool = false, external: Bool = false, calibrationColour: CalibrationColour? = nil,
+                selectedPreset: Int? = nil) {
         self.masks = masks
         self.rounded = rounded
         self.radiusPixels = radiusPixels
@@ -103,5 +113,6 @@ public struct CornerState: Equatable, Sendable {
         self.builtIn = builtIn
         self.external = external
         self.calibrationColour = calibrationColour
+        self.selectedPreset = selectedPreset
     }
 }

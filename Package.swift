@@ -98,7 +98,7 @@ struct Tweak {
 }
 
 let tweaks: [Tweak] = [
-    Tweak(name: "DisplayCorners", engineTests: true),
+    Tweak(name: "DisplayCorners", engineTests: true, uiTests: true),
 ]
 
 extension Tweak {

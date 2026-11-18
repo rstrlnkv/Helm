@@ -32,7 +32,7 @@ final class TweakHostUnfedInputsTests: XCTestCase {
             calls.log.append("make")
             return ModuleParts(engine: FakeEngine(calls), model: FakeModel())
         }
-        func card(_ model: FakeModel) -> AnyView { AnyView(EmptyView()) }
+        func rows(_ model: FakeModel) -> [AnyView] { [] }
         func stop(_ model: FakeModel) { calls.log.append("stop") }
     }
 

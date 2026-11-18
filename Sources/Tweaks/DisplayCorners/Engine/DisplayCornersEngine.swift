@@ -403,11 +403,14 @@ import HelmRuntime
     // MARK: What is said
 
     private func publish() {
+        let radius = RadiusMath.pixels(stored: settings.radiusPixels, scale: reference)
+        let preset = RadiusMath.presetPoints.first { abs(RadiusMath.preset(points: Double($0), scale: reference) - radius) <= 0.001 }
         let new = CornerState(
             masks: specs, rounded: motion.mapValues(\.rounded),
-            radiusPixels: RadiusMath.pixels(stored: settings.radiusPixels, scale: reference),
+            radiusPixels: radius,
             referenceScale: reference, pointer: pointerMode, calibrating: calibration != nil,
-            builtIn: settings.builtIn, external: settings.external, calibrationColour: calibration)
+            builtIn: settings.builtIn, external: settings.external, calibrationColour: calibration,
+            selectedPreset: preset)
         guard new != last else { return }
         last = new
         news.say(new)

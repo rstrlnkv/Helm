@@ -46,7 +46,7 @@ final class ASwitchedOffTweakRunsNothingTests: XCTestCase {
             calls.log.append("make \(Self.key)")
             return ModuleParts(engine: FakeEngine(Self.key, calls), model: FakeModel())
         }
-        func card(_ model: FakeModel) -> AnyView { AnyView(EmptyView()) }
+        func rows(_ model: FakeModel) -> [AnyView] { [] }
         func stop(_ model: FakeModel) { calls.log.append("stop \(Self.key)") }
     }
     private final class Alpha: FakeTweak { override class var key: String { "alpha" } }

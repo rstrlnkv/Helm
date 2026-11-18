@@ -315,6 +315,14 @@ final class StringsCoverageTests: XCTestCase {
         "m": [.es, .fr, .pt],
         "Manual": [.es, .pt],
         "MB": [.es, .de, .ja, .zh, .pt],
+        // Display Corners' units. «pt» and «px» are the system's own spelling in Japanese and Brazilian Portuguese, with
+        // an ordinary space: the ruler formats of Books' BlissReader `TSAccessibility.loctable` (`ruler.formatter.pt`,
+        // `ruler.formatter.px`) read `%@ pt` and `%@ px` there. German is no identity: it spells both with an
+        // unbreakable space, `%@ pt` from System Settings' `display.textSize.fontSizeValueFormat`, Font Book and
+        // PaperKit, and `%@ px` by analogy. The other four spell them otherwise (an unbreakable space in French
+        // and Spanish, «пт» and «пикс», «点» and «像素»).
+        "%@ pt": [.ja, .pt],
+        "%@ px": [.ja, .pt],
         // The tunnel strip's unit, and the identity is inherited rather than
         // new: all eight already shipped it inside «Speed, Mbit/s», which
         // splitting that key into a plain label and a unit turned from a
