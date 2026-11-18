@@ -29,7 +29,7 @@ comment, not on a page.
 | a module's pure logic | a `Logic` folder under `Sources/Modules/<Module>/Engine/`, where it has any |
 | its engine, its store | `Sources/Modules/<Module>/Engine/` |
 | its screen, and its descriptor with the module's tint and glyph | `Sources/Modules/<Module>/UI/` |
-| a tweak's engine, and its descriptor with the card it draws | `Sources/Tweaks/<Tweak>/Engine/` and `Sources/Tweaks/<Tweak>/UI/` |
+| a tweak's engine, and its descriptor with the rows its card is made of | `Sources/Tweaks/<Tweak>/Engine/` and `Sources/Tweaks/<Tweak>/UI/` |
 | a module's kept tests, each directory flagged on its row in `Package.swift` | `Tests/Modules/` |
 | what crosses the engine/host boundary | `Sources/HelmContract/` |
 | plumbing two modules both want | `Sources/HelmRuntime/` |
@@ -89,7 +89,9 @@ A tweak is a second, smaller kind of part: `Sources/Tweaks/<Name>/Engine` and `U
 `Package.swift`, with no menu-bar presence, hotkey, scan or panel widget. The same three holds keep it apart from every
 module and every other tweak (Architecture/ModulePattern.md § The boundaries), and `ls Sources/Tweaks` lists them.
 Every tweak lives under the one entry, Tweaks, which is a module: its descriptor and engine are in `Sources/HelmApp`, and
-it has no page of its own here, because it holds nothing a module's page would.
+the entry has no page of its own here, because it holds nothing a module's page would. A tweak that holds reasons of its own has one:
+
+- [Display Corners](Architecture/DisplayCorners.md) — the masks over a display's corners and the pointer held off them; § The masks and the capture, § The pointer guard, § The suppression interval, § The sampling rate and away, § Calibration is temporary, § What is stored.
 
 One page per directory of `Sources/Modules`, in the order `ls Sources/Modules` prints.
 

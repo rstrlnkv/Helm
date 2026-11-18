@@ -8,10 +8,11 @@ import Tweak_DisplayCorners_Engine
 /// out that forgets it leaves coloured corners and a floating panel after nobody is looking at them. The ways out are
 /// the card's own switch, a person closing the panel, the page being left (the calibration row's `pageLeft()`), and the
 /// tweak being stopped (the host's `stop()`, which also ends the model's reading of the engine). Each is driven
-/// on `DisplayCornersModel` against a recording engine and a recording panel; each of those tests first proves that
-/// calibration was running and the panel open (`calibrating()`), so a test that did nothing cannot pass. Of the
-/// three others, two carry their own control (the engine's word adopted before the stop; the panel opened once
-/// calibration runs) and the third needs none, its switches start off and its asserts are that each shows on.
+/// on `DisplayCornersModel` against a recording engine and a recording panel; five of the eight tests drive them and
+/// each of those five first proves that calibration was running and the panel open (`calibrating()`), so a test that
+/// did nothing cannot pass. Of the three others, two carry their own control (the engine's word adopted before the
+/// stop; the panel opened once calibration runs) and the third needs none, its switches start off and its asserts are
+/// that each shows on.
 ///
 /// The fakes carry the states the real ones have: the engine's calibration is running or not and an end of one that is
 /// not running changes nothing, as `DisplayCornersEngine.endCalibration`; the panel tells its owner of a person's
