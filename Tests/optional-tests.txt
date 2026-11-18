@@ -59,6 +59,9 @@ HelmFailureTests
 InspectorStateDecisionsTests
 LaunchAgentReaderTests
 LaunchctlDisabledTests
+LaunchpadHostileEditsTests
+LaunchpadLayoutOperationsTests
+LaunchpadSearchTests
 LayoutEngineConversionTests
 LayoutEngineUnderTheSanitiserTests
 LayoutVerdictTests

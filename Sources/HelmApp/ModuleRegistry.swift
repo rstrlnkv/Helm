@@ -10,6 +10,7 @@ import Module_Duplicates_UI
 import Module_Autopilot_UI
 import Module_Layout_UI
 import Module_Screenshots_UI
+import Module_Launchpad_UI
 
 /// All compiled-in module descriptors. Add future modules here.
 @MainActor enum ModuleRegistry {

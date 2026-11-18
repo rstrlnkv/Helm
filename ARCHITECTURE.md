@@ -91,6 +91,7 @@ One page per module, in the order `ls Sources/Modules` prints.
 - [Duplicates](Architecture/Duplicates.md) — the keep policies that decide which of several identical files is the extra one; its model calls the engine directly (Architecture/Duplicates.md § How Duplicates' model reaches its engine, § Keys, phases, guards and files, § The states of the Duplicates page).
 - [Homebrew](Architecture/Homebrew.md) — how another program's package manager is run, with read-only queries and other runs governed differently; § The one setting, § The model, § Operations, § Installing Homebrew, § Install counts, § Searching for a package, § The Health tab, § The states of the Homebrew page.
 - [KeepAwake](Architecture/KeepAwake.md) — holding sleep off through pure logic units orchestrated by one engine; § How the model reaches the engine, § The closed lid, § Vetoes and the notice, § Rules read from the machine, § State a person asked for outlives the process, § Its states.
+- [Launchpad](Architecture/Launchpad.md) — the engine of the app launcher: apps kept by bundle id, a layout reconciled in memory against what is installed and written only on an edit; § The catalog and the layout.
 - [Layout](Architecture/Layout.md) — shown to the user as "Keyboard" (`LyStr.moduleName`); the four limits on a module that reads every keystroke and types into other applications; its model calls the engine directly (Architecture/Layout.md § How Layout's model reaches its engine, § Keys, waits, guards and files, § The states of the Layout page).
 - [Leftovers](Architecture/Leftovers.md) — what it will offer to remove: login items and plug-in files whose owner is gone; § How Leftovers' model reaches its engine, § Reads, predicates, guards and files, § The states of the Leftovers page.
 - [Screenshots](Architecture/Screenshots.md) — freezing the displays, picking an area, a window, the Dock or the menu bar, and the inline editor over the frozen picture, which has a page of its own (Architecture/ScreenshotsEditor.md); § The overlay, § The capture panel, § Writing a shot and replacing it, § The settings page, § The after-shot window, § How Screenshots' model reaches its engine, § The states of the Screenshots page and its windows.
@@ -115,6 +116,7 @@ sealed (§ Sealed settings); a number read from a file is bounded (§ A number t
 | Duplicates | its sealed settings, the digests of files it has read | `Sources/Modules/Duplicates/Engine/Logic/DuplicatesSettings.swift`, `Sources/Modules/Duplicates/Engine/HashCache.swift` |
 | Homebrew | its one setting (`module.homebrew.updateBeforeChecking`, default ON, not sealed), the install-count documents it downloads, each with its `.etag` file, and a file for the operation in progress; nothing about packages themselves, which are read from `brew` | `Sources/Modules/Homebrew/Engine/UpdateBeforeChecking.swift`, `Sources/Modules/Homebrew/Engine/SystemPorts.swift`; Architecture/Homebrew.md § The one setting, § Install counts |
 | KeepAwake | its settings, and a session a person started, which outlives the process | `Sources/Modules/KeepAwake/Engine/KeepAwakeSettings.swift`, `Sources/Modules/KeepAwake/Engine/Logic/SessionRestore.swift` |
+| Launchpad | the arrangement of apps: items, folders, hidden ids; by bundle id only | `Sources/Modules/Launchpad/Engine/LayoutStore.swift` (a private `layout.json` in a `Launchpad` folder of the Application Support directory) |
 | Layout | its ledger of words put right | `Sources/Modules/Layout/Engine/LedgerStore.swift` |
 | Leftovers | the login items Helm switched off, so a reset can give them back | a `NamespacedStore` over the property list (`Sources/Modules/Leftovers/Engine/LeftoversEngine.swift`) |
 | Screenshots | where a capture goes, and the other settings of the page | `Sources/Modules/Screenshots/Engine/Logic/ScreenshotsSettings.swift` |
@@ -135,7 +137,7 @@ Architecture/RunningOtherPrograms.md.
 | Leftovers | `/bin/launchctl` |
 | VPN | `/usr/sbin/scutil`, `/usr/bin/security`, `/usr/bin/networkQuality` |
 | the host and the runtime | `/usr/bin/osascript` (`Sources/HelmRuntime/PrivilegedRun.swift`), `/usr/bin/systemextensionsctl` (`Sources/HelmRuntime/SystemExtensionParser.swift`), `/usr/bin/ditto` and `/bin/bash` (`Sources/HelmApp/Installer.swift`) |
-| Autopilot, Disk, Duplicates, Layout, Screenshots, Uninstaller | no tool of their own; the Uninstaller reads the applications through `Sources/HelmRuntime/RunningApps.swift` |
+| Autopilot, Disk, Duplicates, Launchpad, Layout, Screenshots, Uninstaller | no tool of their own; the Uninstaller reads the applications through `Sources/HelmRuntime/RunningApps.swift` |
 
 ## What else to read
 
