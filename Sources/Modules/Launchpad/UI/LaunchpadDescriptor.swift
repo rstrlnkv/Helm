@@ -33,7 +33,7 @@ enum LaunchpadHotkey {
     public init() {}
 
     public func makeModule(store: NamespacedStore) -> ModuleParts<LaunchpadViewModel> {
-        let engine = LaunchpadEngine()
+        let engine = LaunchpadEngine(utilitiesFolderName: { HelmWord.utilities })
         let model = LaunchpadViewModel(work: engine, store: store)
         model.present = { model in
             LaunchpadWindow(model: model)

@@ -1,4 +1,5 @@
 ABatchThatAskedEveryNameDidNotGiveUpTests
+ADefaultArrangementTests
 ACaskIsNeverAskedWhatUsesItTests
 ACatalogNamesAnAppAsFinderDoesTests
 ACatalogUnderOddLocalizationTests

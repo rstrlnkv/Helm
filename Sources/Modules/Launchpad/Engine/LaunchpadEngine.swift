@@ -15,18 +15,21 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     private let catalog: AppCatalogPort
     private let launcher: AppLauncherPort
     private let store: LayoutStore
+    /// The localized name of the default arrangement's folder of utilities, asked when a default is built: the engine holds no strings.
+    private let utilitiesFolderName: @Sendable () -> String
     private let lock = NSLock()
     /// The latest catalog read, so an edit reconciles against what the person was looking at.
     private var lastCatalog: CatalogReading?
 
-    public convenience init() {
-        self.init(catalog: FileSystemAppCatalog(), launcher: SystemAppLauncher(), store: LayoutStore())
+    public convenience init(utilitiesFolderName: @escaping @Sendable () -> String) {
+        self.init(catalog: FileSystemAppCatalog(), launcher: SystemAppLauncher(), store: LayoutStore(), utilitiesFolderName: utilitiesFolderName)
     }
 
-    init(catalog: AppCatalogPort, launcher: AppLauncherPort, store: LayoutStore) {
+    init(catalog: AppCatalogPort, launcher: AppLauncherPort, store: LayoutStore, utilitiesFolderName: @escaping @Sendable () -> String = { "Utilities" }) {
         self.catalog = catalog
         self.launcher = launcher
         self.store = store
+        self.utilitiesFolderName = utilitiesFolderName
     }
 
     public func activate() {}
@@ -47,9 +50,11 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
         let reading = lastCatalog ?? catalog.read()
         lastCatalog = reading
         let stored = store.load()
-        let base = Self.layout(of: stored).reconciled(catalog: reading.apps.map(\.id), complete: reading.complete)
+        let base = storedLayout(of: stored, reading).reconciled(catalog: reading.apps.map(\.id), complete: reading.complete)
         // Reconciled again so an edit that empties the arrangement (a reset) returns the apps in catalog order, as a read would.
-        guard let edited = base.applying(edit)?.reconciled(catalog: reading.apps.map(\.id), complete: reading.complete) else {
+        var applied = base.applying(edit)
+        if edit == .resetArrangement { applied?.items = defaultArrangement(reading).items }
+        guard let edited = applied?.reconciled(catalog: reading.apps.map(\.id), complete: reading.complete) else {
             HelmLog.shared.info(Self.moduleID, "an arrangement edit was refused")
             return nil
         }
@@ -59,7 +64,7 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
 
     public func hide(_ id: AppID) -> LaunchpadSnapshot? { apply(.hide(id)) }
     public func unhide(_ id: AppID) -> LaunchpadSnapshot? { apply(.unhide(id)) }
-    /// Folders and order go back to the catalog's; hidden apps stay hidden. Never refused.
+    /// Folders and order go back to the default arrangement; hidden apps stay hidden. Never refused.
     public func resetArrangement() -> LaunchpadSnapshot? { apply(.resetArrangement) }
 
     /// Calls `onChange` when the installed apps may have changed, until the token is let go.
@@ -92,14 +97,22 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    private static func layout(of read: LayoutRead) -> LaunchpadLayout {
-        if case .loaded(let layout) = read { return layout }
-        return .empty
+    /// What is stored; the default arrangement when there is no file (an unreadable one shows the catalog's order, as its warning says).
+    private func storedLayout(of read: LayoutRead, _ reading: CatalogReading) -> LaunchpadLayout {
+        switch read {
+        case .loaded(let layout): layout
+        case .absent: defaultArrangement(reading)
+        case .unreadable: .empty
+        }
+    }
+
+    private func defaultArrangement(_ reading: CatalogReading) -> LaunchpadLayout {
+        .defaultArrangement(for: reading.apps, utilitiesFolderName: utilitiesFolderName())
     }
 
     private func snapshot(_ reading: CatalogReading, stored: LayoutRead, layout: LaunchpadLayout?, saved: Bool) -> LaunchpadSnapshot {
         let order = reading.apps.map(\.id)
-        let reconciled = layout ?? Self.layout(of: stored).reconciled(catalog: order, complete: reading.complete)
+        let reconciled = layout ?? storedLayout(of: stored, reading).reconciled(catalog: order, complete: reading.complete)
         var snap = LaunchpadSnapshot(apps: Dictionary(reading.apps.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }),
                                      order: order, layout: reconciled, catalogComplete: reading.complete, layoutRead: stored)
         snap.saved = saved
