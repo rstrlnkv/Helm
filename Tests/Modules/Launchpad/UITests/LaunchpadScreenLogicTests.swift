@@ -50,7 +50,7 @@ final class LaunchpadScreenLogicTests: XCTestCase {
         XCTAssertEqual(LaunchpadPaging.slice(items, page: 2, capacity: 20), Array(40..<45))
         XCTAssertEqual(LaunchpadPaging.slice(items, page: 3, capacity: 20), [])
         XCTAssertEqual(LaunchpadPaging.slice(items, page: -1, capacity: 20), [])
-        XCTAssertEqual(LaunchpadPaging.page(of: 39, capacity: 20), 1)
+        XCTAssertEqual(LaunchpadPaging.page(of: 39, starts: [0, 20, 40]), 1)
         XCTAssertEqual(LaunchpadPaging.clamped(9, count: 3), 2)
         XCTAssertEqual(LaunchpadPaging.clamped(-4, count: 3), 0)
     }

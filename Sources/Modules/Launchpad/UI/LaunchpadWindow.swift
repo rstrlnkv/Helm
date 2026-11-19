@@ -47,13 +47,22 @@ final class LaunchpadPanel: NSPanel {
         withAnimation(HelmMotion.interface) { state.move(dx: dx, dy: dy) }
     }
 
+    /// Where the pointer is in the window's coordinates, from the top left (the panel's own are from the bottom left).
+    private func point(of event: NSEvent, _ state: LaunchpadScreenState) -> CGPoint {
+        CGPoint(x: event.locationInWindow.x, y: state.geometry.size.height - event.locationInWindow.y)
+    }
+
     /// True when the event was this window's and goes no further.
     private func handle(_ event: NSEvent) -> Bool {
         guard let state else { return false }
         switch event.type {
         case .keyDown:
+            // A carried tile: Esc is the state's (it ends the lift, not the window), every other key waits.
+            if state.pointerBusy && event.keyCode != 53 { return true }
             if let editor = firstResponder as? NSTextView, editor.hasMarkedText() { return false }
             guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return false }
+            // The folder's name field has the keyboard: Return and Esc are its, and every other key (the caret, the arrows) goes on to it.
+            if state.renaming { return state.handleNameKey(event.keyCode) }
             if (event.keyCode == 123 || event.keyCode == 124), !state.search.isEmpty { return false }
             switch event.keyCode {
             case 53: state.escape()
@@ -66,7 +75,20 @@ final class LaunchpadPanel: NSPanel {
             default: return false
             }
             return true
+        case .leftMouseDown:
+            return state.pointerDown(point(of: event, state), time: event.timestamp)
+        case .leftMouseDragged:
+            guard state.pointerBusy else { return false }
+            state.pointerMoved(point(of: event, state), time: event.timestamp)
+            return true
+        case .leftMouseUp:
+            guard state.pointerBusy else { return false }
+            state.pointerUp(point(of: event, state), time: event.timestamp)
+            return true
+        case .rightMouseDown:
+            return state.pointerBusy
         case .scrollWheel:
+            if state.pointerBusy { return true }
             guard state.openFolder == nil else { return false }
             if event.hasPreciseScrollingDeltas, !event.phase.isEmpty || !event.momentumPhase.isEmpty {
                 swipe.width = state.geometry.pageWidth
@@ -180,6 +202,8 @@ private final class LaunchpadWindowEnders {
             }
         }
         state.onHide = { [weak model] id in Task { @MainActor in await model?.hide(id) } }
+        state.onPlace = { [weak model] edit in await model?.place(edit) }
+        state.onRename = { [weak model] id, name in Task { @MainActor in await model?.rename(id, to: name) } }
         state.onClose = { [weak self] in self?.close() }
         state.onLoaded = { snapshot, state in
             HelmLog.shared.info("launchpad", "window: \(snapshot.apps.count) apps, \(state.geometry.columns)x\(state.geometry.rows) grid, \(state.pageCount) pages")
@@ -224,7 +248,10 @@ private final class LaunchpadWindowEnders {
         watchTask?.cancel()
         watchTask = nil
         enders = nil
+        state.shutdown()
         state.onLaunch = nil
+        state.onPlace = nil
+        state.onRename = nil
         state.onHide = nil
         state.onClose = nil
         state.onLoaded = nil

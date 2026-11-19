@@ -507,7 +507,7 @@ public enum AppStr {
     public static var menuBarIconSize: String { L(.menuBarIconSize) }
     public static var settings: String { L(.settings) }
     public static var panel: String { L(.panel) }
-    public static var utilities: String { L(.utilities) }
+    public static var utilities: String { HelmWord.utilities }
 
     // MARK: - The panel, arranged
 

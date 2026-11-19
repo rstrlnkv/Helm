@@ -36,6 +36,8 @@ enum LpStr {
     static func couldNotOpen(_ name: String) -> String { L(.appCouldNotBeOpened(name)) }
     /// A folder tile's name for VoiceOver: what it is called, then what it is.
     static func folder(_ name: String) -> String { L(.folderNamed(name), remembered: false) }
+    /// The folder card's name field, for VoiceOver.
+    static var folderNameField: String { L(.folderNameField) }
     /// "Show" and the app it is for, so a column of Show buttons is not a column of the same word.
     static func show(_ name: String) -> String { L(.showNamed(name), remembered: false) }
 }

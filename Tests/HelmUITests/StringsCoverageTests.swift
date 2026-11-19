@@ -228,6 +228,17 @@ final class StringsCoverageTests: XCTestCase {
         // Belegung, Disposition, Distribución, 配列, 布局), which is what makes
         // this an identity rather than a row nobody filled in.
         "Layout": [.pt],
+        // Launchpad's folder names, as the iPhone's own folder-naming table spells them (`FrontBoard.framework`'s
+        // `FolderNaming.loctable`): the language keeps the English word, and the table says so. «Lifestyle» is German,
+        // «Sports» and «Finance» French, «Navigation» and «Shopping» German and French (Shopping from `CoreTypes.bundle`),
+        // «News» German and Portuguese, «Social» Spanish; the others differ.
+        "Lifestyle": [.de],
+        "Sports": [.fr],
+        "Finance": [.fr],
+        "Navigation": [.de, .fr],
+        "News": [.de, .pt],
+        "Shopping": [.de, .fr],
+        "Social": [.es],
         // The module's name is the macOS app's name, and macOS spells it «Launchpad» in
         // every one of these six; only Chinese has its own (启动台). The displayed table that holds it is
         // KeyboardSettingsIntents.appex's Localizable.loctable, key «Launchpad»

@@ -79,4 +79,36 @@ final class ALayoutFileUnderOddInputsTests: XCTestCase {
         XCTAssertTrue(store.save(layout))
         XCTAssertEqual(store.load(), .loaded(layout))
     }
+
+    // MARK: Page breaks
+
+    func testAFileWithoutBreaksDecodesAsItAlwaysDidAndABreakRoundTrips() throws {
+        let old = loaded(try read(#"{"version": 1, "items": [{"app": "a"}, {"app": "b"}], "hidden": ["h"]}"#))
+        XCTAssertEqual(old, LaunchpadLayout(items: [.app("a"), .app("b")], hidden: ["h"]))
+        let layout = LaunchpadLayout(items: [.app("a"), .pageBreak, .app("b")])
+        let dir = scratchDirectory("layout-breaks")
+        let store = LayoutStore(directory: dir)
+        XCTAssertTrue(store.save(layout))
+        XCTAssertEqual(store.load(), .loaded(layout))
+        XCTAssertEqual(try JSONDecoder().decode(LaunchpadLayout.self, from: try JSONEncoder().encode(layout)), layout)
+    }
+
+    func testAnOddBreakEntryIsSkippedAndBreaksAtTheEdgesOrInARowDoNotSurviveANormalise() throws {
+        let l = loaded(try read(#"{"items": [{"pageBreak": true}, {"app": "a"}, {"pageBreak": false}, {"pageBreak": "yes"}, {"pageBreak": true}, {"pageBreak": true}, {"app": "b"}, {"pageBreak": true}]}"#))
+        XCTAssertEqual(l.items, [.pageBreak, .app("a"), .pageBreak, .pageBreak, .app("b"), .pageBreak])
+        XCTAssertEqual(l.normalized().items, [.app("a"), .pageBreak, .app("b")])
+    }
+
+    func testBreaksCountAgainstTheItemCeiling() throws {
+        let items = (0..<(LaunchpadLimits.maxItems + 500)).map { _ in #"{"pageBreak":true}"# }.joined(separator: ",")
+        XCTAssertLessThanOrEqual(loaded(try read(#"{"items":[\#(items)]}"#)).items.count, LaunchpadLimits.maxItems)
+    }
+
+    func testAlternatingAppsAndBreaksMakeNoMorePagesThanTheCeiling() throws {
+        let items = (0..<LaunchpadLimits.maxItems).map { $0 % 2 == 0 ? #"{"app":"id\#($0)"}"# : #"{"pageBreak":true}"# }.joined(separator: ",")
+        let l = loaded(try read(#"{"items":[\#(items)]}"#)).normalized()
+        let breaks = l.items.filter { $0 == .pageBreak }.count
+        XCTAssertEqual(breaks, LaunchpadLimits.maxPages - 1, "the control: breaks stand up to the ceiling")
+        XCTAssertEqual(l.items.count - breaks, LaunchpadLimits.maxItems / 2, "the apps all stay, only breaks go")
+    }
 }

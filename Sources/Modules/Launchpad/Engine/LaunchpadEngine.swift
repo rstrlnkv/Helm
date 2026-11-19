@@ -40,16 +40,19 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
         return snapshot(reading, stored: store.load(), layout: nil, saved: true)
     }
 
-    /// nil = refused (a vanished id, an empty name): nothing written. Otherwise the new snapshot,
-    /// with `saved` false when the write did not land — the result is still returned.
-    func apply(_ edit: LaunchpadEdit) -> LaunchpadSnapshot? {
+    /// nil = refused (a vanished id, an empty name): nothing written, one line in the log without a name. Otherwise the new
+    /// snapshot, with `saved` false when the write did not land — the result is still returned.
+    public func apply(_ edit: LaunchpadEdit) -> LaunchpadSnapshot? {
         lock.lock(); defer { lock.unlock() }
         let reading = lastCatalog ?? catalog.read()
         lastCatalog = reading
         let stored = store.load()
         let base = Self.layout(of: stored).reconciled(catalog: reading.apps.map(\.id), complete: reading.complete)
         // Reconciled again so an edit that empties the arrangement (a reset) returns the apps in catalog order, as a read would.
-        guard let edited = base.applying(edit)?.reconciled(catalog: reading.apps.map(\.id), complete: reading.complete) else { return nil }
+        guard let edited = base.applying(edit)?.reconciled(catalog: reading.apps.map(\.id), complete: reading.complete) else {
+            HelmLog.shared.info(Self.moduleID, "an arrangement edit was refused")
+            return nil
+        }
         let saved = (stored != .unreadable || store.moveUnreadableAside()) && store.save(edited)
         return snapshot(reading, stored: saved ? .loaded(edited) : stored, layout: edited, saved: saved)
     }

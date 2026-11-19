@@ -3,7 +3,9 @@ import XCTest
 
 /// Pass 3's page asked its views how big they were and laid out again on the answer: the log showed the system
 /// switching the keyboard tap off and memory up 559 MB. The window's sizes come once from the screen (`LaunchpadGeometry`); this reads the window's source
-/// and fails on anything that measures, and on the drag and drop that pass 3 carried, which the window does not have.
+/// and fails on anything that measures, and on SwiftUI's drag and drop that pass 3 carried (`onDrag`, `onDrop`, `draggable`,
+/// `dropDestination`), which the window does not have. The window's own lift reads raw mouse events in the panel
+/// (`LaunchpadLift`, fed by `LaunchpadPanel`) and says "lift", "place" and "release"; those words are free, SwiftUI's are not.
 final class TheLaunchpadWindowMeasuresNothingTests: XCTestCase {
     private static let banned = ["GeometryReader", "onGeometryChange", "PreferenceKey", "preference(key", "onPreferenceChange",
                                  "onDrag", "onDrop", "draggable", "dropDestination", "LazyVGrid", "LazyHGrid", "LazyVStack", "ScrollViewReader",

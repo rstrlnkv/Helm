@@ -231,4 +231,30 @@ final class ACatalogUnderOddBundlesTests: XCTestCase {
         func set(_ reading: CatalogReading, _ id: String?) { lock.lock(); self.reading = reading; self.id = id; lock.unlock() }
         func get() -> (CatalogReading?, String?) { lock.lock(); defer { lock.unlock() }; return (reading, id) }
     }
+
+    // MARK: - Category
+
+    private func category(of value: Any?) throws -> String? {
+        let root = scratchDirectory("cat-category")
+        var plist: [String: Any] = ["CFBundleIdentifier": "c"]
+        if let value { plist["LSApplicationCategoryType"] = value }
+        try bundle("C.app", in: root, plist: plist)
+        let apps = read(root).apps
+        XCTAssertEqual(apps.count, 1, "the app itself is still read")
+        return apps.first?.category
+    }
+
+    func testACategoryThatIsNotAStringOrIsEmptyIsNilAndTheAppIsStillRead() throws {
+        XCTAssertNil(try category(of: nil))
+        XCTAssertNil(try category(of: 7))
+        XCTAssertNil(try category(of: ["public.app-category.music"]))
+        XCTAssertNil(try category(of: ["a": "b"]))
+        XCTAssertNil(try category(of: ""))
+    }
+
+    func testAnOverlongCategoryIsCutToTheCeilingAndAValidOneReadsBackRaw() throws {
+        let long = "public.app-category." + String(repeating: "x", count: 10_000)
+        XCTAssertEqual(try XCTUnwrap(try category(of: long)).count, LaunchpadLimits.maxStringLength)
+        XCTAssertEqual(try category(of: "public.app-category.developer-tools"), "public.app-category.developer-tools")
+    }
 }

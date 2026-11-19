@@ -6,11 +6,15 @@ public struct CatalogApp: Equatable, Sendable {
     public let id: String
     public let name: String
     public let path: String
+    /// The bundle's own `LSApplicationCategoryType`, raw (`public.app-category.music`), bounded; nil when it has none, an
+    /// empty one or one that is not a string. Naming it for a person is the page's.
+    public let category: String?
 
-    init(id: String, name: String, path: String) {
+    init(id: String, name: String, path: String, category: String? = nil) {
         self.id = id
         self.name = name
         self.path = path
+        self.category = category
     }
 }
 

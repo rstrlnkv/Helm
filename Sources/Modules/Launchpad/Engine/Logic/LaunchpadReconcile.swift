@@ -15,6 +15,7 @@ extension LaunchpadLayout {
                 switch $0 {
                 case .app(let id): return known.contains(id) ? $0 : nil
                 case .folder(var f): f.apps.removeAll { !known.contains($0) }; return .folder(f)
+                case .pageBreak: return $0
                 }
             }
         }
@@ -24,6 +25,7 @@ extension LaunchpadLayout {
             switch item {
             case .app(let id): placed.insert(id)
             case .folder(let f): placed.formUnion(f.apps)
+            case .pageBreak: break
             }
         }
         for id in catalog.prefix(LaunchpadLimits.maxApps) where placed.insert(id).inserted {

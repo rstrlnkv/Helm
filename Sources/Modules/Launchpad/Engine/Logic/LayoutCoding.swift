@@ -3,11 +3,13 @@ import Foundation
 /// **The layout file, bounded.** JSON `version: 1`; a version above the known is unreadable
 /// (an older build must not rewrite a newer one's file); every field read
 /// leniently; counts truncated to `LaunchpadLimits`; a folder id that is not a UUID gets a fresh one.
+/// A page break is one more kind of entry, `{"pageBreak": true}`, so a file without one decodes as it always did
+/// and the version stays 1; an older build skips the entry it does not know, and so loses the page it stood for.
 extension LaunchpadLayout: Codable {
     static let version = 1
 
     private enum Keys: String, CodingKey { case version, items, hidden }
-    private enum ItemKeys: String, CodingKey { case app, folder }
+    private enum ItemKeys: String, CodingKey { case app, folder, pageBreak }
     private enum FolderKeys: String, CodingKey { case id, name, apps }
 
     public init(from decoder: Decoder) throws {
@@ -64,6 +66,8 @@ extension LaunchpadLayout: Codable {
                     }
                 }
                 item = .folder(Folder(id: id, name: String(name.prefix(LaunchpadLimits.maxFolderName)), apps: apps))
+            } else if (try? c.decode(Bool.self, forKey: .pageBreak)) == true {
+                item = .pageBreak
             } else {
                 item = nil
             }
@@ -78,6 +82,7 @@ extension LaunchpadLayout: Codable {
                 try n.encode(f.id.uuidString, forKey: .id)
                 try n.encode(f.name, forKey: .name)
                 try n.encode(f.apps, forKey: .apps)
+            case .pageBreak: try c.encode(true, forKey: .pageBreak)
             case nil: break
             }
         }

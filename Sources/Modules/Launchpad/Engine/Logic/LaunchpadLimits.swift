@@ -7,6 +7,8 @@ enum LaunchpadLimits {
     static let maxApps = 10_000
     static let maxItems = 5_000
     static let maxFolderApps = 1_000
+    /// Pages a layout file may make by page breaks: one fewer breaks; a later break is dropped.
+    static let maxPages = 200
     /// Bundle ids, names and folder names read from a file or a property list.
     static let maxStringLength = 255
     static let maxFolderName = 64

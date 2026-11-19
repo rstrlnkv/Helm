@@ -1,4 +1,5 @@
 import CoreGraphics
+import HelmUI
 
 /// Every size the window's layout depends on, worked out **once** from the screen's size when the window is built.
 ///
@@ -58,6 +59,19 @@ struct LaunchpadGeometry: Equatable {
         CGPoint(x: (pageWidth - CGFloat(columns) * cellWidth) / 2 + CGFloat(slot % columns) * cellWidth,
                 y: CGFloat(slot / columns) * cellHeight)
     }
+
+    /// A folder's card, centred in the window: the title, then `rows` rows of `columns` cells, in the card's padding. One
+    /// place for the card's drawing and for the lift's "outside the card".
+    func card(columns: Int, rows: Int) -> CGRect {
+        let width = CGFloat(columns) * cellWidth + 2 * Self.cardPadding
+        let height = CGFloat(rows) * cellHeight + Self.cardTitle + Self.cardGap + 2 * Self.cardPadding
+        return CGRect(x: (size.width - width) / 2, y: (size.height - height) / 2, width: width, height: height)
+    }
+
+    static let cardPadding = HelmSpace.s6
+    static let cardGap = HelmSpace.s5
+    /// The height the card gives its title (one line of the section heading).
+    static let cardTitle: CGFloat = 22
 
     /// The middle of slot `slot`'s tile in the window's own coordinates.
     func center(ofSlot slot: Int) -> CGPoint {

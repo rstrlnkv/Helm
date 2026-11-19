@@ -97,11 +97,11 @@ extension LaunchpadScreenLogicTests {
 
     func testTheChoiceCrossesAPageBoundaryBothWays() {
         XCTAssertEqual(LaunchpadPaging.moved(17, dx: 1, dy: 0, columns: 6, count: 40), 18)
-        XCTAssertEqual(LaunchpadPaging.page(of: 18, capacity: 18), 1)
+        XCTAssertEqual(LaunchpadPaging.page(of: 18, starts: [0, 18, 36]), 1)
         XCTAssertEqual(LaunchpadPaging.moved(18, dx: -1, dy: 0, columns: 6, count: 40), 17)
-        XCTAssertEqual(LaunchpadPaging.page(of: 17, capacity: 18), 0)
-        XCTAssertEqual(LaunchpadPaging.page(of: -4, capacity: 18), 0)
-        XCTAssertEqual(LaunchpadPaging.page(of: 5, capacity: 0), 0)
+        XCTAssertEqual(LaunchpadPaging.page(of: 17, starts: [0, 18, 36]), 0)
+        XCTAssertEqual(LaunchpadPaging.page(of: -4, starts: [0, 18, 36]), 0)
+        XCTAssertEqual(LaunchpadPaging.page(of: 5, starts: [0]), 0)
     }
 
     // MARK: - The pager

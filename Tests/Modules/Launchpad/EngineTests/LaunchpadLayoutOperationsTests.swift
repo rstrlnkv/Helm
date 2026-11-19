@@ -38,7 +38,7 @@ final class LaunchpadLayoutOperationsTests: XCTestCase {
     func testRemoveFromFolderLandsRightAfterIt() throws {
         var l = try XCTUnwrap(layout(["a", "b", "c", "d"]).applying(.makeFolder(drop: "a", onto: "b", name: "F")))
         guard case .folder(let f) = l.items[0] else { return XCTFail() }
-        l = try XCTUnwrap(l.applying(.add("c", toFolder: f.id, at: nil)))
+        l = try XCTUnwrap(l.applying(.add("c", toFolder: f.id, relativeTo: nil, after: true)))
         l = try XCTUnwrap(l.applying(.remove("b", fromFolder: f.id)))
         XCTAssertEqual(l.items.map(\.itemID), [f.id.uuidString, "b", "d"])
     }

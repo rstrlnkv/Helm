@@ -8,6 +8,7 @@ protocol LaunchpadWork: AnyObject, Sendable {
     func read() -> LaunchpadSnapshot
     func hide(_ id: AppID) -> LaunchpadSnapshot?
     func resetArrangement() -> LaunchpadSnapshot?
+    func apply(_ edit: LaunchpadEdit) -> LaunchpadSnapshot?
     func unhide(_ id: AppID) -> LaunchpadSnapshot?
     func launch(_ id: AppID) async -> LaunchOutcome
     func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject
@@ -108,6 +109,15 @@ enum LaunchNotice: Equatable {
 
     func hide(_ id: AppID) async { await edit { $0.hide(id) } }
     func unhide(_ id: AppID) async { await edit { $0.unhide(id) } }
+
+    /// A drop in the window: one edit by anchors. Answers the snapshot that is shown after it, which is the old one when the edit
+    /// was refused (the layout is read again then) or answered late.
+    func place(_ change: LaunchpadEdit) async -> LaunchpadSnapshot? {
+        await edit { $0.apply(change) }
+        return snapshot
+    }
+
+    func rename(_ folder: UUID, to name: String) async { await edit { $0.apply(.rename(folder, to: name)) } }
 
     /// Asking changes nothing on disk: only `confirmReset` after it does.
     func askToReset() { if !closed { pendingReset = true } }

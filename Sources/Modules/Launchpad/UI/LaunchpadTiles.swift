@@ -30,6 +30,10 @@ enum LaunchpadMetrics {
     static let dotsBottom: CGFloat = 28
     /// The window's content before it settles at its size, as a factor.
     static let zoomFrom: CGFloat = 1.08
+    /// From a cell's top to its icon's top.
+    static let iconTop: CGFloat = HelmSpace.s3
+    /// The tile carried by the pointer.
+    static let liftScale: CGFloat = 1.08
     /// An icon at the press that opens it.
     static let popScale: CGFloat = 1.18
 }
@@ -38,15 +42,18 @@ enum LaunchpadMetrics {
 private struct TileStyle: ButtonStyle {
     let hovering: Bool
     let selected: Bool
+    /// Pressed by the window's own mouse routing (the panel takes the press before a button sees it), or a drop's target.
+    let pressed: Bool
     let glowSize: CGSize
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(
                 RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
-                    .fill(configuration.isPressed || selected ? HelmSurface.rowSelection : hovering ? HelmSurface.rowHover : Color.clear)
+                    .fill(configuration.isPressed || pressed || selected ? HelmSurface.rowSelection : hovering ? HelmSurface.rowHover : Color.clear)
                     .colorEffect(LaunchpadGlow.shader(size: glowSize), isEnabled: selected && LaunchpadGlow.on)
             )
+            .animation(HelmMotion.wellFade, value: pressed)
             .contentShape(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous))
     }
 }
@@ -64,6 +71,7 @@ struct LaunchpadTile<Mark: View>: View {
     var glowSize = CGSize(width: 1, height: 1)
     /// The app opening: its icon swells, then the window goes.
     var popped = false
+    var pressed = false
     @ViewBuilder let mark: Mark
     @State private var hovering = false
 
@@ -86,7 +94,7 @@ struct LaunchpadTile<Mark: View>: View {
             .padding(.horizontal, HelmSpace.s2)
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(TileStyle(hovering: hovering, selected: selected, glowSize: glowSize))
+        .buttonStyle(TileStyle(hovering: hovering, selected: selected, pressed: pressed, glowSize: glowSize))
         .help(name)
         .onHover { hovering = $0 }
         .accessibilityLabel(accessibleName)
@@ -101,10 +109,10 @@ struct LaunchpadTile<Mark: View>: View {
 
 extension LaunchpadTile where Mark == Image {
     /// An application's tile; the icon is the caller's, from the window's own cache.
-    init(app: CatalogApp, icon: NSImage, iconSize: CGFloat, selected: Bool, glowSize: CGSize, popped: Bool,
+    init(app: CatalogApp, icon: NSImage, iconSize: CGFloat, selected: Bool, glowSize: CGSize, popped: Bool, pressed: Bool = false,
          open: @escaping () -> Void, hide: @escaping () -> Void) {
         self.init(name: app.name, accessibleName: app.name, iconSize: iconSize, selected: selected, open: open, hide: hide,
-                  glowSize: glowSize, popped: popped) {
+                  glowSize: glowSize, popped: popped, pressed: pressed) {
             Image(nsImage: icon).resizable()
         }
     }

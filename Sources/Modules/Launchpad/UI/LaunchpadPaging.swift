@@ -16,8 +16,19 @@ enum LaunchpadPaging {
         return Array(items[from..<min(items.count, from + capacity)])
     }
 
-    static func page(of index: Int, capacity: Int) -> Int {
-        capacity > 0 ? max(0, index) / capacity : 0
+    /// The pages of segments (the list cut at each page break), each cut again by what a page holds; never an empty page, and
+    /// at least one.
+    static func pages<T>(_ segments: [[T]], capacity: Int) -> [[T]] {
+        let chunks = segments.flatMap { segment in
+            (0..<pageCount(items: segment.count, capacity: capacity)).map { slice(segment, page: $0, capacity: capacity) }
+        }.filter { !$0.isEmpty }
+        return chunks.isEmpty ? [[]] : chunks
+    }
+
+    /// The page that holds the tile at `index` of the whole list, given the index each page starts at (a page break makes a
+    /// page start before the capacity is reached, so the arithmetic is not `index / capacity`).
+    static func page(of index: Int, starts: [Int]) -> Int {
+        starts.lastIndex { $0 <= index } ?? 0
     }
 
     /// Where an arrow key takes the selection. The first press selects the first tile; a step past either end stays;

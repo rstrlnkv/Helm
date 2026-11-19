@@ -12,6 +12,8 @@ struct LaunchpadScreen: View {
     @ObservedObject var vm: LaunchpadViewModel
     @ObservedObject var state: LaunchpadScreenState
     @FocusState private var searchFocused: Bool
+    @FocusState private var nameFocused: Bool
+    @State private var nameSelection: TextSelection?
 
     var body: some View {
         let g = state.geometry
@@ -30,6 +32,11 @@ struct LaunchpadScreen: View {
                     folderScrim(g)
                     folderCard(g)
                 }
+                if let carried = state.lift {
+                    LiftOverlay(point: state.liftPoint, cell: CGSize(width: g.cellWidth, height: g.cellHeight)) {
+                        tile(carried.entry, selected: false, width: g.cellWidth, g)
+                    }
+                }
             }
             .frame(width: g.size.width, height: g.size.height)
             .scaleEffect(state.shown || HelmMotion.reduceMotion ? 1 : LaunchpadMetrics.zoomFrom)
@@ -45,6 +52,19 @@ struct LaunchpadScreen: View {
         .accessibilityAction(.escape) { state.escape() }
         .onChange(of: vm.snapshot, initial: true) { _, new in state.update(snapshot: new) }
         .onChange(of: state.openFolder) { _, open in if open == nil { searchFocused = true } }
+        .onChange(of: state.renaming) { _, on in
+            if on {
+                nameFocused = true
+                if state.selectNameOnFocus { Task { @MainActor in nameSelection = TextSelection(range: state.nameDraft.startIndex..<state.nameDraft.endIndex) } }
+            } else {
+                nameFocused = false
+                if state.openFolder != nil { searchFocused = true }
+            }
+        }
+        // The field lost the keyboard some other way (a click elsewhere): what was typed is kept.
+        .onChange(of: nameFocused) { _, focused in
+            if focused { state.renaming = true } else if state.renaming { state.commitName() }
+        }
         .onAppear {
             searchFocused = true
             state.setShown(true)
@@ -73,7 +93,7 @@ struct LaunchpadScreen: View {
         return ZStack(alignment: .topLeading) {
             ForEach(Array(entries.enumerated()), id: \.element.id) { at, entry in
                 let origin = g.origin(ofSlot: at)
-                tile(entry, selected: state.openFolder == nil && state.selection == index * g.capacity + at, width: g.cellWidth, g)
+                tile(entry, selected: state.openFolder == nil && state.selection == state.flatIndex(page: index, slot: at), width: g.cellWidth, g)
                     .offset(x: origin.x, y: origin.y)
             }
         }
@@ -86,12 +106,16 @@ struct LaunchpadScreen: View {
             case .app(let app):
                 LaunchpadTile(app: app, icon: state.icons.icon(for: app.path), iconSize: g.icon, selected: selected,
                               glowSize: glowSize(g), popped: state.launching == app.id,
+                              pressed: state.pressedID == app.id || state.lift?.onto == app.id,
                               open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) })
             case .folder(let id, let name, let apps):
                 LaunchpadTile(name: name, accessibleName: LpStr.folder(name), iconSize: g.icon, selected: selected,
-                              open: { state.open(folder: id) }, hide: nil, glowSize: glowSize(g)) {
+                              open: { state.open(folder: id) }, hide: nil, glowSize: glowSize(g),
+                              pressed: state.pressedID == entry.id || state.lift?.onto == entry.id) {
                     LaunchpadFolderMark(icons: apps.prefix(4).map { state.icons.icon(for: $0.path) }, size: g.icon)
                 }
+            case .gap:
+                Color.clear
             }
         }
         .frame(width: width, height: g.cellHeight)
@@ -153,24 +177,26 @@ struct LaunchpadScreen: View {
     // MARK: - A folder's card
 
     private func folderCard(_ g: LaunchpadGeometry) -> some View {
-        let columns = state.folderColumns
-        let apps = state.folderApps
-        let rows = (apps.count + columns - 1) / columns
-        let visibleRows = max(1, min(rows, g.rows - 1))
+        let entries = state.cardEntries
+        let grid = LaunchpadSurface.Card(geometry: g, count: entries.count)
+        let (columns, rows, card) = (grid.columns, grid.rows, grid.rect)
         let from = state.folderOrigin
         let delta = CGSize(width: from.x - g.size.width / 2, height: from.y - g.size.height / 2)
-        return VStack(spacing: HelmSpace.s5) {
-            Text(state.folderName).font(HelmText.sectionHeading).foregroundStyle(Color.white).lineLimit(1)
+        return VStack(spacing: LaunchpadGeometry.cardGap) {
+            TextField(LpStr.folderNameField, text: $state.nameDraft, selection: $nameSelection)
+                .textFieldStyle(.plain)
+                .multilineTextAlignment(.center)
+                .font(HelmText.sectionHeading).foregroundStyle(Color.white)
+                .lineLimit(1)
+                .focused($nameFocused)
+                .accessibilityLabel(LpStr.folderNameField)
+                .frame(height: LaunchpadGeometry.cardTitle)
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
                     ForEach(0..<rows, id: \.self) { row in
                         HStack(spacing: 0) {
-                            ForEach(Array((row * columns)..<min(apps.count, (row + 1) * columns)), id: \.self) { index in
-                                let app = apps[index]
-                                LaunchpadTile(app: app, icon: state.icons.icon(for: app.path), iconSize: g.icon,
-                                              selected: state.selection == index, glowSize: glowSize(g),
-                                              popped: state.launching == app.id,
-                                              open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) })
+                            ForEach(Array((row * columns)..<min(entries.count, (row + 1) * columns)), id: \.self) { index in
+                                cardTile(entries[index], index: index, g)
                                     .frame(width: g.cellWidth, height: g.cellHeight)
                             }
                         }
@@ -178,13 +204,25 @@ struct LaunchpadScreen: View {
                 }
             }
             .scrollIndicators(.hidden)
-            .frame(width: CGFloat(columns) * g.cellWidth, height: CGFloat(visibleRows) * g.cellHeight)
+            .frame(width: CGFloat(columns) * g.cellWidth, height: CGFloat(grid.visibleRows) * g.cellHeight)
         }
-        .padding(HelmSpace.s6)
+        .padding(LaunchpadGeometry.cardPadding)
+        .frame(width: card.width, height: card.height)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HelmRadius.panel, style: .continuous))
         .frame(width: g.size.width, height: g.size.height)
         .transition(.modifier(active: FolderZoom(delta: delta, scale: 0.25, shown: false),
                               identity: FolderZoom(delta: .zero, scale: 1, shown: true)))
+    }
+
+    @ViewBuilder private func cardTile(_ entry: LaunchpadEntry, index: Int, _ g: LaunchpadGeometry) -> some View {
+        if case .app(let app) = entry {
+            LaunchpadTile(app: app, icon: state.icons.icon(for: app.path), iconSize: g.icon,
+                          selected: state.selection == index, glowSize: glowSize(g),
+                          popped: state.launching == app.id, pressed: state.pressedID == app.id,
+                          open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) })
+        } else {
+            Color.clear
+        }
     }
 
     /// The dimming behind the card; it fades and takes no clicks on its way out.
@@ -204,6 +242,23 @@ private struct PageDragOffset: ViewModifier {
     @ObservedObject var drag: LaunchpadPageDrag
 
     func body(content: Content) -> some View { content.offset(x: drag.offset) }
+}
+
+/// The carried tile, one step larger than its neighbours (none under Reduce Motion), where the pointer is. Its own observer of
+/// the pointer, so the event rate re-runs this body (one `.offset`) and not the screen's. It takes no click.
+private struct LiftOverlay<Content: View>: View {
+    @ObservedObject var point: LaunchpadLiftPoint
+    let cell: CGSize
+    @ViewBuilder let content: Content
+    @State private var grown = false
+
+    var body: some View {
+        content
+            .scaleEffect(grown && !HelmMotion.reduceMotion ? LaunchpadMetrics.liftScale : 1)
+            .offset(x: point.point.x + point.grab.x - cell.width / 2, y: point.point.y + point.grab.y - cell.height / 2)
+            .allowsHitTesting(false)
+            .onAppear { withAnimation(HelmMotion.reorder) { grown = true } }
+    }
 }
 
 /// A folder's card between its tile and the middle of the window: small and at the tile when it is not `shown`. A card on

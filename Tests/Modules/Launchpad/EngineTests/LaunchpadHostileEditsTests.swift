@@ -21,6 +21,7 @@ final class LaunchpadHostileEditsTests: XCTestCase {
             switch item {
             case .app(let id): all.append(id)
             case .folder(let f): all += f.apps
+            case .pageBreak: break
             }
         }
         XCTAssertEqual(all.count, Set(all).count, "an id stands twice: \(all)", file: file, line: line)
@@ -45,9 +46,9 @@ final class LaunchpadHostileEditsTests: XCTestCase {
         let l = try XCTUnwrap(flat(["a", "b", "c", "d"]).applying(.makeFolder(drop: "a", onto: "b", name: "F")))
         let f = folder(l, at: 0)
         let ghost = UUID()
-        XCTAssertNil(l.applying(.add("c", toFolder: ghost, at: nil)))
-        XCTAssertNil(l.applying(.add("zz", toFolder: f.id, at: nil)))
-        XCTAssertNil(l.applying(.add("a", toFolder: f.id, at: nil)), "already inside")
+        XCTAssertNil(l.applying(.add("c", toFolder: ghost, relativeTo: nil, after: true)))
+        XCTAssertNil(l.applying(.add("zz", toFolder: f.id, relativeTo: nil, after: true)))
+        XCTAssertNil(l.applying(.add("a", toFolder: f.id, relativeTo: nil, after: true)), "already inside")
         XCTAssertNil(l.applying(.remove("c", fromFolder: f.id)), "c is not in that folder")
         XCTAssertNil(l.applying(.remove("a", fromFolder: ghost)))
         XCTAssertNil(l.applying(.moveInFolder("c", toIndex: 0)), "c is not in any folder")
@@ -67,7 +68,7 @@ final class LaunchpadHostileEditsTests: XCTestCase {
         XCTAssertEqual(l.items.count, 2)
         let f1 = folder(l, at: 0), f2 = folder(l, at: 1)
         XCTAssertEqual(f1.apps, ["b", "a"])
-        let out = try XCTUnwrap(l.applying(.add("a", toFolder: f2.id, at: 0)))
+        let out = try XCTUnwrap(l.applying(.add("a", toFolder: f2.id, relativeTo: "d", after: false)))
         XCTAssertEqual(out.items.count, 2)
         XCTAssertEqual(out.items[0], .app("b"), "F1 was left with one app and dissolved in place")
         XCTAssertEqual(folder(out, at: 1).apps, ["a", "d", "c"])
@@ -105,7 +106,7 @@ final class LaunchpadHostileEditsTests: XCTestCase {
     func testHidingAnAppInAFolderThenUnhidingPutsItOnTheGridNotBackInTheFolder() throws {
         var l = try XCTUnwrap(flat(["a", "b", "c", "d"]).applying(.makeFolder(drop: "a", onto: "b", name: "F")))
         let f = folder(l, at: 0)
-        l = try XCTUnwrap(l.applying(.add("c", toFolder: f.id, at: nil)))
+        l = try XCTUnwrap(l.applying(.add("c", toFolder: f.id, relativeTo: nil, after: true)))
         l = try XCTUnwrap(l.applying(.hide("a")))
         XCTAssertEqual(folder(l, at: 0).apps, ["b", "c"])
         XCTAssertEqual(l.hidden, ["a"])

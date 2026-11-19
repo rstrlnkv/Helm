@@ -2,6 +2,7 @@ import Foundation
 
 /// One read of the world: what is installed, what the person arranged, reconciled in memory.
 /// `layout` is already reconciled; resolve ids through `apps` and skip those that are not there.
+/// The pages are `layout.items` cut at each `.pageBreak` (then by what a page holds).
 public struct LaunchpadSnapshot: Equatable, Sendable {
     public let apps: [AppID: CatalogApp]
     /// Catalog ids in presentation order.
@@ -22,6 +23,7 @@ public struct LaunchpadSnapshot: Equatable, Sendable {
             switch item {
             case .app(let id): ids.append(id)
             case .folder(let f): ids.append(contentsOf: f.apps)
+            case .pageBreak: break
             }
         }
         return ids.filter { id in

@@ -47,6 +47,10 @@ public enum HelmWord {
     public static var stopScan: String { L(.stopScan) }
     public static var stopped: String { L(.stopped) }
     public static var timer: String { L(.timer) }
+    public static func utilities(language: AppLanguage) -> String { L(.utilities, language: language) }
+    public static var utilities: String { utilities(language: AppLanguage.current) }
+    public static func video(language: AppLanguage) -> String { L(.video, language: language) }
+    public static var video: String { video(language: AppLanguage.current) }
     public static var blue: String { L(.blue) }
     public static var green: String { L(.green) }
     public static var next: String { L(.next) }

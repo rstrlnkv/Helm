@@ -130,7 +130,8 @@ struct FileSystemAppCatalog: AppCatalogPort {
         let name = text(localized?["CFBundleDisplayName"]) ?? text(localized?["CFBundleName"])
             ?? text(dict["CFBundleDisplayName"]) ?? text(dict["CFBundleName"])
             ?? url.deletingPathExtension().lastPathComponent
-        return CatalogApp(id: id, name: LaunchpadLimits.bounded(name), path: url.path)
+        return CatalogApp(id: id, name: LaunchpadLimits.bounded(name), path: url.path,
+                          category: (dict["LSApplicationCategoryType"] as? String).flatMap { $0.isEmpty ? nil : LaunchpadLimits.bounded($0) })
     }
 
     func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject {
