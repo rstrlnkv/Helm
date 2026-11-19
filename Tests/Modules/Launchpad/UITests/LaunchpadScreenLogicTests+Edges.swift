@@ -106,73 +106,83 @@ extension LaunchpadScreenLogicTests {
 
     // MARK: - The pager
 
-    func testFortyOnePointDeltasTurnOnTheFortiethAndNotBefore() {
-        var pager = LaunchpadScrollPager()
-        XCTAssertNil(pager.feed(dx: -1, dy: 0, precise: true, phase: .began, momentum: [], time: 0))
-        for i in 2...39 { XCTAssertNil(pager.feed(dx: -1, dy: 0, precise: true, phase: .changed, momentum: [], time: Double(i)), "\(i)") }
-        XCTAssertEqual(pager.feed(dx: -1, dy: 0, precise: true, phase: .changed, momentum: [], time: 40), 1)
-        XCTAssertNil(pager.feed(dx: -1, dy: 0, precise: true, phase: .changed, momentum: [], time: 41))
+    func testAFlickTurnsFromTheFortiethPointAndNotBefore() {
+        for (events, step) in [(9, 0), (10, 1)] {
+            var swipe = LaunchpadSwipe()
+            _ = fed(&swipe, -4, .began, 0)
+            for i in 1..<events { _ = fed(&swipe, -4, .changed, Double(i) / 240) }
+            guard case .release(let got, _) = fed(&swipe, 0, .ended, 0.1) else { return XCTFail("\(events)") }
+            XCTAssertEqual(got, step, "\(events * 4) pt at 960 pt/s")
+        }
     }
 
-    func testASwipeThatGoesBackAndForthNeverReachesTheDistance() {
-        var pager = LaunchpadScrollPager()
-        XCTAssertNil(pager.feed(dx: -30, dy: 0, precise: true, phase: .began, momentum: [], time: 0))
-        XCTAssertNil(pager.feed(dx: 25, dy: 0, precise: true, phase: .changed, momentum: [], time: 0.1))
-        XCTAssertNil(pager.feed(dx: -30, dy: 0, precise: true, phase: .changed, momentum: [], time: 0.2))
-        XCTAssertEqual(pager.feed(dx: -20, dy: 0, precise: true, phase: .changed, momentum: [], time: 0.3), 1, "-55 travelled in all")
+    func testASwipeThatGoesBackAndForthIsJudgedByWhereItEnded() {
+        var swipe = LaunchpadSwipe()
+        _ = fed(&swipe, -30, .began, 0)
+        XCTAssertEqual(fed(&swipe, 25, .changed, 0.004), .drag(raw: -5))
+        XCTAssertEqual(releasedStep(fed(&swipe, 0, .ended, 0.01)), 0, "-5 net: nothing, the path was 55")
+        XCTAssertEqual(fed(&swipe, -30, .began, 1), .drag(raw: -30))
+        XCTAssertEqual(fed(&swipe, 25, .changed, 1.004), .drag(raw: -5))
+        XCTAssertEqual(fed(&swipe, -30, .changed, 1.008), .drag(raw: -35))
+        XCTAssertEqual(fed(&swipe, -20, .changed, 1.012), .drag(raw: -55))
+        guard case .release(let step, _) = fed(&swipe, 0, .ended, 1.02) else { return XCTFail("the lift") }
+        XCTAssertEqual(step, 1, "-55 travelled, and leaving fast")
     }
 
-    func testMomentumAfterAFiredGestureAndAfterAShortOneNeverTurnsAndNextGestureStillDoes() {
-        var pager = LaunchpadScrollPager()
-        XCTAssertEqual(pager.feed(dx: -50, dy: 0, precise: true, phase: .began, momentum: [], time: 0), 1)
-        XCTAssertNil(pager.feed(dx: 0, dy: 0, precise: true, phase: .ended, momentum: [], time: 0.1))
-        for i in 0..<10 { XCTAssertNil(pager.feed(dx: -80, dy: 0, precise: true, phase: [], momentum: .changed, time: 0.2 + Double(i) * 0.01)) }
-        XCTAssertNil(pager.feed(dx: 0, dy: 0, precise: true, phase: [], momentum: .ended, time: 0.5))
-        XCTAssertEqual(pager.feed(dx: -41, dy: 0, precise: true, phase: .began, momentum: [], time: 3), 1)
+    func testMomentumAfterATurnAndAfterASnapBackNeverTurnsAndNextGestureStillDoes() {
+        var swipe = LaunchpadSwipe()
+        _ = fed(&swipe, -25, .began, 0)
+        _ = fed(&swipe, -25, .changed, 0.004)
+        XCTAssertEqual(releasedStep(fed(&swipe, 0, .ended, 0.1)), 1)
+        for i in 0..<10 { XCTAssertEqual(fed(&swipe, -80, [], 0.2 + Double(i) * 0.01, momentum: .changed), .none) }
+        XCTAssertEqual(fed(&swipe, 0, [], 0.5, momentum: .ended), .none)
+        _ = fed(&swipe, -25, .began, 3)
+        _ = fed(&swipe, -25, .changed, 3.004)
+        XCTAssertEqual(releasedStep(fed(&swipe, 0, .ended, 3.1)), 1)
     }
 
     func testAWheelAtTheSameTimestampOrAnEarlierOneTurnsOnceAndTheQuarterSecondEdgeIsExact() {
         var pager = LaunchpadScrollPager()
-        XCTAssertEqual(pager.feed(dx: 0, dy: -1, precise: false, phase: [], momentum: [], time: 10), 1)
-        XCTAssertNil(pager.feed(dx: 0, dy: -1, precise: false, phase: [], momentum: [], time: 10), "equal timestamp")
-        XCTAssertNil(pager.feed(dx: 0, dy: -1, precise: false, phase: [], momentum: [], time: 5), "the clock went back")
-        XCTAssertNil(pager.feed(dx: 0, dy: -1, precise: false, phase: [], momentum: [], time: 10.249))
-        XCTAssertEqual(pager.feed(dx: 0, dy: -1, precise: false, phase: [], momentum: [], time: 10.25), 1, "exactly 250 ms is a turn")
+        XCTAssertEqual(pager.feed(dx: 0, dy: -1, precise: false, time: 10), 1)
+        XCTAssertNil(pager.feed(dx: 0, dy: -1, precise: false, time: 10), "equal timestamp")
+        XCTAssertNil(pager.feed(dx: 0, dy: -1, precise: false, time: 5), "the clock went back")
+        XCTAssertNil(pager.feed(dx: 0, dy: -1, precise: false, time: 10.249))
+        XCTAssertEqual(pager.feed(dx: 0, dy: -1, precise: false, time: 10.25), 1, "exactly 250 ms is a turn")
     }
 
     func testAWheelAtTimeZeroAndANegativeTimeTurnBecauseNothingTurnedBefore() {
         var a = LaunchpadScrollPager()
-        XCTAssertEqual(a.feed(dx: 0, dy: -1, precise: false, phase: [], momentum: [], time: 0), 1)
+        XCTAssertEqual(a.feed(dx: 0, dy: -1, precise: false, time: 0), 1)
         var b = LaunchpadScrollPager()
-        XCTAssertEqual(b.feed(dx: 0, dy: 1, precise: false, phase: [], momentum: [], time: -100), -1)
+        XCTAssertEqual(b.feed(dx: 0, dy: 1, precise: false, time: -100), -1)
     }
 
-    func testAWheelAndASwipeDoNotSpendEachOthersAllowance() {
+    func testAWheelAndAPhaselessSwipeDoNotSpendEachOthersAllowance() {
         var pager = LaunchpadScrollPager()
-        XCTAssertEqual(pager.feed(dx: 0, dy: -1, precise: false, phase: [], momentum: [], time: 1), 1)
-        XCTAssertEqual(pager.feed(dx: -50, dy: 0, precise: true, phase: .began, momentum: [], time: 1.01), 1, "the swipe is not held by the wheel's pause")
-        XCTAssertNil(pager.feed(dx: 0, dy: -1, precise: false, phase: [], momentum: [], time: 1.1), "the wheel's pause holds")
-        XCTAssertEqual(pager.feed(dx: 0, dy: -1, precise: false, phase: [], momentum: [], time: 1.3), 1)
+        XCTAssertEqual(pager.feed(dx: 0, dy: -1, precise: false, time: 1), 1)
+        XCTAssertEqual(pager.feed(dx: -50, dy: 0, precise: true, time: 1.01), 1, "the swipe is not held by the wheel's pause")
+        XCTAssertNil(pager.feed(dx: 0, dy: -1, precise: false, time: 1.1), "the wheel's pause holds")
+        XCTAssertEqual(pager.feed(dx: 0, dy: -1, precise: false, time: 1.3), 1)
     }
 
     func testAWheelNotchesBothDirectionsFollowTheSign() {
         var pager = LaunchpadScrollPager()
-        XCTAssertEqual(pager.feed(dx: 3, dy: 0, precise: false, phase: [], momentum: [], time: 1), -1, "a horizontal notch wins over vertical")
-        XCTAssertEqual(pager.feed(dx: 0, dy: .infinity, precise: false, phase: [], momentum: [], time: 9), nil)
+        XCTAssertEqual(pager.feed(dx: 3, dy: 0, precise: false, time: 1), -1, "a horizontal notch wins over vertical")
+        XCTAssertEqual(pager.feed(dx: 0, dy: .infinity, precise: false, time: 9), nil)
     }
 
-    func testACancelledGestureStartsTheSumAgain() {
-        var pager = LaunchpadScrollPager()
-        XCTAssertNil(pager.feed(dx: -30, dy: 0, precise: true, phase: .changed, momentum: [], time: 0))
-        XCTAssertNil(pager.feed(dx: 0, dy: 0, precise: true, phase: .cancelled, momentum: [], time: 0.1))
-        XCTAssertNil(pager.feed(dx: -30, dy: 0, precise: true, phase: .changed, momentum: [], time: 0.2), "30 + 30 across a cancel is not 60")
+    func testACancelledGestureSnapsBackAndStartsTheSumAgain() {
+        var swipe = LaunchpadSwipe()
+        XCTAssertEqual(fed(&swipe, -30, .changed, 0), .drag(raw: -30))
+        XCTAssertEqual(fed(&swipe, 0, .cancelled, 0.1), .release(step: 0, velocity: 0), "the page goes back, it is not left held")
+        XCTAssertEqual(fed(&swipe, -30, .began, 1), .drag(raw: -30), "30 + 30 across a cancel is not 60")
     }
 
-    func testAMayBeginResetsAGestureThatFiredWithoutAnEnd() {
-        var pager = LaunchpadScrollPager()
-        XCTAssertEqual(pager.feed(dx: -50, dy: 0, precise: true, phase: .began, momentum: [], time: 0), 1)
-        XCTAssertNil(pager.feed(dx: 0, dy: 0, precise: true, phase: .mayBegin, momentum: [], time: 1))
-        XCTAssertEqual(pager.feed(dx: -50, dy: 0, precise: true, phase: .changed, momentum: [], time: 1.1), 1)
+    func testAMayBeginResetsAGestureThatHadNoEnd() {
+        var swipe = LaunchpadSwipe()
+        XCTAssertEqual(fed(&swipe, -50, .began, 0), .drag(raw: -50))
+        XCTAssertEqual(fed(&swipe, 0, .mayBegin, 1), .none)
+        XCTAssertEqual(fed(&swipe, -50, .changed, 1.1), .drag(raw: -50), "not -100")
     }
 
     // MARK: - The state
@@ -500,7 +510,7 @@ extension LaunchpadScreenLogicTests {
     func testAPreciseDeviceThatSendsNoPhasesTurnsAgainOnItsNextSwipe() {
         // Some mice and third-party drivers send precise deltas with `phase` and `momentumPhase` both empty.
         var pager = LaunchpadScrollPager()
-        XCTAssertEqual(pager.feed(dx: -50, dy: 0, precise: true, phase: [], momentum: [], time: 0), 1)
-        XCTAssertEqual(pager.feed(dx: -50, dy: 0, precise: true, phase: [], momentum: [], time: 5), 1, "five seconds later, a second swipe")
+        XCTAssertEqual(pager.feed(dx: -50, dy: 0, precise: true, time: 0), 1)
+        XCTAssertEqual(pager.feed(dx: -50, dy: 0, precise: true, time: 5), 1, "five seconds later, a second swipe")
     }
 }

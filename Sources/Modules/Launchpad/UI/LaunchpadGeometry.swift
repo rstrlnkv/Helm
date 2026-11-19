@@ -51,4 +51,17 @@ struct LaunchpadGeometry: Equatable {
             pageWidth: screen.width, pageHeight: CGFloat(rows) * LaunchpadMetrics.cellHeight,
             gridTop: gridTop, dotsBottom: LaunchpadMetrics.dotsBottom, searchTop: searchTop)
     }
+
+    /// Where slot `slot` of a page sits, from the page's top left: slots fill left to right from the grid's left edge, so a
+    /// short last row stays on its columns.
+    func origin(ofSlot slot: Int) -> CGPoint {
+        CGPoint(x: (pageWidth - CGFloat(columns) * cellWidth) / 2 + CGFloat(slot % columns) * cellWidth,
+                y: CGFloat(slot / columns) * cellHeight)
+    }
+
+    /// The middle of slot `slot`'s tile in the window's own coordinates.
+    func center(ofSlot slot: Int) -> CGPoint {
+        let o = origin(ofSlot: slot)
+        return CGPoint(x: o.x + cellWidth / 2, y: gridTop + o.y + cellHeight / 2)
+    }
 }

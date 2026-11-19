@@ -11,7 +11,7 @@ import Module_Launchpad_Engine
 /// text field sees them: the layout of the keyboard does not matter, and the arrows move the choice instead of the caret,
 /// except Left and Right while the search holds text, which stay the field's (caret movement); Up and Down are the grid's, Tab is taken and does nothing.
 /// Nothing is taken while the field editor holds marked text (an input method's composition), and a key with Command,
-/// Control or Option falls through. The wheel and the trackpad turn pages through `LaunchpadScrollPager`; with a folder's
+/// Control or Option falls through. A trackpad swipe with fingers on it drags the page and settles it (`LaunchpadSwipe`), the wheel and a device with no phases turn pages through `LaunchpadScrollPager`; with a folder's
 /// card open they fall through, to the card's own scrolling. The rest, the typing included, is the text field's.
 ///
 /// What was measured of menus and tooltips in a panel like this is `OverlayPanel`'s doc comment; this panel's own live
@@ -19,7 +19,10 @@ import Module_Launchpad_Engine
 final class LaunchpadPanel: NSPanel {
     var state: LaunchpadScreenState?
     var onResignKey: (() -> Void)?
+    /// Set when the window has begun to fade out: the picture stays up for the fade and answers nothing.
+    var isClosing = false
     private var pager = LaunchpadScrollPager()
+    private var swipe = LaunchpadSwipe()
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
@@ -30,7 +33,18 @@ final class LaunchpadPanel: NSPanel {
     }
 
     override func sendEvent(_ event: NSEvent) {
+        if isClosing {
+            switch event.type {
+            case .keyDown, .keyUp, .flagsChanged: return
+            default: break
+            }
+        }
         if !handle(event) { super.sendEvent(event) }
+    }
+
+    /// An arrow key's step: the choice and, past the page's edge, the page, on the interface curve.
+    private func moveChoice(dx: Int, dy: Int, _ state: LaunchpadScreenState) {
+        withAnimation(HelmMotion.interface) { state.move(dx: dx, dy: dy) }
     }
 
     /// True when the event was this window's and goes no further.
@@ -44,18 +58,27 @@ final class LaunchpadPanel: NSPanel {
             switch event.keyCode {
             case 53: state.escape()
             case 36, 76: state.activate()
-            case 123: state.move(dx: -1, dy: 0)
-            case 124: state.move(dx: 1, dy: 0)
-            case 125: state.move(dx: 0, dy: 1)
-            case 126: state.move(dx: 0, dy: -1)
+            case 123: moveChoice(dx: -1, dy: 0, state)
+            case 124: moveChoice(dx: 1, dy: 0, state)
+            case 125: moveChoice(dx: 0, dy: 1, state)
+            case 126: moveChoice(dx: 0, dy: -1, state)
             case 48: break
             default: return false
             }
             return true
         case .scrollWheel:
             guard state.openFolder == nil else { return false }
-            if let step = pager.feed(dx: event.scrollingDeltaX, dy: event.scrollingDeltaY, precise: event.hasPreciseScrollingDeltas,
-                                     phase: event.phase, momentum: event.momentumPhase, time: event.timestamp) {
+            if event.hasPreciseScrollingDeltas, !event.phase.isEmpty || !event.momentumPhase.isEmpty {
+                swipe.width = state.geometry.pageWidth
+                swipe.reduceMotion = HelmMotion.reduceMotion
+                switch swipe.feed(dx: event.scrollingDeltaX, dy: event.scrollingDeltaY, phase: event.phase,
+                                  momentum: event.momentumPhase, time: event.timestamp) {
+                case .none: break
+                case .drag(let raw): state.drag(raw: raw)
+                case .release(let step, let velocity): state.settle(step: step, velocity: velocity)
+                }
+            } else if let step = pager.feed(dx: event.scrollingDeltaX, dy: event.scrollingDeltaY, precise: event.hasPreciseScrollingDeltas,
+                                            time: event.timestamp) {
                 withAnimation(HelmMotion.interface) { state.turn(step) }
             }
             return true
@@ -111,9 +134,13 @@ private final class LaunchpadWindowEnders {
     private var enders: LaunchpadWindowEnders?
     private var closed = false
     private var opened = false
+    private var finished = false
+    /// The window whose picture is still fading out; a new window cuts it before it opens.
+    private static var lingering: LaunchpadWindow?
     private let footprintBefore = MemoryFootprint.current()
 
     init(model: LaunchpadViewModel) {
+        Self.lingering?.finish()
         self.model = model
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         let frame = screen?.frame ?? CGRect(origin: .zero, size: LaunchpadGeometry.fallback)
@@ -145,7 +172,8 @@ private final class LaunchpadWindowEnders {
 
         state.onLaunch = { [weak self, weak model] id, name in
             Task { @MainActor in
-                if await model?.launch(id, name: name) == true { self?.close() }
+                self?.state.launched(id)
+                if await model?.launch(id, name: name) == true { self?.close() } else { self?.state.launchFailed() }
             }
         }
         state.onHide = { [weak model] id in Task { @MainActor in await model?.hide(id) } }
@@ -161,8 +189,23 @@ private final class LaunchpadWindowEnders {
         opened = true
         enders = LaunchpadWindowEnders { [weak self] in self?.close() }
         watchTask = Task { [weak model] in await model?.whileShown() }
+        let fades = HelmMotion.moves(reduceMotion: HelmMotion.reduceMotion)
+        if fades { panel.alphaValue = 0 }
         panel.makeKeyAndOrderFront(nil)
+        if fades { fade(to: 1, duration: HelmMotion.windowZoomDuration) {} }
+        Task { await LaunchpadGlow.prepare() }
         report("module.launchpad.show", since: footprintBefore)
+    }
+
+    /// The panel's alpha, moved by the window server along the interface curve: the blur, the scrim and the grid fade as one.
+    private func fade(to alpha: CGFloat, duration: TimeInterval, then done: @escaping @MainActor () -> Void) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration
+            context.timingFunction = HelmMotion.interfaceCurve
+            panel.animator().alphaValue = alpha
+        } completionHandler: {
+            MainActor.assumeIsolated { done() }
+        }
     }
 
     func bringForward() {
@@ -170,10 +213,11 @@ private final class LaunchpadWindowEnders {
         panel.makeKeyAndOrderFront(nil)
     }
 
+    /// Ends the window for the model at once, and takes the picture down: faded out over `interfaceDuration` and answering
+    /// nothing, or cut when motion is reduced.
     func close() {
         guard !closed else { return }
         closed = true
-        let before = MemoryFootprint.current()
         watchTask?.cancel()
         watchTask = nil
         enders = nil
@@ -183,12 +227,27 @@ private final class LaunchpadWindowEnders {
         state.onLoaded = nil
         panel.onResignKey = nil
         panel.state = nil
-        panel.contentView = nil
-        panel.orderOut(nil)
-        report("module.launchpad.close", since: before)
         let done = onClose
         onClose = nil
         done?()
+        guard HelmMotion.moves(reduceMotion: HelmMotion.reduceMotion), opened else { finish(); return }
+        panel.ignoresMouseEvents = true
+        panel.isClosing = true
+        Self.lingering = self
+        state.setShown(false)
+        fade(to: 0, duration: HelmMotion.interfaceDuration) { [weak self] in self?.finish() }
+    }
+
+    /// Takes the picture down: the panel's content and the panel itself. Once, from the fade's end or from a window that
+    /// opens over it.
+    private func finish() {
+        guard !finished else { return }
+        finished = true
+        let before = MemoryFootprint.current()
+        panel.contentView = nil
+        panel.orderOut(nil)
+        if Self.lingering === self { Self.lingering = nil }
+        report("module.launchpad.close", since: before)
     }
 
     private func report(_ label: String, since before: Int?) {

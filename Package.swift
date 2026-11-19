@@ -50,7 +50,7 @@ let modules: [Module] = [
     // picker, modified for Helm, and the Spotlight, its shape drawn for Helm — NOTICE.md records the source and the owner's decision;
     // author and licence are placeholders there for the owner.
     Module(name: "Screenshots", uiResources: [.process("PaletteObjects.xcassets")], engineTests: true, uiTests: true),
-    Module(name: "Launchpad", engineTests: true, uiTests: true),
+    Module(name: "Launchpad", uiResources: [.process("LaunchpadGlow.metal")], engineTests: true, uiTests: true),
 ]
 
 extension Module {

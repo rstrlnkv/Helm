@@ -1,4 +1,5 @@
 import SwiftUI
+import HelmUI
 import Module_Launchpad_Engine
 
 /// One tile of the window: an app, or a folder with the apps it holds as the snapshot resolved them.
@@ -14,6 +15,12 @@ enum LaunchpadEntry: Equatable, Identifiable {
     }
 }
 
+/// Where the fingers hold the page, in points from its place. Its own object so that the 120 Hz of a swipe republishes this
+/// and nothing else: the state's views do not re-run for it, only what reads `offset` (`PageDragOffset`).
+@MainActor final class LaunchpadPageDrag: ObservableObject {
+    @Published var offset: CGFloat = 0
+}
+
 /// What the window knows, made once when it opens and dropped when it closes: the geometry, the icons, the search, the
 /// page, the arrow keys' choice and the open folder. The model's snapshot comes in by `update(snapshot:)`, the only way in.
 ///
@@ -25,11 +32,19 @@ enum LaunchpadEntry: Equatable, Identifiable {
 
     let geometry: LaunchpadGeometry
     let icons: LaunchpadIcons
+    /// The page's drag, apart from the state so a swipe republishes nothing else.
+    let drag = LaunchpadPageDrag()
     @Published var search = "" {
         didSet {
             guard search != oldValue else { return }
-            closeFolderQuietly()
-            reflow(selectFirst: true)
+            // The page goes to the first at once, outside the animation below (`reflow`'s own reset is for its callers that
+            // pass `selectFirst` and would slide it); the tiles slide to their new places. A held drag is let go with it.
+            assign(\.page, 0)
+            drag.offset = 0
+            withAnimation(HelmMotion.interface) {
+                closeFolderQuietly()
+                reflow(selectFirst: true)
+            }
         }
     }
     @Published private(set) var mode = Mode.busy
@@ -45,6 +60,10 @@ enum LaunchpadEntry: Equatable, Identifiable {
     @Published private(set) var openFolder: UUID?
     @Published private(set) var folderName = ""
     @Published private(set) var folderApps: [CatalogApp] = []
+    /// Whether the window's content is settled in: false until it appears, false again as it closes.
+    @Published private(set) var shown = false
+    /// The app whose launch is under way, whose icon swells until the window goes or the launch fails.
+    @Published private(set) var launching: AppID?
 
     var onLaunch: ((AppID, String) -> Void)?
     var onHide: ((AppID) -> Void)?
@@ -65,6 +84,17 @@ enum LaunchpadEntry: Equatable, Identifiable {
     }
 
     var pageCount: Int { pages.count }
+
+    func setShown(_ value: Bool) { assign(\.shown, value) }
+    func launched(_ id: AppID) { assign(\.launching, id) }
+    func launchFailed() { assign(\.launching, nil) }
+
+    /// Where the open folder's tile is in the window's coordinates, for its card to grow from and fold back to; the
+    /// window's middle when there is no folder.
+    var folderOrigin: CGPoint {
+        guard let folderTile else { return CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2) }
+        return geometry.center(ofSlot: folderTile % geometry.capacity)
+    }
 
     /// The columns the arrow keys move over: the page's, or the open folder's.
     var columns: Int { openFolder == nil ? geometry.columns : folderColumns }
@@ -138,6 +168,27 @@ enum LaunchpadEntry: Equatable, Identifiable {
         if openFolder == nil { assign(\.page, LaunchpadPaging.page(of: next, capacity: geometry.capacity)) }
     }
 
+    /// Where the fingers hold the page, `raw` points from its place; a rubber band past the first and last page, and nothing
+    /// while a folder is open. Not animated: the page follows.
+    func drag(raw: CGFloat) {
+        guard openFolder == nil else { return }
+        let next = LaunchpadSwipe.offset(raw: raw, canBack: page > 0, canForward: page < pageCount - 1, width: geometry.pageWidth)
+        if drag.offset != next { drag.offset = next }
+    }
+
+    /// The fingers let go: the page turns by `step` (or stays) and the drag goes to nothing, in one transaction, on a spring
+    /// that takes up `velocity` (pt/s, along the page's travel) over the distance left.
+    func settle(step: Int, velocity: CGFloat) {
+        let at = drag.offset
+        let next = openFolder == nil ? LaunchpadPaging.clamped(page + step, count: pages.count) : page
+        let target = -CGFloat(next - page) * geometry.pageWidth
+        let along = velocity * (target >= at ? 1 : -1)
+        withAnimation(HelmMotion.pageSettle(velocity: along, distance: abs(target - at))) {
+            go(to: next)
+            drag.offset = 0
+        }
+    }
+
     /// One page back or forward; the choice stays only if it is still on the shown page.
     func turn(_ step: Int) { go(to: page + step) }
 
@@ -170,6 +221,8 @@ enum LaunchpadEntry: Equatable, Identifiable {
         assign(\.folderApps, apps)
         assign(\.openFolder, id)
         assign(\.selection, nil)
+        // No release comes for a drag under a card (the window stops feeding the swipe), so the page is let go here.
+        drag.offset = 0
     }
 
     /// Esc: the folder first, then the search, then the window.

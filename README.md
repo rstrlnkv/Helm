@@ -83,7 +83,8 @@ the version scheme and the shape of a tag are described in ARCHITECTURE.md § Re
 
 ## Build from source
 
-Requires Xcode with the macOS 26 SDK and a Swift 6 toolchain.
+Requires Xcode with the macOS 26 SDK and a Swift 6 toolchain, and its Metal toolchain component
+(`xcodebuild -downloadComponent MetalToolchain`).
 
 ```bash
 bash Scripts/test.sh            # the suite less its optional classes, read for you

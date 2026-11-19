@@ -6,7 +6,8 @@ import XCTest
 /// and fails on anything that measures, and on the drag and drop that pass 3 carried, which the window does not have.
 final class TheLaunchpadWindowMeasuresNothingTests: XCTestCase {
     private static let banned = ["GeometryReader", "onGeometryChange", "PreferenceKey", "preference(key", "onPreferenceChange",
-                                 "onDrag", "onDrop", "draggable", "dropDestination", "LazyVGrid", "LazyHGrid", "LazyVStack", "ScrollViewReader"]
+                                 "onDrag", "onDrop", "draggable", "dropDestination", "LazyVGrid", "LazyHGrid", "LazyVStack", "ScrollViewReader",
+                                 "matchedGeometryEffect", "visualEffect", "containerRelativeFrame", "onScrollGeometryChange", "TimelineView"]
 
     func testNothingInTheLaunchpadUIMeasuresOrDrags() throws {
         let files = try RepoSource.swiftFiles(under: "Sources/Modules/Launchpad/UI")

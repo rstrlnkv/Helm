@@ -120,6 +120,8 @@ lower than what they are running, until the next beta passes them.
 Before a release the tree is built from a fresh `git clone`: the manifest is refused whole
 when a declared test path does not exist, so an untracked test directory makes `swift
 test` work in one checkout and on nobody else's, and the working copy is not evidence.
+A fresh machine also needs Xcode's Metal toolchain, a separate download (`xcodebuild -downloadComponent MetalToolchain`):
+without it the Launchpad's `.metal` file does not compile and the build fails.
 
 ## Signing and grants
 

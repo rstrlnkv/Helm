@@ -142,6 +142,35 @@ public enum HelmMotion {
         reduceMotion ? instant : .easeOut(duration: 0.12)
     }
 
+    /// A full-screen surface coming in: its content settling from a little larger to its size as the window fades up.
+    /// Smooth, no overshoot: a spring that overshoots a whole screen's content reads as a wobble of the screen.
+    public static var windowZoom: Animation {
+        reduceMotion ? instant : .smooth(duration: windowZoomDuration)
+    }
+
+    /// `windowZoom`'s duration alone, in seconds, for the window's own fade, which AppKit runs along `interfaceCurve`.
+    /// A caller using this is responsible for its own `reduceMotion` branch, as with `interfaceDuration`.
+    public static var windowZoomDuration: TimeInterval { 0.32 }
+
+    /// A page that was dragged by the fingers coming to rest: a spring with no bounce that takes up the speed the fingers
+    /// let go at, so a flick carries on and a slow let-go eases in. `velocity` is points a second along the move (negative
+    /// is against it), `distance` the points still to travel; the speed is passed to the spring as distances a second
+    /// (`pageSettleSpeed`), held to 0 to 8 so a hand-shake of a release cannot fling the page.
+    public static func pageSettle(velocity: CGFloat, distance: CGFloat) -> Animation {
+        guard !reduceMotion else { return instant }
+        return .interpolatingSpring(duration: pageSettleDuration, bounce: 0, initialVelocity: Double(pageSettleSpeed(velocity: velocity, distance: distance)))
+    }
+
+    /// `pageSettle`'s initial speed, in distances a second: `velocity` over `distance`, 0 for a speed that is against the move,
+    /// not a number, infinite, or over no distance, and never over 8.
+    public static func pageSettleSpeed(velocity: CGFloat, distance: CGFloat) -> CGFloat {
+        distance > 1 && velocity.isFinite ? (velocity / distance).clamped(to: 0...8) : 0
+    }
+
+    /// `pageSettle`'s duration alone, in seconds, for a caller that must know how long a settle lasts (the swipe ignores a new
+    /// touch until it is over). A caller using this is responsible for its own `reduceMotion` branch.
+    public static var pageSettleDuration: TimeInterval { 0.36 }
+
     /// A tile moving out of the way of one being dragged over it.
     ///
     /// A spring, and the one place in this app where the overshoot is the
