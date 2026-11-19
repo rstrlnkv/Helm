@@ -83,6 +83,50 @@ extension Module {
     }
 }
 
+/// **A tweak is the smaller kind of part, and the manifest says so the way it says a module.**
+///
+/// Two source targets and the test targets it keeps, with a smaller contract (`TweakDescriptor`): no menu-bar
+/// presence, hotkey, scan or panel widget. The same three holds isolate it from every other tweak and from every
+/// module (ARCHITECTURE.md § The modules), and the manifest never reads the filesystem here either.
+struct Tweak {
+    let name: String
+    /// A test target only where a kept test lives; `Tests/Tweaks/<Name>/EngineTests` and `.../UITests`.
+    var engineTests = false
+    var uiTests = false
+
+    var engine: String { "Tweak_\(name)_Engine" }
+    var ui: String { "Tweak_\(name)_UI" }
+}
+
+let tweaks: [Tweak] = [
+    Tweak(name: "DisplayCorners", engineTests: true, uiTests: true),
+]
+
+extension Tweak {
+
+    var sourceTargets: [Target] {
+        [
+            .target(
+                name: engine,
+                dependencies: ["HelmContract", "HelmRuntime"],
+                path: "Sources/Tweaks/\(name)/Engine"
+            ),
+            .target(
+                name: ui,
+                dependencies: ["HelmContract", "HelmUI", .byName(name: engine)],
+                path: "Sources/Tweaks/\(name)/UI"
+            ),
+        ]
+    }
+
+    var testTargets: [Target] {
+        (engineTests ? [.testTarget(name: "\(engine)Tests", dependencies: [.byName(name: engine), "HelmTestSupport"],
+                                    path: "Tests/Tweaks/\(name)/EngineTests")] : [])
+            + (uiTests ? [.testTarget(name: "\(ui)Tests", dependencies: [.byName(name: ui), "HelmTestSupport"],
+                                      path: "Tests/Tweaks/\(name)/UITests")] : [])
+    }
+}
+
 /// The three every module is built on, and the one Objective-C target under
 /// them.
 ///
@@ -171,6 +215,7 @@ let host: [Target] = [
         // here is a door past the descriptor into an engine's internals.
         dependencies: ["HelmAppStrings", "HelmContract", "HelmRuntime", "HelmUI", "HelmLaunch"]
             + modules.map { .byName(name: $0.ui) }
+            + tweaks.map { .byName(name: $0.ui) }
     ),
     .testTarget(name: "HelmContractTests",
                 dependencies: ["HelmContract", "HelmTestSupport"]),
@@ -202,10 +247,12 @@ let package = Package(
     ],
     targets: foundation
         + modules.flatMap(\.sourceTargets)
+        + tweaks.flatMap(\.sourceTargets)
         + support
         + helper
         + instruments
         + showcase
         + host
         + modules.flatMap(\.testTargets)
+        + tweaks.flatMap(\.testTargets)
 )

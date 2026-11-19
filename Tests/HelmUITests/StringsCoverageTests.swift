@@ -220,6 +220,9 @@ final class StringsCoverageTests: XCTestCase {
         "Audio": [.es, .fr, .de],
         "Auto": [.fr],
         "Autopilot": [.de],
+        // The Tweaks entry's name. The owner kept the English word in German: «Tweaks» is what
+        // German-speaking Mac users call these small system adjustments, and the other six differ.
+        "Tweaks": [.de],
         // The Keyboard module's app-row picker. Portuguese borrowed the word
         // whole, the way German borrowed «Filter»: macOS pt-BR says «Layout de
         // Teclado» throughout `KeyboardSettings.appex` — «Alterar Layout de
@@ -328,6 +331,14 @@ final class StringsCoverageTests: XCTestCase {
         "m": [.es, .fr, .pt],
         "Manual": [.es, .pt],
         "MB": [.es, .de, .ja, .zh, .pt],
+        // Display Corners' units. «pt» and «px» are the system's own spelling in Japanese and Brazilian Portuguese, with
+        // an ordinary space: the ruler formats of Books' BlissReader `TSAccessibility.loctable` (`ruler.formatter.pt`,
+        // `ruler.formatter.px`) read `%@ pt` and `%@ px` there. German is no identity: it spells both with an
+        // unbreakable space, `%@ pt` from System Settings' `display.textSize.fontSizeValueFormat`, Font Book and
+        // PaperKit, and `%@ px` by analogy. The other four spell them otherwise (an unbreakable space in French
+        // and Spanish, «пт» and «пикс», «点» and «像素»).
+        "%@ pt": [.ja, .pt],
+        "%@ px": [.ja, .pt],
         // The tunnel strip's unit, and the identity is inherited rather than
         // new: all eight already shipped it inside «Speed, Mbit/s», which
         // splitting that key into a plain label and a unit turned from a

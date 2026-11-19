@@ -14,7 +14,7 @@ import XCTest
 ///
 /// **`<Module>` is expanded, not skipped.** A row naming a per-module
 /// directory is a claim about *every* module; checking one module would pass
-/// while nine were wrong.
+/// while nine were wrong. `<Tweak>` is expanded over `Sources/Tweaks` the same way.
 final class TheMapNamesRealDirectoriesTests: XCTestCase {
 
     private static let heading = "Where things are"
@@ -54,19 +54,34 @@ final class TheMapNamesRealDirectoriesTests: XCTestCase {
         return names
     }
 
+    /// The tweaks the tree actually has, for the same reason.
+    private func tweaks() throws -> [String] {
+        let dir = RepoSource.root.appendingPathComponent("Sources/Tweaks")
+        let names = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+            .filter { !$0.hasPrefix(".") }
+            .sorted()
+        XCTAssertFalse(names.isEmpty, "Sources/Tweaks is empty — nothing was checked")
+        return names
+    }
+
     func testEveryDirectoryTheMapNamesExists() throws {
         let paths = try mappedPaths()
         XCTAssertFalse(paths.isEmpty, "the map named no paths — the table shape changed")
 
         let modules = try modules()
+        let tweaks = try tweaks()
         var checked = 0
         var expandedAtLeastOneRow = false
+        var expandedAtLeastOneTweakRow = false
 
         for path in paths {
             let targets: [String]
             if path.contains("<Module>") {
                 expandedAtLeastOneRow = true
                 targets = modules.map { path.replacingOccurrences(of: "<Module>", with: $0) }
+            } else if path.contains("<Tweak>") {
+                expandedAtLeastOneTweakRow = true
+                targets = tweaks.map { path.replacingOccurrences(of: "<Tweak>", with: $0) }
             } else {
                 targets = [path]
             }
@@ -82,6 +97,8 @@ final class TheMapNamesRealDirectoriesTests: XCTestCase {
 
         XCTAssertTrue(expandedAtLeastOneRow,
                       "no `<Module>` row was expanded — the per-module half of the map went unchecked")
+        XCTAssertTrue(expandedAtLeastOneTweakRow,
+                      "no `<Tweak>` row was expanded — the per-tweak half of the map went unchecked")
         XCTAssertGreaterThan(checked, paths.count,
                              "expansion produced nothing: every row was checked once, as a literal")
     }

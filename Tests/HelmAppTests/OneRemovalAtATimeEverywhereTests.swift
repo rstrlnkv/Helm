@@ -43,25 +43,31 @@ final class OneRemovalAtATimeEverywhereTests: XCTestCase {
         // nothing, `checked.count == 0`, and a scan that fails for a reason that
         // reads like the finding it is looking for. `RepoSource` walks up to
         // `Package.swift` and answers the same from any depth.
-        let modules = RepoSource.root.appendingPathComponent("Sources/Modules")
-
+        // A tweak is a part with its own root, and a removal written there is a removal like any other; the
+        // Tweaks root must hold Swift files, or the second half of this loop reads nothing.
         var checked: [String] = []
         var offenders: [String] = []
-        let files = FileManager.default.enumerator(at: modules, includingPropertiesForKeys: nil)
-        while let url = files?.nextObject() as? URL {
-            guard url.pathExtension == "swift",
-                  let source = try? String(contentsOf: url, encoding: .utf8),
-                  Self.sendsARemoval(source)
-            else { continue }
-            checked.append(url.lastPathComponent)
-            let methods = Self.methodsTakingTheFlag(in: source)
-            if methods.isEmpty {
-                offenders.append("\(url.lastPathComponent) (no method sets busy = true)")
-            }
-            for method in methods where !method.guarded {
-                offenders.append("\(url.lastPathComponent) \(method.name)")
+        var tweakFiles = 0
+        for root in ["Sources/Modules", "Sources/Tweaks"] {
+            let files = FileManager.default.enumerator(at: RepoSource.root.appendingPathComponent(root),
+                                                       includingPropertiesForKeys: nil)
+            while let url = files?.nextObject() as? URL {
+                guard url.pathExtension == "swift" else { continue }
+                if root == "Sources/Tweaks" { tweakFiles += 1 }
+                guard let source = try? String(contentsOf: url, encoding: .utf8),
+                      Self.sendsARemoval(source)
+                else { continue }
+                checked.append(url.lastPathComponent)
+                let methods = Self.methodsTakingTheFlag(in: source)
+                if methods.isEmpty {
+                    offenders.append("\(url.lastPathComponent) (no method sets busy = true)")
+                }
+                for method in methods where !method.guarded {
+                    offenders.append("\(url.lastPathComponent) \(method.name)")
+                }
             }
         }
+        XCTAssertGreaterThan(tweakFiles, 0, "Sources/Tweaks held no Swift file — the scan of it read nothing")
 
         XCTAssertEqual(checked.count, 6,
                        "\(checked.count) files that send a removal were found rather than six, "

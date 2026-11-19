@@ -104,4 +104,22 @@ final class SidebarLayoutStoreSeedAndReconcileTests: XCTestCase {
         XCTAssertGreaterThan(home.modules.count, 1, "Utilities must hold neighbours, not Screenshots alone")
         XCTAssertEqual(read.sections.count, stored.sections.count, "no new section")
     }
+
+    /// A sidebar stored before the Tweaks entry existed meets it on its next read, in Utilities beside what lives
+    /// there: the entry is one id of the registry, so `reconciled` places it as it places any arrival.
+    func testTweaksJoinsAStoredSidebarInUtilities() throws {
+        let id = TweaksDescriptor.id.rawValue
+        let before = SidebarLayoutStore.registry().filter { $0.0 != id }
+        XCTAssertEqual(before.count, SidebarLayoutStore.registry().count - 1)
+        let s = NamespacedStore.scratch()
+        SidebarLayoutStore.write(SidebarLayout.seeded(from: before), to: s)
+        let stored = SidebarLayoutStore.read(from: s, registry: before)
+        XCTAssertFalse(stored.sections.flatMap(\.modules).contains(id))
+
+        let read = SidebarLayoutStore.read(from: s, registry: SidebarLayoutStore.registry())
+        let home = try XCTUnwrap(read.sections.first { $0.modules.contains(id) })
+        XCTAssertEqual(home.seed, "utilities")
+        XCTAssertGreaterThan(home.modules.count, 1, "Utilities must hold neighbours, not Tweaks alone")
+        XCTAssertEqual(read.sections.count, stored.sections.count, "no new section")
+    }
 }

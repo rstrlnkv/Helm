@@ -6,6 +6,9 @@ whose invariant is that every registered module appears exactly once.
 where the invariant is enforced rather than trusted — the bytes were written by a
 build that is not necessarily this one.
 
+The Tweaks entry is a module to it: one id among the others, in Utilities, and every tweak is a card on its page, so
+the arrangement never holds a tweak's id. A stored layout from before it gains the entry in Utilities on read.
+
 The window's sidebar and the status item's menu both draw the same store, so there
 is one arrangement rather than two that agree by habit. Neither observes
 `UserDefaults`: the sidebar listens for `.helmModuleOrderChanged`, and the menu

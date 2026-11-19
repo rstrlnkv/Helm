@@ -44,6 +44,9 @@ public enum AppStr {
     /// ordinary state, which nothing in the app had a word for before this badge
     /// drew it.
     public static var moduleActive: String { L(.moduleActive) }
+    /// The Tweaks entry's name and its one line; each tweak's own words are in its own target's catalog.
+    public static var tweaksName: String { L(.tweaksName) }
+    public static var tweaksSummary: String { L(.tweaksSummary) }
     /// The negative of `moduleActive`, so the two come as a pair. Two English
     /// spellings of one idea had already collapsed into one word in German and
     /// Japanese, which is the translators noticing what the source had not.

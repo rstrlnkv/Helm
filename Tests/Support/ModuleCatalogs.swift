@@ -5,14 +5,15 @@ import Foundation
 import HelmUI
 
 /// Every string catalog Helm ships, read as data: the kit's `Sources/HelmUI/Localizable.xcstrings`,
-/// each module's `Sources/Modules/<Name>/UI/Localizable.xcstrings`, and the host's
+/// each module's `Sources/Modules/<Name>/UI/Localizable.xcstrings`, each tweak's
+/// `Sources/Tweaks/<Name>/UI/Localizable.xcstrings`, and the host's
 /// `Sources/HelmAppStrings/Localizable.xcstrings` and `Changelog.xcstrings`.
 ///
 /// A catalog's symbols are internal to its target, so a test in another target cannot name one — and
 /// `Bundle.module` inside a test target is the test's own bundle, never the catalog's owner's. The file
 /// is what ships, and reading the file is how every string guard sees every word
 /// (`StringsCoverageTests.testEveryCatalogSymbolCarriesTheEightLanguages`). Walking `Sources/Modules`
-/// rather than naming modules means a catalog added by the next module is guarded the day it lands.
+/// rather than naming modules or tweaks means a catalog added by the next one is guarded the day it lands.
 ///
 /// **The kit's catalog is not optional.** A module without a UI catalog is a module with no words of
 /// its own, and is skipped; the kit without one would leave every guard reading the modules alone and
@@ -69,6 +70,11 @@ public enum ModuleCatalogs {
         var found: [(relative: String, module: String)] = names.map {
             ("Sources/Modules/\($0)/UI/Localizable.xcstrings", $0)
         }
+        // A tree with no tweak has no `Sources/Tweaks`, and that is no moved file.
+        let tweaks = RepoSource.root.appendingPathComponent("Sources/Tweaks")
+        found += (try? FileManager.default.contentsOfDirectory(atPath: tweaks.path))?.sorted().map {
+            ("Sources/Tweaks/\($0)/UI/Localizable.xcstrings", $0)
+        } ?? []
         let kitFile = RepoSource.root.appendingPathComponent(kitPath).path
         guard FileManager.default.fileExists(atPath: kitFile) else {
             throw RepoSource.Failure("\(kitPath) is not there — the kit's words are in no catalog, "

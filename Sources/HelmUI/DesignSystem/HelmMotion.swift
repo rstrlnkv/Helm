@@ -98,6 +98,24 @@ public enum HelmMotion {
         return (Double(first[0]), Double(first[1]), Double(second[0]), Double(second[1]))
     }()
 
+    /// The curve of the Display Corners mask's morph: ease in and out, the control points of `.easeInEaseOut`
+    /// (0.42, 0, 0.58, 1). The standalone app's own curve, kept by the owner's decision of 2026-11-18 ("as in the
+    /// original tweak") over `interfaceCurve`; it is not the app's interface curve and nothing else takes it. A
+    /// caller using this is responsible for its own `reduceMotion` branch.
+    public static var cornerMorphCurve: CAMediaTimingFunction {
+        CAMediaTimingFunction(controlPoints: 0.42, 0, 0.58, 1)
+    }
+
+    /// How long a Display Corners mask takes to grow or shrink by `travel`, the distance its scale has to cover
+    /// (0 to 1): 0.26 s per square root of the travel when rounding, 0.19 s when unrounding, never under 0.08 s.
+    /// The lengths are the standalone app's, as is its curve, `cornerMorphCurve`. A
+    /// travel that is not finite reads as 1 and one outside 0...1 is held to it. It does not ask `reduceMotion`: the caller, a layer animation, has
+    /// its own branch, as with `interfaceDuration`.
+    public static func cornerMorphDuration(rounding: Bool, travel: Double) -> TimeInterval {
+        let travel = travel.isFinite ? min(max(travel, 0), 1) : 1
+        return max(0.08, (rounding ? 0.26 : 0.19) * travel.squareRoot())
+    }
+
     /// The sidebar folding to the rail and unfolding again: the rows' half of the move, written inside
     /// `withAnimation` where the fold flag lands. The width itself is driven by the shell's own clock
     /// along `interfaceCurve` for `sidebarFoldDuration`; the shell asks for this token only when it starts
