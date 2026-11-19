@@ -132,6 +132,13 @@ let support: [Target] = [
     .target(name: "HelmTestSupport", dependencies: ["HelmRuntime", "HelmUI"], path: "Tests/Support"),
 ]
 
+/// The Launchpad's Dock helper: a tiny app nested in Helm's bundle by `Scripts/package-app.sh`. Built by
+/// `--product HelmLaunchpadHelper`; no dependencies, so an import of Helm's own target fails its build, and no
+/// dependency of `HelmApp`.
+let helper: [Target] = [
+    .executableTarget(name: "HelmLaunchpadHelper"),
+]
+
 /// Screen instruments: built by `swift build --target HelmReadout`, listed in no
 /// product (SwiftPM synthesises one for an executable target) and no dependency of
 /// `HelmApp`, so `--product HelmApp` in `Scripts/package-app.sh` never builds them;
@@ -179,10 +186,11 @@ let package = Package(
     name: "Helm",
     defaultLocalization: "en",
     platforms: [.macOS("26.0")],
-    // One product: the app. Declared so `--product HelmApp` in
-    // `Scripts/package-app.sh` names something this file says exists, rather
-    // than the product SwiftPM synthesises for an executable target — a rename
-    // of that target would otherwise break the release build silently.
+    // Two products: the app and its Dock helper. Declared so `--product HelmApp
+    // --product HelmLaunchpadHelper` in `Scripts/package-app.sh` names things
+    // this file says exist, rather than the products SwiftPM synthesises for
+    // executable targets — a rename of a target would otherwise break the
+    // release build silently.
     //
     // It is not what keeps the harness out of Release. Measured: with this list
     // in place a bare `swift build -c release` still builds every target,
@@ -190,10 +198,12 @@ let package = Package(
     // what prunes the graph.
     products: [
         .executable(name: "HelmApp", targets: ["HelmApp"]),
+        .executable(name: "HelmLaunchpadHelper", targets: ["HelmLaunchpadHelper"]),
     ],
     targets: foundation
         + modules.flatMap(\.sourceTargets)
         + support
+        + helper
         + instruments
         + showcase
         + host

@@ -48,21 +48,7 @@ done
 HELM_CHANNEL=DEV bash "$SCRIPT_DIR/package-app.sh"
 
 echo "==> Rewriting the bundle as Helm Dev"
-rm -rf "$DEV"
-ditto "$SRC" "$DEV"
-PLIST="$DEV/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.helm.app.dev" "$PLIST"
-/usr/libexec/PlistBuddy -c "Set :CFBundleName Helm Dev" "$PLIST"
-/usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Helm Dev" "$PLIST" 2>/dev/null \
-  || /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Helm Dev" "$PLIST"
-
-# Editing Info.plist invalidates the seal `package-app.sh` just made: the
-# plist is inside what was signed. Re-sign, do not repair.
-echo "==> Re-signing"
-codesign --force --deep --timestamp=none \
-  --sign "$(bash "$SCRIPT_DIR/signing-identity.sh" --resolve)" "$DEV" 2>&1 | sed 's/^/    /'
-codesign --verify --deep --strict "$DEV"
-echo "==> Signature verified"
+bash "$SCRIPT_DIR/rewrite-as-dev.sh" "$SRC" "$DEV"
 
 echo "==> Installing to $INSTALLED"
 pkill -f 'Helm Dev.app/Contents/MacOS/HelmApp' 2>/dev/null || true

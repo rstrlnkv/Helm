@@ -224,6 +224,20 @@ extension LaunchpadScreenLogicTests {
         XCTAssertNil(s.selection)
     }
 
+    /// However the window was opened (the shortcut, the page's button, the Dock helper's link), it opens with no tile chosen:
+    /// Return launches nothing until an arrow key or a search chooses one.
+    @MainActor func testAWindowOpensWithNoTileChosenAndReturnLaunchesNothing() {
+        let s = state(snapshot(["alpha", "bravo"]))
+        var launched: [String] = []
+        s.onLaunch = { id, _ in launched.append(id) }
+        XCTAssertNil(s.selection)
+        s.activate()
+        XCTAssertEqual(launched, [], "a fresh window launches nothing on Return")
+        s.move(dx: 1, dy: 0)
+        s.activate()
+        XCTAssertEqual(launched, ["alpha"], "an arrow key chooses, then Return launches")
+    }
+
     @MainActor func testASearchWithHitsSelectsTheFirstAndReturnLaunchesIt() {
         let s = state(snapshot(["alpha", "bravo"]))
         var launched: [String] = []

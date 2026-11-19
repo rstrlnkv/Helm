@@ -15,6 +15,12 @@ enum LpStr {
     static var resetArrangement: String { L(.resetArrangement) }
     static var resetQuestion: String { L(.resetQuestion) }
     static var resetNote: String { L(.resetNote) }
+    static var dockIcon: String { L(.dockIcon) }
+    static var dockIconNote: String { L(.dockIconNote) }
+    /// The draggable icon's name for VoiceOver: the helper as the Dock will call it, then what to do with it.
+    static func dockIconNamed(_ name: String) -> String { L(.dockIconNamed(name), remembered: false) }
+    /// "Show in Finder" and the helper it is for, so the button names its object.
+    static func showNamedInFinder(_ name: String) -> String { L(.showNamedInFinder(name), remembered: false) }
     static var noHiddenApps: String { L(.noHiddenApps) }
     /// "Page 2 of 5" for a page dot; the numbers are strings, so a language's own digits and grouping are not this key's business.
     static func pageNumber(_ page: Int, of count: Int) -> String { L(.pageNumber("\(page)", "\(count)"), remembered: false) }

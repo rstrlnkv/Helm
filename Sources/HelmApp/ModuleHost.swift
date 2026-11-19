@@ -3,6 +3,7 @@ import Foundation
 import HelmContract
 import HelmRuntime
 import HelmUI
+import Module_Launchpad_UI
 import SwiftUI
 
 /// Owns module lifecycle: per-module namespaced store, enabled flag, and
@@ -182,6 +183,34 @@ import SwiftUI
                     })
             }
         }
+    }
+
+    /// What a Launchpad link came to, for the log and for a test that has no window to look at.
+    enum LinkOutcome: Equatable { case refused, throttled, moduleOff, toggled }
+
+    private var linkThrottle = LaunchpadLink.Throttle()
+    /// A program that sends links in a loop writes one `link refused` line per throttle window, not one per link.
+    private var refusalLogThrottle = LaunchpadLink.Throttle()
+
+    /// The Dock helper's URL, opened at Helm: toggles the Launchpad window as its shortcut does. Anything
+    /// but the exact link is refused (`LaunchpadLink.accepts`) and does not count against the throttle.
+    /// With the module off there is no window to toggle, so the person lands on the module's settings page.
+    @discardableResult
+    func openLaunchpadFromLink(_ url: URL, now: TimeInterval = ProcessInfo.processInfo.systemUptime) -> LinkOutcome {
+        guard LaunchpadLink.accepts(url, scheme: AppBuild.pairedLaunchpadLinkScheme) else {
+            if refusalLogThrottle.admits(at: now) { HelmLog.shared.warn("launchpad", "link refused") }
+            return .refused
+        }
+        guard linkThrottle.admits(at: now) else { return .throttled }
+        let id = LaunchpadDescriptor.id.rawValue
+        guard let running = live[id] else {
+            HelmLog.shared.info("launchpad", "link: module is off")
+            NotificationCenter.default.post(name: .helmOpenSettings, object: id)
+            return .moduleOff
+        }
+        HelmLog.shared.info("launchpad", "link: toggle")
+        running.hotkeyPressed(LaunchpadDescriptor.hotkeys[0])
+        return .toggled
     }
 
     private func disable(_ d: any ModuleDescriptor) {

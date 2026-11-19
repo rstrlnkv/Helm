@@ -26,6 +26,20 @@ struct LaunchpadSettingsPage: View {
             Section {
                 Button(LpStr.openLaunchpad) { lvm.showLaunchpad() }
             }
+            if let helper = lvm.helperURL {
+                // As the Dock and Finder show it (the helper's localized display name), not the file's.
+                let helperName = FileManager.default.displayName(atPath: helper.path)
+                Section {
+                    HelmSettingRow(LpStr.dockIcon, note: LpStr.dockIconNote) {
+                        HStack(spacing: HelmSpace.s5) {
+                            HelmDraggableFileIcon(helper, size: LaunchpadMetrics.dockIcon, name: LpStr.dockIconNamed(helperName))
+                            // The control keeps its words on one line; the note beside it is what wraps.
+                            Button { lvm.revealHelper(helper) } label: { Text(HelmWord.showInFinder).fixedSize() }
+                                .accessibilityLabel(LpStr.showNamedInFinder(helperName))
+                        }
+                    }
+                }
+            }
             Section {
                 HelmHotkeyRow(LpStr.toggleLaunchpad, recorder: openKey, taken: HotkeyStatus.isTaken(LaunchpadHotkey.open))
                     .id(shortcutRevision)

@@ -20,5 +20,10 @@ SIGNATURE="$(codesign -dv "$APP_DIR" 2>&1 || true)"
 printf '%s\n' "$SIGNATURE" | grep -x 'Signature=adhoc' >/dev/null || {
   echo "the staged bundle is signed with a local identity — package a release" \
        "with: HELM_SIGN_IDENTITY=- bash Scripts/package-app.sh" >&2; exit 1; }
+# The nested Dock helper is a bundle of its own with its own signature: a local identity there ships as well.
+HELPER_SIGNATURE="$(codesign -dv "$APP_DIR/Contents/Helpers/Helm Launchpad.app" 2>&1 || true)"
+printf '%s\n' "$HELPER_SIGNATURE" | grep -x 'Signature=adhoc' >/dev/null || {
+  echo "the staged bundle's Dock helper is not ad-hoc signed — package a release" \
+       "with: HELM_SIGN_IDENTITY=- bash Scripts/package-app.sh" >&2; exit 1; }
 
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_DIR/Contents/Info.plist")"

@@ -29,8 +29,8 @@ struct LaunchpadGeometry: Equatable {
     /// A size that is not a size (zero, negative, not a number, infinite) is a 1280 × 800 screen.
     static let fallback = CGSize(width: 1280, height: 800)
 
-    /// `topSafe` is the height of what the screen keeps at the top (a notch, the menu bar's room); the window covers
-    /// the menu bar, so the grid starts below it.
+    /// `topSafe` is the height of what the screen keeps at the top (a notch, the menu bar's room); the menu bar draws
+    /// over the window's top strip (the window sits under it), so the grid starts below it.
     static func make(for size: CGSize, topSafe: CGFloat) -> LaunchpadGeometry {
         let usable = size.width.isFinite && size.height.isFinite && size.width >= 1 && size.height >= 1
         let screen = usable ? size : fallback

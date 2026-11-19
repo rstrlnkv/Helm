@@ -98,7 +98,10 @@ private final class LaunchpadWindowEnders {
         let mine = ProcessInfo.processInfo.processIdentifier
         tokens.append((workspace, workspace.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { note in
             let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            if app?.processIdentifier != mine { MainActor.assumeIsolated { end() } }
+            // The Dock helper's click is the toggle that closes the window itself; it is no other app coming forward.
+            if app?.processIdentifier != mine, app?.bundleIdentifier != AppBuild.pairedLaunchpadHelperIdentifier {
+                MainActor.assumeIsolated { end() }
+            }
         }))
         tokens.append((workspace, workspace.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { end() }
@@ -114,17 +117,17 @@ private final class LaunchpadWindowEnders {
 
 /// The Launchpad window: built when the person asks for it, gone when it closes, holding nothing in between.
 ///
-/// **Level.** One below pop-up menus (`popUpMenu` is 101, so 100): above the menu bar (24), the Dock (20), status items
-/// (25) and every window, and under a context menu opened from a tile, which would otherwise draw behind the panel
-/// that opened it. Every Space and over full-screen apps, as `OverlayPanel`.
+/// **Level.** One below the Dock's (20, so 19): above every ordinary window, under the Dock, which stays drawn and
+/// clickable over the panel, as macOS's own Launchpad leaves it; a click on the pinned Dock helper then reaches
+/// it. The frame is still the whole screen. Every Space and over full-screen apps, as `OverlayPanel`.
 ///
 /// Built on the screen the pointer is on, its geometry worked out once. The model's `whileShown()` runs for as long as
 /// the window is open, and its snapshot goes when the window does. It closes on Esc, a click on the empty background, an
 /// app that opened, the panel losing key, another app coming forward, the Space or the screens changing, the model
 /// stopping and the shortcut's second press.
 @MainActor final class LaunchpadWindow: LaunchpadWindowHandle {
-    /// One below the pop-up menu level.
-    static let level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue - 1)
+    /// One below the Dock's level.
+    static let level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.dockWindow)) - 1)
 
     var onClose: (@MainActor () -> Void)?
     private let panel: LaunchpadPanel

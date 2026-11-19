@@ -275,10 +275,10 @@ echo "==> Building release binary"
 # that imports XCTest, which resolves out of the Xcode-only framework path. So a
 # release build needed a full Xcode install where a toolchain had been enough,
 # and HelmTestSupport.swiftmodule landed in Release beside HelmApp. Declaring
-# `products:` does not fix this by itself (measured: a bare build still builds
-# all 466 steps); naming the product is what does — 187 steps, and no harness.
+# `products:` does not fix this by itself (a bare build still builds every
+# target); naming the products is what does, and no harness is built.
 # Imports checked as an error; from a fresh clone the targets HelmApp depends on compile and are checked, no test target (ARCHITECTURE.md § The boundaries).
-swift build -c release --product HelmApp --explicit-target-dependency-import-check error
+swift build -c release --product HelmApp --product HelmLaunchpadHelper --explicit-target-dependency-import-check error
 
 echo "==> Assembling $APP_DIR (idempotent)"
 rm -rf "$APP_DIR"
@@ -333,6 +333,30 @@ xcrun actool "$REPO_ROOT/Resources/Icon/Helm.icon" \
 cp "$ICONOUT/Assets.car" "$RESOURCES_DIR/Assets.car"
 cp "$ICONOUT/Helm.icns" "$RESOURCES_DIR/Helm.icns"
 
+# The Launchpad's Dock helper, nested where the outer signature covers it. Its version is Helm's, read from the
+# staged plist so the two cannot drift; the build number is written the way Helm's was, above.
+HELPER_DIR="$CONTENTS_DIR/Helpers/Helm Launchpad.app"
+HELPER_RESOURCES="$HELPER_DIR/Contents/Resources"
+mkdir -p "$HELPER_DIR/Contents/MacOS" "$HELPER_RESOURCES"
+cp "$REPO_ROOT/.build/release/HelmLaunchpadHelper" "$HELPER_DIR/Contents/MacOS/HelmLaunchpadHelper"
+cp "$REPO_ROOT/Resources/HelmLaunchpadHelper/Info.plist" "$HELPER_DIR/Contents/Info.plist"
+# The name the Dock and Finder show is the word for "Apps" in each language, from the .lproj folders; the file name stays.
+cp -R "$REPO_ROOT/Resources/HelmLaunchpadHelper/"*.lproj "$HELPER_RESOURCES/"
+printf 'APPL????' > "$HELPER_DIR/Contents/PkgInfo"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NO" "$HELPER_DIR/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$CONTENTS_DIR/Info.plist")" "$HELPER_DIR/Contents/Info.plist"
+HELPER_ICONOUT="$BUILD_DIR/helper-iconout"
+rm -rf "$HELPER_ICONOUT" && mkdir -p "$HELPER_ICONOUT"
+xcrun actool "$REPO_ROOT/Resources/Icon/LaunchpadHelper.icon" \
+  --compile "$HELPER_ICONOUT" \
+  --platform macosx \
+  --minimum-deployment-target 26.0 \
+  --app-icon LaunchpadHelper \
+  --output-partial-info-plist "$HELPER_ICONOUT/partial.plist" \
+  --output-format human-readable-text
+cp "$HELPER_ICONOUT/Assets.car" "$HELPER_RESOURCES/Assets.car"
+cp "$HELPER_ICONOUT/LaunchpadHelper.icns" "$HELPER_RESOURCES/LaunchpadHelper.icns"
+
 # Ad-hoc unless this Mac names an identity of its own — `signing-identity.sh`
 # says why a local build wants one and why a release must not have it.
 SIGN_IDENTITY="$(bash "$SCRIPT_DIR/signing-identity.sh")"
@@ -347,6 +371,8 @@ else
   echo "==> Signing with \"$SIGN_NAME\" ($SIGN_IDENTITY)"
 fi
 xattr -cr "$APP_DIR"
+# The helper first, then the bundle that holds it.
+codesign --force --timestamp=none --sign "$SIGN_IDENTITY" "$HELPER_DIR"
 codesign --force --deep --timestamp=none --sign "$SIGN_IDENTITY" "$APP_DIR"
 # Verified here, where the signature is intact. This check was missing: signing
 # reported success for months while producing a bundle codesign rejects.

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Helm
 
 import XCTest
+import HelmRuntime
 import HelmTestSupport
 
 /// **The channel a bundle belongs to is written by the packaging script and read
@@ -45,16 +46,22 @@ final class ThePackagedBundleNamesItsChannelTests: XCTestCase {
         try write("f.txt", in: dir)
         try write("NOTICE.md", in: dir)
         try write(".build/release/HelmApp", in: dir)
+        try write(".build/release/HelmLaunchpadHelper", in: dir)
         try fm.createDirectory(at: dir.appendingPathComponent(".build/release/Fake.bundle"),
                                withIntermediateDirectories: true)
         try write("Resources/Icon/Helm.icon/Assets/helm-ring.svg", in: dir)
+        // The whole folder: the plist and the `.lproj` folders that name the helper in each language.
+        try fm.copyItem(at: RepoSource.root.appendingPathComponent("Resources/HelmLaunchpadHelper"),
+                        to: dir.appendingPathComponent("Resources/HelmLaunchpadHelper"))
         try fm.createDirectory(at: dir.appendingPathComponent("Resources/HelmApp"),
                                withIntermediateDirectories: true)
         try fm.copyItem(at: RepoSource.root.appendingPathComponent("Resources/HelmApp/Info.plist"),
                         to: dir.appendingPathComponent("Resources/HelmApp/Info.plist"))
         try fm.createDirectory(at: dir.appendingPathComponent("Scripts"), withIntermediateDirectories: true)
-        try fm.copyItem(at: realScripts.appendingPathComponent("package-app.sh"),
-                        to: dir.appendingPathComponent("Scripts/package-app.sh"))
+        for name in ["package-app.sh", "signing-identity.sh", "rewrite-as-dev.sh"] {
+            try fm.copyItem(at: realScripts.appendingPathComponent(name),
+                            to: dir.appendingPathComponent("Scripts/\(name)"))
+        }
         try git(["add", "-A", "-f"], in: dir)
         try git(["commit", "-q", "-m", "c1"], in: dir)
         try write("f.txt", in: dir, bytes: 4, filler: 0x42)
@@ -81,14 +88,20 @@ final class ThePackagedBundleNamesItsChannelTests: XCTestCase {
 
     /// `swift` succeeds silently; `xcrun` ends the script right after the plist
     /// was written, so a run that got that far prints the stub's marker.
-    private func package(_ repo: URL, channel: String? = nil) throws -> Packaged {
+    ///
+    /// `throughSigning`: `xcrun` stands in for `actool` (an empty `Assets.car` and `.icns` where it was told to
+    /// compile) and the run goes on to the real ad-hoc signature, so the whole bundle can be read back.
+    private func package(_ repo: URL, channel: String? = nil, throughSigning: Bool = false) throws -> Packaged {
         let bin = scratchDirectory("channel-stubs")
         try stub("swift", "exit 0", in: bin)
-        try stub("xcrun", "echo 'STUB XCRUN — the plist is written by now' >&2; exit 19", in: bin)
+        try stub("xcrun", throughSigning
+                 ? "while [ $# -gt 0 ]; do case \"$1\" in --compile) out=\"$2\";; --app-icon) icon=\"$2\";; esac; shift; done; touch \"$out/Assets.car\" \"$out/$icon.icns\""
+                 : "echo 'STUB XCRUN — the plist is written by now' >&2; exit 19", in: bin)
         let tmp = scratchDirectory("channel-tmpdir")
         var env = ["PATH": "\(bin.path):/usr/bin:/bin", "TMPDIR": tmp.path, "HOME": NSHomeDirectory(),
                    "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1"]
         if let channel { env["HELM_CHANNEL"] = channel }
+        if throughSigning { env["HELM_SIGN_IDENTITY"] = "-" }
         let r = try runChild("/bin/bash", [repo.appendingPathComponent("Scripts/package-app.sh").path],
                              environment: env, mergeStderr: true)
         return Packaged(result: r, tmp: tmp)
@@ -150,6 +163,72 @@ final class ThePackagedBundleNamesItsChannelTests: XCTestCase {
                         because: "detached HEAD with HELM_CHANNEL=BETA")
     }
 
+    // MARK: - The Dock helper is the pair of the Helm it sits in
+
+    private func plistValue(_ key: String, in bundle: URL) throws -> String {
+        let r = try runChild("/usr/libexec/PlistBuddy", ["-c", "Print :\(key)", bundle.appendingPathComponent("Contents/Info.plist").path],
+                             mergeStderr: true)
+        XCTAssertEqual(r.status, 0, "\(key) in \(bundle.lastPathComponent): \(r.output)")
+        return r.output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// The helper opens `HelmLaunchpadURL` at the app whose id is `HelmParentBundleID`, and Helm answers only on the
+    /// scheme it declares: a pair that disagrees opens nothing, or opens the wrong Helm.
+    private func assertPaired(parent: URL, helper: URL, parentID: String, helperID: String, scheme: String,
+                              file: StaticString = #filePath, line: UInt = #line) throws {
+        XCTAssertEqual(try plistValue("CFBundleIdentifier", in: parent), parentID, file: file, line: line)
+        XCTAssertEqual(try plistValue("CFBundleIdentifier", in: helper), helperID, file: file, line: line)
+        XCTAssertEqual(try plistValue("HelmParentBundleID", in: helper), try plistValue("CFBundleIdentifier", in: parent),
+                       "the helper names another parent", file: file, line: line)
+        let link = try plistValue("HelmLaunchpadURL", in: helper)
+        XCTAssertEqual(URL(string: link)?.scheme, try plistValue("CFBundleURLTypes:0:CFBundleURLSchemes:0", in: parent),
+                       "the helper opens a scheme the parent does not declare: \(link)", file: file, line: line)
+        XCTAssertEqual(URL(string: link)?.scheme, scheme, file: file, line: line)
+        XCTAssertEqual(try plistValue("CFBundleShortVersionString", in: helper), try plistValue("CFBundleShortVersionString", in: parent),
+                       file: file, line: line)
+    }
+
+    /// What the Dock and Finder show for the helper, read from the shipped `.lproj` folders: the word for "Apps" in the
+    /// language, and with `suffix` after it for Helm Dev, in every language and in the plist's own fallback.
+    private func assertShownNames(helper: URL, suffix: String, file: StaticString = #filePath, line: UInt = #line) throws {
+        let words = ["en": "Applications", "ru": "Приложения", "es": "Aplicaciones", "fr": "Applications",
+                     "de": "Programme", "ja": "アプリケーション", "zh-Hans": "应用程序", "pt-BR": "Aplicativos"]
+        XCTAssertEqual(try plistValue("LSHasLocalizedDisplayName", in: helper), "true", file: file, line: line)
+        XCTAssertEqual(try plistValue("CFBundleDisplayName", in: helper), "Applications" + suffix, file: file, line: line)
+        for (language, word) in words {
+            let strings = helper.appendingPathComponent("Contents/Resources/\(language).lproj/InfoPlist.strings")
+            let read = try runChild("/usr/bin/plutil", ["-extract", "CFBundleDisplayName", "raw", strings.path], mergeStderr: true)
+            XCTAssertEqual(read.output.trimmingCharacters(in: .whitespacesAndNewlines), word + suffix, language, file: file, line: line)
+        }
+    }
+
+    func testTheReleaseHelperAndItsParentAgree() throws {
+        let p = try package(repo(branch: "main", label: "pair-release"), throughSigning: true)
+        XCTAssertEqual(p.result.status, 0, p.result.output)
+        let app = p.tmp.appendingPathComponent("helm-package/Helm.app")
+        try assertPaired(parent: app, helper: app.appendingPathComponent("Contents/Helpers/Helm Launchpad.app"),
+                         parentID: AppBuild.releaseIdentifier, helperID: AppBuild.launchpadHelperIdentifier,
+                         scheme: AppBuild.launchpadLinkScheme)
+        try assertShownNames(helper: app.appendingPathComponent("Contents/Helpers/Helm Launchpad.app"), suffix: "")
+    }
+
+    func testTheDevRewriteMovesTheHelperAndItsParentTogether() throws {
+        let p = try package(repo(branch: "dev", label: "pair-dev"), throughSigning: true)
+        XCTAssertEqual(p.result.status, 0, p.result.output)
+        let dev = p.tmp.appendingPathComponent("Helm Dev.app")
+        let r = try runChild("/bin/bash", [realScripts.appendingPathComponent("rewrite-as-dev.sh").path,
+                                           p.tmp.appendingPathComponent("helm-package/Helm.app").path, dev.path],
+                             environment: ["PATH": "/usr/bin:/bin", "HOME": NSHomeDirectory(), "HELM_SIGN_IDENTITY": "-"],
+                             mergeStderr: true)
+        XCTAssertEqual(r.status, 0, r.output)
+        try assertPaired(parent: dev, helper: dev.appendingPathComponent("Contents/Helpers/Helm Dev Launchpad.app"),
+                         parentID: AppBuild.devIdentifier, helperID: AppBuild.devLaunchpadHelperIdentifier,
+                         scheme: AppBuild.devLaunchpadLinkScheme)
+        try assertShownNames(helper: dev.appendingPathComponent("Contents/Helpers/Helm Dev Launchpad.app"), suffix: " Dev")
+        let verify = try runChild("/usr/bin/codesign", ["--verify", "--deep", "--strict", dev.path], mergeStderr: true)
+        XCTAssertEqual(verify.status, 0, verify.output)
+    }
+
     // MARK: - package-app.sh: what it refuses before compiling
 
     func testADetachedHeadWithNoChannelRefuses() throws {
@@ -189,7 +268,7 @@ final class ThePackagedBundleNamesItsChannelTests: XCTestCase {
 
     /// Runs `Scripts/<script>` (make-dmg.sh or make-zip.sh) in a scratch repo on
     /// the staged bundle; returns its merged output and the `swift` arguments, if any.
-    private func stagedRun(script: String, channel: String?, version: String) throws -> (output: String, args: String?) {
+    private func stagedRun(script: String, channel: String?, version: String, helperSignedLocally: Bool = false) throws -> (output: String, args: String?) {
         let repo = scratchDirectory("ch-dmg-repo")
         let scripts = repo.appendingPathComponent("Scripts")
         try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
@@ -213,16 +292,52 @@ final class ThePackagedBundleNamesItsChannelTests: XCTestCase {
             \(key)
             </dict></plist>
             """.write(to: app.appendingPathComponent("Contents/Info.plist"), atomically: true, encoding: .utf8)
+        // The nested Dock helper, signed first: the staged-bundle check reads its signature too.
+        let helper = app.appendingPathComponent("Contents/Helpers/Helm Launchpad.app")
+        try FileManager.default.createDirectory(at: helper.appendingPathComponent("Contents/MacOS"),
+                                                withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: URL(fileURLWithPath: "/usr/bin/true"),
+                                         to: helper.appendingPathComponent("Contents/MacOS/x"))
+        try """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <plist version="1.0"><dict>
+            <key>CFBundleExecutable</key><string>x</string>
+            <key>CFBundleIdentifier</key><string>invalid.helm.channel.test.helper</string>
+            </dict></plist>
+            """.write(to: helper.appendingPathComponent("Contents/Info.plist"), atomically: true, encoding: .utf8)
+        let signedHelper = try runChild("/usr/bin/codesign", ["--force", "--sign", "-", helper.path], mergeStderr: true)
+        guard signedHelper.status == 0 else { throw SetupFailure(description: "codesign helper: \(signedHelper.output)") }
         let signed = try runChild("/usr/bin/codesign", ["--force", "--sign", "-", app.path], mergeStderr: true)
         guard signed.status == 0 else { throw SetupFailure(description: "codesign: \(signed.output)") }
 
         let bin = scratchDirectory("ch-dmg-stubs")
         let record = tmp.appendingPathComponent("swift-args.txt")
+        if helperSignedLocally {
+            // A local identity cannot be made in a test, so the script's `codesign` is a stand-in: the bundle verifies, the
+            // app reads ad-hoc, and the helper reads as signed by a named identity.
+            try stub("codesign", """
+                case "$*" in
+                  *--verify*) exit 0 ;;
+                  *"Helm Launchpad.app"*) echo "Signature size=9000" >&2 ;;
+                  *) echo "Signature=adhoc" >&2 ;;
+                esac
+                """, in: bin)
+        }
         try stub("swift", "echo \"$*\" >> '\(record.path)'; exit 17", in: bin)
         let r = try runChild("/bin/bash", [scripts.appendingPathComponent(script).path],
                              environment: ["PATH": "\(bin.path):/usr/bin:/bin", "TMPDIR": tmp.path,
                                            "HOME": NSHomeDirectory()], mergeStderr: true)
         return (r.output, try? String(contentsOf: record, encoding: .utf8))
+    }
+
+    /// The nested Dock helper is a bundle of its own: one signed with a local identity stops both scripts before anything
+    /// is drawn or zipped, though the app around it is ad-hoc and the whole verifies.
+    func testADockHelperSignedLocallyStopsTheZipAndTheImage() throws {
+        for script in ["make-dmg.sh", "make-zip.sh"] {
+            let r = try stagedRun(script: script, channel: "STABLE", version: "0.11.1", helperSignedLocally: true)
+            XCTAssertNil(r.args, "\(script) went on to draw: \(r.output)")
+            XCTAssertTrue(r.output.contains("Dock helper is not ad-hoc signed"), "\(script): \(r.output)")
+        }
     }
 
     func testADevChannelWithABareVersionDrawsTheDevWindow() throws {

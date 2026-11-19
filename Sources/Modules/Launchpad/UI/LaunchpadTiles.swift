@@ -14,6 +14,8 @@ enum LaunchpadMetrics {
     static let tileMinimum: CGFloat = 132
     /// An icon beside a name in the settings page's list of hidden apps.
     static let hiddenIcon: CGFloat = 28
+    /// The Dock helper's icon on the settings page: big enough to take hold of and drag.
+    static let dockIcon: CGFloat = 40
     /// A tile's height: the icon, the gap, two lines of label (`.subheadline` leads at 17 pt) and the padding above and below.
     static let cellHeight: CGFloat = windowIcon + HelmSpace.s3 + 2 * 17 + 2 * HelmSpace.s3
     /// The window's margin at each side, as a share of its width.

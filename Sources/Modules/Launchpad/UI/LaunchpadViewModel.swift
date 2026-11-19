@@ -48,6 +48,10 @@ enum LaunchNotice: Equatable {
     /// Builds the window; nil in a test, and the window then never opens.
     var present: (@MainActor (LaunchpadViewModel) -> any LaunchpadWindowHandle)?
     private var window: (any LaunchpadWindowHandle)?
+    /// The Dock helper nested in this Helm, set by the descriptor; nil when there is none, and the page then has no row for it.
+    var helperURL: URL?
+    /// Shows the helper in Finder; the descriptor sets it, so the page holds no AppKit.
+    var revealHelper: @MainActor (URL) -> Void = { _ in }
     /// The module's own settings store, for the page's shortcut row.
     let store: NamespacedStore
 

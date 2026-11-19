@@ -38,6 +38,8 @@ enum LaunchpadHotkey {
         model.present = { model in
             LaunchpadWindow(model: model)
         }
+        model.helperURL = AppBuild.launchpadHelperURL
+        model.revealHelper = { HelmReveal.inFinder($0.path) }
         return ModuleParts(engine: engine, model: model)
     }
 
