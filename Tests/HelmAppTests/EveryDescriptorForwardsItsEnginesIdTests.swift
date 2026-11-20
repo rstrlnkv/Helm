@@ -11,6 +11,8 @@ import Module_Homebrew_Engine
 import Module_Homebrew_UI
 import Module_KeepAwake_Engine
 import Module_KeepAwake_UI
+import Module_Launchpad_Engine
+import Module_Launchpad_UI
 import Module_Layout_Engine
 import Module_Layout_UI
 import Module_Leftovers_Engine
@@ -47,6 +49,7 @@ final class EveryDescriptorForwardsItsEnginesIdTests: XCTestCase {
         (DuplicatesDescriptor.self, DuplicatesEngine.moduleID),
         (HomebrewDescriptor.self, HomebrewEngine.moduleID),
         (KeepAwakeDescriptor.self, KeepAwakeEngine.moduleID),
+        (LaunchpadDescriptor.self, LaunchpadEngine.moduleID),
         (LayoutDescriptor.self, LayoutEngine.moduleID),
         (LeftoversDescriptor.self, LeftoversEngine.moduleID),
         (ScreenshotsDescriptor.self, ScreenshotsEngine.moduleID),
