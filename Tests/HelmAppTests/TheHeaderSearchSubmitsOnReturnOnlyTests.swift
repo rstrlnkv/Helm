@@ -13,18 +13,20 @@ import XCTest
 @MainActor
 final class TheHeaderSearchSubmitsOnReturnOnlyTests: XCTestCase {
 
-    private final class Page {
-        var text = ""
+    /// Observed, as every real page's query is (`@State` in Log, Uninstaller, Homebrew): a binding SwiftUI does not
+    /// watch hands the header the text of the body it was cut from, so a redraw after the edit ends puts that back.
+    private final class Page: ObservableObject {
+        @Published var text = ""
         var submits = 0
     }
 
     private struct Pane: View {
-        let page: Page
+        @ObservedObject var page: Page
         var body: some View {
             Text("the list").frame(maxWidth: .infinity, maxHeight: .infinity)
                 .helmWindowToolbar(HelmPageToolbarContent(search: HelmToolbarSearch(
                     prompt: "Search",
-                    text: Binding(get: { page.text }, set: { page.text = $0 }),
+                    text: $page.text,
                     onSubmit: { page.submits += 1 })))
         }
     }
