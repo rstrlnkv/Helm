@@ -1,6 +1,7 @@
 import Foundation
 import HelmContract
 import HelmRuntime
+import HelmUI
 import Module_Launchpad_Engine
 
 /// What the model asks of the engine. A port, so a model's test holds the engine's place without a Mac's apps in reach.
@@ -72,6 +73,11 @@ enum LaunchNotice: Equatable {
     /// Builds the window; nil in a test, and the window then never opens.
     var present: (@MainActor (LaunchpadViewModel) -> any LaunchpadWindowHandle)?
     private var window: (any LaunchpadWindowHandle)?
+    /// What the fingers' scrub is doing to the window, from `began` to `ended`. `spent`: a reduced-motion hand that already acted.
+    private enum Scrub { case none, opening, closing, forwarding, reduced(PinchDirection), spent }
+    private var scrub = Scrub.none
+    /// Whether the person asked for less motion, asked at each `began`; a test sets it.
+    var reduceMotion: () -> Bool = { HelmMotion.reduceMotion }
     /// The Dock helper nested in this Helm, set by the descriptor; nil when there is none, and the page then has no row for it.
     var helperURL: URL?
     /// Shows the helper in Finder; the descriptor sets it, so the page holds no AppKit.
@@ -155,9 +161,64 @@ enum LaunchNotice: Equatable {
         if !closed { systemPinchIsOn = system == .on }
     }
 
-    /// A pinch opens the window and a spread closes it: the shortcut's two halves. A pinch with the window open brings it
-    /// forward, a spread with none open does nothing.
-    func pinched(_ direction: PinchDirection) {
+    /// What the fingers do to the window, as the engine says it. A scrub follows the hand: a pinch opens the window from nothing
+    /// and a spread closes the one that is open, each a half of the shortcut's press, and the end completes it or puts it back.
+    /// A pinch with the window open brings it forward, a spread with none open does nothing. With reduced motion nothing follows
+    /// the hand: the window opens or closes at once, where the gesture reaches 1 or, short of that, where it ends complete (released past the
+    /// midpoint or flicked), unless it already did. Nothing after `stop()`.
+    func pinched(_ event: PinchEvent) {
+        guard !closed else { return }
+        switch event {
+        case .began(let direction, let progress):
+            if reduceMotion() {
+                scrub = .reduced(direction)
+                if progress >= 1 { complete(direction); scrub = .spent }
+                return
+            }
+            switch (direction, window) {
+            case (.pinch, nil):
+                guard let opened = openWindow() else { scrub = .none; return }
+                opened.beginScrub(.pinch)
+                opened.scrub(to: progress)
+                scrub = .opening
+            case (.pinch, _):
+                scrub = .forwarding
+            case (.spread, let open?):
+                open.beginScrub(.spread)
+                open.scrub(to: progress)
+                scrub = .closing
+            case (.spread, nil):
+                scrub = .none
+            }
+        case .moved(let progress):
+            switch scrub {
+            case .opening, .closing: window?.scrub(to: progress)
+            case .reduced(let direction): if progress >= 1 { complete(direction); scrub = .spent }
+            case .none, .forwarding, .spent: break
+            }
+        case .ended(let outcome):
+            let was = scrub
+            scrub = .none
+            switch (was, outcome) {
+            case (.opening, .complete): window?.endScrub(.complete)
+            case (.opening, .revert):
+                let half = window
+                window = nil
+                half?.endScrub(.revert)
+            case (.closing, .complete):
+                let open = window
+                window = nil
+                open?.endScrub(.complete)
+            case (.closing, .revert): window?.endScrub(.revert)
+            case (.forwarding, .complete): window?.bringForward()
+            case (.reduced(let direction), .complete): complete(direction)
+            default: break
+            }
+        }
+    }
+
+    /// The shortcut's two halves, whole: a pinch opens the window or brings it forward, a spread closes it.
+    private func complete(_ direction: PinchDirection) {
         guard !closed else { return }
         switch direction {
         case .pinch: showLaunchpad()
@@ -170,16 +231,22 @@ enum LaunchNotice: Equatable {
     /// Opens the window, or brings the open one forward. Nothing after `stop()`.
     func showLaunchpad() {
         guard !closed else { return }
-        if let window { window.bringForward(); return }
-        guard let present else { return }
+        if let window { scrub = .none; window.bringForward(); return }
+        openWindow()?.present()
+    }
+
+    /// Builds the window and holds it, its `onClose` set; nil when there is no builder (a test).
+    private func openWindow() -> (any LaunchpadWindowHandle)? {
+        guard let present else { return nil }
         reloadGrid()
         let opened = present(self)
         window = opened
         opened.onClose = { [weak self, weak opened] in
             guard let self, let opened, self.window === opened else { return }
             self.window = nil
+            scrub = .none
         }
-        opened.present()
+        return opened
     }
 
     /// The shortcut's press: closes the window when it is open, opens it when it is not.
@@ -188,6 +255,7 @@ enum LaunchNotice: Equatable {
     }
 
     func closeLaunchpad() {
+        scrub = .none
         guard let open = window else { return }
         window = nil
         open.close()

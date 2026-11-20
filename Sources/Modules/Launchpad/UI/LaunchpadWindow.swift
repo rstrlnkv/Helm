@@ -111,11 +111,11 @@ final class LaunchpadPanel: NSPanel {
 }
 
 /// What ends the window besides its own keys and clicks: another app coming forward, the Space changing, the screens changing.
-/// Held by the window; the observers go with this object.
+/// The Mac going to sleep is told apart (`willSleep`): the fingers' scrub never gets its end then. Held by the window; the observers go with this object.
 private final class LaunchpadWindowEnders {
     private var tokens: [(center: NotificationCenter, token: NSObjectProtocol)] = []
 
-    @MainActor init(_ end: @escaping @MainActor () -> Void) {
+    @MainActor init(willSleep: @escaping @MainActor () -> Void, _ end: @escaping @MainActor () -> Void) {
         let workspace = NSWorkspace.shared.notificationCenter
         let mine = ProcessInfo.processInfo.processIdentifier
         tokens.append((workspace, workspace.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { note in
@@ -127,6 +127,9 @@ private final class LaunchpadWindowEnders {
         }))
         tokens.append((workspace, workspace.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { end() }
+        }))
+        tokens.append((workspace, workspace.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { willSleep() }
         }))
         let center = NotificationCenter.default
         tokens.append((center, center.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { _ in
@@ -147,7 +150,20 @@ private final class LaunchpadWindowEnders {
 /// the window is open, and its snapshot goes when the window does. It closes on Esc, a click on the empty background, an
 /// app that opened, the panel losing key, another app coming forward, the Space or the screens changing, the model
 /// stopping and the shortcut's second press.
+///
+/// **One writer of how much of it shows** (`apply`): the panel's alpha and the screen's zoom and fade (`state.reveal`) both come from
+/// one number, which is the fingers' progress while a scrub runs (`beginScrub`, `scrub`, `endScrub`) and a settle's own clock after
+/// it (`settle`, one display-link tick at a time along `HelmMotion.interfaceProgress`). A pinch's scrub shows the window without
+/// making it key, so the app in front keeps the keyboard until the scrub completes.
 @MainActor final class LaunchpadWindow: LaunchpadWindowHandle {
+    private enum Phase {
+        case settled
+        /// The fingers hold the reveal: a pinch from 0, a spread from `base`.
+        case scrubbing(PinchDirection, base: Double)
+        /// Travelling from `from` to `to` over `duration`; `startedAt` is the first tick's timestamp. `finishes`: the window is taken down at the end.
+        case settling(from: Double, to: Double, duration: TimeInterval, startedAt: CFTimeInterval?, finishes: Bool)
+    }
+
     /// One below the Dock's level.
     static let level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.dockWindow)) - 1)
 
@@ -160,6 +176,12 @@ private final class LaunchpadWindowEnders {
     private var closed = false
     private var opened = false
     private var finished = false
+    /// How much of the window shows, 0 to 1; only `apply` writes it.
+    private var progress = 1.0
+    private var phase = Phase.settled
+    /// Which settle may still land: a newer one, a scrub or a close takes the next number.
+    private var settleToken = 0
+    private let settleLink = LaunchpadSettleLink()
     /// The window whose picture is still fading out; a new window cuts it before it opens.
     private static var lingering: LaunchpadWindow?
     private let footprintBefore = MemoryFootprint.current()
@@ -213,40 +235,145 @@ private final class LaunchpadWindowEnders {
         panel.onResignKey = { [weak self] in self?.close() }
     }
 
+    /// The one writer of the reveal: the panel's alpha moves the blur, the scrim and the grid as one, the screen's zoom and fade follow.
+    private func apply(_ value: Double) {
+        guard value.isFinite else { return }
+        progress = min(max(value, 0), 1)
+        panel.alphaValue = progress
+        state.reveal.progress = progress
+    }
+
     func present() {
         guard !closed, !opened else { return }
         opened = true
-        enders = LaunchpadWindowEnders { [weak self] in self?.close() }
+        enders = makeEnders()
         watchTask = Task { [weak model] in await model?.whileShown() }
-        let fades = HelmMotion.moves(reduceMotion: HelmMotion.reduceMotion)
-        if fades { panel.alphaValue = 0 }
-        panel.makeKeyAndOrderFront(nil)
-        if fades { fade(to: 1, duration: HelmMotion.windowZoomDuration) {} }
+        state.setShown(true)
+        if HelmMotion.moves(reduceMotion: HelmMotion.reduceMotion) {
+            apply(0)
+            panel.ignoresMouseEvents = true
+            panel.makeKeyAndOrderFront(nil)
+            settle(to: 1, duration: HelmMotion.windowZoomDuration)
+        } else {
+            apply(1)
+            panel.makeKeyAndOrderFront(nil)
+        }
         Task { await LaunchpadGlow.prepare() }
         report("module.launchpad.show", since: footprintBefore)
     }
 
-    /// The panel's alpha, moved by the window server along the interface curve: the blur, the scrim and the grid fade as one.
-    private func fade(to alpha: CGFloat, duration: TimeInterval, then done: @escaping @MainActor () -> Void) {
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = duration
-            context.timingFunction = HelmMotion.interfaceCurve
-            panel.animator().alphaValue = alpha
-        } completionHandler: {
-            MainActor.assumeIsolated { done() }
+    private func makeEnders() -> LaunchpadWindowEnders {
+        LaunchpadWindowEnders(willSleep: { [weak self] in
+            guard let self, case .scrubbing(let direction, _) = phase else { return }
+            if direction == .pinch { close() } else { endScrub(.revert) }
+        }, { [weak self] in self?.close() })
+    }
+
+    // MARK: - The fingers' scrub
+
+    func beginScrub(_ direction: PinchDirection) {
+        guard !closed else { return }
+        switch direction {
+        case .pinch:
+            guard !opened else { return }
+            opened = true
+            enders = makeEnders()
+            watchTask = Task { [weak model] in await model?.whileShown() }
+            apply(0)
+            panel.ignoresMouseEvents = true
+            panel.orderFrontRegardless()
+            phase = .scrubbing(.pinch, base: 0)
+            Task { await LaunchpadGlow.prepare() }
+            report("module.launchpad.show", since: footprintBefore)
+        case .spread:
+            guard opened else { return }
+            if case .scrubbing = phase { return }
+            settleLink.stop()
+            settleToken += 1
+            phase = .scrubbing(.spread, base: progress)
+            panel.ignoresMouseEvents = true
         }
+    }
+
+    func scrub(to gesture: Double) {
+        guard !closed, gesture.isFinite, case .scrubbing(let direction, let base) = phase else { return }
+        apply(LaunchpadReveal.value(direction: direction, base: base, gesture: gesture))
+    }
+
+    func endScrub(_ outcome: PinchOutcome) {
+        guard !closed, case .scrubbing(let direction, _) = phase else { return }
+        phase = .settled
+        switch (direction, outcome) {
+        case (.pinch, .complete):
+            // Key and search focus now; clicks wait for the settle's arrival, which gives the mouse back.
+            panel.makeKeyAndOrderFront(nil)
+            state.setShown(true)
+            state.requestSearchFocus()
+            settle(to: 1, duration: HelmMotion.windowZoomDuration)
+        case (.pinch, .revert), (.spread, .complete):
+            close()
+        case (.spread, .revert):
+            panel.ignoresMouseEvents = false
+            settle(to: 1, duration: HelmMotion.interfaceDuration)
+        }
+    }
+
+    // MARK: - The settle
+
+    /// Takes the reveal from where it is to `target` along the interface curve, on the display link's own clock. At once when motion
+    /// is reduced; a link that does not tick is overtaken by a timer that lands the same settle a little after its end.
+    private func settle(to target: Double, duration: TimeInterval, finishes: Bool = false) {
+        settleToken += 1
+        let token = settleToken
+        let from = progress
+        guard HelmMotion.moves(reduceMotion: HelmMotion.reduceMotion), from != target, let view = panel.contentView else {
+            phase = .settling(from: from, to: target, duration: duration, startedAt: nil, finishes: finishes)
+            arrive(token)
+            return
+        }
+        phase = .settling(from: from, to: target, duration: duration, startedAt: nil, finishes: finishes)
+        settleLink.start(on: view) { [weak self] now in self?.tick(now, token) }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(duration + 0.3))
+            self?.arrive(token)
+        }
+    }
+
+    private func tick(_ now: CFTimeInterval, _ token: Int) {
+        guard token == settleToken, case .settling(let from, let to, let duration, let startedAt, let finishes) = phase else { return }
+        let start = startedAt ?? now
+        if startedAt == nil { phase = .settling(from: from, to: to, duration: duration, startedAt: start, finishes: finishes) }
+        let fraction = (now - start) / duration
+        apply(LaunchpadReveal.settled(from: from, to: to, fraction: fraction))
+        if fraction >= 1 { arrive(token) }
+    }
+
+    /// The settle ends: the target is applied, the link stops, and a closing window is taken down, any other takes clicks again. Only the settle of `token` lands.
+    private func arrive(_ token: Int) {
+        guard token == settleToken, case .settling(_, let to, _, _, let finishes) = phase else { return }
+        settleLink.stop()
+        apply(to)
+        phase = .settled
+        if finishes { finish() } else { panel.ignoresMouseEvents = false }
     }
 
     func bringForward() {
         guard !closed else { return }
+        if case .scrubbing(let direction, _) = phase {
+            endScrub(direction == .pinch ? .complete : .revert)
+            return
+        }
         panel.makeKeyAndOrderFront(nil)
     }
 
-    /// Ends the window for the model at once, and takes the picture down: faded out over `interfaceDuration` and answering
-    /// nothing, or cut when motion is reduced.
+    /// Ends the window for the model at once, and takes the picture down: faded out over `interfaceDuration` from where it is and
+    /// answering nothing, or cut when motion is reduced or it never showed.
     func close() {
         guard !closed else { return }
         closed = true
+        settleLink.stop()
+        settleToken += 1
+        phase = .settled
         watchTask?.cancel()
         watchTask = nil
         enders = nil
@@ -267,7 +394,7 @@ private final class LaunchpadWindowEnders {
         panel.isClosing = true
         Self.lingering = self
         state.setShown(false)
-        fade(to: 0, duration: HelmMotion.interfaceDuration) { [weak self] in self?.finish() }
+        settle(to: 0, duration: HelmMotion.interfaceDuration, finishes: true)
     }
 
     /// Takes the picture down: the panel's content and the panel itself. Once, from the fade's end or from a window that
@@ -275,6 +402,9 @@ private final class LaunchpadWindowEnders {
     private func finish() {
         guard !finished else { return }
         finished = true
+        settleLink.stop()
+        settleToken += 1
+        phase = .settled
         let before = MemoryFootprint.current()
         panel.contentView = nil
         panel.orderOut(nil)

@@ -1,4 +1,5 @@
 import XCTest
+@testable import Module_Launchpad_Engine
 @testable import Module_Launchpad_UI
 
 /// The window opens only through the model: two presses of «open» are one window, the shortcut opens then closes, a
@@ -10,9 +11,16 @@ final class ALaunchpadWindowIsOneDoorTests: XCTestCase {
         var onClose: (@MainActor () -> Void)?
         var closes = 0
         var forwards = 0
-        func present() {}
+        var presents = 0
+        var begun: [PinchDirection] = []
+        var scrubbed: [Double] = []
+        var ends: [PinchOutcome] = []
+        func present() { presents += 1 }
         func close() { closes += 1; onClose?() }
         func bringForward() { forwards += 1 }
+        func beginScrub(_ direction: PinchDirection) { begun.append(direction) }
+        func scrub(to progress: Double) { scrubbed.append(progress) }
+        func endScrub(_ outcome: PinchOutcome) { ends.append(outcome) }
     }
 
     private func rig(_ label: String) -> (LaunchpadRig, built: () -> [FakeWindow]) {

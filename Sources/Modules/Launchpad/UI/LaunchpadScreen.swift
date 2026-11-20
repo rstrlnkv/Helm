@@ -22,7 +22,7 @@ struct LaunchpadScreen: View {
             Color.black.opacity(0.2)
                 .contentShape(Rectangle())
                 .onTapGesture { state.backgroundClicked() }
-            // The content settles from a little larger as the window fades up; the scrim stays out of the zoom.
+            // The content settles from a little larger as the window is revealed (a scrub or a settle, `state.reveal`); the scrim stays out of the zoom.
             ZStack(alignment: .topLeading) {
                 pages(g)
                 states
@@ -39,9 +39,7 @@ struct LaunchpadScreen: View {
                 }
             }
             .frame(width: g.size.width, height: g.size.height)
-            .scaleEffect(state.shown || HelmMotion.reduceMotion ? 1 : LaunchpadMetrics.zoomFrom)
-            .opacity(state.shown ? 1 : 0)
-            .animation(HelmMotion.windowZoom, value: state.shown)
+            .modifier(RevealEffect(reveal: state.reveal))
         }
         .frame(width: g.size.width, height: g.size.height)
         .animation(HelmMotion.emphasis, value: state.openFolder)
@@ -66,10 +64,12 @@ struct LaunchpadScreen: View {
         .onChange(of: nameFocused) { _, focused in
             if focused { state.renaming = true } else if state.renaming { state.commitName() }
         }
-        .onAppear {
-            searchFocused = true
-            state.setShown(true)
+        // False first: the field may already hold the flag (set before the panel was key), and a flag set again is no change to act on.
+        .onChange(of: state.searchFocusRequest) {
+            searchFocused = false
+            Task { @MainActor in searchFocused = true }
         }
+        .onAppear { searchFocused = true }
     }
 
     // MARK: - Pages
@@ -275,5 +275,18 @@ private struct FolderZoom: ViewModifier {
             .offset(HelmMotion.reduceMotion ? .zero : delta)
             .opacity(shown ? 1 : 0)
             .allowsHitTesting(shown)
+    }
+}
+
+/// The content's zoom from how far the window is revealed; the fade is the panel's alpha, which the icons share with the backdrop
+/// (a second `.opacity(p)` here would multiply to p squared). No `.animation`: the progress is already the curve's value
+/// (a settle's own clock) or the fingers'.
+private struct RevealEffect: ViewModifier {
+    @ObservedObject var reveal: LaunchpadReveal
+
+    func body(content: Content) -> some View {
+        let p = reveal.progress
+        content
+            .scaleEffect(HelmMotion.reduceMotion ? 1 : LaunchpadMetrics.zoomFrom + (1 - LaunchpadMetrics.zoomFrom) * p)
     }
 }

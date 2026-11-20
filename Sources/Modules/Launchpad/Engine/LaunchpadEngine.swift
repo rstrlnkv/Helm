@@ -4,9 +4,11 @@ import HelmRuntime
 
 /// The app launcher's arrangement: what is installed, what the person put where, what they hid.
 ///
-/// **Synchronous and blocking on disk** — a model hops with `offTheCooperativePool`. One lock
+/// **Synchronous and blocking on disk** — a model hops with `offTheCooperativePool`. `lock`
 /// covers read, reconcile, edit and save, taken inside one synchronous call and never held
-/// across a suspension. The layout is never cached: every `read()` asks the catalog and the file again;
+/// across a suspension. The pinch has a lock of its own, `pinchLock` (the activation flag, the watch, the recognizers, the mailbox, the
+/// scrub's owner): the framework's thread and main must never wait on a disk read. Order: `portLock`, then `pinchLock`; `lock` is
+/// never taken inside `pinchLock` nor the other way round. The layout is never cached: every `read()` asks the catalog and the file again;
 /// only the latest catalog read is kept, so an edit reconciles against what the person saw.
 public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     /// This module's id, and the only place it is written down. **The string never changes.**
@@ -22,29 +24,47 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     /// The localized name of the default arrangement's folder of utilities, asked when a default is built: the engine holds no strings.
     private let utilitiesFolderName: @Sendable () -> String
     private let lock = NSLock()
+    /// See the type's comment: guards everything below that says "under `pinchLock`", and `active`.
+    private let pinchLock = NSLock()
+    private let now: @Sendable () -> TimeInterval
     /// The latest catalog read, so an edit reconciles against what the person was looking at.
     private var lastCatalog: CatalogReading?
     /// Between `activate()` and `deactivate()`; the pinch is watched only inside it.
     private var active = false
-    /// A watch was started and not stopped. With `pinchStart` and `generation`, guarded by `lock`.
+    /// A watch was started and not stopped. With `pinchStart` and `generation`, under `pinchLock`.
     private var watching = false
     /// What the last start came to: nil when none was started since the last stop (the switch is off, the module is not
     /// active); `.noTrackpad` and `.frameworkMissing` when it found nothing to watch (then `watching` is false); `.layoutRefused`
     /// after a stand-down; `.watching` while one runs.
     private var pinchStart: TouchWatchStart?
-    /// Which start a frame, a fire or a stand-down belongs to: each start takes the next number, so what the old watch sends late is dropped.
+    /// Which start a frame, an event or a stand-down belongs to: each start takes the next number, so what the old watch sends late is dropped.
     private var generation = 0
     /// Starts whose call into the port has not returned. A stop that finds one leaves the port to it: the start, on returning, stops what it started if it is no longer wanted.
     private var startsInFlight = 0
-    /// Held around every call that starts or stops the port, so a stop decided for an old watch cannot land after a newer start began.
+    /// Held around every call that starts or stops the port (but the engine's `deinit`, when nothing else holds the engine), so a stop decided for an old watch cannot land after a newer start began.
     private let portLock = NSLock()
-    /// One recognizer per trackpad, so two pads are never read as one hand; frames and fires since the watch began, for the log.
+    /// One recognizer per trackpad, so two pads are never read as one hand; frames, scrubs begun and scrubs completed since the watch began, for the log.
     private var recognizers: [Int: PinchRecognizer] = [:]
     private var frames = 0
-    private var fires = 0
+    private var scrubs = 0
+    private var completions = 0
+    /// What the pinch said and main has not yet heard, in order, under `pinchLock`. A `moved` replaces a `moved` at the end, so a main
+    /// thread that is busy holds three events at most per scrub, not a frame's worth a hundred times a second.
+    private var mailbox: [PinchEvent] = []
+    /// A hop to main is on its way to empty `mailbox`, so another is not scheduled. Under `pinchLock`.
+    private var drainScheduled = false
+    /// The pad whose scrub main is following: the one scrub at a time, and a second pad's is dropped. Under `pinchLock`.
+    private var scrubOwner: Int?
+    /// When the owner's last frame arrived (`now`), and whether a check for its silence is on its way. Under `pinchLock`.
+    private var ownerHeardAt: TimeInterval = 0
+    private var silenceCheckScheduled = false
+    /// A pad that sends nothing for this long (seconds) in the middle of a scrub has gone (a Bluetooth drop): the scrub is reverted.
+    static let silenceLimit: TimeInterval = 0.5
+    private static let silenceCheckEvery: TimeInterval = 0.25
 
-    /// What a recognized pinch or spread does; the descriptor sets it before `activate()`, and it runs on the main actor.
-    @MainActor public var onPinch: (PinchDirection) -> Void = { _ in }
+    /// What a hand does to the window, one event at a time in order (`PinchEvent`); the descriptor sets it before `activate()`,
+    /// and it runs on the main actor. A scrub that main was told began is always told it ended: a watch that stops inside one, or a pad that falls silent in one, delivers `.ended(.revert)`.
+    @MainActor public var onPinch: (PinchEvent) -> Void = { _ in }
 
     public convenience init(utilitiesFolderName: @escaping @Sendable () -> String, pinchEnabled: @escaping () -> Bool = { false }) {
         self.init(catalog: FileSystemAppCatalog(), launcher: SystemAppLauncher(), store: LayoutStore(), utilitiesFolderName: utilitiesFolderName,
@@ -53,7 +73,8 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
 
     init(catalog: AppCatalogPort, launcher: AppLauncherPort, store: LayoutStore, utilitiesFolderName: @escaping @Sendable () -> String = { "Utilities" },
          touches: TrackpadTouchPort = MultitouchSupportPort(), systemPinch: SystemPinchPort = SystemTrackpadPreferences(),
-         pinchEnabled: @escaping () -> Bool = { false }) {
+         pinchEnabled: @escaping () -> Bool = { false }, now: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+        self.now = now
         self.catalog = catalog
         self.launcher = launcher
         self.store = store
@@ -66,19 +87,19 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     deinit { touches.stop() }
 
     public func activate() {
-        lock.withLock { active = true }
+        pinchLock.withLock { active = true }
         if pinchEnabled() { startPinch() }
     }
 
     public func deactivate() {
-        lock.withLock { active = false }
+        pinchLock.withLock { active = false }
         stopPinch()
     }
 
     // MARK: - The pinch
 
     /// What the last start came to (`pinchStart`): nil when nothing was started or it was stopped.
-    public var pinchWatch: TouchWatchStart? { lock.withLock { pinchStart } }
+    public var pinchWatch: TouchWatchStart? { pinchLock.withLock { pinchStart } }
 
     /// What the system's own pinch is set to. Reads defaults, so a model hops with `offTheCooperativePool`.
     public func systemPinchSetting() -> SystemPinch { systemPinch.read() }
@@ -90,14 +111,17 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func startPinch() {
-        let started = lock.withLock { () -> Int? in
+        let started = pinchLock.withLock { () -> Int? in
             guard active, !watching else { return nil }
             watching = true
             generation += 1
             startsInFlight += 1
             frames = 0
-            fires = 0
+            scrubs = 0
+            completions = 0
             recognizers = [:]
+            scrubOwner = nil
+            silenceCheckScheduled = false
             return generation
         }
         guard let mine = started else { return }
@@ -106,7 +130,7 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
                           onStandDown: { [weak self] in self?.standDown(generation: mine) })
         }
         // The start took time; the module may have left, or a newer start may own the port, meanwhile.
-        let (current, kept) = lock.withLock { () -> (Bool, Bool) in
+        let (current, kept) = pinchLock.withLock { () -> (Bool, Bool) in
             startsInFlight -= 1
             let current = generation == mine
             let kept = current && watching && active
@@ -132,29 +156,46 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     /// Stops the watch if one runs and says how it went. `keeping` is what the state reads afterwards (a stand-down keeps its
     /// reason). With a `generation`, nothing happens when that start is no longer the current one.
     private func stopPinch(keeping reason: TouchWatchStart? = nil, generation only: Int? = nil) {
-        let (counted, stopGeneration) = lock.withLock { () -> ((frames: Int, fires: Int)?, Int?) in
-            if let only, only != generation { return (nil, nil) }
+        let (counted, stopGeneration, schedule) = pinchLock.withLock { () -> ((frames: Int, scrubs: Int, completions: Int)?, Int?, Bool) in
+            if let only, only != generation { return (nil, nil, false) }
             let was = watching
             watching = false
             pinchStart = reason
-            return (was ? (frames, fires) : nil, was && startsInFlight == 0 ? generation : nil)
+            var schedule = false
+            if was { schedule = endScrubs() }
+            return (was ? (frames, scrubs, completions) : nil, was && startsInFlight == 0 ? generation : nil, schedule)
         }
         guard let counted else { return }
+        if schedule { scheduleDrain() }
         if let stopGeneration { stopPort(ifStillGeneration: stopGeneration) }
-        HelmLog.shared.info(Self.moduleID, "pinch: stopped after \(counted.frames) frames and \(counted.fires) fire(s)")
+        HelmLog.shared.info(Self.moduleID, "pinch: stopped after \(counted.frames) frames, \(counted.scrubs) scrub(s), \(counted.completions) completion(s)")
+    }
+
+    /// Under `pinchLock`. A scrub still owned is ended now with a revert; from the first `began` main was never told of,
+    /// everything is dropped, and what comes before it (an `ended` main is owed) stays. True when the caller must schedule the hop to main.
+    private func endScrubs() -> Bool {
+        if let untold = mailbox.firstIndex(where: { if case .began = $0 { true } else { false } }) {
+            mailbox.removeSubrange(untold...)
+        }
+        // A scrub still owned ends with a revert even when main never heard it begin: an end main has no scrub for, it ignores.
+        if scrubOwner != nil { mailbox.append(.ended(.revert)) }
+        scrubOwner = nil
+        guard !mailbox.isEmpty, !drainScheduled else { return false }
+        drainScheduled = true
+        return true
     }
 
     /// Stops the port unless a newer start has begun: the check and the stop are one step under `portLock`, and a start takes a new generation before it asks for that lock.
     private func stopPort(ifStillGeneration decided: Int) {
         portLock.withLock {
-            if lock.withLock({ generation == decided }) { touches.stop() }
+            if pinchLock.withLock({ generation == decided }) { touches.stop() }
         }
     }
 
     /// The port refused the layout in a row: said once, and the watch ends on a queue of its own, since this is called from the
     /// framework's thread. It ends only the watch it was told of; the person's switch off and on, or the module activated again, watches anew.
     private func standDown(generation mine: Int) {
-        let first = lock.withLock { () -> Bool in
+        let first = pinchLock.withLock { () -> Bool in
             guard watching, generation == mine, pinchStart != .layoutRefused else { return false }
             pinchStart = .layoutRefused
             return true
@@ -164,23 +205,76 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
         DispatchQueue.global().async { [weak self] in self?.stopPinch(keeping: .layoutRefused, generation: mine) }
     }
 
-    /// On the framework's thread; the recognizer is fed under the lock and nothing else is held. A fire hops to main once, its direction taken first.
+    /// On the framework's thread; the recognizer is fed under `pinchLock` and nothing else is held. What it says goes to the mailbox
+    /// (`accept`), and main is told once.
     private func handle(_ frame: TouchFrame, generation mine: Int) {
-        let fired = lock.withLock { () -> PinchDirection? in
-            guard watching, generation == mine else { return nil }
+        let (schedule, arm) = pinchLock.withLock { () -> (Bool, Bool) in
+            guard watching, generation == mine else { return (false, false) }
             frames += 1
             var recognizer = recognizers[frame.device] ?? PinchRecognizer()
-            let direction = recognizer.feed(frame)
+            let event = recognizer.feed(frame)
             recognizers[frame.device] = recognizer
-            if direction != nil { fires += 1 }
-            return direction
+            let schedule = event.map { accept($0, from: frame.device) } ?? false
+            guard scrubOwner == frame.device else { return (schedule, false) }
+            ownerHeardAt = now()
+            let arm = !silenceCheckScheduled
+            silenceCheckScheduled = true
+            return (schedule, arm)
         }
-        guard let direction = fired else { return }
-        DispatchQueue.main.async { [weak self] in
-            // Still the watch that saw the hand: one switched off or replaced since lands nothing.
-            guard let self, lock.withLock({ watching && active && generation == mine }) else { return }
-            MainActor.assumeIsolated { onPinch(direction) }
+        if schedule { scheduleDrain() }
+        if arm { scheduleSilenceCheck() }
+    }
+
+    private func scheduleSilenceCheck() {
+        DispatchQueue.global().asyncAfter(deadline: .now() + Self.silenceCheckEvery) { [weak self] in self?.checkSilence() }
+    }
+
+    /// While a scrub has an owner: when its pad has sent no frame for `silenceLimit`, the scrub is over (the pad no longer owns one, so what it sends later is dropped), and main is told `.ended(.revert)`. Otherwise looks again later; nothing is scheduled with no scrub.
+    func checkSilence() {
+        let (schedule, again, silent) = pinchLock.withLock { () -> (Bool, Bool, Bool) in
+            guard watching, let owner = scrubOwner else { silenceCheckScheduled = false; return (false, false, false) }
+            guard now() - ownerHeardAt >= Self.silenceLimit else { return (false, true, false) }
+            silenceCheckScheduled = false
+            return (endScrubs(), false, true)
         }
+        if schedule { scheduleDrain() }
+        if again { scheduleSilenceCheck() }
+        if silent { HelmLog.shared.info(Self.moduleID, "pinch: a trackpad went silent in the middle of a scrub; the scrub was reverted") }
+    }
+
+    /// Under `pinchLock`. One pad's scrub at a time: a second pad's `began` is dropped and so is whatever it says after; only the owner
+    /// moves or ends. True when the caller must schedule the hop to main.
+    private func accept(_ event: PinchEvent, from device: Int) -> Bool {
+        switch event {
+        case .began:
+            guard scrubOwner == nil else { return false }
+            scrubOwner = device
+            scrubs += 1
+        case .moved:
+            guard scrubOwner == device else { return false }
+        case .ended(let outcome):
+            guard scrubOwner == device else { return false }
+            scrubOwner = nil
+            if outcome == .complete { completions += 1 }
+        }
+        if case .moved = event, case .moved? = mailbox.last { mailbox[mailbox.count - 1] = event } else { mailbox.append(event) }
+        let schedule = !drainScheduled
+        drainScheduled = true
+        return schedule
+    }
+
+    private func scheduleDrain() {
+        DispatchQueue.main.async { [weak self] in self?.drain() }
+    }
+
+    /// On main: takes what the mailbox holds, then delivers it in order. `onPinch` is read where it is delivered.
+    private func drain() {
+        let events = pinchLock.withLock { () -> [PinchEvent] in
+            drainScheduled = false
+            defer { mailbox = [] }
+            return mailbox
+        }
+        MainActor.assumeIsolated { for event in events { onPinch(event) } }
     }
 
     /// Reconciled in memory; writes nothing.

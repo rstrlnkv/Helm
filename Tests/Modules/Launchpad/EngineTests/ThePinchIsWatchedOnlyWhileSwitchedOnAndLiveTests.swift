@@ -1,5 +1,6 @@
 import XCTest
 import HelmRuntime
+import HelmTestSupport
 @testable import Module_Launchpad_Engine
 
 /// A trackpad watch is work done while nobody looks: it runs a hundred frames a second per pad for as long as it is started.
@@ -38,7 +39,7 @@ final class ThePinchIsWatchedOnlyWhileSwitchedOnAndLiveTests: XCTestCase {
         let fired = expectation(description: "a pinch after deactivate")
         fired.isInverted = true
         MainActor.assumeIsolated { engine.onPinch = { _ in fired.fulfill() } }
-        (Hand.landing() + [Hand.frame(0.11, radius: 0.1), Hand.frame(0.12, radius: 0.08)]).forEach(port.send)
+        Hand.completedPinch().forEach(port.send)
         wait(for: [fired], timeout: 0.3)
     }
 
@@ -71,15 +72,25 @@ final class ThePinchIsWatchedOnlyWhileSwitchedOnAndLiveTests: XCTestCase {
         XCTAssertFalse(port.running)
     }
 
-    func testAHandPinchingWhileWatchedReachesTheModelOnceOnMain() {
+    func testAHandPinchingWhileWatchedReachesTheModelAsOneScrubOnMain() {
         let port = FakeTouchPort()
         let engine = engine(port, on: true)
-        let fired = expectation(description: "one pinch")
-        fired.assertForOverFulfill = true
-        MainActor.assumeIsolated { engine.onPinch = { direction in XCTAssertEqual(direction, .pinch); fired.fulfill() } }
+        let ended = expectation(description: "one scrub, ended complete")
+        ended.assertForOverFulfill = true
+        let heard = Locked<[PinchEvent]>([])
+        MainActor.assumeIsolated {
+            engine.onPinch = { event in
+                XCTAssertTrue(Thread.isMainThread)
+                heard.withLock { $0.append(event) }
+                if event == .ended(.complete) { ended.fulfill() }
+            }
+        }
         engine.activate()
-        (Hand.landing() + [Hand.frame(0.11, radius: 0.1), Hand.frame(0.12, radius: 0.08), Hand.frame(0.13, radius: 0.05)]).forEach(port.send)
-        wait(for: [fired], timeout: 2)
+        Hand.completedPinch().forEach(port.send)
+        wait(for: [ended], timeout: 2)
+        let events = heard.withLock { $0 }
+        guard case .began(.pinch, _)? = events.first else { return XCTFail("the first event is not a began: \(events)") }
+        XCTAssertEqual(events.completed, [.pinch])
     }
 
     func testAPortThatStandsDownEndsTheWatchAndSaysWhy() {

@@ -42,6 +42,25 @@ struct LaunchpadLiftView: Equatable {
     @Published var offset: CGFloat = 0
 }
 
+/// How far the window is revealed, 0 (nothing) to 1 (whole): the window's one writer (`LaunchpadWindow.apply`) sets it with the panel's
+/// alpha, from a gesture's progress or from a settle's own clock. Its own object, as the page's drag is: a scrub at 120 Hz
+/// republishes this and nothing else, and only the effect that reads it runs again.
+@MainActor final class LaunchpadReveal: ObservableObject {
+    @Published var progress: Double = 1
+
+    /// Where the window is for a scrub at `gesture` (0 to 1 of the pinch or spread): a pinch opens from nothing, so the reveal is the
+    /// gesture; a spread closes from where the window was (`base`), so the reveal is what is left of it.
+    static func value(direction: PinchDirection, base: Double, gesture: Double) -> Double {
+        let g = min(max(gesture.isFinite ? gesture : 0, 0), 1)
+        return direction == .pinch ? g : base * (1 - g)
+    }
+
+    /// Where a settle from `from` to `to` is at `fraction` of its time, along the interface curve.
+    static func settled(from: Double, to: Double, fraction: Double) -> Double {
+        from + (to - from) * HelmMotion.interfaceProgress(at: fraction)
+    }
+}
+
 /// What the window knows, made when it opens (its geometry again when the grid changes) and dropped when it closes: the geometry, the icons, the search, the
 /// page, the arrow keys' choice and the open folder. The model's snapshot comes in by `update(snapshot:)`, the only way in.
 ///
@@ -91,8 +110,12 @@ struct LaunchpadLiftView: Equatable {
     @Published var renaming = false
     /// The field takes the keyboard with its text selected (a folder just made).
     private(set) var selectNameOnFocus = false
-    /// Whether the window's content is settled in: false until it appears, false again as it closes.
+    /// The lift gate's flag (a tile may be lifted only while it is true): set when the window is presented or a pinch's scrub commits, false again as it closes. A spread's scrub that reverts leaves it true, as it never cleared it.
     @Published private(set) var shown = false
+    /// Counts the asks for the search field to take the keyboard: the window asks when it becomes key after the screen appeared.
+    @Published private(set) var searchFocusRequest = 0
+    /// The window's reveal, apart from the state so a scrub republishes nothing else.
+    let reveal = LaunchpadReveal()
     /// The app whose launch is under way, whose icon swells until the window goes or the launch fails.
     @Published private(set) var launching: AppID?
     /// The tile carried by the pointer, and what a release would drop it onto; nil when nothing is carried.
@@ -147,6 +170,7 @@ struct LaunchpadLiftView: Equatable {
     var pageCount: Int { pages.count }
 
     func setShown(_ value: Bool) { assign(\.shown, value) }
+    func requestSearchFocus() { searchFocusRequest &+= 1 }
     func launched(_ id: AppID) { assign(\.launching, id) }
     func launchFailed() { assign(\.launching, nil) }
 

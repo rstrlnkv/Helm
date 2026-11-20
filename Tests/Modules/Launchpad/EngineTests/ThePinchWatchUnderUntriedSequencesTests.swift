@@ -4,93 +4,174 @@ import HelmRuntime
 
 /// A watch that runs a hundred frames a second per pad is work done while nobody looks, so the order things happen in matters
 /// as much as the frames: a switch flipped inside a gesture, a pad that stands down while the module goes away and comes back,
-/// two pads at once, a start still in flight when the module deactivates.
+/// two pads at once, a start still in flight when the module deactivates. A scrub that main was told began is always told it ended:
+/// whatever stops the watch inside one delivers `.ended(.revert)` once.
 final class ThePinchWatchUnderUntriedSequencesTests: XCTestCase {
     private func engine(_ port: FakeTouchPort, on: Bool = true) -> LaunchpadEngine {
         LaunchpadEngine(catalog: FakeAppCatalog(), launcher: FakeAppLauncher(), store: LayoutStore(directory: scratchDirectory("pinch-seq")),
                         touches: port, pinchEnabled: { on })
     }
-    private final class Fires: @unchecked Sendable {
+    private final class Heard: @unchecked Sendable {
         private let lock = NSLock()
-        private var all: [PinchDirection] = []
-        func add(_ d: PinchDirection) { lock.withLock { all.append(d) } }
-        var list: [PinchDirection] { lock.withLock { all } }
+        private var all: [PinchEvent] = []
+        func add(_ e: PinchEvent) { lock.withLock { all.append(e) } }
+        var list: [PinchEvent] { lock.withLock { all } }
+        var completed: [PinchDirection] { list.completed }
+        var began: Int { list.filter { if case .began = $0 { true } else { false } }.count }
+        var ended: [PinchOutcome] { list.compactMap { if case .ended(let o) = $0 { o } else { nil } } }
     }
-    private func listen(_ engine: LaunchpadEngine) -> Fires {
-        let fires = Fires()
-        MainActor.assumeIsolated { engine.onPinch = { fires.add($0) } }
-        return fires
+    private func listen(_ engine: LaunchpadEngine) -> Heard {
+        let heard = Heard()
+        MainActor.assumeIsolated { engine.onPinch = { heard.add($0) } }
+        return heard
     }
-    /// Lets the main queue run, where a fire lands.
+    /// Lets the main queue run, where what the pinch said lands.
     private func drain() { RunLoop.main.run(until: Date().addingTimeInterval(0.2)) }
-    private let closing = [Hand.frame(0.11, radius: 0.1), Hand.frame(0.12, radius: 0.08), Hand.frame(0.13, radius: 0.05)]
+    /// A hand that has not landed in a hurry, and then closes: only a hand that landed first and was armed can scrub it.
+    private let closing = [Hand.frame(0.11, radius: 0.1)] + Hand.still(radius: 0.05, steps: 9, after: 0.11)
+    /// A hand that landed and is half way through a scrub, not lifted.
+    private var scrubbing: [TouchFrame] { Hand.landing() + Hand.sweep(from: 0.2, to: 0.12, steps: 12) }
 
     func testTheSubjectAHandPinchingOnOnePadFiresOnce() {
-        let port = FakeTouchPort(), engine = engine(port), fires = listen(engine)
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
         engine.activate()
-        (Hand.landing() + closing).forEach(port.send)
+        Hand.completedPinch().forEach(port.send)
         drain()
-        XCTAssertEqual(fires.list, [.pinch])
+        XCTAssertEqual(heard.completed, [.pinch])
+        guard case .began(.pinch, _)? = heard.list.first else { return XCTFail("the scrub did not begin first: \(heard.list)") }
     }
 
     /// Two pads are two hands: frames interleaved must keep their own sessions, and a pad that rests must not be read as the other's fingers.
     func testTwoPadsAtOnceKeepTheirOwnHandsAndOnlyThePinchingPadFires() {
-        let port = FakeTouchPort(), engine = engine(port), fires = listen(engine)
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
         port.answer = .watching(devices: 2)
         engine.activate()
-        let still = Hand.landing(radius: 0.2, device: 0) + (0..<3).map { Hand.frame(0.11 + Double($0) / 100, radius: 0.2, device: 0) }
-        let pinching = Hand.landing(radius: 0.2, device: 1) + closing.map { Hand.frame($0.time, radius: $0.touches.isEmpty ? 0 : 0.05, device: 1) }
+        let still = Hand.landing(radius: 0.2, device: 0) + Hand.still(radius: 0.2, steps: 30, after: 0.10, device: 0)
+        let pinching = Hand.completedPinch(device: 1)
         for i in 0..<max(still.count, pinching.count) {
             if i < still.count { port.send(still[i]) }
             if i < pinching.count { port.send(pinching[i]) }
         }
         drain()
-        XCTAssertEqual(fires.list, [.pinch])
+        XCTAssertEqual(heard.completed, [.pinch])
+    }
+
+    /// One scrub at a time: a second pad that scrubs while the first does is not heard, and neither is what it says after.
+    func testASecondPadsScrubWhileTheFirstRunsIsDropped() {
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
+        port.answer = .watching(devices: 2)
+        engine.activate()
+        let first = Hand.completedPinch(device: 0), second = Hand.completedPinch(device: 1)
+        for (a, b) in zip(first, second) { port.send(a); port.send(b) }
+        drain()
+        XCTAssertEqual(heard.began, 1, "the second pad's began reached main")
+        XCTAssertEqual(heard.ended, [.complete], "one end, the first pad's")
+        XCTAssertEqual(heard.list.completed, [.pinch])
+    }
+
+    /// The main thread may be busy for seconds while the pad sends a hundred frames a second: what waits is a few events, not the frames.
+    func testTenThousandFramesQueuedWhileMainIsBusyDeliverBeganMovedEndedInOrder() {
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
+        engine.activate()
+        Hand.landing().forEach(port.send)
+        let steps = 10_000
+        for i in 1...steps {
+            port.send(Hand.frame(0.1 + Double(i) / 2000, radius: 0.2 - 0.15 * Double(i) / Double(steps)))
+        }
+        port.send(Hand.lift(at: 0.1 + Double(steps) / 2000 + 0.01))
+        XCTAssertTrue(heard.list.isEmpty, "the subject: main has not run yet")
+        drain()
+        let events = heard.list
+        XCTAssertEqual(events.count, 3, "\(events.count) events for \(steps) frames")
+        guard events.count == 3, case .began(.pinch, _) = events[0], case .moved(let last) = events[1], events[2] == .ended(.complete) else {
+            return XCTFail("not began, moved, ended in order: \(events)")
+        }
+        XCTAssertEqual(last, 1)
+    }
+
+    /// A scrub that main was told began, and the watch stops inside it: main is told it ended, once, whatever stopped the watch.
+    private func assertTheScrubEndsOnce(_ label: String, _ stop: (FakeTouchPort, LaunchpadEngine) -> Void) {
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
+        engine.activate()
+        scrubbing.forEach(port.send)
+        drain()
+        guard case .began(.pinch, _)? = heard.list.first else { return XCTFail("\(label): the scrub did not begin: \(heard.list)") }
+        XCTAssertTrue(heard.ended.isEmpty, "\(label): the subject: the scrub is still going")
+        stop(port, engine)
+        drain()
+        XCTAssertEqual(heard.ended, [.revert], "\(label): ended once, reverted")
+        XCTAssertEqual(heard.list.last, .ended(.revert), "\(label): nothing after the end")
+        Hand.sweep(from: 0.12, to: 0.05, steps: 5, after: 0.22).forEach(port.send)
+        drain()
+        XCTAssertEqual(heard.ended, [.revert], "\(label): a late frame said more")
+    }
+
+    func testTheSwitchOffInsideAScrubEndsItOnce() { assertTheScrubEndsOnce("switch off") { _, engine in engine.setPinchWatching(false) } }
+    func testDeactivatingInsideAScrubEndsItOnce() { assertTheScrubEndsOnce("deactivate") { _, engine in engine.deactivate() } }
+    func testAFlipOffAndOnInsideAScrubEndsItOnce() {
+        assertTheScrubEndsOnce("flip") { _, engine in engine.setPinchWatching(false); engine.setPinchWatching(true) }
+    }
+    func testAStandDownInsideAScrubEndsItOnce() {
+        assertTheScrubEndsOnce("stand down") { port, engine in
+            port.standDown()
+            let deadline = Date().addingTimeInterval(2)
+            while engine.pinchWatch != .layoutRefused, Date() < deadline { Thread.sleep(forTimeInterval: 0.01) }
+        }
+    }
+
+    /// The scrub was begun and stopped before main ran: main was never told it began, so it is told nothing of it but an end it ignores.
+    func testAScrubBegunAndStoppedBeforeMainRanSaysNothingButTheRevert() {
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
+        engine.activate()
+        scrubbing.forEach(port.send)
+        engine.setPinchWatching(false)
+        drain()
+        XCTAssertEqual(heard.list, [.ended(.revert)])
     }
 
     func testThreeFingersOnOnePadAndTwoOnAnotherAreNotAFiveFingerHand() {
-        let port = FakeTouchPort(), engine = engine(port), fires = listen(engine)
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
         port.answer = .watching(devices: 2)
         engine.activate()
-        let a = (0...12).map { Hand.frame(Double($0) / 100, radius: 0.2 - 0.012 * Double($0), fingers: 3, device: 0) }
-        let b = (0...12).map { Hand.frame(Double($0) / 100, radius: 0.2 - 0.012 * Double($0), fingers: 2, device: 1) }
+        let a = (0...30).map { Hand.frame(Double($0) / 100, radius: 0.2 - 0.005 * Double($0), fingers: 3, device: 0) }
+        let b = (0...30).map { Hand.frame(Double($0) / 100, radius: 0.2 - 0.005 * Double($0), fingers: 2, device: 1) }
         zip(a, b).forEach { port.send($0); port.send($1) }
         drain()
-        XCTAssertTrue(fires.list.isEmpty)
+        XCTAssertTrue(heard.list.isEmpty)
     }
 
     /// The switch flipped off and on inside a gesture: what was half seen is forgotten, a hand must land again.
     func testTheSwitchFlippedInsideAGestureForgetsTheHalfSeenHand() {
-        let port = FakeTouchPort(), engine = engine(port), fires = listen(engine)
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
         engine.activate()
         Hand.landing().forEach(port.send)
         engine.setPinchWatching(false)
         engine.setPinchWatching(true)
         closing.forEach(port.send)
         drain()
-        XCTAssertTrue(fires.list.isEmpty, "a hand that never landed since the switch came on fired")
+        XCTAssertTrue(heard.list.isEmpty, "a hand that never landed since the switch came on scrubbed")
     }
 
     func testDeactivatingInsideAGestureAndActivatingAgainForgetsTheHalfSeenHand() {
-        let port = FakeTouchPort(), engine = engine(port), fires = listen(engine)
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
         engine.activate()
         Hand.landing().forEach(port.send)
         engine.deactivate()
         engine.activate()
         closing.forEach(port.send)
         drain()
-        XCTAssertTrue(fires.list.isEmpty)
+        XCTAssertTrue(heard.list.isEmpty)
         XCTAssertEqual(port.starts, 2)
     }
 
     func testAfterAFlipTheWatchIsWholeAgainAndAPinchFiresOnce() {
-        let port = FakeTouchPort(), engine = engine(port), fires = listen(engine)
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
         engine.activate()
         engine.setPinchWatching(false)
         engine.setPinchWatching(true)
-        (Hand.landing() + closing).forEach(port.send)
+        Hand.completedPinch().forEach(port.send)
         drain()
-        XCTAssertEqual(fires.list, [.pinch], "after a flip the watch is whole again and fires once")
+        XCTAssertEqual(heard.completed, [.pinch], "after a flip the watch is whole again and scrubs once")
         XCTAssertEqual(port.starts, 2)
         XCTAssertEqual(port.stops, 1)
     }
@@ -172,46 +253,46 @@ final class ThePinchWatchUnderUntriedSequencesTests: XCTestCase {
         XCTAssertEqual(port.stops, 1, "only the deactivation stopped the port")
     }
 
-    /// A fire is on its way to main when the switch goes off: the hop must land nothing. The test is on main, so the hop waits until `drain`.
-    func testAFireOnItsWayToMainIsDroppedWhenTheSwitchGoesOffMeanwhile() {
-        let port = FakeTouchPort(), engine = engine(port), fires = listen(engine)
+    /// A whole scrub is on its way to main when the switch goes off: the hop must land nothing, since main was never told it began. The test is on main, so the hop waits until `drain`.
+    func testAScrubOnItsWayToMainIsDroppedWhenTheSwitchGoesOffMeanwhile() {
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
         engine.activate()
-        (Hand.landing() + closing).forEach(port.send)
+        Hand.completedPinch().forEach(port.send)
         engine.setPinchWatching(false)
         drain()
-        XCTAssertTrue(fires.list.isEmpty, "a pinch of a watch that was switched off reached the window")
+        XCTAssertTrue(heard.list.isEmpty, "a scrub of a watch that was switched off reached the window")
     }
 
-    func testAFireOnItsWayToMainIsDroppedWhenTheModuleDeactivatesMeanwhile() {
-        let port = FakeTouchPort(), engine = engine(port), fires = listen(engine)
+    func testAScrubOnItsWayToMainIsDroppedWhenTheModuleDeactivatesMeanwhile() {
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
         engine.activate()
-        (Hand.landing() + closing).forEach(port.send)
+        Hand.completedPinch().forEach(port.send)
         engine.deactivate()
         drain()
-        XCTAssertTrue(fires.list.isEmpty)
+        XCTAssertTrue(heard.list.isEmpty)
     }
 
-    /// Off and on again between the fire and its hop: the watch is live and the module active, but it is another watch's pinch.
-    func testAFireOfAnEarlierWatchIsDroppedWhenAnotherWatchIsLiveByTheHop() {
-        let port = FakeTouchPort(), engine = engine(port), fires = listen(engine)
+    /// Off and on again between the scrub and its hop: the watch is live and the module active, but it is another watch's scrub.
+    func testAScrubOfAnEarlierWatchIsDroppedWhenAnotherWatchIsLiveByTheHop() {
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
         engine.activate()
-        (Hand.landing() + closing).forEach(port.send)
+        Hand.completedPinch().forEach(port.send)
         engine.setPinchWatching(false)
         engine.setPinchWatching(true)
         drain()
-        XCTAssertTrue(fires.list.isEmpty, "a pinch of an earlier watch landed on the later one")
+        XCTAssertTrue(heard.list.isEmpty, "a scrub of an earlier watch landed on the later one")
     }
 
     /// Frames the framework still delivers to an earlier watch's callback are not the new watch's frames: the hand they landed is not the new watch's hand.
     func testLateFramesOfAnEarlierWatchAreNotFedToTheNewOne() {
-        let port = FakeTouchPort(), engine = engine(port), fires = listen(engine)
+        let port = FakeTouchPort(), engine = engine(port), heard = listen(engine)
         engine.activate()
         engine.setPinchWatching(false)
         engine.setPinchWatching(true)
         Hand.landing().forEach { port.send($0, toStart: 0) }
         closing.forEach { port.send($0, toStart: 1) }
         drain()
-        XCTAssertTrue(fires.list.isEmpty, "the earlier watch's late frames landed a hand the new watch then saw close")
+        XCTAssertTrue(heard.list.isEmpty, "the earlier watch's late frames landed a hand the new watch then saw close")
     }
 
     /// A stop that has been decided but not yet carried out, and a switch turned on again in that gap: the late stop must not end the new watch.

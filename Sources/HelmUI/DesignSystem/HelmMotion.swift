@@ -160,14 +160,9 @@ public enum HelmMotion {
         reduceMotion ? instant : .easeOut(duration: 0.12)
     }
 
-    /// A full-screen surface coming in: its content settling from a little larger to its size as the window fades up.
-    /// Smooth, no overshoot: a spring that overshoots a whole screen's content reads as a wobble of the screen.
-    public static var windowZoom: Animation {
-        reduceMotion ? instant : .smooth(duration: windowZoomDuration)
-    }
-
-    /// `windowZoom`'s duration alone, in seconds, for the window's own fade, which AppKit runs along `interfaceCurve`.
-    /// A caller using this is responsible for its own `reduceMotion` branch, as with `interfaceDuration`.
+    /// How long a full-screen surface takes to come in, in seconds: its content settling from a little larger to its size as
+    /// the window is revealed. The window runs its own clock and reads `interfaceProgress(at:)`, so there is no animation
+    /// to hand over. A caller using this is responsible for its own `reduceMotion` branch, as with `interfaceDuration`.
     public static var windowZoomDuration: TimeInterval { 0.32 }
 
     /// A page that was dragged by the fingers coming to rest: a spring with no bounce that takes up the speed the fingers
