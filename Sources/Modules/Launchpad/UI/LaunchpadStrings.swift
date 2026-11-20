@@ -31,9 +31,26 @@ enum LpStr {
     /// "80 pt": the number is a string, so a language's own digits are not this key's business.
     static func gridIconSizeValue(_ points: Int) -> String { L(.gridIconSizeValue("\(points)"), remembered: false) }
     static var gridReset: String { L(.gridReset) }
-    /// The reset button's name for VoiceOver: what it resets, since the visible word does not say.
+    /// The reset row's title: what it resets, so the row does not repeat the section's header.
+    static var gridResetTitle: String { L(.gridResetTitle) }
+    /// The reset row's note: the four values it puts back.
     static var gridResetNote: String { L(.gridResetNote) }
+    /// The reset button's name for VoiceOver: what it resets, since the visible word does not say.
     static var gridResetNamed: String { L(.gridResetNamed) }
+    static var pinchTitle: String { L(.pinchTitle) }
+    static var pinchNote: String { L(.pinchNote) }
+    static var pinchSystemTitle: String { L(.pinchSystemTitle) }
+    static var pinchSystemStillOn: String { L(.pinchSystemStillOn) }
+    static var pinchOpenTrackpadSettings: String { L(.pinchOpenTrackpadSettings) }
+    /// The state line under the switch, one sentence for each thing the watch can be.
+    static func text(of state: PinchState) -> String? {
+        switch state {
+        case .off: nil
+        case .watching: L(.pinchWatching)
+        case .noTrackpad: L(.pinchNoTrackpad)
+        case .unavailable: L(.pinchUnavailable)
+        }
+    }
     static var noHiddenApps: String { L(.noHiddenApps) }
     /// "Page 2 of 5" for a page dot; the numbers are strings, so a language's own digits and grouping are not this key's business.
     static func pageNumber(_ page: Int, of count: Int) -> String { L(.pageNumber("\(page)", "\(count)"), remembered: false) }

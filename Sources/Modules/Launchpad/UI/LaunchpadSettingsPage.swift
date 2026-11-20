@@ -14,6 +14,8 @@ struct LaunchpadSettingsPage: View {
     @State private var shortcutRevision = 0
     /// The manual rows' measured height, for the accordion that shows them while Automatic is off.
     @State private var manualHeight: CGFloat?
+    /// The rows under the pinch switch, measured for the accordion that shows them while it is on.
+    @State private var pinchHeight: CGFloat?
 
     init(lvm: LaunchpadViewModel) {
         self.lvm = lvm
@@ -48,6 +50,7 @@ struct LaunchpadSettingsPage: View {
             } header: {
                 HelmSectionTitle(HelmWord.keyboardShortcuts)
             }
+            pinchSection
             gridSection
             hiddenSection
             Section {
@@ -58,6 +61,7 @@ struct LaunchpadSettingsPage: View {
         }
         .formStyle(.grouped)
         .helmIdlesOffScreen()
+        .task { await lvm.reloadPinch() }
         .task { lvm.reloadGrid(); await lvm.whileShown() }
         .onReceive(NotificationCenter.default.publisher(for: .helmHotkeyChanged)) { _ in shortcutRevision += 1 }
         // The press only sets `pendingReset`; the destructive button asks the model to go through with it.
@@ -68,6 +72,39 @@ struct LaunchpadSettingsPage: View {
             Button(HelmWord.cancel, role: .cancel) { lvm.cancelReset() }
         } message: {
             Text(LpStr.resetNote)
+        }
+    }
+
+    // MARK: - Pinch
+
+    /// The switch, and under it while it is on what the watch came to and, when the system's own pinch is on too, the way to turn that off.
+    private var pinchSection: some View {
+        Section {
+            VStack(spacing: 0) {
+                HelmSettingRow(LpStr.pinchTitle, note: LpStr.pinchNote) {
+                    Toggle(LpStr.pinchTitle, isOn: Binding(
+                        get: { lvm.pinchOn },
+                        set: { on in withAnimation(HelmMotion.disclosure) { lvm.setPinch(on: on) } }))
+                        .labelsHidden()
+                        .accessibilityLabel(LpStr.pinchTitle)
+                }
+                VStack(spacing: 0) {
+                    Divider()
+                    if let line = LpStr.text(of: lvm.pinchState) {
+                        // The kit note's own face and ink: the state is a note of the switch, not a row of its own.
+                        Text(line).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, HelmSpace.s3)
+                    }
+                    if lvm.systemPinchIsOn {
+                        Divider()
+                        HelmSettingRow(LpStr.pinchSystemTitle, note: LpStr.pinchSystemStillOn) {
+                            Button { lvm.openTrackpadSettings() } label: { Text(LpStr.pinchOpenTrackpadSettings).fixedSize() }
+                        }
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .helmAccordion(open: lvm.pinchOn, height: $pinchHeight)
+            }
         }
     }
 
@@ -105,10 +142,12 @@ struct LaunchpadSettingsPage: View {
                     Text(LpStr.gridIconSizeValue(Int(LaunchpadGridSettings.iconRange.upperBound))).hidden()
                     Text(LpStr.gridIconSizeValue(Int(grid.iconSize)))
                 }
+                // The title column has layout priority; without this the figure is squeezed and its unit wraps under it.
+                .fixedSize(horizontal: true, vertical: false)
                 .helmFigure()
                 .accessibilityHidden(true)
             }
-            HelmSettingRow(LpStr.grid, note: LpStr.gridResetNote) {
+            HelmSettingRow(LpStr.gridResetTitle, note: LpStr.gridResetNote) {
                 Button(LpStr.gridReset) { lvm.resetGrid() }
                     .disabled(grid.isStandard)
                     .accessibilityLabel(LpStr.gridResetNamed)

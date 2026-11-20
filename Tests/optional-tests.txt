@@ -17,6 +17,7 @@ AKeychainCallIsNotOnTheLaunchPathTests
 AMarkReportsTheWorldNotTheSwitchTests
 ANodeStoresNoPathTests
 APathWhoseLeafIsANameTests
+APinchReachesTheWindowOnlyThroughTheModelTests
 APresetIsAnOrdinaryRuleTests
 APresetOnOfferTests
 ARegridUntriedInputsTests
@@ -102,6 +103,8 @@ PanelLayoutArithmeticTests
 PanelLayoutStoreRoundTripTests
 PermissionCheckTests
 PermissionNeedTests
+PinchRecognizerTests
+PinchRecognizerUntriedInputsTests
 PmsetClamshellPortPrivilegedTests
 RemovalOutcomeTests
 RenamePatternSubstitutionTests

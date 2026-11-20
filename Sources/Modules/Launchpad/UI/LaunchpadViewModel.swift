@@ -12,6 +12,29 @@ protocol LaunchpadWork: AnyObject, Sendable {
     func unhide(_ id: AppID) -> LaunchpadSnapshot?
     func launch(_ id: AppID) async -> LaunchOutcome
     func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject
+    /// What the trackpad watch came to; nil when none runs.
+    var pinchWatch: TouchWatchStart? { get }
+    func setPinchWatching(_ on: Bool) -> TouchWatchStart?
+    func systemPinchSetting() -> SystemPinch
+}
+
+/// Where the person's pinch switch is kept: a plain key of the module's store, off when missing. **Deployed stored data: this name never moves.**
+enum LaunchpadPinchKey {
+    static let on = "gesture.pinch"
+}
+
+/// What the page says about the pinch watch. `unavailable` folds the framework missing and a layout that was refused: the person can do nothing about either.
+enum PinchState: Equatable {
+    case off, watching, noTrackpad, unavailable
+
+    init(_ start: TouchWatchStart?) {
+        switch start {
+        case nil: self = .off
+        case .watching: self = .watching
+        case .noTrackpad: self = .noTrackpad
+        case .frameworkMissing, .layoutRefused: self = .unavailable
+        }
+    }
 }
 
 extension LaunchpadEngine: LaunchpadWork {}
@@ -57,11 +80,20 @@ enum LaunchNotice: Equatable {
     let store: NamespacedStore
     /// The grid the person chose; read from the store (`LaunchpadGridSettings`), written only by `setGrid`.
     @Published private(set) var grid: LaunchpadGridSettings
+    /// The pinch switch, as the store holds it; the watch itself is the engine's (`pinchState`).
+    @Published private(set) var pinchOn: Bool
+    @Published private(set) var pinchState: PinchState
+    /// True while the system's own four- or five-finger pinch is on, so both would open something. Read, never written.
+    @Published private(set) var systemPinchIsOn = false
+    /// Opens System Settings at Trackpad; the descriptor sets it, so the page holds no AppKit.
+    var openTrackpadSettings: @MainActor () -> Void = {}
 
     init(work: any LaunchpadWork, store: NamespacedStore) {
         self.work = work
         self.store = store
         grid = LaunchpadGridSettings.read(from: store)
+        pinchOn = store.bool(LaunchpadPinchKey.on, default: false)
+        pinchState = PinchState(work.pinchWatch)
     }
 
     /// Closes the model: the host calls it before the engine's `deactivate()`. Whatever is still out lands nowhere.
@@ -99,6 +131,38 @@ enum LaunchNotice: Equatable {
     func reloadGrid() {
         let read = LaunchpadGridSettings.read(from: store)
         if read != grid { grid = read }
+    }
+
+    // MARK: - The pinch
+
+    /// The switch: written to the store, then the watch follows it. Nothing after `stop()`.
+    func setPinch(on: Bool) {
+        guard !closed, on != pinchOn else { return }
+        pinchOn = on
+        store.set(on, for: LaunchpadPinchKey.on)
+        pinchState = PinchState(work.setPinchWatching(on))
+        HelmLog.shared.info("launchpad", "pinch switched \(on ? "on" : "off")")
+    }
+
+    /// For the page appearing: the switch as the store holds it now, the watch as the engine has it, and what the system's pinch says.
+    func reloadPinch() async {
+        guard !closed else { return }
+        let read = store.bool(LaunchpadPinchKey.on, default: false)
+        if read != pinchOn { pinchOn = read; _ = work.setPinchWatching(read) }
+        pinchState = PinchState(work.pinchWatch)
+        let work = self.work
+        let system = await offTheCooperativePool { work.systemPinchSetting() }
+        if !closed { systemPinchIsOn = system == .on }
+    }
+
+    /// A pinch opens the window and a spread closes it: the shortcut's two halves. A pinch with the window open brings it
+    /// forward, a spread with none open does nothing.
+    func pinched(_ direction: PinchDirection) {
+        guard !closed else { return }
+        switch direction {
+        case .pinch: showLaunchpad()
+        case .spread: closeLaunchpad()
+        }
     }
 
     // MARK: - The window's door

@@ -33,8 +33,11 @@ enum LaunchpadHotkey {
     public init() {}
 
     public func makeModule(store: NamespacedStore) -> ModuleParts<LaunchpadViewModel> {
-        let engine = LaunchpadEngine(utilitiesFolderName: { HelmWord.utilities })
+        let engine = LaunchpadEngine(utilitiesFolderName: { HelmWord.utilities },
+                                     pinchEnabled: { store.bool(LaunchpadPinchKey.on, default: false) })
         let model = LaunchpadViewModel(work: engine, store: store)
+        engine.onPinch = { [weak model] in model?.pinched($0) }
+        model.openTrackpadSettings = { PermissionCheck.openTrackpadSettings() }
         model.present = { model in
             LaunchpadWindow(model: model)
         }

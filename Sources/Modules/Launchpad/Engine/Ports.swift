@@ -66,3 +66,43 @@ protocol AppLauncherPort: Sendable {
 public enum LaunchOutcome: Equatable, Sendable {
     case launched, gone, unreadable, failed
 }
+
+/// What starting to watch the trackpads came to: a port answers the first three, and the engine records the fourth. Each reason is its own case, because the page says a different thing for
+/// each and a caller that folded them would say the wrong one.
+///
+/// - `watching`: at least one trackpad is delivering frames; `devices` is how many.
+/// - `noTrackpad`: the system lists none (a desktop Mac with a mouse), or this is a test process, which never asks.
+/// - `frameworkMissing`: the private framework did not load or a symbol Helm needs is not in it (a macOS that moved it).
+/// - `layoutRefused`: it loaded and delivered frames, but too many in a row failed `TouchFrame`'s checks, so the layout
+///   Helm assumes is not the one in use; the engine ended the watch, and the person's switch turned off and on (or the
+///   module activated again) watches again. A port never answers it from `start`; only the engine records it.
+public enum TouchWatchStart: Equatable, Sendable {
+    case watching(devices: Int)
+    case noTrackpad
+    case frameworkMissing
+    case layoutRefused
+}
+
+/// The trackpads' raw fingers. Frames arrive on a thread of the system's own, about a hundred a second per pad, until
+/// `stop()`; `start` while already started stops the first watch. A frame that fails `TouchFrame`'s checks is never
+/// delivered; `onStandDown` is called once per start, from any thread, when too many were refused in a row: the port then
+/// drops every frame and asks its owner to `stop()` it, which it does not do itself.
+/// Helm reads these frames and writes nothing to a trackpad or its settings.
+protocol TrackpadTouchPort: Sendable {
+    func start(onFrame: @escaping @Sendable (TouchFrame) -> Void, onStandDown: @escaping @Sendable () -> Void) -> TouchWatchStart
+    func stop()
+}
+
+/// What the system's own four- and five-finger pinch is set to, read and never written.
+///
+/// **Collapsed reasons.** `unreadable` is every way the answer is not there: a domain that holds no such key (a Mac that never
+/// changed it, or a macOS that names it otherwise), a value that is not a number, a read the system refused. A caller that
+/// must tell them apart has no entry for it, and takes `unreadable` as "say nothing". `on`: some key in some trackpad domain
+/// is a non-zero number. `off`: at least one key was read and every one read is zero.
+public enum SystemPinch: Equatable, Sendable {
+    case on, off, unreadable
+}
+
+protocol SystemPinchPort: Sendable {
+    func read() -> SystemPinch
+}

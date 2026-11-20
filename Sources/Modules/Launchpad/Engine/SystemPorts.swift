@@ -180,3 +180,173 @@ struct SystemAppLauncher: AppLauncherPort {
         }
     }
 }
+
+/// The system's pinch gesture settings, read from the two trackpad domains (built-in and Bluetooth), where the keys are
+/// `TrackpadFourFingerPinchGesture` and `TrackpadFiveFingerPinchGesture` (2 when on, as read on macOS 27; 0 is taken as off).
+/// Nothing here writes a key: Helm tells the person and sends them to System Settings.
+struct SystemTrackpadPreferences: SystemPinchPort {
+    init() {}
+
+    private static let domains = ["com.apple.AppleMultitouchTrackpad", "com.apple.driver.AppleBluetoothMultitouch.trackpad"]
+    private static let keys = ["TrackpadFourFingerPinchGesture", "TrackpadFiveFingerPinchGesture"]
+
+    func read() -> SystemPinch {
+        let values = Self.domains.flatMap { domain in
+            Self.keys.compactMap { (CFPreferencesCopyAppValue($0 as CFString, domain as CFString) as? NSNumber)?.intValue }
+        }
+        if values.isEmpty { return .unreadable }
+        return values.contains { $0 != 0 } ? .on : .off
+    }
+}
+
+/// The trackpads' fingers through MultitouchSupport, a private framework with no header: it is `dlopen`ed and its symbols
+/// `dlsym`ed (as `DisplayCorners` reaches `CGSetLocalEventsSuppressionInterval`), so a macOS that moved it is `.frameworkMissing`
+/// and never a crash. The record layout below is what the framework has used since it was first reverse-engineered; every
+/// frame goes through `TouchFrame`'s checks and `FrameTrust` stands the watch down when they fail in a row.
+///
+/// The framework's callback carries no context, so the one live port is found through `route`. A test process answers
+/// `.noTrackpad` and calls nothing: watching the owner's trackpad is a thing the owner's Mac would do.
+/// Devices are restarted when the Mac wakes (a pad may have gone and come back), and stopped by `stop()`; its owner stops it.
+final class MultitouchSupportPort: TrackpadTouchPort, @unchecked Sendable {
+    init() {}
+
+    private typealias Device = UnsafeMutableRawPointer
+    private typealias Callback = @convention(c) (Device?, UnsafeRawPointer?, Int32, Double, Int32) -> Void
+    private struct Symbols {
+        let createList: @convention(c) () -> Unmanaged<CFArray>?
+        let register: @convention(c) (Device, Callback) -> Void
+        let unregister: @convention(c) (Device, Callback) -> Void
+        let start: @convention(c) (Device, Int32) -> Int32
+        let stop: @convention(c) (Device) -> Int32
+    }
+
+    /// The bytes of one finger's record, the offsets of the fields read, and the size of one record.
+    private enum Record {
+        static let stride = 96
+        static let state = 20
+        static let positionX = 32
+        static let positionY = 36
+    }
+
+    private static let path = "/System/Library/PrivateFrameworks/MultitouchSupport.framework/MultitouchSupport"
+    private static let route = NSLock()
+    nonisolated(unsafe) private static var live: MultitouchSupportPort?
+
+    private let lock = NSLock()
+    private var symbols: Symbols?
+    private var list: CFArray?
+    private var devices: [Device] = []
+    private var onFrame: (@Sendable (TouchFrame) -> Void)?
+    private var onStandDown: (@Sendable () -> Void)?
+    private var trust: [FrameTrust] = []
+    private var standingDown = false
+    /// Guarded by `lock`: `start` and `stop` may be called from different threads.
+    private var wake: NSObjectProtocol?
+
+    func start(onFrame: @escaping @Sendable (TouchFrame) -> Void, onStandDown: @escaping @Sendable () -> Void) -> TouchWatchStart {
+        guard !TestProcess.isRunning else { return .noTrackpad }
+        stop()
+        lock.withLock { self.onFrame = onFrame; self.onStandDown = onStandDown; standingDown = false }
+        let result = startDevices()
+        if case .watching = result {
+            Self.route.withLock { Self.live = self }
+            let observer = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+                guard let self else { return }
+                let wanted = { self.lock.withLock { self.onFrame != nil } }
+                guard wanted() else { return }
+                stopDevices()
+                guard wanted() else { return }
+                let again = startDevices()
+                if !wanted() { stopDevices(); return }
+                HelmLog.shared.info(LaunchpadEngine.moduleID, "pinch: the Mac woke, trackpads \(again == .noTrackpad ? "gone" : "watched again")")
+            }
+            lock.withLock { wake = observer }
+        } else {
+            lock.withLock { self.onFrame = nil; self.onStandDown = nil }
+        }
+        return result
+    }
+
+    func stop() {
+        Self.route.withLock { if Self.live === self { Self.live = nil } }
+        if let wake = lock.withLock({ () -> NSObjectProtocol? in defer { self.wake = nil }; return self.wake }) {
+            NSWorkspace.shared.notificationCenter.removeObserver(wake)
+        }
+        stopDevices()
+        lock.withLock { onFrame = nil; onStandDown = nil }
+    }
+
+    private func load() -> Symbols? {
+        if let symbols = lock.withLock({ self.symbols }) { return symbols }
+        guard let handle = dlopen(Self.path, RTLD_LAZY) else { return nil }
+        func symbol<T>(_ name: String, as _: T.Type) -> T? { dlsym(handle, name).map { unsafeBitCast($0, to: T.self) } }
+        guard let createList = symbol("MTDeviceCreateList", as: (@convention(c) () -> Unmanaged<CFArray>?).self),
+              let register = symbol("MTRegisterContactFrameCallback", as: (@convention(c) (Device, Callback) -> Void).self),
+              let unregister = symbol("MTUnregisterContactFrameCallback", as: (@convention(c) (Device, Callback) -> Void).self),
+              let start = symbol("MTDeviceStart", as: (@convention(c) (Device, Int32) -> Int32).self),
+              let stop = symbol("MTDeviceStop", as: (@convention(c) (Device) -> Int32).self)
+        else { return nil }
+        let found = Symbols(createList: createList, register: register, unregister: unregister, start: start, stop: stop)
+        lock.withLock { symbols = found }
+        return found
+    }
+
+    private func startDevices() -> TouchWatchStart {
+        guard let symbols = load() else { return .frameworkMissing }
+        guard let array = symbols.createList()?.takeRetainedValue() else { return .noTrackpad }
+        let count = min(CFArrayGetCount(array), TouchFrame.maxDevices)
+        let found = (0..<count).compactMap { CFArrayGetValueAtIndex(array, $0).map { Device(mutating: $0) } }
+        guard !found.isEmpty else { return .noTrackpad }
+        lock.withLock { list = array; devices = found; trust = Array(repeating: FrameTrust(), count: found.count) }
+        for device in found {
+            symbols.register(device, Self.callback)
+            _ = symbols.start(device, 0)
+        }
+        return .watching(devices: found.count)
+    }
+
+    private func stopDevices() {
+        let (symbols, held, array) = lock.withLock { () -> (Symbols?, [Device], CFArray?) in
+            defer { devices = []; list = nil }
+            return (self.symbols, devices, list)
+        }
+        guard let symbols else { return }
+        // The devices belong to the list: it is kept until every one is stopped and its callback taken away.
+        withExtendedLifetime(array) {
+            for device in held {
+                _ = symbols.stop(device)
+                symbols.unregister(device, Self.callback)
+            }
+        }
+    }
+
+    /// The framework's thread. Reads the records in place, and keeps nothing of the memory it was handed.
+    private static let callback: Callback = { device, touches, count, timestamp, _ in
+        guard let device, let touches else { return }
+        route.lock()
+        let port = live
+        route.unlock()
+        port?.receive(device: device, touches: touches, count: Int(count), time: timestamp)
+    }
+
+    private func receive(device: Device, touches: UnsafeRawPointer, count: Int, time: Double) {
+        let (index, deliver, standDown) = lock.withLock { () -> (Int?, (@Sendable (TouchFrame) -> Void)?, (@Sendable () -> Void)?) in
+            (devices.firstIndex(of: device), onFrame, onStandDown)
+        }
+        guard let index, let deliver, !lock.withLock({ standingDown }) else { return }
+        let frame = TouchFrame(device: index, time: time, count: count) { i in
+            let record = touches + i * Record.stride
+            return (Double(record.loadUnaligned(fromByteOffset: Record.positionX, as: Float.self)),
+                    Double(record.loadUnaligned(fromByteOffset: Record.positionY, as: Float.self)),
+                    Int(record.loadUnaligned(fromByteOffset: Record.state, as: Int32.self)))
+        }
+        let reached = lock.withLock { () -> Bool in
+            guard index < trust.count else { return false }
+            let reached = trust[index].note(accepted: frame != nil)
+            if reached { standingDown = true }
+            return reached
+        }
+        if let frame { deliver(frame) }
+        if reached { standDown?() }
+    }
+}

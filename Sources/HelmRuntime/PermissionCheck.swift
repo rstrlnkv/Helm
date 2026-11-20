@@ -143,6 +143,11 @@ extension PermissionCheck {
         open("x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
     }
 
+    /// System Settings → Trackpad, the extension's own identifier (`TrackpadExtension.appex`); More Gestures is a tab inside it, not addressable.
+    public static func openTrackpadSettings() {
+        open("x-apple.systempreferences:com.apple.Trackpad-Settings.extension")
+    }
+
     /// System Settings → Network, the extension's own identifier.
     public static func openNetworkSettings() {
         open("x-apple.systempreferences:com.apple.Network-Settings.extension")
