@@ -199,4 +199,53 @@ import XCTest
         }
         XCTAssertEqual(Set([HelmWord.utilities, L(.categoryMusic), L(.categoryOther)]).count, 3, "the three are three different words")
     }
+
+    // MARK: A card with pages
+
+    private var cardCapacity: Int { LaunchpadSurface.Card(geometry: LaunchpadGeometry.make(for: CGSize(width: 1280, height: 800), topSafe: 0), count: 10_000).capacity }
+
+    /// A folder of `count` apps, opened by id (not by a lift), on its page `page`.
+    private func pagedRig(_ count: Int, page: Int) -> LiftRig {
+        let apps = (0..<count).map { "f\($0)" }
+        let r = LiftRig(self, apps: ["x"] + apps, layout: LaunchpadLayout(items: [.folder(.init(id: folderID, name: "F", apps: apps)), .app("x")]))
+        r.state.open(folder: folderID)
+        r.state.go(to: page)
+        return r
+    }
+
+    func testAnAppLiftedFromTheSecondPageOfACardIsThatAppAndLetGoWhereItWasWritesNothing() async {
+        let cap = cardCapacity
+        let r = pagedRig(cap + 4, page: 1)
+        let c = LaunchpadSurface.Card(geometry: r.g, count: cap + 4, page: 1)
+        let from = c.center(ofSlot: 1)
+        XCTAssertTrue(r.state.pointerDown(from, time: 0), "a press on a tile of a paged card's second page is taken")
+        r.state.pointerMoved(CGPoint(x: from.x + 20, y: from.y), time: 0.01)
+        XCTAssertEqual(r.state.lift?.entry.id, "f\(cap + 1)", "the tile under the pointer, by its place in the whole list")
+        XCTAssertEqual(r.state.cardEntries.firstIndex(of: .gap), cap + 1)
+        r.state.pointerUp(from, time: 0.5)
+        try? await Task.sleep(for: .milliseconds(100))
+        XCTAssertTrue(r.placed.isEmpty, "dropped on its own gap: no edit")
+        XCTAssertNil(r.state.lift)
+        XCTAssertEqual(r.state.cardEntries.map(\.id), (0..<(cap + 4)).map { "f\($0)" }, "the card is as it was")
+    }
+
+    func testATurnUnderALiftFromTheSecondPageSeatsTheGapOnTheFirstAndTheMoveIsWrittenThere() async {
+        let cap = cardCapacity
+        let r = pagedRig(cap + 4, page: 1)
+        let c = LaunchpadSurface.Card(geometry: r.g, count: cap + 4, page: 1)
+        let from = c.center(ofSlot: 1)
+        r.state.pointerDown(from, time: 0)
+        r.state.pointerMoved(CGPoint(x: from.x + 20, y: from.y), time: 0.01)
+        let strip = CGPoint(x: c.origin.x - 5, y: c.rect.midY)
+        r.state.pointerMoved(strip, time: 1)
+        r.state.tick(at: 1.61)
+        XCTAssertEqual(r.state.cardPage, 0)
+        XCTAssertEqual(r.state.cardEntries.firstIndex(of: .gap), cap - 1, "backward: the end of page 0, the carried app's old place is gone")
+        r.state.pointerUp(strip, time: 1.7)
+        await waitUntil("the folder was reordered") { r.state.folderApps.first { $0.id == "f\(cap + 1)" } != nil && r.placed.count == 1 }
+        XCTAssertEqual(r.placed.count, 1)
+        let order = r.state.folderApps.map(\.id)
+        XCTAssertEqual(order.firstIndex(of: "f\(cap + 1)"), cap - 1, "it landed on the page the person was looking at")
+        XCTAssertEqual(r.state.openFolder, folderID)
+    }
 }

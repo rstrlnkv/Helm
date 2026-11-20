@@ -74,6 +74,8 @@ struct LaunchpadLiftView: Equatable {
     let icons: LaunchpadIcons
     /// The page's drag, apart from the state so a swipe republishes nothing else.
     let drag = LaunchpadPageDrag()
+    /// The open card's page, and its drag: the same, for the card's own pages.
+    let cardDrag = LaunchpadPageDrag()
     @Published var search = "" {
         didSet {
             guard search != oldValue else { return }
@@ -91,6 +93,8 @@ struct LaunchpadLiftView: Equatable {
     @Published private(set) var mode = Mode.busy
     @Published private(set) var pages: [[LaunchpadEntry]] = [[]]
     @Published private(set) var page = 0
+    /// The open folder's card page (0 with no card open); the choice and the lift's gap are indices into the folder's whole list.
+    @Published private(set) var cardPage = 0
     /// The arrow keys' choice, as an index into what is shown; `selectedID` is what it stands for, so a snapshot that moves
     /// or removes tiles moves the index with the tile, or clears it, and never lets it point at another app.
     @Published private(set) var selection: Int? {
@@ -169,6 +173,9 @@ struct LaunchpadLiftView: Equatable {
 
     var pageCount: Int { pages.count }
 
+    /// The width of what a swipe turns: the open card's page, else the grid's.
+    var swipeWidth: CGFloat { card?.pageWidth ?? geometry.pageWidth }
+
     func setShown(_ value: Bool) { assign(\.shown, value) }
     func requestSearchFocus() { searchFocusRequest &+= 1 }
     func launched(_ id: AppID) { assign(\.launching, id) }
@@ -239,6 +246,7 @@ struct LaunchpadLiftView: Equatable {
             if let fresh = carriedEntry(carried) { rebuildPreview(carrying: fresh) } else { cancelLift() }
         }
         publishCard()
+        if lift != nil, openFolder != nil { seatGap() }
         assign(\.mode, snapshot.apps.isEmpty || (hits == nil && top.isEmpty) ? .noApps : hits != nil && top.isEmpty ? .noMatch : .grid)
         publishPages()
         if selectFirst {
@@ -254,56 +262,84 @@ struct LaunchpadLiftView: Equatable {
     // MARK: - Input
 
     func move(dx: Int, dy: Int) {
+        if let card {
+            // The first press chooses the shown page's first app; then the flat order, and the page follows the choice.
+            let next = selection == nil && count > 0
+                ? card.range(ofPage: cardPage).lowerBound
+                : LaunchpadPaging.moved(selection, dx: dx, dy: dy, columns: card.columns, count: count)
+            guard let next else { return }
+            assign(\.selection, next)
+            goCard(to: card.page(ofIndex: next))
+            return
+        }
         guard let next = LaunchpadPaging.moved(selection, dx: dx, dy: dy, columns: columns, count: count) else { return }
         assign(\.selection, next)
-        if openFolder == nil { assign(\.page, LaunchpadPaging.page(of: next, starts: pageStarts)) }
+        assign(\.page, LaunchpadPaging.page(of: next, starts: pageStarts))
     }
 
-    /// Where the fingers hold the page, `raw` points from its place; a rubber band past the first and last page, and nothing
-    /// while a folder is open. Not animated: the page follows.
+    /// What a swipe turns: the open card's pages, else the grid's.
+    private var track: (drag: LaunchpadPageDrag, page: Int, count: Int, width: CGFloat) {
+        if let card { return (cardDrag, cardPage, card.pageCount, card.pageWidth) }
+        return (drag, page, pages.count, geometry.pageWidth)
+    }
+
+    /// Where the fingers hold the page, `raw` points from its place; a rubber band past the first and last page. Not animated: the page follows.
     func drag(raw: CGFloat) {
-        guard openFolder == nil else { return }
-        let next = LaunchpadSwipe.offset(raw: raw, canBack: page > 0, canForward: page < pageCount - 1, width: geometry.pageWidth)
-        if drag.offset != next { drag.offset = next }
+        let t = track
+        let next = LaunchpadSwipe.offset(raw: raw, canBack: t.page > 0, canForward: t.page < t.count - 1, width: t.width)
+        if t.drag.offset != next { t.drag.offset = next }
     }
 
     /// The fingers let go: the page turns by `step` (or stays) and the drag goes to nothing, in one transaction, on a spring
     /// that takes up `velocity` (pt/s, along the page's travel) over the distance left.
     func settle(step: Int, velocity: CGFloat) {
-        let at = drag.offset
-        let next = openFolder == nil ? LaunchpadPaging.clamped(page + step, count: pages.count) : page
-        let target = -CGFloat(next - page) * geometry.pageWidth
+        let t = track
+        let at = t.drag.offset
+        let next = LaunchpadPaging.clamped(t.page + step, count: t.count)
+        let target = -CGFloat(next - t.page) * t.width
         let along = velocity * (target >= at ? 1 : -1)
         withAnimation(HelmMotion.pageSettle(velocity: along, distance: abs(target - at))) {
             go(to: next)
-            drag.offset = 0
+            t.drag.offset = 0
         }
     }
 
-    /// One page back or forward; the choice stays only if it is still on the shown page.
-    func turn(_ step: Int) { go(to: page + step) }
+    /// One page back or forward (the open card's, with one open); the choice stays only if it is still on the shown page.
+    func turn(_ step: Int) { go(to: (openFolder == nil ? page : cardPage) + step) }
 
     func go(to target: Int) {
-        guard openFolder == nil else { return }
+        guard openFolder == nil else { goCard(to: target); return }
         let next = LaunchpadPaging.clamped(target, count: pages.count)
         assign(\.page, next)
         if let selection, LaunchpadPaging.page(of: selection, starts: pageStarts) != next { assign(\.selection, nil) }
     }
 
+    private func goCard(to target: Int) {
+        guard let card else { return }
+        let next = LaunchpadPaging.clamped(target, count: card.pageCount)
+        assign(\.cardPage, next)
+        if let selection, card.page(ofIndex: selection) != next { assign(\.selection, nil) }
+    }
+
     /// A new grid (the person's settings changed while the window is open): the same order cut again by the new capacity. Writes
     /// nothing, the layout stores order and not pages. A cell's address is `page * capacity + slot`, which means nothing
     /// after the capacity changed, so a lift or a press ends first (a drop already out lands through `update`). The page
-    /// stays on the choice, or on the tile the shown page began with. An open folder's card stays open and follows the grid.
+    /// stays on the choice, or on the tile the shown page began with. An open folder's card stays open and follows the grid, its page
+    /// on its choice or on the tile its shown page began with.
     func regrid(_ settings: LaunchpadGridSettings) {
         let next = LaunchpadGeometry.make(for: geometry.size, topSafe: geometry.topSafe, settings: settings)
         guard next != geometry else { return }
         let anchor = pageStarts.indices.contains(page) ? pageStarts[page] : 0
+        let cardAnchor = (card?.page ?? 0) * (card?.capacity ?? 1)
         cancelLift()
         drag.offset = 0
+        cardDrag.offset = 0
         withAnimation(HelmMotion.interface) {
             geometry = next
             icons.reconfigure(capacity: next.capacity, size: next.icon)
             publishPages()
+            publishCard()
+            if let card { goCard(to: card.page(ofIndex: selection ?? cardAnchor)) }
         }
         // With a card open the selection counts the card's apps, not the grid's.
         assign(\.page, LaunchpadPaging.page(of: openFolder == nil ? selection ?? anchor : anchor, starts: pageStarts))
@@ -341,9 +377,11 @@ struct LaunchpadLiftView: Equatable {
         assign(\.folderApps, apps)
         assign(\.openFolder, id)
         assign(\.selection, nil)
+        assign(\.cardPage, 0)
         publishCard()
-        // No release comes for a drag under a card (the window stops feeding the swipe), so the page is let go here.
+        // A swipe is handed to the card's own pages when it opens, and no release comes for the grid's: its page is let go here.
         drag.offset = 0
+        cardDrag.offset = 0
     }
 
     /// Esc: a lift, then the name field, then the folder, then the search, then the window.
@@ -375,6 +413,7 @@ struct LaunchpadLiftView: Equatable {
         assign(\.renaming, false)
         cardPreview = nil
         folderTile = nil
+        cardDrag.offset = 0
         publishCard()
     }
 
@@ -434,7 +473,7 @@ struct LaunchpadLiftView: Equatable {
 
     /// The open card as the pointer meets it; nil when no folder is open.
     private var card: LaunchpadSurface.Card? {
-        openFolder == nil ? nil : LaunchpadSurface.Card(geometry: geometry, count: cardEntries.count)
+        openFolder == nil ? nil : LaunchpadSurface.Card(geometry: geometry, count: cardEntries.count, page: cardPage)
     }
 
     private var surface: LaunchpadSurface {
@@ -450,7 +489,7 @@ struct LaunchpadLiftView: Equatable {
 
     /// True when the press is on a tile and the window takes it (no button sees it); false leaves it to the views.
     func pointerDown(_ point: CGPoint, time: TimeInterval) -> Bool {
-        guard liftAllowed, !machine.isEngaged, card?.scrolls != true else { return false }
+        guard liftAllowed, !machine.isEngaged else { return false }
         _ = machine.feed(.down, at: point, surface: surface, time: time)
         guard let address = machine.pressedAddress else { return false }
         lastPoint = point
@@ -513,7 +552,10 @@ struct LaunchpadLiftView: Equatable {
         case .arm(let address):
             let id = address.flatMap { entry(at: $0) }.flatMap { $0 == .gap ? nil : $0.id }
             if let carried = lift { assign(\.lift, LaunchpadLiftView(entry: carried.entry, onto: id)) }
-        case .turn(let step): withAnimation(HelmMotion.interface) { go(to: page + step) }
+        case .turn(let step):
+            withAnimation(HelmMotion.interface) {
+                if openFolder == nil { go(to: page + step) } else { go(to: cardPage + step); seatGap() }
+            }
         case .newPage: addPage()
         case .openFolder(let address):
             if case .folder(let id, _, _)? = entry(at: address) { openForLift(id) }
@@ -652,6 +694,7 @@ struct LaunchpadLiftView: Equatable {
         cardPreview = folderApps.map(LaunchpadEntry.app) + [.gap]
         machine.resetDwell()
         publishCard()
+        goCard(to: .max)
     }
 
     /// The pointer stayed outside the card: it closes, and the lift goes on over the grid. A tile lifted from the folder has
@@ -671,6 +714,16 @@ struct LaunchpadLiftView: Equatable {
     /// The card's entries: the folder's apps, or the lift's preview of them.
     private func publishCard() {
         assign(\.cardEntries, openFolder == nil ? [] : cardPreview ?? folderApps.map(LaunchpadEntry.app))
+        assign(\.cardPage, card?.page ?? 0)
+    }
+
+    /// The card's page turned under a lift: the gap takes the nearest place on the page now shown, so the carried tile has
+    /// a place where it arrived and a release lands on the page the person sees.
+    private func seatGap() {
+        guard let list = cardPreview, let gap = list.firstIndex(of: .gap) else { return }
+        let range = LaunchpadSurface.Card(geometry: geometry, count: list.count, page: cardPage).range(ofPage: cardPage)
+        guard !range.isEmpty, !range.contains(gap) else { return }
+        moveCardGap(to: gap < range.lowerBound ? range.lowerBound : range.upperBound - 1)
     }
 
     /// The edge of the last page, held: a page of its own at the end, with the gap alone on it.
@@ -729,7 +782,9 @@ struct LaunchpadLiftView: Equatable {
     private func finish(_ drop: LaunchpadLift.Drop) {
         guard let carried = lift?.entry, snapshot != nil else { endLift(); return }
         if let open = openFolder, let card {
-            if card.rect.contains(lastPoint) { finishInCard(carried, folder: open); return }
+            var inCard = card.rect.contains(lastPoint)
+            if case .edge = LaunchpadHit.at(lastPoint, in: surface) { inCard = true }
+            if inCard { finishInCard(carried, folder: open); return }
             closeForLift()
         }
         guard let snapshot, let list = preview, let gap = locate(LaunchpadEntry.gap.id, in: list) else { endLift(); return }

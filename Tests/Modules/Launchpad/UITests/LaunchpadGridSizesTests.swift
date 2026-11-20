@@ -35,4 +35,18 @@ final class LaunchpadGridSizesTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(g.origin(ofSlot: 0).x, LaunchpadLiftTiming.edgeWidth)
         }
     }
+
+    func testACardOf200AppsHasPagesAndItsDotsRowFitsTheWindowAtEverySize() {
+        for screen in [CGSize(width: 1024, height: 640), CGSize(width: 1280, height: 800), CGSize(width: 2560, height: 1600)] {
+            for setting in settings() {
+                let g = LaunchpadGeometry.make(for: screen, topSafe: 0, settings: setting)
+                let card = LaunchpadSurface.Card(geometry: g, count: 200)
+                let bare = g.card(columns: card.columns, rows: card.visibleRows)
+                XCTAssertTrue(card.paged, "\(screen) \(setting)")
+                XCTAssertEqual(card.rect.height, bare.height + LaunchpadGeometry.cardGap + LaunchpadGeometry.cardDots, accuracy: 0.001, "the dots row is in the card")
+                XCTAssertTrue(CGRect(origin: .zero, size: g.size).contains(card.rect), "\(screen) \(setting): \(card.rect)")
+                XCTAssertEqual(card.pageCount, (200 + card.capacity - 1) / card.capacity)
+            }
+        }
+    }
 }

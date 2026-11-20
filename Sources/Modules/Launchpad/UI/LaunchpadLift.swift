@@ -10,7 +10,7 @@ enum LaunchpadLiftTiming {
     /// The pointer stays this long (s) in a tile's icon before it is the target of a drop onto it.
     static let ontoArm: TimeInterval = 0.30
     /// The strip along the window's side that turns the page (pt), after `edgeFirst` s, then every `edgeRepeat` s; on the
-    /// last page it makes a new one.
+    /// last page it makes a new one. An open card with pages has its own strips, at its sides, which turn its pages and make none.
     static let edgeWidth: CGFloat = 40
     static let edgeFirst: TimeInterval = 0.6
     static let edgeRepeat: TimeInterval = 0.9
@@ -163,8 +163,9 @@ struct LaunchpadLift {
             return .closeFolder
         case .edge(let side) where time >= nextEdge:
             nextEdge = time + LaunchpadLiftTiming.edgeRepeat
-            if side > 0, surface.page == surface.pageCount - 1 { return .newPage }
-            if side < 0, surface.page == 0 { return .none }
+            let (page, count) = surface.card.map { ($0.page, $0.pageCount) } ?? (surface.page, surface.pageCount)
+            if side > 0, page == count - 1 { return surface.card == nil ? .newPage : .none }
+            if side < 0, page == 0 { return .none }
             return .turn(side)
         default:
             return .none

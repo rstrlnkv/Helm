@@ -6,7 +6,7 @@ import Module_Launchpad_Engine
 /// the page that holds it. Drawn white on the window's blur, in the dark appearance.
 ///
 /// **Nothing here measures.** The sizes are `state.geometry`, made from the screen and the grid settings; the pages are placed by `.offset`,
-/// not scrolled; only the shown page and its two neighbours exist as views, and the grids are fixed cells, not lazy ones.
+/// not scrolled, the grid's and an open folder's card alike; only the shown page and its two neighbours exist as views, and the grids are fixed cells, not lazy ones.
 /// The keys and the wheel do not come through the views: the panel hands them to `state` (`LaunchpadPanel`).
 struct LaunchpadScreen: View {
     @ObservedObject var vm: LaunchpadViewModel
@@ -113,7 +113,7 @@ struct LaunchpadScreen: View {
                 LaunchpadTile(name: name, accessibleName: LpStr.folder(name), iconSize: g.icon, selected: selected,
                               open: { state.open(folder: id) }, hide: nil, glowSize: glowSize(g),
                               pressed: state.pressedID == entry.id || state.lift?.onto == entry.id) {
-                    LaunchpadFolderMark(icons: apps.prefix(4).map { state.icons.icon(for: $0.path) }, size: g.icon)
+                    LaunchpadFolderMark(icons: apps.prefix(9).map { state.icons.icon(for: $0.path) }, size: g.icon)
                 }
             case .gap:
                 Color.clear
@@ -155,32 +155,35 @@ struct LaunchpadScreen: View {
     private func bottom(_ g: LaunchpadGeometry) -> some View {
         VStack(spacing: HelmSpace.s5) {
             if let notice = vm.notice { HelmBanner(LpStr.text(of: notice), fillsWidth: false) }
-            if state.pageCount > 1 {
-                HStack(spacing: 0) {
-                    ForEach(0..<state.pageCount, id: \.self) { index in
-                        Button { withAnimation(HelmMotion.interface) { state.go(to: index) } } label: {
-                            Circle().fill(Color.white.opacity(index == state.page ? 0.9 : 0.35))
-                                .frame(width: 8, height: 8)
-                                .frame(width: 24, height: 24)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(LpStr.pageNumber(index + 1, of: state.pageCount))
-                        .accessibilityAddTraits(index == state.page ? .isSelected : [])
-                    }
-                }
-            }
+            if state.pageCount > 1 { pageDots(count: state.pageCount, current: state.page) }
         }
         .frame(width: g.size.width, height: g.size.height, alignment: .bottom)
         .offset(y: -g.dotsBottom)
+    }
+
+    /// One dot for each page, the shown one lit; a press goes to its page, on the interface curve. The grid's and the card's.
+    private func pageDots(count: Int, current: Int) -> some View {
+        HStack(spacing: 0) {
+            ForEach(0..<count, id: \.self) { index in
+                Button { withAnimation(HelmMotion.interface) { state.go(to: index) } } label: {
+                    Circle().fill(Color.white.opacity(index == current ? 0.9 : 0.35))
+                        .frame(width: 8, height: 8)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(LpStr.pageNumber(index + 1, of: count))
+                .accessibilityAddTraits(index == current ? .isSelected : [])
+            }
+        }
     }
 
     // MARK: - A folder's card
 
     private func folderCard(_ g: LaunchpadGeometry) -> some View {
         let entries = state.cardEntries
-        let grid = LaunchpadSurface.Card(geometry: g, count: entries.count)
-        let (columns, rows, card) = (grid.columns, grid.rows, grid.rect)
+        let grid = LaunchpadSurface.Card(geometry: g, count: entries.count, page: state.cardPage)
+        let card = grid.rect
         let from = state.folderOrigin
         let delta = CGSize(width: from.x - g.size.width / 2, height: from.y - g.size.height / 2)
         return VStack(spacing: LaunchpadGeometry.cardGap) {
@@ -192,20 +195,11 @@ struct LaunchpadScreen: View {
                 .focused($nameFocused)
                 .accessibilityLabel(LpStr.folderNameField)
                 .frame(height: LaunchpadGeometry.cardTitle)
-            ScrollView(.vertical) {
-                VStack(spacing: 0) {
-                    ForEach(0..<rows, id: \.self) { row in
-                        HStack(spacing: 0) {
-                            ForEach(Array((row * columns)..<min(entries.count, (row + 1) * columns)), id: \.self) { index in
-                                cardTile(entries[index], index: index, g)
-                                    .frame(width: g.cellWidth, height: g.cellHeight)
-                            }
-                        }
-                    }
-                }
+            cardPages(grid, entries, g)
+            if grid.paged {
+                pageDots(count: grid.pageCount, current: grid.page)
+                    .frame(height: LaunchpadGeometry.cardDots)
             }
-            .scrollIndicators(.hidden)
-            .frame(width: CGFloat(columns) * g.cellWidth, height: CGFloat(grid.visibleRows) * g.cellHeight)
         }
         .padding(LaunchpadGeometry.cardPadding)
         .frame(width: card.width, height: card.height)
@@ -213,6 +207,31 @@ struct LaunchpadScreen: View {
         .frame(width: g.size.width, height: g.size.height)
         .transition(.modifier(active: FolderZoom(delta: delta, scale: 0.25, shown: false),
                               identity: FolderZoom(delta: .zero, scale: 1, shown: true)))
+    }
+
+    /// The card's tiles, a page at a time: the shown page and its neighbours, each at its place in the card's own width, the
+    /// card's fingers moving them all. Tiles are indexed in the folder's whole list, as the choice and the lift count them.
+    private func cardPages(_ grid: LaunchpadSurface.Card, _ entries: [LaunchpadEntry], _ g: LaunchpadGeometry) -> some View {
+        let live = max(0, grid.page - 1)...min(grid.pageCount - 1, grid.page + 1)
+        return ZStack(alignment: .topLeading) {
+            ForEach(Array(live), id: \.self) { index in
+                ZStack(alignment: .topLeading) {
+                    ForEach(Array(grid.range(ofPage: index)), id: \.self) { at in
+                        let slot = at - index * grid.capacity
+                        cardTile(entries[at], index: at, g)
+                            .frame(width: g.cellWidth, height: g.cellHeight)
+                            .offset(x: CGFloat(slot % grid.columns) * g.cellWidth, y: CGFloat(slot / grid.columns) * g.cellHeight)
+                    }
+                }
+                .frame(width: grid.pageWidth, height: CGFloat(grid.visibleRows) * g.cellHeight, alignment: .topLeading)
+                .offset(x: CGFloat(index - grid.page) * grid.pageWidth)
+                .accessibilityHidden(index != grid.page)
+                .allowsHitTesting(index == grid.page)
+            }
+        }
+        .modifier(PageDragOffset(drag: state.cardDrag))
+        .frame(width: grid.pageWidth, height: CGFloat(grid.visibleRows) * g.cellHeight, alignment: .topLeading)
+        .clipped()
     }
 
     @ViewBuilder private func cardTile(_ entry: LaunchpadEntry, index: Int, _ g: LaunchpadGeometry) -> some View {

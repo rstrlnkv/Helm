@@ -12,7 +12,7 @@ import Module_Launchpad_Engine
 /// except Left and Right while the search holds text, which stay the field's (caret movement); Up and Down are the grid's, Tab is taken and does nothing.
 /// Nothing is taken while the field editor holds marked text (an input method's composition), and a key with Command,
 /// Control or Option falls through. A trackpad swipe with fingers on it drags the page and settles it (`LaunchpadSwipe`), the wheel and a device with no phases turn pages through `LaunchpadScrollPager`; with a folder's
-/// card open they fall through, to the card's own scrolling. The rest, the typing included, is the text field's.
+/// card open they are the card's pages' (`LaunchpadScreenState.swipeWidth`, with a swipe of its own). The rest, the typing included, is the text field's.
 ///
 /// What was measured of menus and tooltips in a panel like this is `OverlayPanel`'s doc comment; this panel's own live
 /// readings (typing, the context menu, closing on resign) are the owner's, in Helm Dev.
@@ -23,6 +23,8 @@ final class LaunchpadPanel: NSPanel {
     var isClosing = false
     private var pager = LaunchpadScrollPager()
     private var swipe = LaunchpadSwipe()
+    /// The open card's swipe: its own, so a gesture's travel is not shared between the grid's pages and the card's.
+    private var cardSwipe = LaunchpadSwipe()
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
@@ -50,6 +52,18 @@ final class LaunchpadPanel: NSPanel {
     /// Where the pointer is in the window's coordinates, from the top left (the panel's own are from the bottom left).
     private func point(of event: NSEvent, _ state: LaunchpadScreenState) -> CGPoint {
         CGPoint(x: event.locationInWindow.x, y: state.geometry.size.height - event.locationInWindow.y)
+    }
+
+    /// A trackpad swipe's event: the page follows the fingers, and settles when they lift.
+    private func feedSwipe(_ swipe: inout LaunchpadSwipe, _ event: NSEvent, _ state: LaunchpadScreenState) {
+        swipe.width = state.swipeWidth
+        swipe.reduceMotion = HelmMotion.reduceMotion
+        switch swipe.feed(dx: event.scrollingDeltaX, dy: event.scrollingDeltaY, phase: event.phase,
+                          momentum: event.momentumPhase, time: event.timestamp) {
+        case .none: break
+        case .drag(let raw): state.drag(raw: raw)
+        case .release(let step, let velocity): state.settle(step: step, velocity: velocity)
+        }
     }
 
     /// True when the event was this window's and goes no further.
@@ -89,16 +103,8 @@ final class LaunchpadPanel: NSPanel {
             return state.pointerBusy
         case .scrollWheel:
             if state.pointerBusy { return true }
-            guard state.openFolder == nil else { return false }
             if event.hasPreciseScrollingDeltas, !event.phase.isEmpty || !event.momentumPhase.isEmpty {
-                swipe.width = state.geometry.pageWidth
-                swipe.reduceMotion = HelmMotion.reduceMotion
-                switch swipe.feed(dx: event.scrollingDeltaX, dy: event.scrollingDeltaY, phase: event.phase,
-                                  momentum: event.momentumPhase, time: event.timestamp) {
-                case .none: break
-                case .drag(let raw): state.drag(raw: raw)
-                case .release(let step, let velocity): state.settle(step: step, velocity: velocity)
-                }
+                if state.openFolder == nil { feedSwipe(&swipe, event, state) } else { feedSwipe(&cardSwipe, event, state) }
             } else if let step = pager.feed(dx: event.scrollingDeltaX, dy: event.scrollingDeltaY, precise: event.hasPreciseScrollingDeltas,
                                             time: event.timestamp) {
                 withAnimation(HelmMotion.interface) { state.turn(step) }

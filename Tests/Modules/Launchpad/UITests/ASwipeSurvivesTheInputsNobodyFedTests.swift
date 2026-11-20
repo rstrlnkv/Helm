@@ -194,7 +194,8 @@ final class ASwipeSurvivesTheInputsNobodyFedTests: XCTestCase {
 
     // MARK: the state
 
-    @MainActor func testADragWhileAFolderIsOpenDoesNothingAndASettleOnlyZeroesTheOffset() throws {
+    /// A card of one page has nothing to turn to: a swipe over it moves the card's own page (a rubber band) and never the grid's.
+    @MainActor func testADragWhileAOnePageFolderIsOpenMovesNoGridPageAndASettleOnlyZeroesTheCardsOffset() throws {
         let id = UUID()
         let ids = (0..<20).map { "app\($0)" }
         let apps = ids.map { CatalogApp(id: $0, name: $0, path: "/Applications/\($0).app") }
@@ -207,14 +208,17 @@ final class ASwipeSurvivesTheInputsNobodyFedTests: XCTestCase {
         s.open(folder: id)
         XCTAssertEqual(s.openFolder, id, "the folder opened first")
         s.drag(raw: -300)
-        XCTAssertEqual(s.drag.offset, 0, "nothing moves under a card")
+        XCTAssertEqual(s.drag.offset, 0, "the grid under a card does not move")
+        XCTAssertLessThan(s.cardDrag.offset, 0, "the card's own page gives, as the last page of a grid does")
         s.settle(step: 1, velocity: -900)
-        XCTAssertEqual(s.page, 0, "and no page turns under it")
+        XCTAssertEqual(s.page, 0, "no grid page turns under it")
+        XCTAssertEqual(s.cardPage, 0, "and the card has no second page")
         XCTAssertEqual(s.drag.offset, 0)
+        XCTAssertEqual(s.cardDrag.offset, 0)
     }
 
     /// A folder that opens under the fingers (the trackpad's click, Return) while the page is held off its place: the window
-    /// stops feeding the swipe once a card is open, so no release ever comes, and the offset has to be cleared by the open.
+    /// feeds `cardSwipe` once a card is open, so the grid's `swipe` gets no release, and the offset has to be cleared by the open.
     @MainActor func testAFolderOpeningMidDragDoesNotLeaveThePageHeldOffItsPlace() throws {
         let id = UUID()
         let ids = (0..<20).map { "app\($0)" }

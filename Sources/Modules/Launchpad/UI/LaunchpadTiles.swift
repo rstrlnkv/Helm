@@ -124,21 +124,22 @@ extension LaunchpadTile where Mark == Image {
     }
 }
 
-/// A saved folder: a well with up to four of its apps' icons, no border.
+/// A saved folder: a well with up to nine of its apps' icons, three by three, no border. The icons and the room round them
+/// follow the tile's size, like the icon does.
 struct LaunchpadFolderMark: View {
     let icons: [NSImage]
     let size: CGFloat
 
     var body: some View {
-        let inset = HelmSpace.s3
-        let mini = (size - inset * 3) / 2
+        let pad = size * 0.10, gap = size * 0.05
+        let mini = (size - 2 * pad - 2 * gap) / 3
         ZStack {
             RoundedRectangle(cornerRadius: HelmRadius.frame, style: .continuous).fill(Color.white.opacity(0.18))
-            VStack(spacing: inset) {
-                ForEach(0..<2, id: \.self) { row in
-                    HStack(spacing: inset) {
-                        ForEach(0..<2, id: \.self) { column in
-                            let index = row * 2 + column
+            VStack(spacing: gap) {
+                ForEach(0..<3, id: \.self) { row in
+                    HStack(spacing: gap) {
+                        ForEach(0..<3, id: \.self) { column in
+                            let index = row * 3 + column
                             if index < icons.count {
                                 Image(nsImage: icons[index]).resizable()
                                     .frame(width: mini, height: mini)

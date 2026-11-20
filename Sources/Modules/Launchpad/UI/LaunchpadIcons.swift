@@ -4,14 +4,14 @@ import AppKit
 ///
 /// Not `AppInfo.icon(forFile:)`, which is one cache for the whole process and never emptied: a grid of three hundred
 /// apps would stay in memory after it was closed. This cache is the window state's own, bounded to what the live pages
-/// and an open folder draw, and goes with the state. Only a page that is live asks.
+/// and an open folder's live pages draw, and goes with the state. Only a page that is live asks.
 final class LaunchpadIcons {
     private let cache = NSCache<NSString, NSImage>()
     private var size: CGFloat
 
     init(capacity: Int, size: CGFloat) {
         self.size = size
-        cache.countLimit = 3 * capacity + capacity
+        cache.countLimit = 6 * capacity
     }
 
     func icon(for path: String) -> NSImage {
@@ -24,7 +24,7 @@ final class LaunchpadIcons {
 
     /// A new grid: the cache's bound follows the page, and what was drawn at another size is dropped (an image keeps its point size).
     func reconfigure(capacity: Int, size: CGFloat) {
-        cache.countLimit = 3 * capacity + capacity
+        cache.countLimit = 6 * capacity
         guard size != self.size else { return }
         self.size = size
         cache.removeAllObjects()

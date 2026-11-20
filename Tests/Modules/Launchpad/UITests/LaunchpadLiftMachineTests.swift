@@ -227,4 +227,69 @@ final class LaunchpadLiftMachineTests: XCTestCase {
         XCTAssertNotEqual(m.feed(.moved, at: s.card!.center(ofSlot: 1), surface: s, time: 2), .arm(address: 1), "nothing is dropped onto an app in a folder")
         XCTAssertEqual(m.feed(.tick, at: s.card!.center(ofSlot: 1), surface: s, time: 3), .moveGap(to: 1))
     }
+
+    // MARK: A card with pages
+
+    private func pagedSurface(page: Int, count: Int? = nil) -> LaunchpadSurface {
+        let cap = LaunchpadSurface.Card(geometry: g, count: 10_000).capacity
+        var s = surface(counts: [5], gap: nil)
+        s.card = LaunchpadSurface.Card(geometry: g, count: count ?? 2 * cap, page: page)
+        return s
+    }
+
+    /// A machine that has lifted the first tile of the card's shown page; the point the pointer then goes to is a strip.
+    private func liftedInPagedCard(_ s: LaunchpadSurface) -> Lift {
+        var m = Lift()
+        let from = s.card!.center(ofSlot: 0)
+        _ = m.feed(.down, at: from, surface: s, time: 0)
+        XCTAssertEqual(m.feed(.moved, at: CGPoint(x: from.x + 6, y: from.y), surface: s, time: 0.01), .lift(address: s.card!.page * s.card!.capacity))
+        return m
+    }
+
+    private func strips(_ s: LaunchpadSurface) -> (left: CGPoint, right: CGPoint) {
+        let c = s.card!
+        return (CGPoint(x: c.origin.x - 5, y: c.rect.midY), CGPoint(x: c.origin.x + c.pageWidth + 5, y: c.rect.midY))
+    }
+
+    func testACardsEdgeStripTurnsItsPageAfterTheFirstDelayAndAgainAfterTheRepeat() {
+        let s = pagedSurface(page: 1, count: 3 * LaunchpadSurface.Card(geometry: g, count: 10_000).capacity)
+        var m = liftedInPagedCard(s)
+        let p = strips(s)
+        XCTAssertEqual(m.feed(.moved, at: p.left, surface: s, time: 1), .none)
+        XCTAssertEqual(m.feed(.tick, at: p.left, surface: s, time: 1.59), .none)
+        XCTAssertEqual(m.feed(.tick, at: p.left, surface: s, time: 1.61), .turn(-1))
+        XCTAssertEqual(m.feed(.tick, at: p.left, surface: s, time: 2.0), .none, "not again before the repeat")
+        XCTAssertEqual(m.feed(.tick, at: p.left, surface: s, time: 2.52), .turn(-1))
+        XCTAssertEqual(m.feed(.moved, at: p.right, surface: s, time: 3), .none)
+        XCTAssertEqual(m.feed(.tick, at: p.right, surface: s, time: 3.61), .turn(1), "the middle page turns forward")
+    }
+
+    func testTheLastCardPageNeverMakesANewPageAndTheFirstHasNothingBefore() {
+        let last = pagedSurface(page: 1)
+        var m = liftedInPagedCard(last)
+        let p = strips(last)
+        XCTAssertEqual(m.feed(.moved, at: p.right, surface: last, time: 1), .none)
+        for t in stride(from: 1.61, to: 12, by: 0.9) {
+            XCTAssertEqual(m.feed(.tick, at: p.right, surface: last, time: t), .none, "\(t): never .newPage in a card")
+        }
+        let first = pagedSurface(page: 0)
+        var n = liftedInPagedCard(first)
+        let q = strips(first)
+        XCTAssertEqual(n.feed(.moved, at: q.left, surface: first, time: 1), .none)
+        XCTAssertEqual(n.feed(.tick, at: q.left, surface: first, time: 1.61), .none, "page 0's left")
+        XCTAssertEqual(n.feed(.tick, at: q.right, surface: first, time: 2), .none)
+        XCTAssertEqual(n.feed(.tick, at: q.right, surface: first, time: 2.7), .turn(1), "the control: its right strip does turn")
+    }
+
+    func testAnUnpagedCardHasNoStripsAndTheGridsLastPageStillMakesAPage() {
+        let one = pagedSurface(page: 0, count: 3)
+        var m = liftedInCard()
+        let p = strips(one)
+        XCTAssertEqual(m.feed(.moved, at: p.right, surface: one, time: 1), .none)
+        XCTAssertEqual(m.feed(.tick, at: p.right, surface: one, time: 1.7), .none, "a card of one page has no strip")
+        let grid = surface(page: 0, counts: [5], gap: 2)
+        var n = lifted(grid)
+        XCTAssertEqual(n.feed(.moved, at: rightEdge, surface: grid, time: 1), .none)
+        XCTAssertEqual(n.feed(.tick, at: rightEdge, surface: grid, time: 1.61), .newPage, "the grid's last page, as before")
+    }
 }
