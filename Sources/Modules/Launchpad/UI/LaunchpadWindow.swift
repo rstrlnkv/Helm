@@ -143,7 +143,7 @@ private final class LaunchpadWindowEnders {
 /// clickable over the panel, as macOS's own Launchpad leaves it; a click on the pinned Dock helper then reaches
 /// it. The frame is still the whole screen. Every Space and over full-screen apps, as `OverlayPanel`.
 ///
-/// Built on the screen the pointer is on, its geometry worked out once. The model's `whileShown()` runs for as long as
+/// Built on the screen the pointer is on, its geometry worked out from the grid then in force (`regrid` makes it again). The model's `whileShown()` runs for as long as
 /// the window is open, and its snapshot goes when the window does. It closes on Esc, a click on the empty background, an
 /// app that opened, the panel losing key, another app coming forward, the Space or the screens changing, the model
 /// stopping and the shortcut's second press.
@@ -169,7 +169,7 @@ private final class LaunchpadWindowEnders {
         self.model = model
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         let frame = screen?.frame ?? CGRect(origin: .zero, size: LaunchpadGeometry.fallback)
-        let geometry = LaunchpadGeometry.make(for: frame.size, topSafe: screen?.safeAreaInsets.top ?? 0)
+        let geometry = LaunchpadGeometry.make(for: frame.size, topSafe: screen?.safeAreaInsets.top ?? 0, settings: model.grid)
         state = LaunchpadScreenState(geometry: geometry)
 
         panel = LaunchpadPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -205,8 +205,10 @@ private final class LaunchpadWindowEnders {
         state.onPlace = { [weak model] edit in await model?.place(edit) }
         state.onRename = { [weak model] id, name in Task { @MainActor in await model?.rename(id, to: name) } }
         state.onClose = { [weak self] in self?.close() }
+        let asked = model.grid
+        let grid = asked.automatic ? "automatic" : "\(asked.rows) rows asked, \(geometry.rows) fit"
         state.onLoaded = { snapshot, state in
-            HelmLog.shared.info("launchpad", "window: \(snapshot.apps.count) apps, \(state.geometry.columns)x\(state.geometry.rows) grid, \(state.pageCount) pages")
+            HelmLog.shared.info("launchpad", "window: \(snapshot.apps.count) apps, \(state.geometry.columns)x\(state.geometry.rows) grid (\(grid)), icon \(Int(state.geometry.icon)), \(state.pageCount) pages")
         }
         panel.onResignKey = { [weak self] in self?.close() }
     }

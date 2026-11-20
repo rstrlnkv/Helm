@@ -12,6 +12,8 @@ struct LaunchpadSettingsPage: View {
     @StateObject private var openKey: HelmHotkeyRecorder
     /// Bumped when a shortcut is recorded, so «taken» is judged against the combination now stored.
     @State private var shortcutRevision = 0
+    /// The manual rows' measured height, for the accordion that shows them while Automatic is off.
+    @State private var manualHeight: CGFloat?
 
     init(lvm: LaunchpadViewModel) {
         self.lvm = lvm
@@ -46,6 +48,7 @@ struct LaunchpadSettingsPage: View {
             } header: {
                 HelmSectionTitle(HelmWord.keyboardShortcuts)
             }
+            gridSection
             hiddenSection
             Section {
                 HelmSettingRow(LpStr.arrangement, note: LpStr.resetNote) {
@@ -55,7 +58,7 @@ struct LaunchpadSettingsPage: View {
         }
         .formStyle(.grouped)
         .helmIdlesOffScreen()
-        .task { await lvm.whileShown() }
+        .task { lvm.reloadGrid(); await lvm.whileShown() }
         .onReceive(NotificationCenter.default.publisher(for: .helmHotkeyChanged)) { _ in shortcutRevision += 1 }
         // The press only sets `pendingReset`; the destructive button asks the model to go through with it.
         .confirmationDialog(LpStr.resetQuestion,
@@ -65,6 +68,71 @@ struct LaunchpadSettingsPage: View {
             Button(HelmWord.cancel, role: .cancel) { lvm.cancelReset() }
         } message: {
             Text(LpStr.resetNote)
+        }
+    }
+
+    // MARK: - Grid
+
+    /// Automatic is the default; its press flips the switch inside the disclosure animation, then tells the model, which writes.
+    private var gridSection: some View {
+        let grid = lvm.grid
+        return Section {
+            // One Form row: the toggle's row, then the manual rows under an accordion, so Automatic leaves no blank band.
+            VStack(spacing: 0) {
+                HelmSettingRow(LpStr.gridAutomatic, note: LpStr.gridAutomaticNote) {
+                    Toggle(LpStr.gridAutomatic, isOn: Binding(
+                        get: { grid.automatic },
+                        set: { on in withAnimation(HelmMotion.disclosure) { var next = grid; next.automatic = on; lvm.setGrid(next) } }))
+                        .labelsHidden()
+                        .accessibilityLabel(LpStr.gridAutomatic)
+                }
+                VStack(spacing: 0) {
+                    stepRow(LpStr.gridRows, value: grid.rows, range: LaunchpadGridSettings.rowRange) { var next = grid; next.rows += $0; return next }
+                    stepRow(LpStr.gridColumns, value: grid.columns, range: LaunchpadGridSettings.columnRange) { var next = grid; next.columns += $0; return next }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .helmAccordion(open: !grid.automatic, height: $manualHeight)
+            }
+            HelmSettingRow(LpStr.gridIconSize, note: LpStr.gridFitNote) {
+                // A drag publishes the grid as it goes and writes once, when it ends.
+                Slider(value: Binding(get: { grid.iconSize }, set: { var next = grid; next.iconSize = $0; lvm.setGrid(next, live: true) }),
+                       in: LaunchpadGridSettings.iconRange, step: 1) { editing in if !editing { lvm.commitGrid() } }
+                    .frame(width: 160)
+                    .labelsHidden()
+                    .accessibilityLabel(LpStr.gridIconSize)
+                    .accessibilityValue(LpStr.gridIconSizeValue(Int(grid.iconSize)))
+                ZStack(alignment: .trailing) {
+                    Text(LpStr.gridIconSizeValue(Int(LaunchpadGridSettings.iconRange.upperBound))).hidden()
+                    Text(LpStr.gridIconSizeValue(Int(grid.iconSize)))
+                }
+                .helmFigure()
+                .accessibilityHidden(true)
+            }
+            HelmSettingRow(LpStr.grid, note: LpStr.gridResetNote) {
+                Button(LpStr.gridReset) { lvm.resetGrid() }
+                    .disabled(grid.isStandard)
+                    .accessibilityLabel(LpStr.gridResetNamed)
+            }
+        } header: {
+            HelmSectionTitle(LpStr.grid)
+        }
+    }
+
+    /// A number in a range, stepped by one; the figure's column is as wide as the widest value, so a step never moves the stepper.
+    private func stepRow(_ title: String, value: Int, range: ClosedRange<Int>,
+                         stepped: @escaping (Int) -> LaunchpadGridSettings) -> some View {
+        HelmSettingRow(title) {
+            ZStack(alignment: .trailing) {
+                Text("\(range.upperBound)").hidden()
+                Text("\(value)")
+            }
+            .helmFigure()
+            .accessibilityHidden(true)
+            Stepper(title,
+                    onIncrement: value < range.upperBound ? { lvm.setGrid(stepped(1)) } : nil,
+                    onDecrement: value > range.lowerBound ? { lvm.setGrid(stepped(-1)) } : nil)
+                .labelsHidden()
+                .accessibilityValue("\(value)")
         }
     }
 

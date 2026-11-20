@@ -11,6 +11,8 @@ import XCTest
     let state: LaunchpadScreenState
     let engine: LaunchpadEngine
     let catalog: RigCatalog
+    /// The layout's file, for a test that asks whether anything wrote it.
+    let layoutFile: URL
     let g: LaunchpadGeometry
     private(set) var placed: [LaunchpadEdit] = []
     private(set) var renamed: [String] = []
@@ -22,6 +24,7 @@ import XCTest
     init(_ test: XCTestCase, apps: [String], layout: LaunchpadLayout? = nil, screen: CGSize = CGSize(width: 1280, height: 800)) {
         let store = LayoutStore(directory: test.scratchDirectory("lift"))
         if let layout { XCTAssertTrue(store.save(layout)) }
+        layoutFile = store.fileURL
         catalog = RigCatalog(apps)
         engine = LaunchpadEngine(catalog: catalog, launcher: RigLauncher(), store: store)
         g = .make(for: screen, topSafe: 0)

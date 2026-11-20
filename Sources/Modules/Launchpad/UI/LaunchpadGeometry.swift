@@ -1,11 +1,12 @@
 import CoreGraphics
 import HelmUI
 
-/// Every size the window's layout depends on, worked out **once** from the screen's size when the window is built.
+/// Every size the window's layout depends on, worked out from the screen's size and the grid settings when the window is built, and again only when the settings change
+/// (`LaunchpadScreenState.regrid`).
 ///
 /// Nothing in the window measures: no `GeometryReader`, no preference, no size read back from a view. A layout that
 /// asks the views how big they are and answers by changing them is a loop, and pass 3's page was one: the log showed the
-/// system switching the keyboard tap off and memory up 559 MB. Here the size comes from the screen, the answer is a `let`, and
+/// system switching the keyboard tap off and memory up 559 MB. Here the size comes from the screen, the answer is a pure value, and
 /// `TheLaunchpadWindowMeasuresNothingTests` fails when anything measures again; it is an optional test, run on request
 /// (`bash Scripts/test.sh --filter TheLaunchpadWindowMeasuresNothingTests`).
 struct LaunchpadGeometry: Equatable {
@@ -26,31 +27,57 @@ struct LaunchpadGeometry: Equatable {
     let dotsBottom: CGFloat
     /// From the window's top edge to the search field's.
     let searchTop: CGFloat
+    /// The top room as clamped, so a new grid for the same window is made from the same number.
+    let topSafe: CGFloat
 
     /// A size that is not a size (zero, negative, not a number, infinite) is a 1280 × 800 screen.
     static let fallback = CGSize(width: 1280, height: 800)
 
     /// `topSafe` is the height of what the screen keeps at the top (a notch, the menu bar's room); the menu bar draws
-    /// over the window's top strip (the window sits under it), so the grid starts below it.
-    static func make(for size: CGSize, topSafe: CGFloat) -> LaunchpadGeometry {
+    /// over the window's top strip (the window sits under it), so the grid starts below it. `settings` is the person's grid
+    /// (`LaunchpadGridSettings`), clamped here again: whatever it holds, the result is a grid that fits the screen.
+    static func make(for size: CGSize, topSafe: CGFloat, settings: LaunchpadGridSettings = .standard) -> LaunchpadGeometry {
         let usable = size.width.isFinite && size.height.isFinite && size.width >= 1 && size.height >= 1
         let screen = usable ? size : fallback
         let top = topSafe.isFinite ? max(0, min(topSafe, screen.height / 4)) : 0
 
         let usableWidth = screen.width * (1 - 2 * LaunchpadMetrics.sideMargin)
-        let columns = max(3, min(8, Int(min(usableWidth / LaunchpadMetrics.tileMinimum, 1000))))
-        let cellWidth = usableWidth / CGFloat(columns)
-
         let searchTop = top + LaunchpadMetrics.searchTop
         let gridTop = searchTop + LaunchpadMetrics.searchHeight + LaunchpadMetrics.gridGap
         let usableHeight = max(0, screen.height - gridTop - LaunchpadMetrics.dotsRoom)
-        let rows = max(2, min(6, Int(min(usableHeight / LaunchpadMetrics.cellHeight, 1000))))
+        let (columns, rows) = counts(width: usableWidth, height: usableHeight, settings: settings)
+
+        let cellWidth = usableWidth / CGFloat(columns)
+        let icon = fit(want: CGFloat(settings.normalized().iconSize), cellWidth: cellWidth, rowHeight: usableHeight / CGFloat(rows))
+        let cellHeight = LaunchpadMetrics.cellHeight(icon: icon)
 
         return LaunchpadGeometry(
             size: screen, columns: columns, rows: rows, capacity: columns * rows,
-            cellWidth: cellWidth, cellHeight: LaunchpadMetrics.cellHeight, icon: LaunchpadMetrics.windowIcon,
-            pageWidth: screen.width, pageHeight: CGFloat(rows) * LaunchpadMetrics.cellHeight,
-            gridTop: gridTop, dotsBottom: LaunchpadMetrics.dotsBottom, searchTop: searchTop)
+            cellWidth: cellWidth, cellHeight: cellHeight, icon: icon,
+            pageWidth: screen.width, pageHeight: CGFloat(rows) * cellHeight,
+            gridTop: gridTop, dotsBottom: LaunchpadMetrics.dotsBottom, searchTop: searchTop, topSafe: top)
+    }
+
+    /// How many columns and rows a grid of `width` by `height` has. Automatic: as many as hold the icon asked for (the
+    /// narrowest a tile may be, the icon's own height), at most 8 and 6. Manual: the stored ones. Rows are then capped by the
+    /// floor icon with its labels: a label does not shrink, so a short screen holds fewer rows than were asked for.
+    static func counts(width: CGFloat, height: CGFloat, settings: LaunchpadGridSettings) -> (columns: Int, rows: Int) {
+        let settings = settings.normalized()
+        let want = CGFloat(settings.iconSize)
+        var columns = settings.columns, rows = settings.rows
+        if settings.automatic {
+            let narrowest = max(LaunchpadMetrics.tileMinimum, want + 2 * LaunchpadMetrics.tileSidePadding)
+            columns = max(3, min(8, Int(min(width / narrowest, 1000))))
+            rows = max(2, min(6, Int(min(height / LaunchpadMetrics.cellHeight(icon: want), 1000))))
+        }
+        let holds = max(2, Int(min(height / LaunchpadMetrics.cellHeight(icon: LaunchpadMetrics.iconFloor), 1000)))
+        return (columns, min(rows, holds))
+    }
+
+    /// The icon a cell draws: the one asked for, no bigger than the cell's width and height leave room for, no smaller
+    /// than the floor. The asked size is a ceiling, never exceeded.
+    static func fit(want: CGFloat, cellWidth: CGFloat, rowHeight: CGFloat) -> CGFloat {
+        max(LaunchpadMetrics.iconFloor, min(want, cellWidth - 2 * LaunchpadMetrics.tileSidePadding, rowHeight - LaunchpadMetrics.cellChrome))
     }
 
     /// Where slot `slot` of a page sits, from the page's top left: slots fill left to right from the grid's left edge, so a

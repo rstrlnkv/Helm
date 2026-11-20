@@ -42,7 +42,7 @@ struct LaunchpadLiftView: Equatable {
     @Published var offset: CGFloat = 0
 }
 
-/// What the window knows, made once when it opens and dropped when it closes: the geometry, the icons, the search, the
+/// What the window knows, made when it opens (its geometry again when the grid changes) and dropped when it closes: the geometry, the icons, the search, the
 /// page, the arrow keys' choice and the open folder. The model's snapshot comes in by `update(snapshot:)`, the only way in.
 ///
 /// Everything the views draw from is **derived here and assigned only when it differs**, never in a `body`: a snapshot that
@@ -51,7 +51,7 @@ struct LaunchpadLiftView: Equatable {
 @MainActor final class LaunchpadScreenState: ObservableObject {
     enum Mode: Equatable { case busy, noApps, noMatch, grid }
 
-    let geometry: LaunchpadGeometry
+    @Published private(set) var geometry: LaunchpadGeometry
     let icons: LaunchpadIcons
     /// The page's drag, apart from the state so a swipe republishes nothing else.
     let drag = LaunchpadPageDrag()
@@ -264,6 +264,25 @@ struct LaunchpadLiftView: Equatable {
         let next = LaunchpadPaging.clamped(target, count: pages.count)
         assign(\.page, next)
         if let selection, LaunchpadPaging.page(of: selection, starts: pageStarts) != next { assign(\.selection, nil) }
+    }
+
+    /// A new grid (the person's settings changed while the window is open): the same order cut again by the new capacity. Writes
+    /// nothing, the layout stores order and not pages. A cell's address is `page * capacity + slot`, which means nothing
+    /// after the capacity changed, so a lift or a press ends first (a drop already out lands through `update`). The page
+    /// stays on the choice, or on the tile the shown page began with. An open folder's card stays open and follows the grid.
+    func regrid(_ settings: LaunchpadGridSettings) {
+        let next = LaunchpadGeometry.make(for: geometry.size, topSafe: geometry.topSafe, settings: settings)
+        guard next != geometry else { return }
+        let anchor = pageStarts.indices.contains(page) ? pageStarts[page] : 0
+        cancelLift()
+        drag.offset = 0
+        withAnimation(HelmMotion.interface) {
+            geometry = next
+            icons.reconfigure(capacity: next.capacity, size: next.icon)
+            publishPages()
+        }
+        // With a card open the selection counts the card's apps, not the grid's.
+        assign(\.page, LaunchpadPaging.page(of: openFolder == nil ? selection ?? anchor : anchor, starts: pageStarts))
     }
 
     /// Return on the arrow keys' choice: an app opens, a folder opens its card.

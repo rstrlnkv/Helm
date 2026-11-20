@@ -21,6 +21,19 @@ enum LpStr {
     static func dockIconNamed(_ name: String) -> String { L(.dockIconNamed(name), remembered: false) }
     /// "Show in Finder" and the helper it is for, so the button names its object.
     static func showNamedInFinder(_ name: String) -> String { L(.showNamedInFinder(name), remembered: false) }
+    static var grid: String { L(.grid) }
+    static var gridAutomatic: String { L(.gridAutomatic) }
+    static var gridAutomaticNote: String { L(.gridAutomaticNote) }
+    static var gridRows: String { L(.gridRows) }
+    static var gridColumns: String { L(.gridColumns) }
+    static var gridIconSize: String { L(.gridIconSize) }
+    static var gridFitNote: String { L(.gridFitNote) }
+    /// "80 pt": the number is a string, so a language's own digits are not this key's business.
+    static func gridIconSizeValue(_ points: Int) -> String { L(.gridIconSizeValue("\(points)"), remembered: false) }
+    static var gridReset: String { L(.gridReset) }
+    /// The reset button's name for VoiceOver: what it resets, since the visible word does not say.
+    static var gridResetNote: String { L(.gridResetNote) }
+    static var gridResetNamed: String { L(.gridResetNamed) }
     static var noHiddenApps: String { L(.noHiddenApps) }
     /// "Page 2 of 5" for a page dot; the numbers are strings, so a language's own digits and grouping are not this key's business.
     static func pageNumber(_ page: Int, of count: Int) -> String { L(.pageNumber("\(page)", "\(count)"), remembered: false) }

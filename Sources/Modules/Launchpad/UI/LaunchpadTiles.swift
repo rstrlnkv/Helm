@@ -16,8 +16,14 @@ enum LaunchpadMetrics {
     static let hiddenIcon: CGFloat = 28
     /// The Dock helper's icon on the settings page: big enough to take hold of and drag.
     static let dockIcon: CGFloat = 40
-    /// A tile's height: the icon, the gap, two lines of label (`.subheadline` leads at 17 pt) and the padding above and below.
-    static let cellHeight: CGFloat = windowIcon + HelmSpace.s3 + 2 * 17 + 2 * HelmSpace.s3
+    /// What a tile holds besides its icon: the gap, two lines of label (`.subheadline` leads at 17 pt) and the padding above and below. Fixed by the fonts.
+    static let cellChrome: CGFloat = HelmSpace.s3 + 2 * 17 + 2 * HelmSpace.s3
+    /// A tile's height: the icon plus `cellChrome`.
+    static func cellHeight(icon: CGFloat) -> CGFloat { icon + cellChrome }
+    /// The smallest an icon shrinks to when the grid asked for does not fit.
+    static let iconFloor: CGFloat = 24
+    /// A tile's padding at each side, which the grid's fit counts too.
+    static let tileSidePadding: CGFloat = HelmSpace.s2
     /// The window's margin at each side, as a share of its width.
     static let sideMargin: CGFloat = 0.08
     static let searchTop: CGFloat = 28
@@ -91,7 +97,7 @@ struct LaunchpadTile<Mark: View>: View {
                     .frame(maxWidth: .infinity)
             }
             .padding(.vertical, HelmSpace.s3)
-            .padding(.horizontal, HelmSpace.s2)
+            .padding(.horizontal, LaunchpadMetrics.tileSidePadding)
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(TileStyle(hovering: hovering, selected: selected, pressed: pressed, glowSize: glowSize))

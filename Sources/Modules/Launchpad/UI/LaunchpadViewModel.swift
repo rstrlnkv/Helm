@@ -55,10 +55,13 @@ enum LaunchNotice: Equatable {
     var revealHelper: @MainActor (URL) -> Void = { _ in }
     /// The module's own settings store, for the page's shortcut row.
     let store: NamespacedStore
+    /// The grid the person chose; read from the store (`LaunchpadGridSettings`), written only by `setGrid`.
+    @Published private(set) var grid: LaunchpadGridSettings
 
     init(work: any LaunchpadWork, store: NamespacedStore) {
         self.work = work
         self.store = store
+        grid = LaunchpadGridSettings.read(from: store)
     }
 
     /// Closes the model: the host calls it before the engine's `deactivate()`. Whatever is still out lands nowhere.
@@ -72,6 +75,32 @@ enum LaunchNotice: Equatable {
         pendingReset = false
     }
 
+    // MARK: - The grid
+
+    /// Takes a new grid: clamped, refused when it is the one held. A `live` call (a drag in progress) only publishes it, so
+    /// the open window re-pages from it and nothing is written; any other call publishes it and then writes it by `commitGrid`.
+    func setGrid(_ new: LaunchpadGridSettings, live: Bool = false) {
+        let next = new.normalized()
+        guard !closed, next != grid else { return }
+        if live { grid = next } else { grid = next; commitGrid() }
+    }
+
+    /// Writes the keys that differ from what the store holds, and says so in one log line: a drag ends in one write.
+    func commitGrid() {
+        let stored = LaunchpadGridSettings.read(from: store)
+        guard !closed, stored != grid else { return }
+        grid.write(changedFrom: stored, to: store)
+        HelmLog.shared.info("launchpad", "grid \(grid.automatic ? "automatic" : "\(grid.columns)x\(grid.rows)"), icon \(Int(grid.iconSize))")
+    }
+
+    func resetGrid() { setGrid(.standard) }
+
+    /// Reads the store again, for a window about to open and the page appearing: a value edited behind Helm's back shows then.
+    func reloadGrid() {
+        let read = LaunchpadGridSettings.read(from: store)
+        if read != grid { grid = read }
+    }
+
     // MARK: - The window's door
 
     /// Opens the window, or brings the open one forward. Nothing after `stop()`.
@@ -79,6 +108,7 @@ enum LaunchNotice: Equatable {
         guard !closed else { return }
         if let window { window.bringForward(); return }
         guard let present else { return }
+        reloadGrid()
         let opened = present(self)
         window = opened
         opened.onClose = { [weak self, weak opened] in

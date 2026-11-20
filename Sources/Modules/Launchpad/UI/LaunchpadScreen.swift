@@ -5,7 +5,7 @@ import Module_Launchpad_Engine
 /// What the full-screen window draws: the apps in pages, a search field, page dots, a notice, and a folder's card over
 /// the page that holds it. Drawn white on the window's blur, in the dark appearance.
 ///
-/// **Nothing here measures.** The sizes are `state.geometry`, made once from the screen; the pages are placed by `.offset`,
+/// **Nothing here measures.** The sizes are `state.geometry`, made from the screen and the grid settings; the pages are placed by `.offset`,
 /// not scrolled; only the shown page and its two neighbours exist as views, and the grids are fixed cells, not lazy ones.
 /// The keys and the wheel do not come through the views: the panel hands them to `state` (`LaunchpadPanel`).
 struct LaunchpadScreen: View {
@@ -51,6 +51,7 @@ struct LaunchpadScreen: View {
         .accessibilityLabel(LpStr.moduleName)
         .accessibilityAction(.escape) { state.escape() }
         .onChange(of: vm.snapshot, initial: true) { _, new in state.update(snapshot: new) }
+        .onChange(of: vm.grid) { _, new in state.regrid(new) }
         .onChange(of: state.openFolder) { _, open in if open == nil { searchFocused = true } }
         .onChange(of: state.renaming) { _, on in
             if on {

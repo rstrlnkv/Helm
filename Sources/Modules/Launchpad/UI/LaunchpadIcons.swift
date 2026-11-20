@@ -7,7 +7,7 @@ import AppKit
 /// and an open folder draw, and goes with the state. Only a page that is live asks.
 final class LaunchpadIcons {
     private let cache = NSCache<NSString, NSImage>()
-    private let size: CGFloat
+    private var size: CGFloat
 
     init(capacity: Int, size: CGFloat) {
         self.size = size
@@ -20,5 +20,13 @@ final class LaunchpadIcons {
         icon.size = NSSize(width: size, height: size)
         cache.setObject(icon, forKey: path as NSString)
         return icon
+    }
+
+    /// A new grid: the cache's bound follows the page, and what was drawn at another size is dropped (an image keeps its point size).
+    func reconfigure(capacity: Int, size: CGFloat) {
+        cache.countLimit = 3 * capacity + capacity
+        guard size != self.size else { return }
+        self.size = size
+        cache.removeAllObjects()
     }
 }
