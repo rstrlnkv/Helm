@@ -71,6 +71,39 @@ private struct TileStyle: ButtonStyle {
     }
 }
 
+/// **The menu of an app, wherever it is drawn:** Hide, and "Move to category" with the app's own category as the undo on top
+/// (disabled while the app is not moved) and every category under it, the one the app is in now checked. "Others" is last.
+/// A VoiceOver custom action cannot be a submenu, and 29 of them would be noise: VoiceOver reaches Move through the
+/// context menu (VO-Shift-M), and Hide stays an action as well, on the grid's and the cards' tiles. A category block's large
+/// icons have neither for VoiceOver (the block tile has `hide: nil`, the menu is on the inner image): it reaches them through the card.
+struct LaunchpadAppMenu: View {
+    let app: CatalogApp
+    let moved: LaunchpadCategoryTarget?
+    let hide: () -> Void
+    let move: (LaunchpadCategoryTarget?) -> Void
+
+    /// Where the app is shown now: its move, else its own.
+    static func effective(moved: LaunchpadCategoryTarget?, raw: String?) -> LaunchpadCategoryTarget {
+        moved ?? LaunchpadCategoryTarget(raw: raw)
+    }
+
+    /// The undo row has something to undo only while the app is moved.
+    static func canReturn(moved: LaunchpadCategoryTarget?) -> Bool { moved != nil }
+
+    var body: some View {
+        let effective = Self.effective(moved: moved, raw: app.category)
+        Button(LpStr.hide, action: hide)
+        Menu(LpStr.moveToCategory) {
+            Button(LpStr.ownCategory) { move(nil) }.disabled(!Self.canReturn(moved: moved))
+            Divider()
+            ForEach(LaunchpadCategoryName.choices(), id: \.target) { choice in
+                Toggle(choice.title, isOn: Binding(get: { choice.target == effective },
+                                                   set: { _ in if choice.target != effective { move(choice.target) } }))
+            }
+        }
+    }
+}
+
 /// One tile: an icon over a name, pressed to open. Hiding is the context menu's and VoiceOver's action. White ink: it
 /// is drawn on the window's blur, in the dark appearance.
 struct LaunchpadTile<Mark: View>: View {
@@ -87,6 +120,8 @@ struct LaunchpadTile<Mark: View>: View {
     var pressed = false
     /// A folder's other size, offered beside hide: its menu item's title and what it does.
     var resize: (title: String, action: () -> Void)?
+    /// An app's menu (Hide and Move to category) in place of the bare Hide.
+    var menu: LaunchpadAppMenu?
     @ViewBuilder let mark: Mark
     @State private var hovering = false
 
@@ -114,7 +149,7 @@ struct LaunchpadTile<Mark: View>: View {
         .onHover { hovering = $0 }
         .accessibilityLabel(accessibleName)
         .contextMenu {
-            if let hide { Button(LpStr.hide, action: hide) }
+            if let menu { menu } else if let hide { Button(LpStr.hide, action: hide) }
             if let resize { Button(resize.title, action: resize.action) }
         }
         .accessibilityActions {
@@ -127,9 +162,11 @@ struct LaunchpadTile<Mark: View>: View {
 extension LaunchpadTile where Mark == Image {
     /// An application's tile; the icon is the caller's, from the window's own cache.
     init(app: CatalogApp, icon: NSImage, iconSize: CGFloat, selected: Bool, glowSize: CGSize, popped: Bool, pressed: Bool = false,
-         open: @escaping () -> Void, hide: @escaping () -> Void) {
+         moved: LaunchpadCategoryTarget?, open: @escaping () -> Void, hide: @escaping () -> Void,
+         move: @escaping (LaunchpadCategoryTarget?) -> Void) {
         self.init(name: app.name, accessibleName: app.name, iconSize: iconSize, selected: selected, open: open, hide: hide,
-                  glowSize: glowSize, popped: popped, pressed: pressed) {
+                  glowSize: glowSize, popped: popped, pressed: pressed,
+                  menu: LaunchpadAppMenu(app: app, moved: moved, hide: hide, move: move)) {
             Image(nsImage: icon).resizable()
         }
     }
@@ -232,6 +269,8 @@ struct LaunchpadCategoryMark: View {
     /// The large icon (by quadrant) a press is on, which takes the wash instead of the tile, and the one whose app is opening, which swells.
     var pressed: Int?
     var popped: Int?
+    /// The menu of the large icon at this index (the icons are the block's apps, in order): a right-click on the icon is the app's.
+    var menu: ((Int) -> LaunchpadAppMenu)?
 
     /// The side of a quadrant: the same pad and gap as the folder mark's, two to a side.
     static func quadrant(_ size: CGFloat) -> CGFloat { (size - 2 * LaunchpadFolderMark.pad(size) - LaunchpadFolderMark.gap(size)) / 2 }
@@ -260,6 +299,7 @@ struct LaunchpadCategoryMark: View {
                     .scaleEffect(popped == index && !HelmMotion.reduceMotion ? LaunchpadMetrics.popScale : 1)
                     .animation(HelmMotion.interface, value: popped)
                     .zIndex(popped == index ? 1 : 0)
+                    .contextMenu { if let menu { menu(index) } }
                     .offset(x: frame.minX, y: frame.minY)
             }
             if !cluster.isEmpty {

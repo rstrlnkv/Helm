@@ -60,6 +60,17 @@ enum LaunchpadCategoryName {
         }
     }
 
+    /// Where an app can be moved to, as a menu lists it: the 28 categories by title (`localizedStandardCompare`, then slug), then
+    /// "Others" last, because it is what is left, not a category. Not cached: the language can change while the app runs.
+    static func choices(language: AppLanguage = AppLanguage.current) -> [(target: LaunchpadCategoryTarget, title: String)] {
+        let sorted = LaunchpadCategory.allCases.map { (target: LaunchpadCategoryTarget.category($0), title: name(of: $0, language: language)) }
+            .sorted {
+                let order = $0.title.localizedStandardCompare($1.title)
+                return order == .orderedSame ? $0.target.slug < $1.target.slug : order == .orderedAscending
+            }
+        return sorted + [(target: .others, title: title(for: .others, language: language))]
+    }
+
     /// The target's category, else the dropped app's, else "Others".
     static func folderName(target: String?, dropped: String?) -> String {
         name(for: target) ?? name(for: dropped) ?? L(.categoryOther)

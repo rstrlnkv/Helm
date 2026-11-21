@@ -83,6 +83,8 @@ struct LaunchpadLiftView: Equatable {
     @Published private(set) var view: LaunchpadViewMode
     /// The tiles are category blocks (folder-shaped entries): lift, rename and resize are off, and the geometry is paired.
     @Published private(set) var categoriesShown = false
+    /// The apps moved to another category, as the snapshot has them. Published because the snapshot is not: the menus' check marks read it.
+    @Published private(set) var moved: [AppID: LaunchpadCategoryTarget] = [:]
     let icons: LaunchpadIcons
     /// The page's drag, apart from the state so a swipe republishes nothing else.
     let drag = LaunchpadPageDrag()
@@ -160,8 +162,11 @@ struct LaunchpadLiftView: Equatable {
     var onRename: ((UUID, String) -> Void)?
     /// Writes a folder's size (true: large).
     var onResize: ((UUID, Bool) -> Void)?
-    /// A resize the shown folder's size differs from is on its way: the next update moves the tiles with the reorder curve, and
-    /// spends the flag, answer or not. A resize that asks for the size the folder has is never armed (the engine refuses it).
+    /// Writes an app's category (nil: its own).
+    var onMove: ((AppID, LaunchpadCategoryTarget?) -> Void)?
+    /// A resize or a move that changes what is shown is on its way: the next update moves the tiles with the reorder curve, and
+    /// spends the flag, answer or not. A resize to the size the folder has, or a move to the category the app is in (or of an app
+    /// that is not moved back to its own), is never armed: the engine refuses it and no update comes to spend the flag.
     private var animateNextUpdate = false
     /// Said once, when the first snapshot has come in.
     var onLoaded: ((LaunchpadSnapshot, LaunchpadScreenState) -> Void)?
@@ -267,7 +272,8 @@ struct LaunchpadLiftView: Equatable {
         } else if wantCategories {
             // Each block is a folder-shaped entry with a fixed id, so the card, its paging and its reopening by id are the folder's own.
             let blocks = LaunchpadCategories.blocks(apps: snapshot.order.compactMap { snapshot.apps[$0] }, hidden: snapshot.layout.hidden,
-                                                    counts: snapshot.launchCounts, now: wallClock()) { LaunchpadCategoryName.title(for: $0) }
+                                                    counts: snapshot.launchCounts, now: wallClock(),
+                                                    overrides: snapshot.layout.categoryOverrides) { LaunchpadCategoryName.title(for: $0) }
             segments = [blocks.map { .folder(id: $0.id, name: LaunchpadCategoryName.title(for: $0.kind), apps: $0.apps, large: true) }]
         } else {
             segments = [[]]
@@ -284,6 +290,7 @@ struct LaunchpadLiftView: Equatable {
         segments.removeAll { $0.isEmpty }
         top = Array(segments.joined())
         assign(\.categoriesShown, wantCategories)
+        assign(\.moved, snapshot.layout.categoryOverrides)
         assign(\.geometry, wantCategories ? gridGeometry.pairedColumns : gridGeometry)
         if let open = openFolder {
             if let at = top.firstIndex(where: { $0.id == open.uuidString }), case .folder(_, let name, let apps, _) = top[at] {
@@ -426,6 +433,13 @@ struct LaunchpadLiftView: Equatable {
     func resize(_ id: UUID, large: Bool) {
         if case .folder(_, _, _, let now)? = top.first(where: { $0.id == id.uuidString }), now != large { animateNextUpdate = true }
         onResize?(id, large)
+    }
+
+    /// An app's menu: in the category view it changes the blocks, and they make room under the reorder curve; in the grid nothing visible moves.
+    func move(_ id: AppID, to target: LaunchpadCategoryTarget?) {
+        if categoriesShown, let app = snapshot?.apps[id],
+           target == nil ? moved[id] != nil : target != LaunchpadAppMenu.effective(moved: moved[id], raw: app.category) { animateNextUpdate = true }
+        onMove?(id, target)
     }
 
     /// Return on the arrow keys' choice: an app opens, a folder opens its card.

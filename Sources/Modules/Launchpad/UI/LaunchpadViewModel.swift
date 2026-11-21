@@ -305,6 +305,9 @@ enum LaunchNotice: Equatable {
 
     func rename(_ folder: UUID, to name: String) async { await edit { $0.apply(.rename(folder, to: name)) } }
     func resize(_ folder: UUID, large: Bool) async { await edit { $0.apply(.resize(folder, large: large)) } }
+    /// nil gives the app back to its own category.
+    func moveToCategory(_ id: AppID, to target: LaunchpadCategoryTarget?) async { await edit { $0.apply(.setCategory(id, target)) } }
+    func returnAllMoved() async { await edit { $0.apply(.returnAllToOwnCategory) } }
 
     /// Asking changes nothing on disk: only `confirmReset` after it does.
     func askToReset() { if !closed { pendingReset = true } }

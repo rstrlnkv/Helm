@@ -233,6 +233,7 @@ private final class LaunchpadWindowEnders {
         state.onPlace = { [weak model] edit in await model?.place(edit) }
         state.onRename = { [weak model] id, name in Task { @MainActor in await model?.rename(id, to: name) } }
         state.onResize = { [weak model] id, large in Task { @MainActor in await model?.resize(id, large: large) } }
+        state.onMove = { [weak model] id, target in Task { @MainActor in await model?.moveToCategory(id, to: target) } }
         state.onClose = { [weak self] in self?.close() }
         state.onViewChange = { [weak model] in model?.setViewMode($0) }
         let asked = model.grid
@@ -391,6 +392,7 @@ private final class LaunchpadWindowEnders {
         state.onRename = nil
         state.onResize = nil
         state.onHide = nil
+        state.onMove = nil
         state.onClose = nil
         state.onViewChange = nil
         state.onLoaded = nil

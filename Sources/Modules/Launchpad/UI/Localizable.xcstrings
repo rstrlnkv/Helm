@@ -3505,49 +3505,49 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ordner und Reihenfolge werden wieder alphabetisch. Ausgeblendete Apps bleiben ausgeblendet."
+            "value": "Ordner und Reihenfolge werden wieder alphabetisch. Ausgeblendete Apps bleiben ausgeblendet. Verschobene Apps bleiben in der gewählten Kategorie."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Folders and order go back to alphabetical. Hidden apps stay hidden."
+            "value": "Folders and order go back to alphabetical. Hidden apps stay hidden. Moved apps stay in their chosen categories."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las carpetas y el orden vuelven a ser alfabéticos. Las apps ocultas siguen ocultas."
+            "value": "Las carpetas y el orden vuelven a ser alfabéticos. Las apps ocultas siguen ocultas. Las apps trasladadas siguen en la categoría elegida."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les dossiers et l’ordre redeviennent alphabétiques. Les apps masquées restent masquées."
+            "value": "Les dossiers et l’ordre redeviennent alphabétiques. Les apps masquées restent masquées. Les apps déplacées restent dans la catégorie choisie."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "フォルダと順序はアルファベット順に戻ります。非表示のアプリは非表示のままです。"
+            "value": "フォルダと順序はアルファベット順に戻ります。非表示のアプリは非表示のままです。移動したアプリは選んだカテゴリに残ります。"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "As pastas e a ordem voltam a ser alfabéticas. Os apps ocultos continuam ocultos."
+            "value": "As pastas e a ordem voltam a ser alfabéticas. Os apps ocultos continuam ocultos. Os apps movidos continuam na categoria escolhida."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Папки и порядок вернутся к алфавитному. Скрытые приложения останутся скрытыми."
+            "value": "Папки и порядок вернутся к алфавитному. Скрытые приложения останутся скрытыми. Перемещенные приложения останутся в выбранной категории."
           }
         },
         "zh": {
           "stringUnit": {
             "state": "translated",
-            "value": "文件夹和顺序将恢复为字母顺序。已隐藏的应用仍保持隐藏。"
+            "value": "文件夹和顺序将恢复为字母顺序。已隐藏的应用仍保持隐藏。已移动的应用仍保留在所选类别中。"
           }
         }
       }
@@ -4184,6 +4184,271 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@，类别"
+          }
+        }
+      }
+    },
+    "moveToCategory": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Kategorie bewegen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to category"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trasladar a categoría"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déplacer vers la catégorie"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カテゴリに移動"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover para a categoria"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить в категорию"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移到类别"
+          }
+        }
+      }
+    },
+    "ownCategory": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigene Kategorie der App"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App’s own category"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Categoría propia de la app"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Catégorie d’origine de l’app"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリ本来のカテゴリ"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Categoria própria do app"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Собственная категория приложения"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用自己的类别"
+          }
+        }
+      }
+    },
+    "movedApps": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verschobene Apps: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved apps: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apps trasladadas: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apps déplacées : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動したアプリ：%@"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apps movidos: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемещенные приложения: %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移动的应用：%@"
+          }
+        }
+      }
+    },
+    "returnAllMoved": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle zurückbringen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Return all"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devolver todas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout remettre"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべて戻す"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devolver todos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть все"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部还原"
+          }
+        }
+      }
+    },
+    "returnAllMovedNamed": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle verschobenen Apps in ihre eigenen Kategorien zurückbringen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Return all moved apps to their own categories"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devolver todas las apps trasladadas a sus propias categorías"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remettre toutes les apps déplacées dans leur catégorie d’origine"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動したアプリをすべて元のカテゴリに戻す"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devolver todos os apps movidos às suas próprias categorias"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть все перемещенные приложения в их собственные категории"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将所有已移动的应用还原到各自的类别"
           }
         }
       }

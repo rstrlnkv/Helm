@@ -8,10 +8,13 @@ import Foundation
 /// A large folder is `"large": true` inside the folder entry, written only when set, so a small folder's file is as it was;
 /// anything else under that key reads as small and the rest of the folder reads normally; an older build ignores the key
 /// and drops it on its next save, as it does a page break. The key is read nowhere but in a folder.
+/// A moved app is `"moved": {"<bundle id>": "<category slug or others>"}`, written only when there is one; a value that is not
+/// a known slug skips that entry, anything but an object under the key reads as none, at most `LaunchpadLimits.maxApps` entries
+/// are read (by sorted id), and an older build ignores the key and drops it on its next save.
 extension LaunchpadLayout: Codable {
     static let version = 1
 
-    private enum Keys: String, CodingKey { case version, items, hidden }
+    private enum Keys: String, CodingKey { case version, items, hidden, moved }
     private enum ItemKeys: String, CodingKey { case app, folder, pageBreak }
     private enum FolderKeys: String, CodingKey { case id, name, apps, large }
 
@@ -36,7 +39,15 @@ extension LaunchpadLayout: Codable {
                 else { _ = try? list.decode(Skip.self) }
             }
         }
-        self.init(items: items, hidden: hidden)
+        var moved: [AppID: LaunchpadCategoryTarget] = [:]
+        if let map = try? c.nestedContainer(keyedBy: DynamicKey.self, forKey: .moved) {
+            for key in map.allKeys.sorted(by: { $0.stringValue < $1.stringValue }).prefix(LaunchpadLimits.maxApps) where !key.stringValue.isEmpty {
+                if let slug = try? map.decode(String.self, forKey: key), let target = LaunchpadCategoryTarget(slug: slug) {
+                    moved[LaunchpadLimits.bounded(key.stringValue)] = target
+                }
+            }
+        }
+        self.init(items: items, hidden: hidden, categoryOverrides: moved)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -44,6 +55,18 @@ extension LaunchpadLayout: Codable {
         try c.encode(Self.version, forKey: .version)
         try c.encode(items.map(Entry.init), forKey: .items)
         try c.encode(hidden.sorted(), forKey: .hidden)
+        if !categoryOverrides.isEmpty {
+            var map = c.nestedContainer(keyedBy: DynamicKey.self, forKey: .moved)
+            for (id, target) in categoryOverrides.sorted(by: { $0.key < $1.key }) { try map.encode(target.slug, forKey: DynamicKey(id)) }
+        }
+    }
+
+    private struct DynamicKey: CodingKey {
+        let stringValue: String
+        var intValue: Int? { nil }
+        init(_ string: String) { stringValue = string }
+        init?(stringValue: String) { self.stringValue = stringValue }
+        init?(intValue: Int) { nil }
     }
 
     /// Consumes one element of any shape so a bad entry does not stop the list.

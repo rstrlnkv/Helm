@@ -115,11 +115,13 @@ struct LaunchpadScreen: View {
                 LaunchpadTile(app: app, icon: state.icons.icon(for: app.path), iconSize: g.icon, selected: selected,
                               glowSize: size, popped: state.launching == app.id,
                               pressed: state.pressedID == app.id || state.lift?.onto == app.id,
-                              open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) })
+                              moved: state.moved[app.id], open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) },
+                              move: { state.move(app.id, to: $0) })
             case .folder(let id, let name, let apps, let large):
                 if state.categoriesShown {
                     // A category block: three large icons that launch and a cluster of four small ones, or four large ones when it has no more
-                    // (`LaunchpadHit.categoryIcon`). Its menu has no Hide and no size: it is no folder of the person's.
+                    // (`LaunchpadHit.categoryIcon`). Its menu has no Hide and no size: it is no folder of the person's. Each large icon has the
+                    // app's own menu (Hide and Move to category), by right-click.
                     let large = apps.prefix(apps.count > 4 ? 3 : 4)
                     let mine = state.pressedID == entry.id
                     LaunchpadTile(name: name, accessibleName: LpStr.category(name), iconSize: g.largeMark, selected: selected,
@@ -129,7 +131,12 @@ struct LaunchpadScreen: View {
                                               cluster: apps.dropFirst(3).prefix(apps.count > 4 ? 4 : 0).map { state.icons.icon(for: $0.path) },
                                               size: g.largeMark,
                                               pressed: mine ? large.firstIndex { $0.id == state.pressedIcon } : nil,
-                                              popped: state.popped(block: entry.id, among: large))
+                                              popped: state.popped(block: entry.id, among: large),
+                                              menu: { at in
+                                                  let app = large[at]
+                                                  return LaunchpadAppMenu(app: app, moved: state.moved[app.id], hide: { state.onHide?(app.id) },
+                                                                          move: { state.move(app.id, to: $0) })
+                                              })
                     }
                 } else {
                     // A large folder shows the first eight apps and, past nine, four more in the ninth cell, or the first nine; the mark's icons are plain images, and a click on one is the state's (the panel takes the press).
@@ -288,7 +295,8 @@ struct LaunchpadScreen: View {
             LaunchpadTile(app: app, icon: state.icons.icon(for: app.path), iconSize: g.icon,
                           selected: state.selection == index, glowSize: glowSize(g),
                           popped: state.launching == app.id, pressed: state.pressedID == app.id,
-                          open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) })
+                          moved: state.moved[app.id], open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) },
+                          move: { state.move(app.id, to: $0) })
         } else {
             Color.clear
         }

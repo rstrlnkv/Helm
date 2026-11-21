@@ -57,6 +57,12 @@ struct LaunchpadSettingsPage: View {
                     Button(LpStr.resetLaunchCountsNamed) { Task { await lvm.resetLaunchCounts() } }
                         .disabled(lvm.snapshot?.launchCounts.isEmpty ?? true)
                 }
+                let moved = lvm.snapshot?.layout.categoryOverrides.count ?? 0
+                HelmSettingRow(LpStr.movedApps(moved)) {
+                    Button(LpStr.returnAllMoved) { Task { await lvm.returnAllMoved() } }
+                        .disabled(moved == 0)
+                        .accessibilityLabel(LpStr.returnAllMovedNamed)
+                }
             }
             hiddenSection
             Section {

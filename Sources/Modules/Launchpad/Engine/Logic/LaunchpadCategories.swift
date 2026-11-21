@@ -31,6 +31,38 @@ public enum LaunchpadCategory: String, CaseIterable, Sendable {
     }
 }
 
+/// Where a moved app is shown in the category view: one of the 28 categories, or Others. Not the block's `Kind`, which also has
+/// `.recent`: that is never a place an app can be sent to. The slug is what the layout file holds, and no category is spelled "others".
+public enum LaunchpadCategoryTarget: Hashable, Sendable {
+    case category(LaunchpadCategory), others
+
+    /// The app's own: its declared category, or Others when it declares none we know.
+    public init(raw: String?) {
+        self = LaunchpadCategory(raw: raw).map(Self.category) ?? .others
+    }
+
+    /// An exact slug; nil for any other text.
+    init?(slug: String) {
+        if slug == "others" { self = .others }
+        else if let category = LaunchpadCategory(rawValue: slug) { self = .category(category) }
+        else { return nil }
+    }
+
+    public var slug: String {
+        switch self {
+        case .category(let category): category.rawValue
+        case .others: "others"
+        }
+    }
+
+    public var kind: LaunchpadCategoryBlock.Kind {
+        switch self {
+        case .category(let category): .category(category)
+        case .others: .others
+        }
+    }
+}
+
 /// One block of the category view: a kind, its apps already in order, and the launches of them all.
 public struct LaunchpadCategoryBlock: Equatable, Sendable {
     public enum Kind: Hashable, Sendable {
@@ -61,11 +93,13 @@ public struct LaunchpadCategoryBlock: Equatable, Sendable {
 /// - Category blocks go by the launches of their apps, most first, ties by name (`localizedStandardCompare`), then kind. Others is
 ///   always last: it is what is left, not a category. An empty block is not made.
 /// - Inside a category: own count, most first, ties by catalog position.
+/// - An app in `overrides` is in that block instead of its own, and nowhere else but "Recently Added" (by its date); its launches go with it.
 public enum LaunchpadCategories {
     public static let recentDays = 30
 
     /// `apps` is the catalog in presentation order; `name` is a block's title in the person's language, for the tie.
     public static func blocks(apps: [CatalogApp], hidden: Set<AppID>, counts: [AppID: Int], now: Date,
+                              overrides: [AppID: LaunchpadCategoryTarget] = [:],
                               name: (LaunchpadCategoryBlock.Kind) -> String) -> [LaunchpadCategoryBlock] {
         let visible = apps.enumerated().filter { !hidden.contains($0.element.id) }
         func launches(_ id: AppID) -> Int { counts[id] ?? 0 }
@@ -79,7 +113,7 @@ public enum LaunchpadCategories {
 
         var grouped: [LaunchpadCategoryBlock.Kind: [(offset: Int, element: CatalogApp)]] = [:]
         for entry in visible {
-            let kind = LaunchpadCategory(raw: entry.element.category).map(LaunchpadCategoryBlock.Kind.category) ?? .others
+            let kind = (overrides[entry.element.id] ?? LaunchpadCategoryTarget(raw: entry.element.category)).kind
             grouped[kind, default: []].append(entry)
         }
         let others = grouped.removeValue(forKey: .others)

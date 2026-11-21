@@ -40,6 +40,11 @@ enum LpStr {
     static var gridResetNote: String { L(.gridResetNote) }
     /// The reset button's name for VoiceOver: what it resets, since the visible word does not say.
     static var gridResetNamed: String { L(.gridResetNamed) }
+    static var moveToCategory: String { L(.moveToCategory) }
+    static var ownCategory: String { L(.ownCategory) }
+    static func movedApps(_ count: Int) -> String { L(.movedApps("\(count)"), remembered: false) }
+    static var returnAllMoved: String { L(.returnAllMoved) }
+    static var returnAllMovedNamed: String { L(.returnAllMovedNamed) }
     static var pinchTitle: String { L(.pinchTitle) }
     static var pinchNote: String { L(.pinchNote) }
     static var pinchSystemTitle: String { L(.pinchSystemTitle) }

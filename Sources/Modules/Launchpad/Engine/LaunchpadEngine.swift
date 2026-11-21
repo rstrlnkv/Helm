@@ -297,7 +297,7 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
         let stored = store.load()
         let base = storedLayout(of: stored, reading).reconciled(catalog: reading.apps.map(\.id), complete: reading.complete)
         // Reconciled again so an edit that empties the arrangement (a reset) returns the apps in catalog order, as a read would.
-        var applied = base.applying(edit)
+        var applied = Self.resolved(edit, in: reading).flatMap(base.applying)
         if edit == .resetArrangement { applied?.items = defaultArrangement(reading).items }
         guard let edited = applied?.reconciled(catalog: reading.apps.map(\.id), complete: reading.complete) else {
             HelmLog.shared.info(Self.moduleID, "an arrangement edit was refused")
@@ -305,6 +305,14 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
         }
         let saved = (stored != .unreadable || store.moveUnreadableAside()) && store.save(edited)
         return snapshot(reading, stored: saved ? .loaded(edited) : stored, layout: edited, saved: saved)
+    }
+
+    /// A move to the category the app already has is the same as taking its move away, so it stores nothing; a move of an app
+    /// the read does not find is refused (nil). The layout alone cannot tell: it holds no categories.
+    private static func resolved(_ edit: LaunchpadEdit, in reading: CatalogReading) -> LaunchpadEdit? {
+        guard case .setCategory(let id, let target) = edit else { return edit }
+        guard let app = reading.apps.first(where: { $0.id == id }) else { return nil }
+        return target == LaunchpadCategoryTarget(raw: app.category) ? .setCategory(id, nil) : edit
     }
 
     public func hide(_ id: AppID) -> LaunchpadSnapshot? { apply(.hide(id)) }

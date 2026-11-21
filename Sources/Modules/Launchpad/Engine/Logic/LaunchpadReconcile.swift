@@ -11,6 +11,7 @@ extension LaunchpadLayout {
         if complete {
             let known = Set(catalog)
             out.hidden = hidden.filter(known.contains)
+            out.categoryOverrides = categoryOverrides.filter { known.contains($0.key) }
             out.items = items.compactMap {
                 switch $0 {
                 case .app(let id): return known.contains(id) ? $0 : nil

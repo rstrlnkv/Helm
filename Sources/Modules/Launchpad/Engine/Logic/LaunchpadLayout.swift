@@ -3,7 +3,7 @@ import HelmRuntime
 
 public typealias AppID = String
 
-/// **What the person arranged: top-level items, folders, and hidden apps — by bundle id only.**
+/// **What the person arranged: top-level items, folders, hidden apps, and category moves — by bundle id only.**
 ///
 /// No path is stored: a path belongs to the latest catalog read, so a planted layout
 /// file cannot make Helm launch an arbitrary one, and an app that moved keeps its place.
@@ -26,6 +26,8 @@ public struct LaunchpadLayout: Equatable, Sendable {
 
     public internal(set) var items: [Item] = []
     public internal(set) var hidden: Set<AppID> = []
+    /// Apps shown in the category view under another category than their own. Not an arrangement: Reset arrangement keeps it, as it keeps `hidden`.
+    public internal(set) var categoryOverrides: [AppID: LaunchpadCategoryTarget] = [:]
 
     static let empty = LaunchpadLayout()
 }
@@ -53,6 +55,10 @@ public enum LaunchpadEdit: Equatable, Sendable {
     case resize(UUID, large: Bool)
     case hide(AppID)
     case unhide(AppID)
+    /// In the category view only; nil gives the app back to its own category. Refused when it changes nothing, so a stale menu writes nothing.
+    case setCategory(AppID, LaunchpadCategoryTarget?)
+    /// Every moved app goes back to its own category. Refused when none is moved.
+    case returnAllToOwnCategory
     /// Order and folders go; hidden stays. The engine reconciles the result, which puts every shown app back in catalog order.
     case resetArrangement
 }
@@ -186,6 +192,12 @@ extension LaunchpadLayout {
         case .unhide(let app):
             guard out.hidden.remove(app) != nil else { return nil }
             out.items.append(.app(app))
+        case .setCategory(let app, let target):
+            out.categoryOverrides[app] = target
+            guard out.normalized() != self.normalized() else { return nil }
+        case .returnAllToOwnCategory:
+            guard !out.categoryOverrides.isEmpty else { return nil }
+            out.categoryOverrides = [:]
         case .resetArrangement:
             out.items = []
         }
@@ -199,6 +211,7 @@ extension LaunchpadLayout {
         return trimmed.isEmpty ? nil : trimmed
     }
 
+    /// `categoryOverrides` is kept, without an empty id and at most `LaunchpadLimits.maxCountedApps` of them (by id).
     /// Empty folders go, a folder of one dissolves into its app, each id appears once
     /// (first wins), hidden wins over placed, a folder id met twice gets a fresh one, and a page break
     /// stands only between two items (no first, no last, no two in a row: no empty page), at most `LaunchpadLimits.maxPages - 1` of them.
@@ -220,7 +233,8 @@ extension LaunchpadLayout {
             }
         }
         if items.last == .pageBreak { items.removeLast() }
-        return LaunchpadLayout(items: items, hidden: hidden)
+        let moved = categoryOverrides.filter { !$0.key.isEmpty }.sorted { $0.key < $1.key }.prefix(LaunchpadLimits.maxCountedApps)
+        return LaunchpadLayout(items: items, hidden: hidden, categoryOverrides: Dictionary(uniqueKeysWithValues: moved.map { ($0.key, $0.value) }))
     }
 
     // MARK: - Lookups
