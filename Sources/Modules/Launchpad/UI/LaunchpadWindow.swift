@@ -198,7 +198,7 @@ private final class LaunchpadWindowEnders {
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         let frame = screen?.frame ?? CGRect(origin: .zero, size: LaunchpadGeometry.fallback)
         let geometry = LaunchpadGeometry.make(for: frame.size, topSafe: screen?.safeAreaInsets.top ?? 0, settings: model.grid)
-        state = LaunchpadScreenState(geometry: geometry)
+        state = LaunchpadScreenState(geometry: geometry, view: model.viewMode)
 
         panel = LaunchpadPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.level = Self.level
@@ -234,10 +234,11 @@ private final class LaunchpadWindowEnders {
         state.onRename = { [weak model] id, name in Task { @MainActor in await model?.rename(id, to: name) } }
         state.onResize = { [weak model] id, large in Task { @MainActor in await model?.resize(id, large: large) } }
         state.onClose = { [weak self] in self?.close() }
+        state.onViewChange = { [weak model] in model?.setViewMode($0) }
         let asked = model.grid
         let grid = asked.automatic ? "automatic" : "\(asked.rows) rows asked, \(geometry.rows) fit"
         state.onLoaded = { snapshot, state in
-            HelmLog.shared.info("launchpad", "window: \(snapshot.apps.count) apps, \(state.geometry.columns)x\(state.geometry.rows) grid (\(grid)), icon \(Int(state.geometry.icon)), \(state.pageCount) pages")
+            HelmLog.shared.info("launchpad", "window: \(snapshot.apps.count) apps, \(state.geometry.columns)x\(state.geometry.rows) grid (\(grid)), icon \(Int(state.geometry.icon)), \(state.pageCount) pages, view \(state.view.rawValue)")
         }
         panel.onResignKey = { [weak self] in self?.close() }
     }
@@ -391,6 +392,7 @@ private final class LaunchpadWindowEnders {
         state.onResize = nil
         state.onHide = nil
         state.onClose = nil
+        state.onViewChange = nil
         state.onLoaded = nil
         panel.onResignKey = nil
         panel.state = nil

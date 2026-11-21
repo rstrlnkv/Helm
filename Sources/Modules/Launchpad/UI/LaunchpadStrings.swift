@@ -73,4 +73,13 @@ enum LpStr {
     static var folderNameField: String { L(.folderNameField) }
     /// "Show" and the app it is for, so a column of Show buttons is not a column of the same word.
     static func show(_ name: String) -> String { L(.showNamed(name), remembered: false) }
+
+    /// The window's switch: its second tab (the first is the kit's `HelmWord.apps`), and the block that gathers what is new.
+    static var categories: String { L(.categories) }
+    static var launchCountsTitle: String { L(.launchCountsTitle) }
+    static var launchCountsNote: String { L(.launchCountsNote) }
+    /// The reset button's title: what it resets, in full (the host's bare "Reset" is another key).
+    static var resetLaunchCountsNamed: String { L(.resetLaunchCountsNamed) }
+    /// A category block's name for VoiceOver: what it is called, then what it is.
+    static func category(_ name: String) -> String { L(.categoryNamed(name), remembered: false) }
 }

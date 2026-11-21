@@ -1,5 +1,6 @@
 import Foundation
 import HelmUI
+import Module_Launchpad_Engine
 
 /// The name a new folder gets: the category the Mac App Store files an app under, in the app's language.
 ///
@@ -11,44 +12,51 @@ import HelmUI
 /// `public.app-category.*` in `CoreTypes.bundle`'s `InfoPlist.loctable` (`Architecture/Launchpad.md` § Folder names). Every
 /// games subtype is Games.
 enum LaunchpadCategoryName {
-    private static let prefix = "public.app-category."
-
     /// The category's name, or nil when it is none of the known ones.
     static func name(for category: String?, language: AppLanguage = AppLanguage.current) -> String? {
-        guard let category, category.lowercased().hasPrefix(prefix) else { return nil }
-        let name = category.lowercased().dropFirst(prefix.count)
+        LaunchpadCategory(raw: category).map { name(of: $0, language: language) }
+    }
+
+    static func name(of category: LaunchpadCategory, language: AppLanguage = AppLanguage.current) -> String {
         func word(_ resource: LocalizedStringResource) -> String { L(resource, language: language) }
-        if name.hasSuffix("-games") { return word(.categoryGames) }
-        switch name {
-        case "books": return word(.categoryBooks)
-        case "bookmarks": return word(.categoryBookmarks)
-        case "business": return word(.categoryBusiness)
-        case "developer-tools": return word(.categoryDeveloperTools)
-        case "education": return word(.categoryEducation)
-        case "entertainment": return word(.categoryEntertainment)
-        case "finance": return word(.categoryFinance)
-        case "food-and-drink": return word(.categoryFoodAndDrink)
-        case "games": return word(.categoryGames)
-        case "graphics-design": return word(.categoryGraphicsDesign)
-        case "healthcare-fitness": return word(.categoryHealthFitness)
-        case "lifestyle": return word(.categoryLifestyle)
-        case "magazines-and-newspapers": return word(.categoryMagazinesAndNewspapers)
-        case "medical": return word(.categoryMedical)
-        case "music": return word(.categoryMusic)
-        case "navigation": return word(.categoryNavigation)
-        case "news": return word(.categoryNews)
-        case "photography": return word(.categoryPhotography)
-        case "photography-and-video": return word(.categoryPhotographyAndVideo)
-        case "productivity": return word(.categoryProductivity)
-        case "reference": return word(.categoryReference)
-        case "shopping": return word(.categoryShopping)
-        case "social-networking": return word(.categorySocialNetworking)
-        case "sports": return word(.categorySports)
-        case "travel": return word(.categoryTravel)
-        case "utilities": return HelmWord.utilities(language: language)
-        case "video": return HelmWord.video(language: language)
-        case "weather": return word(.categoryWeather)
-        default: return nil
+        return switch category {
+        case .books: word(.categoryBooks)
+        case .bookmarks: word(.categoryBookmarks)
+        case .business: word(.categoryBusiness)
+        case .developerTools: word(.categoryDeveloperTools)
+        case .education: word(.categoryEducation)
+        case .entertainment: word(.categoryEntertainment)
+        case .finance: word(.categoryFinance)
+        case .foodAndDrink: word(.categoryFoodAndDrink)
+        case .games: word(.categoryGames)
+        case .graphicsDesign: word(.categoryGraphicsDesign)
+        case .healthFitness: word(.categoryHealthFitness)
+        case .lifestyle: word(.categoryLifestyle)
+        case .magazinesAndNewspapers: word(.categoryMagazinesAndNewspapers)
+        case .medical: word(.categoryMedical)
+        case .music: word(.categoryMusic)
+        case .navigation: word(.categoryNavigation)
+        case .news: word(.categoryNews)
+        case .photography: word(.categoryPhotography)
+        case .photographyAndVideo: word(.categoryPhotographyAndVideo)
+        case .productivity: word(.categoryProductivity)
+        case .reference: word(.categoryReference)
+        case .shopping: word(.categoryShopping)
+        case .socialNetworking: word(.categorySocialNetworking)
+        case .sports: word(.categorySports)
+        case .travel: word(.categoryTravel)
+        case .utilities: HelmWord.utilities(language: language)
+        case .video: HelmWord.video(language: language)
+        case .weather: word(.categoryWeather)
+        }
+    }
+
+    /// A block's title in the category view: its category's word, "Recently Added", or "Others".
+    static func title(for kind: LaunchpadCategoryBlock.Kind, language: AppLanguage = AppLanguage.current) -> String {
+        switch kind {
+        case .recent: L(.recentlyAdded, language: language)
+        case .others: L(.categoryOther, language: language)
+        case .category(let category): name(of: category, language: language)
         }
     }
 

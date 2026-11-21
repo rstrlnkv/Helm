@@ -37,7 +37,7 @@ struct FileSystemAppCatalog: AppCatalogPort {
         var noID = 0
         var capped = false
         for (index, root) in roots.enumerated() {
-            walk(root, depth: 0, rootIndex: index, into: &found, complete: &complete, noID: &noID, capped: &capped)
+            walk(root, depth: 0, rootIndex: index, dated: Self.recordsDate(forRoot: root), into: &found, complete: &complete, noID: &noID, capped: &capped)
         }
         var best: [String: Found] = [:]
         var losers = 0
@@ -54,24 +54,55 @@ struct FileSystemAppCatalog: AppCatalogPort {
             return order == .orderedSame ? $0.id < $1.id : order == .orderedAscending
         }
         HelmLog.shared.info(LaunchpadEngine.moduleID,
-                            "read \(apps.count) apps, \(losers) duplicate ids, \(noID) without an id"
+                            "read \(apps.count) apps, \(losers) duplicate ids, \(noID) without an id, \(apps.filter { $0.added == nil }.count) without a date added"
                             + (complete ? "" : ", some folders would not open") + (capped ? ", stopped at the ceiling" : ""))
         return CatalogReading(apps: apps, complete: complete)
     }
 
-    private func walk(_ dir: URL, depth: Int, rootIndex: Int, into found: inout [Found],
+    /// No date for the system's own folder: a macOS update adds every app there again, and they would all be "recent" for 30 days.
+    static func recordsDate(forRoot root: URL) -> Bool { root.standardizedFileURL.path != "/System/Applications" }
+
+    /// When Finder says the bundle was added to its folder (`ATTR_CMN_ADDEDTIME`, the attribute behind `addedToDirectoryDateKey`).
+    /// nil for a symlinked bundle (Safari in `/Applications` is one: the link's date is not the app's) and for a date that would not
+    /// read. One `getattrlist` per app: `resourceValues` measured 350 bytes an app more than the walk without it
+    /// (`TheDateAddedIsReadOncePerAppAndCostsTheWalkNothingTests`), and this makes no object.
+    /// The length check below is a defensive guard no test reaches: the kernel always fills the `timespec` for a directory, and
+    /// `getattrlist` has no fake.
+    private static func dateAdded(_ url: URL) -> Date? {
+        var info = stat()
+        guard lstat(url.path, &info) == 0, (info.st_mode & S_IFMT) == S_IFDIR else { return nil }
+        var request = attrlist()
+        request.bitmapcount = u_short(ATTR_BIT_MAP_COUNT)
+        request.commonattr = attrgroup_t(ATTR_CMN_ADDEDTIME)
+        // The answer is a length, then the time as a packed `timespec`.
+        var answer = [UInt8](repeating: 0, count: 4 + MemoryLayout<timespec>.size)
+        guard getattrlist(url.path, &request, &answer, answer.count, UInt32(FSOPT_NOFOLLOW)) == 0 else { return nil }
+        // The leading length says how much of the buffer the system filled: no date unless the whole `timespec` is there.
+        let length = answer.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
+        guard length >= 4 + UInt32(MemoryLayout<timespec>.size) else { return nil }
+        let time = answer.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 4, as: timespec.self) }
+        guard time.tv_sec > 0 else { return nil }
+        return Date(timeIntervalSince1970: TimeInterval(time.tv_sec) + TimeInterval(time.tv_nsec) / 1_000_000_000)
+    }
+
+    private func walk(_ dir: URL, depth: Int, rootIndex: Int, dated: Bool, into found: inout [Found],
                       complete: inout Bool, noID: inout Int, capped: inout Bool) {
         guard case .listed(let entries) = DirectoryListing.contents(of: dir) else { complete = false; return }
         for entry in entries {
             if found.count >= LaunchpadLimits.maxApps { capped = true; complete = false; return }
             let name = entry.lastPathComponent
             if entry.pathExtension == "app" {
-                autoreleasepool {
-                    if let app = Self.app(at: entry) { found.append(Found(root: rootIndex, app: app)) } else { noID += 1 }
+                var read: CatalogApp?
+                autoreleasepool { read = Self.app(at: entry) }
+                if var app = read {
+                    if dated { app.added = Self.dateAdded(entry) }
+                    found.append(Found(root: rootIndex, app: app))
+                } else {
+                    noID += 1
                 }
             } else if depth < LaunchpadLimits.maxDepth, !name.hasPrefix("."), entry.pathExtension.isEmpty,
                       Self.isPlainFolder(entry) {
-                walk(entry, depth: depth + 1, rootIndex: rootIndex, into: &found,
+                walk(entry, depth: depth + 1, rootIndex: rootIndex, dated: dated, into: &found,
                      complete: &complete, noID: &noID, capped: &capped)
             }
         }

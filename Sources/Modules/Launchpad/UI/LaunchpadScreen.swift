@@ -27,6 +27,7 @@ struct LaunchpadScreen: View {
                 pages(g)
                 states
                 searchField(g)
+                if g.switchFits { viewSwitch(g) }
                 bottom(g)
                 if state.openFolder != nil {
                     folderScrim(g)
@@ -116,16 +117,32 @@ struct LaunchpadScreen: View {
                               pressed: state.pressedID == app.id || state.lift?.onto == app.id,
                               open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) })
             case .folder(let id, let name, let apps, let large):
-                // A large folder shows the first eight apps and, past nine, four more in the ninth cell, or the first nine; the mark's icons are plain images, and a click on one is the state's (the panel takes the press).
-                let shown = large && apps.count > 9 ? 8 : 9
-                LaunchpadTile(name: name, accessibleName: LpStr.folder(name), iconSize: large ? g.largeMark : g.icon, selected: selected,
-                              open: { state.open(folder: id) }, hide: nil, glowSize: size,
-                              pressed: (state.pressedID == entry.id && state.pressedIcon == nil) || state.lift?.onto == entry.id,
-                              resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { state.resize(id, large: !large) })) {
-                    LaunchpadFolderMark(icons: apps.prefix(shown).map { state.icons.icon(for: $0.path) }, size: large ? g.largeMark : g.icon,
-                                        overflow: large ? apps.dropFirst(8).prefix(apps.count > 9 ? 4 : 0).map { state.icons.icon(for: $0.path) } : [],
-                                        pressed: large ? apps.prefix(shown).firstIndex { $0.id == state.pressedIcon } : nil,
-                                        popped: large ? apps.prefix(shown).firstIndex { $0.id == state.launching } : nil)
+                if state.categoriesShown {
+                    // A category block: three large icons that launch and a cluster of four small ones, or four large ones when it has no more
+                    // (`LaunchpadHit.categoryIcon`). Its menu has no Hide and no size: it is no folder of the person's.
+                    let large = apps.prefix(apps.count > 4 ? 3 : 4)
+                    let mine = state.pressedID == entry.id
+                    LaunchpadTile(name: name, accessibleName: LpStr.category(name), iconSize: g.largeMark, selected: selected,
+                                  open: { state.open(folder: id) }, hide: nil, glowSize: size,
+                                  pressed: mine && state.pressedIcon == nil) {
+                        LaunchpadCategoryMark(large: large.map { state.icons.icon(for: $0.path) },
+                                              cluster: apps.dropFirst(3).prefix(apps.count > 4 ? 4 : 0).map { state.icons.icon(for: $0.path) },
+                                              size: g.largeMark,
+                                              pressed: mine ? large.firstIndex { $0.id == state.pressedIcon } : nil,
+                                              popped: state.popped(block: entry.id, among: large))
+                    }
+                } else {
+                    // A large folder shows the first eight apps and, past nine, four more in the ninth cell, or the first nine; the mark's icons are plain images, and a click on one is the state's (the panel takes the press).
+                    let shown = large && apps.count > 9 ? 8 : 9
+                    LaunchpadTile(name: name, accessibleName: LpStr.folder(name), iconSize: large ? g.largeMark : g.icon, selected: selected,
+                                  open: { state.open(folder: id) }, hide: nil, glowSize: size,
+                                  pressed: (state.pressedID == entry.id && state.pressedIcon == nil) || state.lift?.onto == entry.id,
+                                  resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { state.resize(id, large: !large) })) {
+                        LaunchpadFolderMark(icons: apps.prefix(shown).map { state.icons.icon(for: $0.path) }, size: large ? g.largeMark : g.icon,
+                                            overflow: large ? apps.dropFirst(8).prefix(apps.count > 9 ? 4 : 0).map { state.icons.icon(for: $0.path) } : [],
+                                            pressed: large ? apps.prefix(shown).firstIndex { $0.id == state.pressedIcon } : nil,
+                                            popped: large ? apps.prefix(shown).firstIndex { $0.id == state.launching } : nil)
+                    }
                 }
             case .gap:
                 Color.clear
@@ -164,6 +181,19 @@ struct LaunchpadScreen: View {
         .allowsHitTesting(state.openFolder == nil)
     }
 
+    /// "Apps" and "Categories" at the left of the search field, on its row, from the grid's side margin. The kit's segmented tabs; dimmed
+    /// and off while a search is typed, since a search shows its matches flat.
+    private func viewSwitch(_ g: LaunchpadGeometry) -> some View {
+        let tabs = [HelmToolbarTab(id: LaunchpadViewMode.apps.rawValue, title: HelmWord.apps, symbol: "square.grid.2x2"),
+                    HelmToolbarTab(id: LaunchpadViewMode.categories.rawValue, title: LpStr.categories, symbol: "rectangle.3.group")]
+        return HelmHeaderTabs(tabs: tabs, selection: Binding(get: { state.view.rawValue },
+                                                            set: { state.setView(LaunchpadViewMode(rawValue: $0) ?? .apps) }),
+                              enabled: state.search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .padding(.leading, LaunchpadMetrics.sideMargin * g.size.width)
+            .padding(.top, g.searchTop - (LaunchpadMetrics.switchHeight - LaunchpadMetrics.searchHeight) / 2)
+            .allowsHitTesting(state.openFolder == nil)
+    }
+
     private func bottom(_ g: LaunchpadGeometry) -> some View {
         VStack(spacing: HelmSpace.s5) {
             if let notice = vm.notice { HelmBanner(LpStr.text(of: notice), fillsWidth: false) }
@@ -199,14 +229,21 @@ struct LaunchpadScreen: View {
         let from = state.folderOrigin
         let delta = CGSize(width: from.x - g.size.width / 2, height: from.y - g.size.height / 2)
         return VStack(spacing: LaunchpadGeometry.cardGap) {
-            TextField(LpStr.folderNameField, text: $state.nameDraft, selection: $nameSelection)
-                .textFieldStyle(.plain)
-                .multilineTextAlignment(.center)
-                .font(HelmText.sectionHeading).foregroundStyle(Color.white)
-                .lineLimit(1)
-                .focused($nameFocused)
-                .accessibilityLabel(LpStr.folderNameField)
-                .frame(height: LaunchpadGeometry.cardTitle)
+            Group {
+                if state.categoriesShown {
+                    // A category's name is the block's, not a name a person gives.
+                    Text(state.folderName).multilineTextAlignment(.center).lineLimit(1)
+                } else {
+                    TextField(LpStr.folderNameField, text: $state.nameDraft, selection: $nameSelection)
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .focused($nameFocused)
+                        .accessibilityLabel(LpStr.folderNameField)
+                }
+            }
+            .font(HelmText.sectionHeading).foregroundStyle(Color.white)
+            .frame(height: LaunchpadGeometry.cardTitle)
             cardPages(grid, entries, g)
             if grid.paged {
                 pageDots(count: grid.pageCount, current: grid.page)

@@ -12,6 +12,8 @@ public struct LaunchpadSnapshot: Equatable, Sendable {
     let layoutRead: LayoutRead
     /// False when this snapshot follows an edit whose save did not land.
     public internal(set) var saved = true
+    /// Launches made from Launchpad per app, read afresh from the counts file; empty when there is none or it would not read.
+    public internal(set) var launchCounts: [AppID: Int] = [:]
 
     /// Ids matching `query` in layout order, folders looked into, hidden excluded;
     /// nil for a blank query (the caller shows the layout).

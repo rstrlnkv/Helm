@@ -52,6 +52,12 @@ struct LaunchpadSettingsPage: View {
             }
             pinchSection
             gridSection
+            Section {
+                HelmSettingRow(LpStr.launchCountsTitle, note: LpStr.launchCountsNote) {
+                    Button(LpStr.resetLaunchCountsNamed) { Task { await lvm.resetLaunchCounts() } }
+                        .disabled(lvm.snapshot?.launchCounts.isEmpty ?? true)
+                }
+            }
             hiddenSection
             Section {
                 HelmSettingRow(LpStr.arrangement, note: LpStr.resetNote) {

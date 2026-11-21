@@ -19,7 +19,7 @@ enum LayoutRead: Equatable, Sendable {
 /// `apply` returns (`saved` false); the next read or apply reloads from the file.
 /// Called only under the engine's lock.
 final class LayoutStore: @unchecked Sendable {
-    private let directory: URL
+    let directory: URL
     /// Size and modification time of the bad file last warned about: one warning per distinct bad file.
     private var warnedAbout: String?
 

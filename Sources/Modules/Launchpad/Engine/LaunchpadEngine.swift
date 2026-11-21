@@ -17,6 +17,8 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     private let catalog: AppCatalogPort
     private let launcher: AppLauncherPort
     private let store: LayoutStore
+    /// Launches counted per app, beside the layout file; its lock is taken after `lock` and never before it.
+    private let counts: LaunchCountStore
     private let touches: TrackpadTouchPort
     private let systemPinch: SystemPinchPort
     /// Whether the person switched the pinch on: asked at each activation, so a value edited while the module was off counts.
@@ -78,6 +80,7 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
         self.catalog = catalog
         self.launcher = launcher
         self.store = store
+        counts = LaunchCountStore(directory: store.directory)
         self.utilitiesFolderName = utilitiesFolderName
         self.touches = touches
         self.systemPinch = systemPinch
@@ -335,8 +338,20 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
                 HelmLog.shared.warn(Self.moduleID, "a launch was refused by the system")
                 return .failed
             }
+            // Counted only here, after the system opened it: a refusal counts nothing. Blocking disk, so off the pool.
+            let counts = self.counts
+            _ = await offTheCooperativePool { counts.record(id) }
             return .launched
         }
+    }
+
+    /// The counts emptied (nothing is written when there are none); nil when the write did not land, so the caller reads again.
+    public func resetLaunchCounts() -> LaunchpadSnapshot? {
+        lock.lock(); defer { lock.unlock() }
+        let reading = catalog.read()
+        lastCatalog = reading
+        guard counts.reset() else { return nil }
+        return snapshot(reading, stored: store.load(), layout: nil, saved: true)
     }
 
     /// What is stored; the default arrangement when there is no file (an unreadable one shows the catalog's order, as its warning says).
@@ -358,6 +373,7 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
         var snap = LaunchpadSnapshot(apps: Dictionary(reading.apps.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }),
                                      order: order, layout: reconciled, catalogComplete: reading.complete, layoutRead: stored)
         snap.saved = saved
+        snap.launchCounts = counts.load().counts
         return snap
     }
 }

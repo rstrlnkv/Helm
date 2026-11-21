@@ -75,7 +75,14 @@ struct LaunchpadLiftView: Equatable {
 @MainActor final class LaunchpadScreenState: ObservableObject {
     enum Mode: Equatable { case busy, noApps, noMatch, grid }
 
+    /// What everything reads: the grid's own geometry, or in the category view the same with an even number of columns (`pairedColumns`).
     @Published private(set) var geometry: LaunchpadGeometry
+    /// The grid the settings and the screen make, whatever view is shown: `regrid` compares with it and the icon cache is sized by it.
+    private var gridGeometry: LaunchpadGeometry
+    /// The view the person chose; the category view is drawn only while `categoriesShown`, which a search turns off.
+    @Published private(set) var view: LaunchpadViewMode
+    /// The tiles are category blocks (folder-shaped entries): lift, rename and resize are off, and the geometry is paired.
+    @Published private(set) var categoriesShown = false
     let icons: LaunchpadIcons
     /// The page's drag, apart from the state so a swipe republishes nothing else.
     let drag = LaunchpadPageDrag()
@@ -127,6 +134,8 @@ struct LaunchpadLiftView: Equatable {
     let reveal = LaunchpadReveal()
     /// The app whose launch is under way, whose icon swells until the window goes or the launch fails.
     @Published private(set) var launching: AppID?
+    /// The block whose icon that launch came from: an app in two blocks (Recently Added and its category) swells in this one only.
+    @Published private(set) var launchingBlock: String?
     /// The tile carried by the pointer, and what a release would drop it onto; nil when nothing is carried.
     @Published private(set) var lift: LaunchpadLiftView?
     /// The tile the press is on, until it is let go or lifted: its wash, since the panel takes the press before the button.
@@ -141,6 +150,10 @@ struct LaunchpadLiftView: Equatable {
     var onLaunch: ((AppID, String) -> Void)?
     var onHide: ((AppID) -> Void)?
     var onClose: (() -> Void)?
+    /// The person used the window's switch; the model keeps the choice.
+    var onViewChange: ((LaunchpadViewMode) -> Void)?
+    /// What "recently added" is measured from, replaced in a test.
+    var wallClock: () -> Date = Date.init
     /// Writes a drop's edit and answers the snapshot that is shown after it.
     var onPlace: ((LaunchpadEdit) async -> LaunchpadSnapshot?)?
     /// Writes a folder's new name.
@@ -184,8 +197,10 @@ struct LaunchpadLiftView: Equatable {
     /// Where the open folder's tile is in `top`, for Esc to come back to.
     private var folderTile: Int?
 
-    init(geometry: LaunchpadGeometry) {
+    init(geometry: LaunchpadGeometry, view: LaunchpadViewMode = .apps) {
         self.geometry = geometry
+        gridGeometry = geometry
+        self.view = view
         icons = LaunchpadIcons(capacity: geometry.capacity, size: geometry.icon)
     }
 
@@ -197,7 +212,12 @@ struct LaunchpadLiftView: Equatable {
     func setShown(_ value: Bool) { assign(\.shown, value) }
     func requestSearchFocus() { searchFocusRequest &+= 1 }
     func launched(_ id: AppID) { assign(\.launching, id) }
-    func launchFailed() { assign(\.launching, nil) }
+    /// Which of a category block's large icons swells: the launched app's, and only in the block the launch came from, since one app
+    /// sits in several blocks.
+    func popped(block: String, among large: ArraySlice<CatalogApp>) -> Int? {
+        launchingBlock == block ? large.firstIndex { $0.id == launching } : nil
+    }
+    func launchFailed() { assign(\.launching, nil); assign(\.launchingBlock, nil) }
 
     /// Where the open folder's tile is in the window's coordinates, for its card to grow from and fold back to; the
     /// window's middle when there is no folder.
@@ -241,8 +261,14 @@ struct LaunchpadLiftView: Equatable {
             return
         }
         let hits = snapshot.search(search)
+        let wantCategories = view == .categories && hits == nil
         if let hits {
             segments = [hits.compactMap { snapshot.apps[$0] }.map(LaunchpadEntry.app)]
+        } else if wantCategories {
+            // Each block is a folder-shaped entry with a fixed id, so the card, its paging and its reopening by id are the folder's own.
+            let blocks = LaunchpadCategories.blocks(apps: snapshot.order.compactMap { snapshot.apps[$0] }, hidden: snapshot.layout.hidden,
+                                                    counts: snapshot.launchCounts, now: wallClock()) { LaunchpadCategoryName.title(for: $0) }
+            segments = [blocks.map { .folder(id: $0.id, name: LaunchpadCategoryName.title(for: $0.kind), apps: $0.apps, large: true) }]
         } else {
             segments = [[]]
             for item in snapshot.layout.items {
@@ -257,6 +283,8 @@ struct LaunchpadLiftView: Equatable {
         }
         segments.removeAll { $0.isEmpty }
         top = Array(segments.joined())
+        assign(\.categoriesShown, wantCategories)
+        assign(\.geometry, wantCategories ? gridGeometry.pairedColumns : gridGeometry)
         if let open = openFolder {
             if let at = top.firstIndex(where: { $0.id == open.uuidString }), case .folder(_, let name, let apps, _) = top[at] {
                 folderTile = at
@@ -358,15 +386,16 @@ struct LaunchpadLiftView: Equatable {
     /// stays on the choice, or on the tile the shown page began with. An open folder's card stays open and follows the grid, its page
     /// on its choice or on the tile its shown page began with.
     func regrid(_ settings: LaunchpadGridSettings) {
-        let next = LaunchpadGeometry.make(for: geometry.size, topSafe: geometry.topSafe, settings: settings)
-        guard next != geometry else { return }
+        let next = LaunchpadGeometry.make(for: gridGeometry.size, topSafe: gridGeometry.topSafe, settings: settings)
+        guard next != gridGeometry else { return }
         let anchor = pageStarts.indices.contains(page) ? pageStarts[page] : 0
         let cardAnchor = (card?.page ?? 0) * (card?.capacity ?? 1)
         cancelLift()
         drag.offset = 0
         cardDrag.offset = 0
         withAnimation(HelmMotion.interface) {
-            geometry = next
+            gridGeometry = next
+            geometry = categoriesShown ? next.pairedColumns : next
             icons.reconfigure(capacity: next.capacity, size: next.icon)
             publishPages()
             publishCard()
@@ -374,6 +403,23 @@ struct LaunchpadLiftView: Equatable {
         }
         // With a card open the selection counts the card's apps, not the grid's.
         assign(\.page, LaunchpadPaging.page(of: openFolder == nil ? selection ?? anchor : anchor, starts: pageStarts))
+    }
+
+    /// The window's switch: the other view from the first page, with no card open and no tile chosen, the arrangement untouched. Equal does nothing.
+    func setView(_ new: LaunchpadViewMode) {
+        guard new != view else { return }
+        cancelLift()
+        drag.offset = 0
+        cardDrag.offset = 0
+        withAnimation(HelmMotion.interface) {
+            closeFolderQuietly()
+            assign(\.selection, nil)
+            assign(\.page, 0)
+            assign(\.view, new)
+            reflow(selectFirst: false)
+        }
+        onViewChange?(new)
+        requestSearchFocus()
     }
 
     /// The folder's menu: its size changes, and the tiles around it make room as they do for a drop.
@@ -399,6 +445,7 @@ struct LaunchpadLiftView: Equatable {
     /// own click: the folder opens and no app is launched.
     private func click(_ entry: LaunchpadEntry, at address: Int, icon pressed: AppID?) {
         if let pressed, let hit = miniIcon(at: pressPoint, address: address), hit.id == pressed {
+            assign(\.launchingBlock, entry.id)
             onLaunch?(hit.id, hit.name)
             return
         }
@@ -410,7 +457,9 @@ struct LaunchpadLiftView: Equatable {
         let (on, item) = (address / geometry.capacity, address % geometry.capacity)
         guard case .folder(_, _, let apps, true)? = entry(at: address), on == page, slots.indices.contains(on), slots[on].indices.contains(item) else { return nil }
         let block = geometry.frame(of: slots[on][item]).offsetBy(dx: 0, dy: geometry.gridTop)
-        return LaunchpadHit.icon(at: point, block: block, mark: geometry.largeMark, apps: apps.count).map { apps[$0] }
+        let index = categoriesShown ? LaunchpadHit.categoryIcon(at: point, block: block, mark: geometry.largeMark, apps: apps.count)
+            : LaunchpadHit.icon(at: point, block: block, mark: geometry.largeMark, apps: apps.count)
+        return index.map { apps[$0] }
     }
 
     private func click(_ entry: LaunchpadEntry) {
@@ -490,6 +539,7 @@ struct LaunchpadLiftView: Equatable {
 
     /// Return, or the card closing: a changed, non-blank draft is the folder's name; a blank one is the old name again.
     func commitName() {
+        guard !categoriesShown else { return }
         let name = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         assign(\.renaming, false)
         guard let id = openFolder, !name.isEmpty else { assign(\.nameDraft, folderName); return }
@@ -663,7 +713,7 @@ struct LaunchpadLiftView: Equatable {
 
     private func beginLift(at address: Int) {
         // The tile is the one the press was on, as the page shows it now (a snapshot or a drop being written may have moved it).
-        guard let tile = entry(at: address), tile != .gap, tile.id == pressedID else {
+        guard !categoriesShown, let tile = entry(at: address), tile != .gap, tile.id == pressedID else {
             _ = machine.feed(.abort, surface: surface)
             endLift()
             return

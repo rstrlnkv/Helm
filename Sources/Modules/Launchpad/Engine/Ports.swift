@@ -9,12 +9,17 @@ public struct CatalogApp: Equatable, Sendable {
     /// The bundle's own `LSApplicationCategoryType`, raw (`public.app-category.music`), bounded; nil when it has none, an
     /// empty one or one that is not a string. Naming it for a person is the page's.
     public let category: String?
+    /// When Finder says the bundle was added to its folder (`addedToDirectoryDateKey`). nil for an app under
+    /// `/System/Applications` (a macOS update re-adds them all), a symlinked bundle, and a date that would not read.
+    /// An app updated in place is added to its folder again, so it is recent for the 30 days after each update.
+    public internal(set) var added: Date?
 
-    init(id: String, name: String, path: String, category: String? = nil) {
+    init(id: String, name: String, path: String, category: String? = nil, added: Date? = nil) {
         self.id = id
         self.name = name
         self.path = path
         self.category = category
+        self.added = added
     }
 }
 

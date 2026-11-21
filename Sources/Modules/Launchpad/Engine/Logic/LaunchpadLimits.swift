@@ -14,6 +14,10 @@ enum LaunchpadLimits {
     static let maxFolderName = 64
     /// Directory levels walked below a root; an `.app` directly in the root is level 0.
     static let maxDepth = 2
+    /// A launch count above this reads as this: a file that says more is clamped, and `record` stops here.
+    static let maxLaunchCount = 1_000_000
+    /// Counted apps kept: a file holding more keeps the highest counts (ties by the smaller id).
+    static let maxCountedApps = maxApps
 
     static func bounded(_ s: String) -> String {
         s.count > maxStringLength ? String(s.prefix(maxStringLength)) : s

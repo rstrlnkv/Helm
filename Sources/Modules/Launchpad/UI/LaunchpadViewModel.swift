@@ -11,6 +11,7 @@ protocol LaunchpadWork: AnyObject, Sendable {
     func resetArrangement() -> LaunchpadSnapshot?
     func apply(_ edit: LaunchpadEdit) -> LaunchpadSnapshot?
     func unhide(_ id: AppID) -> LaunchpadSnapshot?
+    func resetLaunchCounts() -> LaunchpadSnapshot?
     func launch(_ id: AppID) async -> LaunchOutcome
     func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject
     /// What the trackpad watch came to; nil when none runs.
@@ -86,6 +87,8 @@ enum LaunchNotice: Equatable {
     let store: NamespacedStore
     /// The grid the person chose; read from the store (`LaunchpadGridSettings`), written only by `setGrid`.
     @Published private(set) var grid: LaunchpadGridSettings
+    /// The view the window opens in, as the store holds it; the window reads it once, when it is built.
+    @Published private(set) var viewMode: LaunchpadViewMode
     /// The pinch switch, as the store holds it; the watch itself is the engine's (`pinchState`).
     @Published private(set) var pinchOn: Bool
     @Published private(set) var pinchState: PinchState
@@ -98,6 +101,7 @@ enum LaunchNotice: Equatable {
         self.work = work
         self.store = store
         grid = LaunchpadGridSettings.read(from: store)
+        viewMode = LaunchpadViewMode.read(from: store)
         pinchOn = store.bool(LaunchpadPinchKey.on, default: false)
         pinchState = PinchState(work.pinchWatch)
     }
@@ -137,6 +141,22 @@ enum LaunchNotice: Equatable {
     func reloadGrid() {
         let read = LaunchpadGridSettings.read(from: store)
         if read != grid { grid = read }
+    }
+
+    // MARK: - The view
+
+    /// Written when the window's switch is used; refused when equal. The arrangement is neither read nor written.
+    func setViewMode(_ new: LaunchpadViewMode) {
+        guard !closed, new != viewMode else { return }
+        viewMode = new
+        store.set(new.rawValue, for: LaunchpadViewMode.key)
+        HelmLog.shared.info("launchpad", "view \(new.rawValue)")
+    }
+
+    /// Reads the store again, for a window about to open.
+    func reloadViewMode() {
+        let read = LaunchpadViewMode.read(from: store)
+        if read != viewMode { viewMode = read }
     }
 
     // MARK: - The pinch
@@ -239,6 +259,7 @@ enum LaunchNotice: Equatable {
     private func openWindow() -> (any LaunchpadWindowHandle)? {
         guard let present else { return nil }
         reloadGrid()
+        reloadViewMode()
         let opened = present(self)
         window = opened
         opened.onClose = { [weak self, weak opened] in
@@ -278,6 +299,9 @@ enum LaunchNotice: Equatable {
         await edit { $0.apply(change) }
         return snapshot
     }
+
+    /// Empties the counts the category view orders by; nothing is written when there are none.
+    func resetLaunchCounts() async { await edit { $0.resetLaunchCounts() } }
 
     func rename(_ folder: UUID, to name: String) async { await edit { $0.apply(.rename(folder, to: name)) } }
     func resize(_ folder: UUID, large: Bool) async { await edit { $0.apply(.resize(folder, large: large)) } }
@@ -321,7 +345,7 @@ enum LaunchNotice: Equatable {
         let outcome = await work.launch(id)
         guard !closed, acts.isLatest(act) else { return outcome == .launched }
         switch outcome {
-        case .launched: notice = nil
+        case .launched: notice = nil; await refresh()   // the engine counted it: the page's Reset reads the new counts
         case .gone: notice = .gone(name); await refresh()
         case .unreadable: notice = .couldNotOpen(name); await refresh()
         case .failed: notice = .couldNotOpen(name)

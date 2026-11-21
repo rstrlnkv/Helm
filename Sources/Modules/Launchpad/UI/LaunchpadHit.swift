@@ -114,9 +114,20 @@ enum LaunchpadHit: Equatable {
     static func icon(at point: CGPoint, block: CGRect, mark: CGFloat, apps: Int) -> Int? {
         let origin = CGPoint(x: block.midX - mark / 2, y: block.minY + LaunchpadMetrics.iconTop)
         guard point.x.isFinite, point.y.isFinite, mark > 0 else { return nil }
-        for index in 0..<min(apps, apps > 9 ? 8 : 9) {
+        for index in 0..<max(0, min(apps, apps > 9 ? 8 : 9)) {
             let f = LaunchpadFolderMark.frame(ofIcon: index, size: mark)
             if f.offsetBy(dx: origin.x, dy: origin.y).contains(point) { return index }
+        }
+        return nil
+    }
+
+    /// Which of a category block's large icons `point` is on: the quadrant, nil on the cluster, between icons, or off the mark. `apps` is
+    /// how many apps the block holds: four or fewer are all large, more have three large and the cluster. The mark sits as `icon(at:)`'s does.
+    static func categoryIcon(at point: CGPoint, block: CGRect, mark: CGFloat, apps: Int) -> Int? {
+        let origin = CGPoint(x: block.midX - mark / 2, y: block.minY + LaunchpadMetrics.iconTop)
+        guard point.x.isFinite, point.y.isFinite, mark > 0 else { return nil }
+        for index in 0..<max(0, min(apps, apps > 4 ? 3 : 4)) {
+            if LaunchpadCategoryMark.frame(ofQuadrant: index, size: mark).offsetBy(dx: origin.x, dy: origin.y).contains(point) { return index }
         }
         return nil
     }

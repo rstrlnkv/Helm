@@ -80,6 +80,21 @@ struct LaunchpadGeometry: Equatable {
         max(LaunchpadMetrics.iconFloor, min(want, cellWidth - 2 * LaunchpadMetrics.tileSidePadding, rowHeight - LaunchpadMetrics.cellChrome))
     }
 
+    /// The grid for the category view: the same cells with an even number of columns (one fewer when odd), so a block, which is two
+    /// columns wide, centres on the page and the spare column is left empty. Everything else is equal, `gridLeft` included by its own formula.
+    var pairedColumns: LaunchpadGeometry {
+        let even = max(2, columns - columns % 2)
+        return LaunchpadGeometry(
+            size: size, columns: even, rows: rows, capacity: even * rows, cellWidth: cellWidth, cellHeight: cellHeight, icon: icon,
+            pageWidth: pageWidth, pageHeight: pageHeight, gridTop: gridTop, dotsBottom: dotsBottom, searchTop: searchTop, topSafe: topSafe)
+    }
+
+    /// Whether the window leaves the switch its room at the left of the search field: what is left between the side margin and
+    /// the field is at least `LaunchpadMetrics.switchRoom`.
+    var switchFits: Bool {
+        (size.width - LaunchpadMetrics.searchWidth) / 2 - LaunchpadMetrics.sideMargin * size.width >= LaunchpadMetrics.switchRoom
+    }
+
     /// The grid's left edge on a page.
     var gridLeft: CGFloat { (pageWidth - CGFloat(columns) * cellWidth) / 2 }
 
