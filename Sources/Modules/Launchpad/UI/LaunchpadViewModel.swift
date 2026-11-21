@@ -60,6 +60,8 @@ enum LaunchNotice: Equatable {
 /// when it differs from what is shown, so a watch event that changed nothing redraws nothing.
 @MainActor public final class LaunchpadViewModel: ObservableObject {
     private let work: any LaunchpadWork
+    /// Makes the port a lock asks Touch ID or the password through; one per lock, so one scope closing cannot cancel another's prompt. A test replaces it.
+    var makeAuth: () -> any LaunchpadAuthPort = { SystemLaunchpadAuth() }
     @Published private(set) var snapshot: LaunchpadSnapshot?
     @Published private(set) var notice: LaunchNotice?
     private var latest = LatestRequest()
@@ -354,6 +356,14 @@ enum LaunchNotice: Equatable {
         case .failed: notice = .couldNotOpen(name)
         }
         return outcome == .launched
+    }
+
+    /// The Hidden card is gone: a notice that names an app is dropped, for it may name a hidden one. One that does not stays.
+    func dropNamedNotice() {
+        switch notice {
+        case .gone, .couldNotOpen: notice = nil
+        case .notSaved, nil: break
+        }
     }
 
     /// What the page and the window run while they are on screen. The token is local to this task, so cancelling the task

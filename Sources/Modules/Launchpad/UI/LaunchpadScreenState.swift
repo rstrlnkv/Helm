@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import HelmUI
 import Module_Launchpad_Engine
@@ -152,6 +153,8 @@ struct LaunchpadLiftView: Equatable {
     var onLaunch: ((AppID, String) -> Void)?
     var onHide: ((AppID) -> Void)?
     var onClose: (() -> Void)?
+    /// Brings an app out of the Hidden card (it shows in the grid again).
+    var onUnhide: ((AppID) -> Void)?
     /// The person used the window's switch; the model keeps the choice.
     var onViewChange: ((LaunchpadViewMode) -> Void)?
     /// What "recently added" is measured from, replaced in a test.
@@ -202,11 +205,18 @@ struct LaunchpadLiftView: Equatable {
     /// Where the open folder's tile is in `top`, for Esc to come back to.
     private var folderTile: Int?
 
-    init(geometry: LaunchpadGeometry, view: LaunchpadViewMode = .apps) {
+    /// The lock in front of the Hidden block's card. A state made without one asks the system's port, which a test process refuses.
+    let hidden: LaunchpadHiddenGate
+    /// The gate's changes are this state's: the screen observes the state only, and the unavailable banner reads the gate.
+    private var hiddenChanges: AnyCancellable?
+
+    init(geometry: LaunchpadGeometry, view: LaunchpadViewMode = .apps, hidden: LaunchpadHiddenGate = LaunchpadHiddenGate(port: SystemLaunchpadAuth())) {
+        self.hidden = hidden
         self.geometry = geometry
         gridGeometry = geometry
         self.view = view
         icons = LaunchpadIcons(capacity: geometry.capacity, size: geometry.icon)
+        hiddenChanges = hidden.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
     }
 
     var pageCount: Int { pages.count }
@@ -275,6 +285,8 @@ struct LaunchpadLiftView: Equatable {
                                                     counts: snapshot.launchCounts, now: wallClock(),
                                                     overrides: snapshot.layout.categoryOverrides) { LaunchpadCategoryName.title(for: $0) }
             segments = [blocks.map { .folder(id: $0.id, name: LaunchpadCategoryName.title(for: $0.kind), apps: $0.apps, large: true) }]
+            // The locked block comes last, with no apps: what is in it is read only for the open, unlocked card.
+            segments[0].append(.folder(id: LaunchpadHiddenBlock.id, name: LpStr.hiddenBlock, apps: [], large: true))
         } else {
             segments = [[]]
             for item in snapshot.layout.items {
@@ -293,7 +305,16 @@ struct LaunchpadLiftView: Equatable {
         assign(\.moved, snapshot.layout.categoryOverrides)
         assign(\.geometry, wantCategories ? gridGeometry.pairedColumns : gridGeometry)
         if let open = openFolder {
-            if let at = top.firstIndex(where: { $0.id == open.uuidString }), case .folder(_, let name, let apps, _) = top[at] {
+            if open == LaunchpadHiddenBlock.id {
+                if hidden.phase == .unlocked, let at = top.firstIndex(where: { $0.id == open.uuidString }) {
+                    folderTile = at
+                    setFolderName(LpStr.hiddenBlock)
+                    assign(\.folderApps, snapshot.hiddenApps)
+                } else {
+                    closeFolderQuietly()
+                    assign(\.selection, nil)
+                }
+            } else if let at = top.firstIndex(where: { $0.id == open.uuidString }), case .folder(_, let name, let apps, _) = top[at] {
                 folderTile = at
                 setFolderName(name)
                 assign(\.folderApps, apps)
@@ -488,12 +509,22 @@ struct LaunchpadLiftView: Equatable {
     func flatIndex(page: Int, slot: Int) -> Int { pageStarts.indices.contains(page) ? pageStarts[page] + slot : slot }
 
     func open(folder id: UUID) {
+        if id == LaunchpadHiddenBlock.id, hidden.phase != .unlocked {
+            hidden.ask(reason: LpStr.hiddenAuthReason) { [weak self] in
+                guard let self, shown else { self?.hidden.lock(); return }
+                reflow(selectFirst: false)
+                open(folder: LaunchpadHiddenBlock.id)
+                if openFolder != LaunchpadHiddenBlock.id { hidden.lock() }
+            }
+            return
+        }
         guard let at = top.firstIndex(where: { $0.id == id.uuidString }), case .folder(_, let name, let apps, _) = top[at] else { return }
+        if openFolder == LaunchpadHiddenBlock.id, id != LaunchpadHiddenBlock.id { hidden.lock() }
         folderTile = at
         assign(\.renaming, false)
         assign(\.nameDraft, name)
         assign(\.folderName, name)
-        assign(\.folderApps, apps)
+        assign(\.folderApps, id == LaunchpadHiddenBlock.id ? snapshot?.hiddenApps ?? [] : apps)
         assign(\.openFolder, id)
         assign(\.selection, nil)
         assign(\.cardPage, 0)
@@ -525,6 +556,7 @@ struct LaunchpadLiftView: Equatable {
     }
 
     private func closeFolderQuietly() {
+        if openFolder == LaunchpadHiddenBlock.id { hidden.lock() }
         assign(\.openFolder, nil)
         assign(\.folderApps, [])
         assign(\.folderName, "")
@@ -651,6 +683,8 @@ struct LaunchpadLiftView: Equatable {
 
     /// The window is going: no timer, no lift, nothing written (a drop already out still lands).
     func shutdown() {
+        hidden.lock()
+        if openFolder == LaunchpadHiddenBlock.id { closeFolderQuietly() }
         timer?.cancel()
         timer = nil
         scheduled = nil

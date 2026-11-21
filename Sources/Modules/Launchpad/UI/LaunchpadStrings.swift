@@ -87,4 +87,14 @@ enum LpStr {
     static var resetLaunchCountsNamed: String { L(.resetLaunchCountsNamed) }
     /// A category block's name for VoiceOver: what it is called, then what it is.
     static func category(_ name: String) -> String { L(.categoryNamed(name), remembered: false) }
+
+    /// The locked block's name, and its name for VoiceOver (a full key of its own: what it is, then that it is shut).
+    static var hiddenBlock: String { L(.hiddenBlock) }
+    static var hiddenLocked: String { L(.hiddenLocked) }
+    /// What follows "Helm is trying to" in the system's dialog; a phrase, as the system asks for one.
+    static var hiddenAuthReason: String { L(.hiddenAuthReason) }
+    static func hiddenAppsCount(_ count: Int) -> String { L(.hiddenAppsCount("\(count)"), remembered: false) }
+    static var hiddenUnavailable: String { L(.hiddenUnavailable) }
+    /// The settings page's Show button, named for what it shows (the list's own Show buttons name an app).
+    static var showHiddenNamed: String { L(.showHiddenNamed) }
 }

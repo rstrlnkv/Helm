@@ -82,7 +82,7 @@ import XCTest
         let music = LaunchpadCategoryBlock(kind: .category(.music), apps: [], launches: 0).id
         let weather = LaunchpadCategoryBlock(kind: .category(.weather), apps: [], launches: 0).id
         let others = LaunchpadCategoryBlock(kind: .others, apps: [], launches: 0).id
-        XCTAssertEqual(rig.ids(), [music, weather, others].map(\.uuidString), "the control: three blocks")
+        XCTAssertEqual(rig.ids(), [music, weather, others, LaunchpadHiddenBlock.id].map(\.uuidString), "the control: three blocks and the locked Hidden")
         rig.state.open(folder: music)
         XCTAssertEqual(rig.state.folderApps.map(\.id), ["a", "b", "c"])
         rig.state.move("a", to: .category(.weather))

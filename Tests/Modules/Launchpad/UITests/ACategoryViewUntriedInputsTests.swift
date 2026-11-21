@@ -32,7 +32,7 @@ import XCTest
     func testAnAppInRecentlyAddedAndItsCategoryIsPressedInOneBlockOnly() {
         let rig = rig([("a", music, Date()), ("b", music, nil), ("c", weather, nil)])
         let ids = rig.state.pages[0].map(\.id)
-        XCTAssertEqual(ids.count, 3, "the control: Recently Added, Music, Weather")
+        XCTAssertEqual(ids.count, 4, "the control: Recently Added, Music, Weather and the locked Hidden")
         guard case .folder(_, _, let recent, _) = rig.state.pages[0][0], case .folder(_, _, let music, _) = rig.state.pages[0][1] else { return XCTFail("blocks") }
         XCTAssertEqual(recent.map(\.id), ["a"])
         XCTAssertTrue(music.map(\.id).contains("a"), "the same app is in both blocks")
@@ -50,7 +50,7 @@ import XCTest
     func testAnAppInTwoBlocksSwellsInTheBlockTheLaunchCameFromOnly() {
         let rig = rig([("a", music, Date()), ("b", music, nil)])
         let ids = rig.state.pages[0].map(\.id)
-        XCTAssertEqual(ids.count, 2, "the control: Recently Added and Music both hold a")
+        XCTAssertEqual(ids.count, 3, "the control: Recently Added and Music both hold a, and the locked Hidden")
         XCTAssertNil(rig.state.launchingBlock)
         for slot in [0, 1] {
             rig.state.launchFailed()
@@ -96,7 +96,7 @@ import XCTest
         XCTAssertNil(rig.state.openFolder, "its block is gone, so is its card")
         XCTAssertTrue(rig.state.folderApps.isEmpty)
         XCTAssertNil(rig.state.selection)
-        XCTAssertEqual(rig.state.pages[0].count, 1, "Music stays")
+        XCTAssertEqual(rig.state.pages[0].count, 2, "Music stays, and the locked Hidden")
         XCTAssertTrue(rig.state.categoriesShown)
     }
 
@@ -115,19 +115,19 @@ import XCTest
         XCTAssertEqual(rig.state.search, "a", "and keeps its text")
         rig.state.search = ""
         XCTAssertTrue(rig.state.categoriesShown)
-        XCTAssertEqual(rig.state.pages[0].count, 2)
+        XCTAssertEqual(rig.state.pages[0].count, 3, "the arrangement's blocks and the locked Hidden")
     }
 
     func testAClockThatGoesBackDropsTheRecentBlockAndOneThatGoesOnDropsItToo() {
         let added = Date(timeIntervalSince1970: 1_800_000_000)
         let rig = rig([("a", music, added), ("b", music, nil)], clock: added.addingTimeInterval(3_600))
-        XCTAssertEqual(rig.state.pages[0].count, 2, "the control: Recently Added and Music")
+        XCTAssertEqual(rig.state.pages[0].count, 3, "the control: Recently Added, Music and the locked Hidden")
         rig.state.wallClock = { added.addingTimeInterval(-86_400) }
         rig.state.update(snapshot: rig.engine.read())
-        XCTAssertEqual(rig.state.pages[0].count, 1, "an app added after now is not recent")
+        XCTAssertEqual(rig.state.pages[0].count, 2, "an app added after now is not recent")
         rig.state.wallClock = { added.addingTimeInterval(31 * 86_400) }
         rig.state.update(snapshot: rig.engine.read())
-        XCTAssertEqual(rig.state.pages[0].count, 1, "thirty-one days on it is not recent either")
+        XCTAssertEqual(rig.state.pages[0].count, 2, "thirty-one days on it is not recent either")
     }
 
     func testCountsForAppsThatAreGoneAndTenThousandAndOneCountsNeverBreakTheBlocks() throws {
@@ -139,7 +139,7 @@ import XCTest
         XCTAssertEqual(snap.launchCounts.count, LaunchpadLimits.maxCountedApps, "bounded, the lowest dropped")
         XCTAssertNil(snap.launchCounts["c"], "the count of 1 is the lowest, so it was dropped, not a ghost")
         rig.state.update(snapshot: snap)
-        XCTAssertEqual(rig.state.pages[0].count, 2)
+        XCTAssertEqual(rig.state.pages[0].count, 3, "Music, Weather and the locked Hidden")
         let shown = rig.state.pages[0].flatMap { entry -> [String] in if case .folder(_, _, let apps, _) = entry { apps.map(\.id) } else { [] } }
         XCTAssertEqual(shown.sorted(), ["a", "b", "c"], "no ghost is shown, no installed app is lost")
     }
@@ -205,12 +205,14 @@ import XCTest
 
     func testTheArrowKeysAndTheCardWorkOverBlocksAndTheGridIsPaired() throws {
         let rig = rig([("a", music, nil), ("b", music, nil), ("c", weather, nil), ("d", nil, nil)])
-        XCTAssertEqual(rig.state.pages[0].count, 3)
+        XCTAssertEqual(rig.state.pages[0].count, 4, "Music, Weather, Others and the locked Hidden")
         XCTAssertEqual(rig.state.geometry.columns % 2, 0)
         rig.state.move(dx: 1, dy: 0)
         XCTAssertEqual(rig.state.selection, 0)
-        rig.state.move(dx: 1, dy: 0); rig.state.move(dx: 1, dy: 0); rig.state.move(dx: 1, dy: 0)
-        XCTAssertEqual(rig.state.selection, 2, "the last block stops it")
+        rig.state.move(dx: 1, dy: 0); rig.state.move(dx: 1, dy: 0); rig.state.move(dx: 1, dy: 0); rig.state.move(dx: 1, dy: 0)
+        XCTAssertEqual(rig.state.selection, 3, "the locked Hidden is the last block and stops it")
+        rig.state.move(dx: -1, dy: 0)
+        XCTAssertEqual(rig.state.selection, 2)
         rig.state.activate()
         XCTAssertNotNil(rig.state.openFolder)
         XCTAssertEqual(rig.state.folderApps.map(\.id), ["d"])

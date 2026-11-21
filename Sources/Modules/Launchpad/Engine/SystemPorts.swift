@@ -1,6 +1,8 @@
 import AppKit
 import Foundation
 import HelmRuntime
+@preconcurrency import LocalAuthentication
+import os
 
 /// **The installed applications, read off three fixed folders.**
 ///
@@ -208,6 +210,64 @@ struct SystemAppLauncher: AppLauncherPort {
             return true
         } catch {
             return false
+        }
+    }
+}
+
+/// Touch ID or the Mac's password through LocalAuthentication, asked with `deviceOwnerAuthentication`, so the system draws the
+/// dialog and Helm sees only the outcome. Each ask has a fresh context whose reuse duration is 0: a recent unlock of the Mac
+/// does not stand for this one.
+///
+/// Cancelling the asking task invalidates the context, which dismisses the dialog; a cancel that comes before the context is
+/// stored answers `.cancelled` without showing one. A test process answers `.unavailable` and makes no context: asking the
+/// owner for a fingerprint is a thing the owner's Mac would do.
+public final class SystemLaunchpadAuth: LaunchpadAuthPort, @unchecked Sendable {
+    public init() {}
+
+    /// One ask's own cancel state, made inside `evaluate`: a cancel of an earlier ask never reaches a later one through the port.
+    private final class Ask: @unchecked Sendable {
+        private let state = OSAllocatedUnfairLock(uncheckedState: (cancelled: false, context: LAContext?.none))
+        var cancelled: Bool { state.withLock { $0.cancelled } }
+        /// False when the ask was cancelled before: the context is then not stored.
+        func store(_ context: LAContext) -> Bool {
+            state.withLock { state in
+                if state.cancelled { return false }
+                state.context = context
+                return true
+            }
+        }
+        func cancel() { state.withLock { state -> LAContext? in state.cancelled = true; return state.context }?.invalidate() }
+    }
+
+    public func evaluate(reason: String) async -> AuthOutcome {
+        guard !TestProcess.isRunning else { return .unavailable }
+        let context = LAContext()
+        context.touchIDAuthenticationAllowableReuseDuration = 0
+        let ask = Ask()
+        return await withTaskCancellationHandler {
+            if !ask.store(context) { return .cancelled }
+            let can = await offTheCooperativePool {
+                var error: NSError?
+                return context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+            }
+            guard can else { return ask.cancelled ? .cancelled : .unavailable }
+            if ask.cancelled { return .cancelled }
+            let outcome: AuthOutcome = await withCheckedContinuation { continuation in
+                context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { ok, error in
+                    continuation.resume(returning: ok ? .success : Self.outcome(of: error))
+                }
+            }
+            return ask.cancelled && outcome == .success ? .cancelled : outcome
+        } onCancel: {
+            ask.cancel()
+        }
+    }
+
+    private static func outcome(of error: Error?) -> AuthOutcome {
+        switch (error as? LAError)?.code {
+        case .authenticationFailed: .failed
+        case .userCancel, .systemCancel, .appCancel: .cancelled
+        default: .unavailable
         }
     }
 }

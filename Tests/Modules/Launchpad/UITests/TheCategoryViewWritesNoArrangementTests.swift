@@ -34,7 +34,7 @@ import XCTest
 
         rig.state.setView(.categories)
         XCTAssertTrue(rig.state.categoriesShown)
-        XCTAssertEqual(rig.state.pages[0].count, 3, "the control: Music, Weather and Others")
+        XCTAssertEqual(rig.state.pages[0].count, 4, "the control: Music, Weather, Others and the locked Hidden")
         guard case .folder(_, _, let musicApps, true) = rig.state.pages[0][0] else { return XCTFail("a block is a large folder-shaped entry") }
         XCTAssertEqual(musicApps.count, 5)
 

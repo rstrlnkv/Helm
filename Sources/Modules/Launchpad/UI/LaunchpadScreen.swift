@@ -118,7 +118,14 @@ struct LaunchpadScreen: View {
                               moved: state.moved[app.id], open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) },
                               move: { state.move(app.id, to: $0) })
             case .folder(let id, let name, let apps, let large):
-                if state.categoriesShown {
+                if state.categoriesShown, id == LaunchpadHiddenBlock.id {
+                    // The locked block: a lock and a name, nothing of what it holds; a press or Return asks the system.
+                    LaunchpadTile(name: LpStr.hiddenBlock, accessibleName: LpStr.hiddenLocked, iconSize: g.largeMark, selected: selected,
+                                  open: { state.open(folder: id) }, hide: nil, glowSize: size,
+                                  pressed: state.pressedID == entry.id) {
+                        LaunchpadHiddenMark(size: g.largeMark)
+                    }
+                } else if state.categoriesShown {
                     // A category block: three large icons that launch and a cluster of four small ones, or four large ones when it has no more
                     // (`LaunchpadHit.categoryIcon`). Its menu has no Hide and no size: it is no folder of the person's. Each large icon has the
                     // app's own menu (Hide and Move to category), by right-click.
@@ -204,6 +211,7 @@ struct LaunchpadScreen: View {
     private func bottom(_ g: LaunchpadGeometry) -> some View {
         VStack(spacing: HelmSpace.s5) {
             if let notice = vm.notice { HelmBanner(LpStr.text(of: notice), fillsWidth: false) }
+            if state.hidden.unavailable { HelmBanner(LpStr.hiddenUnavailable, fillsWidth: false) }
             if state.pageCount > 1 { pageDots(count: state.pageCount, current: state.page) }
         }
         .frame(width: g.size.width, height: g.size.height, alignment: .bottom)
@@ -252,6 +260,7 @@ struct LaunchpadScreen: View {
             .font(HelmText.sectionHeading).foregroundStyle(Color.white)
             .frame(height: LaunchpadGeometry.cardTitle)
             cardPages(grid, entries, g)
+                .overlay { if entries.isEmpty { Text(LpStr.noHiddenApps).font(HelmText.rowDetail).foregroundStyle(Color.white.opacity(0.7)) } }
             if grid.paged {
                 pageDots(count: grid.pageCount, current: grid.page)
                     .frame(height: LaunchpadGeometry.cardDots)
@@ -291,11 +300,13 @@ struct LaunchpadScreen: View {
     }
 
     @ViewBuilder private func cardTile(_ entry: LaunchpadEntry, index: Int, _ g: LaunchpadGeometry) -> some View {
+        let inHidden = state.openFolder == LaunchpadHiddenBlock.id
         if case .app(let app) = entry {
             LaunchpadTile(app: app, icon: state.icons.icon(for: app.path), iconSize: g.icon,
                           selected: state.selection == index, glowSize: glowSize(g),
                           popped: state.launching == app.id, pressed: state.pressedID == app.id,
-                          moved: state.moved[app.id], open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) },
+                          inHidden: inHidden, moved: state.moved[app.id], open: { state.onLaunch?(app.id, app.name) },
+                          hide: { inHidden ? state.onUnhide?(app.id) : state.onHide?(app.id) },
                           move: { state.move(app.id, to: $0) })
         } else {
             Color.clear

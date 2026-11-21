@@ -21,6 +21,8 @@ final class LaunchpadPanel: NSPanel {
     var onResignKey: (() -> Void)?
     /// Set when the window has begun to fade out: the picture stays up for the fade and answers nothing.
     var isClosing = false
+    /// Set while the system's Touch ID / password dialog is up: keys are the dialog's and the panel takes no mouse (`LaunchpadWindow.promptChanged`).
+    var isPrompting = false
     private var pager = LaunchpadScrollPager()
     private var swipe = LaunchpadSwipe()
     /// The open card's swipe: its own, so a gesture's travel is not shared between the grid's pages and the card's.
@@ -35,7 +37,7 @@ final class LaunchpadPanel: NSPanel {
     }
 
     override func sendEvent(_ event: NSEvent) {
-        if isClosing {
+        if isClosing || isPrompting {
             switch event.type {
             case .keyDown, .keyUp, .flagsChanged: return
             default: break
@@ -121,14 +123,15 @@ final class LaunchpadPanel: NSPanel {
 private final class LaunchpadWindowEnders {
     private var tokens: [(center: NotificationCenter, token: NSObjectProtocol)] = []
 
-    @MainActor init(willSleep: @escaping @MainActor () -> Void, _ end: @escaping @MainActor () -> Void) {
+    /// `ignoringActivation`: another app coming forward is no end while the system's dialog is up (the dialog is that app).
+    @MainActor init(willSleep: @escaping @MainActor () -> Void, ignoringActivation: @escaping @MainActor () -> Bool, _ end: @escaping @MainActor () -> Void) {
         let workspace = NSWorkspace.shared.notificationCenter
         let mine = ProcessInfo.processInfo.processIdentifier
         tokens.append((workspace, workspace.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { note in
             let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
             // The Dock helper's click is the toggle that closes the window itself; it is no other app coming forward.
             if app?.processIdentifier != mine, app?.bundleIdentifier != AppBuild.pairedLaunchpadHelperIdentifier {
-                MainActor.assumeIsolated { end() }
+                MainActor.assumeIsolated { if !ignoringActivation() { end() } }
             }
         }))
         tokens.append((workspace, workspace.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { _ in
@@ -154,7 +157,7 @@ private final class LaunchpadWindowEnders {
 ///
 /// Built on the screen the pointer is on, its geometry worked out from the grid then in force (`regrid` makes it again). The model's `whileShown()` runs for as long as
 /// the window is open, and its snapshot goes when the window does. It closes on Esc, a click on the empty background, an
-/// app that opened, the panel losing key, another app coming forward, the Space or the screens changing, the model
+/// app that opened, the panel losing key, another app coming forward (neither while the Hidden prompt is up), the Space or the screens changing, the model
 /// stopping and the shortcut's second press.
 ///
 /// **One writer of how much of it shows** (`apply`): the panel's alpha and the screen's zoom and fade (`state.reveal`) both come from
@@ -180,6 +183,8 @@ private final class LaunchpadWindowEnders {
     private var watchTask: Task<Void, Never>?
     private var enders: LaunchpadWindowEnders?
     private var closed = false
+    /// The system's dialog for the Hidden block is up: the panel's resign and another app's activation end nothing meanwhile.
+    private var prompting = false
     private var opened = false
     private var finished = false
     /// How much of the window shows, 0 to 1; only `apply` writes it.
@@ -198,7 +203,7 @@ private final class LaunchpadWindowEnders {
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         let frame = screen?.frame ?? CGRect(origin: .zero, size: LaunchpadGeometry.fallback)
         let geometry = LaunchpadGeometry.make(for: frame.size, topSafe: screen?.safeAreaInsets.top ?? 0, settings: model.grid)
-        state = LaunchpadScreenState(geometry: geometry, view: model.viewMode)
+        state = LaunchpadScreenState(geometry: geometry, view: model.viewMode, hidden: LaunchpadHiddenGate(port: model.makeAuth()))
 
         panel = LaunchpadPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.level = Self.level
@@ -224,9 +229,14 @@ private final class LaunchpadWindowEnders {
         panel.setFrame(frame, display: false)
 
         state.onLaunch = { [weak self, weak model] id, name in
+            let fromHidden = self?.state.openFolder == LaunchpadHiddenBlock.id
             Task { @MainActor in
                 self?.state.launched(id)
-                if await model?.launch(id, name: name) == true { self?.close() } else { self?.state.launchFailed() }
+                if await model?.launch(id, name: name) == true { self?.close() } else {
+                    self?.state.launchFailed()
+                    // The card may have gone (and the gate locked) while the launch was out: its notice names a hidden app.
+                    if fromHidden, self?.state.hidden.phase != .unlocked { model?.dropNamedNotice() }
+                }
             }
         }
         state.onHide = { [weak model] id in Task { @MainActor in await model?.hide(id) } }
@@ -234,14 +244,35 @@ private final class LaunchpadWindowEnders {
         state.onRename = { [weak model] id, name in Task { @MainActor in await model?.rename(id, to: name) } }
         state.onResize = { [weak model] id, large in Task { @MainActor in await model?.resize(id, large: large) } }
         state.onMove = { [weak model] id, target in Task { @MainActor in await model?.moveToCategory(id, to: target) } }
+        state.onUnhide = { [weak model] id in Task { @MainActor in await model?.unhide(id) } }
         state.onClose = { [weak self] in self?.close() }
+        state.hidden.onAsking = { [weak self] on in self?.promptChanged(on) }
+        state.hidden.onLocked = { [weak model] in model?.dropNamedNotice() }
         state.onViewChange = { [weak model] in model?.setViewMode($0) }
         let asked = model.grid
         let grid = asked.automatic ? "automatic" : "\(asked.rows) rows asked, \(geometry.rows) fit"
         state.onLoaded = { snapshot, state in
             HelmLog.shared.info("launchpad", "window: \(snapshot.apps.count) apps, \(state.geometry.columns)x\(state.geometry.rows) grid (\(grid)), icon \(Int(state.geometry.icon)), \(state.pageCount) pages, view \(state.view.rawValue)")
         }
-        panel.onResignKey = { [weak self] in self?.close() }
+        panel.onResignKey = { [weak self] in
+            guard let self, !prompting else { return }
+            close()
+        }
+    }
+
+    /// The system's dialog goes up or away. Up: the panel takes no mouse and no key, and its resign and another app's activation end
+    /// nothing. Away: the panel takes the key back (as `present` does, without activating Helm) and the mouse, once it has settled.
+    private func promptChanged(_ on: Bool) {
+        guard !closed else { return }
+        prompting = on
+        panel.isPrompting = on
+        if on {
+            panel.ignoresMouseEvents = true
+        } else {
+            if case .settled = phase { panel.ignoresMouseEvents = false }
+            panel.makeKeyAndOrderFront(nil)
+            state.requestSearchFocus()
+        }
     }
 
     /// The one writer of the reveal: the panel's alpha moves the blur, the scrim and the grid as one, the screen's zoom and fade follow.
@@ -275,7 +306,7 @@ private final class LaunchpadWindowEnders {
         LaunchpadWindowEnders(willSleep: { [weak self] in
             guard let self, case .scrubbing(let direction, _) = phase else { return }
             if direction == .pinch { close() } else { endScrub(.revert) }
-        }, { [weak self] in self?.close() })
+        }, ignoringActivation: { [weak self] in self?.prompting == true }, { [weak self] in self?.close() })
     }
 
     // MARK: - The fingers' scrub
@@ -394,6 +425,9 @@ private final class LaunchpadWindowEnders {
         state.onHide = nil
         state.onMove = nil
         state.onClose = nil
+        state.onUnhide = nil
+        state.hidden.onAsking = nil
+        state.hidden.onLocked = nil
         state.onViewChange = nil
         state.onLoaded = nil
         panel.onResignKey = nil

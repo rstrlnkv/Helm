@@ -122,6 +122,8 @@ struct LaunchpadTile<Mark: View>: View {
     var resize: (title: String, action: () -> Void)?
     /// An app's menu (Hide and Move to category) in place of the bare Hide.
     var menu: LaunchpadAppMenu?
+    /// The tile is in the Hidden card: its one action, from the menu and from VoiceOver, is Show (the `hide` closure), and it cannot be moved.
+    var inHidden = false
     @ViewBuilder let mark: Mark
     @State private var hovering = false
 
@@ -149,11 +151,11 @@ struct LaunchpadTile<Mark: View>: View {
         .onHover { hovering = $0 }
         .accessibilityLabel(accessibleName)
         .contextMenu {
-            if let menu { menu } else if let hide { Button(LpStr.hide, action: hide) }
+            if let menu { menu } else if let hide { Button(inHidden ? HelmWord.show : LpStr.hide, action: hide) }
             if let resize { Button(resize.title, action: resize.action) }
         }
         .accessibilityActions {
-            if let hide { Button(LpStr.hide, action: hide) }
+            if let hide { Button(inHidden ? HelmWord.show : LpStr.hide, action: hide) }
             if let resize { Button(resize.title, action: resize.action) }
         }
     }
@@ -161,12 +163,12 @@ struct LaunchpadTile<Mark: View>: View {
 
 extension LaunchpadTile where Mark == Image {
     /// An application's tile; the icon is the caller's, from the window's own cache.
-    init(app: CatalogApp, icon: NSImage, iconSize: CGFloat, selected: Bool, glowSize: CGSize, popped: Bool, pressed: Bool = false,
+    init(app: CatalogApp, icon: NSImage, iconSize: CGFloat, selected: Bool, glowSize: CGSize, popped: Bool, pressed: Bool = false, inHidden: Bool = false,
          moved: LaunchpadCategoryTarget?, open: @escaping () -> Void, hide: @escaping () -> Void,
          move: @escaping (LaunchpadCategoryTarget?) -> Void) {
         self.init(name: app.name, accessibleName: app.name, iconSize: iconSize, selected: selected, open: open, hide: hide,
                   glowSize: glowSize, popped: popped, pressed: pressed,
-                  menu: LaunchpadAppMenu(app: app, moved: moved, hide: hide, move: move)) {
+                  menu: inHidden ? nil : LaunchpadAppMenu(app: app, moved: moved, hide: hide, move: move), inHidden: inHidden) {
             Image(nsImage: icon).resizable()
         }
     }
@@ -308,5 +310,20 @@ struct LaunchpadCategoryMark: View {
             }
         }
         .frame(width: size, height: size, alignment: .topLeading)
+    }
+}
+
+/// The locked Hidden block: the same well as a category block's, empty, and a lock in it. Nothing of what is behind it is drawn: no icons, no count.
+struct LaunchpadHiddenMark: View {
+    let size: CGFloat
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: HelmRadius.frame, style: .continuous).fill(Color.white.opacity(0.18))
+            Image(systemName: "lock.fill")
+                .font(.system(size: size * 0.34, weight: .regular))
+                .foregroundStyle(Color.white)
+        }
+        .frame(width: size, height: size)
     }
 }

@@ -15,6 +15,9 @@ public struct LaunchpadSnapshot: Equatable, Sendable {
     /// Launches made from Launchpad per app, read afresh from the counts file; empty when there is none or it would not read.
     public internal(set) var launchCounts: [AppID: Int] = [:]
 
+    /// The apps the person hid that are installed, in catalog order: what the Hidden block and the settings page show once unlocked.
+    public var hiddenApps: [CatalogApp] { order.filter { layout.hidden.contains($0) }.compactMap { apps[$0] } }
+
     /// Ids matching `query` in layout order, folders looked into, hidden excluded;
     /// nil for a blank query (the caller shows the layout).
     public func search(_ query: String) -> [AppID]? {

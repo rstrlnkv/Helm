@@ -64,6 +64,24 @@ protocol AppLauncherPort: Sendable {
     func open(_ url: URL) async -> Bool
 }
 
+/// What asking the person to prove they are the Mac's owner came to. Each reason that a caller must tell apart is its own
+/// case; nothing folds toward `success`, and only `success` opens anything.
+///
+/// - `success`: the system accepted Touch ID or the Mac's password.
+/// - `failed`: the system said the proof was wrong (`LAError.authenticationFailed`).
+/// - `cancelled`: the person cancelled, the system or Helm cancelled the dialog (`userCancel`, `systemCancel`, `appCancel`
+///   from an invalidation), or the asking task was cancelled before or during the ask.
+/// - `unavailable`: the Mac has no password or biometrics set, biometrics are locked out in a way that is not a plain failure,
+///   the dialog could not be shown, no context could be made, this is a test process, or the system answered an error not
+///   named here. The person can do nothing about it from inside Helm.
+public enum AuthOutcome: Equatable, Sendable { case success, failed, cancelled, unavailable }
+
+/// Asks the system for Touch ID or the Mac's password (`deviceOwnerAuthentication`); Helm never sees either. `reason` is the
+/// sentence the system dialog shows.
+public protocol LaunchpadAuthPort: Sendable {
+    func evaluate(reason: String) async -> AuthOutcome
+}
+
 /// What a launch came to. `gone`: a complete read of the installed apps no longer holds the
 /// id, or the bundle at its path answers another id. `unreadable`: the read was incomplete and
 /// the id is not in it, so it may be an app this process could not see. `failed`: the system

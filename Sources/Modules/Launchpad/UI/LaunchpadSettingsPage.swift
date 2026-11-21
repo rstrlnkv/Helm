@@ -10,6 +10,8 @@ import Module_Launchpad_Engine
 struct LaunchpadSettingsPage: View {
     @ObservedObject private var lvm: LaunchpadViewModel
     @StateObject private var openKey: HelmHotkeyRecorder
+    /// The lock in front of the hidden apps' names: asked for by Show, shut again when the page goes (`onDisappear`).
+    @StateObject private var hiddenGate: LaunchpadHiddenGate
     /// Bumped when a shortcut is recorded, so «taken» is judged against the combination now stored.
     @State private var shortcutRevision = 0
     /// The manual rows' measured height, for the accordion that shows them while Automatic is off.
@@ -20,6 +22,7 @@ struct LaunchpadSettingsPage: View {
     init(lvm: LaunchpadViewModel) {
         self.lvm = lvm
         _openKey = StateObject(wrappedValue: HelmHotkeyRecorder(store: lvm.store, prefix: LaunchpadHotkey.storePrefix))
+        _hiddenGate = StateObject(wrappedValue: LaunchpadHiddenGate(port: lvm.makeAuth()))
     }
 
     var body: some View {
@@ -73,6 +76,7 @@ struct LaunchpadSettingsPage: View {
         }
         .formStyle(.grouped)
         .helmIdlesOffScreen()
+        .onDisappear { hiddenGate.lock() }
         .task { await lvm.reloadPinch() }
         .task { lvm.reloadGrid(); await lvm.whileShown() }
         .onReceive(NotificationCenter.default.publisher(for: .helmHotkeyChanged)) { _ in shortcutRevision += 1 }
@@ -189,30 +193,40 @@ struct LaunchpadSettingsPage: View {
 
     // MARK: - Hidden
 
+    /// Locked, a count and Show, which asks Touch ID or the Mac's password; unlocked, the list, until the page goes.
     @ViewBuilder private var hiddenSection: some View {
-        let hidden = lvm.snapshot.map { snapshot in
-            snapshot.order.filter { snapshot.layout.hidden.contains($0) }.compactMap { snapshot.apps[$0] }
-        } ?? []
-        Section {
-            if hidden.isEmpty {
-                Text(LpStr.noHiddenApps).foregroundStyle(HelmText.quiet)
-            } else {
-                ForEach(hidden, id: \.id) { app in
-                    HStack(spacing: HelmSpace.s5) {
-                        Image(nsImage: AppInfo.icon(forFile: app.path)).resizable()
-                            .frame(width: LaunchpadMetrics.hiddenIcon, height: LaunchpadMetrics.hiddenIcon)
-                            .accessibilityHidden(true)
-                        Text(app.name).font(HelmText.rowTitle).lineLimit(1)
-                        Spacer()
-                        Button(HelmWord.show) { Task { await lvm.unhide(app.id) } }
-                            .accessibilityLabel(LpStr.show(app.name))
+        let hidden = lvm.snapshot?.hiddenApps ?? []
+        if hiddenGate.phase == .unlocked {
+            Section {
+                if hidden.isEmpty {
+                    Text(LpStr.noHiddenApps).foregroundStyle(HelmText.quiet)
+                } else {
+                    ForEach(hidden, id: \.id) { app in
+                        HStack(spacing: HelmSpace.s5) {
+                            Image(nsImage: AppInfo.icon(forFile: app.path)).resizable()
+                                .frame(width: LaunchpadMetrics.hiddenIcon, height: LaunchpadMetrics.hiddenIcon)
+                                .accessibilityHidden(true)
+                            Text(app.name).font(HelmText.rowTitle).lineLimit(1)
+                            Spacer()
+                            Button(HelmWord.show) { Task { await lvm.unhide(app.id) } }
+                                .accessibilityLabel(LpStr.show(app.name))
+                        }
                     }
                 }
+            } header: {
+                HStack(spacing: HelmSpace.s3) {
+                    HelmSectionTitle(LpStr.hiddenApps)
+                    if !hidden.isEmpty { HelmBadge("\(hidden.count)") }
+                }
             }
-        } header: {
-            HStack(spacing: HelmSpace.s3) {
-                HelmSectionTitle(LpStr.hiddenApps)
-                if !hidden.isEmpty { HelmBadge("\(hidden.count)") }
+        } else {
+            Section {
+                HelmSettingRow(LpStr.hiddenAppsCount(hidden.count)) {
+                    Button(HelmWord.show) { hiddenGate.ask(reason: LpStr.hiddenAuthReason) {} }
+                        .disabled(hidden.isEmpty || hiddenGate.phase == .asking)
+                        .accessibilityLabel(LpStr.showHiddenNamed)
+                }
+                if hiddenGate.unavailable { HelmBanner(LpStr.hiddenUnavailable) }
             }
         }
     }

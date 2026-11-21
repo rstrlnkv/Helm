@@ -36,7 +36,7 @@ import XCTest
         guard case .folder(_, _, let held, _) = rig.state.pages[0][0] else { return XCTFail("folder") }
         XCTAssertEqual(held.map(\.id), ["a", "b"], "a is in its folder still")
         rig.state.setView(.categories)
-        XCTAssertEqual(rig.ids(), [block(.category(.music)), block(.category(.weather))].map(\.uuidString))
+        XCTAssertEqual(rig.ids(), [block(.category(.music)), block(.category(.weather)), LaunchpadHiddenBlock.id].map(\.uuidString))
         rig.state.open(folder: block(.category(.weather)))
         XCTAssertEqual(Set(rig.state.folderApps.map(\.id)), ["a", "d"])
         rig.state.open(folder: block(.category(.music)))
