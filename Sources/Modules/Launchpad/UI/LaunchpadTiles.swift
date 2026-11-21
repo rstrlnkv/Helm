@@ -127,6 +127,20 @@ struct LaunchpadAppMenu: View {
     }
 }
 
+/// What VoiceOver may do with a tile's place: each action is there only where the move exists (`LaunchpadScreenState.moves`), and
+/// every one is the chord's own reorder, keyed by this tile.
+struct LaunchpadTileMoves {
+    var earlier: (() -> Void)?
+    var later: (() -> Void)?
+    var previousPage: (() -> Void)?
+    var nextPage: (() -> Void)?
+    var folderWithPrevious: (() -> Void)?
+    var folderWithNext: (() -> Void)?
+    var addToPreviousFolder: (() -> Void)?
+    var addToNextFolder: (() -> Void)?
+    var takeOut: (() -> Void)?
+}
+
 /// One tile: an icon over a name, pressed to open. Hiding is the context menu's and VoiceOver's action. White ink: it
 /// is drawn on the window's blur, in the dark appearance.
 struct LaunchpadTile<Mark: View>: View {
@@ -147,6 +161,8 @@ struct LaunchpadTile<Mark: View>: View {
     var menu: LaunchpadAppMenu?
     /// The tile is in the Hidden card: its one action, from the menu and from VoiceOver, is Show (the `hide` closure), and it cannot be moved.
     var inHidden = false
+    /// The tile's place by VoiceOver: nil where no reorder is allowed (a search, the category view, the Hidden card).
+    var reorder: LaunchpadTileMoves?
     @ViewBuilder let mark: Mark
     @State private var hovering = false
 
@@ -187,7 +203,20 @@ struct LaunchpadTile<Mark: View>: View {
         .accessibilityActions {
             if let hide { Button(inHidden ? HelmWord.show : LpStr.hide, action: hide) }
             if let resize { Button(resize.title, action: resize.action) }
+            if let reorder { moveActions(reorder) }
         }
+    }
+
+    @ViewBuilder private func moveActions(_ moves: LaunchpadTileMoves) -> some View {
+        if let action = moves.earlier { Button(LpStr.moveEarlier, action: action) }
+        if let action = moves.later { Button(LpStr.moveLater, action: action) }
+        if let action = moves.previousPage { Button(LpStr.moveToPreviousPage, action: action) }
+        if let action = moves.nextPage { Button(LpStr.moveToNextPage, action: action) }
+        if let action = moves.folderWithPrevious { Button(LpStr.makeFolderWithPrevious, action: action) }
+        if let action = moves.folderWithNext { Button(LpStr.makeFolderWithNext, action: action) }
+        if let action = moves.addToPreviousFolder { Button(LpStr.addToPreviousFolder, action: action) }
+        if let action = moves.addToNextFolder { Button(LpStr.addToNextFolder, action: action) }
+        if let action = moves.takeOut { Button(LpStr.takeOutOfFolder, action: action) }
     }
 }
 
@@ -195,10 +224,10 @@ extension LaunchpadTile where Mark == Image {
     /// An application's tile; the icon is the caller's, from the window's own cache.
     init(app: CatalogApp, icon: NSImage, iconSize: CGFloat, selected: Bool, glowSize: CGSize, popped: Bool, pressed: Bool = false, inHidden: Bool = false,
          moved: LaunchpadCategoryTarget?, open: @escaping () -> Void, hide: @escaping () -> Void,
-         move: @escaping (LaunchpadCategoryTarget?) -> Void) {
+         move: @escaping (LaunchpadCategoryTarget?) -> Void, reorder: LaunchpadTileMoves? = nil) {
         self.init(name: app.name, accessibleName: app.name, iconSize: iconSize, selected: selected, open: open, hide: hide,
                   glowSize: glowSize, popped: popped, pressed: pressed,
-                  menu: inHidden ? nil : LaunchpadAppMenu(app: app, moved: moved, hide: hide, move: move), inHidden: inHidden) {
+                  menu: inHidden ? nil : LaunchpadAppMenu(app: app, moved: moved, hide: hide, move: move), inHidden: inHidden, reorder: reorder) {
             Image(nsImage: icon).resizable()
         }
     }

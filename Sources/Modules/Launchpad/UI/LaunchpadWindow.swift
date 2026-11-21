@@ -76,6 +76,13 @@ final class LaunchpadPanel: NSPanel {
             // A carried tile: Esc is the state's (it ends the lift, not the window), every other key waits.
             if state.pointerBusy && event.keyCode != 53 { return true }
             if let editor = firstResponder as? NSTextView, editor.hasMarkedText() { return false }
+            // Option and an arrow moves the chosen tile, with Shift it combines or takes out (`LaunchpadScreenState.reorderKey`); the state
+            // refuses where there is nothing to arrange (a search, a name being typed), and the key then goes on to the field as before.
+            let flags = event.modifierFlags.intersection([.command, .control, .option, .shift])
+            if flags.contains(.option), flags.isDisjoint(with: [.command, .control]) {
+                let arrow: (dx: Int, dy: Int)? = switch event.keyCode { case 123: (-1, 0); case 124: (1, 0); case 125: (0, 1); case 126: (0, -1); default: nil }
+                if let arrow, state.reorderKey(dx: arrow.dx, dy: arrow.dy, combine: flags.contains(.shift)) { return true }
+            }
             guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return false }
             // The folder's name field has the keyboard: Return and Esc are its, and every other key (the caret, the arrows) goes on to it.
             if state.renaming { return state.handleNameKey(event.keyCode) }

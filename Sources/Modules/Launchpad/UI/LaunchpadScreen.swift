@@ -116,7 +116,7 @@ struct LaunchpadScreen: View {
                               glowSize: size, popped: state.launching == app.id,
                               pressed: state.pressedID == app.id || state.lift?.onto == app.id,
                               moved: state.moved[app.id], open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) },
-                              move: { state.move(app.id, to: $0) })
+                              move: { state.move(app.id, to: $0) }, reorder: state.moves(for: app.id))
             case .folder(let id, let name, let apps, let large):
                 if state.categoriesShown, id == LaunchpadHiddenBlock.id {
                     // The locked block: a lock and a name, nothing of what it holds; a press or Return asks the system.
@@ -151,7 +151,8 @@ struct LaunchpadScreen: View {
                     LaunchpadTile(name: name, accessibleName: LpStr.folder(name), iconSize: large ? g.largeMark : g.icon, selected: selected,
                                   open: { state.open(folder: id) }, hide: nil, glowSize: size,
                                   pressed: (state.pressedID == entry.id && state.pressedIcon == nil) || state.lift?.onto == entry.id,
-                                  resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { state.resize(id, large: !large) })) {
+                                  resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { state.resize(id, large: !large) }),
+                                  reorder: state.moves(for: entry.id)) {
                         LaunchpadFolderMark(icons: apps.prefix(shown).map { state.icons.icon(for: $0.path) }, size: large ? g.largeMark : g.icon,
                                             overflow: large ? apps.dropFirst(8).prefix(apps.count > 9 ? 4 : 0).map { state.icons.icon(for: $0.path) } : [],
                                             pressed: large ? apps.prefix(shown).firstIndex { $0.id == state.pressedIcon } : nil,
@@ -307,7 +308,7 @@ struct LaunchpadScreen: View {
                           popped: state.launching == app.id, pressed: state.pressedID == app.id,
                           inHidden: inHidden, moved: state.moved[app.id], open: { state.onLaunch?(app.id, app.name) },
                           hide: { inHidden ? state.onUnhide?(app.id) : state.onHide?(app.id) },
-                          move: { state.move(app.id, to: $0) })
+                          move: { state.move(app.id, to: $0) }, reorder: state.moves(for: app.id))
         } else {
             Color.clear
         }

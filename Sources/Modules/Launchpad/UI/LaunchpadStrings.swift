@@ -97,4 +97,25 @@ enum LpStr {
     static var hiddenUnavailable: String { L(.hiddenUnavailable) }
     /// The settings page's Show button, named for what it shows (the list's own Show buttons name an app).
     static var showHiddenNamed: String { L(.showHiddenNamed) }
+
+    /// A tile's place by VoiceOver: one full key for each action, no verb interpolated.
+    static var moveEarlier: String { L(.moveEarlier) }
+    static var moveLater: String { L(.moveLater) }
+    static var moveToPreviousPage: String { L(.moveToPreviousPage) }
+    static var moveToNextPage: String { L(.moveToNextPage) }
+    static var makeFolderWithPrevious: String { L(.makeFolderWithPrevious) }
+    static var makeFolderWithNext: String { L(.makeFolderWithNext) }
+    static var addToPreviousFolder: String { L(.addToPreviousFolder) }
+    static var addToNextFolder: String { L(.addToNextFolder) }
+    static var takeOutOfFolder: String { L(.takeOutOfFolder) }
+    /// What is said after a move: the numbers are strings, so a language's own digits and grouping are not these keys' business.
+    static func announceMoved(_ name: String, place: Int, of count: Int, page: Int, of pages: Int) -> String {
+        L(.announceMoved(name, "\(place)", "\(count)", "\(page)", "\(pages)"), remembered: false)
+    }
+    static func announceFolderMade(_ name: String, _ other: String) -> String { L(.announceFolderMade(name, other), remembered: false) }
+    static func announceAddedToFolder(_ name: String, _ folder: String) -> String { L(.announceAddedToFolder(name, folder), remembered: false) }
+    static func announceTakenOut(_ name: String, _ folder: String, place: Int, page: Int) -> String {
+        L(.announceTakenOut(name, folder, "\(place)", "\(page)"), remembered: false)
+    }
+    static func announceCannotMove(_ name: String) -> String { L(.announceCannotMove(name), remembered: false) }
 }
