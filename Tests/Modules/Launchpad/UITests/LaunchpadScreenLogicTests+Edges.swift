@@ -14,7 +14,7 @@ extension LaunchpadScreenLogicTests {
         XCTAssertEqual(g.columns, 6)
         XCTAssertEqual(g.rows, 3)
         XCTAssertEqual(g.capacity, 18)
-        XCTAssertEqual(g.gridTop, 96, accuracy: 0.001)
+        XCTAssertEqual(g.gridTop, 96 + (640 - 96 - LaunchpadMetrics.dotsRoom - g.pageHeight) / 2, accuracy: 0.001, "the rows' spare room is shared above and below")
         XCTAssertEqual(g.cellWidth, 1024 * 0.84 / 6, accuracy: 0.001)
         XCTAssertLessThanOrEqual(g.gridTop + g.pageHeight + LaunchpadMetrics.dotsRoom, 640, "the dots keep their room")
     }

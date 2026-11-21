@@ -57,12 +57,12 @@ struct LaunchpadSettingsPage: View {
             gridSection
             Section {
                 HelmSettingRow(LpStr.launchCountsTitle, note: LpStr.launchCountsNote) {
-                    Button(LpStr.resetLaunchCountsNamed) { Task { await lvm.resetLaunchCounts() } }
+                    Button { Task { await lvm.resetLaunchCounts() } } label: { Text(LpStr.resetLaunchCountsNamed).fixedSize() }
                         .disabled(lvm.snapshot?.launchCounts.isEmpty ?? true)
                 }
                 let moved = lvm.snapshot?.layout.categoryOverrides.count ?? 0
                 HelmSettingRow(LpStr.movedApps(moved)) {
-                    Button(LpStr.returnAllMoved) { Task { await lvm.returnAllMoved() } }
+                    Button { Task { await lvm.returnAllMoved() } } label: { Text(LpStr.returnAllMoved).fixedSize() }
                         .disabled(moved == 0)
                         .accessibilityLabel(LpStr.returnAllMovedNamed)
                 }
@@ -70,7 +70,7 @@ struct LaunchpadSettingsPage: View {
             hiddenSection
             Section {
                 HelmSettingRow(LpStr.arrangement, note: LpStr.resetNote) {
-                    Button(LpStr.resetArrangement) { lvm.askToReset() }
+                    Button { lvm.askToReset() } label: { Text(LpStr.resetArrangement).fixedSize() }
                 }
             }
         }
@@ -148,8 +148,8 @@ struct LaunchpadSettingsPage: View {
             }
             HelmSettingRow(LpStr.gridIconSize, note: LpStr.gridFitNote) {
                 // A drag publishes the grid as it goes and writes once, when it ends.
-                Slider(value: Binding(get: { grid.iconSize }, set: { var next = grid; next.iconSize = $0; lvm.setGrid(next, live: true) }),
-                       in: LaunchpadGridSettings.iconRange, step: 1) { editing in if !editing { lvm.commitGrid() } }
+                Slider(value: Binding(get: { grid.iconSize }, set: { var next = grid; next.iconSize = $0.rounded(); lvm.setGrid(next, live: true) }),
+                       in: LaunchpadGridSettings.iconRange) { editing in if !editing { lvm.commitGrid() } }
                     .frame(width: 160)
                     .labelsHidden()
                     .accessibilityLabel(LpStr.gridIconSize)
@@ -164,7 +164,7 @@ struct LaunchpadSettingsPage: View {
                 .accessibilityHidden(true)
             }
             HelmSettingRow(LpStr.gridResetTitle, note: LpStr.gridResetNote) {
-                Button(LpStr.gridReset) { lvm.resetGrid() }
+                Button { lvm.resetGrid() } label: { Text(LpStr.gridReset).fixedSize() }
                     .disabled(grid.isStandard)
                     .accessibilityLabel(LpStr.gridResetNamed)
             }

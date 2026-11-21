@@ -27,7 +27,8 @@ enum LaunchpadMetrics {
     /// The window's margin at each side, as a share of its width.
     static let sideMargin: CGFloat = 0.08
     static let searchTop: CGFloat = 28
-    static let searchHeight: CGFloat = 32
+    /// The kit's header-control height, the switch's.
+    static let searchHeight: CGFloat = 36
     static let searchWidth: CGFloat = 280
     /// What the switch ("Apps", "Categories") is given at the left of the search field: the strip is 196 pt in the widest pair of the
     /// eight languages (Russian, "Приложения" and "Категории"), plus a gap of 20 pt that keeps it from the field. Measured by `fittingSize`
@@ -36,8 +37,25 @@ enum LaunchpadMetrics {
     static let switchRoom: CGFloat = 216
     /// The switch's own height (the kit's segmented tabs, a 36 pt strip), centred on the search field's.
     static let switchHeight: CGFloat = 36
-    /// Between the search field and the grid.
-    static let gridGap: CGFloat = 36
+    /// Between the search field and the grid. 32 is no `HelmSpace` step (s7 is 28, s8 is 40): it keeps the grid's top at 96 with the 36 pt field.
+    static let gridGap: CGFloat = 32
+    /// The fill of a folder's, a category's and the Hidden block's well, and of its cluster.
+    static let wellFill = Color.white.opacity(0.18)
+    /// The search field's capsule.
+    static let fieldFill = Color.white.opacity(0.14)
+    /// The search field's placeholder (about 5:1 on the capsule over a dark wallpaper, measured offscreen); the glyph and the empty Hidden card's message are `secondaryInk`.
+    static let placeholderInk = Color.white.opacity(0.75)
+    /// Secondary white ink on the window's blur: the search glyph, the Hidden card's empty message.
+    static let secondaryInk = Color.white.opacity(0.7)
+    /// The dimming behind a folder's card (black).
+    static let scrim = 0.35
+    /// An unlit page dot's white.
+    static let unlitDot = 0.35
+    /// A folder or category well's side as a share of its frame, so it reads as big as an app icon's visible body; its corner is `wellCorner` of that side.
+    static let wellShare: CGFloat = 0.85
+    static let wellCorner: CGFloat = 0.225
+    /// The keyboard choice's ring when the glow is off (Reduce Motion, Increase Contrast): measured offscreen by the designer at 4.68:1 against the tile wash and 6.56:1 against the ground (a dark stand-in), so chosen is not pressed.
+    static let selectionRing = Color.white.opacity(0.6)
     /// Kept under the grid for the page dots.
     static let dotsRoom: CGFloat = 64
     static let dotsBottom: CGFloat = 28
@@ -66,6 +84,11 @@ private struct TileStyle: ButtonStyle {
                     .fill(configuration.isPressed || pressed || selected ? HelmSurface.rowSelection : hovering ? HelmSurface.rowHover : Color.clear)
                     .colorEffect(LaunchpadGlow.shader(size: glowSize), isEnabled: selected && LaunchpadGlow.on)
             )
+            .overlay {
+                if selected && !LaunchpadGlow.on {
+                    RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous).strokeBorder(LaunchpadMetrics.selectionRing, lineWidth: 2)
+                }
+            }
             .animation(HelmMotion.wellFade, value: pressed)
             .contentShape(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous))
     }
@@ -127,6 +150,9 @@ struct LaunchpadTile<Mark: View>: View {
     @ViewBuilder let mark: Mark
     @State private var hovering = false
 
+    /// Whether the name has a space or a hyphen to wrap at.
+    static func canBreak(_ name: String) -> Bool { name.contains { $0 == " " || $0 == "-" } }
+
     var body: some View {
         Button(action: open) {
             VStack(spacing: HelmSpace.s3) {
@@ -138,8 +164,12 @@ struct LaunchpadTile<Mark: View>: View {
                 Text(name)
                     .font(HelmText.rowDetail)
                     .foregroundStyle(Color.white)
-                    .lineLimit(2, reservesSpace: true)
+                    // A name with no space or hyphen has no place to break: it takes one line and shrinks to fit (German "Festplattendienstprogramm"),
+                    // since two lines would split it mid-word before the scale ever applied. `tileMinimum` stays.
+                    .lineLimit(Self.canBreak(name) ? 2 : 1, reservesSpace: true)
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.85)
+                    .allowsTightening(true)
                     .frame(maxWidth: .infinity)
             }
             .padding(.vertical, HelmSpace.s3)
@@ -185,20 +215,26 @@ struct LaunchpadFolderMark: View {
     var pressed: Int?
     var popped: Int?
 
-    static func pad(_ size: CGFloat) -> CGFloat { size * 0.10 }
-    static func gap(_ size: CGFloat) -> CGFloat { size * 0.05 }
-    static func mini(_ size: CGFloat) -> CGFloat { (size - 2 * pad(size) - 2 * gap(size)) / 3 }
+    /// The well's side: an app icon's visible body is about this much of its frame, and the well is drawn as big, centred in the frame.
+    static func well(_ size: CGFloat) -> CGFloat { size * LaunchpadMetrics.wellShare }
+    /// From the frame's edge to the well's.
+    static func inset(_ size: CGFloat) -> CGFloat { (size - well(size)) / 2 }
+    static func pad(_ size: CGFloat) -> CGFloat { well(size) * 0.10 }
+    static func gap(_ size: CGFloat) -> CGFloat { well(size) * 0.05 }
+    static func mini(_ size: CGFloat) -> CGFloat { (well(size) - 2 * pad(size) - 2 * gap(size)) / 3 }
 
     /// Where icon `index` (0 to 8, reading order) is drawn, from the mark's top left: the one place the drawing and a click on an icon read.
     static func frame(ofIcon index: Int, size: CGFloat) -> CGRect {
         let step = mini(size) + gap(size)
-        return CGRect(x: pad(size) + CGFloat(index % 3) * step, y: pad(size) + CGFloat(index / 3) * step, width: mini(size), height: mini(size))
+        let origin = inset(size) + pad(size)
+        return CGRect(x: origin + CGFloat(index % 3) * step, y: origin + CGFloat(index / 3) * step, width: mini(size), height: mini(size))
     }
 
     var body: some View {
         let gap = Self.gap(size), mini = Self.mini(size)
         ZStack {
-            RoundedRectangle(cornerRadius: HelmRadius.frame, style: .continuous).fill(Color.white.opacity(0.18))
+            RoundedRectangle(cornerRadius: LaunchpadMetrics.wellCorner * Self.well(size), style: .continuous).fill(LaunchpadMetrics.wellFill)
+                .frame(width: Self.well(size), height: Self.well(size))
             VStack(spacing: gap) {
                 ForEach(0..<3, id: \.self) { row in
                     HStack(spacing: gap) {
@@ -218,7 +254,7 @@ struct LaunchpadFolderMark: View {
                                     .animation(HelmMotion.interface, value: popped)
                                     .zIndex(popped == index ? 1 : 0)
                             } else if index == 8, !overflow.isEmpty {
-                                LaunchpadClusterCell(icons: overflow, side: mini, markSize: size)
+                                LaunchpadClusterCell(icons: overflow, side: mini)
                             } else {
                                 Color.clear.frame(width: mini, height: mini)
                             }
@@ -231,17 +267,16 @@ struct LaunchpadFolderMark: View {
 }
 
 /// A well with up to four icons two by two inside it, tiny: the ninth cell of a folder of more than nine, and the fourth quarter of a
-/// category block, which opens what the large icons do not show. `markSize` is the mark it sits in, for the well's corner.
+/// category block, which opens what the large icons do not show.
 struct LaunchpadClusterCell: View {
     let icons: [NSImage]
     let side: CGFloat
-    let markSize: CGFloat
 
     var body: some View {
         let inset = side * 0.10, between = side * 0.06
         let tiny = (side - 2 * inset - between) / 2
         ZStack {
-            RoundedRectangle(cornerRadius: HelmRadius.frame * side / markSize, style: .continuous).fill(Color.white.opacity(0.18))
+            RoundedRectangle(cornerRadius: LaunchpadMetrics.wellCorner * side, style: .continuous).fill(LaunchpadMetrics.wellFill)
             VStack(spacing: between) {
                 ForEach(0..<2, id: \.self) { row in
                     HStack(spacing: between) {
@@ -275,18 +310,20 @@ struct LaunchpadCategoryMark: View {
     var menu: ((Int) -> LaunchpadAppMenu)?
 
     /// The side of a quadrant: the same pad and gap as the folder mark's, two to a side.
-    static func quadrant(_ size: CGFloat) -> CGFloat { (size - 2 * LaunchpadFolderMark.pad(size) - LaunchpadFolderMark.gap(size)) / 2 }
+    static func quadrant(_ size: CGFloat) -> CGFloat { (LaunchpadFolderMark.well(size) - 2 * LaunchpadFolderMark.pad(size) - LaunchpadFolderMark.gap(size)) / 2 }
 
     /// Where quadrant `index` (0 to 3, reading order) is drawn, from the mark's top left: the one place the drawing and a click read.
     static func frame(ofQuadrant index: Int, size: CGFloat) -> CGRect {
         let side = quadrant(size), step = side + LaunchpadFolderMark.gap(size)
-        return CGRect(x: LaunchpadFolderMark.pad(size) + CGFloat(index % 2) * step, y: LaunchpadFolderMark.pad(size) + CGFloat(index / 2) * step,
-                      width: side, height: side)
+        let origin = LaunchpadFolderMark.inset(size) + LaunchpadFolderMark.pad(size)
+        return CGRect(x: origin + CGFloat(index % 2) * step, y: origin + CGFloat(index / 2) * step, width: side, height: side)
     }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: HelmRadius.frame, style: .continuous).fill(Color.white.opacity(0.18))
+            RoundedRectangle(cornerRadius: LaunchpadMetrics.wellCorner * LaunchpadFolderMark.well(size), style: .continuous).fill(LaunchpadMetrics.wellFill)
+                .frame(width: LaunchpadFolderMark.well(size), height: LaunchpadFolderMark.well(size))
+                .offset(x: LaunchpadFolderMark.inset(size), y: LaunchpadFolderMark.inset(size))
             ForEach(Array(large.prefix(4).enumerated()), id: \.offset) { index, icon in
                 let frame = Self.frame(ofQuadrant: index, size: size)
                 Image(nsImage: icon).resizable()
@@ -306,7 +343,7 @@ struct LaunchpadCategoryMark: View {
             }
             if !cluster.isEmpty {
                 let frame = Self.frame(ofQuadrant: 3, size: size)
-                LaunchpadClusterCell(icons: cluster, side: frame.width, markSize: size).offset(x: frame.minX, y: frame.minY)
+                LaunchpadClusterCell(icons: cluster, side: frame.width).offset(x: frame.minX, y: frame.minY)
             }
         }
         .frame(width: size, height: size, alignment: .topLeading)
@@ -319,7 +356,8 @@ struct LaunchpadHiddenMark: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: HelmRadius.frame, style: .continuous).fill(Color.white.opacity(0.18))
+            RoundedRectangle(cornerRadius: LaunchpadMetrics.wellCorner * LaunchpadFolderMark.well(size), style: .continuous).fill(LaunchpadMetrics.wellFill)
+                .frame(width: LaunchpadFolderMark.well(size), height: LaunchpadFolderMark.well(size))
             Image(systemName: "lock.fill")
                 .font(.system(size: size * 0.34, weight: .regular))
                 .foregroundStyle(Color.white)

@@ -43,13 +43,15 @@ struct LaunchpadGeometry: Equatable {
 
         let usableWidth = screen.width * (1 - 2 * LaunchpadMetrics.sideMargin)
         let searchTop = top + LaunchpadMetrics.searchTop
-        let gridTop = searchTop + LaunchpadMetrics.searchHeight + LaunchpadMetrics.gridGap
-        let usableHeight = max(0, screen.height - gridTop - LaunchpadMetrics.dotsRoom)
+        let gridStart = searchTop + LaunchpadMetrics.searchHeight + LaunchpadMetrics.gridGap
+        let usableHeight = max(0, screen.height - gridStart - LaunchpadMetrics.dotsRoom)
         let (columns, rows) = counts(width: usableWidth, height: usableHeight, settings: settings)
 
         let cellWidth = usableWidth / CGFloat(columns)
         let icon = fit(want: CGFloat(settings.normalized().iconSize), cellWidth: cellWidth, rowHeight: usableHeight / CGFloat(rows))
         let cellHeight = LaunchpadMetrics.cellHeight(icon: icon)
+        // The room the rows leave is shared above and below, so the grid hangs in the middle of what is under the search field.
+        let gridTop = gridStart + max(0, usableHeight - CGFloat(rows) * cellHeight) / 2
 
         return LaunchpadGeometry(
             size: screen, columns: columns, rows: rows, capacity: columns * rows,

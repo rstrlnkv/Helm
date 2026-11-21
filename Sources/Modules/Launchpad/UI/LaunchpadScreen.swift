@@ -182,14 +182,14 @@ struct LaunchpadScreen: View {
 
     private func searchField(_ g: LaunchpadGeometry) -> some View {
         HStack(spacing: HelmSpace.s3) {
-            Image(systemName: "magnifyingglass").foregroundStyle(Color.white.opacity(0.7)).accessibilityHidden(true)
-            TextField(HelmControlName.searchApps, text: $state.search)
+            Image(systemName: "magnifyingglass").foregroundStyle(LaunchpadMetrics.secondaryInk).accessibilityHidden(true)
+            TextField(text: $state.search, prompt: Text(HelmControlName.searchApps).foregroundStyle(LaunchpadMetrics.placeholderInk)) { Text(HelmControlName.searchApps) }
                 .textFieldStyle(.plain)
                 .focused($searchFocused)
         }
         .padding(.horizontal, HelmSpace.s5)
         .frame(width: LaunchpadMetrics.searchWidth, height: LaunchpadMetrics.searchHeight)
-        .background(Capsule().fill(Color.white.opacity(0.14)))
+        .background(Capsule().fill(LaunchpadMetrics.fieldFill))
         .frame(width: g.size.width)
         .padding(.top, g.searchTop)
         .allowsHitTesting(state.openFolder == nil)
@@ -223,7 +223,7 @@ struct LaunchpadScreen: View {
         HStack(spacing: 0) {
             ForEach(0..<count, id: \.self) { index in
                 Button { withAnimation(HelmMotion.interface) { state.go(to: index) } } label: {
-                    Circle().fill(Color.white.opacity(index == current ? 0.9 : 0.35))
+                    Circle().fill(Color.white.opacity(index == current ? 0.9 : LaunchpadMetrics.unlitDot))
                         .frame(width: 8, height: 8)
                         .frame(width: 24, height: 24)
                         .contentShape(Rectangle())
@@ -260,7 +260,7 @@ struct LaunchpadScreen: View {
             .font(HelmText.sectionHeading).foregroundStyle(Color.white)
             .frame(height: LaunchpadGeometry.cardTitle)
             cardPages(grid, entries, g)
-                .overlay { if entries.isEmpty { Text(LpStr.noHiddenApps).font(HelmText.rowDetail).foregroundStyle(Color.white.opacity(0.7)) } }
+                .overlay { if entries.isEmpty { Text(LpStr.noHiddenApps).font(HelmText.rowDetail).foregroundStyle(LaunchpadMetrics.secondaryInk).multilineTextAlignment(.center) } }
             if grid.paged {
                 pageDots(count: grid.pageCount, current: grid.page)
                     .frame(height: LaunchpadGeometry.cardDots)
@@ -315,7 +315,7 @@ struct LaunchpadScreen: View {
 
     /// The dimming behind the card; it fades and takes no clicks on its way out.
     private func folderScrim(_ g: LaunchpadGeometry) -> some View {
-        Color.black.opacity(0.35)
+        Color.black.opacity(LaunchpadMetrics.scrim)
             .frame(width: g.size.width, height: g.size.height)
             .contentShape(Rectangle())
             .onTapGesture { state.backgroundClicked() }
