@@ -5,12 +5,15 @@ import Foundation
 /// leniently; counts truncated to `LaunchpadLimits`; a folder id that is not a UUID gets a fresh one.
 /// A page break is one more kind of entry, `{"pageBreak": true}`, so a file without one decodes as it always did
 /// and the version stays 1; an older build skips the entry it does not know, and so loses the page it stood for.
+/// A large folder is `"large": true` inside the folder entry, written only when set, so a small folder's file is as it was;
+/// anything else under that key reads as small and the rest of the folder reads normally; an older build ignores the key
+/// and drops it on its next save, as it does a page break. The key is read nowhere but in a folder.
 extension LaunchpadLayout: Codable {
     static let version = 1
 
     private enum Keys: String, CodingKey { case version, items, hidden }
     private enum ItemKeys: String, CodingKey { case app, folder, pageBreak }
-    private enum FolderKeys: String, CodingKey { case id, name, apps }
+    private enum FolderKeys: String, CodingKey { case id, name, apps, large }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Keys.self)
@@ -65,7 +68,8 @@ extension LaunchpadLayout: Codable {
                         else { _ = try? list.decode(Skip.self) }
                     }
                 }
-                item = .folder(Folder(id: id, name: String(name.prefix(LaunchpadLimits.maxFolderName)), apps: apps))
+                let large = (try? f.decode(Bool.self, forKey: .large)) ?? false
+                item = .folder(Folder(id: id, name: String(name.prefix(LaunchpadLimits.maxFolderName)), apps: apps, large: large))
             } else if (try? c.decode(Bool.self, forKey: .pageBreak)) == true {
                 item = .pageBreak
             } else {
@@ -82,6 +86,7 @@ extension LaunchpadLayout: Codable {
                 try n.encode(f.id.uuidString, forKey: .id)
                 try n.encode(f.name, forKey: .name)
                 try n.encode(f.apps, forKey: .apps)
+                if f.large { try n.encode(true, forKey: .large) }
             case .pageBreak: try c.encode(true, forKey: .pageBreak)
             case nil: break
             }

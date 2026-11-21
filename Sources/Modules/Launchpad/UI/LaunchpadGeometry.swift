@@ -14,7 +14,7 @@ struct LaunchpadGeometry: Equatable {
     let size: CGSize
     let columns: Int
     let rows: Int
-    /// Tiles on one page.
+    /// Cells on one page: a page holds fewer tiles when it has a large folder, which takes four.
     let capacity: Int
     let cellWidth: CGFloat
     let cellHeight: CGFloat
@@ -80,11 +80,20 @@ struct LaunchpadGeometry: Equatable {
         max(LaunchpadMetrics.iconFloor, min(want, cellWidth - 2 * LaunchpadMetrics.tileSidePadding, rowHeight - LaunchpadMetrics.cellChrome))
     }
 
-    /// Where slot `slot` of a page sits, from the page's top left: slots fill left to right from the grid's left edge, so a
-    /// short last row stays on its columns.
-    func origin(ofSlot slot: Int) -> CGPoint {
-        CGPoint(x: (pageWidth - CGFloat(columns) * cellWidth) / 2 + CGFloat(slot % columns) * cellWidth,
-                y: CGFloat(slot / columns) * cellHeight)
+    /// The grid's left edge on a page.
+    var gridLeft: CGFloat { (pageWidth - CGFloat(columns) * cellWidth) / 2 }
+
+    /// Where a tile's cells sit, from the page's top left: cells fill left to right from the grid's left edge, so a short
+    /// last row stays on its columns.
+    func frame(of slot: LaunchpadPlacement.Slot) -> CGRect {
+        CGRect(x: gridLeft + CGFloat(slot.column) * cellWidth, y: CGFloat(slot.row) * cellHeight,
+               width: CGFloat(slot.span) * cellWidth, height: CGFloat(slot.span) * cellHeight)
+    }
+
+    /// The side of the icon a large folder draws: the block's width and height less what a tile holds besides its icon, so it
+    /// is the small icon's room twice over.
+    var largeMark: CGFloat {
+        max(0, min(2 * cellWidth - 2 * LaunchpadMetrics.tileSidePadding, 2 * cellHeight - LaunchpadMetrics.cellChrome))
     }
 
     /// A folder's card, centred in the window: the title, then `rows` rows of `columns` cells, in the card's padding; `paged`
@@ -103,9 +112,9 @@ struct LaunchpadGeometry: Equatable {
     /// The height of the card's row of page dots (the dots' own touch size).
     static let cardDots: CGFloat = 24
 
-    /// The middle of slot `slot`'s tile in the window's own coordinates.
-    func center(ofSlot slot: Int) -> CGPoint {
-        let o = origin(ofSlot: slot)
-        return CGPoint(x: o.x + cellWidth / 2, y: gridTop + o.y + cellHeight / 2)
+    /// The middle of a tile's cells in the window's own coordinates.
+    func center(of slot: LaunchpadPlacement.Slot) -> CGPoint {
+        let f = frame(of: slot)
+        return CGPoint(x: f.midX, y: gridTop + f.midY)
     }
 }

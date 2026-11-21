@@ -9,20 +9,24 @@ enum LaunchpadPaging {
         return max(1, (items + capacity - 1) / capacity)
     }
 
-    static func slice<T>(_ items: [T], page: Int, capacity: Int) -> [T] {
-        guard capacity > 0, page >= 0 else { return [] }
-        let from = page * capacity
-        guard from < items.count else { return [] }
-        return Array(items[from..<min(items.count, from + capacity)])
-    }
-
-    /// The pages of segments (the list cut at each page break), each cut again by what a page holds; never an empty page, and
-    /// at least one.
-    static func pages<T>(_ segments: [[T]], capacity: Int) -> [[T]] {
-        let chunks = segments.flatMap { segment in
-            (0..<pageCount(items: segment.count, capacity: capacity)).map { slice(segment, page: $0, capacity: capacity) }
-        }.filter { !$0.isEmpty }
-        return chunks.isEmpty ? [[]] : chunks
+    /// The pages of segments (the list cut at each page break), each cut again by what a page holds, and the cells of each page's
+    /// items (`LaunchpadPlacement.place`): a page ends at the first item that does not fit, so a page of large folders holds fewer
+    /// than `capacity` items. Never an empty page, and at least one. Concatenated, the pages are the segments' items, in order.
+    static func pages<T>(_ segments: [[T]], columns: Int, rows: Int, isLarge: (T) -> Bool) -> (pages: [[T]], slots: [[LaunchpadPlacement.Slot]]) {
+        let capacity = columns * rows
+        var pages: [[T]] = [], slots: [[LaunchpadPlacement.Slot]] = []
+        guard capacity > 0 else { return ([[]], [[]]) }
+        for segment in segments {
+            var rest = segment[...]
+            while !rest.isEmpty {
+                let placed = LaunchpadPlacement.place(rest.prefix(capacity).map(isLarge), columns: columns, rows: rows)
+                let n = max(1, placed.count)
+                pages.append(Array(rest.prefix(n)))
+                slots.append(placed)
+                rest = rest.dropFirst(n)
+            }
+        }
+        return pages.isEmpty ? ([[]], [[]]) : (pages, slots)
     }
 
     /// The page that holds the tile at `index` of the whole list, given the index each page starts at (a page break makes a

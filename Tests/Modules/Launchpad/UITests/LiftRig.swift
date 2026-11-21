@@ -68,3 +68,18 @@ import XCTest
         state.pointerMoved(CGPoint(x: from.x + 20, y: from.y), time: time + 0.01)
     }
 }
+
+extension LaunchpadGeometry {
+    /// The slot of a one-cell tile at cell number `n` of a page, reading order: what a page with no large folder holds.
+    func cell(_ n: Int) -> LaunchpadPlacement.Slot { LaunchpadPlacement.Slot(column: n % columns, row: n / columns, span: 1) }
+    func origin(ofSlot n: Int) -> CGPoint { frame(of: cell(n)).origin }
+    func center(ofSlot n: Int) -> CGPoint { center(of: cell(n)) }
+}
+
+extension LaunchpadSurface {
+    /// A surface of pages of one-cell tiles, `pageCounts` of them on each.
+    init(geometry: LaunchpadGeometry, page: Int, pageCounts: [Int], gap: Int?, folders: Set<Int> = [], card: Card? = nil) {
+        self.init(geometry: geometry, page: page, slots: pageCounts.map { count in (0..<count).map { geometry.cell($0) } },
+                  gap: gap, folders: folders, card: card)
+    }
+}

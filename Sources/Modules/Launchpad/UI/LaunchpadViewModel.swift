@@ -280,6 +280,7 @@ enum LaunchNotice: Equatable {
     }
 
     func rename(_ folder: UUID, to name: String) async { await edit { $0.apply(.rename(folder, to: name)) } }
+    func resize(_ folder: UUID, large: Bool) async { await edit { $0.apply(.resize(folder, large: large)) } }
 
     /// Asking changes nothing on disk: only `confirmReset` after it does.
     func askToReset() { if !closed { pendingReset = true } }

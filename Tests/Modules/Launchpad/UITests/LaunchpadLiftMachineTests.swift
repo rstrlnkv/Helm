@@ -87,7 +87,8 @@ final class LaunchpadLiftMachineTests: XCTestCase {
         let s = surface(gap: 2)
         var m = lifted(s)
         _ = m.feed(.moved, at: core(15), surface: s, time: 1.0)
-        XCTAssertEqual(m.feed(.tick, at: core(15), surface: s, time: 1.2), .moveGap(to: 15))
+        // An empty cell is the page's end whichever it is: its address is the count of tiles, which `moveGap` reads as "after the last".
+        XCTAssertEqual(m.feed(.tick, at: core(15), surface: s, time: 1.2), .moveGap(to: s.slots[0].count))
     }
 
     func testTheEdgeTurnsAfterItsDwellAndRepeatsAndTheFirstPageHasNoPageBefore() {

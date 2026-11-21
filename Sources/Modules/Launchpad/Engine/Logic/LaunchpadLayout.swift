@@ -12,6 +12,8 @@ public struct LaunchpadLayout: Equatable, Sendable {
         public internal(set) var id: UUID
         public internal(set) var name: String
         public internal(set) var apps: [AppID]
+        /// Drawn as a 2×2 block with its first apps shown as icons. A property of the folder, so it goes with it wherever it is moved.
+        public internal(set) var large = false
     }
 
     public enum Item: Equatable, Sendable {
@@ -47,6 +49,8 @@ public enum LaunchpadEdit: Equatable, Sendable {
     case remove(AppID, fromFolder: UUID)
     case moveInFolder(AppID, toIndex: Int)
     case rename(UUID, to: String)
+    /// The folder's size on the page. Refused when the folder is not there or already has this size, so a stale menu writes nothing.
+    case resize(UUID, large: Bool)
     case hide(AppID)
     case unhide(AppID)
     /// Order and folders go; hidden stays. The engine reconciles the result, which puts every shown app back in catalog order.
@@ -172,6 +176,9 @@ extension LaunchpadLayout {
         case .rename(let folder, let name):
             guard let f = out.folderIndex(folder), let trimmed = Self.folderName(name) else { return nil }
             out.modifyFolder(at: f) { $0.name = trimmed }
+        case .resize(let folder, let large):
+            guard let f = out.folderIndex(folder), out.folder(folder)?.large != large else { return nil }
+            out.modifyFolder(at: f) { $0.large = large }
         case .hide(let app):
             guard out.contains(app) else { return nil }
             out.take(app)

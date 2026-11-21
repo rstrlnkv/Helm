@@ -33,8 +33,10 @@ struct LaunchpadScreen: View {
                     folderCard(g)
                 }
                 if let carried = state.lift {
-                    LiftOverlay(point: state.liftPoint, cell: CGSize(width: g.cellWidth, height: g.cellHeight)) {
-                        tile(carried.entry, selected: false, width: g.cellWidth, g)
+                    // The carried tile keeps its own size: a large folder's block is two cells a side.
+                    let size = CGSize(width: g.cellWidth * (carried.entry.isLarge ? 2 : 1), height: g.cellHeight * (carried.entry.isLarge ? 2 : 1))
+                    LiftOverlay(point: state.liftPoint, cell: size) {
+                        tile(carried.entry, selected: false, size: size, g)
                     }
                 }
             }
@@ -88,38 +90,48 @@ struct LaunchpadScreen: View {
         .allowsHitTesting(state.openFolder == nil)
     }
 
-    /// The page's tiles, each at its own slot: left to right from the grid's left edge, so a short last row keeps its columns.
+    /// The page's tiles, each at its own cells (`state.slots`, from `LaunchpadPlacement`): left to right from the grid's left edge,
+    /// so a short last row keeps its columns, and a large folder is a block of four cells.
     private func pageView(_ index: Int, _ g: LaunchpadGeometry) -> some View {
         let entries = state.pages[index]
+        let slots = state.slots.indices.contains(index) ? state.slots[index] : []
         return ZStack(alignment: .topLeading) {
             ForEach(Array(entries.enumerated()), id: \.element.id) { at, entry in
-                let origin = g.origin(ofSlot: at)
-                tile(entry, selected: state.openFolder == nil && state.selection == state.flatIndex(page: index, slot: at), width: g.cellWidth, g)
-                    .offset(x: origin.x, y: origin.y)
+                if slots.indices.contains(at) {
+                    let frame = g.frame(of: slots[at])
+                    tile(entry, selected: state.openFolder == nil && state.selection == state.flatIndex(page: index, slot: at), size: frame.size, g)
+                        .offset(x: frame.minX, y: frame.minY)
+                }
             }
         }
         .frame(width: g.pageWidth, height: g.pageHeight, alignment: .topLeading)
     }
 
-    private func tile(_ entry: LaunchpadEntry, selected: Bool, width: CGFloat, _ g: LaunchpadGeometry) -> some View {
+    private func tile(_ entry: LaunchpadEntry, selected: Bool, size: CGSize, _ g: LaunchpadGeometry) -> some View {
         Group {
             switch entry {
             case .app(let app):
                 LaunchpadTile(app: app, icon: state.icons.icon(for: app.path), iconSize: g.icon, selected: selected,
-                              glowSize: glowSize(g), popped: state.launching == app.id,
+                              glowSize: size, popped: state.launching == app.id,
                               pressed: state.pressedID == app.id || state.lift?.onto == app.id,
                               open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) })
-            case .folder(let id, let name, let apps):
-                LaunchpadTile(name: name, accessibleName: LpStr.folder(name), iconSize: g.icon, selected: selected,
-                              open: { state.open(folder: id) }, hide: nil, glowSize: glowSize(g),
-                              pressed: state.pressedID == entry.id || state.lift?.onto == entry.id) {
-                    LaunchpadFolderMark(icons: apps.prefix(9).map { state.icons.icon(for: $0.path) }, size: g.icon)
+            case .folder(let id, let name, let apps, let large):
+                // A large folder shows the first eight apps and, past nine, four more in the ninth cell, or the first nine; the mark's icons are plain images, and a click on one is the state's (the panel takes the press).
+                let shown = large && apps.count > 9 ? 8 : 9
+                LaunchpadTile(name: name, accessibleName: LpStr.folder(name), iconSize: large ? g.largeMark : g.icon, selected: selected,
+                              open: { state.open(folder: id) }, hide: nil, glowSize: size,
+                              pressed: (state.pressedID == entry.id && state.pressedIcon == nil) || state.lift?.onto == entry.id,
+                              resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { state.resize(id, large: !large) })) {
+                    LaunchpadFolderMark(icons: apps.prefix(shown).map { state.icons.icon(for: $0.path) }, size: large ? g.largeMark : g.icon,
+                                        overflow: large ? apps.dropFirst(8).prefix(apps.count > 9 ? 4 : 0).map { state.icons.icon(for: $0.path) } : [],
+                                        pressed: large ? apps.prefix(shown).firstIndex { $0.id == state.pressedIcon } : nil,
+                                        popped: large ? apps.prefix(shown).firstIndex { $0.id == state.launching } : nil)
                 }
             case .gap:
                 Color.clear
             }
         }
-        .frame(width: width, height: g.cellHeight)
+        .frame(width: size.width, height: size.height)
     }
 
     private func glowSize(_ g: LaunchpadGeometry) -> CGSize { CGSize(width: g.cellWidth, height: g.cellHeight) }

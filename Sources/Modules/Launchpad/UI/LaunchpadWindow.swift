@@ -232,6 +232,7 @@ private final class LaunchpadWindowEnders {
         state.onHide = { [weak model] id in Task { @MainActor in await model?.hide(id) } }
         state.onPlace = { [weak model] edit in await model?.place(edit) }
         state.onRename = { [weak model] id, name in Task { @MainActor in await model?.rename(id, to: name) } }
+        state.onResize = { [weak model] id, large in Task { @MainActor in await model?.resize(id, large: large) } }
         state.onClose = { [weak self] in self?.close() }
         let asked = model.grid
         let grid = asked.automatic ? "automatic" : "\(asked.rows) rows asked, \(geometry.rows) fit"
@@ -387,6 +388,7 @@ private final class LaunchpadWindowEnders {
         state.onLaunch = nil
         state.onPlace = nil
         state.onRename = nil
+        state.onResize = nil
         state.onHide = nil
         state.onClose = nil
         state.onLoaded = nil

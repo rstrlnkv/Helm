@@ -5,6 +5,9 @@ enum LpStr {
     static var moduleName: String { L(.launchpad) }
     static var summary: String { L(.summary) }
     static var hide: String { L(.hide) }
+    /// The folder tile's menu items: the size it can be given.
+    static var enlargeFolder: String { L(.enlargeFolder) }
+    static var shrinkFolder: String { L(.shrinkFolder) }
     static var hiddenApps: String { L(.hiddenApps) }
     static var noApps: String { L(.noAppsToShow) }
     static var noMatch: String { L(.noAppMatches) }

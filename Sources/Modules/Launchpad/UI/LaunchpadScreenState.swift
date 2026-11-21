@@ -6,7 +6,8 @@ import Module_Launchpad_Engine
 /// tile leaves, which draws nothing and keeps one identity for as long as it is shown.
 enum LaunchpadEntry: Equatable, Identifiable {
     case app(CatalogApp)
-    case folder(id: UUID, name: String, apps: [CatalogApp])
+    /// `large`: drawn as a 2×2 block (the folder's own setting).
+    case folder(id: UUID, name: String, apps: [CatalogApp], large: Bool = false)
     case gap
 
     /// The gap's id: a space, which no bundle id can hold, so that no app's id is it.
@@ -15,9 +16,13 @@ enum LaunchpadEntry: Equatable, Identifiable {
     var id: String {
         switch self {
         case .app(let app): app.id
-        case .folder(let id, _, _): id.uuidString
+        case .folder(let id, _, _, _): id.uuidString
         case .gap: Self.gapID
         }
+    }
+
+    var isLarge: Bool {
+        if case .folder(_, _, _, let large) = self { large } else { false }
     }
 }
 
@@ -125,7 +130,12 @@ struct LaunchpadLiftView: Equatable {
     /// The tile carried by the pointer, and what a release would drop it onto; nil when nothing is carried.
     @Published private(set) var lift: LaunchpadLiftView?
     /// The tile the press is on, until it is let go or lifted: its wash, since the panel takes the press before the button.
-    @Published private(set) var pressedID: String?
+    @Published private(set) var pressedID: String? {
+        didSet { if pressedID == nil { pressedIcon = nil } }
+    }
+    /// The app of the mini icon the press is on, when the press is on a large folder's icon: that icon takes the wash, and the
+    /// release launches it. nil with a press elsewhere on the tile (the whole tile washes and its release opens the folder).
+    @Published private(set) var pressedIcon: AppID?
     let liftPoint = LaunchpadLiftPoint()
 
     var onLaunch: ((AppID, String) -> Void)?
@@ -135,6 +145,11 @@ struct LaunchpadLiftView: Equatable {
     var onPlace: ((LaunchpadEdit) async -> LaunchpadSnapshot?)?
     /// Writes a folder's new name.
     var onRename: ((UUID, String) -> Void)?
+    /// Writes a folder's size (true: large).
+    var onResize: ((UUID, Bool) -> Void)?
+    /// A resize the shown folder's size differs from is on its way: the next update moves the tiles with the reorder curve, and
+    /// spends the flag, answer or not. A resize that asks for the size the folder has is never armed (the engine refuses it).
+    private var animateNextUpdate = false
     /// Said once, when the first snapshot has come in.
     var onLoaded: ((LaunchpadSnapshot, LaunchpadScreenState) -> Void)?
     private var loadedOnce = false
@@ -146,11 +161,14 @@ struct LaunchpadLiftView: Equatable {
     private var top: [LaunchpadEntry] = []
     /// What is shown instead of `segments` while a tile is carried (the gap in its place) and until its drop is answered.
     private var preview: [[LaunchpadEntry]]?
-    private var pageCounts = [0]
+    /// The cells each page's tiles cover, published with `pages` in one block: the page draws from them and the pointer's hit test reads them.
+    @Published private(set) var slots: [[LaunchpadPlacement.Slot]] = [[]]
     private var pageStarts = [0]
     private var gapAddress: Int?
     private var machine = LaunchpadLift()
     private var lastPoint = CGPoint.zero
+    /// Where the press that may become a click began: which icon of a large folder it was on.
+    private var pressPoint = CGPoint.zero
     private var timer: Task<Void, Never>?
     private var scheduled: TimeInterval?
     private var placing: Task<Void, Never>?
@@ -185,8 +203,10 @@ struct LaunchpadLiftView: Equatable {
     /// window's middle when there is no folder.
     var folderOrigin: CGPoint {
         guard let folderTile else { return CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2) }
-        let start = pageStarts[LaunchpadPaging.page(of: folderTile, starts: pageStarts)]
-        return geometry.center(ofSlot: folderTile - start)
+        let at = LaunchpadPaging.page(of: folderTile, starts: pageStarts)
+        let item = folderTile - pageStarts[at]
+        guard slots.indices.contains(at), slots[at].indices.contains(item) else { return CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2) }
+        return geometry.center(of: slots[at][item])
     }
 
     /// The columns the arrow keys move over: the page's, or the open folder's.
@@ -200,7 +220,12 @@ struct LaunchpadLiftView: Equatable {
 
     func update(snapshot: LaunchpadSnapshot?) {
         self.snapshot = snapshot
-        reflow(selectFirst: false)
+        if animateNextUpdate {
+            animateNextUpdate = false
+            withAnimation(HelmMotion.reorder) { reflow(selectFirst: false) }
+        } else {
+            reflow(selectFirst: false)
+        }
         if let snapshot, !loadedOnce {
             loadedOnce = true
             onLoaded?(snapshot, self)
@@ -225,7 +250,7 @@ struct LaunchpadLiftView: Equatable {
                 case .app(let id): if let app = snapshot.apps[id] { segments[segments.count - 1].append(.app(app)) }
                 case .folder(let folder):
                     let apps = folder.apps.compactMap { snapshot.apps[$0] }
-                    if !apps.isEmpty { segments[segments.count - 1].append(.folder(id: folder.id, name: folder.name, apps: apps)) }
+                    if !apps.isEmpty { segments[segments.count - 1].append(.folder(id: folder.id, name: folder.name, apps: apps, large: folder.large)) }
                 case .pageBreak: segments.append([])
                 }
             }
@@ -233,7 +258,7 @@ struct LaunchpadLiftView: Equatable {
         segments.removeAll { $0.isEmpty }
         top = Array(segments.joined())
         if let open = openFolder {
-            if let at = top.firstIndex(where: { $0.id == open.uuidString }), case .folder(_, let name, let apps) = top[at] {
+            if let at = top.firstIndex(where: { $0.id == open.uuidString }), case .folder(_, let name, let apps, _) = top[at] {
                 folderTile = at
                 setFolderName(name)
                 assign(\.folderApps, apps)
@@ -270,6 +295,12 @@ struct LaunchpadLiftView: Equatable {
             guard let next else { return }
             assign(\.selection, next)
             goCard(to: card.page(ofIndex: next))
+            return
+        }
+        // A page with a large folder has no columns an index can step by: Up and Down follow the cells, and stay when there is nothing above or below.
+        if dx == 0, dy != 0, let selection, pageStarts.indices.contains(page), slots.indices.contains(page), slots[page].contains(where: { $0.span > 1 }),
+           LaunchpadPaging.page(of: selection, starts: pageStarts) == page {
+            if let item = LaunchpadPlacement.vertical(from: selection - pageStarts[page], dy: dy, in: slots[page]) { assign(\.selection, pageStarts[page] + item) }
             return
         }
         guard let next = LaunchpadPaging.moved(selection, dx: dx, dy: dy, columns: columns, count: count) else { return }
@@ -345,6 +376,12 @@ struct LaunchpadLiftView: Equatable {
         assign(\.page, LaunchpadPaging.page(of: openFolder == nil ? selection ?? anchor : anchor, starts: pageStarts))
     }
 
+    /// The folder's menu: its size changes, and the tiles around it make room as they do for a drop.
+    func resize(_ id: UUID, large: Bool) {
+        if case .folder(_, _, _, let now)? = top.first(where: { $0.id == id.uuidString }), now != large { animateNextUpdate = true }
+        onResize?(id, large)
+    }
+
     /// Return on the arrow keys' choice: an app opens, a folder opens its card.
     func activate() {
         guard let selection else { return }
@@ -357,10 +394,29 @@ struct LaunchpadLiftView: Equatable {
         click(top[selection])
     }
 
+    /// A press on an icon of a large folder launches that app, if the same app is under the press's point when it is let go; a
+    /// press elsewhere on the tile, or a block that moved since so that another app (or none) is under the point, is the tile's
+    /// own click: the folder opens and no app is launched.
+    private func click(_ entry: LaunchpadEntry, at address: Int, icon pressed: AppID?) {
+        if let pressed, let hit = miniIcon(at: pressPoint, address: address), hit.id == pressed {
+            onLaunch?(hit.id, hit.name)
+            return
+        }
+        click(entry)
+    }
+
+    /// The app of the large folder's mini icon at `address` that `point` is on, as the page shows the block now.
+    private func miniIcon(at point: CGPoint, address: Int) -> CatalogApp? {
+        let (on, item) = (address / geometry.capacity, address % geometry.capacity)
+        guard case .folder(_, _, let apps, true)? = entry(at: address), on == page, slots.indices.contains(on), slots[on].indices.contains(item) else { return nil }
+        let block = geometry.frame(of: slots[on][item]).offsetBy(dx: 0, dy: geometry.gridTop)
+        return LaunchpadHit.icon(at: point, block: block, mark: geometry.largeMark, apps: apps.count).map { apps[$0] }
+    }
+
     private func click(_ entry: LaunchpadEntry) {
         switch entry {
         case .app(let app): onLaunch?(app.id, app.name)
-        case .folder(let id, _, _): open(folder: id)
+        case .folder(let id, _, _, _): open(folder: id)
         case .gap: break
         }
     }
@@ -369,7 +425,7 @@ struct LaunchpadLiftView: Equatable {
     func flatIndex(page: Int, slot: Int) -> Int { pageStarts.indices.contains(page) ? pageStarts[page] + slot : slot }
 
     func open(folder id: UUID) {
-        guard let at = top.firstIndex(where: { $0.id == id.uuidString }), case .folder(_, let name, let apps) = top[at] else { return }
+        guard let at = top.firstIndex(where: { $0.id == id.uuidString }), case .folder(_, let name, let apps, _) = top[at] else { return }
         folderTile = at
         assign(\.renaming, false)
         assign(\.nameDraft, name)
@@ -477,7 +533,7 @@ struct LaunchpadLiftView: Equatable {
     }
 
     private var surface: LaunchpadSurface {
-        var surface = LaunchpadSurface(geometry: geometry, page: page, pageCounts: pageCounts, gap: gapAddress)
+        var surface = LaunchpadSurface(geometry: geometry, page: page, slots: slots, gap: gapAddress)
         if let card {
             surface.card = card
             surface.gap = cardEntries.firstIndex(of: .gap)
@@ -493,7 +549,9 @@ struct LaunchpadLiftView: Equatable {
         _ = machine.feed(.down, at: point, surface: surface, time: time)
         guard let address = machine.pressedAddress else { return false }
         lastPoint = point
+        pressPoint = point
         assign(\.pressedID, entry(at: address)?.id)
+        assign(\.pressedIcon, miniIcon(at: point, address: address)?.id)
         rearm()
         return true
     }
@@ -558,15 +616,15 @@ struct LaunchpadLiftView: Equatable {
             }
         case .newPage: addPage()
         case .openFolder(let address):
-            if case .folder(let id, _, _)? = entry(at: address) { openForLift(id) }
+            if case .folder(let id, _, _, _)? = entry(at: address) { openForLift(id) }
         case .closeFolder: closeForLift()
         case .release(let drop): finish(drop)
         case .cancel: endLift()
         case .click(let address):
             // The press was on the app it recorded; a snapshot that moved other tiles under the pointer since is no click on them.
-            let pressed = pressedID
+            let (pressed, icon) = (pressedID, pressedIcon)
             assign(\.pressedID, nil)
-            if let tile = entry(at: address), tile.id == pressed { click(tile) }
+            if let tile = entry(at: address), tile.id == pressed { click(tile, at: address, icon: icon) }
         }
     }
 
@@ -621,10 +679,12 @@ struct LaunchpadLiftView: Equatable {
             from = card.center(ofSlot: at)
         } else if let at = locate(tile.id, in: shown), openFolder == nil {
             liftSource = .top
+            let (on, item) = (address / geometry.capacity, address % geometry.capacity)
+            guard slots.indices.contains(on), slots[on].indices.contains(item) else { return }
             var list = shown
             list[at.segment][at.index] = .gap
             preview = list
-            from = geometry.center(ofSlot: address % geometry.capacity)
+            from = geometry.center(of: slots[on][item])
         } else {
             return
         }
@@ -642,8 +702,8 @@ struct LaunchpadLiftView: Equatable {
     private func withoutCarried(_ carried: LaunchpadEntry, in list: [[LaunchpadEntry]], folder: UUID) -> [[LaunchpadEntry]] {
         list.map { segment in
             segment.map { entry in
-                guard case .folder(folder, let name, let apps) = entry else { return entry }
-                return .folder(id: folder, name: name, apps: apps.filter { $0.id != carried.id })
+                guard case .folder(folder, let name, let apps, let large) = entry else { return entry }
+                return .folder(id: folder, name: name, apps: apps.filter { $0.id != carried.id }, large: large)
             }
         }
     }
@@ -653,7 +713,7 @@ struct LaunchpadLiftView: Equatable {
         switch liftSource {
         case .top: return top.first { $0.id == id }
         case .folder(let folder):
-            guard case .folder(_, _, let apps)? = top.first(where: { $0.id == folder.uuidString }) else { return nil }
+            guard case .folder(_, _, let apps, _)? = top.first(where: { $0.id == folder.uuidString }) else { return nil }
             return apps.first { $0.id == id }.map(LaunchpadEntry.app)
         }
     }
@@ -857,7 +917,7 @@ struct LaunchpadLiftView: Equatable {
             }
             if let landed { self.update(snapshot: landed) } else { self.reflow(selectFirst: false) }
             if case .makeFolder(_, let target, _) = edit {
-                for case .folder(let id, _, let apps) in self.top where apps.contains(where: { $0.id == target }) {
+                for case .folder(let id, _, let apps, _) in self.top where apps.contains(where: { $0.id == target }) {
                     self.open(folder: id)
                     self.beginRenaming(selectAll: true)
                 }
@@ -868,9 +928,12 @@ struct LaunchpadLiftView: Equatable {
     /// The pages as they are drawn: the snapshot's, or the lift's preview, cut by what a page holds; the numbers the
     /// pointer's hit test reads come with them.
     private func publishPages() {
-        let chunks = LaunchpadPaging.pages(preview ?? segments, capacity: geometry.capacity)
+        // The gap is as big as the tile carried: a block lands where the gap shows only if the gap takes the room the block will.
+        let carriedLarge = lift?.entry.isLarge == true
+        let (chunks, placed) = LaunchpadPaging.pages(preview ?? segments, columns: geometry.columns, rows: geometry.rows,
+                                                     isLarge: { $0.isLarge || ($0 == .gap && carriedLarge) })
         assign(\.pages, chunks)
-        pageCounts = chunks.map(\.count)
+        assign(\.slots, placed)
         pageStarts = chunks.indices.map { chunks[..<$0].reduce(0) { $0 + $1.count } }
         gapAddress = chunks.enumerated().lazy.compactMap { at, list in
             list.firstIndex(of: .gap).map { at * self.geometry.capacity + $0 }

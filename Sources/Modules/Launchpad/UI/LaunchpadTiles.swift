@@ -78,6 +78,8 @@ struct LaunchpadTile<Mark: View>: View {
     /// The app opening: its icon swells, then the window goes.
     var popped = false
     var pressed = false
+    /// A folder's other size, offered beside hide: its menu item's title and what it does.
+    var resize: (title: String, action: () -> Void)?
     @ViewBuilder let mark: Mark
     @State private var hovering = false
 
@@ -98,7 +100,7 @@ struct LaunchpadTile<Mark: View>: View {
             }
             .padding(.vertical, HelmSpace.s3)
             .padding(.horizontal, LaunchpadMetrics.tileSidePadding)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .buttonStyle(TileStyle(hovering: hovering, selected: selected, pressed: pressed, glowSize: glowSize))
         .help(name)
@@ -106,9 +108,11 @@ struct LaunchpadTile<Mark: View>: View {
         .accessibilityLabel(accessibleName)
         .contextMenu {
             if let hide { Button(LpStr.hide, action: hide) }
+            if let resize { Button(resize.title, action: resize.action) }
         }
         .accessibilityActions {
             if let hide { Button(LpStr.hide, action: hide) }
+            if let resize { Button(resize.title, action: resize.action) }
         }
     }
 }
@@ -129,10 +133,24 @@ extension LaunchpadTile where Mark == Image {
 struct LaunchpadFolderMark: View {
     let icons: [NSImage]
     let size: CGFloat
+    /// The apps past what the mark's cells show, as icons: the last cell holds up to four of them, two by two, tiny.
+    var overflow: [NSImage] = []
+    /// The icon (by index) a press is on, which takes the wash instead of the tile, and the one whose app is opening, which swells.
+    var pressed: Int?
+    var popped: Int?
+
+    static func pad(_ size: CGFloat) -> CGFloat { size * 0.10 }
+    static func gap(_ size: CGFloat) -> CGFloat { size * 0.05 }
+    static func mini(_ size: CGFloat) -> CGFloat { (size - 2 * pad(size) - 2 * gap(size)) / 3 }
+
+    /// Where icon `index` (0 to 8, reading order) is drawn, from the mark's top left: the one place the drawing and a click on an icon read.
+    static func frame(ofIcon index: Int, size: CGFloat) -> CGRect {
+        let step = mini(size) + gap(size)
+        return CGRect(x: pad(size) + CGFloat(index % 3) * step, y: pad(size) + CGFloat(index / 3) * step, width: mini(size), height: mini(size))
+    }
 
     var body: some View {
-        let pad = size * 0.10, gap = size * 0.05
-        let mini = (size - 2 * pad - 2 * gap) / 3
+        let gap = Self.gap(size), mini = Self.mini(size)
         ZStack {
             RoundedRectangle(cornerRadius: HelmRadius.frame, style: .continuous).fill(Color.white.opacity(0.18))
             VStack(spacing: gap) {
@@ -143,6 +161,18 @@ struct LaunchpadFolderMark: View {
                             if index < icons.count {
                                 Image(nsImage: icons[index]).resizable()
                                     .frame(width: mini, height: mini)
+                                    .background {
+                                        // Concentric with the icon: its own corner (0.225 of its side) plus the wash's inset (0.1).
+                                        RoundedRectangle(cornerRadius: mini * 0.325, style: .continuous)
+                                            .fill(pressed == index ? HelmSurface.rowSelection : Color.clear)
+                                            .padding(-mini * 0.1)
+                                    }
+                                    .animation(HelmMotion.wellFade, value: pressed)
+                                    .scaleEffect(popped == index && !HelmMotion.reduceMotion ? LaunchpadMetrics.popScale : 1)
+                                    .animation(HelmMotion.interface, value: popped)
+                                    .zIndex(popped == index ? 1 : 0)
+                            } else if index == 8, !overflow.isEmpty {
+                                overflowCell(mini)
                             } else {
                                 Color.clear.frame(width: mini, height: mini)
                             }
@@ -151,5 +181,29 @@ struct LaunchpadFolderMark: View {
                 }
             }
         }
+    }
+
+    /// The ninth cell of a folder of more than nine: the well again, with the next apps' icons two by two inside it.
+    private func overflowCell(_ side: CGFloat) -> some View {
+        let inset = side * 0.10, between = side * 0.06
+        let tiny = (side - 2 * inset - between) / 2
+        return ZStack {
+            RoundedRectangle(cornerRadius: HelmRadius.frame * side / size, style: .continuous).fill(Color.white.opacity(0.18))
+            VStack(spacing: between) {
+                ForEach(0..<2, id: \.self) { row in
+                    HStack(spacing: between) {
+                        ForEach(0..<2, id: \.self) { column in
+                            let index = row * 2 + column
+                            if index < overflow.count {
+                                Image(nsImage: overflow[index]).resizable().frame(width: tiny, height: tiny)
+                            } else {
+                                Color.clear.frame(width: tiny, height: tiny)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .frame(width: side, height: side)
     }
 }

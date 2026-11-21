@@ -65,13 +65,12 @@ extension LaunchpadScreenLogicTests {
         XCTAssertEqual(LaunchpadPaging.pageCount(items: 0, capacity: -3), 1)
     }
 
-    func testASliceAtTheBoundaryHoldsExactlyTheCapacityAndNoMore() {
-        let items = Array(0..<19)
-        XCTAssertEqual(LaunchpadPaging.slice(items, page: 0, capacity: 18), Array(0..<18))
-        XCTAssertEqual(LaunchpadPaging.slice(items, page: 1, capacity: 18), [18])
-        XCTAssertEqual(LaunchpadPaging.slice([Int](), page: 0, capacity: 18), [])
-        XCTAssertEqual(LaunchpadPaging.slice(Array(0..<18), page: 1, capacity: 18), [])
-        XCTAssertEqual(LaunchpadPaging.slice(items, page: 0, capacity: 0), [])
+    func testAPageAtTheBoundaryHoldsExactlyTheCapacityAndNoMore() {
+        let small: (Int) -> Bool = { _ in false }
+        XCTAssertEqual(LaunchpadPaging.pages([Array(0..<19)], columns: 6, rows: 3, isLarge: small).pages, [Array(0..<18), [18]])
+        XCTAssertEqual(LaunchpadPaging.pages([Array(0..<18)], columns: 6, rows: 3, isLarge: small).pages, [Array(0..<18)])
+        XCTAssertEqual(LaunchpadPaging.pages([[Int]()], columns: 6, rows: 3, isLarge: small).pages, [[]])
+        XCTAssertEqual(LaunchpadPaging.pages([Array(0..<19)], columns: 0, rows: 3, isLarge: small).pages, [[]])
     }
 
     func testOneTileCanMoveNowhereAndSelectsItselfOnTheFirstPress() {
