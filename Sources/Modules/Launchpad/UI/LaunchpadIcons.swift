@@ -22,6 +22,9 @@ final class LaunchpadIcons {
         return icon
     }
 
+    /// The window has closed: nothing it drew stays.
+    func removeAll() { cache.removeAllObjects() }
+
     /// A new grid: the cache's bound follows the page, and what was drawn at another size is dropped (an image keeps its point size).
     func reconfigure(capacity: Int, size: CGFloat) {
         cache.countLimit = 6 * capacity

@@ -115,14 +115,14 @@ struct LaunchpadScreen: View {
                 LaunchpadTile(app: app, icon: state.icons.icon(for: app.path), iconSize: g.icon, selected: selected,
                               glowSize: size, popped: state.launching == app.id,
                               pressed: state.pressedID == app.id || state.lift?.onto == app.id,
-                              moved: state.moved[app.id], open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) },
-                              move: { state.move(app.id, to: $0) }, reorder: state.moves(for: app.id),
+                              moved: state.moved[app.id], open: { [weak state] in state?.onLaunch?(app.id, app.name) }, hide: { [weak state] in state?.onHide?(app.id) },
+                              move: { [weak state] in state?.move(app.id, to: $0) }, reorder: state.moves(for: app.id),
                               files: state.fileActions(for: app), showName: g.names, isNew: isNew(app))
             case .folder(let id, let name, let apps, let large):
                 if state.categoriesShown, id == LaunchpadHiddenBlock.id {
                     // The locked block: a lock and a name, nothing of what it holds; a press or Return asks the system.
                     LaunchpadTile(name: LpStr.hiddenBlock, accessibleName: LpStr.hiddenLocked, iconSize: g.largeMark, selected: selected,
-                                  open: { state.open(folder: id) }, hide: nil, glowSize: size,
+                                  open: { [weak state] in state?.open(folder: id) }, hide: nil, glowSize: size,
                                   pressed: state.pressedID == entry.id, oneLine: !g.names) {
                         LaunchpadHiddenMark(size: g.largeMark)
                     }
@@ -133,26 +133,26 @@ struct LaunchpadScreen: View {
                     let large = apps.prefix(apps.count > 4 ? 3 : 4)
                     let mine = state.pressedID == entry.id
                     LaunchpadTile(name: name, accessibleName: LpStr.category(name), iconSize: g.largeMark, selected: selected,
-                                  open: { state.open(folder: id) }, hide: nil, glowSize: size,
+                                  open: { [weak state] in state?.open(folder: id) }, hide: nil, glowSize: size,
                                   pressed: mine && state.pressedIcon == nil, oneLine: !g.names) {
                         LaunchpadCategoryMark(large: large.map { state.icons.icon(for: $0.path) },
                                               cluster: apps.dropFirst(3).prefix(apps.count > 4 ? 4 : 0).map { state.icons.icon(for: $0.path) },
                                               size: g.largeMark,
                                               pressed: mine ? large.firstIndex { $0.id == state.pressedIcon } : nil,
                                               popped: state.popped(block: entry.id, among: large),
-                                              menu: { at in
+                                              menu: { [weak state] at in
                                                   let app = large[at]
-                                                  return LaunchpadAppMenu(app: app, moved: state.moved[app.id], hide: { state.onHide?(app.id) },
-                                                                          move: { state.move(app.id, to: $0) }, files: state.fileActions(for: app))
+                                                  return LaunchpadAppMenu(app: app, moved: state?.moved[app.id], hide: { [weak state] in state?.onHide?(app.id) },
+                                                                          move: { [weak state] in state?.move(app.id, to: $0) }, files: state?.fileActions(for: app))
                                               })
                     }
                 } else {
                     // A large folder shows the first eight apps and, past nine, four more in the ninth cell, or the first nine; the mark's icons are plain images, and a click on one is the state's (the panel takes the press).
                     let shown = large && apps.count > 9 ? 8 : 9
                     LaunchpadTile(name: name, accessibleName: LpStr.folder(name), iconSize: large ? g.largeMark : g.icon, selected: selected,
-                                  open: { state.open(folder: id) }, hide: nil, glowSize: size,
+                                  open: { [weak state] in state?.open(folder: id) }, hide: nil, glowSize: size,
                                   pressed: (state.pressedID == entry.id && state.pressedIcon == nil) || state.lift?.onto == entry.id,
-                                  resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { state.resize(id, large: !large) }),
+                                  resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { [weak state] in state?.resize(id, large: !large) }),
                                   reorder: state.moves(for: entry.id), oneLine: !g.names) {
                         LaunchpadFolderMark(icons: apps.prefix(shown).map { state.icons.icon(for: $0.path) }, size: large ? g.largeMark : g.icon,
                                             overflow: large ? apps.dropFirst(8).prefix(apps.count > 9 ? 4 : 0).map { state.icons.icon(for: $0.path) } : [],
@@ -313,9 +313,9 @@ struct LaunchpadScreen: View {
             LaunchpadTile(app: app, icon: state.icons.icon(for: app.path), iconSize: g.icon,
                           selected: state.selection == index, glowSize: glowSize(g),
                           popped: state.launching == app.id, pressed: state.pressedID == app.id,
-                          inHidden: inHidden, moved: state.moved[app.id], open: { state.onLaunch?(app.id, app.name) },
-                          hide: { inHidden ? state.onUnhide?(app.id) : state.onHide?(app.id) },
-                          move: { state.move(app.id, to: $0) }, reorder: state.moves(for: app.id),
+                          inHidden: inHidden, moved: state.moved[app.id], open: { [weak state] in state?.onLaunch?(app.id, app.name) },
+                          hide: { [weak state] in inHidden ? state?.onUnhide?(app.id) : state?.onHide?(app.id) },
+                          move: { [weak state] in state?.move(app.id, to: $0) }, reorder: state.moves(for: app.id),
                           files: state.fileActions(for: app), showName: inHidden || state.namesAsked, oneLine: !g.names, isNew: isNew(app))
         } else {
             Color.clear

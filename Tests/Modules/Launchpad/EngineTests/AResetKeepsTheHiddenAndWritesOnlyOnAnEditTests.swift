@@ -26,7 +26,7 @@ final class AResetKeepsTheHiddenAndWritesOnlyOnAnEditTests: XCTestCase {
         XCTAssertTrue(snap.saved)
         let mode = try FileManager.default.attributesOfItem(atPath: store.fileURL.path)[.posixPermissions] as? Int
         XCTAssertEqual(mode, 0o600)
-        XCTAssertEqual(engine.read().layout, expected, "a read after it says the same")
+        XCTAssertEqual(engine.read(reason: .refresh).layout, expected, "a read after it says the same")
     }
 
     func testAnIncompleteReadResetKeepsTheAppsItCouldNotSeeOutOfTheFolders() throws {
@@ -52,7 +52,7 @@ final class AResetKeepsTheHiddenAndWritesOnlyOnAnEditTests: XCTestCase {
     func testAReadAloneNeverWritesAndAResetWritesOnce() throws {
         let dir = scratchDirectory("reset-reads")
         let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "b"]), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir))
-        for _ in 0..<3 { _ = engine.read() }
+        for _ in 0..<3 { _ = engine.read(reason: .refresh) }
         XCTAssertEqual(tree(under: dir), [])
         XCTAssertNotNil(engine.resetArrangement())
         XCTAssertEqual(tree(under: dir), ["layout.json"])

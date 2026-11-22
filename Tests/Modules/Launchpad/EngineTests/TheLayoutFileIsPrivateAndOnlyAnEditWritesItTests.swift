@@ -14,7 +14,7 @@ final class TheLayoutFileIsPrivateAndOnlyAnEditWritesItTests: XCTestCase {
     func testTheFileAndItsFolderArePrivate() throws {
         let dir = scratchDirectory("private").appendingPathComponent("Launchpad")
         let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "b"]), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir))
-        _ = engine.read()
+        _ = engine.read(reason: .refresh)
         XCTAssertNotNil(engine.apply(.hide("a")))
         XCTAssertEqual(try mode(dir.appendingPathComponent("layout.json")), 0o600)
         XCTAssertEqual(try mode(dir), 0o700)
@@ -23,7 +23,7 @@ final class TheLayoutFileIsPrivateAndOnlyAnEditWritesItTests: XCTestCase {
     func testAReadWritesNothingAndARefusedEditWritesNothing() throws {
         let dir = scratchDirectory("only-edit")
         let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a"]), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir))
-        _ = engine.read()
+        _ = engine.read(reason: .refresh)
         XCTAssertEqual(tree(under: dir), [])
         XCTAssertNil(engine.apply(.hide("vanished")))
         XCTAssertEqual(tree(under: dir), [])
@@ -46,7 +46,7 @@ final class TheLayoutFileIsPrivateAndOnlyAnEditWritesItTests: XCTestCase {
         let aside = dir.appendingPathComponent("layout.json.unreadable")
         try Data("{ broken".utf8).write(to: file)
         let engine = LaunchpadEngine(catalog: FakeAppCatalog(["b", "a"]), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir))
-        let snap = engine.read()
+        let snap = engine.read(reason: .refresh)
         XCTAssertEqual(snap.layoutRead, .unreadable)
         XCTAssertEqual(snap.layout.items, [.app("b"), .app("a")], "the catalog's order, nothing lost")
         XCTAssertEqual(try Data(contentsOf: file), Data("{ broken".utf8), "a read leaves the bad file where it is")

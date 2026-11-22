@@ -6,7 +6,7 @@ import Module_Launchpad_Engine
 
 /// What the model asks of the engine. A port, so a model's test holds the engine's place without a Mac's apps in reach.
 protocol LaunchpadWork: AnyObject, Sendable {
-    func read() -> LaunchpadSnapshot
+    func read(reason: CatalogReadReason) -> LaunchpadSnapshot
     func hide(_ id: AppID) -> LaunchpadSnapshot?
     func resetArrangement() -> LaunchpadSnapshot?
     func apply(_ edit: LaunchpadEdit) -> LaunchpadSnapshot?
@@ -69,7 +69,10 @@ enum LaunchNotice: Equatable {
     private var acts = LatestRequest()
     private var launching = false
     /// One continuation per `whileShown()` running, so the page and the window watch together and either may leave.
-    private var watchers: [UUID: AsyncStream<Void>.Continuation] = [:]
+    private var watchers: [Int: AsyncStream<Void>.Continuation] = [:]
+    /// Which of those is the window's own (the one that ran with `.open`, as `LaunchpadWindow` calls it): a held handle says nothing of whether it is watching yet.
+    private var windowWatchers: Set<Int> = []
+    private var watcherCount = 0
     private var closed = false
     /// The reset the person was asked about and has not answered.
     @Published private(set) var pendingReset = false
@@ -289,11 +292,11 @@ enum LaunchNotice: Equatable {
         open.close()
     }
 
-    func refresh() async {
+    func refresh(reason: CatalogReadReason) async {
         guard !closed else { return }
         let mine = latest.take()
         let work = self.work
-        let read = await offTheCooperativePool { work.read() }
+        let read = await offTheCooperativePool { work.read(reason: reason) }
         land(read, mine)
     }
 
@@ -335,7 +338,7 @@ enum LaunchNotice: Equatable {
         let mine = latest.take()
         let act = acts.take()
         let work = self.work
-        guard let edited = await offTheCooperativePool({ change(work) }) else { await refresh(); return }
+        guard let edited = await offTheCooperativePool({ change(work) }) else { await refresh(reason: .refresh); return }
         land(edited, mine)
         if !edited.saved, !closed, acts.isLatest(act) { notice = .notSaved }
     }
@@ -355,9 +358,13 @@ enum LaunchNotice: Equatable {
         let outcome = await work.launch(id)
         guard !closed, acts.isLatest(act) else { return outcome == .launched }
         switch outcome {
-        case .launched: notice = nil; await refresh()   // the engine counted it: the page's Reset reads the new counts
-        case .gone: notice = .gone(name); await refresh()
-        case .unreadable: notice = .couldNotOpen(name); await refresh()
+        case .launched:
+            notice = nil
+            // The engine counted it: a page that is shown reads the new counts. The window's own watch is no such page: it closes with this launch
+            // and drops the snapshot, so that read would be for nobody.
+            if watchers.keys.contains(where: { !windowWatchers.contains($0) }) { await refresh(reason: .launch) }
+        case .gone: notice = .gone(name); await refresh(reason: .launch)
+        case .unreadable: notice = .couldNotOpen(name); await refresh(reason: .launch)
         case .failed: notice = .couldNotOpen(name)
         }
         return outcome == .launched
@@ -374,22 +381,28 @@ enum LaunchNotice: Equatable {
     /// What the page and the window run while they are on screen. The token is local to this task, so cancelling the task
     /// stops the watch; it is taken **before** the first read, so a change between the two is not lost. When the last
     /// watcher leaves, the snapshot and the notice go with it.
-    func whileShown() async {
+    func whileShown(reason: CatalogReadReason = .open) async {
         guard !closed else { return }
         notice = nil
-        let id = UUID()
+        watcherCount += 1
+        let id = watcherCount
+        // A second watcher (the settings page beside the window) reads nothing at its start and nothing for a change: the oldest one's read
+        // lands in the one snapshot they share.
+        let alone = watchers.isEmpty
         let (stream, continuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
         watchers[id] = continuation
+        if reason == .open { windowWatchers.insert(id) }
         let token = work.observeChanges { continuation.yield() }
         defer {
             withExtendedLifetime(token) {}
             watchers[id] = nil
+            windowWatchers.remove(id)
             if watchers.isEmpty { snapshot = nil; notice = nil }
         }
-        await refresh()
+        if alone { await refresh(reason: reason) }
         for await _ in stream {
             guard !closed else { break }
-            await refresh()
+            if id == watchers.keys.min() { await refresh(reason: .watch) }
         }
     }
 }

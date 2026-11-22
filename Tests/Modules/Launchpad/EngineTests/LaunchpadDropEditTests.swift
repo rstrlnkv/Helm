@@ -197,14 +197,14 @@ final class LaunchpadDropEditTests: XCTestCase {
         let dir = scratchDirectory("drop-apply")
         let store = LayoutStore(directory: dir)
         let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "b", "c"]), launcher: FakeAppLauncher(), store: store)
-        _ = engine.read()
+        _ = engine.read(reason: .refresh)
         XCTAssertNil(engine.apply(.place("zz", relativeTo: "a", after: true)))
         XCTAssertEqual(store.load(), .absent, "a refusal writes nothing")
         let snap = try XCTUnwrap(engine.apply(.newPage(moving: "a")))
         XCTAssertTrue(snap.saved)
         XCTAssertEqual(shape(snap.layout), ["b", "c", "|", "a"])
         XCTAssertEqual(store.load(), .loaded(snap.layout))
-        XCTAssertEqual(shape(engine.read().layout), ["b", "c", "|", "a"], "a read after it says the same")
+        XCTAssertEqual(shape(engine.read(reason: .refresh).layout), ["b", "c", "|", "a"], "a read after it says the same")
     }
 
     // MARK: Every drop keeps every app exactly once

@@ -13,7 +13,7 @@ final class ALargeFolderSizeIsWrittenOnlyOnAFolderAndNeverLostTests: XCTestCase 
 
     /// A folder "F" of a and b, made large; its id.
     private func largeFolder(_ e: LaunchpadEngine) throws -> UUID {
-        _ = e.read()
+        _ = e.read(reason: .refresh)
         let made = try XCTUnwrap(e.apply(.makeFolder(drop: "b", onto: "a", name: "F")))
         guard case .folder(let f) = try XCTUnwrap(made.layout.items.first) else { throw XCTSkip("no folder") }
         let sized = try XCTUnwrap(e.apply(.resize(f.id, large: true)))
@@ -34,7 +34,7 @@ final class ALargeFolderSizeIsWrittenOnlyOnAFolderAndNeverLostTests: XCTestCase 
     func testALargeFolderSurvivesASaveAFreshStoreAndAFreshEngine() throws {
         let dir = scratchDirectory("large-roundtrip")
         let id = try largeFolder(engine(dir))
-        let again = try XCTUnwrap(folder(engine(dir).read().layout))
+        let again = try XCTUnwrap(folder(engine(dir).read(reason: .refresh).layout))
         XCTAssertEqual(again.id, id)
         XCTAssertTrue(again.large)
         XCTAssertEqual(again.apps, ["a", "b"])
@@ -45,13 +45,13 @@ final class ALargeFolderSizeIsWrittenOnlyOnAFolderAndNeverLostTests: XCTestCase 
         _ = try largeFolder(e)
         let reset = try XCTUnwrap(e.apply(.resetArrangement))
         XCTAssertNil(folder(reset.layout), "no folder survives a reset, so none is large")
-        XCTAssertNil(folder(engine(scratchDirectory("large-reset")).read().layout), "and none is stored")
+        XCTAssertNil(folder(engine(scratchDirectory("large-reset")).read(reason: .refresh).layout), "and none is stored")
     }
 
     func testAReconcileThatDropsAnAppKeepsTheSize() throws {
         let dir = scratchDirectory("large-reconcile")
         _ = try largeFolder(engine(dir))
-        let f = try XCTUnwrap(folder(engine(dir, apps: ["a", "b", "c"]).read().layout))
+        let f = try XCTUnwrap(folder(engine(dir, apps: ["a", "b", "c"]).read(reason: .refresh).layout))
         XCTAssertTrue(f.large)
         // Three members, one uninstalled: still a large folder of two.
         var three = LaunchpadLayout(items: [.folder(.init(id: id0, name: "F", apps: ["a", "b", "x"], large: true))], hidden: [])

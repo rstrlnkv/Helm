@@ -21,7 +21,7 @@ import XCTest
         let r = rig()
         let (pages, order, capacity) = (r.state.pages, flat(r.state), r.g.capacity)
         let bytes = try Data(contentsOf: r.layoutFile)
-        let stored = r.engine.read().layout
+        let stored = r.engine.read(reason: .refresh).layout
 
         r.state.regrid(manual)
 
@@ -38,7 +38,7 @@ import XCTest
         XCTAssertEqual(r.state.pages, pages, "back to the first grid, back to the first pages")
 
         XCTAssertEqual(try Data(contentsOf: r.layoutFile), bytes, "the layout file was not written")
-        XCTAssertEqual(r.engine.read().layout, stored)
+        XCTAssertEqual(r.engine.read(reason: .refresh).layout, stored)
         XCTAssertTrue(r.placed.isEmpty)
     }
 

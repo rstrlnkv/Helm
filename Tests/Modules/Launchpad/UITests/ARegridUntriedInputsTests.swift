@@ -58,7 +58,7 @@ import XCTest
         release?.resume()
         await waitUntil("the edit was written") { written == 1 }
         func stored() -> [String] {
-            r.engine.read().layout.items.compactMap { item -> String? in
+            r.engine.read(reason: .refresh).layout.items.compactMap { item -> String? in
                 switch item { case .app(let id): id; case .folder(let f): f.id.uuidString; case .pageBreak: nil }
             }
         }
@@ -99,7 +99,7 @@ import XCTest
         r.state.regrid(small)
         r.state.regrid(large)
         XCTAssertEqual(r.state.page, 0)
-        r.state.update(snapshot: r.engine.read())
+        r.state.update(snapshot: r.engine.read(reason: .refresh))
         XCTAssertEqual(r.state.pages[0].count, min(29, r.state.geometry.capacity))
     }
 

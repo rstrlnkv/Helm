@@ -22,7 +22,7 @@ final class AMoveToACategoryIsWrittenOnlyForAnInstalledAppAndAKnownCategoryAndNe
 
     /// "d" (no category of its own) is moved to Games.
     private func moved(_ e: LaunchpadEngine) throws -> LaunchpadSnapshot {
-        _ = e.read()
+        _ = e.read(reason: .refresh)
         let snap = try XCTUnwrap(e.apply(.setCategory("d", .category(.games))))
         XCTAssertEqual(snap.layout.categoryOverrides, ["d": .category(.games)], "subject: the move was made")
         return snap
@@ -32,9 +32,9 @@ final class AMoveToACategoryIsWrittenOnlyForAnInstalledAppAndAKnownCategoryAndNe
         let dir = scratchDirectory("moved-roundtrip")
         _ = try moved(engine(dir))
         XCTAssertTrue(String(decoding: try XCTUnwrap(file(dir)), as: UTF8.self).contains(#""moved":{"d":"games"}"#))
-        XCTAssertEqual(engine(dir).read().layout.categoryOverrides, ["d": .category(.games)])
+        XCTAssertEqual(engine(dir).read(reason: .refresh).layout.categoryOverrides, ["d": .category(.games)])
         _ = try XCTUnwrap(engine(dir).apply(.setCategory("a", .others)))
-        XCTAssertEqual(engine(dir).read().layout.categoryOverrides, ["d": .category(.games), "a": .others])
+        XCTAssertEqual(engine(dir).read(reason: .refresh).layout.categoryOverrides, ["d": .category(.games), "a": .others])
     }
 
     func testAnUninstalledAppIsRefusedAndTheFileIsNotTouched() throws {
@@ -51,7 +51,7 @@ final class AMoveToACategoryIsWrittenOnlyForAnInstalledAppAndAKnownCategoryAndNe
     func testAMoveToTheAppsOwnCategoryStoresNothingAndTakesAnEarlierMoveAway() throws {
         let dir = scratchDirectory("moved-own")
         let e = engine(dir)
-        _ = e.read()
+        _ = e.read(reason: .refresh)
         XCTAssertNil(e.apply(.setCategory("a", .category(.music))), "own category, nothing moved: nothing to write")
         XCTAssertNil(file(dir))
         XCTAssertNil(e.apply(.setCategory("d", .others)), "d's own is Others (it declares none)")
@@ -79,17 +79,17 @@ final class AMoveToACategoryIsWrittenOnlyForAnInstalledAppAndAKnownCategoryAndNe
         let e = engine(dir)
         _ = try moved(e)
         _ = try XCTUnwrap(e.apply(.resetArrangement))
-        XCTAssertEqual(engine(dir).read().layout.categoryOverrides, ["d": .category(.games)])
+        XCTAssertEqual(engine(dir).read(reason: .refresh).layout.categoryOverrides, ["d": .category(.games)])
     }
 
     func testACompleteReadThatLacksTheAppDropsItsMoveAndAnIncompleteOneKeepsIt() throws {
         let dir = scratchDirectory("moved-prune")
         _ = try moved(engine(dir))
-        XCTAssertEqual(engine(dir, catalog(["a", "b", "c", "d"])).read().layout.categoryOverrides, ["d": .category(.games)],
+        XCTAssertEqual(engine(dir, catalog(["a", "b", "c", "d"])).read(reason: .refresh).layout.categoryOverrides, ["d": .category(.games)],
                        "still installed: kept")
-        XCTAssertEqual(engine(dir, catalog(["a", "b", "c"], complete: false)).read().layout.categoryOverrides, ["d": .category(.games)],
+        XCTAssertEqual(engine(dir, catalog(["a", "b", "c"], complete: false)).read(reason: .refresh).layout.categoryOverrides, ["d": .category(.games)],
                        "an unreadable folder looks like an uninstalled app: kept")
-        XCTAssertEqual(engine(dir, catalog(["a", "b", "c"])).read().layout.categoryOverrides, [:], "gone on a complete read")
+        XCTAssertEqual(engine(dir, catalog(["a", "b", "c"])).read(reason: .refresh).layout.categoryOverrides, [:], "gone on a complete read")
         XCTAssertNotNil(file(dir).flatMap { String(decoding: $0, as: UTF8.self).range(of: "games") }, "and a read writes nothing")
     }
 

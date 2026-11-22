@@ -29,9 +29,9 @@ final class AnIncompleteReadDropsNothingTests: XCTestCase {
         let mtime = try FileManager.default.attributesOfItem(atPath: store.fileURL.path)[.modificationDate] as? Date
         let catalog = FakeAppCatalog(["b", "new"], complete: false)
         let engine = LaunchpadEngine(catalog: catalog, launcher: FakeAppLauncher(), store: store)
-        for _ in 0..<3 { _ = engine.read() }
+        for _ in 0..<3 { _ = engine.read(reason: .refresh) }
         catalog.reading = CatalogReading(apps: [], complete: true)
-        _ = engine.read()
+        _ = engine.read(reason: .refresh)
         XCTAssertEqual(try Data(contentsOf: store.fileURL), before)
         XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: store.fileURL.path)[.modificationDate] as? Date, mtime)
     }
@@ -40,7 +40,7 @@ final class AnIncompleteReadDropsNothingTests: XCTestCase {
         let store = LayoutStore(directory: scratchDirectory("incomplete-edit"))
         XCTAssertTrue(store.save(LaunchpadLayout(items: [.app("a"), .app("b"), .app("c")])))
         let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a", "c"], complete: false), launcher: FakeAppLauncher(), store: store)
-        _ = engine.read()
+        _ = engine.read(reason: .refresh)
         XCTAssertNotNil(engine.apply(.hide("a")))
         XCTAssertEqual(store.load(), .loaded(LaunchpadLayout(items: [.app("b"), .app("c")], hidden: ["a"])), "b was in a folder that would not open")
     }
@@ -49,7 +49,7 @@ final class AnIncompleteReadDropsNothingTests: XCTestCase {
         let dir = scratchDirectory("incomplete-snap")
         let store = LayoutStore(directory: dir)
         XCTAssertTrue(store.save(LaunchpadLayout(items: [.app("a"), .app("b")])))
-        let snap = LaunchpadEngine(catalog: FakeAppCatalog(["a"], complete: false), launcher: FakeAppLauncher(), store: store).read()
+        let snap = LaunchpadEngine(catalog: FakeAppCatalog(["a"], complete: false), launcher: FakeAppLauncher(), store: store).read(reason: .refresh)
         XCTAssertEqual(snap.layout.items, [.app("a"), .app("b")])
         XCTAssertFalse(snap.catalogComplete)
     }

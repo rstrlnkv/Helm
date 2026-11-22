@@ -10,7 +10,7 @@ import XCTest
     private func rig(_ layout: LaunchpadLayout? = nil) -> LiftRig { LiftRig(self, apps: six, layout: layout) }
     private func catalog(_ ids: [String], _ r: LiftRig) {
         r.catalog.reading = CatalogReading(apps: ids.map { CatalogApp(id: $0, name: $0, path: "/Applications/\($0).app") }, complete: true)
-        r.state.update(snapshot: r.engine.read())
+        r.state.update(snapshot: r.engine.read(reason: .refresh))
     }
 
     /// A write that waits until the test lets it through.

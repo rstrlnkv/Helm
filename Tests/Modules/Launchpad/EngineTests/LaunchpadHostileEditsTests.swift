@@ -137,7 +137,7 @@ final class LaunchpadHostileEditsTests: XCTestCase {
     func testAFolderWhoseAppsAreAllHiddenIsGoneAndTheAppsStayHidden() throws {
         let (engine, _) = try engine(reading: ["x", "y", "z"],
                                      file: #"{"items":[{"folder":{"id":"\#(UUID().uuidString)","name":"F","apps":["x","y"]}},{"app":"z"}],"hidden":["x","y"]}"#)
-        let snap = engine.read()
+        let snap = engine.read(reason: .refresh)
         XCTAssertEqual(snap.layout.items, [.app("z")])
         XCTAssertEqual(snap.layout.hidden, ["x", "y"])
         XCTAssertEqual(snap.search("x"), [], "a hidden app is not found (the fake names are capitalised ids)")
@@ -147,14 +147,14 @@ final class LaunchpadHostileEditsTests: XCTestCase {
     func testAFolderWithOneVisibleAppLeftByTheHiddenListDissolves() throws {
         let (engine, _) = try engine(reading: ["x", "y"],
                                      file: #"{"items":[{"folder":{"id":"\#(UUID().uuidString)","name":"F","apps":["x","y"]}}],"hidden":["x"]}"#)
-        XCTAssertEqual(engine.read().layout.items, [.app("y")])
+        XCTAssertEqual(engine.read(reason: .refresh).layout.items, [.app("y")])
     }
 
     func testTwoFoldersWithTheSameIdInTheFileGetDistinctIds() throws {
         let id = UUID().uuidString
         let (engine, _) = try engine(reading: ["a", "b", "c", "d"],
                                      file: #"{"items":[{"folder":{"id":"\#(id)","name":"One","apps":["a","b"]}},{"folder":{"id":"\#(id)","name":"Two","apps":["c","d"]}}]}"#)
-        let ids = engine.read().layout.items.map(\.itemID)
+        let ids = engine.read(reason: .refresh).layout.items.map(\.itemID)
         XCTAssertEqual(ids.count, 2)
         XCTAssertEqual(Set(ids).count, 2, "a rename or an add by folder id must reach one folder only: \(ids)")
     }
@@ -185,7 +185,7 @@ final class LaunchpadHostileEditsTests: XCTestCase {
 
     func testAnEngineReadTwiceAnswersTheSame() throws {
         let (engine, dir) = try engine(reading: ["a", "b"], file: #"{"items":[{"app":"b"}]}"#)
-        let first = engine.read(), second = engine.read()
+        let first = engine.read(reason: .refresh), second = engine.read(reason: .refresh)
         XCTAssertEqual(first.layout, second.layout)
         XCTAssertEqual(first.layout.items, [.app("b"), .app("a")])
         XCTAssertEqual(try Data(contentsOf: dir.appendingPathComponent("layout.json")), Data(#"{"items":[{"app":"b"}]}"#.utf8))
@@ -199,7 +199,7 @@ final class LaunchpadHostileEditsTests: XCTestCase {
         XCTAssertTrue(store.save(flat(["a", "gone"])))
         let before = try Data(contentsOf: store.fileURL)
         let engine = LaunchpadEngine(catalog: FakeAppCatalog(["a"]), launcher: FakeAppLauncher(), store: store)
-        _ = engine.read()
+        _ = engine.read(reason: .refresh)
         XCTAssertNil(engine.apply(.hide("gone")))
         XCTAssertNil(engine.apply(.move("gone", toIndex: 0)))
         XCTAssertEqual(try Data(contentsOf: store.fileURL), before)

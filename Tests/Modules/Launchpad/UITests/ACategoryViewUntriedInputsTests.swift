@@ -15,7 +15,7 @@ import XCTest
         rig.state.wallClock = { clock }
         rig.catalog.reading = CatalogReading(apps: apps.map { CatalogApp(id: $0.0, name: $0.0.capitalized, path: "/Applications/\($0.0).app", category: $0.1, added: $0.2) },
                                              complete: true)
-        rig.state.update(snapshot: rig.engine.read())
+        rig.state.update(snapshot: rig.engine.read(reason: .refresh))
         rig.state.setView(.categories)
         return rig
     }
@@ -123,10 +123,10 @@ import XCTest
         let rig = rig([("a", music, added), ("b", music, nil)], clock: added.addingTimeInterval(3_600))
         XCTAssertEqual(rig.state.pages[0].count, 3, "the control: Recently Added, Music and the locked Hidden")
         rig.state.wallClock = { added.addingTimeInterval(-86_400) }
-        rig.state.update(snapshot: rig.engine.read())
+        rig.state.update(snapshot: rig.engine.read(reason: .refresh))
         XCTAssertEqual(rig.state.pages[0].count, 2, "an app added after now is not recent")
         rig.state.wallClock = { added.addingTimeInterval(31 * 86_400) }
-        rig.state.update(snapshot: rig.engine.read())
+        rig.state.update(snapshot: rig.engine.read(reason: .refresh))
         XCTAssertEqual(rig.state.pages[0].count, 2, "thirty-one days on it is not recent either")
     }
 
@@ -135,7 +135,7 @@ import XCTest
         let dir = countsDir(rig)
         let many = "{" + (0...10_000).map { "\"ghost\($0)\":\($0 + 2)" }.joined(separator: ",") + ",\"c\":1}"
         try Data(#"{"version":1,"counts":\#(many)}"#.utf8).write(to: dir.appendingPathComponent("launch-counts.json"))
-        let snap = rig.engine.read()
+        let snap = rig.engine.read(reason: .refresh)
         XCTAssertEqual(snap.launchCounts.count, LaunchpadLimits.maxCountedApps, "bounded, the lowest dropped")
         XCTAssertNil(snap.launchCounts["c"], "the count of 1 is the lowest, so it was dropped, not a ghost")
         rig.state.update(snapshot: snap)

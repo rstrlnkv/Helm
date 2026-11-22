@@ -28,7 +28,7 @@ final class ADefaultArrangementTests: XCTestCase {
                     Self.app("com.apple.Terminal", "/System/Applications/Utilities/Terminal.app"),
                     Self.app("com.apple.Automator"), Self.app("com.example.zed")]
         let (engine, _, _) = engine(apps, dir: "default-order", name: "Dienstprogramme")
-        let items = engine.read().layout.items
+        let items = engine.read(reason: .refresh).layout.items
         guard case .folder(let folder) = items[2] else { return XCTFail("the folder follows the Apple apps: \(items)") }
         XCTAssertEqual(items[0...1], [.app("com.apple.Safari"), .app("com.apple.mail")][...], "the Dock's order, not the catalog's")
         XCTAssertEqual(folder.name, "Dienstprogramme", "the name that was passed in")
@@ -42,14 +42,14 @@ final class ADefaultArrangementTests: XCTestCase {
                     Self.app("com.example.tool", "/Applications/Utilities/Tool.app"),
                     Self.app("com.example.other")]
         let (engine, _, _) = engine(apps, dir: "default-utilities")
-        let items = engine.read().layout.items
+        let items = engine.read(reason: .refresh).layout.items
         XCTAssertEqual(folderApps(items).map(\.1), [["com.apple.Automator", "com.apple.FutureUtility"]])
         XCTAssertEqual(Array(items.suffix(3)), [.pageBreak, .app("com.example.tool"), .app("com.example.other")])
     }
 
     func testAListedAppThatIsNotInstalledIsSkippedAndALoneUtilityIsNotAFolder() {
         let (engine, _, _) = engine([Self.app("com.apple.Terminal"), Self.app("com.apple.Maps"), Self.app("com.example.a")], dir: "default-skips")
-        XCTAssertEqual(engine.read().layout.items, [.app("com.apple.Maps"), .app("com.apple.Terminal"), .pageBreak, .app("com.example.a")],
+        XCTAssertEqual(engine.read(reason: .refresh).layout.items, [.app("com.apple.Maps"), .app("com.apple.Terminal"), .pageBreak, .app("com.example.a")],
                        "the one utility dissolves into its app, where the folder would have stood")
     }
 
@@ -69,7 +69,7 @@ final class ADefaultArrangementTests: XCTestCase {
     func testTheFirstEditStartsFromTheDefaultThePersonSaw() throws {
         let apps = [Self.app("com.apple.mail"), Self.app("com.apple.Safari"), Self.app("com.example.a")]
         let (engine, _, _) = engine(apps, dir: "default-first-edit")
-        let seen = engine.read().layout
+        let seen = engine.read(reason: .refresh).layout
         let snap = try XCTUnwrap(engine.hide("com.example.a"))
         XCTAssertEqual(snap.layout.items, [.app("com.apple.Safari"), .app("com.apple.mail")], "what they saw, less the app they hid")
         XCTAssertEqual(seen.items.count, 4)

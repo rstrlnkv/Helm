@@ -32,7 +32,7 @@ final class FakeAppCatalog: AppCatalogPort, @unchecked Sendable {
 }
 
 extension FakeAppCatalog {
-    func read() -> CatalogReading { reading }
+    func read(reason: CatalogReadReason) -> CatalogReading { reading }
     func bundleID(atPath path: String) -> String? { bundleIDs[path] }
     func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject {
         let key = next.withLock { $0 += 1; return $0 }

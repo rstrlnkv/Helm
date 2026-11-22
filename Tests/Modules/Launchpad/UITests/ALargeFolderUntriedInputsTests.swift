@@ -95,9 +95,9 @@ import HelmRuntime
 
     func testALargeTwoAppFolderThatLosesAnAppDissolvesAndTheFlagGoesWithIt() throws {
         let e = LaunchpadEngine(catalog: RigCatalog(["a", "b", "c"]), launcher: RigLauncher(), store: LayoutStore(directory: scratchDirectory("dissolve")))
-        _ = e.read()
+        _ = e.read(reason: .refresh)
         _ = e.apply(.makeFolder(drop: "b", onto: "a", name: "F"))
-        guard case .folder(let f)? = e.read().layout.items.first else { return XCTFail("subject: a folder") }
+        guard case .folder(let f)? = e.read(reason: .refresh).layout.items.first else { return XCTFail("subject: a folder") }
         _ = e.apply(.resize(f.id, large: true))
         let after = try XCTUnwrap(e.apply(.remove("a", fromFolder: f.id)))
         XCTAssertFalse(after.layout.items.contains { if case .folder = $0 { true } else { false } }, "the folder dissolved")

@@ -27,7 +27,7 @@ final class ACatalogUnderOddBundlesTests: XCTestCase {
     private static let codes = ["en", "de", "fr", "ja", "ru", "zh-Hans", "es", "pt"]
     private func inEveryLanguage(_ data: Data) -> [String: Data] { Dictionary(uniqueKeysWithValues: Self.codes.map { ($0, data) }) }
 
-    private func read(_ roots: URL...) -> CatalogReading { FileSystemAppCatalog(roots: roots).read() }
+    private func read(_ roots: URL...) -> CatalogReading { FileSystemAppCatalog(roots: roots).read(reason: .refresh) }
 
     func testNameFallsBackFromDisplayNameToBundleNameToFileName() throws {
         let root = scratchDirectory("cat-names")
@@ -214,7 +214,7 @@ final class ACatalogUnderOddBundlesTests: XCTestCase {
         let finished = DispatchSemaphore(value: 0)
         let catalog = FileSystemAppCatalog(roots: [root])
         Thread.detachNewThread {
-            answer.set(catalog.read(), catalog.bundleID(atPath: pipe.path))
+            answer.set(catalog.read(reason: .refresh), catalog.bundleID(atPath: pipe.path))
             finished.signal()
         }
         XCTAssertEqual(finished.wait(timeout: .now() + 5), .success, "the walk is held by a pipe")

@@ -25,7 +25,7 @@ final class ALaunchCountIsWrittenOnceOnASuccessfulLaunchAndNeverLostTests: XCTes
         XCTAssertEqual(second, .launched)
         XCTAssertEqual(counts(dir), ["a": 2])
         let fresh = LaunchpadEngine(catalog: FakeAppCatalog(["a", "b"]), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir))
-        XCTAssertEqual(fresh.read().launchCounts, ["a": 2], "a new engine reads what the file holds")
+        XCTAssertEqual(fresh.read(reason: .refresh).launchCounts, ["a": 2], "a new engine reads what the file holds")
     }
 
     func testAGoneUnreadableOrRefusedLaunchWritesNothing() async {
@@ -61,7 +61,7 @@ final class ALaunchCountIsWrittenOnceOnASuccessfulLaunchAndNeverLostTests: XCTes
         let ceiling = LaunchpadLimits.maxLaunchCount
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try Data(#"{"version":1,"counts":{"a":5000000000}}"#.utf8).write(to: dir.appendingPathComponent("launch-counts.json"))
-        XCTAssertEqual(engine.read().launchCounts, ["a": ceiling], "a file beyond the ceiling reads as the ceiling")
+        XCTAssertEqual(engine.read(reason: .refresh).launchCounts, ["a": ceiling], "a file beyond the ceiling reads as the ceiling")
         let outcome = await engine.launch("a")
         XCTAssertEqual(outcome, .launched)
         XCTAssertEqual(counts(dir), ["a": ceiling], "one more launch does not pass it")

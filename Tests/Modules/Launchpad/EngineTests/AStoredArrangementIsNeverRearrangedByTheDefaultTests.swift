@@ -20,7 +20,7 @@ final class AStoredArrangementIsNeverRearrangedByTheDefaultTests: XCTestCase {
         XCTAssertTrue(store.save(mine))
         let before = try Data(contentsOf: store.fileURL)
         let engine = LaunchpadEngine(catalog: catalog(), launcher: FakeAppLauncher(), store: store)
-        XCTAssertEqual(engine.read().layout, mine)
+        XCTAssertEqual(engine.read(reason: .refresh).layout, mine)
         XCTAssertEqual(try Data(contentsOf: store.fileURL), before)
     }
 
@@ -28,6 +28,6 @@ final class AStoredArrangementIsNeverRearrangedByTheDefaultTests: XCTestCase {
         let dir = scratchDirectory("stored-unreadable")
         try Data("{ broken".utf8).write(to: dir.appendingPathComponent("layout.json"))
         let engine = LaunchpadEngine(catalog: catalog(), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir))
-        XCTAssertEqual(engine.read().layout.items, ["com.apple.mail", "com.apple.Safari", "com.apple.Terminal", "com.apple.Automator"].map { .app($0) })
+        XCTAssertEqual(engine.read(reason: .refresh).layout.items, ["com.apple.mail", "com.apple.Safari", "com.apple.Terminal", "com.apple.Automator"].map { .app($0) })
     }
 }

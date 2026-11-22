@@ -18,7 +18,7 @@ final class TheDateAddedIsReadOncePerAppAndCostsTheWalkNothingTests: XCTestCase 
         let target = scratchDirectory("added-target")
         try bundle("Real.app", id: "real", in: target)
         try FileManager.default.createSymbolicLink(at: root.appendingPathComponent("Linked.app"), withDestinationURL: target.appendingPathComponent("Real.app"))
-        let apps = Dictionary(uniqueKeysWithValues: FileSystemAppCatalog(roots: [root]).read().apps.map { ($0.id, $0) })
+        let apps = Dictionary(uniqueKeysWithValues: FileSystemAppCatalog(roots: [root]).read(reason: .refresh).apps.map { ($0.id, $0) })
         let added = try XCTUnwrap(apps["a"]?.added, "the control: a plain bundle has a date")
         XCTAssertLessThan(abs(added.timeIntervalSinceNow), 3600, "added just now")
         XCTAssertNotNil(apps["real"], "the symlinked bundle is read")
@@ -36,9 +36,9 @@ final class TheDateAddedIsReadOncePerAppAndCostsTheWalkNothingTests: XCTestCase 
         let count = 1500
         for index in 0..<count { try bundle("App\(index).app", id: "app.\(index)", in: root) }
         let catalog = FileSystemAppCatalog(roots: [root])
-        _ = catalog.read()
+        _ = catalog.read(reason: .refresh)
         let before = AllocatorBooks.allocatedBytes()
-        let apps = catalog.read().apps
+        let apps = catalog.read(reason: .refresh).apps
         let after = AllocatorBooks.allocatedBytes()
         // The subject first: every app was read and every one has its date.
         XCTAssertEqual(apps.count, count)

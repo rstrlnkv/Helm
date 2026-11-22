@@ -24,9 +24,9 @@ import XCTest
         r.state.onResize = nil
         r.state.resize(id, large: true)
         XCTAssertEqual(armed(r.state), true)
-        r.state.update(snapshot: r.engine.read())
+        r.state.update(snapshot: r.engine.read(reason: .refresh))
         XCTAssertEqual(armed(r.state), false, "the update spent it")
-        r.state.update(snapshot: r.engine.read())
+        r.state.update(snapshot: r.engine.read(reason: .refresh))
         XCTAssertEqual(armed(r.state), false)
     }
 

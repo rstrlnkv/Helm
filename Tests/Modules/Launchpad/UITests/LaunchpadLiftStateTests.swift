@@ -183,7 +183,7 @@ import XCTest
         r.state.tick(at: 1.2)
         XCTAssertEqual(r.ids(), ["b", "c", "d", LaunchpadEntry.gapID, "e", "f"])
         r.catalog.reading = CatalogReading(apps: (six + ["g"]).map { CatalogApp(id: $0, name: $0, path: "/Applications/\($0).app") }, complete: true)
-        r.state.update(snapshot: r.engine.read())
+        r.state.update(snapshot: r.engine.read(reason: .refresh))
         XCTAssertEqual(r.state.lift?.entry.id, "a")
         XCTAssertEqual(r.ids(), ["b", "c", "d", LaunchpadEntry.gapID, "e", "f", "g"], "the gap stays after d")
     }
@@ -192,7 +192,7 @@ import XCTest
         let r = rig()
         r.lift(0)
         r.catalog.reading = CatalogReading(apps: six.dropFirst().map { CatalogApp(id: $0, name: $0, path: "/Applications/\($0).app") }, complete: true)
-        r.state.update(snapshot: r.engine.read())
+        r.state.update(snapshot: r.engine.read(reason: .refresh))
         XCTAssertNil(r.state.lift)
         XCTAssertFalse(r.state.pointerBusy)
         XCTAssertEqual(r.ids(), ["b", "c", "d", "e", "f"])

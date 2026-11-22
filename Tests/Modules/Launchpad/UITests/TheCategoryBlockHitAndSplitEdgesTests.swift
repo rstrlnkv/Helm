@@ -96,7 +96,7 @@ import XCTest
         XCTAssertEqual(rig.state.pressedIcon, "a", "the control: Music is first and its first app is under the press")
         let counts = LaunchCountStore(directory: dir)
         for _ in 0..<5 { XCTAssertTrue(counts.record("f")) }
-        rig.state.update(snapshot: rig.engine.read())
+        rig.state.update(snapshot: rig.engine.read(reason: .refresh))
         XCTAssertEqual(rig.state.pages[0].first.map { if case .folder(_, let n, _, _) = $0 { n } else { "" } }, LaunchpadCategoryName.title(for: .category(.weather)),
                        "the block under the point is now Weather")
         rig.state.pointerUp(p, time: 0.05)

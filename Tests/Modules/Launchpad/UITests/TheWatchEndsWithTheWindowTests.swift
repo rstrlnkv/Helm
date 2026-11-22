@@ -27,7 +27,7 @@ final class TheWatchEndsWithTheWindowTests: XCTestCase {
 
     func testAReadWithNobodyWatchingHoldsNothing() async {
         let rig = LaunchpadRig(self, label: "watch-none")
-        await rig.model.refresh()
+        await rig.model.refresh(reason: .refresh)
         XCTAssertNil(rig.model.snapshot)
     }
 

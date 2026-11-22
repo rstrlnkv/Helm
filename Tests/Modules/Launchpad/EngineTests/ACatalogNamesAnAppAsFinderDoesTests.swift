@@ -20,6 +20,6 @@ final class ACatalogNamesAnAppAsFinderDoesTests: XCTestCase {
             try "\"CFBundleDisplayName\" = \"Shown-\(code)\";".write(to: lproj.appendingPathComponent("InfoPlist.strings"), atomically: true, encoding: .utf8)
         }
         let expected = try XCTUnwrap(Bundle.preferredLocalizations(from: codes).first)
-        XCTAssertEqual(FileSystemAppCatalog(roots: [root]).read().apps.map(\.name), ["Shown-\(expected)"])
+        XCTAssertEqual(FileSystemAppCatalog(roots: [root]).read(reason: .refresh).apps.map(\.name), ["Shown-\(expected)"])
     }
 }

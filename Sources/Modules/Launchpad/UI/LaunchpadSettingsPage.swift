@@ -78,7 +78,7 @@ struct LaunchpadSettingsPage: View {
         .helmIdlesOffScreen()
         .onDisappear { hiddenGate.lock() }
         .task { await lvm.reloadPinch() }
-        .task { lvm.reloadGrid(); await lvm.whileShown() }
+        .task { lvm.reloadGrid(); await lvm.whileShown(reason: .settings) }
         .onReceive(NotificationCenter.default.publisher(for: .helmHotkeyChanged)) { _ in shortcutRevision += 1 }
         // The press only sets `pendingReset`; the destructive button asks the model to go through with it.
         .confirmationDialog(LpStr.resetQuestion,

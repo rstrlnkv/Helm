@@ -68,7 +68,7 @@ import XCTest
         XCTAssertEqual(armed(rig.state), false, "subject: readable and off")
         rig.state.move("a", to: .others)
         XCTAssertEqual(armed(rig.state), true)
-        rig.state.update(snapshot: rig.engine.read())
+        rig.state.update(snapshot: rig.engine.read(reason: .refresh))
         XCTAssertEqual(armed(rig.state), false, "spent by the next update, answer or not")
     }
 

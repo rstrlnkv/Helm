@@ -30,7 +30,7 @@ import XCTest
         g = .make(for: screen, topSafe: 0)
         state = LaunchpadScreenState(geometry: g)
         state.setShown(true)
-        state.update(snapshot: engine.read())
+        state.update(snapshot: engine.read(reason: .refresh))
         state.buttonDown = { true }
         state.onLaunch = { [unowned self] id, _ in launched.append(id) }
         state.onClose = { [unowned self] in closes += 1 }
@@ -49,7 +49,7 @@ import XCTest
         catalog.reading = CatalogReading(apps: catalog.reading.apps.map {
             CatalogApp(id: $0.id, name: $0.name, path: $0.path, category: categories[$0.id])
         }, complete: true)
-        state.update(snapshot: engine.read())
+        state.update(snapshot: engine.read(reason: .refresh))
     }
 
     /// Counts what the state publishes from here on.

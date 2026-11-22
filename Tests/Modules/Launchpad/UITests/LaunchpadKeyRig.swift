@@ -12,7 +12,7 @@ extension LiftRig {
     }
 
     /// The layout the engine holds now.
-    var layout: LaunchpadLayout { engine.read().layout }
+    var layout: LaunchpadLayout { engine.read(reason: .refresh).layout }
 
     /// Every app the layout places, in order, one entry for each occurrence: a lost app is missing, a copied one is there twice.
     var placedApps: [String] {

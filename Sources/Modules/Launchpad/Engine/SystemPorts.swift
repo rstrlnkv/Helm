@@ -33,7 +33,7 @@ struct FileSystemAppCatalog: AppCatalogPort {
         let app: CatalogApp
     }
 
-    func read() -> CatalogReading {
+    func read(reason: CatalogReadReason) -> CatalogReading {
         var found: [Found] = []
         var complete = true
         var noID = 0
@@ -56,7 +56,7 @@ struct FileSystemAppCatalog: AppCatalogPort {
             return order == .orderedSame ? $0.id < $1.id : order == .orderedAscending
         }
         HelmLog.shared.info(LaunchpadEngine.moduleID,
-                            "read \(apps.count) apps, \(losers) duplicate ids, \(noID) without an id, \(apps.filter { $0.added == nil }.count) without a date added"
+                            "read \(apps.count) apps (\(reason.rawValue)), \(losers) duplicate ids, \(noID) without an id, \(apps.filter { $0.added == nil }.count) without a date added"
                             + (complete ? "" : ", some folders would not open") + (capped ? ", stopped at the ceiling" : ""))
         return CatalogReading(apps: apps, complete: complete)
     }

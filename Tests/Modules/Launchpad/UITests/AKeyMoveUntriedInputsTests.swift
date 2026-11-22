@@ -58,7 +58,7 @@ import XCTest
         XCTAssertNotNil(add, "subject: the action is offered")
         // The folder is dissolved (take both out) before the action runs.
         _ = r.engine.apply(.place("a", relativeTo: "d", after: false))
-        r.state.update(snapshot: r.engine.read())
+        r.state.update(snapshot: r.engine.read(reason: .refresh))
         let beforeLayout = r.layout
         add?()
         await grace()

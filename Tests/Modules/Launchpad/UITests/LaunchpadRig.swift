@@ -25,7 +25,10 @@ final class RigCatalog: AppCatalogPort, @unchecked Sendable {
     var observers: Int { handlers.withLock { $0.count } }
     func fire() { for handler in handlers.withLock({ Array($0.values) }) { handler() } }
 
-    func read() -> CatalogReading { reading }
+    private let asked = Locked<[CatalogReadReason]>([])
+    /// What asked for each catalog read so far, in order.
+    var reads: [CatalogReadReason] { asked.withLock { $0 } }
+    func read(reason: CatalogReadReason) -> CatalogReading { asked.withLock { $0.append(reason) }; return reading }
     func bundleID(atPath path: String) -> String? { reading.apps.first { $0.path == path }?.id }
     func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject {
         let key = next.withLock { $0 += 1; return $0 }

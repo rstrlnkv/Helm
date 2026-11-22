@@ -203,6 +203,9 @@ private final class LaunchpadWindowEnders {
     /// The window whose picture is still fading out; a new window cuts it before it opens.
     private static var lingering: LaunchpadWindow?
     private let footprintBefore = MemoryFootprint.current()
+    private let createdAt = ContinuousClock.now
+    /// Ends the open's wait (`watchOpening`) when the first snapshot has come in, or the window closes before it.
+    private var snapshotArrived: AsyncStream<Void>.Continuation?
 
     init(model: LaunchpadViewModel) {
         Self.lingering?.finish()
@@ -260,7 +263,8 @@ private final class LaunchpadWindowEnders {
         state.onViewChange = { [weak model] in model?.setViewMode($0) }
         let asked = model.grid
         let grid = asked.automatic ? "automatic" : "\(asked.rows) rows asked, \(geometry.rows) fit"
-        state.onLoaded = { snapshot, state in
+        state.onLoaded = { [weak self] snapshot, state in
+            self?.snapshotArrived?.finish()
             HelmLog.shared.info("launchpad", "window: \(snapshot.apps.count) apps, \(state.geometry.columns)x\(state.geometry.rows) grid (\(grid)), icon \(Int(state.geometry.icon)), \(state.pageCount) pages, view \(state.view.rawValue)")
         }
         panel.onResignKey = { [weak self] in
@@ -308,7 +312,7 @@ private final class LaunchpadWindowEnders {
             panel.makeKeyAndOrderFront(nil)
         }
         Task { await LaunchpadGlow.prepare() }
-        report("module.launchpad.show", since: footprintBefore)
+        watchOpening()
     }
 
     private func makeEnders() -> LaunchpadWindowEnders {
@@ -333,7 +337,7 @@ private final class LaunchpadWindowEnders {
             panel.orderFrontRegardless()
             phase = .scrubbing(.pinch, base: 0)
             Task { await LaunchpadGlow.prepare() }
-            report("module.launchpad.show", since: footprintBefore)
+            watchOpening()
         case .spread:
             guard opened else { return }
             if case .scrubbing = phase { return }
@@ -443,6 +447,8 @@ private final class LaunchpadWindowEnders {
         state.onLoaded = nil
         panel.onResignKey = nil
         panel.state = nil
+        snapshotArrived?.finish()
+        snapshotArrived = nil
         let done = onClose
         onClose = nil
         done?()
@@ -465,8 +471,29 @@ private final class LaunchpadWindowEnders {
         let before = MemoryFootprint.current()
         panel.contentView = nil
         panel.orderOut(nil)
+        state.icons.removeAll()
         if Self.lingering === self { Self.lingering = nil }
-        report("module.launchpad.close", since: before)
+        // The footprint after the run-loop turn that lets the views go, not in the call that dropped them.
+        guard let before else { return }
+        DispatchQueue.main.async {
+            guard let after = MemoryFootprint.current() else { return }
+            HelmLog.shared.memory("module.launchpad.close", grewBy: after - before)
+        }
+    }
+
+    /// The open as a named phase, from the window's making (the first thing the shortcut's or the pinch's handler does) to the first state update that
+    /// holds a snapshot; the show's memory reading is taken there, once the snapshot has landed (no frame is awaited), not before any read had come in.
+    private func watchOpening() {
+        let (stream, arrived) = AsyncStream.makeStream(of: Void.self)
+        snapshotArrived = arrived
+        let created = createdAt, before = footprintBefore
+        Task { @MainActor [weak self] in
+            await HelmActivity.phase("\(LaunchpadEngine.moduleID).open") { @Sendable in for await _ in stream { break } }
+            guard let self, !closed else { return }
+            let took = created.duration(to: .now)
+            HelmLog.shared.info(LaunchpadEngine.moduleID, "window: first snapshot landed \(Int(took / .milliseconds(1))) ms after it was made")
+            report("module.launchpad.show", since: before)
+        }
     }
 
     private func report(_ label: String, since before: Int?) {

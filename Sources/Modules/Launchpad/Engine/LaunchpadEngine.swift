@@ -280,10 +280,10 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
         MainActor.assumeIsolated { for event in events { onPinch(event) } }
     }
 
-    /// Reconciled in memory; writes nothing.
-    public func read() -> LaunchpadSnapshot {
+    /// Reconciled in memory; writes nothing. `reason` is what asked, for the catalog's log line.
+    public func read(reason: CatalogReadReason) -> LaunchpadSnapshot {
         lock.lock(); defer { lock.unlock() }
-        let reading = catalog.read()
+        let reading = catalog.read(reason: reason)
         lastCatalog = reading
         return snapshot(reading, stored: store.load(), layout: nil, saved: true)
     }
@@ -292,7 +292,7 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     /// snapshot, with `saved` false when the write did not land — the result is still returned.
     public func apply(_ edit: LaunchpadEdit) -> LaunchpadSnapshot? {
         lock.lock(); defer { lock.unlock() }
-        let reading = lastCatalog ?? catalog.read()
+        let reading = lastCatalog ?? catalog.read(reason: .edit)
         lastCatalog = reading
         let stored = store.load()
         let base = storedLayout(of: stored, reading).reconciled(catalog: reading.apps.map(\.id), complete: reading.complete)
@@ -332,7 +332,7 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     public func launch(_ id: AppID) async -> LaunchOutcome {
         let catalog = self.catalog
         let resolution = await offTheCooperativePool {
-            LaunchResolution.resolve(id: id, reading: catalog.read(), bundleID: { catalog.bundleID(atPath: $0) })
+            LaunchResolution.resolve(id: id, reading: catalog.read(reason: .launch), bundleID: { catalog.bundleID(atPath: $0) })
         }
         switch resolution {
         case .gone:
@@ -356,7 +356,8 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     /// The counts emptied (nothing is written when there are none); nil when the write did not land, so the caller reads again.
     public func resetLaunchCounts() -> LaunchpadSnapshot? {
         lock.lock(); defer { lock.unlock() }
-        let reading = catalog.read()
+        // The catalog as the person last saw it, as an edit reconciles against (`apply`): the counts are no part of a catalog read.
+        let reading = lastCatalog ?? catalog.read(reason: .reset)
         lastCatalog = reading
         guard counts.reset() else { return nil }
         return snapshot(reading, stored: store.load(), layout: nil, saved: true)

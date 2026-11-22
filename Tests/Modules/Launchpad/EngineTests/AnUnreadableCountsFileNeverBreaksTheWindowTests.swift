@@ -41,7 +41,7 @@ final class AnUnreadableCountsFileNeverBreaksTheWindowTests: XCTestCase {
         ]
         for (label, data, expect) in cases {
             let (dir, file) = try plant(data, "counts-bad")
-            let snap = engine(dir).read()
+            let snap = engine(dir).read(reason: .refresh)
             XCTAssertEqual(snap.order, ["a", "b"], "\(label): the read still answers")
             if let expect {
                 XCTAssertEqual(snap.launchCounts, expect, label)
@@ -60,7 +60,7 @@ final class AnUnreadableCountsFileNeverBreaksTheWindowTests: XCTestCase {
         let (dir, file) = try plant(bad, "counts-aside")
         let aside = dir.appendingPathComponent("launch-counts.json.unreadable")
         let engine = engine(dir)
-        XCTAssertEqual(engine.read().launchCounts, [:])
+        XCTAssertEqual(engine.read(reason: .refresh).launchCounts, [:])
         XCTAssertFalse(FileManager.default.fileExists(atPath: aside.path), "a read moves nothing")
         let first = await engine.launch("a")
         XCTAssertEqual(first, .launched)
@@ -105,7 +105,7 @@ final class AnUnreadableCountsFileNeverBreaksTheWindowTests: XCTestCase {
         XCTAssertEqual(outcome, .launched, "the launch itself is not held back by a count that cannot be kept")
         XCTAssertEqual(try Data(contentsOf: file), bad, "nothing was written over the bad file")
         XCTAssertFalse(loggedLines(LaunchpadEngine.moduleID).filter { $0.contains("could not be moved aside") }.isEmpty)
-        XCTAssertEqual(engine.read().launchCounts, [:])
+        XCTAssertEqual(engine.read(reason: .refresh).launchCounts, [:])
         XCTAssertFalse(FileManager.default.fileExists(atPath: dir.appendingPathComponent("layout.json").path))
     }
 }
