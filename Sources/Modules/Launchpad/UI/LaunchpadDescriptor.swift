@@ -43,6 +43,8 @@ enum LaunchpadHotkey {
         }
         model.helperURL = AppBuild.launchpadHelperURL
         model.revealHelper = { HelmReveal.inFinder($0.path) }
+        model.revealApp = { HelmReveal.inFinder($0) }
+        model.copyPath = { path, concealed in LaunchpadPasteboard().copy(path: path, concealed: concealed) }
         return ModuleParts(engine: engine, model: model)
     }
 

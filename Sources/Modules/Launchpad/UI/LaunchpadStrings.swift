@@ -5,6 +5,11 @@ enum LpStr {
     static var moduleName: String { L(.launchpad) }
     static var summary: String { L(.summary) }
     static var hide: String { L(.hide) }
+    /// The app menu's second file row; "Show in Finder" is the kit's (`HelmWord.showInFinder`).
+    static var copyPath: String { L(.copyPath) }
+    /// An app's name for VoiceOver while it carries the "new" dot: a full key, so each language has its own separator.
+    static func appIsNew(_ name: String) -> String { L(.appIsNew(name), remembered: false) }
+    static var showAppNames: String { L(.showAppNames) }
     /// The folder tile's menu items: the size it can be given.
     static var enlargeFolder: String { L(.enlargeFolder) }
     static var shrinkFolder: String { L(.shrinkFolder) }
@@ -36,7 +41,7 @@ enum LpStr {
     static var gridReset: String { L(.gridReset) }
     /// The reset row's title: what it resets, so the row does not repeat the section's header.
     static var gridResetTitle: String { L(.gridResetTitle) }
-    /// The reset row's note: the four values it puts back.
+    /// The reset row's note: the five values it puts back.
     static var gridResetNote: String { L(.gridResetNote) }
     /// The reset button's name for VoiceOver: what it resets, since the visible word does not say.
     static var gridResetNamed: String { L(.gridResetNamed) }

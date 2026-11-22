@@ -24,6 +24,19 @@ final class TheGridSettingsTakeAnyNumberTheStoreHoldsTests: XCTestCase {
         XCTAssertEqual(LaunchpadGridSettings.read(from: store(Double.nan)).iconSize, 80, "no number names no size: the standard one")
     }
 
+    func testAShowNamesThatIsNoBoolReadsTheDefault() {
+        XCTAssertTrue(LaunchpadGridSettings.standard.showNames, "the default is names on")
+        // Not 0 or 1: a plist number that is 0 or 1 is read as a bool by the store itself (`as? Bool` on an `NSNumber`), for every bool setting alike.
+        for value in hostile.filter { ($0 as? Int) != 0 } + ["false", "no", [false] as [Bool], 2] as [Any] {
+            let store = NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore())
+            store.set(value, for: LaunchpadGridSettings.Key.showNames)
+            XCTAssertTrue(LaunchpadGridSettings.read(from: store).showNames, "\(value)")
+        }
+        let store = NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore())
+        store.set(false, for: LaunchpadGridSettings.Key.showNames)
+        XCTAssertFalse(LaunchpadGridSettings.read(from: store).showNames, "the control: a stored false is read")
+    }
+
     func testAnySettingsMakeAGridThatFitsEveryScreen() {
         let asked = hostile.compactMap { $0 as? Double }.map { LaunchpadGridSettings(automatic: false, rows: Int.max, columns: Int.min, iconSize: $0) }
             + hostile.compactMap { $0 as? Int }.map { LaunchpadGridSettings(automatic: false, rows: $0, columns: $0, iconSize: Double($0)) }

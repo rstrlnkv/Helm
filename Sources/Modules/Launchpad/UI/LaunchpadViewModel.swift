@@ -85,6 +85,11 @@ enum LaunchNotice: Equatable {
     var helperURL: URL?
     /// Shows the helper in Finder; the descriptor sets it, so the page holds no AppKit.
     var revealHelper: @MainActor (URL) -> Void = { _ in }
+    /// Shows an app's file in Finder and puts its path on the pasteboard; the descriptor sets them, so the window holds no AppKit. No-ops until then, so no test
+    /// touches the Mac's Finder or pasteboard.
+    var revealApp: @MainActor (String) -> Void = { _ in }
+    /// `concealed`: the copy is of a hidden app, and the pasteboard marks it so a clipboard manager need not keep it.
+    var copyPath: @MainActor (String, _ concealed: Bool) -> Void = { _, _ in }
     /// The module's own settings store, for the page's shortcut row.
     let store: NamespacedStore
     /// The grid the person chose; read from the store (`LaunchpadGridSettings`), written only by `setGrid`.

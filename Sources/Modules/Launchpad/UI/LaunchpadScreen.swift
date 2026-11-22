@@ -116,13 +116,14 @@ struct LaunchpadScreen: View {
                               glowSize: size, popped: state.launching == app.id,
                               pressed: state.pressedID == app.id || state.lift?.onto == app.id,
                               moved: state.moved[app.id], open: { state.onLaunch?(app.id, app.name) }, hide: { state.onHide?(app.id) },
-                              move: { state.move(app.id, to: $0) }, reorder: state.moves(for: app.id))
+                              move: { state.move(app.id, to: $0) }, reorder: state.moves(for: app.id),
+                              files: state.fileActions(for: app), showName: g.names, isNew: isNew(app))
             case .folder(let id, let name, let apps, let large):
                 if state.categoriesShown, id == LaunchpadHiddenBlock.id {
                     // The locked block: a lock and a name, nothing of what it holds; a press or Return asks the system.
                     LaunchpadTile(name: LpStr.hiddenBlock, accessibleName: LpStr.hiddenLocked, iconSize: g.largeMark, selected: selected,
                                   open: { state.open(folder: id) }, hide: nil, glowSize: size,
-                                  pressed: state.pressedID == entry.id) {
+                                  pressed: state.pressedID == entry.id, oneLine: !g.names) {
                         LaunchpadHiddenMark(size: g.largeMark)
                     }
                 } else if state.categoriesShown {
@@ -133,7 +134,7 @@ struct LaunchpadScreen: View {
                     let mine = state.pressedID == entry.id
                     LaunchpadTile(name: name, accessibleName: LpStr.category(name), iconSize: g.largeMark, selected: selected,
                                   open: { state.open(folder: id) }, hide: nil, glowSize: size,
-                                  pressed: mine && state.pressedIcon == nil) {
+                                  pressed: mine && state.pressedIcon == nil, oneLine: !g.names) {
                         LaunchpadCategoryMark(large: large.map { state.icons.icon(for: $0.path) },
                                               cluster: apps.dropFirst(3).prefix(apps.count > 4 ? 4 : 0).map { state.icons.icon(for: $0.path) },
                                               size: g.largeMark,
@@ -142,7 +143,7 @@ struct LaunchpadScreen: View {
                                               menu: { at in
                                                   let app = large[at]
                                                   return LaunchpadAppMenu(app: app, moved: state.moved[app.id], hide: { state.onHide?(app.id) },
-                                                                          move: { state.move(app.id, to: $0) })
+                                                                          move: { state.move(app.id, to: $0) }, files: state.fileActions(for: app))
                                               })
                     }
                 } else {
@@ -152,7 +153,7 @@ struct LaunchpadScreen: View {
                                   open: { state.open(folder: id) }, hide: nil, glowSize: size,
                                   pressed: (state.pressedID == entry.id && state.pressedIcon == nil) || state.lift?.onto == entry.id,
                                   resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { state.resize(id, large: !large) }),
-                                  reorder: state.moves(for: entry.id)) {
+                                  reorder: state.moves(for: entry.id), oneLine: !g.names) {
                         LaunchpadFolderMark(icons: apps.prefix(shown).map { state.icons.icon(for: $0.path) }, size: large ? g.largeMark : g.icon,
                                             overflow: large ? apps.dropFirst(8).prefix(apps.count > 9 ? 4 : 0).map { state.icons.icon(for: $0.path) } : [],
                                             pressed: large ? apps.prefix(shown).firstIndex { $0.id == state.pressedIcon } : nil,
@@ -164,6 +165,12 @@ struct LaunchpadScreen: View {
             }
         }
         .frame(width: size.width, height: size.height)
+    }
+
+    /// The "new" dot: added in the last 30 days and never opened from Launchpad, by the model's counts as they are now (a launch that
+    /// refreshed them takes the dot off at the next draw).
+    private func isNew(_ app: CatalogApp) -> Bool {
+        LaunchpadCategories.isNew(added: app.added, launches: vm.snapshot?.launchCounts[app.id] ?? 0, now: state.wallClock())
     }
 
     private func glowSize(_ g: LaunchpadGeometry) -> CGSize { CGSize(width: g.cellWidth, height: g.cellHeight) }
@@ -308,7 +315,8 @@ struct LaunchpadScreen: View {
                           popped: state.launching == app.id, pressed: state.pressedID == app.id,
                           inHidden: inHidden, moved: state.moved[app.id], open: { state.onLaunch?(app.id, app.name) },
                           hide: { inHidden ? state.onUnhide?(app.id) : state.onHide?(app.id) },
-                          move: { state.move(app.id, to: $0) }, reorder: state.moves(for: app.id))
+                          move: { state.move(app.id, to: $0) }, reorder: state.moves(for: app.id),
+                          files: state.fileActions(for: app), showName: inHidden || state.namesAsked, oneLine: !g.names, isNew: isNew(app))
         } else {
             Color.clear
         }

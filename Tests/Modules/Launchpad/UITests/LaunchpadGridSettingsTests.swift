@@ -24,7 +24,7 @@ final class LaunchpadGridSettingsTests: XCTestCase {
         }
         let g = LaunchpadGeometry.make(for: CGSize(width: 1280, height: 800), topSafe: 0)
         XCTAssertEqual(g.icon, 80)
-        XCTAssertEqual(g.cellHeight, LaunchpadMetrics.cellHeight(icon: LaunchpadMetrics.windowIcon))
+        XCTAssertEqual(g.cellHeight, LaunchpadMetrics.cellHeight(icon: LaunchpadMetrics.windowIcon, names: true))
         XCTAssertEqual(g.columns, 8)
         XCTAssertEqual(g.rows, 4)
     }

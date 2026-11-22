@@ -146,6 +146,11 @@ struct LaunchpadSettingsPage: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .helmAccordion(open: !grid.automatic, height: $manualHeight)
             }
+            HelmSettingRow(LpStr.showAppNames) {
+                Toggle(LpStr.showAppNames, isOn: Binding(get: { grid.showNames }, set: { var next = grid; next.showNames = $0; lvm.setGrid(next) }))
+                    .labelsHidden()
+                    .accessibilityLabel(LpStr.showAppNames)
+            }
             HelmSettingRow(LpStr.gridIconSize, note: LpStr.gridFitNote) {
                 // A drag publishes the grid as it goes and writes once, when it ends.
                 Slider(value: Binding(get: { grid.iconSize }, set: { var next = grid; next.iconSize = $0.rounded(); lvm.setGrid(next, live: true) }),

@@ -17,9 +17,21 @@ enum LaunchpadMetrics {
     /// The Dock helper's icon on the settings page: big enough to take hold of and drag.
     static let dockIcon: CGFloat = 40
     /// What a tile holds besides its icon: the gap, two lines of label (`.subheadline` leads at 17 pt) and the padding above and below. Fixed by the fonts.
-    static let cellChrome: CGFloat = HelmSpace.s3 + 2 * 17 + 2 * HelmSpace.s3
+    /// Without app names (`LaunchpadGridSettings.showNames`) one line is left: the names of folders, category blocks and the Hidden block stay, on one line, and a cell is one height for every tile.
+    static func cellChrome(names: Bool) -> CGFloat { HelmSpace.s3 + (names ? 2 : 1) * 17 + 2 * HelmSpace.s3 }
     /// A tile's height: the icon plus `cellChrome`.
-    static func cellHeight(icon: CGFloat) -> CGFloat { icon + cellChrome }
+    static func cellHeight(icon: CGFloat, names: Bool) -> CGFloat { icon + cellChrome(names: names) }
+    /// The "new" dot: the system blue with a dark ring, so it parts from a blue icon and from a bright wallpaper. Its side is a share of the icon
+    /// (not under `newDotLeast`), and it sits `newDotInset` of the icon in from the frame's corner, on the art's corner: an app's art is inset
+    /// about a tenth of its frame. The ring's darkness and the share were chosen by eye on shots over a blue icon and a light ground
+    /// (2026-11-22). Offscreen probes read the ring against App Store's blue at about 3:1, against a light ground 6.2:1, the fill against a dark ground 4.5:1; not measured over real glass or with Increase Contrast. With Increase Contrast the ring is opaque and thicker.
+    static func newDot(icon: CGFloat) -> CGFloat { max(newDotLeast, icon * 0.14) }
+    static let newDotLeast: CGFloat = 8
+    static let newDotInset: CGFloat = 0.08
+    static let newDotInk = Color.blue
+    static func newDotRing(increased: Bool) -> (color: Color, width: CGFloat) {
+        increased ? (Color.black, 2) : (Color.black.opacity(0.6), 1.5)
+    }
     /// The smallest an icon shrinks to when the grid asked for does not fit.
     static let iconFloor: CGFloat = 24
     /// A tile's padding at each side, which the grid's fit counts too.
@@ -94,6 +106,23 @@ private struct TileStyle: ButtonStyle {
     }
 }
 
+/// What an app's menu and VoiceOver actions offer about its file: show it in Finder, copy its path. Made only by
+/// `LaunchpadScreenState.fileActions(for:)`, which is where a hidden app is kept out.
+struct LaunchpadFileActions {
+    let reveal: () -> Void
+    let copyPath: () -> Void
+}
+
+/// "Show in Finder" and "Copy Path", as menu rows.
+private struct LaunchpadFileButtons: View {
+    let files: LaunchpadFileActions
+
+    var body: some View {
+        Button(HelmWord.showInFinder, action: files.reveal)
+        Button(LpStr.copyPath, action: files.copyPath)
+    }
+}
+
 /// **The menu of an app, wherever it is drawn:** Hide, and "Move to category" with the app's own category as the undo on top
 /// (disabled while the app is not moved) and every category under it, the one the app is in now checked. "Others" is last.
 /// A VoiceOver custom action cannot be a submenu, and 29 of them would be noise: VoiceOver reaches Move through the
@@ -104,6 +133,8 @@ struct LaunchpadAppMenu: View {
     let moved: LaunchpadCategoryTarget?
     let hide: () -> Void
     let move: (LaunchpadCategoryTarget?) -> Void
+    /// Show in Finder and Copy Path under Move to category; nil where the app's file is not offered.
+    var files: LaunchpadFileActions?
 
     /// Where the app is shown now: its move, else its own.
     static func effective(moved: LaunchpadCategoryTarget?, raw: String?) -> LaunchpadCategoryTarget {
@@ -123,6 +154,10 @@ struct LaunchpadAppMenu: View {
                 Toggle(choice.title, isOn: Binding(get: { choice.target == effective },
                                                    set: { _ in if choice.target != effective { move(choice.target) } }))
             }
+        }
+        if let files {
+            Divider()
+            LaunchpadFileButtons(files: files)
         }
     }
 }
@@ -163,8 +198,26 @@ struct LaunchpadTile<Mark: View>: View {
     var inHidden = false
     /// The tile's place by VoiceOver: nil where no reorder is allowed (a search, the category view, the Hidden card).
     var reorder: LaunchpadTileMoves?
+    /// An app's Show in Finder and Copy Path, in the Hidden card's menu (which has no `menu`) and as VoiceOver actions.
+    var files: LaunchpadFileActions?
+    /// An app's name is not drawn (`LaunchpadGeometry.names` off); `help` and the accessibility label keep it.
+    var hidesName = false
+    /// The name stays but the cell holds one line of it (names are off for apps): a folder's, a category's, the Hidden block's.
+    var oneLine = false
+    /// The app was added in the last 30 days and not opened from Launchpad: a dot on its icon, and "new" for VoiceOver.
+    var isNew = false
     @ViewBuilder let mark: Mark
     @State private var hovering = false
+    @Environment(\.helmTraits) private var traits
+
+    /// The "new" dot at the icon art's top right corner (`LaunchpadMetrics.newDot(icon:)`).
+    private var newDot: some View {
+        let side = LaunchpadMetrics.newDot(icon: iconSize), ring = LaunchpadMetrics.newDotRing(increased: traits.increasedContrast)
+        return Circle().fill(LaunchpadMetrics.newDotInk)
+            .overlay(Circle().strokeBorder(ring.color, lineWidth: ring.width))
+            .frame(width: side, height: side)
+            .offset(x: -LaunchpadMetrics.newDotInset * iconSize, y: LaunchpadMetrics.newDotInset * iconSize)
+    }
 
     /// Whether the name has a space or a hyphen to wrap at.
     static func canBreak(_ name: String) -> Bool { name.contains { $0 == " " || $0 == "-" } }
@@ -176,17 +229,22 @@ struct LaunchpadTile<Mark: View>: View {
                     .frame(width: iconSize, height: iconSize)
                     .scaleEffect(popped && !HelmMotion.reduceMotion ? LaunchpadMetrics.popScale : 1)
                     .animation(HelmMotion.interface, value: popped)
+                    .overlay(alignment: .topTrailing) {
+                        if isNew { newDot }
+                    }
                     .accessibilityHidden(true)
-                Text(name)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(Color.white)
-                    // A name with no space or hyphen has no place to break: it takes one line and shrinks to fit (German "Festplattendienstprogramm"),
-                    // since two lines would split it mid-word before the scale ever applied. `tileMinimum` stays.
-                    .lineLimit(Self.canBreak(name) ? 2 : 1, reservesSpace: true)
-                    .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.85)
-                    .allowsTightening(true)
-                    .frame(maxWidth: .infinity)
+                if !hidesName {
+                    Text(name)
+                        .font(HelmText.rowDetail)
+                        .foregroundStyle(Color.white)
+                        // A name with no space or hyphen has no place to break: it takes one line and shrinks to fit (German "Festplattendienstprogramm"),
+                        // since two lines would split it mid-word before the scale ever applied. `tileMinimum` stays.
+                        .lineLimit(Self.canBreak(name) && !oneLine ? 2 : 1, reservesSpace: true)
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.85)
+                        .allowsTightening(true)
+                        .frame(maxWidth: .infinity)
+                }
             }
             .padding(.vertical, HelmSpace.s3)
             .padding(.horizontal, LaunchpadMetrics.tileSidePadding)
@@ -197,11 +255,15 @@ struct LaunchpadTile<Mark: View>: View {
         .onHover { hovering = $0 }
         .accessibilityLabel(accessibleName)
         .contextMenu {
-            if let menu { menu } else if let hide { Button(inHidden ? HelmWord.show : LpStr.hide, action: hide) }
+            if let menu { menu } else {
+                if let hide { Button(inHidden ? HelmWord.show : LpStr.hide, action: hide) }
+                if let files { Divider(); LaunchpadFileButtons(files: files) }
+            }
             if let resize { Button(resize.title, action: resize.action) }
         }
         .accessibilityActions {
             if let hide { Button(inHidden ? HelmWord.show : LpStr.hide, action: hide) }
+            if let files { LaunchpadFileButtons(files: files) }
             if let resize { Button(resize.title, action: resize.action) }
             if let reorder { moveActions(reorder) }
         }
@@ -224,10 +286,12 @@ extension LaunchpadTile where Mark == Image {
     /// An application's tile; the icon is the caller's, from the window's own cache.
     init(app: CatalogApp, icon: NSImage, iconSize: CGFloat, selected: Bool, glowSize: CGSize, popped: Bool, pressed: Bool = false, inHidden: Bool = false,
          moved: LaunchpadCategoryTarget?, open: @escaping () -> Void, hide: @escaping () -> Void,
-         move: @escaping (LaunchpadCategoryTarget?) -> Void, reorder: LaunchpadTileMoves? = nil) {
-        self.init(name: app.name, accessibleName: app.name, iconSize: iconSize, selected: selected, open: open, hide: hide,
+         move: @escaping (LaunchpadCategoryTarget?) -> Void, reorder: LaunchpadTileMoves? = nil,
+         files: LaunchpadFileActions? = nil, showName: Bool = true, oneLine: Bool = false, isNew: Bool = false) {
+        self.init(name: app.name, accessibleName: isNew ? LpStr.appIsNew(app.name) : app.name, iconSize: iconSize, selected: selected, open: open, hide: hide,
                   glowSize: glowSize, popped: popped, pressed: pressed,
-                  menu: inHidden ? nil : LaunchpadAppMenu(app: app, moved: moved, hide: hide, move: move), inHidden: inHidden, reorder: reorder) {
+                  menu: inHidden ? nil : LaunchpadAppMenu(app: app, moved: moved, hide: hide, move: move, files: files), inHidden: inHidden,
+                  reorder: reorder, files: files, hidesName: !showName, oneLine: oneLine, isNew: isNew) {
             Image(nsImage: icon).resizable()
         }
     }

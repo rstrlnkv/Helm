@@ -14,13 +14,15 @@ struct LaunchpadGridSettings: Equatable, Sendable {
     var columns: Int
     /// The icon asked for, in points; a grid that does not fit the screen shrinks it (`LaunchpadGeometry`).
     var iconSize: Double
+    /// Whether an app's name is drawn under its icon. Folder, category and Hidden block names stay either way.
+    var showNames = true
 
     static let rowRange = 2...8
     static let columnRange = 3...10
     static let iconRange = 48.0...128.0
 
     /// Automatic, the default icon; the manual seeds are what the page shows the first time Automatic is turned off.
-    static let standard = LaunchpadGridSettings(automatic: true, rows: 4, columns: 7, iconSize: Double(LaunchpadMetrics.windowIcon))
+    static let standard = LaunchpadGridSettings(automatic: true, rows: 4, columns: 7, iconSize: Double(LaunchpadMetrics.windowIcon), showNames: true)
 
     /// Deployed stored data: these names never move.
     enum Key {
@@ -28,6 +30,7 @@ struct LaunchpadGridSettings: Equatable, Sendable {
         static let rows = "grid.rows"
         static let columns = "grid.columns"
         static let iconSize = "grid.iconSize"
+        static let showNames = "grid.showNames"
     }
 
     var isStandard: Bool { self == .standard }
@@ -37,7 +40,8 @@ struct LaunchpadGridSettings: Equatable, Sendable {
     func normalized() -> LaunchpadGridSettings {
         LaunchpadGridSettings(
             automatic: automatic, rows: rows.clamped(to: Self.rowRange), columns: columns.clamped(to: Self.columnRange),
-            iconSize: iconSize.rounded().clamped(to: Self.iconRange, whenNotANumber: Double(LaunchpadMetrics.windowIcon)))
+            iconSize: iconSize.rounded().clamped(to: Self.iconRange, whenNotANumber: Double(LaunchpadMetrics.windowIcon)),
+            showNames: showNames)
     }
 
     /// A key that is missing or of another type is the standard value; the result is always inside the ranges.
@@ -46,7 +50,8 @@ struct LaunchpadGridSettings: Equatable, Sendable {
             automatic: store.bool(Key.automatic, default: standard.automatic),
             rows: store.int(Key.rows, default: standard.rows),
             columns: store.int(Key.columns, default: standard.columns),
-            iconSize: store.double(Key.iconSize, default: standard.iconSize)).normalized()
+            iconSize: store.double(Key.iconSize, default: standard.iconSize),
+            showNames: store.bool(Key.showNames, default: standard.showNames)).normalized()
     }
 
     /// Only the keys that differ from `old`.
@@ -55,5 +60,6 @@ struct LaunchpadGridSettings: Equatable, Sendable {
         if rows != old.rows { store.set(rows, for: Key.rows) }
         if columns != old.columns { store.set(columns, for: Key.columns) }
         if iconSize != old.iconSize { store.set(iconSize, for: Key.iconSize) }
+        if showNames != old.showNames { store.set(showNames, for: Key.showNames) }
     }
 }

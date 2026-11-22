@@ -19,6 +19,11 @@ struct LaunchpadGeometry: Equatable {
     let cellWidth: CGFloat
     let cellHeight: CGFloat
     let icon: CGFloat
+    /// The grid asked for, as `make` read it: what `pairedColumns` makes the category view's grid from again. Rows and columns are
+    /// the standard ones while it is automatic, which ignores them, so two grids that differ in nothing drawn are equal.
+    let asked: LaunchpadGridSettings
+    /// Whether an app's name is drawn (`LaunchpadGridSettings.showNames`): a cell is one line shorter without.
+    var names: Bool { asked.showNames }
     let pageWidth: CGFloat
     let pageHeight: CGFloat
     /// From the window's top edge to the grid's.
@@ -48,14 +53,17 @@ struct LaunchpadGeometry: Equatable {
         let (columns, rows) = counts(width: usableWidth, height: usableHeight, settings: settings)
 
         let cellWidth = usableWidth / CGFloat(columns)
-        let icon = fit(want: CGFloat(settings.normalized().iconSize), cellWidth: cellWidth, rowHeight: usableHeight / CGFloat(rows))
-        let cellHeight = LaunchpadMetrics.cellHeight(icon: icon)
+        let names = settings.showNames
+        var asked = settings.normalized()
+        if asked.automatic { asked.rows = LaunchpadGridSettings.standard.rows; asked.columns = LaunchpadGridSettings.standard.columns }
+        let icon = fit(want: CGFloat(asked.iconSize), cellWidth: cellWidth, rowHeight: usableHeight / CGFloat(rows), names: names)
+        let cellHeight = LaunchpadMetrics.cellHeight(icon: icon, names: names)
         // The room the rows leave is shared above and below, so the grid hangs in the middle of what is under the search field.
         let gridTop = gridStart + max(0, usableHeight - CGFloat(rows) * cellHeight) / 2
 
         return LaunchpadGeometry(
             size: screen, columns: columns, rows: rows, capacity: columns * rows,
-            cellWidth: cellWidth, cellHeight: cellHeight, icon: icon,
+            cellWidth: cellWidth, cellHeight: cellHeight, icon: icon, asked: asked,
             pageWidth: screen.width, pageHeight: CGFloat(rows) * cellHeight,
             gridTop: gridTop, dotsBottom: LaunchpadMetrics.dotsBottom, searchTop: searchTop, topSafe: top)
     }
@@ -70,25 +78,29 @@ struct LaunchpadGeometry: Equatable {
         if settings.automatic {
             let narrowest = max(LaunchpadMetrics.tileMinimum, want + 2 * LaunchpadMetrics.tileSidePadding)
             columns = max(3, min(8, Int(min(width / narrowest, 1000))))
-            rows = max(2, min(6, Int(min(height / LaunchpadMetrics.cellHeight(icon: want), 1000))))
+            rows = max(2, min(6, Int(min(height / LaunchpadMetrics.cellHeight(icon: want, names: settings.showNames), 1000))))
         }
-        let holds = max(2, Int(min(height / LaunchpadMetrics.cellHeight(icon: LaunchpadMetrics.iconFloor), 1000)))
+        let holds = max(2, Int(min(height / LaunchpadMetrics.cellHeight(icon: LaunchpadMetrics.iconFloor, names: settings.showNames), 1000)))
         return (columns, min(rows, holds))
     }
 
     /// The icon a cell draws: the one asked for, no bigger than the cell's width and height leave room for, no smaller
     /// than the floor. The asked size is a ceiling, never exceeded.
-    static func fit(want: CGFloat, cellWidth: CGFloat, rowHeight: CGFloat) -> CGFloat {
-        max(LaunchpadMetrics.iconFloor, min(want, cellWidth - 2 * LaunchpadMetrics.tileSidePadding, rowHeight - LaunchpadMetrics.cellChrome))
+    static func fit(want: CGFloat, cellWidth: CGFloat, rowHeight: CGFloat, names: Bool) -> CGFloat {
+        max(LaunchpadMetrics.iconFloor, min(want, cellWidth - 2 * LaunchpadMetrics.tileSidePadding, rowHeight - LaunchpadMetrics.cellChrome(names: names)))
     }
 
-    /// The grid for the category view: the same cells with an even number of columns (one fewer when odd), so a block, which is two
-    /// columns wide, centres on the page and the spare column is left empty. Everything else is equal, `gridLeft` included by its own formula.
+    /// The grid for the category view: the grid made again with names on, with an even number of columns (one fewer when odd), so a block, which is two
+    /// columns wide, centres on the page and the spare column is left empty. **It keeps the two lines of label even with app names off**:
+    /// its blocks keep their names, so its cells, rows and large marks are the grid's with names on, not the shorter ones.
     var pairedColumns: LaunchpadGeometry {
-        let even = max(2, columns - columns % 2)
+        var named = asked
+        named.showNames = true
+        let base = names ? self : Self.make(for: size, topSafe: topSafe, settings: named)
+        let even = max(2, base.columns - base.columns % 2)
         return LaunchpadGeometry(
-            size: size, columns: even, rows: rows, capacity: even * rows, cellWidth: cellWidth, cellHeight: cellHeight, icon: icon,
-            pageWidth: pageWidth, pageHeight: pageHeight, gridTop: gridTop, dotsBottom: dotsBottom, searchTop: searchTop, topSafe: topSafe)
+            size: size, columns: even, rows: base.rows, capacity: even * base.rows, cellWidth: base.cellWidth, cellHeight: base.cellHeight, icon: base.icon,
+            asked: base.asked, pageWidth: pageWidth, pageHeight: base.pageHeight, gridTop: base.gridTop, dotsBottom: dotsBottom, searchTop: searchTop, topSafe: topSafe)
     }
 
     /// Whether the window leaves the switch its room at the left of the search field: what is left between the side margin and
@@ -110,7 +122,7 @@ struct LaunchpadGeometry: Equatable {
     /// The side of the icon a large folder draws: the block's width and height less what a tile holds besides its icon, so it
     /// is the small icon's room twice over.
     var largeMark: CGFloat {
-        max(0, min(2 * cellWidth - 2 * LaunchpadMetrics.tileSidePadding, 2 * cellHeight - LaunchpadMetrics.cellChrome))
+        max(0, min(2 * cellWidth - 2 * LaunchpadMetrics.tileSidePadding, 2 * cellHeight - LaunchpadMetrics.cellChrome(names: names)))
     }
 
     /// A folder's card, centred in the window: the title, then `rows` rows of `columns` cells, in the card's padding; `paged`

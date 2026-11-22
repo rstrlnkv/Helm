@@ -76,7 +76,7 @@ struct LaunchpadLiftView: Equatable {
 @MainActor final class LaunchpadScreenState: ObservableObject {
     enum Mode: Equatable { case busy, noApps, noMatch, grid }
 
-    /// What everything reads: the grid's own geometry, or in the category view the same with an even number of columns (`pairedColumns`).
+    /// What everything reads: the grid's own geometry, or in the category view the grid made again with names on and an even number of columns (`pairedColumns`).
     @Published private(set) var geometry: LaunchpadGeometry
     /// The grid the settings and the screen make, whatever view is shown: `regrid` compares with it and the icon cache is sized by it.
     private var gridGeometry: LaunchpadGeometry
@@ -155,6 +155,10 @@ struct LaunchpadLiftView: Equatable {
     var onClose: (() -> Void)?
     /// Brings an app out of the Hidden card (it shows in the grid again).
     var onUnhide: ((AppID) -> Void)?
+    /// An app's file, by its path: shown in Finder, or put on the pasteboard as the plain path.
+    var onRevealApp: ((String) -> Void)?
+    /// The path to copy and whether the copy is of a hidden app, which the pasteboard writer marks as not to be kept.
+    var onCopyPath: ((String, _ concealed: Bool) -> Void)?
     /// The person used the window's switch; the model keeps the choice.
     var onViewChange: ((LaunchpadViewMode) -> Void)?
     /// What "recently added" is measured from, replaced in a test.
@@ -252,6 +256,29 @@ struct LaunchpadLiftView: Equatable {
 
     private var count: Int { openFolder == nil ? top.count : folderApps.count }
     private var shownIDs: [String] { openFolder == nil ? top.map(\.id) : folderApps.map(\.id) }
+
+    /// The app as the snapshot holds it now, and whether it is hidden, when its file may be handed out now: **a hidden app only in the open,
+    /// unlocked Hidden card** (its path is a private fact like its name, and the grid, a category, a folder and a search never draw it).
+    /// No snapshot, or an app it does not hold, is nothing to hand out. Asked when the menu is built and again at each press.
+    private func filed(_ id: AppID) -> (app: CatalogApp, hidden: Bool)? {
+        guard let snapshot, let app = snapshot.apps[id] else { return nil }
+        let isHidden = snapshot.layout.hidden.contains(id)
+        if isHidden && !(openFolder == LaunchpadHiddenBlock.id && hidden.phase == .unlocked) { return nil }
+        return (app, isHidden)
+    }
+
+    /// Show in Finder and Copy Path for `app`'s tile. A press hands over what is true then, not what was when the menu was built: the
+    /// app as the snapshot holds it (its path may have moved), and nothing if it is gone or has become hidden outside the unlocked card.
+    func fileActions(for app: CatalogApp) -> LaunchpadFileActions? {
+        guard filed(app.id) != nil else { return nil }
+        let id = app.id
+        return LaunchpadFileActions(
+            reveal: { [weak self] in if let now = self?.filed(id) { self?.onRevealApp?(now.app.path) } },
+            copyPath: { [weak self] in if let now = self?.filed(id) { self?.onCopyPath?(now.app.path, now.hidden) } })
+    }
+
+    /// Whether the person asked for app names (the grid's setting, not the category view's geometry, which keeps its lines for its blocks).
+    var namesAsked: Bool { gridGeometry.names }
 
     // MARK: - The snapshot
 

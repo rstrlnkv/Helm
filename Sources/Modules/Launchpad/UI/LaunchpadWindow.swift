@@ -252,6 +252,8 @@ private final class LaunchpadWindowEnders {
         state.onResize = { [weak model] id, large in Task { @MainActor in await model?.resize(id, large: large) } }
         state.onMove = { [weak model] id, target in Task { @MainActor in await model?.moveToCategory(id, to: target) } }
         state.onUnhide = { [weak model] id in Task { @MainActor in await model?.unhide(id) } }
+        state.onRevealApp = { [weak model] path in model?.revealApp(path) }
+        state.onCopyPath = { [weak model] path, concealed in model?.copyPath(path, concealed) }
         state.onClose = { [weak self] in self?.close() }
         state.hidden.onAsking = { [weak self] on in self?.promptChanged(on) }
         state.hidden.onLocked = { [weak model] in model?.dropNamedNotice() }
@@ -433,6 +435,8 @@ private final class LaunchpadWindowEnders {
         state.onMove = nil
         state.onClose = nil
         state.onUnhide = nil
+        state.onRevealApp = nil
+        state.onCopyPath = nil
         state.hidden.onAsking = nil
         state.hidden.onLocked = nil
         state.onViewChange = nil

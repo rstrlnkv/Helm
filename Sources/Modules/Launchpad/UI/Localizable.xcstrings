@@ -107,6 +107,59 @@
         }
       }
     },
+    "appIsNew": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, neu"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, new"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, nueva"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, nouvelle"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@、新着"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, novo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, новое"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@，新应用"
+          }
+        }
+      }
+    },
     "arrangement": {
       "extractionState": "manual",
       "localizations": {
@@ -1644,6 +1697,59 @@
         }
       }
     },
+    "copyPath": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als Pfadname kopieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Path"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar como ruta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier en tant que nom de chemin"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "パス名をコピー"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar como nome do caminho"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопировать путь"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷贝为路径名称"
+          }
+        }
+      }
+    },
     "dockIcon": {
       "extractionState": "manual",
       "localizations": {
@@ -2392,49 +2498,49 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Setzt Automatisch, Zeilen, Spalten und die Symbolgröße zurück."
+            "value": "Setzt Automatisch, Zeilen, Spalten, die Symbolgröße und die App-Namen zurück."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Resets Automatic, rows, columns and icon size."
+            "value": "Resets Automatic, rows, columns, icon size and app names."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restablece Automático, filas, columnas y el tamaño de los iconos."
+            "value": "Restablece Automático, filas, columnas, el tamaño de los iconos y los nombres de las apps."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rétablit Automatique, les lignes, les colonnes et la taille des icônes."
+            "value": "Rétablit Automatique, les lignes, les colonnes, la taille des icônes et les noms des apps."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "自動、行数、列数、アイコンのサイズを元に戻します。"
+            "value": "自動、行数、列数、アイコンのサイズ、アプリ名の表示を元に戻します。"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restaura Automático, linhas, colunas e o tamanho dos ícones."
+            "value": "Restaura Automático, linhas, colunas, o tamanho dos ícones e os nomes dos apps."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сбрасывает автоматический режим, число строк и столбцов и размер значков."
+            "value": "Сбрасывает автоматический режим, число строк и столбцов, размер значков и показ названий приложений."
           }
         },
         "zh": {
           "stringUnit": {
             "state": "translated",
-            "value": "恢复自动模式、行数、列数和图标大小。"
+            "value": "恢复自动模式、行数、列数、图标大小和应用名称的显示。"
           }
         }
       }
@@ -3601,6 +3707,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "重置排列？"
+          }
+        }
+      }
+    },
+    "showAppNames": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App-Namen anzeigen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show app names"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar nombres de las apps"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher les noms des apps"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリ名を表示"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar nomes dos apps"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывать названия приложений"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示应用名称"
           }
         }
       }

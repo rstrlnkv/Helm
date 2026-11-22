@@ -97,6 +97,15 @@ public struct LaunchpadCategoryBlock: Equatable, Sendable {
 public enum LaunchpadCategories {
     public static let recentDays = 30
 
+    /// Added within the last `recentDays`; a date in the future or none is not recent.
+    public static func isRecent(added: Date?, now: Date) -> Bool {
+        guard let added else { return false }
+        return (0...TimeInterval(recentDays) * 86_400).contains(now.timeIntervalSince(added))
+    }
+
+    /// The "new" badge: recent and never opened from Launchpad (`launches` is the app's count there, 0 when it has none).
+    public static func isNew(added: Date?, launches: Int, now: Date) -> Bool { launches == 0 && isRecent(added: added, now: now) }
+
     /// `apps` is the catalog in presentation order; `name` is a block's title in the person's language, for the tie.
     public static func blocks(apps: [CatalogApp], hidden: Set<AppID>, counts: [AppID: Int], now: Date,
                               overrides: [AppID: LaunchpadCategoryTarget] = [:],
@@ -123,11 +132,7 @@ public enum LaunchpadCategories {
             return order == .orderedSame ? $0.id.uuidString < $1.id.uuidString : order == .orderedAscending
         }
 
-        let window = TimeInterval(recentDays) * 86_400
-        let recent = visible.filter {
-            guard let added = $0.element.added else { return false }
-            return (0...window).contains(now.timeIntervalSince(added))
-        }.sorted {
+        let recent = visible.filter { isRecent(added: $0.element.added, now: now) }.sorted {
             let (a, b) = ($0.element.added ?? .distantPast, $1.element.added ?? .distantPast)
             return a == b ? $0.offset < $1.offset : a > b
         }
