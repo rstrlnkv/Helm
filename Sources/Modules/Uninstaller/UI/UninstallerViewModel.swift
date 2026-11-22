@@ -24,6 +24,9 @@ protocol UninstallerWork: AnyObject, Sendable {
     func scan(bundleID: String, appName: String) async -> ScanResult
     func scanOrphans() async -> [OrphanGroup]
     func trashPaths(_ paths: [String], quittingRunningApps: Bool) async -> UninstallResult
+    func removalVerdicts(for candidates: [AppRemovalCandidate]) async -> [AppRemovalVerdict]
+    func removalPreview(_ candidate: AppRemovalCandidate) async -> AppRemovalAsk
+    func removeApp(_ candidate: AppRemovalCandidate, quittingIfRunning: Bool) async -> AppRemovalReport
     var trashWatch: TrashWatch { get }
     func setWatchingTrash(_ on: Bool)
     func trashedAppLeftovers() async -> [TrashedAppLeftovers]
@@ -104,6 +107,8 @@ extension UninstallerEngine: UninstallerWork {}
     /// having been asked for: before the page's first `.task` there is no list
     /// and no reason to say «0 apps».
     private var loadedApps = false
+    /// Counts removals through the door, so a list read that began before one does not mark the list current after it.
+    private var doorRemovals = 0
 
     /// Whether the list has been answered at all, for the page to read.
     ///
@@ -192,6 +197,7 @@ extension UninstallerEngine: UninstallerWork {}
     func reloadApps() async {
         guard !closed else { return }
         let mine = latestList.take()
+        let removalsAtStart = doorRemovals
         loadingApps = true
         let list = await work.listApps()
         // An older answer is dropped whole, `loadingApps` included: the newer
@@ -204,7 +210,7 @@ extension UninstallerEngine: UninstallerWork {}
         measuredSizes = [:]
         lastOpened = nil
         lastOpenedUnread = []
-        loadedApps = true
+        loadedApps = removalsAtStart == doorRemovals
         // Independent: the dates take milliseconds and must not wait behind sizes
         // that take seconds, nor the other way round.
         await withTaskGroup(of: Void.self) { group in
@@ -459,5 +465,37 @@ extension UninstallerEngine: UninstallerWork {}
     func backgroundScan() async -> ScanReport? {
         guard !closed else { return nil }
         return await work.backgroundScan()
+    }
+}
+
+// MARK: - The door for another module's removal of one app
+
+/// In this file because it takes `busy` and calls `work`, both private to it: the model refuses a second
+/// removal itself, the same guard `removeSelection` holds, so a Launchpad press cannot run beside a batch
+/// from the page, and a batch from the page cannot run beside it.
+extension UninstallerViewModel: AppRemovalService {
+    public func verdicts(for candidates: [AppRemovalCandidate]) async -> [AppRemovalVerdict] {
+        guard !closed else { return candidates.map { _ in .refused(.stopped) } }
+        return await work.removalVerdicts(for: candidates)
+    }
+
+    public func preview(_ candidate: AppRemovalCandidate) async -> AppRemovalAsk {
+        guard !closed else { return .refused(.stopped) }
+        return await work.removalPreview(candidate)
+    }
+
+    public func remove(_ candidate: AppRemovalCandidate, quittingIfRunning: Bool) async -> AppRemovalReport {
+        guard !closed else { return AppRemovalReport(.stopped) }
+        guard !busy else { return AppRemovalReport(.busy) }
+        busy = true
+        defer { busy = false }
+        let report = await work.removeApp(candidate, quittingIfRunning: quittingIfRunning)
+        // The list the page holds is older than this removal: it is read again when the page next appears.
+        if report.outcome == .moved || report.outcome == .movedWithFailures {
+            loadedApps = false
+            doorRemovals += 1
+            checked.remove(candidate.path)
+        }
+        return report
     }
 }

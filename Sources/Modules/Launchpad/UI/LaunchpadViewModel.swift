@@ -79,6 +79,8 @@ enum LaunchNotice: Equatable {
     /// Builds the window; nil in a test, and the window then never opens.
     var present: (@MainActor (LaunchpadViewModel) -> any LaunchpadWindowHandle)?
     private var window: (any LaunchpadWindowHandle)?
+    /// The app-removal door, resolved at each use (nil when no module answers it now, and in a test).
+    var removal: @MainActor () -> (any AppRemovalService)? = { nil }
     /// What the fingers' scrub is doing to the window, from `began` to `ended`. `spent`: a reduced-motion hand that already acted.
     private enum Scrub { case none, opening, closing, forwarding, reduced(PinchDirection), spent }
     private var scrub = Scrub.none

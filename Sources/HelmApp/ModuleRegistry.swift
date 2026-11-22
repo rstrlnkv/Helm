@@ -14,7 +14,7 @@ import Module_Launchpad_UI
 
 /// All compiled-in module descriptors. Add future modules here.
 @MainActor enum ModuleRegistry {
-    static let all: [any ModuleDescriptor] = [KeepAwakeDescriptor(), VPNDescriptor(), UninstallerDescriptor(), ScreenshotsDescriptor(), HomebrewDescriptor(), LeftoversDescriptor(), DiskDescriptor(), DuplicatesDescriptor(), AutopilotDescriptor(), LayoutDescriptor(), LaunchpadDescriptor(), TweaksDescriptor()]
+    static let all: [any ModuleDescriptor] = [KeepAwakeDescriptor(), VPNDescriptor(), UninstallerDescriptor(), ScreenshotsDescriptor(), HomebrewDescriptor(), LeftoversDescriptor(), DiskDescriptor(), DuplicatesDescriptor(), AutopilotDescriptor(), LayoutDescriptor(), LaunchpadDescriptor(removal: { ModuleHost.shared.appRemoval }), TweaksDescriptor()]
 
     /// The descriptor an id names, or nil for an id from a store written by
     /// another build. Spelled here because everything that reads a stored

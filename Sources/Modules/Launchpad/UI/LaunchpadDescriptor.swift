@@ -30,12 +30,16 @@ enum LaunchpadHotkey {
         body: ShellGlyph.box(3.5, 3.5, 17, 17, 4.5),
         detail: ShellGlyph.lines([8, 12, 16].flatMap { y in [8, 12, 16].map { x in ShellGlyph.dot(CGFloat(x), CGFloat(y)) } }))
 
-    public init() {}
+    /// Where the app-removal door is read from, at each use; nothing in this module names the module behind it.
+    private let removal: @MainActor () -> (any AppRemovalService)?
+
+    public init(removal: @escaping @MainActor () -> (any AppRemovalService)? = { nil }) { self.removal = removal }
 
     public func makeModule(store: NamespacedStore) -> ModuleParts<LaunchpadViewModel> {
         let engine = LaunchpadEngine(utilitiesFolderName: { HelmWord.utilities },
                                      pinchEnabled: { store.bool(LaunchpadPinchKey.on, default: false) })
         let model = LaunchpadViewModel(work: engine, store: store)
+        model.removal = removal
         engine.onPinch = { [weak model] in model?.pinched($0) }
         model.openTrackpadSettings = { PermissionCheck.openTrackpadSettings() }
         model.present = { model in

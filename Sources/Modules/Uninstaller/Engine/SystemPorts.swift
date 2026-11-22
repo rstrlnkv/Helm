@@ -11,10 +11,7 @@ public final class WorkspaceAppLister: AppLister {
     public init(home: URL, fs: FileSystemPort) { self.home = home; self.fs = fs }
 
     private var searchDirs: [URL] {
-        [URL(fileURLWithPath: "/Applications"),
-         home.appendingPathComponent("Applications"),
-         URL(fileURLWithPath: "/Applications/Setapp"),
-         home.appendingPathComponent("Applications/Setapp")]
+        AppRemovability.folders(home: home.path).map { URL(fileURLWithPath: $0) }
     }
 
     public func installedBundleIDs() -> Set<String> {
@@ -215,7 +212,7 @@ public final class WorkspaceAppLister: AppLister {
     /// `setChecked` refuses the id (`SystemApp`), so it is not an offer to remove
     /// anything and there is nothing to withdraw — dropping it would only take the
     /// row that says «System app» away from a person who can see the app in Finder.
-    private static func leadsElsewhere(_ app: URL, inside folder: URL) -> Bool {
+    static func leadsElsewhere(_ app: URL, inside folder: URL) -> Bool {
         app.resolvingSymlinksInPath().standardizedFileURL.path
             != folder.appendingPathComponent(app.lastPathComponent).path
     }

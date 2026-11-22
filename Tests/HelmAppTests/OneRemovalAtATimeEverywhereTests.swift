@@ -144,12 +144,12 @@ final class OneRemovalAtATimeEverywhereTests: XCTestCase {
     /// naming the place a removal is usually written rather than the thing that
     /// makes it dangerous.
     ///
-    /// Three spellings: the Uninstaller's model calls its engine's `trashPaths`
-    /// through `work`, its Leftovers tab and Trash offer call the model's
-    /// `uvm.trashPaths`, and Disk, Duplicates and Leftovers call their engine's
-    /// `trash` through `work`.
+    /// Four spellings: the Uninstaller's model calls its engine's `trashPaths` through
+    /// `work`, and `removeApp` there too, for another module's removal of one app; its
+    /// Leftovers tab and Trash offer call the model's `uvm.trashPaths`, and Disk,
+    /// Duplicates and Leftovers call their engine's `trash` through `work`.
     private static func sendsARemoval(_ source: String) -> Bool {
         source.contains("work.trash(") || source.contains("work.trashPaths(")
-            || source.contains("uvm.trashPaths(")
+            || source.contains("uvm.trashPaths(") || source.contains("work.removeApp(")
     }
 }

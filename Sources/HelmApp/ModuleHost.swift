@@ -4,6 +4,7 @@ import HelmContract
 import HelmRuntime
 import HelmUI
 import Module_Launchpad_UI
+import Module_Uninstaller_UI
 import SwiftUI
 
 /// Owns module lifecycle: per-module namespaced store, enabled flag, and
@@ -27,6 +28,7 @@ import SwiftUI
         let panelWidget: @MainActor (PanelWidgetSize) -> AnyView?
         let panelWidgetSizes: @MainActor () -> Set<PanelWidgetSize>
         let backgroundScan: @MainActor () async -> ScanReport?
+        let appRemoval: @MainActor () -> (any AppRemovalService)?
         let stop: @MainActor () -> Void
         let hotkeyPressed: @MainActor (ModuleHotkey) -> Void
     }
@@ -158,8 +160,15 @@ import SwiftUI
                     panelWidget: { d.panelWidget($0, model) },
                     panelWidgetSizes: { d.panelWidgetSizes(model) },
                     backgroundScan: { await d.backgroundScan(parts) },
+                    appRemoval: { d.appRemoval(model) },
                     stop: { d.stop(model) },
                     hotkeyPressed: { d.hotkeyPressed($0, model) })
+    }
+
+    /// The Uninstaller's door for removing one app, read at each use: nil when the module is off.
+    /// Its id comes from its descriptor's type, never a literal here.
+    var appRemoval: (any AppRemovalService)? {
+        live[UninstallerDescriptor.id.rawValue]?.appRemoval()
     }
 
     /// Every module's declared shortcuts, one loop. A key is held only while its

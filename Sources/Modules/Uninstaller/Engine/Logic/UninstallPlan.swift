@@ -134,10 +134,12 @@ public enum UninstallPlan {
     /// user has to notice it to keep their data; unticked, they have to notice
     /// it to lose it. Same information, opposite default.
     public static func defaultSelection(_ groups: [UninstallGroup]) -> [String] {
+        ownLeftovers(groups.flatMap { $0.leftovers }).map(\.path)
+    }
+
+    /// The leftovers found by bundle id, once each: what `defaultSelection` ticks, for one app too.
+    static func ownLeftovers(_ leftovers: [Leftover]) -> [Leftover] {
         var seen: Set<String> = []
-        return groups.flatMap { $0.leftovers }
-            .filter { !$0.matchedByName }
-            .map(\.path)
-            .filter { seen.insert($0).inserted }
+        return leftovers.filter { !$0.matchedByName }.filter { seen.insert($0.path).inserted }
     }
 }

@@ -73,12 +73,30 @@ The gate order of a removal is fixed: `trashPaths` asks who is up (`UninstallPla
 
 The Apps tab's failure list is today's `failureReport` (`UninstallerSettingsPage.swift`); changing it is owner decision 22, in the post-programme queue.
 
+## The door for another module's removal of one app
+
+Launchpad's edit mode removes one app through the Uninstaller and never reaches `HelmTrash` itself. The vocabulary is `Sources/HelmRuntime/AppRemoval.swift` (`AppRemovalCandidate`, `AppRemovalVerdict`, `AppRemovalAsk`, `AppRemovalPreview`, `AppRemovalReport`, and `AppRemovalService`, which carries no path back out). `ModuleDescriptor.appRemoval(_:)` answers nil by default; `UninstallerDescriptor` answers its model unless the model is stopped; `ModuleHost.appRemoval` reads the live Uninstaller by `UninstallerDescriptor.id`, and `ModuleRegistry.all` hands `LaunchpadDescriptor` the closure `{ ModuleHost.shared.appRemoval }`, which the Launchpad model (`model.removal`) calls at each use, so a module switched off between two uses is no door.
+
+**The gate is in the engine, and asked again where it acts.** `AppRemovability.verdict` (`Sources/Modules/Uninstaller/Engine/Logic/AppRemovability.swift`) refuses in this order: no bundle id (`notOffered`); Helm itself (`notOffered`, no case of its own: the id the running app carries, an id under it with a dot such as Helm Dev or the Launchpad helper, or the running app's own bundle path, all handed to the engine's init as `ownApp` because the engine imports no app code); a `com.apple.` id (`system`); a path that is not a plainly spelled `.app` (a `..` or a trailing slash; `notOffered`); a parent folder that, resolved, is not exactly one of the four the lister reads (`/Applications`, `~/Applications`, and the two `Setapp` folders; `notOffered`, which takes a nested vendor folder, `/Applications/Utilities` and `/System/Applications`); an entry that is not there (`gone`); a leaf that leads elsewhere (`WorkspaceAppLister.leadsElsewhere`, the same question the list asks; `notOffered`); a path `RemovableScope` does not allow (`notOffered`). `UninstallerEngine.removalVerdict` then re-reads the bundle's own `Info.plist` id and refuses a bundle that says another one. `removalPreview` and `removeApp` run that verdict first, before anything is scanned or quit, and `removeApp` runs it once more after a quit and before the move (`trashPaths`'s `stillAllowed`): a bundle swapped, linked or renamed during the quit wait moves nothing. `SystemApp.isSystem` was the page's alone: the engine's `trashPaths` would take a `com.apple.` app in `/Applications` if a batch named it, and it still does (defect log, Uninstaller).
+
+`removeApp` moves the bundle alone and first, through `trashPaths`, so the question «is it up» is asked at the act and again after the quit loop, and `HelmTrash` does the moving; only if the bundle moved do the leftovers follow, in a second batch. They are the ones the preview counted (`UninstallPlan.ownLeftovers`: found by bundle id, never by name) and the fresh scan still finds: nothing that appeared after the card, and none at all when no preview came first. A bundle macOS refuses therefore takes no data with it. `stillRunning` is the answer to an app that is up with no quit agreed or still up after the quit. The report says `moved`, `movedWithFailures` (the bundle moved, something of its own did not), or `refused` (the bundle did not move: the verdict, or macOS; `failed` holds the reasons), so every refused path is in the removed-or-failed list. The preview waits at most `appSizeDeadline` for the bundle's size and answers `nil` after it.
+
+The model takes the door in `UninstallerViewModel.swift` itself (`busy` and `work` are private to it): `remove` answers `.stopped` after `stop()`, and `.busy` while `removeSelection` or another removal runs, the same `busy` flag; after a move it marks the apps list stale, read again when the page next appears. The log says reasons and counts, never a name or an id.
+
+Two things the door does not do. A removal already handed to the engine finishes after the module is switched off (`stop()` closes the model, not the work in flight) and is reported as it ended. The orphans batch (`OrphansModel`) has its own busy flag and can run beside a door removal; both end in `HelmTrash`, which refuses what is gone, so the cost is a report of paths already moved, not a wrong move (defect log, Uninstaller).
+
 Kept tests, one per guarantee:
 
 | guarantee | test |
 |---|---|
 | a name is a guess, an id is not | `ANameIsAGuessNotAnOwnershipQuestionTests` |
 | the app is asked again at removal | `TheAppIsAskedAgainAtRemovalTests`, `TheRunningQuestionIsAskedAtRemovalTests` |
+| the door's gate is the engine's, and refuses before anything is quit or moved | `AnAppRemovedFromLaunchpadPassesTheUninstallersGateInTheEngineTests` |
+| the door asks again after the quit, and holds | `TheAppIsAskedAgainAtLaunchpadRemovalTests` |
+| the door moves only what the id owns, and lists every refusal | `ALaunchpadRemovalMovesOnlyWhatTheIdOwnsAndListsEveryRefusalTests` |
+| the door never removes Helm's own family, and asks again after a quit | `TheDoorNeverRemovesHelmAndAsksAgainAfterAQuitTests` |
+| the door takes one removal at a time, with the page | `ADoorRemovalMeetsTheRestOfThePageTests`, `TheDoorTakesOneRemovalAtATimeTests`, `OneRemovalAtATimeEverywhereTests` |
+| the door's log does not name the app or its id | `TheLogDoesNotNameTheAppAtLaunchpadRemovalTests` |
 | the quit is waited for, and its deadline ends the wait | `TheQuitIsWaitedForTests` |
 | a refusal is not a decline at the Trash window's close | `ARefusalIsNotADeclineAtTheCloseTests` |
 | the removal report is not the last word | `TheReviewIsNotTheLastWordTests` |

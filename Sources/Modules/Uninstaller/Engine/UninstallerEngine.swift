@@ -45,6 +45,11 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// Told that something reached the Trash that could have been an app, or
     /// that the offer was switched on: "look again". May be called from any queue.
     private let trashChanged: @Sendable () -> Void
+    /// The running Helm's own bundle id and path, which the door never removes (nil in tests that do not care).
+    private let ownApp: (bundleID: String, path: String)?
+    /// What each preview counted as the app's own leftovers, by app path: `removeApp` takes no more than that.
+    private let previewLock = NSLock()
+    private var previewed: [String: Set<String>] = [:]
 
 
     /// `store` holds three things: which trashed apps the person has already
@@ -58,7 +63,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 fullDiskAccess: FullDiskAccessPort = GrantedFullDiskAccess(),
                 store: NamespacedStore = NamespacedStore(namespace: UninstallerEngine.moduleID,
                                                         backing: InMemoryKeyValueStore()),
-                trashChanged: @escaping @Sendable () -> Void = {}) {
+                trashChanged: @escaping @Sendable () -> Void = {},
+                ownApp: (bundleID: String, path: String)? = nil) {
+        self.ownApp = ownApp
         self.home = home
         self.apps = apps
         self.fs = fs
@@ -617,6 +624,13 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// word, so neither refuses anything of its own accord.
     public func trashPaths(_ paths: [String],
                            quittingRunningApps mayQuit: Bool = false) async -> UninstallResult {
+        await trashPaths(paths, quittingRunningApps: mayQuit, stillAllowed: nil)
+    }
+
+    /// `stillAllowed`, when given, is asked once more after a quit and before the move: the quit wait
+    /// is long enough for the folder, the link or the bundle's id to have changed. False moves nothing.
+    private func trashPaths(_ paths: [String], quittingRunningApps mayQuit: Bool,
+                            stillAllowed: (@Sendable () -> Bool)?) async -> UninstallResult {
         // Off the pool: this reads each bundle's `Info.plist`, and the running
         // port reaches AppKit through the main thread (ARCHITECTURE.md § Running
         // applications).
@@ -640,8 +654,108 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             if case .refuse(let up) = UninstallPlan.verdict(running: stillUp, mayQuit: false) {
                 return held(up, because: "still up after the quit")
             }
+            if let stillAllowed, !(await offTheCooperativePool { stillAllowed() }) {
+                HelmLog.shared.info(UninstallerEngine.moduleID, "batch refused: the app changed while it was quit")
+                return UninstallResult(trashed: [], freedBytes: 0)
+            }
         }
         return await offTheCooperativePool { self.trashSync(paths) }
+    }
+
+    // MARK: - Removing one app for another module
+
+    /// How long the preview waits for the bundle's size. A big bundle takes seconds to walk
+    /// (Xcode, 3 s) and the card is not worth that wait: it says no size instead of a wrong one.
+    static let appSizeDeadline: TimeInterval = 2
+
+    /// The verdict, as the Uninstaller would give it now: the folder, link and scope rules
+    /// (`AppRemovability`), then the bundle's own `Info.plist` — a bundle that says another id than
+    /// the candidate carried is not the app the person was shown. Reads files: off the main thread.
+    private func removalVerdict(_ candidate: AppRemovalCandidate) -> AppRemovalVerdict {
+        let verdict = AppRemovability.verdict(candidate, home: home.path, ownApp: ownApp)
+        guard verdict == .removable else { return verdict }
+        return bundleID(forAppAt: candidate.path) == candidate.bundleID ? .removable : .refused(.notOffered)
+    }
+
+    public func removalVerdicts(for candidates: [AppRemovalCandidate]) async -> [AppRemovalVerdict] {
+        await offTheCooperativePool { candidates.map { self.removalVerdict($0) } }
+    }
+
+    /// The verdict, and only for a removable app the leftovers scan: nothing is scanned for a refused one.
+    private enum Judged: Sendable { case refused(AppRemovalVerdict.Refusal), scanned(ScanResult) }
+
+    private func judgedAndScanned(_ candidate: AppRemovalCandidate) async -> Judged {
+        await offTheCooperativePool {
+            if case .refused(let why) = self.removalVerdict(candidate) {
+                HelmLog.shared.info(UninstallerEngine.moduleID, "app removal refused: \(why)")
+                return .refused(why)
+            }
+            return .scanned(self.scanSync(bundleID: candidate.bundleID, appName: candidate.name))
+        }
+    }
+
+    /// What removing this app would take. The leftovers are the review's default selection
+    /// (`UninstallPlan.ownLeftovers`), found by bundle id and never by name.
+    public func removalPreview(_ candidate: AppRemovalCandidate) async -> AppRemovalAsk {
+        await removalPreview(candidate, sizeDeadline: Self.appSizeDeadline)
+    }
+
+    func removalPreview(_ candidate: AppRemovalCandidate, sizeDeadline: TimeInterval) async -> AppRemovalAsk {
+        switch await judgedAndScanned(candidate) {
+        case .refused(let why):
+            return .refused(why)
+        case .scanned(let scan):
+            let own = UninstallPlan.ownLeftovers(scan.leftovers)
+            previewLock.withLock { previewed[candidate.path] = Set(own.map(\.path)) }
+            let bytes = await measured(candidate.path, deadline: sizeDeadline)
+            return .ready(AppRemovalPreview(appBytes: bytes, leftoverCount: own.count,
+                                            leftoverBytes: own.reduce(0) { $0 + $1.sizeBytes },
+                                            running: scan.runningNow))
+        }
+    }
+
+    /// The bundle's size, or nil when the walk had not finished at the deadline. The walk cannot be
+    /// interrupted and is left to end on its own; whoever answers first, once, resumes the caller.
+    private func measured(_ path: String, deadline: TimeInterval) async -> Int? {
+        await withCheckedContinuation { continuation in
+            let answer = OnceAnswer(continuation)
+            DispatchQueue.global(qos: .userInitiated).async { [fs] in
+                answer.give(fs.size(URL(fileURLWithPath: path)))
+            }
+            DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + deadline) {
+                answer.give(nil)
+            }
+        }
+    }
+
+    /// Moves one app and what the card counted as its own to the Trash, through `trashPaths` — the only
+    /// removal this module has — so the gate and the "is it running" question are the ones a batch
+    /// from the page meets, the second asked again after the quit loop.
+    ///
+    /// **The verdict is asked first and again here, not trusted from a list read earlier**, and again
+    /// after a quit (`stillAllowed`): the app can have been swapped, linked or started since the card.
+    /// **The bundle goes alone and first.** A batch of both would send the leftovers to the Trash while
+    /// macOS refused the bundle, and the app would be back with its data gone. The leftovers are the
+    /// ones the preview counted and the fresh scan still finds — nothing that appeared after the card.
+    public func removeApp(_ candidate: AppRemovalCandidate,
+                          quittingIfRunning mayQuit: Bool) async -> AppRemovalReport {
+        guard case .scanned(let scan) = await judgedAndScanned(candidate) else { return AppRemovalReport(.refused) }
+        let counted = previewLock.withLock { previewed.removeValue(forKey: candidate.path) } ?? []
+        let leftovers = UninstallPlan.ownLeftovers(scan.leftovers).map(\.path).filter { counted.contains($0) }
+        let bundle = await trashPaths([candidate.path], quittingRunningApps: mayQuit,
+                                      stillAllowed: { self.removalVerdict(candidate) == .removable })
+        guard bundle.stillRunning.isEmpty else { return AppRemovalReport(.stillRunning) }
+        guard bundle.trashed.contains(candidate.path) else {
+            HelmLog.shared.info(UninstallerEngine.moduleID, "app removal: refused, nothing moved")
+            return AppRemovalReport(.refused, failed: bundle.failures.map(\.reason))
+        }
+        let rest = leftovers.isEmpty ? UninstallResult(trashed: [], freedBytes: 0)
+            : await trashPaths(leftovers, quittingRunningApps: false)
+        let failed = (bundle.failures + rest.failures).map(\.reason)
+        HelmLog.shared.info(UninstallerEngine.moduleID,
+                            "app removal: moved, \(rest.trashed.count) of \(leftovers.count) leftovers moved")
+        return AppRemovalReport(failed.isEmpty ? .moved : .movedWithFailures,
+                                freedBytes: bundle.freedBytes + rest.freedBytes, failed: failed)
     }
 
     /// Nothing moved, and the applications that are why. One result for both
@@ -748,6 +862,20 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 TrashFailureInfo(path: $0.path, reason: $0.reason,
                                  message: saidByPath[$0.path] ?? "")
             })
+    }
+}
+
+/// A continuation resumed by whichever of two answers arrives first, once.
+private final class OnceAnswer: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Int?, Never>?
+    init(_ continuation: CheckedContinuation<Int?, Never>) { self.continuation = continuation }
+    func give(_ value: Int?) {
+        let taken = lock.withLock { () -> CheckedContinuation<Int?, Never>? in
+            defer { continuation = nil }
+            return continuation
+        }
+        taken?.resume(returning: value)
     }
 }
 

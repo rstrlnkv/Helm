@@ -30,7 +30,9 @@ itself, so a scope never widens without a test naming the new path
 ## One removal at a time
 
 Disk, Duplicates, the Uninstaller and Leftovers remove a batch the person ticked —
-the Uninstaller's model calls its engine's `trashPaths` through `work`, and its
+the Uninstaller's model calls its engine's `trashPaths` through `work`, and its door for
+another module's removal of one app (`AppRemovalService.remove`, Architecture/Uninstaller.md)
+calls `removeApp` through `work` under the same `busy` flag, and its
 Leftovers tab and Trash offer call the model's `uvm.trashPaths`; Duplicates, Disk and
 Leftovers call their engine's `trash` through `work` — and a second press while the first is in flight is not a second
 removal, because the files it would name are already gone: what a repeat can
@@ -45,6 +47,6 @@ is the same guard read from the basket's own door, and so are Disk's `newScan` (
 `Tests/HelmAppTests/OneRemovalAtATimeEverywhereTests.swift` fails on any file under
 `Sources/Modules/` that sends a removal and has a method setting `busy = true` with no
 `guard` on `!busy` before that line, or no such method at all; the files it finds are the
-output of `command grep -rlE 'work\.trash(Paths)?\(|uvm\.trashPaths\(' Sources/Modules/`, since the count itself
+output of `command grep -rlE 'work\.(trash(Paths)?|removeApp)\(|uvm\.trashPaths\(' Sources/Modules/`, since the count itself
 does not belong in this sentence. Its doc comments say
 why it scans by what a file **sends** rather than by what a type is named.

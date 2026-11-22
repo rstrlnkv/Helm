@@ -83,6 +83,35 @@ final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
         XCTAssertEqual(work.calls, before, "a call reached the work after stop()")
     }
 
+    /// The door another module removes an app through is the model, and a stopped model is no door: the
+    /// descriptor answers nil, and a service already held answers «stopped» without reaching the work.
+    func testTheDoorAfterStopIsShutAndReachesNoWork() async {
+        let work = StoppedWork(apps: [app])
+        let live = model(work)
+        let candidate = AppRemovalCandidate(bundleID: app.bundleID, path: app.path, name: app.name)
+        let descriptor = UninstallerDescriptor()
+        XCTAssertNotNil(descriptor.appRemoval(live), "control: a live model is the door")
+        let verdicts = await live.verdicts(for: [candidate])
+        let preview = await live.preview(candidate)
+        let report = await live.remove(candidate, quittingIfRunning: false)
+        XCTAssertEqual(verdicts, [.removable], "control: a live model reaches the work")
+        XCTAssertEqual(preview, .ready(AppRemovalPreview(appBytes: 1, leftoverCount: 0, leftoverBytes: 0,
+                                                         running: false)))
+        XCTAssertEqual(report.outcome, .moved)
+
+        live.stop()
+        let before = work.calls
+        let afterVerdicts = await live.verdicts(for: [candidate])
+        let afterPreview = await live.preview(candidate)
+        let afterReport = await live.remove(candidate, quittingIfRunning: true)
+
+        XCTAssertNil(descriptor.appRemoval(live), "a stopped module still offers its door")
+        XCTAssertEqual(afterVerdicts, [.refused(.stopped)])
+        XCTAssertEqual(afterPreview, .refused(.stopped))
+        XCTAssertEqual(afterReport.outcome, .stopped)
+        XCTAssertEqual(work.calls, before, "a call reached the work after stop()")
+    }
+
     /// A list that was in flight when the module was switched off does not land
     /// on the page afterwards.
     func testAnAnswerAfterStopIsNotShown() async {
@@ -229,6 +258,16 @@ private final class StoppedWork: UninstallerWork, @unchecked Sendable {
     func trashPaths(_ paths: [String], quittingRunningApps: Bool) async -> UninstallResult {
         note("trashPaths")
         return UninstallResult(trashed: paths, freedBytes: 7, failures: [])
+    }
+    func removalVerdicts(for candidates: [AppRemovalCandidate]) async -> [AppRemovalVerdict] {
+        note("removalVerdicts"); return candidates.map { _ in .removable }
+    }
+    func removalPreview(_ candidate: AppRemovalCandidate) async -> AppRemovalAsk {
+        note("removalPreview")
+        return .ready(AppRemovalPreview(appBytes: 1, leftoverCount: 0, leftoverBytes: 0, running: false))
+    }
+    func removeApp(_ candidate: AppRemovalCandidate, quittingIfRunning: Bool) async -> AppRemovalReport {
+        note("removeApp"); return AppRemovalReport(.moved, freedBytes: 7)
     }
     var trashWatch: TrashWatch { .off }
     func setWatchingTrash(_ on: Bool) { note("setWatchingTrash") }
