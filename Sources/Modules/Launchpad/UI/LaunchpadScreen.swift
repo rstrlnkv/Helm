@@ -112,7 +112,7 @@ struct LaunchpadScreen: View {
         Group {
             switch entry {
             case .app(let app):
-                LaunchpadTile(app: app, icon: state.icons.icon(for: app.path), iconSize: g.icon, selected: selected,
+                LaunchpadTile(app: app, icon: state.icons.image(for: app.path, side: g.icon), iconSize: g.icon, selected: selected,
                               glowSize: size, popped: state.launching == app.id,
                               pressed: state.pressedID == app.id || state.lift?.onto == app.id,
                               moved: state.moved[app.id], open: { [weak state] in state?.onLaunch?(app.id, app.name) }, hide: { [weak state] in state?.onHide?(app.id) },
@@ -135,8 +135,9 @@ struct LaunchpadScreen: View {
                     LaunchpadTile(name: name, accessibleName: LpStr.category(name), iconSize: g.largeMark, selected: selected,
                                   open: { [weak state] in state?.open(folder: id) }, hide: nil, glowSize: size,
                                   pressed: mine && state.pressedIcon == nil, oneLine: !g.names) {
-                        LaunchpadCategoryMark(large: large.map { state.icons.icon(for: $0.path) },
-                                              cluster: apps.dropFirst(3).prefix(apps.count > 4 ? 4 : 0).map { state.icons.icon(for: $0.path) },
+                        let quadrant = LaunchpadCategoryMark.quadrant(g.largeMark)
+                        LaunchpadCategoryMark(large: large.map { state.icons.image(for: $0.path, side: quadrant) },
+                                              cluster: apps.dropFirst(3).prefix(apps.count > 4 ? 4 : 0).map { state.icons.image(for: $0.path, side: LaunchpadClusterCell.tiny(quadrant)) },
                                               size: g.largeMark,
                                               pressed: mine ? large.firstIndex { $0.id == state.pressedIcon } : nil,
                                               popped: state.popped(block: entry.id, among: large),
@@ -148,16 +149,17 @@ struct LaunchpadScreen: View {
                     }
                 } else {
                     // A large folder shows the first eight apps and, past nine, four more in the ninth cell, or the first nine; the mark's icons are plain images, and a click on one is the state's (the panel takes the press).
-                    let shown = large && apps.count > 9 ? 8 : 9
+                    let cells = LaunchpadFolderMark.cells(apps, large: large)
+                    let mini = LaunchpadFolderMark.mini(large ? g.largeMark : g.icon)
                     LaunchpadTile(name: name, accessibleName: LpStr.folder(name), iconSize: large ? g.largeMark : g.icon, selected: selected,
                                   open: { [weak state] in state?.open(folder: id) }, hide: nil, glowSize: size,
                                   pressed: (state.pressedID == entry.id && state.pressedIcon == nil) || state.lift?.onto == entry.id,
                                   resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { [weak state] in state?.resize(id, large: !large) }),
                                   reorder: state.moves(for: entry.id), oneLine: !g.names) {
-                        LaunchpadFolderMark(icons: apps.prefix(shown).map { state.icons.icon(for: $0.path) }, size: large ? g.largeMark : g.icon,
-                                            overflow: large ? apps.dropFirst(8).prefix(apps.count > 9 ? 4 : 0).map { state.icons.icon(for: $0.path) } : [],
-                                            pressed: large ? apps.prefix(shown).firstIndex { $0.id == state.pressedIcon } : nil,
-                                            popped: large ? apps.prefix(shown).firstIndex { $0.id == state.launching } : nil)
+                        LaunchpadFolderMark(icons: cells.shown.map { state.icons.image(for: $0.path, side: mini) }, size: large ? g.largeMark : g.icon,
+                                            overflow: cells.overflow.map { state.icons.image(for: $0.path, side: LaunchpadClusterCell.tiny(mini)) },
+                                            pressed: large ? cells.shown.firstIndex { $0.id == state.pressedIcon } : nil,
+                                            popped: large ? cells.shown.firstIndex { $0.id == state.launching } : nil)
                     }
                 }
             case .gap:
@@ -310,7 +312,7 @@ struct LaunchpadScreen: View {
     @ViewBuilder private func cardTile(_ entry: LaunchpadEntry, index: Int, _ g: LaunchpadGeometry) -> some View {
         let inHidden = state.openFolder == LaunchpadHiddenBlock.id
         if case .app(let app) = entry {
-            LaunchpadTile(app: app, icon: state.icons.icon(for: app.path), iconSize: g.icon,
+            LaunchpadTile(app: app, icon: state.icons.image(for: app.path, side: g.icon), iconSize: g.icon,
                           selected: state.selection == index, glowSize: glowSize(g),
                           popped: state.launching == app.id, pressed: state.pressedID == app.id,
                           inHidden: inHidden, moved: state.moved[app.id], open: { [weak state] in state?.onLaunch?(app.id, app.name) },

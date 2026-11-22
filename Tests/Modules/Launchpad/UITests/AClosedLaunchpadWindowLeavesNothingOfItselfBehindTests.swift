@@ -1,4 +1,5 @@
 import AppKit
+import HelmTestSupport
 import XCTest
 @testable import Module_Launchpad_Engine
 @testable import Module_Launchpad_UI
@@ -68,11 +69,13 @@ final class AClosedLaunchpadWindowLeavesNothingOfItselfBehindTests: XCTestCase {
         panel.setFrame(CGRect(x: -20000, y: -20000, width: 40, height: 40), display: false)
         let icons = panel.state!.icons
         window.present()
-        let drawn = icons.icon(for: "/Applications/a.app")
-        XCTAssertTrue(drawn === icons.icon(for: "/Applications/a.app"), "the control: the cache keeps an icon while the window is open")
+        // The icon is drawn off main and lands later: ask until it has.
+        var drawn: NSImage?
+        await waitUntil("the icon was drawn while the window is open") { drawn = icons.image(for: "/Applications/a.app", side: 64); return drawn != nil }
+        XCTAssertTrue(drawn === icons.image(for: "/Applications/a.app", side: 64), "the control: the cache keeps an icon while the window is open")
         window.close()
         try? await Task.sleep(for: .milliseconds(800))
-        XCTAssertFalse(drawn === icons.icon(for: "/Applications/a.app"), "the cache still held an icon after the window was taken down")
+        XCTAssertNil(icons.image(for: "/Applications/a.app", side: 64), "the cache still held an icon after the window was taken down")
     }
 }
 

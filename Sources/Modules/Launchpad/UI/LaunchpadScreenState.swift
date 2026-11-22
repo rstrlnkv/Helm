@@ -178,6 +178,12 @@ struct LaunchpadLiftView: Equatable {
     /// Said once, when the first snapshot has come in.
     var onLoaded: ((LaunchpadSnapshot, LaunchpadScreenState) -> Void)?
     private var loadedOnce = false
+    /// Whether the first snapshot waits for page 0's icons (the window's state does, a test's does not).
+    private let gated: Bool
+    private var firstSnapshot: LaunchpadSnapshot?
+    private var firstLoad: Task<Void, Never>?
+    /// The first icons are drawn: how long after the snapshot came in, how many landed, the pixels of a tile's side, and whether the deadline ended the wait.
+    var onIconsWarmed: ((_ took: Duration, _ drawn: Int, _ pixels: Int, _ timedOut: Bool) -> Void)?
 
     private var snapshot: LaunchpadSnapshot?
     /// The top level as the snapshot gave it (a search's hits, or the layout's tiles), cut at the layout's page breaks.
@@ -216,13 +222,19 @@ struct LaunchpadLiftView: Equatable {
     /// The gate's changes are this state's: the screen observes the state only, and the unavailable banner reads the gate.
     private var hiddenChanges: AnyCancellable?
 
-    init(geometry: LaunchpadGeometry, view: LaunchpadViewMode = .apps, hidden: LaunchpadHiddenGate = LaunchpadHiddenGate(port: SystemLaunchpadAuth())) {
+    /// `icons`: the window's, drawing the system's icons off main, which also gates the first snapshot on page 0's icons (`update(snapshot:)`);
+    /// none (a test) draws nothing, gates nothing and lands the snapshot at once.
+    init(geometry: LaunchpadGeometry, view: LaunchpadViewMode = .apps, hidden: LaunchpadHiddenGate = LaunchpadHiddenGate(port: SystemLaunchpadAuth()),
+         icons: LaunchpadIcons? = nil) {
         self.hidden = hidden
         self.geometry = geometry
         gridGeometry = geometry
         self.view = view
-        icons = LaunchpadIcons(capacity: geometry.capacity, size: geometry.icon)
+        gated = icons != nil
+        self.icons = icons ?? LaunchpadIcons(capacity: geometry.capacity, side: geometry.icon, scale: 2) { _, _ in nil }
         hiddenChanges = hidden.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+        // Weak, and the cache is the state's own: the queue and the pending asks must keep nothing of the window alive (pass 19's leak).
+        self.icons.onArrival = { [weak self] in self?.objectWillChange.send() }
     }
 
     var pageCount: Int { pages.count }
@@ -282,7 +294,56 @@ struct LaunchpadLiftView: Equatable {
 
     // MARK: - The snapshot
 
+    /// The window's first snapshot waits, at most this long, for page 0's icons, so the first picture has them (a race, not a wait).
+    static let firstIconsDeadline = Duration.milliseconds(120)
+
+    /// The first snapshot is held (the mode stays `.busy`) while page 0's icons are drawn off main, then lands as any other; later ones land at once.
+    /// A newer one while it waits replaces it, and none (a nil) drops it. Closing cancels the wait.
     func update(snapshot: LaunchpadSnapshot?) {
+        if gated, !loadedOnce, let snapshot {
+            firstSnapshot = snapshot
+            if firstLoad == nil {
+                let landed = ContinuousClock.now
+                firstLoad = Task { [weak self] in await self?.warmFirstPage(since: landed) }
+            }
+            return
+        }
+        firstSnapshot = nil
+        land(snapshot)
+    }
+
+    private func warmFirstPage(since landed: ContinuousClock.Instant) async {
+        let asks = firstSnapshot.map(firstPageAsks) ?? []
+        let side = geometry.icon
+        let result = await icons.warm(asks, deadline: Self.firstIconsDeadline)
+        firstLoad = nil
+        guard !Task.isCancelled, let snapshot = firstSnapshot else { return }
+        firstSnapshot = nil
+        land(snapshot)
+        if result.wanted > 0 {
+            onIconsWarmed?(landed.duration(to: .now), result.drawn, LaunchpadIcons.pixels(side: side, scale: icons.scale), result.timedOut)
+        }
+    }
+
+    /// What page 0 draws, as the screen asks it: the page is the first of `LaunchpadPaging.pages` over the arrangement's segments (the
+    /// same cut `reflow` and `publishPages` make, so a page break, a large folder's four cells and an app missing from the snapshot
+    /// count as they do there); an app at the grid's icon side, a folder's apps at its mini side, a large folder's last four at a tiny one.
+    private func firstPageAsks(_ snapshot: LaunchpadSnapshot) -> [(path: String, side: CGFloat)] {
+        guard view == .apps, search.isEmpty else { return [] }
+        let segments = layoutSegments(snapshot).filter { !$0.isEmpty }
+        let page = LaunchpadPaging.pages(segments, columns: geometry.columns, rows: geometry.rows, isLarge: { $0.isLarge }).pages[0]
+        return page.flatMap { entry -> [(path: String, side: CGFloat)] in
+            switch entry {
+            case .app(let app): return [(app.path, geometry.icon)]
+            case .folder(_, _, let apps, let large):
+                let cells = LaunchpadFolderMark.cells(apps, large: large), mini = LaunchpadFolderMark.mini(large ? geometry.largeMark : geometry.icon)
+                return cells.shown.map { ($0.path, mini) } + cells.overflow.map { ($0.path, LaunchpadClusterCell.tiny(mini)) }
+            case .gap: return []
+            }
+        }
+    }
+
+    private func land(_ snapshot: LaunchpadSnapshot?) {
         self.snapshot = snapshot
         if animateNextUpdate {
             animateNextUpdate = false
@@ -294,6 +355,21 @@ struct LaunchpadLiftView: Equatable {
             loadedOnce = true
             onLoaded?(snapshot, self)
         }
+    }
+
+    /// The arrangement as entries, cut at its page breaks: an app or a folder the snapshot does not hold is not there.
+    private func layoutSegments(_ snapshot: LaunchpadSnapshot) -> [[LaunchpadEntry]] {
+        var segments: [[LaunchpadEntry]] = [[]]
+        for item in snapshot.layout.items {
+            switch item {
+            case .app(let id): if let app = snapshot.apps[id] { segments[segments.count - 1].append(.app(app)) }
+            case .folder(let folder):
+                let apps = folder.apps.compactMap { snapshot.apps[$0] }
+                if !apps.isEmpty { segments[segments.count - 1].append(.folder(id: folder.id, name: folder.name, apps: apps, large: folder.large)) }
+            case .pageBreak: segments.append([])
+            }
+        }
+        return segments
     }
 
     func reflow(selectFirst: Bool) {
@@ -317,16 +393,7 @@ struct LaunchpadLiftView: Equatable {
             // The locked block comes last, with no apps: what is in it is read only for the open, unlocked card.
             segments[0].append(.folder(id: LaunchpadHiddenBlock.id, name: LpStr.hiddenBlock, apps: [], large: true))
         } else {
-            segments = [[]]
-            for item in snapshot.layout.items {
-                switch item {
-                case .app(let id): if let app = snapshot.apps[id] { segments[segments.count - 1].append(.app(app)) }
-                case .folder(let folder):
-                    let apps = folder.apps.compactMap { snapshot.apps[$0] }
-                    if !apps.isEmpty { segments[segments.count - 1].append(.folder(id: folder.id, name: folder.name, apps: apps, large: folder.large)) }
-                case .pageBreak: segments.append([])
-                }
-            }
+            segments = layoutSegments(snapshot)
         }
         segments.removeAll { $0.isEmpty }
         top = Array(segments.joined())
@@ -441,6 +508,13 @@ struct LaunchpadLiftView: Equatable {
         if let selection, card.page(ofIndex: selection) != next { assign(\.selection, nil) }
     }
 
+    /// The window moved to a screen of another scale: what was drawn for the old one is drawn again at its own pixels. The system also
+    /// says it when the scale is the same (a colour space, the first ordering on screen), and then nothing is dropped: what is under way lands.
+    func rescale(_ scale: CGFloat) {
+        guard scale != icons.scale else { return }
+        icons.reconfigure(capacity: gridGeometry.capacity, side: gridGeometry.icon, scale: scale)
+    }
+
     /// A new grid (the person's settings changed while the window is open): the same order cut again by the new capacity. Writes
     /// nothing, the layout stores order and not pages. A cell's address is `page * capacity + slot`, which means nothing
     /// after the capacity changed, so a lift or a press ends first (a drop already out lands through `update`). The page
@@ -457,7 +531,7 @@ struct LaunchpadLiftView: Equatable {
         withAnimation(HelmMotion.interface) {
             gridGeometry = next
             geometry = categoriesShown ? next.pairedColumns : next
-            icons.reconfigure(capacity: next.capacity, size: next.icon)
+            icons.reconfigure(capacity: next.capacity, side: next.icon, scale: icons.scale)
             publishPages()
             publishCard()
             if let card { goCard(to: card.page(ofIndex: selection ?? cardAnchor)) }
@@ -856,6 +930,10 @@ struct LaunchpadLiftView: Equatable {
 
     /// The window is going: no timer, no lift, nothing written (a drop already out still lands).
     func shutdown() {
+        firstLoad?.cancel()
+        firstLoad = nil
+        firstSnapshot = nil
+        onIconsWarmed = nil
         hidden.lock()
         if openFolder == LaunchpadHiddenBlock.id { closeFolderQuietly() }
         timer?.cancel()

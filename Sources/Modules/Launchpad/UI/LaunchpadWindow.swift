@@ -213,7 +213,8 @@ private final class LaunchpadWindowEnders {
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         let frame = screen?.frame ?? CGRect(origin: .zero, size: LaunchpadGeometry.fallback)
         let geometry = LaunchpadGeometry.make(for: frame.size, topSafe: screen?.safeAreaInsets.top ?? 0, settings: model.grid)
-        state = LaunchpadScreenState(geometry: geometry, view: model.viewMode, hidden: LaunchpadHiddenGate(port: model.makeAuth()))
+        state = LaunchpadScreenState(geometry: geometry, view: model.viewMode, hidden: LaunchpadHiddenGate(port: model.makeAuth()),
+                                     icons: LaunchpadIcons(capacity: geometry.capacity, side: geometry.icon, scale: screen?.backingScaleFactor ?? 2))
 
         panel = LaunchpadPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.level = Self.level
@@ -267,11 +268,21 @@ private final class LaunchpadWindowEnders {
             self?.snapshotArrived?.finish()
             HelmLog.shared.info("launchpad", "window: \(snapshot.apps.count) apps, \(state.geometry.columns)x\(state.geometry.rows) grid (\(grid)), icon \(Int(state.geometry.icon)), \(state.pageCount) pages, view \(state.view.rawValue)")
         }
+        state.onIconsWarmed = { took, drawn, pixels, timedOut in
+            // Counts and sizes only: no path, no name.
+            HelmLog.shared.info(LaunchpadEngine.moduleID, "window: first icons drawn \(Int(took / .milliseconds(1))) ms after the snapshot arrived (\(drawn) rendered, \(pixels) px)\(timedOut ? ", timed out" : "")")
+        }
+        scaleToken = NotificationCenter.default.addObserver(forName: NSWindow.didChangeBackingPropertiesNotification, object: panel, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { if let self, let scale = self.panel.screen?.backingScaleFactor { self.state.rescale(scale) } }
+        }
         panel.onResignKey = { [weak self] in
             guard let self, !prompting else { return }
             close()
         }
     }
+
+    /// The panel's own notification of new backing properties (another screen, a resolution change, a colour space, the first ordering on screen; `rescale` acts only on a new scale), removed when the window closes.
+    private var scaleToken: NSObjectProtocol?
 
     /// The system's dialog goes up or away. Up: the panel takes no mouse and no key, and its resign and another app's activation end
     /// nothing. Away: the panel takes the key back (as `present` does, without activating Helm) and the mouse, once it has settled.
@@ -445,6 +456,9 @@ private final class LaunchpadWindowEnders {
         state.hidden.onLocked = nil
         state.onViewChange = nil
         state.onLoaded = nil
+        state.onIconsWarmed = nil
+        if let scaleToken { NotificationCenter.default.removeObserver(scaleToken) }
+        scaleToken = nil
         panel.onResignKey = nil
         panel.state = nil
         snapshotArrived?.finish()

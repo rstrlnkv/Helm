@@ -283,8 +283,8 @@ struct LaunchpadTile<Mark: View>: View {
 }
 
 extension LaunchpadTile where Mark == Image {
-    /// An application's tile; the icon is the caller's, from the window's own cache.
-    init(app: CatalogApp, icon: NSImage, iconSize: CGFloat, selected: Bool, glowSize: CGSize, popped: Bool, pressed: Bool = false, inHidden: Bool = false,
+    /// An application's tile; the icon is the caller's, from the window's own cache (nil until it is drawn: an empty slot of the same frame).
+    init(app: CatalogApp, icon: NSImage?, iconSize: CGFloat, selected: Bool, glowSize: CGSize, popped: Bool, pressed: Bool = false, inHidden: Bool = false,
          moved: LaunchpadCategoryTarget?, open: @escaping () -> Void, hide: @escaping () -> Void,
          move: @escaping (LaunchpadCategoryTarget?) -> Void, reorder: LaunchpadTileMoves? = nil,
          files: LaunchpadFileActions? = nil, showName: Bool = true, oneLine: Bool = false, isNew: Bool = false) {
@@ -292,7 +292,7 @@ extension LaunchpadTile where Mark == Image {
                   glowSize: glowSize, popped: popped, pressed: pressed,
                   menu: inHidden ? nil : LaunchpadAppMenu(app: app, moved: moved, hide: hide, move: move, files: files), inHidden: inHidden,
                   reorder: reorder, files: files, hidesName: !showName, oneLine: oneLine, isNew: isNew) {
-            Image(nsImage: icon).resizable()
+            Image(nsImage: icon ?? LaunchpadIcons.empty).resizable()
         }
     }
 }
@@ -300,10 +300,10 @@ extension LaunchpadTile where Mark == Image {
 /// A saved folder: a well with up to nine of its apps' icons, three by three, no border. The icons and the room round them
 /// follow the tile's size, like the icon does.
 struct LaunchpadFolderMark: View {
-    let icons: [NSImage]
+    let icons: [NSImage?]
     let size: CGFloat
     /// The apps past what the mark's cells show, as icons: the last cell holds up to four of them, two by two, tiny.
-    var overflow: [NSImage] = []
+    var overflow: [NSImage?] = []
     /// The icon (by index) a press is on, which takes the wash instead of the tile, and the one whose app is opening, which swells.
     var pressed: Int?
     var popped: Int?
@@ -314,6 +314,11 @@ struct LaunchpadFolderMark: View {
     static func inset(_ size: CGFloat) -> CGFloat { (size - well(size)) / 2 }
     static func pad(_ size: CGFloat) -> CGFloat { well(size) * 0.10 }
     static func gap(_ size: CGFloat) -> CGFloat { well(size) * 0.05 }
+    /// The apps a folder's mark draws, by what the screen asks the cache for: the first nine (eight when a large folder holds more than
+    /// nine), and for a large one the last cell's up to four tiny ones.
+    static func cells(_ apps: [CatalogApp], large: Bool) -> (shown: ArraySlice<CatalogApp>, overflow: ArraySlice<CatalogApp>) {
+        (apps.prefix(large && apps.count > 9 ? 8 : 9), large ? apps.dropFirst(8).prefix(apps.count > 9 ? 4 : 0) : [])
+    }
     static func mini(_ size: CGFloat) -> CGFloat { (well(size) - 2 * pad(size) - 2 * gap(size)) / 3 }
 
     /// Where icon `index` (0 to 8, reading order) is drawn, from the mark's top left: the one place the drawing and a click on an icon read.
@@ -334,7 +339,7 @@ struct LaunchpadFolderMark: View {
                         ForEach(0..<3, id: \.self) { column in
                             let index = row * 3 + column
                             if index < icons.count {
-                                Image(nsImage: icons[index]).resizable()
+                                Image(nsImage: icons[index] ?? LaunchpadIcons.empty).resizable()
                                     .frame(width: mini, height: mini)
                                     .background {
                                         // Concentric with the icon: its own corner (0.225 of its side) plus the wash's inset (0.1).
@@ -362,12 +367,15 @@ struct LaunchpadFolderMark: View {
 /// A well with up to four icons two by two inside it, tiny: the ninth cell of a folder of more than nine, and the fourth quarter of a
 /// category block, which opens what the large icons do not show.
 struct LaunchpadClusterCell: View {
-    let icons: [NSImage]
+    let icons: [NSImage?]
     let side: CGFloat
 
+    /// The side of one of the four icons in a cell `side` across: the view draws them at it and the caller asks the cache for it.
+    static func tiny(_ side: CGFloat) -> CGFloat { (side - 2 * side * 0.10 - side * 0.06) / 2 }
+
     var body: some View {
-        let inset = side * 0.10, between = side * 0.06
-        let tiny = (side - 2 * inset - between) / 2
+        let between = side * 0.06
+        let tiny = Self.tiny(side)
         ZStack {
             RoundedRectangle(cornerRadius: LaunchpadMetrics.wellCorner * side, style: .continuous).fill(LaunchpadMetrics.wellFill)
             VStack(spacing: between) {
@@ -376,7 +384,7 @@ struct LaunchpadClusterCell: View {
                         ForEach(0..<2, id: \.self) { column in
                             let index = row * 2 + column
                             if index < icons.count {
-                                Image(nsImage: icons[index]).resizable().frame(width: tiny, height: tiny)
+                                Image(nsImage: icons[index] ?? LaunchpadIcons.empty).resizable().frame(width: tiny, height: tiny)
                             } else {
                                 Color.clear.frame(width: tiny, height: tiny)
                             }
@@ -393,8 +401,8 @@ struct LaunchpadClusterCell: View {
 /// the fourth quarter a cluster of four tiny ones that opens the category. Same well, pad and gap as the folder mark.
 struct LaunchpadCategoryMark: View {
     /// Up to four icons drawn large, in reading order, then `cluster`, up to four tiny, in the fourth quarter when there are any.
-    let large: [NSImage]
-    let cluster: [NSImage]
+    let large: [NSImage?]
+    let cluster: [NSImage?]
     let size: CGFloat
     /// The large icon (by quadrant) a press is on, which takes the wash instead of the tile, and the one whose app is opening, which swells.
     var pressed: Int?
@@ -419,7 +427,7 @@ struct LaunchpadCategoryMark: View {
                 .offset(x: LaunchpadFolderMark.inset(size), y: LaunchpadFolderMark.inset(size))
             ForEach(Array(large.prefix(4).enumerated()), id: \.offset) { index, icon in
                 let frame = Self.frame(ofQuadrant: index, size: size)
-                Image(nsImage: icon).resizable()
+                Image(nsImage: icon ?? LaunchpadIcons.empty).resizable()
                     .frame(width: frame.width, height: frame.height)
                     .background {
                         // Concentric with the icon: its own corner (0.225 of its side) plus the wash's inset (0.1).
