@@ -53,7 +53,7 @@ import XCTest
         let g = state.geometry
         let block = g.frame(of: state.slots[0][slot]).offsetBy(dx: 0, dy: g.gridTop)
         for quadrant in 0..<4 {
-            let f = LaunchpadCategoryMark.frame(ofQuadrant: quadrant, size: g.largeMark)
+            let f = LaunchpadCategoryMark.frame(ofQuadrant: quadrant, size: g.largeMark, edge: g.largeEdge)
             let p = CGPoint(x: block.midX - g.largeMark / 2 + f.midX, y: block.minY + g.iconTop + f.midY)
             XCTAssertTrue(state.pointerDown(p, time: Double(quadrant)))
             XCTAssertNil(state.pressedIcon, "no icon is under the press of a block with no apps")

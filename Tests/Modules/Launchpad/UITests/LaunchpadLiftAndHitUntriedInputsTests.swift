@@ -131,7 +131,8 @@ final class LaunchpadLiftAndHitUntriedInputsTests: XCTestCase {
         let s = surface(counts: [g.capacity])
         let x0 = g.origin(ofSlot: 0).x
         for column in 0..<g.columns {
-            let x = x0 + CGFloat(column) * g.cellWidth
+            // A millionth of a point in: the pitch is no longer a round number, and the edge's own sum and difference may land a rounding step before it.
+            let x = x0 + CGFloat(column) * g.cellWidth + 1e-6
             guard case .tile(let a, _) = LaunchpadHit.at(CGPoint(x: x, y: g.gridTop + 1), in: s) else { XCTFail("column \(column)"); continue }
             XCTAssertEqual(a, column, "a cell's own left edge is its")
         }

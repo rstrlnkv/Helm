@@ -5,8 +5,10 @@ import HelmUI
 @testable import Module_Launchpad_Engine
 @testable import Module_Launchpad_UI
 
-/// Pass 22 changed the Automatic grid and left Manual alone: a Manual grid saved before it must draw the same numbers. The oracle below is `LaunchpadGeometry.make`, `counts` and `fit`
-/// as they were at base 9f1f1447 (the fixed `cellChrome`, side padding and offsets), written out here so the new code is compared with the old arithmetic and not with itself.
+/// Pass 22 changed the Automatic grid and left Manual alone: a Manual grid saved before it must draw the same numbers; the square pitch (a column as wide as a row is high) then moved the
+/// numbers that follow the column: `cellWidth`, the icon where the width bound it, `largeMark`, the card, the grid's left edge. The oracle below is `LaunchpadGeometry.make`, `counts` and `fit`
+/// as they were at base 9f1f1447 (the fixed `cellChrome`, side padding and offsets) with exactly those changed to the square pitch, written out here so the new code is compared with the
+/// arithmetic and not with itself.
 /// The multiplier's own ends and the regrid it causes while the window is open are checked at the bottom.
 @MainActor final class AManualGridDrawsWhatItDrewBeforeTheScaleTests: XCTestCase {
     // MARK: The base's arithmetic
@@ -27,12 +29,12 @@ import HelmUI
         let gridStart = searchTop + 36 + 32
         let usableHeight = max(0, screen.height - gridStart - 64)
         let holds = max(2, Int(min(usableHeight / (24 + chrome(s.showNames)), 1000)))
-        let columns = s.columns, rows = min(s.rows, holds)
-        let cellWidth = usableWidth / CGFloat(columns)
-        let icon = max(24, min(CGFloat(s.iconSize), cellWidth - 2 * HelmSpace.s2, usableHeight / CGFloat(rows) - chrome(s.showNames)))
+        let columns = min(s.columns, max(3, Int(min(usableWidth / (24 + chrome(s.showNames)), 1000)))), rows = min(s.rows, holds)
+        let icon = max(24, min(CGFloat(s.iconSize), usableWidth / CGFloat(columns) - chrome(s.showNames), usableHeight / CGFloat(rows) - chrome(s.showNames)))
         let cellHeight = icon + chrome(s.showNames)
+        let cellWidth = cellHeight
         let gridTop = gridStart + max(0, usableHeight - CGFloat(rows) * cellHeight) / 2
-        let large = max(0, min(2 * cellWidth - 2 * HelmSpace.s2, 2 * cellHeight - chrome(s.showNames)))
+        let large = max(0, 2 * cellHeight - chrome(s.showNames))
         let cardColumns = max(1, min(columns, columns - 1))
         let cardWidth = CGFloat(cardColumns) * cellWidth + 2 * HelmSpace.s6
         let cardHeight = CGFloat(max(1, rows - 1)) * cellHeight + 22 + HelmSpace.s5 + 2 * HelmSpace.s6
@@ -63,7 +65,8 @@ import HelmUI
                                 XCTAssertEqual(g.icon, o.icon, accuracy: 0.0001, tag); XCTAssertEqual(g.gridTop, o.gridTop, accuracy: 0.0001, tag)
                                 XCTAssertEqual(g.searchTop, o.searchTop, accuracy: 0.0001, tag); XCTAssertEqual(g.largeMark, o.largeMark, accuracy: 0.0001, tag)
                                 XCTAssertEqual(g.gridLeft, o.gridLeft, accuracy: 0.0001, tag)
-                                XCTAssertEqual(g.sideInset, 0.08 * g.size.width, accuracy: 0.0001, "the tabs began at 0.08 of the width under Manual: \(tag)")
+                                XCTAssertEqual(g.sideInset, o.gridLeft, accuracy: 0.0001, "the tabs begin where the grid does under Manual: \(tag)")
+                                XCTAssertEqual(g.cellWidth, g.cellHeight, accuracy: 0.0001, tag)
                                 XCTAssertEqual(g.dotsBottom, 28, tag); XCTAssertEqual(g.scale, 1, tag)
                                 XCTAssertEqual(g.dotSize, 8, tag); XCTAssertEqual(g.dotHit, 24, tag)
                                 XCTAssertEqual(g.cardPadding, HelmSpace.s6, tag); XCTAssertEqual(g.cardGap, HelmSpace.s5, tag)

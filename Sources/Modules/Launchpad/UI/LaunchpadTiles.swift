@@ -8,7 +8,7 @@ import Module_Launchpad_Engine
 enum LaunchpadMetrics {
     /// An app's icon in the window.
     static let windowIcon: CGFloat = 80
-    /// How far a name with no place to break shrinks before it is cut: 0.78, which holds German "Festplattendienstprogramm" on the listed screens, 1024 x 768 at every multiplier (`AutomaticIsTheSameGridOnEveryScreenTests`).
+    /// How far a name with no place to break shrinks before it is cut: 0.78. The square cell leaves a name that long ("Festplattendienstprogramm" without its soft hyphens) cut only on the smaller screens (1024 x 768 and 1280 x 800 at x1; whole from 1440 x 900), and the hover scrolls the rest (`LaunchpadLabel`, `AutomaticIsTheSameGridOnEveryScreenTests`).
     static let unbreakableShrink: CGFloat = 0.78
     /// An icon beside a name in the settings page's list of hidden apps.
     static let hiddenIcon: CGFloat = 28
@@ -33,8 +33,6 @@ enum LaunchpadMetrics {
     /// Automatic is this many columns and rows on every screen; only a screen that cannot hold the rows at the floor icon holds fewer (`LaunchpadGeometry.counts`).
     static let automaticColumns = 7
     static let automaticRows = 5
-    /// A cell is at most this wide at scale 1 (1.5 × the reference's 172.8 pt), so an ultra-wide screen leaves its sides empty and does not stretch the grid.
-    static let cellWidthCap: CGFloat = 259.2
     /// The most Automatic asks for: the reference icon at the top of the scale and of the multiplier (80 * 1.6 * 1.25 = 160 pt), so the multiplier still enlarges the icon
     /// on the largest screens, where `iconRange`'s 128 would cap it. Manual keeps `iconRange`. The cell's width and height still cap what is drawn.
     static let automaticIconCeiling: CGFloat = windowIcon * scaleRange.upperBound * CGFloat(LaunchpadGridSettings.multiplierRange.upperBound)
@@ -85,7 +83,7 @@ enum LaunchpadMetrics {
     static let scrim = 0.35
     /// An unlit page dot's white.
     static let unlitDot = 0.35
-    /// A folder or category well's side as a share of its frame, so it reads as big as an app icon's visible body; its corner is `wellCorner` of that side.
+    /// A one-cell folder's well side as a share of its frame, so it reads as big as an app icon's visible body; a large mark's well takes the small icon's inset instead (`LaunchpadGeometry.largeEdge`), so it meets the four icons' bodies. Its corner is `wellCorner` of the well's side.
     static let wellShare: CGFloat = 0.85
     static let wellCorner: CGFloat = 0.225
     /// The keyboard choice's ring when the glow is off (Reduce Motion, Increase Contrast): measured offscreen by the designer at 4.68:1 against the tile wash and 6.56:1 against the ground (a dark stand-in), so chosen is not pressed.
@@ -230,6 +228,8 @@ struct LaunchpadTile<Mark: View>: View {
     var scale: CGFloat = 1
     @ViewBuilder let mark: Mark
     @State private var hovering = false
+    /// The hover scroll's offset (0 or negative): moved by `.task(id: marqueeOn)`, which owns it.
+    @State private var scrolled: CGFloat = 0
     @Environment(\.helmTraits) private var traits
 
     /// The "new" dot at the icon art's top right corner (`LaunchpadMetrics.newDot(icon:)`).
@@ -241,13 +241,50 @@ struct LaunchpadTile<Mark: View>: View {
             .offset(x: -LaunchpadMetrics.newDotInset * iconSize, y: LaunchpadMetrics.newDotInset * iconSize)
     }
 
-    /// The kit's detail font at the owner's text size, larger on a screen that scales up and never smaller: the label's width is the cell's less its padding.
+    /// The kit's detail font at the owner's text size, larger on a screen that scales up and never smaller (`LaunchpadLabel.fontSize`).
     private var labelFont: Font {
-        scale > 1 ? .system(size: HelmText.rowDetailNSFont.pointSize * scale) : HelmText.rowDetail
+        scale > 1 ? .system(size: LaunchpadLabel.fontSize(scale: scale)) : HelmText.rowDetail
     }
 
-    /// Whether the name has a space or a hyphen to wrap at.
-    static func canBreak(_ name: String) -> Bool { name.contains { $0 == " " || $0 == "-" } }
+    /// The room the label has: the tile's width (`glowSize`: a cell's, a large block's two cells) less its side padding (`LaunchpadLabel.room`).
+    private var labelRoom: CGFloat { LaunchpadLabel.room(width: glowSize.width, scale: scale) }
+
+    /// How far a cut name scrolls under the pointer: 0 where it is not cut. Asked only while hovering, so no tile measures its name until it is pointed at.
+    private var marqueeDistance: CGFloat {
+        hovering && !hidesName ? LaunchpadLabel.overflow(name: name, room: labelRoom, scale: scale, oneLine: oneLine) : 0
+    }
+
+    /// The cut name scrolls while the pointer is on it and nothing presses the tile; with Reduce Motion it stays cut and `help` holds the whole name.
+    private var marqueeOn: Bool { marqueeDistance > 0 && !pressed && !HelmMotion.reduceMotion }
+
+    /// The scrolling line: the name on one line at the shrunk size, from the label's left edge, clipped to the label's room with a fade (`LaunchpadLabel.fade`) at each end that has more
+    /// of the name behind it: none at the left until it has scrolled, none at the right once the end is shown. It sits over the label, which keeps the cell's two lines of height.
+    private var marquee: some View {
+        let edge = LaunchpadLabel.fade / labelRoom, atEnd = scrolled <= -marqueeDistance
+        return Text(name)
+            .font(.system(size: LaunchpadLabel.fontSize(scale: scale) * LaunchpadLabel.shrink(name)))
+            .foregroundStyle(Color.white)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .offset(x: scrolled)
+            .frame(width: labelRoom, alignment: .leading)
+            .mask(LinearGradient(stops: [.init(color: Color.black.opacity(scrolled < 0 ? 0 : 1), location: 0), .init(color: .black, location: edge),
+                                         .init(color: .black, location: 1 - edge), .init(color: Color.black.opacity(atEnd ? 1 : 0), location: 1)],
+                                 startPoint: .leading, endPoint: .trailing))
+            .allowsHitTesting(false)
+    }
+
+    /// One go to the end of the name after a short wait, a hold, and back; the pointer leaving, a press or a lift ends it (the id changes, the task is cancelled, the offset is 0).
+    private func scroll(by distance: CGFloat) async {
+        scrolled = 0
+        guard distance > 0, marqueeOn else { return }
+        try? await Task.sleep(for: .milliseconds(600))
+        guard !Task.isCancelled else { return }
+        withAnimation(HelmMotion.marquee(distance: distance)) { scrolled = -distance }
+        try? await Task.sleep(for: .seconds(HelmMotion.marqueeDuration(distance: distance) + 0.9))
+        guard !Task.isCancelled else { return }
+        withAnimation(HelmMotion.interface) { scrolled = 0 }
+    }
 
     var body: some View {
         Button(action: open) {
@@ -264,22 +301,25 @@ struct LaunchpadTile<Mark: View>: View {
                     Text(name)
                         .font(labelFont)
                         .foregroundStyle(Color.white)
-                        // A name with no space or hyphen has no place to break: it takes one line and shrinks to fit (German "Festplattendienstprogramm"),
-                        // since two lines would split it mid-word before the scale ever applied.
-                        .lineLimit(Self.canBreak(name) && !oneLine ? 2 : 1, reservesSpace: true)
+                        // A name with no place to break (`LaunchpadLabel.canBreak`: no space, hyphen, soft hyphen or CJK letter) takes one line and shrinks to fit
+                        // (German "Festplattendienstprogramm"), since two lines would split it mid-word before the scale ever applied.
+                        .lineLimit(LaunchpadLabel.canBreak(name) && !oneLine ? 2 : 1, reservesSpace: true)
                         .multilineTextAlignment(.center)
-                        .minimumScaleFactor(Self.canBreak(name) ? 0.85 : LaunchpadMetrics.unbreakableShrink)
+                        .minimumScaleFactor(LaunchpadLabel.shrink(name))
                         .allowsTightening(true)
                         .frame(maxWidth: .infinity)
+                        .opacity(marqueeOn ? 0 : 1)
+                        .overlay(alignment: .leading) { if marqueeOn { marquee } }
                 }
             }
             .padding(.vertical, HelmSpace.s3 * scale)
-            .padding(.horizontal, HelmSpace.s2 * scale)
+            .padding(.horizontal, LaunchpadLabel.sidePadding(scale: scale))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .buttonStyle(TileStyle(hovering: hovering, selected: selected, pressed: pressed, glowSize: glowSize))
         .help(name)
         .onHover { hovering = $0 }
+        .task(id: marqueeOn) { await scroll(by: marqueeDistance) }
         .accessibilityLabel(accessibleName)
         .contextMenu {
             if let menu { menu } else {
@@ -329,37 +369,40 @@ extension LaunchpadTile where Mark == Image {
 struct LaunchpadFolderMark: View {
     let icons: [NSImage?]
     let size: CGFloat
+    /// The well's inset where the mark is large (`LaunchpadGeometry.largeEdge`); nil for a one-cell mark.
+    var edge: CGFloat?
     /// The apps past what the mark's cells show, as icons: the last cell holds up to four of them, two by two, tiny.
     var overflow: [NSImage?] = []
     /// The icon (by index) a press is on, which takes the wash instead of the tile, and the one whose app is opening, which swells.
     var pressed: Int?
     var popped: Int?
-
     /// The well's side: an app icon's visible body is about this much of its frame, and the well is drawn as big, centred in the frame.
-    static func well(_ size: CGFloat) -> CGFloat { size * LaunchpadMetrics.wellShare }
-    /// From the frame's edge to the well's.
-    static func inset(_ size: CGFloat) -> CGFloat { (size - well(size)) / 2 }
-    static func pad(_ size: CGFloat) -> CGFloat { well(size) * 0.10 }
-    static func gap(_ size: CGFloat) -> CGFloat { well(size) * 0.05 }
+    /// A large mark passes `edge` (`LaunchpadGeometry.largeEdge`), the small icon's inset, so its well meets the visible edges of the four icons it stands for.
+    static func well(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { size - 2 * inset(size, edge: edge) }
+    /// From the frame's edge to the well's: `edge` where the caller says, else the share of the frame that makes the well `wellShare` of it. The one function every
+    /// drawing and hit test reads.
+    static func inset(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { edge ?? size * (1 - LaunchpadMetrics.wellShare) / 2 }
+    static func pad(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { well(size, edge: edge) * 0.10 }
+    static func gap(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { well(size, edge: edge) * 0.05 }
     /// The apps a folder's mark draws, by what the screen asks the cache for: the first nine (eight when a large folder holds more than
     /// nine), and for a large one the last cell's up to four tiny ones.
     static func cells(_ apps: [CatalogApp], large: Bool) -> (shown: ArraySlice<CatalogApp>, overflow: ArraySlice<CatalogApp>) {
         (apps.prefix(large && apps.count > 9 ? 8 : 9), large ? apps.dropFirst(8).prefix(apps.count > 9 ? 4 : 0) : [])
     }
-    static func mini(_ size: CGFloat) -> CGFloat { (well(size) - 2 * pad(size) - 2 * gap(size)) / 3 }
+    static func mini(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { (well(size, edge: edge) - 2 * pad(size, edge: edge) - 2 * gap(size, edge: edge)) / 3 }
 
     /// Where icon `index` (0 to 8, reading order) is drawn, from the mark's top left: the one place the drawing and a click on an icon read.
-    static func frame(ofIcon index: Int, size: CGFloat) -> CGRect {
-        let step = mini(size) + gap(size)
-        let origin = inset(size) + pad(size)
-        return CGRect(x: origin + CGFloat(index % 3) * step, y: origin + CGFloat(index / 3) * step, width: mini(size), height: mini(size))
+    static func frame(ofIcon index: Int, size: CGFloat, edge: CGFloat? = nil) -> CGRect {
+        let step = mini(size, edge: edge) + gap(size, edge: edge)
+        let origin = inset(size, edge: edge) + pad(size, edge: edge)
+        return CGRect(x: origin + CGFloat(index % 3) * step, y: origin + CGFloat(index / 3) * step, width: mini(size, edge: edge), height: mini(size, edge: edge))
     }
 
     var body: some View {
-        let gap = Self.gap(size), mini = Self.mini(size)
+        let gap = Self.gap(size, edge: edge), mini = Self.mini(size, edge: edge), well = Self.well(size, edge: edge)
         ZStack {
-            RoundedRectangle(cornerRadius: LaunchpadMetrics.wellCorner * Self.well(size), style: .continuous).fill(LaunchpadMetrics.wellFill)
-                .frame(width: Self.well(size), height: Self.well(size))
+            RoundedRectangle(cornerRadius: LaunchpadMetrics.wellCorner * well, style: .continuous).fill(LaunchpadMetrics.wellFill)
+                .frame(width: well, height: well)
             VStack(spacing: gap) {
                 ForEach(0..<3, id: \.self) { row in
                     HStack(spacing: gap) {
@@ -431,6 +474,8 @@ struct LaunchpadCategoryMark: View {
     let large: [NSImage?]
     let cluster: [NSImage?]
     let size: CGFloat
+    /// The well's inset (`LaunchpadGeometry.largeEdge`).
+    var edge: CGFloat?
     /// The large icon (by quadrant) a press is on, which takes the wash instead of the tile, and the one whose app is opening, which swells.
     var pressed: Int?
     var popped: Int?
@@ -438,22 +483,25 @@ struct LaunchpadCategoryMark: View {
     var menu: ((Int) -> LaunchpadAppMenu)?
 
     /// The side of a quadrant: the same pad and gap as the folder mark's, two to a side.
-    static func quadrant(_ size: CGFloat) -> CGFloat { (LaunchpadFolderMark.well(size) - 2 * LaunchpadFolderMark.pad(size) - LaunchpadFolderMark.gap(size)) / 2 }
+    static func quadrant(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat {
+        (LaunchpadFolderMark.well(size, edge: edge) - 2 * LaunchpadFolderMark.pad(size, edge: edge) - LaunchpadFolderMark.gap(size, edge: edge)) / 2
+    }
 
     /// Where quadrant `index` (0 to 3, reading order) is drawn, from the mark's top left: the one place the drawing and a click read.
-    static func frame(ofQuadrant index: Int, size: CGFloat) -> CGRect {
-        let side = quadrant(size), step = side + LaunchpadFolderMark.gap(size)
-        let origin = LaunchpadFolderMark.inset(size) + LaunchpadFolderMark.pad(size)
+    static func frame(ofQuadrant index: Int, size: CGFloat, edge: CGFloat? = nil) -> CGRect {
+        let side = quadrant(size, edge: edge), step = side + LaunchpadFolderMark.gap(size, edge: edge)
+        let origin = LaunchpadFolderMark.inset(size, edge: edge) + LaunchpadFolderMark.pad(size, edge: edge)
         return CGRect(x: origin + CGFloat(index % 2) * step, y: origin + CGFloat(index / 2) * step, width: side, height: side)
     }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: LaunchpadMetrics.wellCorner * LaunchpadFolderMark.well(size), style: .continuous).fill(LaunchpadMetrics.wellFill)
-                .frame(width: LaunchpadFolderMark.well(size), height: LaunchpadFolderMark.well(size))
-                .offset(x: LaunchpadFolderMark.inset(size), y: LaunchpadFolderMark.inset(size))
+            let well = LaunchpadFolderMark.well(size, edge: edge), inset = LaunchpadFolderMark.inset(size, edge: edge)
+            RoundedRectangle(cornerRadius: LaunchpadMetrics.wellCorner * well, style: .continuous).fill(LaunchpadMetrics.wellFill)
+                .frame(width: well, height: well)
+                .offset(x: inset, y: inset)
             ForEach(Array(large.prefix(4).enumerated()), id: \.offset) { index, icon in
-                let frame = Self.frame(ofQuadrant: index, size: size)
+                let frame = Self.frame(ofQuadrant: index, size: size, edge: edge)
                 Image(nsImage: icon ?? LaunchpadIcons.empty).resizable()
                     .frame(width: frame.width, height: frame.height)
                     .background {
@@ -470,7 +518,7 @@ struct LaunchpadCategoryMark: View {
                     .offset(x: frame.minX, y: frame.minY)
             }
             if !cluster.isEmpty {
-                let frame = Self.frame(ofQuadrant: 3, size: size)
+                let frame = Self.frame(ofQuadrant: 3, size: size, edge: edge)
                 LaunchpadClusterCell(icons: cluster, side: frame.width).offset(x: frame.minX, y: frame.minY)
             }
         }
@@ -481,11 +529,14 @@ struct LaunchpadCategoryMark: View {
 /// The locked Hidden block: the same well as a category block's, empty, and a lock in it. Nothing of what is behind it is drawn: no icons, no count.
 struct LaunchpadHiddenMark: View {
     let size: CGFloat
+    /// The well's inset (`LaunchpadGeometry.largeEdge`).
+    var edge: CGFloat?
 
     var body: some View {
+        let well = LaunchpadFolderMark.well(size, edge: edge)
         ZStack {
-            RoundedRectangle(cornerRadius: LaunchpadMetrics.wellCorner * LaunchpadFolderMark.well(size), style: .continuous).fill(LaunchpadMetrics.wellFill)
-                .frame(width: LaunchpadFolderMark.well(size), height: LaunchpadFolderMark.well(size))
+            RoundedRectangle(cornerRadius: LaunchpadMetrics.wellCorner * well, style: .continuous).fill(LaunchpadMetrics.wellFill)
+                .frame(width: well, height: well)
             Image(systemName: "lock.fill")
                 .font(.system(size: size * 0.34, weight: .regular))
                 .foregroundStyle(Color.white)

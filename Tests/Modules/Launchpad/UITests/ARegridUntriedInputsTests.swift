@@ -228,7 +228,7 @@ final class AGridFuzzTests: XCTestCase {
                 let s = LaunchpadGridSettings(automatic: auto, rows: rows, columns: columns, iconSize: icon)
                 let g = LaunchpadGeometry.make(for: CGSize(width: w, height: h), topSafe: 0, settings: s)
                 let bottom = g.gridTop + g.pageHeight
-                if bottom > g.size.height - g.dotsRoom + 0.5 || g.icon > g.cellWidth - 2 * g.tilePadding + 0.5 {
+                if bottom > g.size.height - g.dotsRoom + 0.5 || g.icon > g.cellWidth - g.chrome + 0.5 {
                     bad.append("\(Int(w))x\(Int(h)) \(s.automatic ? "auto" : "\(columns)x\(rows)") icon \(Int(icon)): bottom \(Int(bottom)) of \(Int(h - g.dotsRoom)), icon \(Int(g.icon)) cell \(Int(g.cellWidth))")
                 }
                 let card = LaunchpadSurface.Card(geometry: g, count: 200)

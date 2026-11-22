@@ -195,6 +195,14 @@ public enum HelmMotion {
         reduceMotion ? instant : .spring(response: 0.28, dampingFraction: 0.72)
     }
 
+    /// A cut name scrolling to its end under the pointer: steady, at a reading pace (40 pt a second, never under 0.3 s), no spring. Instant under Reduce Motion.
+    public static func marquee(distance: CGFloat) -> Animation {
+        reduceMotion ? instant : .linear(duration: marqueeDuration(distance: distance))
+    }
+
+    /// `marquee`'s length in seconds, for the caller that waits it out.
+    public static func marqueeDuration(distance: CGFloat) -> TimeInterval { max(0.3, Double(distance) / 40) }
+
     /// The two fades a carried tile leaves behind it, both deliberately slower
     /// than the hand.
     ///

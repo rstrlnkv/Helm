@@ -124,7 +124,7 @@ struct LaunchpadScreen: View {
                     LaunchpadTile(name: LpStr.hiddenBlock, accessibleName: LpStr.hiddenLocked, iconSize: g.largeMark, selected: selected,
                                   open: { [weak state] in state?.open(folder: id) }, hide: nil, glowSize: size,
                                   pressed: state.pressedID == entry.id, oneLine: !g.names, scale: g.scale) {
-                        LaunchpadHiddenMark(size: g.largeMark)
+                        LaunchpadHiddenMark(size: g.largeMark, edge: g.largeEdge)
                     }
                 } else if state.categoriesShown {
                     // A category block: three large icons that launch and a cluster of four small ones, or four large ones when it has no more
@@ -135,10 +135,10 @@ struct LaunchpadScreen: View {
                     LaunchpadTile(name: name, accessibleName: LpStr.category(name), iconSize: g.largeMark, selected: selected,
                                   open: { [weak state] in state?.open(folder: id) }, hide: nil, glowSize: size,
                                   pressed: mine && state.pressedIcon == nil, oneLine: !g.names, scale: g.scale) {
-                        let quadrant = LaunchpadCategoryMark.quadrant(g.largeMark)
+                        let quadrant = LaunchpadCategoryMark.quadrant(g.largeMark, edge: g.largeEdge)
                         LaunchpadCategoryMark(large: large.map { state.icons.image(for: $0.path, side: quadrant) },
                                               cluster: apps.dropFirst(3).prefix(apps.count > 4 ? 4 : 0).map { state.icons.image(for: $0.path, side: LaunchpadClusterCell.tiny(quadrant)) },
-                                              size: g.largeMark,
+                                              size: g.largeMark, edge: g.largeEdge,
                                               pressed: mine ? large.firstIndex { $0.id == state.pressedIcon } : nil,
                                               popped: state.popped(block: entry.id, among: large),
                                               menu: { [weak state] at in
@@ -150,13 +150,13 @@ struct LaunchpadScreen: View {
                 } else {
                     // A large folder shows the first eight apps and, past nine, four more in the ninth cell, or the first nine; the mark's icons are plain images, and a click on one is the state's (the panel takes the press).
                     let cells = LaunchpadFolderMark.cells(apps, large: large)
-                    let mini = LaunchpadFolderMark.mini(large ? g.largeMark : g.icon)
+                    let mini = large ? LaunchpadFolderMark.mini(g.largeMark, edge: g.largeEdge) : LaunchpadFolderMark.mini(g.icon)
                     LaunchpadTile(name: name, accessibleName: LpStr.folder(name), iconSize: large ? g.largeMark : g.icon, selected: selected,
                                   open: { [weak state] in state?.open(folder: id) }, hide: nil, glowSize: size,
                                   pressed: (state.pressedID == entry.id && state.pressedIcon == nil) || state.lift?.onto == entry.id,
                                   resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { [weak state] in state?.resize(id, large: !large) }),
                                   reorder: state.moves(for: entry.id), oneLine: !g.names, scale: g.scale) {
-                        LaunchpadFolderMark(icons: cells.shown.map { state.icons.image(for: $0.path, side: mini) }, size: large ? g.largeMark : g.icon,
+                        LaunchpadFolderMark(icons: cells.shown.map { state.icons.image(for: $0.path, side: mini) }, size: large ? g.largeMark : g.icon, edge: large ? g.largeEdge : nil,
                                             overflow: cells.overflow.map { state.icons.image(for: $0.path, side: LaunchpadClusterCell.tiny(mini)) },
                                             pressed: large ? cells.shown.firstIndex { $0.id == state.pressedIcon } : nil,
                                             popped: large ? cells.shown.firstIndex { $0.id == state.launching } : nil)

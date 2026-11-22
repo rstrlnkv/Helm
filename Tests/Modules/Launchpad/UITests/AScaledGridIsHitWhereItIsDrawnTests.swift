@@ -178,11 +178,11 @@ import HelmUI
                 }
                 let local = g.frame(of: block)
                 for index in 0..<4 {
-                    let q = LaunchpadCategoryMark.frame(ofQuadrant: index, size: g.largeMark)
+                    let q = LaunchpadCategoryMark.frame(ofQuadrant: index, size: g.largeMark, edge: g.largeEdge)
                     let origin = CGPoint(x: local.midX - g.largeMark / 2, y: local.minY + g.iconTop)
                     let centre = CGPoint(x: origin.x + q.midX, y: origin.y + q.midY)
-                    XCTAssertEqual(LaunchpadHit.categoryIcon(at: centre, block: local, mark: g.largeMark, iconTop: g.iconTop, apps: 4), index, "\(screen.name) names \(names) quadrant \(index)")
-                    XCTAssertNil(LaunchpadHit.categoryIcon(at: CGPoint(x: centre.x, y: origin.y - 0.5), block: local, mark: g.largeMark, iconTop: g.iconTop, apps: 4),
+                    XCTAssertEqual(LaunchpadHit.categoryIcon(at: centre, block: local, mark: g.largeMark, edge: g.largeEdge, iconTop: g.iconTop, apps: 4), index, "\(screen.name) names \(names) quadrant \(index)")
+                    XCTAssertNil(LaunchpadHit.categoryIcon(at: CGPoint(x: centre.x, y: origin.y - 0.5), block: local, mark: g.largeMark, edge: g.largeEdge, iconTop: g.iconTop, apps: 4),
                                  "\(screen.name): above the mark is no icon")
                 }
             }

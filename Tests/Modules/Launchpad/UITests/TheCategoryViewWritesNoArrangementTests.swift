@@ -23,7 +23,7 @@ import XCTest
 
     private func quadrant(_ rig: LiftRig, block index: Int = 0, _ q: Int) -> CGPoint {
         let g = rig.state.geometry, block = block(rig, index), mark = g.largeMark
-        let f = LaunchpadCategoryMark.frame(ofQuadrant: q, size: mark)
+        let f = LaunchpadCategoryMark.frame(ofQuadrant: q, size: mark, edge: g.largeEdge)
         return CGPoint(x: block.midX - mark / 2 + f.midX, y: block.minY + g.iconTop + f.midY)
     }
 

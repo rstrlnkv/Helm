@@ -25,8 +25,31 @@ import XCTest
     private func point(_ rig: LiftRig, slot: Int, quadrant q: Int) -> CGPoint {
         let g = rig.state.geometry
         let block = g.frame(of: rig.state.slots[0][slot]).offsetBy(dx: 0, dy: g.gridTop)
-        let f = LaunchpadCategoryMark.frame(ofQuadrant: q, size: g.largeMark)
+        let f = LaunchpadCategoryMark.frame(ofQuadrant: q, size: g.largeMark, edge: g.largeEdge)
         return CGPoint(x: block.midX - g.largeMark / 2 + f.midX, y: block.minY + g.iconTop + f.midY)
+    }
+
+    /// The screen reads a category's quadrants where `largeEdge` draws them: a press one point inside the first quadrant's top left or the fourth's bottom right takes its app, and one point
+    /// outside either takes none (a hit test on the old, smaller 0.85-of-the-mark well would have missed the inside points).
+    func testAPressAtTheCornersOfTheDrawnQuadrantsTakesTheAppAndJustOutsideTakesNone() {
+        let apps = (0..<4).map { ("m\($0)", Optional(music), Optional<Date>.none) }
+        let g0 = rig(apps).state.geometry
+        XCTAssertGreaterThan(LaunchpadCategoryMark.frame(ofQuadrant: 0, size: g0.largeMark).minX,
+                             LaunchpadCategoryMark.frame(ofQuadrant: 0, size: g0.largeMark, edge: g0.largeEdge).minX + 1, "subject: the old well's quadrant starts further in")
+        for (quadrant, dx, dy) in [(0, 1.0, 1.0), (3, -1.0, -1.0)] as [(Int, CGFloat, CGFloat)] {
+            for inside in [true, false] {
+                let rig = rig(apps), g = rig.state.geometry
+                let block = g.frame(of: rig.state.slots[0][0]).offsetBy(dx: 0, dy: g.gridTop)
+                let f = LaunchpadCategoryMark.frame(ofQuadrant: quadrant, size: g.largeMark, edge: g.largeEdge)
+                let corner = quadrant == 0 ? CGPoint(x: f.minX, y: f.minY) : CGPoint(x: f.maxX, y: f.maxY)
+                let sign: CGFloat = inside ? 1 : -1
+                let p = CGPoint(x: block.midX - g.largeMark / 2 + corner.x + sign * dx, y: block.minY + g.iconTop + corner.y + sign * dy)
+                XCTAssertTrue(rig.state.pointerDown(p, time: 0))
+                XCTAssertEqual(rig.state.pressedIcon, inside ? "m\(quadrant)" : nil, "quadrant \(quadrant), \(inside ? "inside" : "outside") its corner")
+                rig.state.pointerUp(p, time: 0.05)
+                XCTAssertEqual(rig.launched, inside ? ["m\(quadrant)"] : [], "quadrant \(quadrant), \(inside ? "inside" : "outside")")
+            }
+        }
     }
 
     func testAnAppInRecentlyAddedAndItsCategoryIsPressedInOneBlockOnly() {

@@ -86,7 +86,7 @@ import XCTest
     private func point(_ rig: LiftRig, slot: Int, _ q: Int) -> CGPoint {
         let g = rig.state.geometry
         let b = g.frame(of: rig.state.slots[0][slot]).offsetBy(dx: 0, dy: g.gridTop)
-        let f = LaunchpadCategoryMark.frame(ofQuadrant: q, size: g.largeMark)
+        let f = LaunchpadCategoryMark.frame(ofQuadrant: q, size: g.largeMark, edge: g.largeEdge)
         return CGPoint(x: b.midX - g.largeMark / 2 + f.midX, y: b.minY + g.iconTop + f.midY)
     }
 

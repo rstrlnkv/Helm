@@ -82,6 +82,7 @@ LaunchpadGridSettingsTests
 LaunchpadGridSizesTests
 LaunchpadHitTests
 LaunchpadHostileEditsTests
+LaunchpadLabelTests
 LaunchpadLayoutOperationsTests
 LaunchpadLiftAndHitUntriedInputsTests
 LaunchpadLiftMachineTests

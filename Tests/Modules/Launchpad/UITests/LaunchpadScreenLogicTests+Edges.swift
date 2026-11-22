@@ -16,17 +16,19 @@ extension LaunchpadScreenLogicTests {
         XCTAssertEqual(g.capacity, 35)
         let start = g.searchTop + LaunchpadMetrics.searchHeight + LaunchpadMetrics.gridGap * g.scale
         XCTAssertEqual(g.gridTop, start + (640 - start - g.dotsRoom - g.pageHeight) / 2, accuracy: 0.001, "the rows' spare room is shared above and below")
-        XCTAssertEqual(g.cellWidth, 1024 * 0.84 / 7, accuracy: 0.001)
+        XCTAssertLessThanOrEqual(7 * g.cellWidth, 1024 * 0.84 + 0.001, "the square cells fit the usable width")
+        XCTAssertEqual(g.cellWidth, g.cellHeight, accuracy: 0.0001)
         XCTAssertLessThanOrEqual(g.gridTop + g.pageHeight + g.dotsRoom, 640, "the dots keep their room")
     }
 
-    func testAnEightKScreenIsSevenByFiveAndItsCellsStopAtTheCap() {
+    func testAnEightKScreenIsSevenByFiveAndItsCellsAreSquare() {
         let g = LaunchpadGeometry.make(for: CGSize(width: 6016, height: 3384), topSafe: 0)
         XCTAssertEqual(g.columns, 7)
         XCTAssertEqual(g.rows, 5)
         XCTAssertEqual(g.capacity, 35)
         XCTAssertEqual(g.scale, LaunchpadMetrics.scaleRange.upperBound)
-        XCTAssertEqual(g.cellWidth, LaunchpadMetrics.cellWidthCap * g.scale, accuracy: 0.001, "the grid does not stretch over an ultra-wide screen")
+        XCTAssertEqual(g.cellWidth, g.cellHeight, accuracy: 0.0001, "the grid does not stretch over an ultra-wide screen: its cell is as wide as it is high")
+        XCTAssertLessThan(7 * g.cellWidth, 6016 * 0.84, "its sides stay empty")
         XCTAssertEqual(g.gridLeft, g.sideInset, accuracy: 0.001, "and the header begins where the grid does")
         XCTAssertEqual(g.pageWidth, 6016)
     }
@@ -36,7 +38,7 @@ extension LaunchpadScreenLogicTests {
             for height in stride(from: CGFloat(640), through: 4000, by: 97) {
                 for topSafe in [CGFloat(0), 24, 38, 64] {
                     let g = LaunchpadGeometry.make(for: CGSize(width: width, height: height), topSafe: topSafe)
-                    XCTAssertGreaterThanOrEqual(g.cellWidth, LaunchpadMetrics.iconFloor + 2 * g.tilePadding, "\(width)x\(height): the floor icon fits the cell")
+                    XCTAssertGreaterThanOrEqual(g.cellWidth, LaunchpadMetrics.iconFloor + g.chrome, "\(width)x\(height): the floor icon fits the cell")
                     XCTAssertLessThanOrEqual(g.gridTop + g.pageHeight + g.dotsRoom, height, "\(width)x\(height) top \(topSafe)")
                 }
             }

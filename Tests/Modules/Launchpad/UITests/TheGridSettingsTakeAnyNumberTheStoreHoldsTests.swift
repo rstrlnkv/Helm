@@ -51,7 +51,11 @@ final class TheGridSettingsTakeAnyNumberTheStoreHoldsTests: XCTestCase {
                     XCTAssertTrue(g.cellWidth.isFinite && g.cellHeight.isFinite && g.icon.isFinite && g.pageHeight.isFinite)
                     XCTAssertLessThanOrEqual(g.icon, settings.automatic ? LaunchpadMetrics.automaticIconCeiling : CGFloat(settings.normalized().iconSize))
                     XCTAssertGreaterThanOrEqual(g.icon, LaunchpadMetrics.iconFloor)
-                    XCTAssertLessThanOrEqual(CGFloat(g.columns) * g.cellWidth, g.size.width + 0.001)
+                    // A cell is square and holds at least the floor icon with its chrome: only a screen narrower than three of them (the 1 pt one) cannot hold its grid.
+                    if g.size.width * (1 - 2 * LaunchpadMetrics.sideMargin) >= 3 * LaunchpadMetrics.cellHeight(icon: LaunchpadMetrics.iconFloor, names: g.names, scale: g.scale) {
+                        XCTAssertLessThanOrEqual(CGFloat(g.columns) * g.cellWidth, g.size.width + 0.001)
+                    }
+                    XCTAssertEqual(g.cellWidth, g.cellHeight, accuracy: 0.0001, "the pitch is square")
                 }
             }
         }

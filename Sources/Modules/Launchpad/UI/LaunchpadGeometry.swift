@@ -41,10 +41,9 @@ struct LaunchpadGeometry: Equatable {
     /// From the window's side to the grid's left edge: where the tabs begin, so the header and the grid share an edge on every screen.
     let sideInset: CGFloat
 
-    /// What a tile holds besides its icon, from a cell's top to its icon's top, and the side padding the fit counts: `LaunchpadMetrics`' figures at `scale`.
+    /// What a tile holds besides its icon, from a cell's top to its icon's top: `LaunchpadMetrics`' figures at `scale`. The tile's side padding is `LaunchpadLabel.sidePadding`.
     var chrome: CGFloat { LaunchpadMetrics.cellChrome(names: names, scale: scale) }
     var iconTop: CGFloat { HelmSpace.s3 * scale }
-    var tilePadding: CGFloat { HelmSpace.s2 * scale }
     /// A page dot and its touch size: larger on a screen that scales up, never smaller.
     var dotSize: CGFloat { 8 * max(1, scale) }
     var dotHit: CGFloat { 24 * max(1, scale) }
@@ -88,9 +87,11 @@ struct LaunchpadGeometry: Equatable {
             want = CGFloat(asked.iconSize)
             asked.sizeMultiplier = LaunchpadGridSettings.standard.sizeMultiplier
         }
-        let cellWidth = automatic ? min(usableWidth / CGFloat(columns), LaunchpadMetrics.cellWidthCap * scale) : usableWidth / CGFloat(columns)
-        let icon = fit(want: want, cellWidth: cellWidth, rowHeight: usableHeight / CGFloat(rows), names: names, scale: scale)
+        let icon = fit(want: want, columnRoom: usableWidth / CGFloat(columns), rowHeight: usableHeight / CGFloat(rows), names: names, scale: scale)
+        // The pitch is square: a column is as wide as a row is high, so the gap between icons is the same both ways, and the columns that do not fill the usable width narrow
+        // the grid, which stays centred.
         let cellHeight = LaunchpadMetrics.cellHeight(icon: icon, names: names, scale: scale)
+        let cellWidth = cellHeight
         // The room the rows leave is shared above and below, so the grid hangs in the middle of what is under the search field.
         let gridTop = gridStart + max(0, usableHeight - CGFloat(rows) * cellHeight) / 2
 
@@ -113,8 +114,8 @@ struct LaunchpadGeometry: Equatable {
             let icon = (CGFloat(LaunchpadMetrics.windowIcon) * scale).rounded(.down)
             let start = top + LaunchpadMetrics.searchTop * scale + LaunchpadMetrics.searchHeight + LaunchpadMetrics.gridGap * scale
             let rows = CGFloat(LaunchpadMetrics.automaticRows) * LaunchpadMetrics.cellHeight(icon: icon, names: true, scale: scale)
-            let cell = min(usableWidth / CGFloat(LaunchpadMetrics.automaticColumns), LaunchpadMetrics.cellWidthCap * scale)
-            return rows <= screen.height - start - dotsRoom(scale: scale) && icon <= cell - 2 * HelmSpace.s2 * scale
+            let across = CGFloat(LaunchpadMetrics.automaticColumns) * LaunchpadMetrics.cellHeight(icon: icon, names: true, scale: scale)
+            return rows <= screen.height - start - dotsRoom(scale: scale) && across <= usableWidth
         }
         guard fits(base) else { return base }
         if fits(wanted) { return wanted }
@@ -127,24 +128,27 @@ struct LaunchpadGeometry: Equatable {
     }
 
     /// How many columns and rows a grid of `width` by `height` has. Automatic: seven and five on every screen, fewer only where the screen cannot hold them
-    /// (columns that cannot hold the floor icon, rows that the floor icon with its labels leaves no room for). Manual: the stored ones. Rows are then capped
-    /// by the floor icon with its labels: a label does not shrink, so a short screen holds fewer rows than were asked for.
+    /// (columns that cannot hold the floor icon, rows that the floor icon with its labels leaves no room for). Manual: the stored ones, capped the same way:
+    /// a cell is square, so a column holds no less than the floor icon plus the chrome, and a narrow screen holds fewer columns than were asked for (the icon shrinks first, in `fit`),
+    /// as a short one holds fewer rows. Never fewer than three columns and two rows.
     static func counts(width: CGFloat, height: CGFloat, settings: LaunchpadGridSettings, scale: CGFloat) -> (columns: Int, rows: Int) {
         let settings = settings.normalized()
         var columns = settings.columns, rows = settings.rows
         if settings.automatic {
-            let narrowest = LaunchpadMetrics.iconFloor + 2 * HelmSpace.s2 * scale
-            columns = max(3, min(LaunchpadMetrics.automaticColumns, Int(min(width / narrowest, 1000))))
+            columns = LaunchpadMetrics.automaticColumns
             rows = LaunchpadMetrics.automaticRows
         }
-        let holds = max(2, Int(min(height / LaunchpadMetrics.cellHeight(icon: LaunchpadMetrics.iconFloor, names: settings.showNames, scale: scale), 1000)))
-        return (columns, min(rows, holds))
+        let narrowest = LaunchpadMetrics.cellHeight(icon: LaunchpadMetrics.iconFloor, names: settings.showNames, scale: scale)
+        let across = max(3, Int(min(width / narrowest, 1000)))
+        let holds = max(2, Int(min(height / narrowest, 1000)))
+        return (min(columns, across), min(rows, holds))
     }
 
-    /// The icon a cell draws: the one asked for, no bigger than the cell's width and height leave room for, no smaller
-    /// than the floor. The asked size is a ceiling, never exceeded.
-    static func fit(want: CGFloat, cellWidth: CGFloat, rowHeight: CGFloat, names: Bool, scale: CGFloat) -> CGFloat {
-        max(LaunchpadMetrics.iconFloor, min(want, cellWidth - 2 * HelmSpace.s2 * scale, rowHeight - LaunchpadMetrics.cellChrome(names: names, scale: scale)))
+    /// The icon a cell draws: the one asked for, no bigger than a column's room and a row's height leave once the chrome is taken (the cell is square, so a column's pitch is
+    /// the icon plus the chrome too), no smaller than the floor. The asked size is a ceiling, never exceeded.
+    static func fit(want: CGFloat, columnRoom: CGFloat, rowHeight: CGFloat, names: Bool, scale: CGFloat) -> CGFloat {
+        let chrome = LaunchpadMetrics.cellChrome(names: names, scale: scale)
+        return max(LaunchpadMetrics.iconFloor, min(want, columnRoom - chrome, rowHeight - chrome))
     }
 
     /// The grid for the category view: the grid made again with names on, with an even number of columns (one fewer when odd), so a block, which is two
@@ -177,11 +181,15 @@ struct LaunchpadGeometry: Equatable {
                width: CGFloat(slot.span) * cellWidth, height: CGFloat(slot.span) * cellHeight)
     }
 
-    /// The side of the icon a large folder draws: the block's width and height less what a tile holds besides its icon, so it
-    /// is the small icon's room twice over.
+    /// The side of the icon a large folder draws: the block's height less what a tile holds besides its icon, so it is the small icon's room twice over
+    /// (`p + icon`, the frame's span of two icons side by side). The block's width is the same: the cell is square, and the width term the cell's side padding once
+    /// gave (`2 * cellWidth` less two side paddings, `LaunchpadLabel.sidePadding`) is never the smaller, since the chrome (at least 3 * s3 + 17 per scale) is more than 2 * s2.
     var largeMark: CGFloat {
-        max(0, min(2 * cellWidth - 2 * tilePadding, 2 * cellHeight - chrome))
+        max(0, 2 * cellHeight - chrome)
     }
+    /// From the large mark's edge to its well's: a small icon's inset, not the mark's share, so the 2 x 2 well's edges are the visible edges of the four icons it stands for
+    /// (`LaunchpadFolderMark.inset`, the one function drawing and hit testing read).
+    var largeEdge: CGFloat { LaunchpadFolderMark.inset(icon) }
 
     /// A folder's card, centred in the window: the title, then `rows` rows of `columns` cells, in the card's padding; `paged`
     /// adds a row of page dots under the cells. One place for the card's drawing and for the lift's "outside the card".

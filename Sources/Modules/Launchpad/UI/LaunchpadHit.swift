@@ -111,11 +111,11 @@ enum LaunchpadHit: Equatable {
 
     /// Which of a large folder's icons `point` is on: the index of its mini icon, nil between icons, on the ninth cell when the
     /// folder holds more than nine (that cell opens the folder), or off the mark. The mark sits centred in `block`, `iconTop` (`LaunchpadGeometry.iconTop`, which follows the scale) below its top.
-    static func icon(at point: CGPoint, block: CGRect, mark: CGFloat, iconTop: CGFloat, apps: Int) -> Int? {
+    static func icon(at point: CGPoint, block: CGRect, mark: CGFloat, edge: CGFloat? = nil, iconTop: CGFloat, apps: Int) -> Int? {
         let origin = CGPoint(x: block.midX - mark / 2, y: block.minY + iconTop)
         guard point.x.isFinite, point.y.isFinite, mark > 0 else { return nil }
         for index in 0..<max(0, min(apps, apps > 9 ? 8 : 9)) {
-            let f = LaunchpadFolderMark.frame(ofIcon: index, size: mark)
+            let f = LaunchpadFolderMark.frame(ofIcon: index, size: mark, edge: edge)
             if f.offsetBy(dx: origin.x, dy: origin.y).contains(point) { return index }
         }
         return nil
@@ -123,11 +123,11 @@ enum LaunchpadHit: Equatable {
 
     /// Which of a category block's large icons `point` is on: the quadrant, nil on the cluster, between icons, or off the mark. `apps` is
     /// how many apps the block holds: four or fewer are all large, more have three large and the cluster. The mark sits as `icon(at:)`'s does.
-    static func categoryIcon(at point: CGPoint, block: CGRect, mark: CGFloat, iconTop: CGFloat, apps: Int) -> Int? {
+    static func categoryIcon(at point: CGPoint, block: CGRect, mark: CGFloat, edge: CGFloat? = nil, iconTop: CGFloat, apps: Int) -> Int? {
         let origin = CGPoint(x: block.midX - mark / 2, y: block.minY + iconTop)
         guard point.x.isFinite, point.y.isFinite, mark > 0 else { return nil }
         for index in 0..<max(0, min(apps, apps > 4 ? 3 : 4)) {
-            if LaunchpadCategoryMark.frame(ofQuadrant: index, size: mark).offsetBy(dx: origin.x, dy: origin.y).contains(point) { return index }
+            if LaunchpadCategoryMark.frame(ofQuadrant: index, size: mark, edge: edge).offsetBy(dx: origin.x, dy: origin.y).contains(point) { return index }
         }
         return nil
     }

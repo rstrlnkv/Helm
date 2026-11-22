@@ -27,13 +27,40 @@ import XCTest
     }
 
     private func centre(_ r: LiftRig, icon i: Int) -> CGPoint {
-        let f = LaunchpadFolderMark.frame(ofIcon: i, size: r.g.largeMark), o = markOrigin(r)
+        let f = LaunchpadFolderMark.frame(ofIcon: i, size: r.g.largeMark, edge: r.g.largeEdge), o = markOrigin(r)
         return CGPoint(x: o.x + f.midX, y: o.y + f.midY)
     }
 
     private func click(_ r: LiftRig, at p: CGPoint) {
         XCTAssertTrue(r.state.pointerDown(p, time: 0), "subject: the press is taken")
         r.state.pointerUp(p, time: 0.05)
+    }
+
+    /// The screen's click reads the icons where they are drawn, in the 2 x 2 well's inset (`largeEdge`), not in the old 0.85-of-the-mark well, which is smaller: a press one point
+    /// inside the first icon's top left or the ninth's bottom right launches its app, and one point outside either opens the folder; the old frames would have opened it for both.
+    func testAPressAtTheCornersOfTheDrawnIconsLaunchesAndJustOutsideOpensTheFolder() {
+        let probe = rig(apps: 9)
+        let old = LaunchpadFolderMark.frame(ofIcon: 0, size: probe.g.largeMark)
+        let drawn = LaunchpadFolderMark.frame(ofIcon: 0, size: probe.g.largeMark, edge: probe.g.largeEdge)
+        XCTAssertGreaterThan(old.minX, drawn.minX + 1, "subject: the old well's first icon starts further in, so the press one point inside the drawn one misses it")
+        let corners: [(icon: Int, inside: (CGRect) -> CGPoint, outside: (CGRect) -> CGPoint)] = [
+            (0, { CGPoint(x: $0.minX + 1, y: $0.minY + 1) }, { CGPoint(x: $0.minX - 1, y: $0.minY - 1) }),
+            (8, { CGPoint(x: $0.maxX - 1, y: $0.maxY - 1) }, { CGPoint(x: $0.maxX + 1, y: $0.maxY + 1) })]
+        for corner in corners {
+            for inside in [true, false] {
+                let r = rig(apps: 9), o = markOrigin(r)
+                let f = LaunchpadFolderMark.frame(ofIcon: corner.icon, size: r.g.largeMark, edge: r.g.largeEdge)
+                let p = inside ? corner.inside(f) : corner.outside(f)
+                click(r, at: CGPoint(x: o.x + p.x, y: o.y + p.y))
+                if inside {
+                    XCTAssertEqual(r.launched, ["m\(corner.icon)"], "icon \(corner.icon), one point inside its corner")
+                    XCTAssertNil(r.state.openFolder)
+                } else {
+                    XCTAssertEqual(r.launched, [], "icon \(corner.icon), one point outside its corner launches nothing")
+                    XCTAssertEqual(r.state.openFolder, folderID, "it opens the folder")
+                }
+            }
+        }
     }
 
     func testEachIconOfAFolderOfNineOrFewerLaunchesItsOwnApp() {
@@ -62,8 +89,8 @@ import XCTest
 
     func testTheGapsBetweenIconsTheEmptyCellsAndTheMarginOpenTheFolder() {
         let r0 = rig(apps: 9)
-        let size = r0.g.largeMark
-        let a = LaunchpadFolderMark.frame(ofIcon: 0, size: size), b = LaunchpadFolderMark.frame(ofIcon: 1, size: size), d = LaunchpadFolderMark.frame(ofIcon: 3, size: size)
+        let size = r0.g.largeMark, edge = r0.g.largeEdge
+        let a = LaunchpadFolderMark.frame(ofIcon: 0, size: size, edge: edge), b = LaunchpadFolderMark.frame(ofIcon: 1, size: size, edge: edge), d = LaunchpadFolderMark.frame(ofIcon: 3, size: size, edge: edge)
         XCTAssertGreaterThan(b.minX - a.maxX, 0.5, "subject: the icons have a gap")
         let o = markOrigin(r0)
         var points = [CGPoint(x: o.x + (a.maxX + b.minX) / 2, y: o.y + a.midY),
@@ -99,7 +126,7 @@ import XCTest
                 let at = r.state.pages[0].firstIndex { $0.id == folderID.uuidString }!
                 let from = r.g.frame(of: r.state.slots[0][at])
                 let o = CGPoint(x: from.midX - r.g.largeMark / 2, y: from.minY + r.g.gridTop + r.g.iconTop)
-                let f = LaunchpadFolderMark.frame(ofIcon: i, size: r.g.largeMark)
+                let f = LaunchpadFolderMark.frame(ofIcon: i, size: r.g.largeMark, edge: r.g.largeEdge)
                 let p = CGPoint(x: o.x + f.midX, y: o.y + f.midY)
                 XCTAssertTrue(r.state.pointerDown(p, time: 0), "subject: the press is taken")
                 guard let moved = r.engine.apply(.resize(other, large: !startsLarge)) else { XCTFail("resize refused"); continue }
