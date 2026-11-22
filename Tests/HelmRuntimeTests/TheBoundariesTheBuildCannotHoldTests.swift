@@ -11,9 +11,9 @@ import XCTest
 /// of a target reached through a declared one, which is how `HelmApp`,
 /// declaring every module's UI target, could import every engine.
 ///
-/// **What the build does hold, it holds on two lines.** `Scripts/test.sh`'s
-/// `swift test` and `Scripts/package-app.sh`'s `swift build` each carry that
-/// flag, and `testTheBuildLinesCarryTheImportCheck` reads the line that runs,
+/// **What the build does hold, it holds on three lines.** `Scripts/test.sh`'s
+/// `swift test` and each of `Scripts/package-app.sh`'s two `swift build` lines
+/// (one per product) carry that flag, and `testTheBuildLinesCarryTheImportCheck` reads the line that runs,
 /// not the comment or the echo that names the flag.
 ///
 /// **What counts as an import.** The reader runs over `SwiftSource.code`, so
@@ -294,22 +294,24 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
         return words
     }
 
-    /// What is wrong with the build in `lines` of `script`, or nil: exactly one
-    /// line must start with the words `start`, and the words of that line, not
-    /// of its comment, must carry `--explicit-target-dependency-import-check`
+    /// What is wrong with the build in `lines` of `script`, or nil: exactly `count`
+    /// lines (one by default) must start with the words `start`, and the words of
+    /// each, not of its comment, must carry `--explicit-target-dependency-import-check`
     /// followed by `error` wherever the flag stands.
     private static func missingImportCheck(
-        in lines: [String], of script: String, startingWith start: String
+        in lines: [String], of script: String, startingWith start: String, count: Int = 1
     ) -> String? {
         let runs = lines.filter { shellWords($0).prefix(2).joined(separator: " ") == start }
-        guard runs.count == 1, let run = runs.first else {
-            return "\(script): expected one line starting `\(start)`, found \(runs.count): \(runs)"
+        guard runs.count == count else {
+            return "\(script): expected \(count == 1 ? "one line" : "\(count) lines") starting `\(start)`, found \(runs.count): \(runs)"
         }
-        let words = shellWords(run)
-        let flags = words.indices.filter { words[$0] == "--explicit-target-dependency-import-check" }
-        guard !flags.isEmpty, flags.allSatisfy({ words.indices.contains($0 + 1) && words[$0 + 1] == "error" }) else {
-            return "\(script) builds without `--explicit-target-dependency-import-check error` among the words "
-                + "of its command, so an undeclared import compiles (ARCHITECTURE.md § The boundaries): \(run)"
+        for run in runs {
+            let words = shellWords(run)
+            let flags = words.indices.filter { words[$0] == "--explicit-target-dependency-import-check" }
+            guard !flags.isEmpty, flags.allSatisfy({ words.indices.contains($0 + 1) && words[$0 + 1] == "error" }) else {
+                return "\(script) builds without `--explicit-target-dependency-import-check error` among the words "
+                    + "of its command, so an undeclared import compiles (ARCHITECTURE.md § The boundaries): \(run)"
+            }
         }
         return nil
     }
@@ -347,8 +349,9 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
         rejected(["\(run) \(flag)", "\(run) \(flag)"], saying: "expected one line")  // only the count can refuse this
         rejected(["# \(run) \(flag)", "echo \(run) \(flag)"], saying: "expected one line")
 
-        for (script, start) in [("Scripts/package-app.sh", "swift build"), ("Scripts/test.sh", "swift test")] {
-            if let problem = Self.missingImportCheck(in: try RepoSource.lines(of: script), of: script, startingWith: start) {
+        // package-app.sh builds one product per line (SwiftPM honours only the last `--product` of a line).
+        for (script, start, count) in [("Scripts/package-app.sh", "swift build", 2), ("Scripts/test.sh", "swift test", 1)] {
+            if let problem = Self.missingImportCheck(in: try RepoSource.lines(of: script), of: script, startingWith: start, count: count) {
                 XCTFail(problem)
             }
         }

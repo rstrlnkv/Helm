@@ -278,7 +278,14 @@ echo "==> Building release binary"
 # `products:` does not fix this by itself (a bare build still builds every
 # target); naming the products is what does, and no harness is built.
 # Imports checked as an error; from a fresh clone the targets HelmApp depends on compile and are checked, no test target (ARCHITECTURE.md § The boundaries).
-swift build -c release --product HelmApp --product HelmLaunchpadHelper --explicit-target-dependency-import-check error
+# One build per product: given two `--product` flags SwiftPM honours only the
+# last one (measured 2026-11-22, Swift 6.4.2, macOS 27.3: after a one-line edit to
+# a HelmApp source, two runs of the two-flag line each printed "Build complete!"
+# (0.27 s and 0.23 s) and left HelmApp's binary unchanged; `--product HelmApp`
+# alone then rebuilt it), so a dev build and a release shipped the binary from
+# before the edit.
+swift build -c release --product HelmApp --explicit-target-dependency-import-check error
+swift build -c release --product HelmLaunchpadHelper --explicit-target-dependency-import-check error
 
 echo "==> Assembling $APP_DIR (idempotent)"
 rm -rf "$APP_DIR"

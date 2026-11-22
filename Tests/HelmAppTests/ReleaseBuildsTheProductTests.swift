@@ -16,7 +16,7 @@ import HelmTestSupport
 /// **Naming the product is the half that works.** Measured on a cleaned
 /// `Release` for `HelmApp` alone (before the Dock helper joined the line): a
 /// bare build was 466 steps and wrote the harness; `--product HelmApp` was 187
-/// and did not. The line now also names `HelmLaunchpadHelper`, which
+/// and did not. A second line builds `HelmLaunchpadHelper`, which
 /// `package-app.sh` copies into the bundle; no step count is claimed for it. Declaring `products:` does *not* prune a bare
 /// build — it is here so the flag names something the manifest says exists,
 /// rather than the product SwiftPM synthesises for an executable target, which
@@ -38,15 +38,21 @@ final class ReleaseBuildsTheProductTests: XCTestCase {
                        + "rather than inheriting")
     }
 
-    /// The half that prunes the graph.
-    func testThePackagingScriptBuildsTheProduct() throws {
+    /// The half that prunes the graph, one build per product: given two
+    /// `--product` flags SwiftPM honours only the last, so a single line naming
+    /// both left `HelmApp` unbuilt after an edit and shipped the old binary.
+    func testThePackagingScriptBuildsEachProductOnItsOwnLine() throws {
         let script = try RepoSource.lines(of: "Scripts/package-app.sh")
-        let builds = script.filter { $0.hasPrefix("swift build") }
-        XCTAssertEqual(builds.count, 1, "expected one release build line, found \(builds)")
-        XCTAssertTrue(builds.first.map { Self.words(of: $0).adjacentPair("--product", "HelmApp") } == true,
+        let builds = script.filter { $0.hasPrefix("swift build") }.map(Self.words(of:))
+        XCTAssertEqual(builds.count, 2, "expected one release build line per product, found \(builds)")
+        for build in builds {
+            XCTAssertEqual(build.filter { $0 == "--product" }.count, 1,
+                           "a second `--product` on one line is ignored by SwiftPM: \(build)")
+        }
+        XCTAssertTrue(builds.contains { $0.adjacentPair("--product", "HelmApp") },
                       "the packaging script builds the whole package, which builds "
                       + "HelmTestSupport and its `import XCTest`: \(builds)")
-        XCTAssertTrue(builds.first.map { Self.words(of: $0).adjacentPair("--product", "HelmLaunchpadHelper") } == true,
+        XCTAssertTrue(builds.contains { $0.adjacentPair("--product", "HelmLaunchpadHelper") },
                       "the packaging script does not build the Dock helper it copies into the bundle: \(builds)")
     }
 

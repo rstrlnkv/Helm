@@ -231,8 +231,8 @@ let package = Package(
     name: "Helm",
     defaultLocalization: "en",
     platforms: [.macOS("26.0")],
-    // Two products: the app and its Dock helper. Declared so `--product HelmApp
-    // --product HelmLaunchpadHelper` in `Scripts/package-app.sh` names things
+    // Two products: the app and its Dock helper. Declared so the two `--product` lines
+    // (one each, HelmApp and HelmLaunchpadHelper) in `Scripts/package-app.sh` name things
     // this file says exist, rather than the products SwiftPM synthesises for
     // executable targets — a rename of a target would otherwise break the
     // release build silently.
