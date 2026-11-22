@@ -1,5 +1,6 @@
 import SwiftUI
 import HelmUI
+import HelmRuntime
 import Module_Launchpad_Engine
 
 /// The sizes the window and the page draw at, said once. Content sizes, not the kit's: an icon is as big as the
@@ -7,20 +8,43 @@ import Module_Launchpad_Engine
 enum LaunchpadMetrics {
     /// An app's icon in the window.
     static let windowIcon: CGFloat = 80
-    /// The narrowest a tile may be; the grid fits as many as the width holds. Against the widest word a language cannot
-    /// break, at the label font (`.subheadline`, NSString width): German "Datenträgerverwaltung" 120.5 pt, "Systemeinstellungen"
-    /// 108.7 pt. The label gets 124 pt, and the tile its own padding (`s2` a side) more: 132. Longer names wrap at their
-    /// spaces and hyphens, or are cut, and the tile's `.help` says them whole.
-    static let tileMinimum: CGFloat = 132
+    /// How far a name with no place to break shrinks before it is cut: 0.78, which holds German "Festplattendienstprogramm" on the listed screens, 1024 x 768 at every multiplier (`AutomaticIsTheSameGridOnEveryScreenTests`).
+    static let unbreakableShrink: CGFloat = 0.78
     /// An icon beside a name in the settings page's list of hidden apps.
     static let hiddenIcon: CGFloat = 28
     /// The Dock helper's icon on the settings page: big enough to take hold of and drag.
     static let dockIcon: CGFloat = 40
-    /// What a tile holds besides its icon: the gap, two lines of label (`.subheadline` leads at 17 pt) and the padding above and below. Fixed by the fonts.
+    /// What a tile holds besides its icon at scale `scale` (`scale(for:topSafe:)`; 1 under Manual): the gap, two lines of label (`labelLeading`, which
+    /// does not shrink below 17 pt) and the padding above and below. The gap and the padding follow the scale, the lines follow `max(1, scale)`, as the label font does.
     /// Without app names (`LaunchpadGridSettings.showNames`) one line is left: the names of folders, category blocks and the Hidden block stay, on one line, and a cell is one height for every tile.
-    static func cellChrome(names: Bool) -> CGFloat { HelmSpace.s3 + (names ? 2 : 1) * 17 + 2 * HelmSpace.s3 }
+    static func cellChrome(names: Bool, scale: CGFloat) -> CGFloat { 3 * HelmSpace.s3 * scale + (names ? 2 : 1) * labelLeading * max(1, scale) }
     /// A tile's height: the icon plus `cellChrome`.
-    static func cellHeight(icon: CGFloat, names: Bool) -> CGFloat { icon + cellChrome(names: names) }
+    static func cellHeight(icon: CGFloat, names: Bool, scale: CGFloat) -> CGFloat { icon + cellChrome(names: names, scale: scale) }
+    /// One label line's height at scale 1 (`.subheadline` leads at 17 pt).
+    static let labelLeading: CGFloat = 17
+    /// The screen the layout is drawn for at scale 1, and the room its height holds besides the menu bar's strip and the 36 pt the grid keeps under it
+    /// (900 − 36 = 864): the window's width and height divide by these.
+    static let referenceWidth: CGFloat = 1440
+    static let referenceHeight: CGFloat = 864
+    /// The room kept besides the top strip in the reference height.
+    static let referenceKeep: CGFloat = 36
+    /// How far the scale goes either way.
+    static let scaleRange: ClosedRange<CGFloat> = 0.6...1.6
+    /// Automatic is this many columns and rows on every screen; only a screen that cannot hold the rows at the floor icon holds fewer (`LaunchpadGeometry.counts`).
+    static let automaticColumns = 7
+    static let automaticRows = 5
+    /// A cell is at most this wide at scale 1 (1.5 × the reference's 172.8 pt), so an ultra-wide screen leaves its sides empty and does not stretch the grid.
+    static let cellWidthCap: CGFloat = 259.2
+    /// The most Automatic asks for: the reference icon at the top of the scale and of the multiplier (80 * 1.6 * 1.25 = 160 pt), so the multiplier still enlarges the icon
+    /// on the largest screens, where `iconRange`'s 128 would cap it. Manual keeps `iconRange`. The cell's width and height still cap what is drawn.
+    static let automaticIconCeiling: CGFloat = windowIcon * scaleRange.upperBound * CGFloat(LaunchpadGridSettings.multiplierRange.upperBound)
+    /// The scale of a screen `size` whose top `topSafe` is kept: the narrower of the width's and the height's share of the reference, inside `scaleRange`.
+    /// A share that is not a number (a size that is not a size) is 1, an infinite one goes to its end: finite for any input.
+    static func scale(for size: CGSize, topSafe: CGFloat) -> CGFloat {
+        let wide = (size.width / referenceWidth).clamped(to: scaleRange, whenNotANumber: 1)
+        let tall = ((size.height - topSafe - referenceKeep) / referenceHeight).clamped(to: scaleRange, whenNotANumber: 1)
+        return min(wide, tall)
+    }
     /// The "new" dot: the system blue with a dark ring, so it parts from a blue icon and from a bright wallpaper. Its side is a share of the icon
     /// (not under `newDotLeast`), and it sits `newDotInset` of the icon in from the frame's corner, on the art's corner: an app's art is inset
     /// about a tenth of its frame. The ring's darkness and the share were chosen by eye on shots over a blue icon and a light ground
@@ -34,8 +58,6 @@ enum LaunchpadMetrics {
     }
     /// The smallest an icon shrinks to when the grid asked for does not fit.
     static let iconFloor: CGFloat = 24
-    /// A tile's padding at each side, which the grid's fit counts too.
-    static let tileSidePadding: CGFloat = HelmSpace.s2
     /// The window's margin at each side, as a share of its width.
     static let sideMargin: CGFloat = 0.08
     static let searchTop: CGFloat = 28
@@ -73,8 +95,6 @@ enum LaunchpadMetrics {
     static let dotsBottom: CGFloat = 28
     /// The window's content before it settles at its size, as a factor.
     static let zoomFrom: CGFloat = 1.08
-    /// From a cell's top to its icon's top.
-    static let iconTop: CGFloat = HelmSpace.s3
     /// The tile carried by the pointer.
     static let liftScale: CGFloat = 1.08
     /// An icon at the press that opens it.
@@ -206,6 +226,8 @@ struct LaunchpadTile<Mark: View>: View {
     var oneLine = false
     /// The app was added in the last 30 days and not opened from Launchpad: a dot on its icon, and "new" for VoiceOver.
     var isNew = false
+    /// The geometry's scale (`LaunchpadGeometry.scale`): the tile's gap and padding follow it, the label font follows `max(1, scale)`.
+    var scale: CGFloat = 1
     @ViewBuilder let mark: Mark
     @State private var hovering = false
     @Environment(\.helmTraits) private var traits
@@ -219,12 +241,17 @@ struct LaunchpadTile<Mark: View>: View {
             .offset(x: -LaunchpadMetrics.newDotInset * iconSize, y: LaunchpadMetrics.newDotInset * iconSize)
     }
 
+    /// The kit's detail font at the owner's text size, larger on a screen that scales up and never smaller: the label's width is the cell's less its padding.
+    private var labelFont: Font {
+        scale > 1 ? .system(size: HelmText.rowDetailNSFont.pointSize * scale) : HelmText.rowDetail
+    }
+
     /// Whether the name has a space or a hyphen to wrap at.
     static func canBreak(_ name: String) -> Bool { name.contains { $0 == " " || $0 == "-" } }
 
     var body: some View {
         Button(action: open) {
-            VStack(spacing: HelmSpace.s3) {
+            VStack(spacing: HelmSpace.s3 * scale) {
                 mark
                     .frame(width: iconSize, height: iconSize)
                     .scaleEffect(popped && !HelmMotion.reduceMotion ? LaunchpadMetrics.popScale : 1)
@@ -235,19 +262,19 @@ struct LaunchpadTile<Mark: View>: View {
                     .accessibilityHidden(true)
                 if !hidesName {
                     Text(name)
-                        .font(HelmText.rowDetail)
+                        .font(labelFont)
                         .foregroundStyle(Color.white)
                         // A name with no space or hyphen has no place to break: it takes one line and shrinks to fit (German "Festplattendienstprogramm"),
-                        // since two lines would split it mid-word before the scale ever applied. `tileMinimum` stays.
+                        // since two lines would split it mid-word before the scale ever applied.
                         .lineLimit(Self.canBreak(name) && !oneLine ? 2 : 1, reservesSpace: true)
                         .multilineTextAlignment(.center)
-                        .minimumScaleFactor(0.85)
+                        .minimumScaleFactor(Self.canBreak(name) ? 0.85 : LaunchpadMetrics.unbreakableShrink)
                         .allowsTightening(true)
                         .frame(maxWidth: .infinity)
                 }
             }
-            .padding(.vertical, HelmSpace.s3)
-            .padding(.horizontal, LaunchpadMetrics.tileSidePadding)
+            .padding(.vertical, HelmSpace.s3 * scale)
+            .padding(.horizontal, HelmSpace.s2 * scale)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .buttonStyle(TileStyle(hovering: hovering, selected: selected, pressed: pressed, glowSize: glowSize))
@@ -287,11 +314,11 @@ extension LaunchpadTile where Mark == Image {
     init(app: CatalogApp, icon: NSImage?, iconSize: CGFloat, selected: Bool, glowSize: CGSize, popped: Bool, pressed: Bool = false, inHidden: Bool = false,
          moved: LaunchpadCategoryTarget?, open: @escaping () -> Void, hide: @escaping () -> Void,
          move: @escaping (LaunchpadCategoryTarget?) -> Void, reorder: LaunchpadTileMoves? = nil,
-         files: LaunchpadFileActions? = nil, showName: Bool = true, oneLine: Bool = false, isNew: Bool = false) {
+         files: LaunchpadFileActions? = nil, showName: Bool = true, oneLine: Bool = false, isNew: Bool = false, scale: CGFloat = 1) {
         self.init(name: app.name, accessibleName: isNew ? LpStr.appIsNew(app.name) : app.name, iconSize: iconSize, selected: selected, open: open, hide: hide,
                   glowSize: glowSize, popped: popped, pressed: pressed,
                   menu: inHidden ? nil : LaunchpadAppMenu(app: app, moved: moved, hide: hide, move: move, files: files), inHidden: inHidden,
-                  reorder: reorder, files: files, hidesName: !showName, oneLine: oneLine, isNew: isNew) {
+                  reorder: reorder, files: files, hidesName: !showName, oneLine: oneLine, isNew: isNew, scale: scale) {
             Image(nsImage: icon ?? LaunchpadIcons.empty).resizable()
         }
     }

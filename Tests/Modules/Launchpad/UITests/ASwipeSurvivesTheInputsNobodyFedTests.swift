@@ -21,8 +21,11 @@ final class ASwipeSurvivesTheInputsNobodyFedTests: XCTestCase {
         return end ? fed(&swipe, 0, .ended, t) : out
     }
 
+    /// What a page holds on the window these tests use (35 now: Automatic is 7 by 5 on every screen).
+    private static let capacity = LaunchpadGeometry.make(for: CGSize(width: 1024, height: 640), topSafe: 0).capacity
+
     @MainActor private func state(pages: Int) -> LaunchpadScreenState {
-        let ids = (0..<(18 * pages)).map { "app\($0)" }
+        let ids = (0..<(Self.capacity * pages)).map { "app\($0)" }
         let apps = ids.map { CatalogApp(id: $0, name: $0, path: "/Applications/\($0).app") }
         let snap = LaunchpadSnapshot(apps: Dictionary(uniqueKeysWithValues: apps.map { ($0.id, $0) }), order: ids,
                                      layout: LaunchpadLayout(items: ids.map { .app($0) }), catalogComplete: true, layoutRead: .absent)
@@ -197,7 +200,7 @@ final class ASwipeSurvivesTheInputsNobodyFedTests: XCTestCase {
     /// A card of one page has nothing to turn to: a swipe over it moves the card's own page (a rubber band) and never the grid's.
     @MainActor func testADragWhileAOnePageFolderIsOpenMovesNoGridPageAndASettleOnlyZeroesTheCardsOffset() throws {
         let id = UUID()
-        let ids = (0..<20).map { "app\($0)" }
+        let ids = (0..<(Self.capacity + 2)).map { "app\($0)" }
         let apps = ids.map { CatalogApp(id: $0, name: $0, path: "/Applications/\($0).app") }
         let snap = LaunchpadSnapshot(apps: Dictionary(uniqueKeysWithValues: apps.map { ($0.id, $0) }), order: ids,
                                      layout: LaunchpadLayout(items: [.folder(.init(id: id, name: "F", apps: ["app0", "app1"]))] + ids.dropFirst(2).map { .app($0) }),
@@ -221,7 +224,7 @@ final class ASwipeSurvivesTheInputsNobodyFedTests: XCTestCase {
     /// feeds `cardSwipe` once a card is open, so the grid's `swipe` gets no release, and the offset has to be cleared by the open.
     @MainActor func testAFolderOpeningMidDragDoesNotLeaveThePageHeldOffItsPlace() throws {
         let id = UUID()
-        let ids = (0..<20).map { "app\($0)" }
+        let ids = (0..<(Self.capacity + 2)).map { "app\($0)" }
         let apps = ids.map { CatalogApp(id: $0, name: $0, path: "/Applications/\($0).app") }
         let snap = LaunchpadSnapshot(apps: Dictionary(uniqueKeysWithValues: apps.map { ($0.id, $0) }), order: ids,
                                      layout: LaunchpadLayout(items: [.folder(.init(id: id, name: "F", apps: ["app0", "app1"]))] + ids.dropFirst(2).map { .app($0) }),

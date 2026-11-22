@@ -142,7 +142,7 @@ enum LaunchNotice: Equatable {
         let stored = LaunchpadGridSettings.read(from: store)
         guard !closed, stored != grid else { return }
         grid.write(changedFrom: stored, to: store)
-        HelmLog.shared.info("launchpad", "grid \(grid.automatic ? "automatic" : "\(grid.columns)x\(grid.rows)"), icon \(Int(grid.iconSize))")
+        HelmLog.shared.info("launchpad", "grid \(grid.automatic ? "automatic x\(grid.sizeMultiplier)" : "\(grid.columns)x\(grid.rows)"), icon \(Int(grid.iconSize))")
     }
 
     func resetGrid() { setGrid(.standard) }

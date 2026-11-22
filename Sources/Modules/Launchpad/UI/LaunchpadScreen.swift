@@ -117,13 +117,13 @@ struct LaunchpadScreen: View {
                               pressed: state.pressedID == app.id || state.lift?.onto == app.id,
                               moved: state.moved[app.id], open: { [weak state] in state?.onLaunch?(app.id, app.name) }, hide: { [weak state] in state?.onHide?(app.id) },
                               move: { [weak state] in state?.move(app.id, to: $0) }, reorder: state.moves(for: app.id),
-                              files: state.fileActions(for: app), showName: g.names, isNew: isNew(app))
+                              files: state.fileActions(for: app), showName: g.names, isNew: isNew(app), scale: g.scale)
             case .folder(let id, let name, let apps, let large):
                 if state.categoriesShown, id == LaunchpadHiddenBlock.id {
                     // The locked block: a lock and a name, nothing of what it holds; a press or Return asks the system.
                     LaunchpadTile(name: LpStr.hiddenBlock, accessibleName: LpStr.hiddenLocked, iconSize: g.largeMark, selected: selected,
                                   open: { [weak state] in state?.open(folder: id) }, hide: nil, glowSize: size,
-                                  pressed: state.pressedID == entry.id, oneLine: !g.names) {
+                                  pressed: state.pressedID == entry.id, oneLine: !g.names, scale: g.scale) {
                         LaunchpadHiddenMark(size: g.largeMark)
                     }
                 } else if state.categoriesShown {
@@ -134,7 +134,7 @@ struct LaunchpadScreen: View {
                     let mine = state.pressedID == entry.id
                     LaunchpadTile(name: name, accessibleName: LpStr.category(name), iconSize: g.largeMark, selected: selected,
                                   open: { [weak state] in state?.open(folder: id) }, hide: nil, glowSize: size,
-                                  pressed: mine && state.pressedIcon == nil, oneLine: !g.names) {
+                                  pressed: mine && state.pressedIcon == nil, oneLine: !g.names, scale: g.scale) {
                         let quadrant = LaunchpadCategoryMark.quadrant(g.largeMark)
                         LaunchpadCategoryMark(large: large.map { state.icons.image(for: $0.path, side: quadrant) },
                                               cluster: apps.dropFirst(3).prefix(apps.count > 4 ? 4 : 0).map { state.icons.image(for: $0.path, side: LaunchpadClusterCell.tiny(quadrant)) },
@@ -155,7 +155,7 @@ struct LaunchpadScreen: View {
                                   open: { [weak state] in state?.open(folder: id) }, hide: nil, glowSize: size,
                                   pressed: (state.pressedID == entry.id && state.pressedIcon == nil) || state.lift?.onto == entry.id,
                                   resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { [weak state] in state?.resize(id, large: !large) }),
-                                  reorder: state.moves(for: entry.id), oneLine: !g.names) {
+                                  reorder: state.moves(for: entry.id), oneLine: !g.names, scale: g.scale) {
                         LaunchpadFolderMark(icons: cells.shown.map { state.icons.image(for: $0.path, side: mini) }, size: large ? g.largeMark : g.icon,
                                             overflow: cells.overflow.map { state.icons.image(for: $0.path, side: LaunchpadClusterCell.tiny(mini)) },
                                             pressed: large ? cells.shown.firstIndex { $0.id == state.pressedIcon } : nil,
@@ -205,7 +205,7 @@ struct LaunchpadScreen: View {
         .allowsHitTesting(state.openFolder == nil)
     }
 
-    /// "Apps" and "Categories" at the left of the search field, on its row, from the grid's side margin. The kit's segmented tabs; dimmed
+    /// "Apps" and "Categories" at the left of the search field, on its row, from the grid's left edge. The kit's segmented tabs; dimmed
     /// and off while a search is typed, since a search shows its matches flat.
     private func viewSwitch(_ g: LaunchpadGeometry) -> some View {
         let tabs = [HelmToolbarTab(id: LaunchpadViewMode.apps.rawValue, title: HelmWord.apps, symbol: "square.grid.2x2"),
@@ -213,7 +213,7 @@ struct LaunchpadScreen: View {
         return HelmHeaderTabs(tabs: tabs, selection: Binding(get: { state.view.rawValue },
                                                             set: { state.setView(LaunchpadViewMode(rawValue: $0) ?? .apps) }),
                               enabled: state.search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .padding(.leading, LaunchpadMetrics.sideMargin * g.size.width)
+            .padding(.leading, g.sideInset)
             .padding(.top, g.searchTop - (LaunchpadMetrics.switchHeight - LaunchpadMetrics.searchHeight) / 2)
             .allowsHitTesting(state.openFolder == nil)
     }
@@ -222,20 +222,20 @@ struct LaunchpadScreen: View {
         VStack(spacing: HelmSpace.s5) {
             if let notice = vm.notice { HelmBanner(LpStr.text(of: notice), fillsWidth: false) }
             if state.hidden.unavailable { HelmBanner(LpStr.hiddenUnavailable, fillsWidth: false) }
-            if state.pageCount > 1 { pageDots(count: state.pageCount, current: state.page) }
+            if state.pageCount > 1 { pageDots(count: state.pageCount, current: state.page, dot: g.dotSize, hit: g.dotHit) }
         }
         .frame(width: g.size.width, height: g.size.height, alignment: .bottom)
         .offset(y: -g.dotsBottom)
     }
 
     /// One dot for each page, the shown one lit; a press goes to its page, on the interface curve. The grid's and the card's.
-    private func pageDots(count: Int, current: Int) -> some View {
+    private func pageDots(count: Int, current: Int, dot: CGFloat, hit: CGFloat) -> some View {
         HStack(spacing: 0) {
             ForEach(0..<count, id: \.self) { index in
                 Button { withAnimation(HelmMotion.interface) { state.go(to: index) } } label: {
                     Circle().fill(Color.white.opacity(index == current ? 0.9 : LaunchpadMetrics.unlitDot))
-                        .frame(width: 8, height: 8)
-                        .frame(width: 24, height: 24)
+                        .frame(width: dot, height: dot)
+                        .frame(width: hit, height: hit)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -253,7 +253,7 @@ struct LaunchpadScreen: View {
         let card = grid.rect
         let from = state.folderOrigin
         let delta = CGSize(width: from.x - g.size.width / 2, height: from.y - g.size.height / 2)
-        return VStack(spacing: LaunchpadGeometry.cardGap) {
+        return VStack(spacing: g.cardGap) {
             Group {
                 if state.categoriesShown {
                     // A category's name is the block's, not a name a person gives.
@@ -272,11 +272,11 @@ struct LaunchpadScreen: View {
             cardPages(grid, entries, g)
                 .overlay { if entries.isEmpty { Text(LpStr.noHiddenApps).font(HelmText.rowDetail).foregroundStyle(LaunchpadMetrics.secondaryInk).multilineTextAlignment(.center) } }
             if grid.paged {
-                pageDots(count: grid.pageCount, current: grid.page)
+                pageDots(count: grid.pageCount, current: grid.page, dot: 8, hit: LaunchpadGeometry.cardDots)
                     .frame(height: LaunchpadGeometry.cardDots)
             }
         }
-        .padding(LaunchpadGeometry.cardPadding)
+        .padding(g.cardPadding)
         .frame(width: card.width, height: card.height)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HelmRadius.panel, style: .continuous))
         .frame(width: g.size.width, height: g.size.height)
@@ -318,7 +318,7 @@ struct LaunchpadScreen: View {
                           inHidden: inHidden, moved: state.moved[app.id], open: { [weak state] in state?.onLaunch?(app.id, app.name) },
                           hide: { [weak state] in inHidden ? state?.onUnhide?(app.id) : state?.onHide?(app.id) },
                           move: { [weak state] in state?.move(app.id, to: $0) }, reorder: state.moves(for: app.id),
-                          files: state.fileActions(for: app), showName: inHidden || state.namesAsked, oneLine: !g.names, isNew: isNew(app))
+                          files: state.fileActions(for: app), showName: inHidden || state.namesAsked, oneLine: !g.names, isNew: isNew(app), scale: g.scale)
         } else {
             Color.clear
         }

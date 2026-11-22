@@ -43,7 +43,7 @@ final class LaunchpadGridSizesTests: XCTestCase {
                 let card = LaunchpadSurface.Card(geometry: g, count: 200)
                 let bare = g.card(columns: card.columns, rows: card.visibleRows)
                 XCTAssertTrue(card.paged, "\(screen) \(setting)")
-                XCTAssertEqual(card.rect.height, bare.height + LaunchpadGeometry.cardGap + LaunchpadGeometry.cardDots, accuracy: 0.001, "the dots row is in the card")
+                XCTAssertEqual(card.rect.height, bare.height + g.cardGap + LaunchpadGeometry.cardDots, accuracy: 0.001, "the dots row is in the card")
                 XCTAssertTrue(CGRect(origin: .zero, size: g.size).contains(card.rect), "\(screen) \(setting): \(card.rect)")
                 XCTAssertEqual(card.pageCount, (200 + card.capacity - 1) / card.capacity)
             }

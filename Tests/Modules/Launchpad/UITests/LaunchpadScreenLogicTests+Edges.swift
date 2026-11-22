@@ -9,21 +9,25 @@ extension LaunchpadScreenLogicTests {
 
     // MARK: - Geometry
 
-    func testA1024By640ScreenGetsSixColumnsAndThreeRows() {
+    func testA1024By640ScreenGetsSevenColumnsAndFiveRows() {
         let g = LaunchpadGeometry.make(for: CGSize(width: 1024, height: 640), topSafe: 0)
-        XCTAssertEqual(g.columns, 6)
-        XCTAssertEqual(g.rows, 3)
-        XCTAssertEqual(g.capacity, 18)
-        XCTAssertEqual(g.gridTop, 96 + (640 - 96 - LaunchpadMetrics.dotsRoom - g.pageHeight) / 2, accuracy: 0.001, "the rows' spare room is shared above and below")
-        XCTAssertEqual(g.cellWidth, 1024 * 0.84 / 6, accuracy: 0.001)
-        XCTAssertLessThanOrEqual(g.gridTop + g.pageHeight + LaunchpadMetrics.dotsRoom, 640, "the dots keep their room")
+        XCTAssertEqual(g.columns, 7)
+        XCTAssertEqual(g.rows, 5)
+        XCTAssertEqual(g.capacity, 35)
+        let start = g.searchTop + LaunchpadMetrics.searchHeight + LaunchpadMetrics.gridGap * g.scale
+        XCTAssertEqual(g.gridTop, start + (640 - start - g.dotsRoom - g.pageHeight) / 2, accuracy: 0.001, "the rows' spare room is shared above and below")
+        XCTAssertEqual(g.cellWidth, 1024 * 0.84 / 7, accuracy: 0.001)
+        XCTAssertLessThanOrEqual(g.gridTop + g.pageHeight + g.dotsRoom, 640, "the dots keep their room")
     }
 
-    func testAnEightKScreenStopsAtEightColumnsAndSixRows() {
+    func testAnEightKScreenIsSevenByFiveAndItsCellsStopAtTheCap() {
         let g = LaunchpadGeometry.make(for: CGSize(width: 6016, height: 3384), topSafe: 0)
-        XCTAssertEqual(g.columns, 8)
-        XCTAssertEqual(g.rows, 6)
-        XCTAssertEqual(g.capacity, 48)
+        XCTAssertEqual(g.columns, 7)
+        XCTAssertEqual(g.rows, 5)
+        XCTAssertEqual(g.capacity, 35)
+        XCTAssertEqual(g.scale, LaunchpadMetrics.scaleRange.upperBound)
+        XCTAssertEqual(g.cellWidth, LaunchpadMetrics.cellWidthCap * g.scale, accuracy: 0.001, "the grid does not stretch over an ultra-wide screen")
+        XCTAssertEqual(g.gridLeft, g.sideInset, accuracy: 0.001, "and the header begins where the grid does")
         XCTAssertEqual(g.pageWidth, 6016)
     }
 
@@ -32,8 +36,8 @@ extension LaunchpadScreenLogicTests {
             for height in stride(from: CGFloat(640), through: 4000, by: 97) {
                 for topSafe in [CGFloat(0), 24, 38, 64] {
                     let g = LaunchpadGeometry.make(for: CGSize(width: width, height: height), topSafe: topSafe)
-                    XCTAssertGreaterThanOrEqual(g.cellWidth, LaunchpadMetrics.tileMinimum, "\(width)x\(height)")
-                    XCTAssertLessThanOrEqual(g.gridTop + g.pageHeight + LaunchpadMetrics.dotsRoom, height, "\(width)x\(height) top \(topSafe)")
+                    XCTAssertGreaterThanOrEqual(g.cellWidth, LaunchpadMetrics.iconFloor + 2 * g.tilePadding, "\(width)x\(height): the floor icon fits the cell")
+                    XCTAssertLessThanOrEqual(g.gridTop + g.pageHeight + g.dotsRoom, height, "\(width)x\(height) top \(topSafe)")
                 }
             }
         }
@@ -44,7 +48,7 @@ extension LaunchpadScreenLogicTests {
         XCTAssertEqual(LaunchpadGeometry.make(for: CGSize(width: 1440, height: 900), topSafe: -50), plain)
         XCTAssertEqual(LaunchpadGeometry.make(for: CGSize(width: 1440, height: 900), topSafe: .infinity), plain)
         let capped = LaunchpadGeometry.make(for: CGSize(width: 1440, height: 900), topSafe: 10_000)
-        XCTAssertEqual(capped.searchTop, 225 + LaunchpadMetrics.searchTop, accuracy: 0.001, "a quarter of the height at most")
+        XCTAssertEqual(capped.searchTop, 225 + LaunchpadMetrics.searchTop * capped.scale, accuracy: 0.001, "a quarter of the height at most")
     }
 
     func testAOnePointWideScreenStillMakesAGridOfThreeColumns() {
@@ -263,7 +267,7 @@ extension LaunchpadScreenLogicTests {
     }
 
     @MainActor func testASearchGoesBackToTheFirstPage() {
-        let ids = Self.names + (0..<20).map { "app\($0)" }
+        let ids = Self.names + (0..<40).map { "app\($0)" }
         let s = state(snapshot(ids))
         s.go(to: 1)
         XCTAssertEqual(s.page, 1)
@@ -360,7 +364,7 @@ extension LaunchpadScreenLogicTests {
     }
 
     @MainActor func testTheArrowKeysInAFolderStayInsideItAndDoNotTurnThePage() {
-        let ids = (0..<30).map { "app\($0)" }
+        let ids = (0..<70).map { "app\($0)" }
         let (id, item) = folder("F", ["app1", "app2", "app3"])
         let items: [LaunchpadLayout.Item] = [item] + ids.filter { !["app1", "app2", "app3"].contains($0) }.map { .app($0) }
         let s = state(snapshot(ids, items: items))
@@ -378,20 +382,19 @@ extension LaunchpadScreenLogicTests {
     }
 
     @MainActor func testASnapshotThatShrinksBelowTheShownPageBringsThePageAndTheChoiceBack() {
-        let ids = (0..<40).map { "app\($0)" }
+        let capacity = LaunchpadGeometry.make(for: CGSize(width: 1024, height: 640), topSafe: 0).capacity
+        let ids = (0..<(2 * capacity + 10)).map { "app\($0)" }
         let s = state(snapshot(ids))
         XCTAssertEqual(s.pageCount, 3)
         s.go(to: 2)
         XCTAssertEqual(s.page, 2)
-        s.update(snapshot: snapshot(Array(ids.prefix(25))))
+        s.update(snapshot: snapshot(Array(ids.prefix(capacity + 15))))
         XCTAssertEqual(s.pageCount, 2)
         XCTAssertEqual(s.page, 1, "the last page there is, not the one that went")
         s.move(dx: 1, dy: 0)
         XCTAssertEqual(s.selection, 0)
-        s.move(dx: 0, dy: 1)
-        s.move(dx: 0, dy: 1)
-        s.move(dx: 0, dy: 1)
-        XCTAssertEqual(s.selection, 18, "three rows down from 0 on a six-column grid is the next page's first row")
+        for _ in 0..<s.geometry.rows { s.move(dx: 0, dy: 1) }
+        XCTAssertEqual(s.selection, capacity, "as many rows down from 0 as the grid has is the next page's first row")
         s.update(snapshot: snapshot(Array(ids.prefix(5))))
         XCTAssertEqual(s.pageCount, 1)
         XCTAssertEqual(s.page, 0)
@@ -503,7 +506,7 @@ extension LaunchpadScreenLogicTests {
     }
 
     @MainActor func testTurnAndGoClampAndDropAChoiceLeftOnAnotherPage() {
-        let ids = (0..<40).map { "app\($0)" }
+        let ids = (0..<80).map { "app\($0)" }
         let s = state(snapshot(ids))
         s.turn(-1)
         XCTAssertEqual(s.page, 0)

@@ -92,6 +92,7 @@ import os
     /// bitmap (nine minis, a large folder's twelve over its four cells, a category's eight over its four are each less), so the three
     /// pages and the card's three are at most `6 * capacity * pixels² * 4`. At 8 x 5 (capacity 40), icon 80 pt, 2x (160 px):
     /// 1200 keys and 6 * 40 * 160² * 4 = 24 576 000 bytes, 23.4 MiB. Eviction stays inside it unless the live pages ask more.
+    /// Automatic is 7 x 5 (capacity 35) and its icon at most 160 pt (`LaunchpadMetrics.automaticIconCeiling`), 320 px at 2x: 6 * 35 * 320² * 4 = 86 016 000 bytes, 82.0 MiB, the largest at 7 x 5 (a 16:9 screen reaches 160 pt from about 2986 x 1680). Manual's largest, 10 x 8 at 128 pt, 2x (256 px): 6 * 80 * 256² * 4 = 125 829 120 bytes, 120 MiB.
     static func limits(capacity: Int, side: CGFloat, scale: CGFloat) -> (count: Int, cost: Int) {
         let pixels = pixels(side: side, scale: scale), cells = max(1, capacity)
         return (30 * cells, 6 * cells * pixels * pixels * 4)

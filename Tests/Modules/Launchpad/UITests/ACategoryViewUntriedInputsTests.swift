@@ -26,7 +26,7 @@ import XCTest
         let g = rig.state.geometry
         let block = g.frame(of: rig.state.slots[0][slot]).offsetBy(dx: 0, dy: g.gridTop)
         let f = LaunchpadCategoryMark.frame(ofQuadrant: q, size: g.largeMark)
-        return CGPoint(x: block.midX - g.largeMark / 2 + f.midX, y: block.minY + LaunchpadMetrics.iconTop + f.midY)
+        return CGPoint(x: block.midX - g.largeMark / 2 + f.midX, y: block.minY + g.iconTop + f.midY)
     }
 
     func testAnAppInRecentlyAddedAndItsCategoryIsPressedInOneBlockOnly() {
@@ -81,8 +81,8 @@ import XCTest
     }
 
     func testANegativeAppCountTrapsNothing() {
-        XCTAssertNil(LaunchpadHit.categoryIcon(at: .zero, block: CGRect(x: 0, y: 0, width: 180, height: 180), mark: 120, apps: -3))
-        XCTAssertNil(LaunchpadHit.icon(at: .zero, block: CGRect(x: 0, y: 0, width: 180, height: 180), mark: 120, apps: -3))
+        XCTAssertNil(LaunchpadHit.categoryIcon(at: .zero, block: CGRect(x: 0, y: 0, width: 180, height: 180), mark: 120, iconTop: 6, apps: -3))
+        XCTAssertNil(LaunchpadHit.icon(at: .zero, block: CGRect(x: 0, y: 0, width: 180, height: 180), mark: 120, iconTop: 6, apps: -3))
     }
 
     func testACategoryEmptiedByHideWhileItsCardIsOpenClosesTheCardAndLeavesTheOthers() throws {

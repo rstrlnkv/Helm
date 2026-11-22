@@ -14,7 +14,7 @@ import XCTest
     func testPagesAreTheItemsCutAtEachBreakThenChunkedByWhatAPageHolds() {
         let r = rig(ids(70), layout: LaunchpadLayout(items: ids(3).map { .app($0) } + [.pageBreak] + ids(70).dropFirst(3).map { .app($0) }))
         let capacity = r.g.capacity
-        XCTAssertEqual(r.state.pages.map(\.count), [3, capacity, capacity, 67 - 2 * capacity].filter { $0 > 0 })
+        XCTAssertEqual(r.state.pages.map(\.count), [3] + stride(from: 0, to: 67, by: capacity).map { min(capacity, 67 - $0) })
         XCTAssertEqual(r.state.pages[1].first?.id, "app03", "the break is where a page begins")
     }
 

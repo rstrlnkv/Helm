@@ -38,7 +38,7 @@ import XCTest
     /// The pointer in the card's left strip: in its padding (`inMargin` false) or outside it, in the margin around it.
     private func strip(_ r: LiftRig, inMargin: Bool) -> CGPoint {
         let c = card(r)
-        let x = inMargin ? c.rect.minX - LaunchpadLiftTiming.cardMargin / 2 : c.origin.x - LaunchpadGeometry.cardPadding / 2
+        let x = inMargin ? c.rect.minX - LaunchpadLiftTiming.cardMargin / 2 : c.origin.x - c.geometry.cardPadding / 2
         return CGPoint(x: x, y: c.rect.midY)
     }
 
@@ -106,7 +106,7 @@ import XCTest
         XCTAssertEqual(r.state.cardPage, 0)
         XCTAssertEqual(gapIndex(r), cap - 1)
         let c = card(r)
-        let right = CGPoint(x: c.origin.x + c.pageWidth + LaunchpadGeometry.cardPadding / 2, y: c.rect.midY)
+        let right = CGPoint(x: c.origin.x + c.pageWidth + c.geometry.cardPadding / 2, y: c.rect.midY)
         time = turned(r, at: right, from: time + 1)
         XCTAssertEqual(r.state.cardPage, 1)
         XCTAssertEqual(gapIndex(r), cap, "forward: the first place of the page now shown")
@@ -121,7 +121,7 @@ import XCTest
         let r = rig(folderApps: cap + 3)
         openedByALift(r)
         let c = card(r)
-        let right = CGPoint(x: c.origin.x + c.pageWidth + LaunchpadGeometry.cardPadding / 2, y: c.rect.midY)
+        let right = CGPoint(x: c.origin.x + c.pageWidth + c.geometry.cardPadding / 2, y: c.rect.midY)
         let pages = r.state.pages.count
         r.state.pointerMoved(right, time: 2)
         r.state.tick(at: 2.61)

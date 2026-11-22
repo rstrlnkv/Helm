@@ -24,7 +24,7 @@ import XCTest
     private func quadrant(_ rig: LiftRig, block index: Int = 0, _ q: Int) -> CGPoint {
         let g = rig.state.geometry, block = block(rig, index), mark = g.largeMark
         let f = LaunchpadCategoryMark.frame(ofQuadrant: q, size: mark)
-        return CGPoint(x: block.midX - mark / 2 + f.midX, y: block.minY + LaunchpadMetrics.iconTop + f.midY)
+        return CGPoint(x: block.midX - mark / 2 + f.midX, y: block.minY + g.iconTop + f.midY)
     }
 
     func testNothingADragOrACardOrASearchDoesInTheCategoryViewWritesTheArrangement() throws {

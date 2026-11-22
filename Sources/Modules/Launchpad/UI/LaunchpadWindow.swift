@@ -207,12 +207,21 @@ private final class LaunchpadWindowEnders {
     /// Ends the open's wait (`watchOpening`) when the first snapshot has come in, or the window closes before it.
     private var snapshotArrived: AsyncStream<Void>.Continuation?
 
+    /// The strip a screen keeps at the top: the notch's room (`safeAreaInsets.top`) or the menu bar's (the frame's top less the visible frame's), whichever is taller; 0 with a hidden bar and no notch.
+    static func topSafe(safeTop: CGFloat, frame: CGRect, visible: CGRect) -> CGFloat {
+        max(safeTop, frame.maxY - visible.maxY)
+    }
+
     init(model: LaunchpadViewModel) {
         Self.lingering?.finish()
         self.model = model
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         let frame = screen?.frame ?? CGRect(origin: .zero, size: LaunchpadGeometry.fallback)
-        let geometry = LaunchpadGeometry.make(for: frame.size, topSafe: screen?.safeAreaInsets.top ?? 0, settings: model.grid)
+        // The strip the screen keeps at the top, one way on every screen: the notch's room or the menu bar's, whichever is taller. `safeAreaInsets.top` is 0 on
+        // a screen without a notch although the menu bar draws over the window there, which put the header row 28 pt under the menu bar on a notched
+        // screen and a few points under it on any other.
+        let topSafe = screen.map { Self.topSafe(safeTop: $0.safeAreaInsets.top, frame: $0.frame, visible: $0.visibleFrame) } ?? 0
+        let geometry = LaunchpadGeometry.make(for: frame.size, topSafe: topSafe, settings: model.grid)
         state = LaunchpadScreenState(geometry: geometry, view: model.viewMode, hidden: LaunchpadHiddenGate(port: model.makeAuth()),
                                      icons: LaunchpadIcons(capacity: geometry.capacity, side: geometry.icon, scale: screen?.backingScaleFactor ?? 2))
 
@@ -266,7 +275,7 @@ private final class LaunchpadWindowEnders {
         let grid = asked.automatic ? "automatic" : "\(asked.rows) rows asked, \(geometry.rows) fit"
         state.onLoaded = { [weak self] snapshot, state in
             self?.snapshotArrived?.finish()
-            HelmLog.shared.info("launchpad", "window: \(snapshot.apps.count) apps, \(state.geometry.columns)x\(state.geometry.rows) grid (\(grid)), icon \(Int(state.geometry.icon)), \(state.pageCount) pages, view \(state.view.rawValue)")
+            HelmLog.shared.info("launchpad", "window: \(snapshot.apps.count) apps, \(state.geometry.columns)x\(state.geometry.rows) grid (\(grid)), icon \(Int(state.geometry.icon)), scale \(String(format: "%.2f", Double(state.geometry.scale))), \(state.pageCount) pages, view \(state.view.rawValue)")
         }
         state.onIconsWarmed = { took, drawn, pixels, timedOut in
             // Counts and sizes only: no path, no name.

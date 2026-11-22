@@ -5,7 +5,7 @@ import XCTest
 /// names setting is a part of the grid's identity, so a change of it re-pages.
 final class TheGridWithoutNamesHoldsAtLeastAsMuchTests: XCTestCase {
     func testACellIsShorterAndNoScreenHoldsLess() {
-        XCTAssertEqual(LaunchpadMetrics.cellChrome(names: true) - LaunchpadMetrics.cellChrome(names: false), 17, "one line of label")
+        XCTAssertEqual(LaunchpadMetrics.cellChrome(names: true, scale: 1) - LaunchpadMetrics.cellChrome(names: false, scale: 1), 17, "one line of label")
         var off = LaunchpadGridSettings.standard
         off.showNames = false
         for screen in [CGSize(width: 1024, height: 640), CGSize(width: 1280, height: 800), CGSize(width: 1920, height: 1080), CGSize(width: 2560, height: 1440)] {

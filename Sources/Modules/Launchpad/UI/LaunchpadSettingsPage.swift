@@ -14,8 +14,9 @@ struct LaunchpadSettingsPage: View {
     @StateObject private var hiddenGate: LaunchpadHiddenGate
     /// Bumped when a shortcut is recorded, so «taken» is judged against the combination now stored.
     @State private var shortcutRevision = 0
-    /// The manual rows' measured height, for the accordion that shows them while Automatic is off.
+    /// The manual rows' measured height, for the accordion that shows them while Automatic is off, and the multiplier's, for the one that shows it while it is on.
     @State private var manualHeight: CGFloat?
+    @State private var automaticHeight: CGFloat?
     /// The rows under the pinch switch, measured for the accordion that shows them while it is on.
     @State private var pinchHeight: CGFloat?
 
@@ -139,9 +140,46 @@ struct LaunchpadSettingsPage: View {
                         .labelsHidden()
                         .accessibilityLabel(LpStr.gridAutomatic)
                 }
+                // Automatic holds one control, the size's multiplier; Manual holds the rows, the columns and the icon's points. One accordion each, so neither leaves a blank band.
+                VStack(spacing: 0) {
+                    HelmSettingRow(LpStr.gridScale, note: LpStr.gridScaleNote) {
+                        Slider(value: Binding(get: { grid.sizeMultiplier }, set: { var next = grid; next.sizeMultiplier = $0; lvm.setGrid(next, live: true) }),
+                               in: LaunchpadGridSettings.multiplierRange, step: 0.05) { editing in if !editing { lvm.commitGrid() } }
+                            .frame(width: 160)
+                            .labelsHidden()
+                            .accessibilityLabel(LpStr.gridScale)
+                            .accessibilityValue(LpStr.gridScaleValue(percent(grid.sizeMultiplier)))
+                        ZStack(alignment: .trailing) {
+                            Text(LpStr.gridScaleValue(percent(LaunchpadGridSettings.multiplierRange.upperBound))).hidden()
+                            Text(LpStr.gridScaleValue(percent(grid.sizeMultiplier)))
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
+                        .helmFigure()
+                        .accessibilityHidden(true)
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .helmAccordion(open: grid.automatic, height: $automaticHeight)
                 VStack(spacing: 0) {
                     stepRow(LpStr.gridRows, value: grid.rows, range: LaunchpadGridSettings.rowRange) { var next = grid; next.rows += $0; return next }
                     stepRow(LpStr.gridColumns, value: grid.columns, range: LaunchpadGridSettings.columnRange) { var next = grid; next.columns += $0; return next }
+                    HelmSettingRow(LpStr.gridIconSize, note: LpStr.gridFitNote) {
+                        // A drag publishes the grid as it goes and writes once, when it ends.
+                        Slider(value: Binding(get: { grid.iconSize }, set: { var next = grid; next.iconSize = $0.rounded(); lvm.setGrid(next, live: true) }),
+                               in: LaunchpadGridSettings.iconRange) { editing in if !editing { lvm.commitGrid() } }
+                            .frame(width: 160)
+                            .labelsHidden()
+                            .accessibilityLabel(LpStr.gridIconSize)
+                            .accessibilityValue(LpStr.gridIconSizeValue(Int(grid.iconSize)))
+                        ZStack(alignment: .trailing) {
+                            Text(LpStr.gridIconSizeValue(Int(LaunchpadGridSettings.iconRange.upperBound))).hidden()
+                            Text(LpStr.gridIconSizeValue(Int(grid.iconSize)))
+                        }
+                        // The title column has layout priority; without this the figure is squeezed and its unit wraps under it.
+                        .fixedSize(horizontal: true, vertical: false)
+                        .helmFigure()
+                        .accessibilityHidden(true)
+                    }
                 }
                 .fixedSize(horizontal: false, vertical: true)
                 .helmAccordion(open: !grid.automatic, height: $manualHeight)
@@ -150,23 +188,6 @@ struct LaunchpadSettingsPage: View {
                 Toggle(LpStr.showAppNames, isOn: Binding(get: { grid.showNames }, set: { var next = grid; next.showNames = $0; lvm.setGrid(next) }))
                     .labelsHidden()
                     .accessibilityLabel(LpStr.showAppNames)
-            }
-            HelmSettingRow(LpStr.gridIconSize, note: LpStr.gridFitNote) {
-                // A drag publishes the grid as it goes and writes once, when it ends.
-                Slider(value: Binding(get: { grid.iconSize }, set: { var next = grid; next.iconSize = $0.rounded(); lvm.setGrid(next, live: true) }),
-                       in: LaunchpadGridSettings.iconRange) { editing in if !editing { lvm.commitGrid() } }
-                    .frame(width: 160)
-                    .labelsHidden()
-                    .accessibilityLabel(LpStr.gridIconSize)
-                    .accessibilityValue(LpStr.gridIconSizeValue(Int(grid.iconSize)))
-                ZStack(alignment: .trailing) {
-                    Text(LpStr.gridIconSizeValue(Int(LaunchpadGridSettings.iconRange.upperBound))).hidden()
-                    Text(LpStr.gridIconSizeValue(Int(grid.iconSize)))
-                }
-                // The title column has layout priority; without this the figure is squeezed and its unit wraps under it.
-                .fixedSize(horizontal: true, vertical: false)
-                .helmFigure()
-                .accessibilityHidden(true)
             }
             HelmSettingRow(LpStr.gridResetTitle, note: LpStr.gridResetNote) {
                 Button { lvm.resetGrid() } label: { Text(LpStr.gridReset).fixedSize() }
@@ -177,6 +198,9 @@ struct LaunchpadSettingsPage: View {
             HelmSectionTitle(LpStr.grid)
         }
     }
+
+    /// A multiplier as the whole percent the page says.
+    private func percent(_ multiplier: Double) -> Int { Int((multiplier * 100).rounded()) }
 
     /// A number in a range, stepped by one; the figure's column is as wide as the widest value, so a step never moves the stepper.
     private func stepRow(_ title: String, value: Int, range: ClosedRange<Int>,

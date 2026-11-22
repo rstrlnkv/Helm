@@ -10,13 +10,15 @@ import XCTest
 @MainActor final class TheCategoryBlockHitAndSplitEdgesTests: XCTestCase {
     private let block = CGRect(x: 100, y: 100, width: 180, height: 180)
     private let mark: CGFloat = 120
+    /// The cell's top to its icon's, at scale 1 (`LaunchpadGeometry.iconTop`).
+    private let iconTop: CGFloat = 6
 
     private func centre(_ q: Int) -> CGPoint {
         let f = LaunchpadCategoryMark.frame(ofQuadrant: q, size: mark)
-        return CGPoint(x: block.midX - mark / 2 + f.midX, y: block.minY + LaunchpadMetrics.iconTop + f.midY)
+        return CGPoint(x: block.midX - mark / 2 + f.midX, y: block.minY + iconTop + f.midY)
     }
 
-    private func hits(apps: Int) -> [Int?] { (0..<4).map { LaunchpadHit.categoryIcon(at: centre($0), block: block, mark: mark, apps: apps) } }
+    private func hits(apps: Int) -> [Int?] { (0..<4).map { LaunchpadHit.categoryIcon(at: centre($0), block: block, mark: mark, iconTop: iconTop, apps: apps) } }
 
     func testTheSplitAtOneFourFiveAndEightAppsAndNothingForNone() {
         XCTAssertEqual(hits(apps: 1), [0, nil, nil, nil])
@@ -31,13 +33,13 @@ import XCTest
     func testBetweenIconsOffTheMarkAndNonsensePointsHitNothing() {
         let a = LaunchpadCategoryMark.frame(ofQuadrant: 0, size: mark), b = LaunchpadCategoryMark.frame(ofQuadrant: 1, size: mark)
         XCTAssertGreaterThan(b.minX, a.maxX, "the control: there is a gap between two icons")
-        let origin = CGPoint(x: block.midX - mark / 2, y: block.minY + LaunchpadMetrics.iconTop)
-        XCTAssertEqual(LaunchpadHit.categoryIcon(at: CGPoint(x: origin.x + (a.maxX + b.minX) / 2, y: origin.y + a.midY), block: block, mark: mark, apps: 4), nil)
+        let origin = CGPoint(x: block.midX - mark / 2, y: block.minY + iconTop)
+        XCTAssertEqual(LaunchpadHit.categoryIcon(at: CGPoint(x: origin.x + (a.maxX + b.minX) / 2, y: origin.y + a.midY), block: block, mark: mark, iconTop: iconTop, apps: 4), nil)
         for p in [CGPoint(x: block.minX - 1, y: block.midY), CGPoint(x: CGFloat.nan, y: 120), CGPoint(x: 120, y: CGFloat.infinity), CGPoint(x: -1e300, y: 1e300)] {
-            XCTAssertNil(LaunchpadHit.categoryIcon(at: p, block: block, mark: mark, apps: 4))
+            XCTAssertNil(LaunchpadHit.categoryIcon(at: p, block: block, mark: mark, iconTop: iconTop, apps: 4))
         }
         for m in [CGFloat(0), -5, CGFloat.nan, CGFloat.infinity] {
-            XCTAssertNil(LaunchpadHit.categoryIcon(at: centre(0), block: block, mark: m, apps: 4), "mark \(m)")
+            XCTAssertNil(LaunchpadHit.categoryIcon(at: centre(0), block: block, mark: m, iconTop: iconTop, apps: 4), "mark \(m)")
         }
     }
 
@@ -85,7 +87,7 @@ import XCTest
         let g = rig.state.geometry
         let b = g.frame(of: rig.state.slots[0][slot]).offsetBy(dx: 0, dy: g.gridTop)
         let f = LaunchpadCategoryMark.frame(ofQuadrant: q, size: g.largeMark)
-        return CGPoint(x: b.midX - g.largeMark / 2 + f.midX, y: b.minY + LaunchpadMetrics.iconTop + f.midY)
+        return CGPoint(x: b.midX - g.largeMark / 2 + f.midX, y: b.minY + g.iconTop + f.midY)
     }
 
     func testABlockThatMovedUnderAPressOpensItsCardAndLaunchesNoWrongApp() throws {

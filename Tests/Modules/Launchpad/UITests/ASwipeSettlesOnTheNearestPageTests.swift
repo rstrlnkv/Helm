@@ -89,12 +89,13 @@ final class ASwipeSettlesOnTheNearestPageTests: XCTestCase {
             XCTAssertLessThanOrEqual(last.x + g.cellWidth, g.pageWidth + 0.001, "inside the page")
             let c = g.center(ofSlot: g.columns + 1)
             let o = g.origin(ofSlot: g.columns + 1)
-            XCTAssertEqual(c, CGPoint(x: o.x + g.cellWidth / 2, y: g.gridTop + o.y + g.cellHeight / 2), "the window's coordinates, below the search")
+            XCTAssertEqual(c.x, o.x + g.cellWidth / 2, accuracy: 0.001, "the window's coordinates, below the search")
+            XCTAssertEqual(c.y, g.gridTop + o.y + g.cellHeight / 2, accuracy: 0.001, "the window's coordinates, below the search")
         }
     }
 
     @MainActor func testTheDragFollowsAndSettlesAtOnceWithoutRepublishingTheState() throws {
-        let ids = (0..<40).map { "app\($0)" }
+        let ids = (0..<(2 * LaunchpadGeometry.make(for: CGSize(width: 1024, height: 640), topSafe: 0).capacity + 10)).map { "app\($0)" }
         let apps = ids.map { CatalogApp(id: $0, name: $0, path: "/Applications/\($0).app") }
         let snap = LaunchpadSnapshot(apps: Dictionary(uniqueKeysWithValues: apps.map { ($0.id, $0) }), order: ids,
                                      layout: LaunchpadLayout(items: ids.map { .app($0) }), catalogComplete: true, layoutRead: .absent)

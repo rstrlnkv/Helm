@@ -9,13 +9,12 @@ final class LaunchpadScreenLogicTests: XCTestCase {
 
     // MARK: - Geometry
 
-    func testEveryRealScreenGetsAGridThatFitsAndNoTileNarrowerThanTheLabelNeeds() {
+    func testEveryRealScreenGetsSevenByFiveThatFits() {
         for size in [CGSize(width: 1280, height: 800), CGSize(width: 1440, height: 900), CGSize(width: 1920, height: 1080),
                      CGSize(width: 2560, height: 1440), CGSize(width: 3840, height: 2160)] {
             let g = LaunchpadGeometry.make(for: size, topSafe: 32)
-            XCTAssertGreaterThanOrEqual(g.cellWidth, LaunchpadMetrics.tileMinimum, "\(size)")
-            XCTAssertTrue((3...8).contains(g.columns), "\(size)")
-            XCTAssertTrue((2...6).contains(g.rows), "\(size)")
+            XCTAssertEqual(g.columns, 7, "\(size)")
+            XCTAssertEqual(g.rows, 5, "\(size)")
             XCTAssertEqual(g.capacity, g.columns * g.rows)
             XCTAssertLessThanOrEqual(g.gridTop + g.pageHeight, size.height, "the grid is inside the screen at \(size)")
             XCTAssertEqual(g.size, size)

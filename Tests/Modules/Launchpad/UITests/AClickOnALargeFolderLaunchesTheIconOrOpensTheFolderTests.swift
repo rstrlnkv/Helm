@@ -23,7 +23,7 @@ import XCTest
 
     private func markOrigin(_ r: LiftRig) -> CGPoint {
         let b = block(r)
-        return CGPoint(x: b.midX - r.g.largeMark / 2, y: b.minY + LaunchpadMetrics.iconTop)
+        return CGPoint(x: b.midX - r.g.largeMark / 2, y: b.minY + r.g.iconTop)
     }
 
     private func centre(_ r: LiftRig, icon i: Int) -> CGPoint {
@@ -98,7 +98,7 @@ import XCTest
                 let r = LiftRig(self, apps: ["g0", "g1"] + members(12) + (0..<12).map { "t\($0)" }, layout: LaunchpadLayout(items: items))
                 let at = r.state.pages[0].firstIndex { $0.id == folderID.uuidString }!
                 let from = r.g.frame(of: r.state.slots[0][at])
-                let o = CGPoint(x: from.midX - r.g.largeMark / 2, y: from.minY + r.g.gridTop + LaunchpadMetrics.iconTop)
+                let o = CGPoint(x: from.midX - r.g.largeMark / 2, y: from.minY + r.g.gridTop + r.g.iconTop)
                 let f = LaunchpadFolderMark.frame(ofIcon: i, size: r.g.largeMark)
                 let p = CGPoint(x: o.x + f.midX, y: o.y + f.midY)
                 XCTAssertTrue(r.state.pointerDown(p, time: 0), "subject: the press is taken")

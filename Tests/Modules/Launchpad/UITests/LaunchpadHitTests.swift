@@ -3,20 +3,28 @@ import XCTest
 
 /// What is under the pointer, from the geometry alone: no view is made.
 final class LaunchpadHitTests: XCTestCase {
-    private func surface(_ width: CGFloat, counts: [Int] = [10], page: Int = 0) -> LaunchpadSurface {
-        LaunchpadSurface(geometry: .make(for: CGSize(width: width, height: 900), topSafe: 0), page: page, pageCounts: counts, gap: nil)
+    private func surface(_ width: CGFloat, counts: [Int] = [10], page: Int = 0, settings: LaunchpadGridSettings = .standard) -> LaunchpadSurface {
+        LaunchpadSurface(geometry: .make(for: CGSize(width: width, height: 900), topSafe: 0, settings: settings), page: page, pageCounts: counts, gap: nil)
     }
 
     func testTheMiddleOfEveryTileHitsItsSlotAtEveryColumnCount() {
         var seen = Set<Int>()
+        // Automatic is seven columns at every width; the other counts are Manual's.
         for width in [500, 700, 900, 1000, 1100, 1300, 1600] as [CGFloat] {
-            let s = surface(width, counts: [6])
-            seen.insert(s.geometry.columns)
-            for slot in 0..<min(6, s.geometry.capacity) {
-                XCTAssertEqual(LaunchpadHit.at(s.geometry.center(ofSlot: slot), in: s), .tile(address: slot, core: true), "\(width) slot \(slot)")
+            for columns in [nil] + Array(LaunchpadGridSettings.columnRange) as [Int?] {
+                var settings = LaunchpadGridSettings.standard
+                if let columns { settings.automatic = false; settings.columns = columns }
+                let s = surface(width, counts: [6], settings: settings)
+                seen.insert(s.geometry.columns)
+                for slot in 0..<min(6, s.geometry.capacity) {
+                    // The middle of the icon, not of the cell: a small icon in a tall cell ends above the cell's middle.
+                    var point = s.geometry.center(ofSlot: slot)
+                    point.y += s.geometry.iconTop + s.geometry.icon / 2 - s.geometry.cellHeight / 2
+                    XCTAssertEqual(LaunchpadHit.at(point, in: s), .tile(address: slot, core: true), "\(width) \(columns.map(String.init) ?? "automatic") slot \(slot)")
+                }
             }
         }
-        XCTAssertTrue(seen.isSuperset(of: [3, 4, 5, 6, 7, 8]), "the widths cover 3 to 8 columns: \(seen)")
+        XCTAssertTrue(seen.isSuperset(of: Set(LaunchpadGridSettings.columnRange)), "the widths cover 3 to 10 columns: \(seen)")
     }
 
     func testTheCoreIsTheIconsMiddleAndTheRestOfTheCellIsMargin() {
@@ -57,8 +65,8 @@ final class LaunchpadHitTests: XCTestCase {
         let card = g.card(columns: 3, rows: 2)
         XCTAssertEqual(card.midX, 640, accuracy: 0.001)
         XCTAssertEqual(card.midY, 400, accuracy: 0.001)
-        XCTAssertEqual(card.width, 3 * g.cellWidth + 2 * LaunchpadGeometry.cardPadding, accuracy: 0.001)
-        XCTAssertEqual(card.height, 2 * g.cellHeight + LaunchpadGeometry.cardTitle + LaunchpadGeometry.cardGap + 2 * LaunchpadGeometry.cardPadding, accuracy: 0.001)
+        XCTAssertEqual(card.width, 3 * g.cellWidth + 2 * g.cardPadding, accuracy: 0.001)
+        XCTAssertEqual(card.height, 2 * g.cellHeight + LaunchpadGeometry.cardTitle + g.cardGap + 2 * g.cardPadding, accuracy: 0.001)
     }
 
     func testTheCardsTilesAreAddressedByTheirIndexInItAndNeverACore() {
@@ -115,7 +123,7 @@ final class LaunchpadHitTests: XCTestCase {
         for (count, paged) in [(cap, false), (cap + 1, true), (1, false), (0, false)] {
             let (s, card) = pagedCard(count: count, page: 0)
             XCTAssertEqual(card.paged, paged, "\(count)")
-            let pad = LaunchpadGeometry.cardPadding / 2, margin = LaunchpadLiftTiming.cardMargin / 2
+            let pad = card.geometry.cardPadding / 2, margin = LaunchpadLiftTiming.cardMargin / 2
             let strips: [(String, CGFloat, CGFloat)] = [("padding", card.origin.x - pad, card.origin.x + card.pageWidth + pad),
                                                         ("margin", card.rect.minX - margin, card.rect.maxX + margin)]
             for (name, left, right) in strips {

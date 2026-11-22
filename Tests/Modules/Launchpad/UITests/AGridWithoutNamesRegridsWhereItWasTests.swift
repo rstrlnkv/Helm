@@ -8,7 +8,9 @@ import XCTest
 /// choice and the page follow the tile, an open card stays, and the layout file is not written.
 @MainActor final class AGridWithoutNamesRegridsWhereItWasTests: XCTestCase {
     private let folderID = UUID()
-    private var off: LaunchpadGridSettings { var s = LaunchpadGridSettings.standard; s.showNames = false; return s }
+    /// Names off, on a grid of fewer rows: under Automatic the rows are five whatever the names, so a cell's height alone no longer changes the capacity,
+    /// and this test is about the order being cut again at the new one.
+    private var off: LaunchpadGridSettings { var s = LaunchpadGridSettings.standard; s.showNames = false; s.automatic = false; s.rows = 4; return s }
 
     private func rig(count: Int = 80, large: Bool = true) -> LiftRig {
         let ids = (0..<count).map { String(format: "app%02d", $0) }
@@ -60,7 +62,7 @@ import XCTest
         let g = LaunchpadGeometry.make(for: CGSize(width: 1280, height: 800), topSafe: 0, settings: off)
         XCTAssertFalse(g.names)
         // The block holds a mark, the gap, one line, the paddings: no more than two cells.
-        XCTAssertLessThanOrEqual(g.largeMark + LaunchpadMetrics.cellChrome(names: false), 2 * g.cellHeight + 0.001)
+        XCTAssertLessThanOrEqual(g.largeMark + LaunchpadMetrics.cellChrome(names: false, scale: g.scale), 2 * g.cellHeight + 0.001)
         XCTAssertGreaterThan(g.largeMark, g.icon)
     }
 

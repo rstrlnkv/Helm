@@ -2127,49 +2127,49 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passt so viele Symbole ein, wie auf den Bildschirm passen."
+            "value": "Auf jedem Bildschirm sieben Spalten und fünf Zeilen. Symbole und Namen wachsen mit dem Bildschirm."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fits as many icons as the screen holds."
+            "value": "Seven columns and five rows on every screen. Icons and names grow with the screen."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Coloca tantos iconos como quepan en la pantalla."
+            "value": "Siete columnas y cinco filas en cada pantalla. Los iconos y los nombres crecen con la pantalla."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Place autant d’icônes que l’écran peut en contenir."
+            "value": "Sept colonnes et cinq lignes sur chaque écran. Les icônes et les noms grandissent avec l’écran."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "画面に収まるだけのアイコンを並べます。"
+            "value": "どの画面でも7列5行です。アイコンと名前は画面に合わせて大きくなります。"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Encaixa tantos ícones quanto a tela comportar."
+            "value": "Sete colunas e cinco linhas em cada tela. Os ícones e os nomes crescem com a tela."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Размещает столько значков, сколько помещается на экране."
+            "value": "Семь столбцов и пять строк на любом экране. Значки и названия растут вместе с экраном."
           }
         },
         "zh": {
           "stringUnit": {
             "state": "translated",
-            "value": "按屏幕能容纳的数量排列图标。"
+            "value": "每块屏幕都是7列5行。图标和名称会随屏幕放大。"
           }
         }
       }
@@ -2498,49 +2498,49 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Setzt Automatisch, Zeilen, Spalten, die Symbolgröße und die App-Namen zurück."
+            "value": "Setzt Automatisch, Gesamtgröße, Zeilen, Spalten, die Symbolgröße und die App-Namen zurück."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Resets Automatic, rows, columns, icon size and app names."
+            "value": "Resets Automatic, Overall size, rows, columns, icon size and app names."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restablece Automático, filas, columnas, el tamaño de los iconos y los nombres de las apps."
+            "value": "Restablece Automático, tamaño general, filas, columnas, el tamaño de los iconos y los nombres de las apps."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rétablit Automatique, les lignes, les colonnes, la taille des icônes et les noms des apps."
+            "value": "Rétablit Automatique, la taille générale, les lignes, les colonnes, la taille des icônes et les noms des apps."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "自動、行数、列数、アイコンのサイズ、アプリ名の表示を元に戻します。"
+            "value": "自動、全体のサイズ、行数、列数、アイコンのサイズ、アプリ名の表示を元に戻します。"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restaura Automático, linhas, colunas, o tamanho dos ícones e os nomes dos apps."
+            "value": "Restaura Automático, tamanho geral, linhas, colunas, o tamanho dos ícones e os nomes dos apps."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сбрасывает автоматический режим, число строк и столбцов, размер значков и показ названий приложений."
+            "value": "Сбрасывает автоматический режим, общий размер, число строк и столбцов, размер значков и показ названий приложений."
           }
         },
         "zh": {
           "stringUnit": {
             "state": "translated",
-            "value": "恢复自动模式、行数、列数、图标大小和应用名称的显示。"
+            "value": "恢复自动模式、整体大小、行数、列数、图标大小和应用名称的显示。"
           }
         }
       }
@@ -2647,6 +2647,165 @@
           "stringUnit": {
             "state": "translated",
             "value": "行数"
+          }
+        }
+      }
+    },
+    "gridScale": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesamtgröße"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overall size"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamaño general"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taille générale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全体のサイズ"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamanho geral"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Общий размер"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "整体大小"
+          }
+        }
+      }
+    },
+    "gridScaleNote": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etwas kleiner oder größer als die zum Bildschirm passende Größe."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A little smaller or larger than the size that fits the screen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un poco más pequeño o más grande que el tamaño que se ajusta a la pantalla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un peu plus petit ou plus grand que la taille adaptée à l’écran."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面に合ったサイズより少し小さく、または大きくします。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um pouco menor ou maior que o tamanho que cabe na tela."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Чуть меньше или чуть больше размера, который подходит экрану."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "比适合屏幕的大小略小或略大。"
+          }
+        }
+      }
+    },
+    "gridScaleValue": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %%"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%%"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %%"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %%"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%%"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%%"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %%"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%%"
           }
         }
       }

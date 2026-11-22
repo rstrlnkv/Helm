@@ -49,7 +49,7 @@ final class TheGridSettingsTakeAnyNumberTheStoreHoldsTests: XCTestCase {
                     XCTAssertEqual(g.capacity, g.columns * g.rows)
                     XCTAssertTrue((3...10).contains(g.columns) && (2...8).contains(g.rows), "\(g.columns)x\(g.rows)")
                     XCTAssertTrue(g.cellWidth.isFinite && g.cellHeight.isFinite && g.icon.isFinite && g.pageHeight.isFinite)
-                    XCTAssertLessThanOrEqual(g.icon, CGFloat(settings.normalized().iconSize))
+                    XCTAssertLessThanOrEqual(g.icon, settings.automatic ? LaunchpadMetrics.automaticIconCeiling : CGFloat(settings.normalized().iconSize))
                     XCTAssertGreaterThanOrEqual(g.icon, LaunchpadMetrics.iconFloor)
                     XCTAssertLessThanOrEqual(CGFloat(g.columns) * g.cellWidth, g.size.width + 0.001)
                 }

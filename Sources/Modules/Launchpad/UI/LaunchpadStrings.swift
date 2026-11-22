@@ -36,6 +36,10 @@ enum LpStr {
     static var gridColumns: String { L(.gridColumns) }
     static var gridIconSize: String { L(.gridIconSize) }
     static var gridFitNote: String { L(.gridFitNote) }
+    /// Automatic's multiplier: its title, its note, and its value as a percentage ("100%"), a string so a language's own digits are not this key's business.
+    static var gridScale: String { L(.gridScale) }
+    static var gridScaleNote: String { L(.gridScaleNote) }
+    static func gridScaleValue(_ percent: Int) -> String { L(.gridScaleValue("\(percent)"), remembered: false) }
     /// "80 pt": the number is a string, so a language's own digits are not this key's business.
     static func gridIconSizeValue(_ points: Int) -> String { L(.gridIconSizeValue("\(points)"), remembered: false) }
     static var gridReset: String { L(.gridReset) }

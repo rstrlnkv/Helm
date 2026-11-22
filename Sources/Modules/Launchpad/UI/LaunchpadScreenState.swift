@@ -599,8 +599,8 @@ struct LaunchpadLiftView: Equatable {
         let (on, item) = (address / geometry.capacity, address % geometry.capacity)
         guard case .folder(_, _, let apps, true)? = entry(at: address), on == page, slots.indices.contains(on), slots[on].indices.contains(item) else { return nil }
         let block = geometry.frame(of: slots[on][item]).offsetBy(dx: 0, dy: geometry.gridTop)
-        let index = categoriesShown ? LaunchpadHit.categoryIcon(at: point, block: block, mark: geometry.largeMark, apps: apps.count)
-            : LaunchpadHit.icon(at: point, block: block, mark: geometry.largeMark, apps: apps.count)
+        let index = categoriesShown ? LaunchpadHit.categoryIcon(at: point, block: block, mark: geometry.largeMark, iconTop: geometry.iconTop, apps: apps.count)
+            : LaunchpadHit.icon(at: point, block: block, mark: geometry.largeMark, iconTop: geometry.iconTop, apps: apps.count)
         return index.map { apps[$0] }
     }
 

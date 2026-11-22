@@ -38,15 +38,15 @@ final class ALargeFolderIsCoreAllOverAndASmallTileKeepsItsMarginsTests: XCTestCa
 
     func testASmallTilesCoreAndMarginAreUnchanged() {
         let w = g.cellWidth
-        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 0, dx: w / 2, dy: LaunchpadMetrics.iconTop + g.icon / 2), in: surface), .tile(address: 0, core: true))
-        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 0, dx: w / 2 + w * 0.29, dy: LaunchpadMetrics.iconTop + 2), in: surface), .tile(address: 0, core: true))
-        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 0, dx: w / 2 + w * 0.32, dy: LaunchpadMetrics.iconTop + 2), in: surface), .tile(address: 0, core: false))
-        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 0, dx: w / 2 - w * 0.32, dy: LaunchpadMetrics.iconTop + 2), in: surface), .tile(address: 0, core: false))
-        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 0, dx: w / 2, dy: LaunchpadMetrics.iconTop - 2), in: surface), .tile(address: 0, core: false))
-        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 0, dx: w / 2, dy: LaunchpadMetrics.iconTop + g.icon + 2), in: surface), .tile(address: 0, core: false))
+        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 0, dx: w / 2, dy: g.iconTop + g.icon / 2), in: surface), .tile(address: 0, core: true))
+        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 0, dx: w / 2 + w * 0.29, dy: g.iconTop + 2), in: surface), .tile(address: 0, core: true))
+        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 0, dx: w / 2 + w * 0.32, dy: g.iconTop + 2), in: surface), .tile(address: 0, core: false))
+        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 0, dx: w / 2 - w * 0.32, dy: g.iconTop + 2), in: surface), .tile(address: 0, core: false))
+        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 0, dx: w / 2, dy: g.iconTop - 2), in: surface), .tile(address: 0, core: false))
+        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 0, dx: w / 2, dy: g.iconTop + g.icon + 2), in: surface), .tile(address: 0, core: false))
         // The tile that stands after the block is item 2 and the one under the block's left is item 3.
-        XCTAssertEqual(LaunchpadHit.at(point(column: 3, row: 0, dx: w / 2, dy: LaunchpadMetrics.iconTop + 2), in: surface), .tile(address: 2, core: true))
-        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 1, dx: w / 2, dy: LaunchpadMetrics.iconTop + 2), in: surface), .tile(address: 3, core: true))
+        XCTAssertEqual(LaunchpadHit.at(point(column: 3, row: 0, dx: w / 2, dy: g.iconTop + 2), in: surface), .tile(address: 2, core: true))
+        XCTAssertEqual(LaunchpadHit.at(point(column: 0, row: 1, dx: w / 2, dy: g.iconTop + 2), in: surface), .tile(address: 3, core: true))
     }
 
     func testACellNoTileCoversIsTheGapAtTheEndOfThePage() {
