@@ -32,7 +32,7 @@ final class ANameIsAGuessNotAnOwnershipQuestionTests: XCTestCase {
     }
 
     private let player = InstalledApp(name: "Player", bundleID: "com.acme.player",
-                                      path: "/Applications/Player.app", sizeBytes: 0)
+                                      path: "/Applications/Player.app")
 
     /// One folder named after the app, one named after its id — the two kinds of
     /// candidate, with the same app behind them.

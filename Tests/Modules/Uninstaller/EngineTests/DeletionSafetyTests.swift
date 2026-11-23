@@ -100,7 +100,7 @@ final class DeletionSafetyTests: XCTestCase {
     func testUntickedLeftoversStay() {
         let group = UninstallGroup(
             app: InstalledApp(name: "Acme", bundleID: "com.acme",
-                              path: "/Applications/Acme.app", sizeBytes: 1),
+                              path: "/Applications/Acme.app"),
             leftovers: [Leftover(path: "/keep/me", kind: .caches, sizeBytes: 9,
                                  matchedByName: false)],
             running: false)

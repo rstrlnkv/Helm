@@ -103,7 +103,7 @@ final class NestedSiblingTests: XCTestCase {
                                     entries: ["\(lib)/Containers/com.adobe.acrobat": 1,
                                               theirs: 1])
         let app = InstalledApp(name: "Acrobat", bundleID: "com.adobe.acrobat",
-                               path: "/Applications/Acrobat.app", sizeBytes: 0)
+                               path: "/Applications/Acrobat.app")
         let group = UninstallGroup(app: app, leftovers: result.leftovers, running: false)
 
         XCTAssertFalse(UninstallPlan.defaultSelection([group]).contains(theirs),

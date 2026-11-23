@@ -21,7 +21,7 @@ import XCTest
 final class TheReviewIsNotTheLastWordTests: XCTestCase {
 
     private let tool = InstalledApp(name: "Vendor Player", bundleID: "com.vendor.player",
-                                    path: "/Applications/Vendor Player.app", sizeBytes: 1_240_000)
+                                    path: "/Applications/Vendor Player.app")
 
     /// A review of one app that the scan saw running.
     private func reviewed(_ work: AnsweringWork) async -> UninstallerViewModel {

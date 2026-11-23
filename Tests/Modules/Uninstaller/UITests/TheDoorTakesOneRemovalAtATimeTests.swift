@@ -18,7 +18,7 @@ final class TheDoorTakesOneRemovalAtATimeTests: XCTestCase {
 
     func testARemovedAppMarksTheListStaleAndAFailedOneDoesNot() async {
         let work = AnsweringWork(apps: [InstalledApp(name: "Player", bundleID: candidate.bundleID,
-                                                     path: candidate.path, sizeBytes: 0)])
+                                                     path: candidate.path)])
         let model = modelOver(work)
         await model.loadAppsIfNeeded()
         work.appReport = AppRemovalReport(.refused, failed: [.noPermission])

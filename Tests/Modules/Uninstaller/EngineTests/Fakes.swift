@@ -51,7 +51,7 @@ struct FakeApps: AppLister {
     /// LaunchServices knows about it.
     static func installed(_ ids: Set<String>, nested: Set<String> = []) -> FakeApps {
         FakeApps(known: ids.union(nested), apps: ids.map {
-            InstalledApp(name: $0, bundleID: $0, path: "/Applications/\($0).app", sizeBytes: 0)
+            InstalledApp(name: $0, bundleID: $0, path: "/Applications/\($0).app")
         })
     }
 }

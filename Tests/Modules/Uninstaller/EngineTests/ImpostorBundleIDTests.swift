@@ -9,7 +9,7 @@ private struct Declarers: AppLister {
     var nested: [String] = []
 
     func installedApps() -> [InstalledApp] {
-        listed.map { InstalledApp(name: "App", bundleID: id, path: $0, sizeBytes: 0) }
+        listed.map { InstalledApp(name: "App", bundleID: id, path: $0) }
     }
     func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
     func installedBundleIDs() -> Set<String> { [id] }
@@ -88,7 +88,7 @@ final class ImpostorBundleIDTests: XCTestCase {
                                               "/Applications/Adobe Acrobat.app"])
         let result = try await scan(apps, entries: theirData)
         let app = InstalledApp(name: "Sketchy", bundleID: id,
-                               path: "/Applications/Sketchy.app", sizeBytes: 0)
+                               path: "/Applications/Sketchy.app")
         let group = UninstallGroup(app: app, leftovers: result.leftovers, running: false)
         XCTAssertEqual(UninstallPlan.defaultSelection([group]), [])
     }

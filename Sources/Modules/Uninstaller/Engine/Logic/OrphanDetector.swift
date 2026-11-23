@@ -12,17 +12,12 @@ enum OrphanDetector {
     /// A name qualifies if it has at least two dots (reverse-DNS shape) and no spaces.
     static func looksLikeBundleID(_ name: String) -> Bool {
         guard !name.contains(" ") else { return false }
-        let base = stripKnownSuffix(name)
-        return base.split(separator: ".").count >= 3
+        return bundleID(from: name).split(separator: ".").count >= 3
     }
 
     /// Strips the file suffixes macOS appends to per-app support files, so
     /// `com.acme.tool.plist` and `com.acme.tool.savedState` map to the bundle id.
     static func bundleID(from name: String) -> String {
-        stripKnownSuffix(name)
-    }
-
-    private static func stripKnownSuffix(_ name: String) -> String {
         for suffix in [".plist", ".savedState", ".binarycookies"] where name.hasSuffix(suffix) {
             return String(name.dropLast(suffix.count))
         }

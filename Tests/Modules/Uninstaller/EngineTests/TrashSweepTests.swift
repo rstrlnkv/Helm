@@ -29,7 +29,7 @@ final class TrashSweepTests: XCTestCase {
     }
 
     private func installed(_ id: String, at path: String) -> InstalledApp {
-        InstalledApp(name: "Whatever", bundleID: id, path: path, sizeBytes: 0)
+        InstalledApp(name: "Whatever", bundleID: id, path: path)
     }
 
     // MARK: - What is offered
