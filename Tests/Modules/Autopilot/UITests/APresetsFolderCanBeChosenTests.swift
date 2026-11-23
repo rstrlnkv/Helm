@@ -70,7 +70,8 @@ final class APresetsFolderCanBeChosenTests: XCTestCase {
         let model = model(on: work)
         await model.load()
         let offer = try offer(model, .screenshots)
-        XCTAssertTrue(offer.folderIsNew, "precondition: the preset began in a folder not yet watched")
+        XCTAssertFalse(model.folders.contains { $0.id == offer.folder.id },
+                       "precondition: the preset began in a folder not yet watched")
 
         let next = try XCTUnwrap(pointed(offer.draft, at: home + "/Downloads", from: offer, on: model))
 

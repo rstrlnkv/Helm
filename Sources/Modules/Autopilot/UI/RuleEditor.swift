@@ -61,7 +61,7 @@ struct RuleEditor: View {
 
     private var header: some View {
         HStack(spacing: HelmSpace.s5) {
-            HelmIconPlate(symbol: "location.north.circle",
+            HelmIconPlate(symbol: AutopilotDescriptor.symbol,
                           tint: AutopilotDescriptor.tint.colour, size: AutopilotLayout.editorPlate)
             TextField(ApStr.ruleName, text: $rule.name)
                 .textFieldStyle(.plain)

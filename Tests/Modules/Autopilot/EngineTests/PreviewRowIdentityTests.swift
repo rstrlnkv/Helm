@@ -46,7 +46,7 @@ final class PreviewRowIdentityTests: XCTestCase {
         let plans = engine.preview(folder)
         XCTAssertEqual(plans.count, 2, "both files match the rule and both will be acted on")
 
-        let rows = plans.map(PreviewRow.init)
+        let rows = plans.map { PreviewRow($0, counters: CounterBook()) }
         XCTAssertEqual(Set(rows.map(\.id)).count, rows.count,
                        "two rows, one identity — the list the person approves shows "
                        + "\(Set(rows.map(\.id)).count) of the \(rows.count) files the "
@@ -64,8 +64,8 @@ final class PreviewRowIdentityTests: XCTestCase {
                      rule: Rule(id: "r", name: "PDFs", enabled: true,
                                 conditions: [.fileExtension(["pdf"])], action: .trash))
         }
-        let one = PreviewRow(plan("/Users/r/Downloads/Invoices/report.pdf"))
-        let other = PreviewRow(plan("/Users/r/Downloads/Receipts/report.pdf"))
+        let one = PreviewRow(plan("/Users/r/Downloads/Invoices/report.pdf"), counters: CounterBook())
+        let other = PreviewRow(plan("/Users/r/Downloads/Receipts/report.pdf"), counters: CounterBook())
 
         XCTAssertNotEqual(one.id, other.id,
                           "one of these two files is about to be trashed without ever "

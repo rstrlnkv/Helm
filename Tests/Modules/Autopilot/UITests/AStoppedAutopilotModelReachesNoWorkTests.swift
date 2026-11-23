@@ -78,7 +78,8 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
             preview: [PreviewRow(RulePlan(facts: FileFacts(name: "a.pdf", path: home + "/Downloads/a.pdf",
                                                            kind: .document, bytes: 1,
                                                            added: Date(), modified: Date()),
-                                          rule: rule()))],
+                                          rule: rule()),
+                                       counters: CounterBook())],
             report: SweepReport(folderID: "f", examined: 2, acted: 2, refused: 0, failed: 0))
         let rvm = model(on: work)
         await rvm.appear()

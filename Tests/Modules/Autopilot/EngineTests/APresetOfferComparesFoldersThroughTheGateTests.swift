@@ -44,15 +44,13 @@ final class APresetOfferComparesFoldersThroughTheGateTests: XCTestCase {
     /// below are about the spelling and not about a lookup that finds nothing.
     func testTheSameSpellingIsTheWatchedFolder() throws {
         let offer = try downloads(watching: home.appendingPathComponent("Downloads").path)
-        XCTAssertFalse(offer.folderIsNew)
         XCTAssertEqual(offer.folder.id, "mine")
     }
 
     func testALinkToTheFolderIsTheWatchedFolder() throws {
         let offer = try downloads(watching: home.appendingPathComponent("DL").path)
 
-        XCTAssertFalse(offer.folderIsNew, "a link to a watched folder was offered as a new one")
-        XCTAssertEqual(offer.folder.id, "mine")
+        XCTAssertEqual(offer.folder.id, "mine", "a link to a watched folder was offered as a new one")
     }
 
     func testThePrivateSpellingIsTheWatchedFolder() throws {
@@ -62,17 +60,17 @@ final class APresetOfferComparesFoldersThroughTheGateTests: XCTestCase {
 
         let offer = try downloads(watching: spelled)
 
-        XCTAssertFalse(offer.folderIsNew, "the /private spelling was offered as a new folder")
-        XCTAssertEqual(offer.folder.id, "mine")
+        XCTAssertEqual(offer.folder.id, "mine", "the /private spelling was offered as a new folder")
     }
 
     /// And a different folder is still a different folder: a comparison that
     /// called everything the same would pass all of the above.
     func testAnotherFolderIsStillNew() throws {
+        let stored = [watched(home.appendingPathComponent("Desktop").path)]
         let all = PresetOffer.offered(
-            watching: [watched(home.appendingPathComponent("Desktop").path)],
+            watching: stored,
             paths: FakePresetFolders(home: home.path), home: home.path)
         let downloads = try XCTUnwrap(all.first { $0.preset.kind == .downloadsByKind })
-        XCTAssertTrue(downloads.folderIsNew)
+        XCTAssertFalse(stored.contains { $0.id == downloads.folder.id })
     }
 }

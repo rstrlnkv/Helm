@@ -33,10 +33,6 @@ public struct PreviewRow: Equatable, Identifiable, Sendable {
     /// same reason the sweep would log.
     public let refusal: RuleOutcome.Refusal?
 
-    init(_ plan: RulePlan) {
-        self.init(plan, counters: CounterBook())
-    }
-
     /// One book for the rows of one dry run, in the order the sweep walks them.
     init(_ plan: RulePlan, counters: CounterBook) {
         path = plan.facts.path

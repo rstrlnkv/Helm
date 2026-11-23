@@ -449,16 +449,12 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 acted += 1
             case .alreadyDone:
                 break
-            case let .refused(reason):
+            case .refused, .targetOutOfScope:
                 refused += 1
-                HelmLog.shared.warn(Self.moduleID, Self.refusalLine(reason, plan: plan, path: path))
-            case .targetOutOfScope:
-                refused += 1
-                HelmLog.shared.warn(Self.moduleID,
-                                    "refused \(Redact.path(path)): \(RuleOutcome.Refusal.outOfScope.rawValue)")
-            case let .failed(description):
+                warnUnlessDone(outcome, plan: plan, at: path)
+            case .failed:
                 failed += 1
-                HelmLog.shared.warn(Self.moduleID, "failed \(Redact.path(path)): \(description)")
+                warnUnlessDone(outcome, plan: plan, at: path)
             }
         }
         remember(records)
@@ -623,18 +619,27 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.info(Self.moduleID, "trashed \(Redact.path(path))")
         case .alreadyDone:
             return false
-        case let .refused(reason):
-            HelmLog.shared.warn(Self.moduleID, Self.refusalLine(reason, plan: plan, path: path))
-            return false
-        case .targetOutOfScope:
-            HelmLog.shared.warn(Self.moduleID,
-                                "refused \(Redact.path(path)): \(RuleOutcome.Refusal.outOfScope.rawValue)")
-            return false
-        case let .failed(description):
-            HelmLog.shared.warn(Self.moduleID, "failed \(Redact.path(path)): \(description)")
+        case .refused, .targetOutOfScope, .failed:
+            warnUnlessDone(outcome, plan: plan, at: path)
             return false
         }
         return true
+    }
+
+    /// The log's warning for the three outcomes that did not happen, which the
+    /// sweep and the unattended path word the same.
+    private func warnUnlessDone(_ outcome: RuleOutcome, plan: RulePlan, at path: String) {
+        switch outcome {
+        case let .refused(reason):
+            HelmLog.shared.warn(Self.moduleID, Self.refusalLine(reason, plan: plan, path: path))
+        case .targetOutOfScope:
+            HelmLog.shared.warn(Self.moduleID,
+                                "refused \(Redact.path(path)): \(RuleOutcome.Refusal.outOfScope.rawValue)")
+        case let .failed(description):
+            HelmLog.shared.warn(Self.moduleID, "failed \(Redact.path(path)): \(description)")
+        case .moved, .renamed, .tagged, .trashed, .alreadyDone:
+            break
+        }
     }
 
     /// What a changed path has coming to it, or nothing.
