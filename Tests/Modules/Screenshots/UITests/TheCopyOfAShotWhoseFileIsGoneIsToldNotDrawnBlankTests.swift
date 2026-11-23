@@ -18,10 +18,6 @@ import Module_Screenshots_Engine
 @MainActor
 final class TheCopyOfAShotWhoseFileIsGoneIsToldNotDrawnBlankTests: XCTestCase {
 
-    private func refusalBody(_ s: PileScene) -> String? {
-        if case .refusal(_, let body, _)? = s.toast.model.refusal { body } else { nil }
-    }
-
     /// The full picture is what the single Copy asks for: for a gone file it is none, not a blank one,
     /// and the single Copy says the sentence.
     func testTheFullPictureOfAGoneFileIsNilAndTheCopyOfItSaysTheFileIsGone() async throws {
@@ -32,7 +28,7 @@ final class TheCopyOfAShotWhoseFileIsGoneIsToldNotDrawnBlankTests: XCTestCase {
         XCTAssertNil(s.toast.fullPicture())
         s.toast.model.copy()
         await waitUntil("the person was told") { s.toast.model.refusal != nil }
-        XCTAssertEqual(refusalBody(s), ScStr.refusal(.fileGone))
+        XCTAssertEqual(s.refusalBody, ScStr.refusal(.fileGone))
         XCTAssertEqual(s.board.singles, singles, "a gone file was copied")
     }
 }

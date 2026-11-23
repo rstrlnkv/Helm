@@ -66,11 +66,10 @@ final class TheShutterHonoursBothSwitchesTests: XCTestCase {
 
     /// Records how many files existed when it was asked to sound.
     private final class Probe: ShutterPlaying, @unchecked Sendable {
-        private let lock = NSLock()
         private let writer: FakeWriter
-        private var seen: [Int] = []
+        private let seen = Locked<[Int]>([])
         init(_ writer: FakeWriter) { self.writer = writer }
-        var written: [Int] { lock.withLock { seen } }
-        func play() { let count = writer.written.count; lock.withLock { seen.append(count) } }
+        var written: [Int] { seen.value }
+        func play() { let count = writer.written.count; seen.withLock { $0.append(count) } }
     }
 }

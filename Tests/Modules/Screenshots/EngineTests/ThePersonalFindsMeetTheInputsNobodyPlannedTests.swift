@@ -11,10 +11,6 @@ final class ThePersonalFindsMeetTheInputsNobodyPlannedTests: XCTestCase {
     private let source = RecognizedBoxes.Source(pixels: CGRect(x: 0, y: 0, width: 400, height: 200), scale: 2)
     private let bounds = CGRect(x: 0, y: 0, width: 200, height: 100)
 
-    private func reading(_ matches: [PrivateMatch], line string: String = "line") -> [RecognizedLine] {
-        [RecognizedLine(string: string, box: CGRect(x: 0, y: 0, width: 1, height: 1), matches: matches)]
-    }
-
     private func found(_ text: String) -> [String] {
         CardNumbers.ranges(in: text).map { String(text[$0]) }
     }

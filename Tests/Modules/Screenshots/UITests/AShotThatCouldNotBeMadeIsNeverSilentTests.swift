@@ -18,8 +18,6 @@ import XCTest
 @MainActor
 final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
 
-    @MainActor private final class Opened { var overlays: [CaptureOverlay] = [] }
-
     private struct Scene {
         let controller: CaptureController
         let toast: ShotToast

@@ -15,26 +15,10 @@ import Module_Screenshots_Engine
 @MainActor
 final class TheStoppedModelMeetsTheOrdersNobodyPlannedTests: XCTestCase {
 
-    private func makeScene() throws -> (FakeScreenshotsScene, PromptGate) {
-        let gate = PromptGate()
-        let screen = FakeScreen(outcome: try FakeScreen.frozen(real: true), gate: gate)
-        return (FakeScreenshotsScene(screen: screen, buildOverlay: true), gate)
-    }
-
-    private func openOverlay(_ scene: FakeScreenshotsScene, _ gate: PromptGate) async throws -> CaptureOverlay {
-        scene.model.press(.area)
-        await gate.reached()
-        await gate.open()
-        await waitUntil("the overlay reached the seam") { scene.overlay != nil }
-        let overlay = try XCTUnwrap(scene.overlay)
-        XCTAssertTrue(overlay.isOpen, "the control: the overlay is up before the switch")
-        return overlay
-    }
-
     /// A second `stop` after a stop that found a capture open closes nothing twice and builds nothing.
     func testAStopTwiceWithACaptureOpenIsOneStop() async throws {
-        let (scene, gate) = try makeScene()
-        let overlay = try await openOverlay(scene, gate)
+        let (scene, gate) = try FakeScreenshotsScene.withGate(buildOverlay: true)
+        let overlay = try await scene.openOverlay(gate, in: self)
         scene.model.stop()
         XCTAssertFalse(overlay.isOpen, "the first stop left the overlay up")
         scene.model.stop()
@@ -45,8 +29,8 @@ final class TheStoppedModelMeetsTheOrdersNobodyPlannedTests: XCTestCase {
 
     /// A press at a model that was stopped with a capture open reaches nothing: the controller it had is not pressed.
     func testAPressAfterAStopThatFoundACaptureOpenReachesNothing() async throws {
-        let (scene, gate) = try makeScene()
-        _ = try await openOverlay(scene, gate)
+        let (scene, gate) = try FakeScreenshotsScene.withGate(buildOverlay: true)
+        _ = try await scene.openOverlay(gate, in: self)
         scene.model.stop()
         let freezes = scene.work.screen.freezes
         for hotkey in ScreenshotsHotkey.allCases { scene.model.press(hotkey) }
@@ -61,10 +45,10 @@ final class TheStoppedModelMeetsTheOrdersNobodyPlannedTests: XCTestCase {
     /// Two models at once, an order the host never builds: stopping one closes its own windows and not the
     /// other's, and the other captures on its own session.
     func testAFreshModelBesideAStoppedOneKeepsItsOwnCapture() async throws {
-        let (old, oldGate) = try makeScene()
-        let oldOverlay = try await openOverlay(old, oldGate)
-        let (fresh, freshGate) = try makeScene()
-        let freshOverlay = try await openOverlay(fresh, freshGate)
+        let (old, oldGate) = try FakeScreenshotsScene.withGate(buildOverlay: true)
+        let oldOverlay = try await old.openOverlay(oldGate, in: self)
+        let (fresh, freshGate) = try FakeScreenshotsScene.withGate(buildOverlay: true)
+        let freshOverlay = try await fresh.openOverlay(freshGate, in: self)
         XCTAssertFalse(old.controller === fresh.controller, "the two models share a controller")
 
         old.model.stop()

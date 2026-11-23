@@ -51,18 +51,17 @@ final class TheSaveTargetIsOneSettingTests: XCTestCase {
 
     /// The first request is made once and recorded under the deployed key; a store that holds the key asks nothing.
     func testTheAccessRequestIsMadeOnceAndRecordedUnderTheDeployedKey() {
-        final class Count: @unchecked Sendable { var n = 0 }
-        let count = Count()
+        let count = LockedCount()
         let fresh = screenshotsStore([:])
-        let capture = SCKCapture(store: fresh, request: { count.n += 1 })
+        let capture = SCKCapture(store: fresh, request: { count.bump() })
         capture.requestAccess()
         capture.requestAccess()
-        XCTAssertEqual(count.n, 1)
+        XCTAssertEqual(count.value, 1)
         XCTAssertEqual(fresh.bool("screenRecordingAsked", default: false), true)
 
-        let asked = SCKCapture(store: screenshotsStore(["screenRecordingAsked": true]), request: { count.n += 1 })
+        let asked = SCKCapture(store: screenshotsStore(["screenRecordingAsked": true]), request: { count.bump() })
         asked.requestAccess()
-        XCTAssertEqual(count.n, 1, "a store from before that holds the key was asked again")
+        XCTAssertEqual(count.value, 1, "a store from before that holds the key was asked again")
     }
 
     /// The engine's own preferences reach the session it hands over: the macOS save folder is read through them.

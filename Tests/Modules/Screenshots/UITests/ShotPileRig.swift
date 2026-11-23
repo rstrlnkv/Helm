@@ -94,7 +94,7 @@ final class PileFrames: ScreenCapturing, @unchecked Sendable {
 }
 
 /// A controller as the running app builds it, over real files in a scratch folder, a toast with no window whose clock
-/// never steps by itself, a Trash that is a folder, and an overlay that is built and never ordered in: the group's
+/// never steps by itself (a test that passes its own clock steps it), a Trash that is a folder, and an overlay that is built and never ordered in: the group's
 /// controls are pressed through the model, as the views press them.
 @MainActor
 final class PileScene {
@@ -105,12 +105,18 @@ final class PileScene {
     let capture: PileFrames
     let desktop: URL
     let frames: [FrozenDisplay]
-    private final class Box { var overlay: CaptureOverlay?; var count = 0 }
-    private let box = Box()
+    final class Box { var overlay: CaptureOverlay?; var count = 0 }
+    let box = Box()
+    let store: NamespacedStore
     var editors: Int { box.count }
     var overlay: CaptureOverlay? { box.overlay }
 
-    init(_ test: XCTestCase, name: String) throws {
+    /// The defaulted ports are the rig's own fixed ones, named here: `PileBoard` (`board`), `NoShutter` and the toast's
+    /// never-ticking clock. A test that needs another passes it: `pasteboard` stands in for `board` where a test counts its
+    /// own kind of write (then `board` stays unused), `shutter` replaces the silent one, `clock` gives the toast a clock
+    /// the test steps.
+    init(_ test: XCTestCase, name: String, target: SaveTarget = .desktop, thumbnail: Bool = true,
+         pasteboard: (any ShotPasteboard)? = nil, shutter: any ShutterPlaying = NoShutter(), clock: StepClock? = nil) throws {
         let frames = try OverlayRig.frames(ground: CGColor(red: 1, green: 0, blue: 0, alpha: 1))
         self.frames = frames
         let home = test.scratchDirectory(name)
@@ -121,13 +127,14 @@ final class PileScene {
         trash = AsideTrash(aside)
         capture = PileFrames(Freeze(displays: frames.map { .image($0) }, windows: []))
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
-        store.set(true, for: ScreenshotsSettings.Key.thumbnail)
-        store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
-        let session = CaptureSession(capture: capture, writer: FileShotWriter(), trash: trash, pasteboard: board,
-                                     preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
+        self.store = store
+        store.set(thumbnail, for: ScreenshotsSettings.Key.thumbnail)
+        store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
+        let session = CaptureSession(capture: capture, writer: FileShotWriter(), trash: trash, pasteboard: pasteboard ?? board,
+                                     preferences: NoPreferences(), shutter: shutter, textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))
-        toast = ShotToast(tick: { _ in try await Task.sleep(for: .seconds(1_000_000)) }, windowed: false)
+        toast = clock.map(ShotToastRig.toast) ?? ShotToast(tick: { _ in try await Task.sleep(for: .seconds(1_000_000)) }, windowed: false)
         let box = box
         controller = CaptureController(store: store, session: session,
                                        presentOverlay: { overlay in box.count += 1; box.overlay = overlay; return overlay.build() },
@@ -156,6 +163,20 @@ final class PileScene {
         return shot
     }
 
+    /// The text of the refusal the toast is telling, nil where it tells none.
+    var refusalBody: String? {
+        if case .refusal(_, let body, _)? = toast.model.refusal { body } else { nil }
+    }
+
+    /// The width in pixels of a picture written to the board.
+    static func width(of png: Data) throws -> Int {
+        let source = try XCTUnwrap(CGImageSourceCreateWithData(png as CFData, nil), "a write that is no picture")
+        return try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil)).width
+    }
+
+    /// The names in a folder, flat and sorted.
+    static func names(_ folder: URL) -> [String] { ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).sorted() }
+
     func press(_ shot: ShotToastModel.Shot) {
         toast.model.focus = shot.id
         toast.model.edit()
@@ -164,9 +185,7 @@ final class PileScene {
     func draw(_ overlay: CaptureOverlay) {
         let display = display(of: overlay)
         overlay.perform(.tool(.rectangle))
-        overlay.mouseDown(on: display, at: CGPoint(x: 300, y: 300), flags: [])
-        overlay.mouseDragged(on: display, at: CGPoint(x: 500, y: 450), flags: [])
-        overlay.mouseUp(on: display)
+        OverlayRig.drag(overlay, on: display, from: CGPoint(x: 300, y: 300), to: CGPoint(x: 500, y: 450))
     }
 }
 

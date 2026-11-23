@@ -170,9 +170,7 @@ final class ARecognitionForAnAreaThatChangedIsDroppedTests: RecognitionRig {
         await waitUntil("the reader was asked") { reader.calls == 1 }
         overlay.perform(.crop)
         let handle = try XCTUnwrap(view.drawnAreaHandles[AreaHandle.allCases.firstIndex(of: .right)!])
-        overlay.mouseDown(on: display, at: handle, flags: [])
-        overlay.mouseDragged(on: display, at: CGPoint(x: handle.x - 100, y: handle.y), flags: [])
-        overlay.mouseUp(on: display)
+        OverlayRig.drag(overlay, on: display, from: handle, to: CGPoint(x: handle.x - 100, y: handle.y))
         overlay.perform(.exit(.confirm))
         XCTAssertEqual(overlay.editedArea, CGRect(x: 100, y: 100, width: 300, height: 300), "the subject: the crop was taken")
         reader.answer(0, reading)
@@ -207,9 +205,7 @@ final class ARecognitionForAnAreaThatChangedIsDroppedTests: RecognitionRig {
         let (overlay, display, view) = try build()
         overlay.perform(.crop)
         let handle = try XCTUnwrap(view.drawnAreaHandles[AreaHandle.allCases.firstIndex(of: .right)!])
-        overlay.mouseDown(on: display, at: handle, flags: [])
-        overlay.mouseDragged(on: display, at: CGPoint(x: handle.x - 100, y: handle.y), flags: [])
-        overlay.mouseUp(on: display)
+        OverlayRig.drag(overlay, on: display, from: handle, to: CGPoint(x: handle.x - 100, y: handle.y))
         XCTAssertTrue(overlay.isCropping, "the control: the crop is still pending")
         overlay.perform(.copyText)
         await waitUntil("the reader was asked") { reader.calls == 1 }

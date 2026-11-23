@@ -10,10 +10,6 @@ import XCTest
 /// Mutant, red here: the lines are reversed.
 final class CopiedTextKeepsTheReadingOrderTests: XCTestCase {
 
-    private func line(_ string: String, y: CGFloat = 0.5, x: CGFloat = 0.1) -> RecognizedLine {
-        RecognizedLine(string: string, box: CGRect(x: x, y: y, width: 0.3, height: 0.05))
-    }
-
     // MARK: Through the session
 
     private func makeRig() -> Rig { Rig(home: scratchDirectory("shots-text")) }

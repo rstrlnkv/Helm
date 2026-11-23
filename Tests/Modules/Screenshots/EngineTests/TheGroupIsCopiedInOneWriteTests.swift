@@ -15,11 +15,6 @@ private func png(width: Int, height: Int = 6) throws -> Data {
     return data as Data
 }
 
-private func width(of png: Data) throws -> Int {
-    let source = try XCTUnwrap(CGImageSourceCreateWithData(png as CFData, nil), "a write that is no picture")
-    return try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil)).width
-}
-
 private func file(_ folder: URL, width: Int) throws -> URL {
     let url = folder.appendingPathComponent("shot-\(width).png")
     try png(width: width).write(to: url)

@@ -16,12 +16,11 @@ final class ACancelledDeliveryReachesNeitherTheBoardNorTheDiskTests: XCTestCase 
     /// A clipboard that takes the picture and then cancels the task that is
     /// delivering it: the cancellation lands after the copy and before the file.
     private final class CancellingBoard: ShotPasteboard, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var copies: Int { lock.withLock { count } }
+        private let count = LockedCount()
+        var copies: Int { count.value }
         func copy(pngs: [Data]) -> PasteOutcome { XCTFail("this test's board was never taught a group"); return .refused }
         func copy(png: Data) -> PasteOutcome {
-            lock.withLock { count += 1 }
+            count.bump()
             withUnsafeCurrentTask { $0?.cancel() }
             return .accepted
         }

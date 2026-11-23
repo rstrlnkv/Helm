@@ -13,9 +13,6 @@ final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
     private typealias Key = ScreenshotsSettings.Key
 
     private func backing() -> InMemoryKeyValueStore { InMemoryKeyValueStore() }
-    private func store(_ backing: InMemoryKeyValueStore) -> NamespacedStore {
-        NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: backing)
-    }
 
     // MARK: the table of points
 
@@ -50,12 +47,12 @@ final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
 
     func testEachToolKeepsItsOwnAndAFreshReadReturnsBoth() {
         let disk = backing()
-        EditorMemory.remember(style: AnnotationStyle(thickness: .thick, opacity: 0.5), for: .pen, in: store(disk))
+        EditorMemory.remember(style: AnnotationStyle(thickness: .thick, opacity: 0.5), for: .pen, in: screenshotsStore(backing: disk))
         // The marker was not touched: it is what a tool nobody picked for is, the middle step at full ink.
-        XCTAssertEqual(EditorMemory.read(store(disk)).style(for: .highlighter).thickness, .medium)
-        XCTAssertEqual(EditorMemory.read(store(disk)).style(for: .highlighter).opacity, 1)
-        EditorMemory.remember(style: AnnotationStyle(thickness: .thin, opacity: 0.3), for: .highlighter, in: store(disk))
-        let fresh = EditorMemory.read(store(disk))
+        XCTAssertEqual(EditorMemory.read(screenshotsStore(backing: disk)).style(for: .highlighter).thickness, .medium)
+        XCTAssertEqual(EditorMemory.read(screenshotsStore(backing: disk)).style(for: .highlighter).opacity, 1)
+        EditorMemory.remember(style: AnnotationStyle(thickness: .thin, opacity: 0.3), for: .highlighter, in: screenshotsStore(backing: disk))
+        let fresh = EditorMemory.read(screenshotsStore(backing: disk))
         XCTAssertEqual(fresh.style(for: .pen).thickness, .thick, "the marker's pick overwrote the pen's step")
         XCTAssertEqual(fresh.style(for: .pen).opacity, 0.5, "the marker's pick overwrote the pen's opacity")
         XCTAssertEqual(fresh.style(for: .highlighter).thickness, .thin)
@@ -72,8 +69,8 @@ final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
                 for opacity in [0.1, 0.35, 1.0] {
                     let disk = backing()
                     let style = AnnotationStyle(color: AnnotationInk(AnnotationColor.blue), thickness: step, filled: true, opacity: opacity)
-                    EditorMemory.remember(style: style, for: tool, in: store(disk))
-                    XCTAssertEqual(EditorMemory.read(store(disk)).style(for: tool), style, "\(tool) \(step) \(opacity)")
+                    EditorMemory.remember(style: style, for: tool, in: screenshotsStore(backing: disk))
+                    XCTAssertEqual(EditorMemory.read(screenshotsStore(backing: disk)).style(for: tool), style, "\(tool) \(step) \(opacity)")
                 }
             }
         }
@@ -81,28 +78,28 @@ final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
 
     func testTheFillIsEveryToolsAndTheTablesAreWhatIsStored() {
         let disk = backing()
-        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.purple), thickness: .thick, filled: true, opacity: 0.5), for: .pen, in: store(disk))
-        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.purple), thickness: .thin, filled: true, opacity: 0.3), for: .highlighter, in: store(disk))
-        let fresh = EditorMemory.read(store(disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.purple), thickness: .thick, filled: true, opacity: 0.5), for: .pen, in: screenshotsStore(backing: disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.purple), thickness: .thin, filled: true, opacity: 0.3), for: .highlighter, in: screenshotsStore(backing: disk))
+        let fresh = EditorMemory.read(screenshotsStore(backing: disk))
         for tool in AnnotationTool.allCases {
             XCTAssertEqual(fresh.style(for: tool).color, tool == .pen || tool == .highlighter ? AnnotationInk(AnnotationColor.purple) : nil, "\(tool): the colour is its own")
             XCTAssertTrue(fresh.style(for: tool).filled, "\(tool): the fill is not shared")
         }
         // A pick on one tool moves that tool's colour only (`EachToolKeepsItsOwnColourTests`), and the other tools' steps stay.
-        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.green), thickness: .medium, filled: false, opacity: 1), for: .arrow, in: store(disk))
-        let after = EditorMemory.read(store(disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.green), thickness: .medium, filled: false, opacity: 1), for: .arrow, in: screenshotsStore(backing: disk))
+        let after = EditorMemory.read(screenshotsStore(backing: disk))
         XCTAssertEqual(after.style(for: .pen).color, AnnotationInk(AnnotationColor.purple))
         XCTAssertEqual(after.style(for: .arrow).color, AnnotationInk(AnnotationColor.green))
         XCTAssertEqual(after.style(for: .pen).thickness, .thick)
         XCTAssertEqual(after.style(for: .highlighter).opacity, 0.3)
-        XCTAssertEqual(store(disk).intTable("editorThicknessByTool"), ["pen": 2, "highlighter": 0, "arrow": 1])
-        XCTAssertEqual(store(disk).doubleTable("editorOpacityByTool"), ["pen": 0.5, "highlighter": 0.3, "arrow": 1])
+        XCTAssertEqual(screenshotsStore(backing: disk).intTable("editorThicknessByTool"), ["pen": 2, "highlighter": 0, "arrow": 1])
+        XCTAssertEqual(screenshotsStore(backing: disk).doubleTable("editorOpacityByTool"), ["pen": 0.5, "highlighter": 0.3, "arrow": 1])
         XCTAssertEqual(Key.editorThicknessByTool, "editorThicknessByTool")
         XCTAssertEqual(Key.editorOpacityByTool, "editorOpacityByTool")
     }
 
     func testTheOldSingleThicknessIsNeitherReadNorMigrated() {
-        let kept = store(backing())
+        let kept = screenshotsStore(backing: backing())
         kept.set(2, for: Key.editorThickness)
         let read = EditorMemory.read(kept)
         for tool in AnnotationTool.allCases {
@@ -117,9 +114,9 @@ final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
     func testAToolThatWasNeverPickedForReadsTheDefaultWhateverTheOthersHold() {
         let disk = backing()
         for tool in [AnnotationTool.pen, .pencil, .arrow] {
-            EditorMemory.remember(style: AnnotationStyle(thickness: .thick, opacity: 0.2), for: tool, in: store(disk))
+            EditorMemory.remember(style: AnnotationStyle(thickness: .thick, opacity: 0.2), for: tool, in: screenshotsStore(backing: disk))
         }
-        let read = EditorMemory.read(store(disk))
+        let read = EditorMemory.read(screenshotsStore(backing: disk))
         for tool in [AnnotationTool.highlighter, .line, .rectangle, .ellipse] {
             XCTAssertEqual(read.style(for: tool).thickness, .medium, "\(tool)")
             XCTAssertEqual(read.style(for: tool).opacity, 1, "\(tool)")

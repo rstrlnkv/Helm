@@ -11,16 +11,9 @@ import XCTest
 /// link is followed is the file system's answer.
 final class TheSaveFolderIsJudgedOnTheDiskAsItIsTests: XCTestCase {
 
-    private func fixture() -> (home: URL, desktop: URL) {
-        let home = scratchDirectory("shots-disk")
-        let desktop = home.appendingPathComponent("Desktop", isDirectory: true)
-        try? FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
-        return (home, desktop)
-    }
-
     /// An external disk the preference was set on, unplugged since.
     func testAVolumeThatIsNotMountedIsMissingAndTheDesktopTakesThePicture() {
-        let (home, desktop) = fixture()
+        let (home, desktop) = homeWithDesktop("shots-disk")
         let volume = "/Volumes/helm-not-mounted-\(UUID().uuidString)/Screenshots"
         XCTAssertFalse(FileManager.default.fileExists(atPath: volume), "the unmounted volume is there")
         XCTAssertEqual(SaveLocation.resolve(raw: volume, desktop: desktop, home: home),
@@ -30,7 +23,7 @@ final class TheSaveFolderIsJudgedOnTheDiskAsItIsTests: XCTestCase {
     /// A link to a folder is that folder: the picture lands in the target, and
     /// the link is not refused as "not a folder".
     func testALinkToAFolderIsTheFolder() async throws {
-        let (home, desktop) = fixture()
+        let (home, desktop) = homeWithDesktop("shots-disk")
         let target = scratchDirectory("shots-disk-target")
         let link = home.appendingPathComponent("Shots")
         try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: target.path)
@@ -46,7 +39,7 @@ final class TheSaveFolderIsJudgedOnTheDiskAsItIsTests: XCTestCase {
     }
 
     func testALinkToAFileIsNotAFolder() throws {
-        let (home, desktop) = fixture()
+        let (home, desktop) = homeWithDesktop("shots-disk")
         let file = home.appendingPathComponent("a-file.txt")
         try Data("x".utf8).write(to: file)
         let link = home.appendingPathComponent("Shots")
@@ -57,7 +50,7 @@ final class TheSaveFolderIsJudgedOnTheDiskAsItIsTests: XCTestCase {
 
     /// A link whose folder went — the disk it pointed into is the one unplugged.
     func testALinkToNothingIsMissing() throws {
-        let (home, desktop) = fixture()
+        let (home, desktop) = homeWithDesktop("shots-disk")
         let link = home.appendingPathComponent("Shots")
         try FileManager.default.createSymbolicLink(atPath: link.path,
                                                    withDestinationPath: "/Volumes/helm-not-mounted-\(UUID().uuidString)")

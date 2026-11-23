@@ -21,7 +21,6 @@ import XCTest
 final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
 
     private func bytes(_ url: URL) throws -> Data { try Data(contentsOf: url) }
-    private func names(_ folder: URL) -> [String] { ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).sorted() }
     private func files(_ s: PileScene) -> [URL?] { s.toast.model.shots.map(\.file) }
 
     private func finish(_ s: PileScene, _ exit: EditorExit = .confirm) async throws {
@@ -56,7 +55,7 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
         let shots = try await three(s)
         let (first, middle, last) = (try XCTUnwrap(shots[0].file), try XCTUnwrap(shots[1].file), try XCTUnwrap(shots[2].file))
         let before = (try bytes(first), try bytes(middle), try bytes(last))
-        let folder = names(s.desktop)
+        let folder = PileScene.names(s.desktop)
         XCTAssertEqual(folder.count, 3)
 
         try await edit(s, shots[1], opened: 1)
@@ -66,7 +65,7 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
         try await finish(s)
 
         XCTAssertEqual(s.trash.moved, [middle], "the Trash took a file that is not the edited shot's")
-        XCTAssertEqual(names(s.desktop), folder, "a file was added or lost: the edit takes the name of the one it replaces")
+        XCTAssertEqual(PileScene.names(s.desktop), folder, "a file was added or lost: the edit takes the name of the one it replaces")
         XCTAssertEqual(try bytes(first), before.0, "the first shot's file moved")
         XCTAssertEqual(try bytes(last), before.2, "the last shot's file moved")
         XCTAssertNotEqual(try bytes(middle), before.1, "the edited shot's file is what it was")
@@ -94,7 +93,7 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
         XCTAssertEqual(try bytes(last), before.2, "the last shot's file moved at the second edit")
         XCTAssertEqual(try bytes(middle), afterFirst, "the first edit's file was touched by the second")
         XCTAssertNotEqual(try bytes(first), before.0)
-        XCTAssertEqual(names(s.desktop), folder)
+        XCTAssertEqual(PileScene.names(s.desktop), folder)
         XCTAssertEqual(files(s), [last, middle, first])
         XCTAssertEqual(s.toast.model.shots.map(\.caption), [ScStr.savedAndCopied, ScStr.replaced, ScStr.replaced])
     }
@@ -167,7 +166,7 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
         await waitUntil("the editor was closed") { !s.controller.isBusy }
         XCTAssertEqual(s.trash.asked, [], "a cancel replaced a file")
         XCTAssertEqual(try urls.map { try bytes($0) }, before, "a cancel changed a file")
-        XCTAssertEqual(names(s.desktop).count, 3)
+        XCTAssertEqual(PileScene.names(s.desktop).count, 3)
         XCTAssertFalse(s.toast.holds.contains(.editor), "the editor is closed and its hold stays")
         XCTAssertEqual(files(s), [urls[0], urls[2]], "the shot that went into the editor is not in the window")
         XCTAssertFalse(s.toast.advance(by: 4.5))
@@ -193,7 +192,7 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
         XCTAssertEqual(try bytes(middle), strangerBytes, "the stranger's file was overwritten")
         XCTAssertEqual(try bytes(first), before.0)
         XCTAssertEqual(try bytes(last), before.1)
-        XCTAssertGreaterThan(names(s.desktop).count, 3, "the edit is nowhere: it was lost")
+        XCTAssertGreaterThan(PileScene.names(s.desktop).count, 3, "the edit is nowhere: it was lost")
         XCTAssertFalse(s.toast.holds.contains(.editor))
         XCTAssertFalse(s.controller.isBusy)
     }

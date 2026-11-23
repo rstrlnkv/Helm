@@ -58,7 +58,6 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
                                            presentBar: { _ in })
         return (controller, board, disk, opened, try XCTUnwrap(ids.first))
     }
-    @MainActor private final class Opened { var overlays: [CaptureOverlay] = [] }
 
     private func editedThroughTheController(_ target: SaveTarget, shutter: Shutter = Shutter()) async throws
         -> (CaptureController, Board, Disk, CaptureOverlay) {
@@ -66,13 +65,9 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         controller.begin(.area)
         await waitUntil("the overlay opened") { !opened.overlays.isEmpty }
         let overlay = try XCTUnwrap(opened.overlays.first)
-        overlay.mouseDown(on: first, at: CGPoint(x: 100, y: 100), flags: [])
-        overlay.mouseDragged(on: first, at: CGPoint(x: 300, y: 250), flags: [])
-        overlay.mouseUp(on: first)
+        OverlayRig.drag(overlay, on: first, from: CGPoint(x: 100, y: 100), to: CGPoint(x: 300, y: 250))
         overlay.keyDown(key(kA, "ф"))
-        overlay.mouseDown(on: first, at: CGPoint(x: 120, y: 120), flags: [])
-        overlay.mouseDragged(on: first, at: CGPoint(x: 250, y: 200), flags: [])
-        overlay.mouseUp(on: first)
+        OverlayRig.drag(overlay, on: first, from: CGPoint(x: 120, y: 120), to: CGPoint(x: 250, y: 200))
         return (controller, board, disk, overlay)
     }
 

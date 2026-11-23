@@ -29,8 +29,6 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
 
     private typealias Shutter = CountingShutter
 
-    private final class Box { var overlay: CaptureOverlay?; var count = 0 }
-
     private struct Scene {
         let controller: CaptureController
         let toast: ShotToast
@@ -38,7 +36,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let trash: AsideTrash
         let shutter: Shutter
         let capture: PileFrames
-        let box: Box
+        let box: PileScene.Box
         let store: NamespacedStore
         let desktop: URL
         let frames: [FrozenDisplay]
@@ -50,40 +48,18 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
     }
 
     private let clock = StepClock()
-    private var controllers: [CaptureController] = []
 
     override func tearDown() {
         AppLanguage.override = nil
-        for controller in controllers { controller.cancel() }
-        controllers = []
         clock.finish()
         super.tearDown()
     }
 
     private func scene(target: SaveTarget = .desktop, thumbnail: Bool = true) throws -> Scene {
-        let frames = try OverlayRig.frames(ground: CGColor(red: 1, green: 0, blue: 0, alpha: 1))
-        let home = scratchDirectory("edit-ui")
-        let desktop = home.appendingPathComponent("Desktop", isDirectory: true)
-        let aside = home.appendingPathComponent("Trash", isDirectory: true)
-        try FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: aside, withIntermediateDirectories: true)
-        let trash = AsideTrash(aside), board = Board(), shutter = Shutter()
-        let capture = PileFrames(Freeze(displays: frames.map { .image($0) }, windows: []))
-        let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
-        store.set(thumbnail, for: ScreenshotsSettings.Key.thumbnail)
-        store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
-        let session = CaptureSession(capture: capture, writer: FileShotWriter(), trash: trash, pasteboard: board,
-                                     preferences: NoPreferences(), shutter: shutter, textReader: NoTextReader(),
-                                     settings: { ScreenshotsSettings.read(store) }, naming: { .english },
-                                     locations: ScreenshotsLocations(home: home, desktop: desktop))
-        let toast = ShotToastRig.toast(clock)
-        let box = Box()
-        let controller = CaptureController(store: store, session: session,
-                                           presentOverlay: { overlay in box.count += 1; box.overlay = overlay; return overlay.build() },
-                                           toast: toast)
-        controllers.append(controller)
-        return Scene(controller: controller, toast: toast, board: board, trash: trash, shutter: shutter, capture: capture, box: box,
-                     store: store, desktop: desktop, frames: frames)
+        let board = Board(), shutter = Shutter()
+        let p = try PileScene(self, name: "edit-ui", target: target, thumbnail: thumbnail, pasteboard: board, shutter: shutter, clock: clock)
+        return Scene(controller: p.controller, toast: p.toast, board: board, trash: p.trash, shutter: shutter, capture: p.capture, box: p.box,
+                     store: p.store, desktop: p.desktop, frames: p.frames)
     }
 
     // MARK: Helpers
@@ -114,12 +90,9 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
 
     private func draw(_ overlay: CaptureOverlay, on display: DisplayID, from: CGPoint = CGPoint(x: 300, y: 300), to: CGPoint = CGPoint(x: 500, y: 450)) {
         overlay.perform(.tool(.rectangle))
-        overlay.mouseDown(on: display, at: from, flags: [])
-        overlay.mouseDragged(on: display, at: to, flags: [])
-        overlay.mouseUp(on: display)
+        OverlayRig.drag(overlay, on: display, from: from, to: to)
     }
 
-    private func names(_ folder: URL) -> [String] { ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).sorted() }
 
     private func image(_ url: URL) -> CGImage? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
@@ -167,7 +140,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         await finish(s, overlay)
 
         XCTAssertEqual(s.trash.moved, [original.url])
-        XCTAssertEqual(names(s.desktop), [name], "one file in the folder, and it is the original's name")
+        XCTAssertEqual(PileScene.names(s.desktop), [name], "one file in the folder, and it is the original's name")
         let file = try XCTUnwrap(image(original.url))
         XCTAssertEqual(file.width, 1200, "a picture reduced to fit the screen was saved at the screen's size")
         XCTAssertEqual(file.height, 700)
@@ -222,7 +195,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         await finish(s, overlay, .copy)
         XCTAssertEqual(s.board.copies, 2)
         XCTAssertEqual(s.trash.asked, [], "⌘C moved the original")
-        XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
+        XCTAssertEqual(PileScene.names(s.desktop), [original.url.lastPathComponent])
         XCTAssertEqual(FileShotWriter().reading(of: original.url), original.reading, "⌘C touched the file")
         let after = try XCTUnwrap(s.toast.model.editSource, "the thumbnail after a copy offers no Edit: \(String(describing: s.toast.model.content))")
         XCTAssertNil(after.shot, "a copy's thumbnail holds the file of the shot it was made from")
@@ -231,7 +204,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         overlay = try await openEditor(s, count: 2)
         await finish(s, overlay)
         XCTAssertEqual(s.trash.asked, [], "the edit of a copy replaced a file")
-        XCTAssertEqual(names(s.desktop).count, 2, "a new shot beside the original, which is as it was")
+        XCTAssertEqual(PileScene.names(s.desktop).count, 2, "a new shot beside the original, which is as it was")
         XCTAssertEqual(FileShotWriter().reading(of: original.url), original.reading)
     }
 
@@ -244,7 +217,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         await finish(s, overlay, .save)
         XCTAssertEqual(s.board.copies, 1, "⌘S copied")
         XCTAssertEqual(s.trash.moved, [original.url])
-        XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
+        XCTAssertEqual(PileScene.names(s.desktop), [original.url.lastPathComponent])
     }
 
     // MARK: Escape
@@ -260,7 +233,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         for _ in 0..<4 where s.controller.isBusy { overlay.keyDown(esc); await grace(0.02) }
         await waitUntil("the editor ended") { !s.controller.isBusy }
         XCTAssertEqual(s.trash.asked, [])
-        XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
+        XCTAssertEqual(PileScene.names(s.desktop), [original.url.lastPathComponent])
         XCTAssertEqual(FileShotWriter().reading(of: original.url), original.reading, "leaving the editor touched the file")
         XCTAssertNil(refusal(s), "leaving was told as a refusal")
         XCTAssertEqual(s.board.copies, 1)
@@ -324,7 +297,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertEqual(said.body, ScStr.refusal(.notReplaced(.changed)))
         XCTAssertEqual(said.title, ScStr.thumbnailLabel)
         XCTAssertEqual(s.trash.asked, [])
-        XCTAssertEqual(names(s.desktop), ["mine.png", original.url.lastPathComponent].sorted())
+        XCTAssertEqual(PileScene.names(s.desktop), ["mine.png", original.url.lastPathComponent].sorted())
         XCTAssertEqual(image(s.desktop.appendingPathComponent("mine.png")).map { rgb($0, 0, 0) }.map { isPicture($0) }, true, "the renamed original is the shot")
         XCTAssertFalse(s.controller.isBusy)
     }
@@ -405,7 +378,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         await finish(s, overlay)
         let said = try XCTUnwrap(refusal(s), "no plaque: \(String(describing: s.toast.model.content))")
         XCTAssertEqual(said.body, ScStr.refusal(.notReplaced(.changed)), "the edit could not be made from the picture the editor held")
-        XCTAssertEqual(names(s.desktop), ["mine.png", original.url.lastPathComponent].sorted(), "the edit was not saved")
+        XCTAssertEqual(PileScene.names(s.desktop), ["mine.png", original.url.lastPathComponent].sorted(), "the edit was not saved")
         XCTAssertEqual(s.trash.asked, [])
         XCTAssertFalse(s.controller.isBusy)
     }
@@ -421,8 +394,8 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         try FileManager.default.moveItem(at: original.url, to: s.desktop.appendingPathComponent("mine.png"))
         emptyVolatileRegions()
         await finish(s, overlay)
-        let saved = names(s.desktop).filter { $0 != "mine.png" }
-        XCTAssertEqual(saved.count, 1, "the edit was not saved: \(names(s.desktop))")
+        let saved = PileScene.names(s.desktop).filter { $0 != "mine.png" }
+        XCTAssertEqual(saved.count, 1, "the edit was not saved: \(PileScene.names(s.desktop))")
         let edit = try XCTUnwrap(saved.first.flatMap { image(s.desktop.appendingPathComponent($0)) }, "the edit is no picture")
         XCTAssertTrue(isPicture(rgb(edit, 3, 3)), "the saved edit lost the picture under its marks: \(rgb(edit, 3, 3)) for \(picture)")
         XCTAssertEqual(s.trash.asked, [])
@@ -438,7 +411,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         emptyVolatileRegions()
         await finish(s, overlay)
         XCTAssertEqual(s.trash.moved, [original.url])
-        XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
+        XCTAssertEqual(PileScene.names(s.desktop), [original.url.lastPathComponent])
     }
 
     func testTheTrashRefusingIsToldWithItsReasonAndBothFilesStay() async throws {
@@ -450,8 +423,8 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let said = try XCTUnwrap(refusal(s))
         XCTAssertEqual(said.body, ScStr.refusal(.notReplaced(.trash(.noPermission))))
         XCTAssertEqual(said.body, TrashReasonText.sentence("noPermission"))
-        XCTAssertEqual(names(s.desktop).count, 2, "the original and the edit beside it")
-        XCTAssertTrue(names(s.desktop).contains(original.url.lastPathComponent))
+        XCTAssertEqual(PileScene.names(s.desktop).count, 2, "the original and the edit beside it")
+        XCTAssertTrue(PileScene.names(s.desktop).contains(original.url.lastPathComponent))
         XCTAssertFalse(s.controller.isBusy)
         XCTAssertNil(s.toast.model.editSource, "a refusal plaque offers an Edit")
     }
@@ -473,7 +446,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         draw(overlay, on: s.display(of: overlay), from: CGPoint(x: 400, y: 300), to: CGPoint(x: 600, y: 400))
         await finish(s, overlay)
         XCTAssertEqual(s.trash.moved, [original.url, original.url], "the second Done did not replace")
-        XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
+        XCTAssertEqual(PileScene.names(s.desktop), [original.url.lastPathComponent])
         XCTAssertNil(refusal(s))
         guard case .picture(_, let caption, _)? = s.toast.model.content else { return XCTFail("\(String(describing: s.toast.model.content))") }
         XCTAssertEqual(caption, ScStr.replaced)
@@ -507,7 +480,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         s.trash.release()
         await waitUntil("the replacement ended") { !s.controller.isBusy }
         XCTAssertEqual(s.trash.moved, [original.url])
-        XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
+        XCTAssertEqual(PileScene.names(s.desktop), [original.url.lastPathComponent])
         XCTAssertEqual(s.board.copies, 2, "a second Done copied again")
     }
 
@@ -534,7 +507,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let overlay = try XCTUnwrap(s.box.overlay)
         await finish(s, overlay)
         XCTAssertEqual(s.trash.moved, [original.url], "one replacement")
-        XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
+        XCTAssertEqual(PileScene.names(s.desktop), [original.url.lastPathComponent])
     }
 
     /// The module is switched off while the screen is being frozen for the editor: no editor opens afterwards.
@@ -563,7 +536,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         await grace(0.1)
         XCTAssertEqual(s.trash.asked, [], "an editor that was closed replaced a file")
         XCTAssertEqual(FileShotWriter().reading(of: original.url), original.reading)
-        XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
+        XCTAssertEqual(PileScene.names(s.desktop), [original.url.lastPathComponent])
         XCTAssertNil(s.toast.model.content)
     }
 
@@ -581,7 +554,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         draw(overlay, on: s.display(of: overlay))
         await finish(s, overlay)
         XCTAssertEqual(s.board.copies, 2)
-        XCTAssertEqual(names(s.desktop), [], "the clipboard target made a file")
+        XCTAssertEqual(PileScene.names(s.desktop), [], "the clipboard target made a file")
         XCTAssertEqual(s.trash.asked, [])
         guard case .picture(_, let caption, let file)? = s.toast.model.content else { return XCTFail("\(String(describing: s.toast.model.content))") }
         XCTAssertNil(file)
@@ -597,7 +570,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let overlay = try await openEditor(s)
         s.store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         await finish(s, overlay)
-        XCTAssertEqual(names(s.desktop).count, 1, "a new shot")
+        XCTAssertEqual(PileScene.names(s.desktop).count, 1, "a new shot")
         XCTAssertEqual(s.trash.asked, [])
         guard case .picture(_, let caption, let file?)? = s.toast.model.content else { return XCTFail("\(String(describing: s.toast.model.content))") }
         XCTAssertEqual(caption, ScStr.savedAndCopied, "a new shot was told as a replacement")
@@ -635,7 +608,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         await finish(s, second)
         XCTAssertEqual(s.trash.moved, [original.url, beside], "the second Edit trashed something that was not its own file")
         XCTAssertEqual(try Data(contentsOf: original.url), stranger, "the stranger was replaced or moved")
-        XCTAssertEqual(names(s.desktop).count, 2, "the stranger and the edit under the name that freed: \(names(s.desktop))")
+        XCTAssertEqual(PileScene.names(s.desktop).count, 2, "the stranger and the edit under the name that freed: \(PileScene.names(s.desktop))")
         guard case .picture(_, let again, let shown?)? = s.toast.model.content else { return XCTFail("\(String(describing: s.toast.model.content))") }
         XCTAssertEqual(again, ScStr.replaced)
         XCTAssertEqual(shown.path, beside.path)

@@ -3,21 +3,6 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Screenshots_Engine
 
-/// A picture in which every pixel has a colour of its own, in `space` at `bits` a channel.
-private func pattern(width: Int, height: Int, space: CGColorSpace? = nil, bits: Int = 8) -> CGImage {
-    let space = space ?? CGColorSpace(name: CGColorSpace.sRGB)!
-    let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: bits, bytesPerRow: 0, space: space,
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-    context.setShouldAntialias(false)
-    for y in 0..<height { for x in 0..<width {
-        let colour = (UInt32(y * width + x) &* 2_654_435_761 &+ 12_345) & 0xFF_FFFF
-        context.setFillColor(CGColor(colorSpace: space, components: [CGFloat(colour >> 16) / 255, CGFloat(colour >> 8 & 0xFF) / 255,
-                                                                     CGFloat(colour & 0xFF) / 255, 1])!)
-        context.fill(CGRect(x: x, y: height - 1 - y, width: 1, height: 1))
-    } }
-    return context.makeImage()!
-}
-
 private func pixels(_ image: CGImage) -> [UInt32] { packedRGB(image, space: CGColorSpace(name: CGColorSpace.sRGB)!) }
 
 private func blur(_ rect: CGRect, _ step: AnnotationThickness = .medium) -> Annotation {
@@ -52,7 +37,7 @@ final class TheBlurMeetsInputsNobodyFedItTests: XCTestCase {
                                                       ("Adobe RGB", CGColorSpace(name: CGColorSpace.adobeRGB1998)!, 8),
                                                       ("linear", CGColorSpace(name: CGColorSpace.linearSRGB)!, 8)]
         for (name, space, bits) in spaces {
-            let source = pattern(width: 80, height: 50, space: space, bits: bits)
+            let source = hashedPattern(width: 80, height: 50, space: space, bits: bits)
             let base = try file([], over: source, scale: 1)
             let out = try file([blur(CGRect(x: 9, y: 7, width: 50, height: 30))], over: source, scale: 1)
             XCTAssertGreaterThan(holds(out, base, width: 80, box: (9, 7, 59, 37), side: 16, name), 6, name)
@@ -80,7 +65,7 @@ final class TheBlurMeetsInputsNobodyFedItTests: XCTestCase {
 /// frame's own pixels and never of what was drawn before it.
 final class TheBlurMeetsBoxesScalesAndOrdersNobodyDrewTests: XCTestCase {
     func testBoxesThatAreNotABoxDrawNothingAndDoNotTrap() throws {
-        let source = pattern(width: 60, height: 40)
+        let source = hashedPattern(width: 60, height: 40)
         let base = try file([], over: source, scale: 1)
         let nan = CGFloat.nan, inf = CGFloat.infinity
         let rects: [(String, CGRect)] = [
@@ -99,7 +84,7 @@ final class TheBlurMeetsBoxesScalesAndOrdersNobodyDrewTests: XCTestCase {
     }
 
     func testAHugeBoxIsClippedToTheDisplayAndEveryBlockIsOneColour() throws {
-        let source = pattern(width: 60, height: 40)
+        let source = hashedPattern(width: 60, height: 40)
         let base = try file([], over: source, scale: 1)
         let out = try file([blur(CGRect(x: -1e6, y: -1e6, width: 2e6, height: 2e6))], over: source, scale: 1)
         XCTAssertGreaterThan(holds(out, base, width: 60, box: (0, 0, 60, 40), side: 16, "huge"), 6)
@@ -107,7 +92,7 @@ final class TheBlurMeetsBoxesScalesAndOrdersNobodyDrewTests: XCTestCase {
     }
 
     func testABlockLargerThanTheBoxIsTheBoxsOwnMeanAndABoxOnePixelWideIsStillAMosaic() throws {
-        let source = pattern(width: 60, height: 40), was = pixels(source)
+        let source = hashedPattern(width: 60, height: 40), was = pixels(source)
         let out = try file([blur(CGRect(x: 5, y: 5, width: 6, height: 6), .thick)], over: source, scale: 1)
         // 24-pt blocks: the box (5...11) is inside the block 0...24 and is the mean of its own 36 pixels.
         var sum = [0, 0, 0]
@@ -120,7 +105,7 @@ final class TheBlurMeetsBoxesScalesAndOrdersNobodyDrewTests: XCTestCase {
         XCTAssertEqual(out[4 * 60 + 5], was[4 * 60 + 5], "the pixel above the box moved")
 
         // A box a pixel wide at 2x: half a point is one pixel.
-        let wide = pattern(width: 120, height: 80)
+        let wide = hashedPattern(width: 120, height: 80)
         let baseWide = try file([], over: wide, scale: 2)
         let thin = try file([blur(CGRect(x: 10, y: 4, width: 0.5, height: 30))], over: wide, scale: 2)
         holds(thin, baseWide, width: 120, box: (20, 8, 21, 68), side: 32, "one pixel wide")
@@ -128,7 +113,7 @@ final class TheBlurMeetsBoxesScalesAndOrdersNobodyDrewTests: XCTestCase {
 
     func testAFractionalScaleKeepsTheGridOnTheDisplaysPixels() throws {
         // 1.5 pixels a point: a 16-pt block is 24 pixels, a 10-pt one 15.
-        let source = pattern(width: 150, height: 90)
+        let source = hashedPattern(width: 150, height: 90)
         let base = try file([], over: source, scale: 1.5)
         for (step, side) in [(AnnotationThickness.thin, 15), (.medium, 24), (.thick, 36)] {
             let out = try file([blur(CGRect(x: 7.3, y: 5.1, width: 60.2, height: 31.9), step)], over: source, scale: 1.5)
@@ -140,7 +125,7 @@ final class TheBlurMeetsBoxesScalesAndOrdersNobodyDrewTests: XCTestCase {
     }
 
     func testTwoOverlappingBlursAreBothOfTheFramesPixelsAndTheSecondDoesNotAverageTheFirst() throws {
-        let source = pattern(width: 120, height: 80)
+        let source = hashedPattern(width: 120, height: 80)
         let first = blur(CGRect(x: 10, y: 10, width: 60, height: 40), .thick)
         let second = blur(CGRect(x: 30, y: 20, width: 70, height: 40), .medium)
         let both = try file([first, second], over: source, scale: 1)
@@ -154,7 +139,7 @@ final class TheBlurMeetsBoxesScalesAndOrdersNobodyDrewTests: XCTestCase {
     }
 
     func testAShapeOverABlurShowsAndABlurOverAShapeHidesItBecauseTheMosaicIsTheFramesAndNotTheLayersBelow() throws {
-        let source = pattern(width: 120, height: 80)
+        let source = hashedPattern(width: 120, height: 80)
         let box = blur(CGRect(x: 20, y: 20, width: 60, height: 40), .thick)
         let bar = Annotation(tool: .rectangle, start: CGPoint(x: 10, y: 40), end: CGPoint(x: 100, y: 44),
                              style: AnnotationStyle(color: .red, thickness: .thick, filled: true))
@@ -167,7 +152,7 @@ final class TheBlurMeetsBoxesScalesAndOrdersNobodyDrewTests: XCTestCase {
     }
 
     func testACutInsideTheDisplayHoldsTheBlocksOfTheDisplayAndANeighbourDoesNotLeakIn() async throws {
-        let source = pattern(width: 200, height: 120)
+        let source = hashedPattern(width: 200, height: 120)
         let display = FrozenDisplay(id: DisplayID(1), frame: CGRect(x: 0, y: 0, width: 200, height: 120), scale: 1, image: source)
         let freeze = Freeze(displays: [.image(display)], windows: [])
         let rig = Rig(home: scratchDirectory("shots-blur-cut"))
@@ -188,7 +173,7 @@ final class TheBlurMeetsBoxesScalesAndOrdersNobodyDrewTests: XCTestCase {
 
     func testABoxPastAnImageSmallerThanItsFrameIsClippedToTheImage() throws {
         // The picture is 100 x 60 pixels at 2x: a 50 x 30 point display.
-        let source = pattern(width: 100, height: 60)
+        let source = hashedPattern(width: 100, height: 60)
         let base = try file([], over: source, scale: 2)
         let out = try file([blur(CGRect(x: 10, y: 10, width: 500, height: 500))], over: source, scale: 2)
         holds(out, base, width: 100, box: (20, 20, 100, 60), side: 32, "small image")

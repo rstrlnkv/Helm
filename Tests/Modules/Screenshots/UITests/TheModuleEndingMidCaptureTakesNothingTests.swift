@@ -11,27 +11,14 @@ import Module_Screenshots_Engine
 /// is delivered and no overlay is left up.
 @MainActor
 final class TheModuleEndingMidCaptureTakesNothingTests: XCTestCase {
-    private var boxes: [PanelRig.Rig] = []
-    override func tearDown() {
-        boxes.forEach { $0.controller.cancel() }
-        boxes = []
-        super.tearDown()
-    }
-
-    private func rig(timer: CaptureTimer = .none, tick: @escaping @Sendable (Duration) async throws -> Void = { _ in }) throws -> PanelRig.Rig {
-        let box = try PanelRig.rig(timer: timer, tick: tick)
-        boxes.append(box)
-        return box
-    }
-
     /// A timed area picked and taken, the countdown standing on its first second.
     private func counting() async throws -> (PanelRig.Rig, PromptGate, BarPanel) {
         let gate = PromptGate()
-        let box = try rig(timer: .five, tick: { _ in await gate.arrive() })
+        let box = try PanelRig.rig(in: self, timer: .five, tick: { _ in await gate.arrive() })
         box.controller.begin(.panel)
         box.controller.bar.model.choose(.area)
         await waitUntil("the overlay opened") { box.held.overlay != nil }
-        PanelRig.drag(try XCTUnwrap(box.held.overlay), on: box.display, PanelRig.area)
+        OverlayRig.drag(try XCTUnwrap(box.held.overlay), on: box.display, PanelRig.area)
         box.controller.capture(from: .area)
         await gate.reached()
         XCTAssertEqual(box.controller.bar.model.countdown, 5)
@@ -54,7 +41,7 @@ final class TheModuleEndingMidCaptureTakesNothingTests: XCTestCase {
     // MARK: - The freeze that has not come back
 
     private func heldFreeze() async throws -> (PanelRig.Rig, PromptGate) {
-        let box = try rig()
+        let box = try PanelRig.rig(in: self)
         let gate = PromptGate()
         box.screen.hold = { _ in gate }
         return (box, gate)
@@ -86,12 +73,12 @@ final class TheModuleEndingMidCaptureTakesNothingTests: XCTestCase {
     // MARK: - The flash
 
     func testTheModuleEndingDuringTheFlashClosesTheOverlayAndDeliversNothing() async throws {
-        let box = try rig()
+        let box = try PanelRig.rig(in: self)
         box.controller.begin(.panel)
         box.controller.bar.model.choose(.area)
         await waitUntil("the overlay opened") { box.held.overlay != nil }
         let overlay = try XCTUnwrap(box.held.overlay)
-        PanelRig.drag(overlay, on: box.display, PanelRig.area)
+        OverlayRig.drag(overlay, on: box.display, PanelRig.area)
         box.controller.capture(from: .area)
         box.controller.cancel()
         // Before any wait: the flash ends by itself, so only the instant after `cancel` tells the module's end from it.

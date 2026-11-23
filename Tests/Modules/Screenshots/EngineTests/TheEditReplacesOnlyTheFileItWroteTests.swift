@@ -517,25 +517,16 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
 
     // MARK: 11. The task is cancelled
 
-    private final class TaskBox: @unchecked Sendable {
-        private let _task = Locked<Task<Delivery, Never>?>(nil)
-        var task: Task<Delivery, Never>? { get { _task.value } set { _task.value = newValue } }
-        func cancelWhenThere() {
-            while task == nil { usleep(1000) }
-            task?.cancel()
-        }
-    }
-
     /// Cancelled while the edit was being written: the edit is beside the original, the original is not moved, and
     /// the delivery says nothing, because whoever cancelled it is not there to be told (a module that was switched off).
     func testACancelAfterTheEditWasWrittenMovesNothingAndLeavesTheEditBeside() async throws {
         let s = try scene("edit-cancelled")
-        let box = TaskBox()
+        let box = Locked<Task<Delivery, Never>?>(nil)
         let url = s.path
-        s.disk.afterWrite = { written in if written != url { box.cancelWhenThere() } }
+        s.disk.afterWrite = { written in if written != url { while box.value == nil { usleep(1000) }; box.value?.cancel() } }
         let session = s.session, shot = s.original, picture = blue
-        box.task = Task { await session.deliver(picture, saves: true, copies: false, replacing: shot) }
-        let running = try XCTUnwrap(box.task)
+        box.value = Task { await session.deliver(picture, saves: true, copies: false, replacing: shot) }
+        let running = try XCTUnwrap(box.value)
         let delivery = await running.value
         XCTAssertFalse(delivery.replaced)
         XCTAssertEqual(delivery.refusals, [], "a cancelled delivery is told to nobody")
@@ -845,30 +836,23 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
         let folder = scratchDirectory("reading-swap")
         let strangerPath = folder.appendingPathComponent("stranger.tmp").path
         XCTAssertTrue(FileManager.default.createFile(atPath: strangerPath, contents: Data("somebody else's".utf8)))
-        let seen = Seen()
+        let written = Locked<ShotReading?>(nil), swapped = Locked(false)
         var writer = FileShotWriter()
         writer.afterTheMove = { destination in
             var info = stat()
-            if lstat(destination.path, &info) == 0 { seen.written = ShotReading(info) }
-            seen.swapped = rename(strangerPath, destination.path) == 0
+            if lstat(destination.path, &info) == 0 { written.value = ShotReading(info) }
+            swapped.value = rename(strangerPath, destination.path) == 0
         }
         guard case .written(let shot) = writer.write(redBytes, into: folder, base: "swap", pathExtension: "png") else {
             return XCTFail("not written")
         }
-        XCTAssertTrue(seen.swapped, "the control: the stranger took the name")
+        XCTAssertTrue(swapped.value, "the control: the stranger took the name")
         XCTAssertEqual(try Data(contentsOf: shot.url), Data("somebody else's".utf8), "the control: the name holds the stranger's file")
         let stranger = try XCTUnwrap(FileShotWriter().reading(of: shot.url))
-        XCTAssertNotEqual(stranger.identity, seen.written?.identity, "the control: the two files are two objects")
-        XCTAssertEqual(shot.reading, seen.written, "the reading is of the file the writer made, field for field")
+        XCTAssertNotEqual(stranger.identity, written.value?.identity, "the control: the two files are two objects")
+        XCTAssertEqual(shot.reading, written.value, "the reading is of the file the writer made, field for field")
         XCTAssertNotEqual(shot.reading.identity, stranger.identity, "the reading is of the stranger's file, which was at the name when it was taken")
         XCTAssertNotEqual(shot.reading, stranger)
-    }
-
-    private final class Seen: @unchecked Sendable {
-        private let lock = NSLock()
-        private var _written: ShotReading?, _swapped = false
-        var written: ShotReading? { get { lock.withLock { _written } } set { lock.withLock { _written = newValue } } }
-        var swapped: Bool { get { lock.withLock { _swapped } } set { lock.withLock { _swapped = newValue } } }
     }
 
     // MARK: 20. A stranger takes the original's name right after the claim
