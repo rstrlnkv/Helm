@@ -102,10 +102,7 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
         // Nothing here runs a `brew`: every question in this file is about a
         // directory. A runner that launches anything at all would be an
         // integration test against the owner's own Homebrew.
-        HomebrewEngine(locator: FixedLocator(), runner: IdleRunner(),
-                       privileged: NoPrivileges(), user: "tester",
-                       marker: InMemoryOpMarker(), popularity: NoPopularity(),
-                       weight: weight)
+        brewEngine(IdleRunner(), weight: weight)
     }
 
     // MARK: - 1. A real directory

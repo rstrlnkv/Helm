@@ -21,14 +21,9 @@ import HelmContract
 /// is what a real `brew install` looks like for the seconds that matter.
 final class OneOperationAtATimeTests: XCTestCase {
 
-    private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester")
-    }
-
     func testASecondOperationIsRefusedWhileTheFirstIsStillRunning() {
         let runner = HangingRunner()
-        let engine = engine(runner)
+        let engine = brewEngine(runner)
 
         engine.install(name: "wget", isCask: false)
         XCTAssertEqual(runner.calls.count, 1, "precondition: the first operation started")
@@ -45,7 +40,7 @@ final class OneOperationAtATimeTests: XCTestCase {
     func testEveryLongOperationRespectsTheGate() {
         for second in ["install", "uninstall", "upgrade", "upgradeAll"] {
             let runner = HangingRunner()
-            let engine = engine(runner)
+            let engine = brewEngine(runner)
             engine.install(name: "wget", isCask: false)
 
             switch second {
@@ -63,7 +58,7 @@ final class OneOperationAtATimeTests: XCTestCase {
     /// module that works once per launch, and it would pass the test above.
     func testTheNextOperationIsAdmittedOnceTheFirstHasFinished() {
         let runner = HangingRunner()
-        let engine = engine(runner)
+        let engine = brewEngine(runner)
 
         engine.install(name: "wget", isCask: false)
         runner.finishAll()
@@ -77,7 +72,7 @@ final class OneOperationAtATimeTests: XCTestCase {
     /// looked at, so a `brew` that exits non-zero must not wedge the module.
     func testAFailedOperationAlsoReleasesTheGate() {
         let runner = HangingRunner()
-        let engine = engine(runner)
+        let engine = brewEngine(runner)
 
         engine.install(name: "wget", isCask: false)
         runner.finishAll(code: 1)
@@ -102,7 +97,7 @@ final class OneOperationAtATimeTests: XCTestCase {
 
         engine.runDoctorFix(["uninstall", "ghost"])
 
-        let drained = await drain(news)
+        let drained = await replayedState(news)
         let after = drained.state
         XCTAssertTrue(drained.busy,
                       "the refused press did not say so in the console")
@@ -138,7 +133,7 @@ final class OneOperationAtATimeTests: XCTestCase {
 
         locator.path = nil
         engine.install(name: "jq", isCask: false)
-        let drained = await drain(news)
+        let drained = await replayedState(news)
         let during = drained.state
         XCTAssertTrue(drained.busy,
                       "the refused press did not say so in the console")
@@ -154,14 +149,5 @@ final class OneOperationAtATimeTests: XCTestCase {
         locator.path = "/opt/homebrew/bin/brew"
         engine.install(name: "jq", isCask: false)
         XCTAssertEqual(runner.calls.count, 2, "a refused press left the gate shut")
-    }
-
-    private func lastOpState(_ news: EngineNews<HomebrewNews>) async -> OpState? {
-        await drain(news).state
-    }
-
-    private func drain(_ news: EngineNews<HomebrewNews>) async -> (state: OpState?, busy: Bool) {
-        let items = await replay(news)
-        return (items.states.last, items.sawBusy)
     }
 }

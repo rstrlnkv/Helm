@@ -3,9 +3,6 @@
 
 import Foundation
 import XCTest
-import HelmContract
-import HelmRuntime
-@testable import Module_Homebrew_Engine
 
 /// **The command `installBrew` composes is a program, so it is tested by
 /// running it.**

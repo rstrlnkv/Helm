@@ -36,7 +36,7 @@ final class ASearchThatMatchesEverythingStillGetsItsDescriptionsTests: XCTestCas
     /// it ("limit is 4096"). Spelled here, not read from production code.
     private static let argumentLimit = 4096
 
-    private final class LimitedBrew: ProcessRunner, @unchecked Sendable {
+    private final class LimitedBrew: QueryOnlyRunner, @unchecked Sendable {
         /// What every `brew desc` call answers when `answer` is set (a refusal
         /// or a timeout); nil is the brew that describes every name.
         private let answer: Int32?
@@ -66,16 +66,6 @@ final class ASearchThatMatchesEverythingStillGetsItsDescriptionsTests: XCTestCas
             return (0, names.map { "\($0): description of \($0)" }.joined(separator: "\n") + "\n")
         }
 
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            onExit(0)
-            return NoProcess()
-        }
     }
 
     func testEveryFormulaOfASearchThatMatchesEverythingIsDescribed() {

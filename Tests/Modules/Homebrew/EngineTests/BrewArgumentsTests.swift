@@ -37,11 +37,6 @@ import XCTest
 /// doing its job even though neither call finds a package.
 final class BrewArgumentsTests: XCTestCase {
 
-    private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester")
-    }
-
     /// Asserts the *structure* — the value sits behind a terminator — rather
     /// than comparing the whole argument list, which would have to be rewritten
     /// every time a flag is added and would say nothing about the hazard.
@@ -83,7 +78,7 @@ final class BrewArgumentsTests: XCTestCase {
         ] }
         for row in rows {
             let runner = EnvironmentRecorder()
-            row.act(engine(runner))
+            row.act(brewEngine(runner))
             let calls = runner.calls.map(\.args)
             if let count = row.count {
                 XCTAssertEqual(calls.count, count, row.what)
@@ -98,7 +93,7 @@ final class BrewArgumentsTests: XCTestCase {
     /// the guard above is about values, and there is no value here.
     func testUpgradeAllTakesNoSubjectAndNoTerminator() {
         let runner = EnvironmentRecorder()
-        engine(runner).upgradeAll()
+        brewEngine(runner).upgradeAll()
         XCTAssertEqual(runner.calls.map(\.args), [["upgrade"]])
     }
 
@@ -106,7 +101,7 @@ final class BrewArgumentsTests: XCTestCase {
     /// ahead of `--cask` would turn it into a package name.
     func testTheModulesOwnFlagsStayAheadOfTheTerminator() {
         let runner = EnvironmentRecorder()
-        engine(runner).install(name: "wget", isCask: true)
+        brewEngine(runner).install(name: "wget", isCask: true)
         let call = runner.calls[0].args
         let terminator = call.firstIndex(of: "--")
         let cask = call.firstIndex(of: "--cask")

@@ -63,18 +63,7 @@ private final class DoorRunner: ProcessRunner, @unchecked Sendable {
     }
 }
 
-private struct FixtureBrew: BrewLocator {
-    func brewPath() -> String? { "/opt/fixture/bin/brew" }
-}
-
 final class TheDoorRunsWhatItNamesTests: XCTestCase {
-
-    private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
-        HomebrewEngine(locator: FixtureBrew(), runner: runner, privileged: NoPrivileges(),
-                       user: "tester", news: EngineNews(), marker: InMemoryOpMarker(),
-                       popularity: NoPopularity(), weight: NoPackageWeight(),
-                       tools: ToolsAlreadyInstalled(), ticker: NoWaitTicker())
-    }
 
     func testEachActStartsItsOwnCommand() async {
         let wget = PackageRef(name: "wget", isCask: false)
@@ -91,7 +80,7 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
         ]
         for (act, argv) in table {
             let runner = DoorRunner()
-            let engine = self.engine(runner)
+            let engine = brewEngine(runner)
             engine.perform(act)
             await waitUntilReached("\(act) launches") { !runner.streams.isEmpty }
             XCTAssertEqual(runner.streams, [argv], "\(act) started another command")
@@ -101,24 +90,17 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
     func testAFixThroughTheDoorIsStillJudged() async {
         // Control: a fix the Cellar admits launches through the door.
         let admitted = DoorRunner()
-        self.engine(admitted).perform(.doctorFix(argv: ["uninstall", "wget"]))
+        brewEngine(admitted).perform(.doctorFix(argv: ["uninstall", "wget"]))
         await waitUntilReached("the admitted fix launches") { !admitted.streams.isEmpty }
         XCTAssertEqual(admitted.streams, [["uninstall", "--", "wget"]])
 
         // A name the Cellar does not hold: refused with its reason, nothing launched.
         let runner = DoorRunner()
-        let engine = self.engine(runner)
+        let engine = brewEngine(runner)
         let news = engine.stream()
         engine.perform(.doctorFix(argv: ["uninstall", "not-installed"]))
-        let reader = Task { () -> OpState? in
-            for await item in news {
-                if case .state(let s) = item, s.phase == .failed { return s }
-            }
-            return nil
-        }
-        let watchdog = Task { try? await Task.sleep(for: .seconds(10)); reader.cancel() }
-        let refusal = await reader.value
-        watchdog.cancel()
+        let got = await collect(news, through: { if case .state(let s) = $0, s.phase == .failed { true } else { false } })
+        let refusal = got.states.last
         XCTAssertEqual(refusal?.reason, .fixRefused,
                        "the door ran, or failed, a fix without judging it against the Cellar")
         XCTAssertEqual(refusal?.label, "uninstall not-installed")
@@ -132,17 +114,17 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
         XCTAssertTrue(Thread.isMainThread, "control: the test itself runs on the main thread, where a press must not run")
 
         let pressed = DoorRunner()
-        let engine = self.engine(pressed)
+        let engine = brewEngine(pressed)
         engine.perform(.install(PackageRef(name: "wget", isCask: false)))
         await waitUntilReached("the press launches") { !pressed.streams.isEmpty }
 
         let fixed = DoorRunner()
-        let fixEngine = self.engine(fixed)
+        let fixEngine = brewEngine(fixed)
         fixEngine.perform(.doctorFix(argv: ["cleanup"]))
         await waitUntilReached("the fix launches") { !fixed.streams.isEmpty }
 
         let read = DoorRunner()
-        let readEngine = self.engine(read)
+        let readEngine = brewEngine(read)
         _ = await readEngine.readInstalled()
         _ = await readEngine.readOutdated()
         _ = await readEngine.find("wget")

@@ -95,12 +95,6 @@ final class ADoctorThatNamedNothingReadableIsNotACleanMacTests: XCTestCase {
     private static let coloured = capture(warning: "\(esc)[33mWarning:\(esc)[0m",
                                           bold: "\(esc)[1m", reset: "\(esc)[0m")
 
-    private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester",
-                       marker: InMemoryOpMarker())
-    }
-
     /// The fixtures are what they claim: the plain capture parses into its two
     /// findings, and the byte counts match the measurement above — so a red
     /// below is about colour, not about a fixture nobody could parse.
@@ -118,7 +112,7 @@ final class ADoctorThatNamedNothingReadableIsNotACleanMacTests: XCTestCase {
         runner.status = 1
         runner.plain = Self.plain
         runner.coloured = Self.coloured
-        let answer = engine(runner).doctor()
+        let answer = brewEngine(runner).doctor()
         XCTAssertNotEqual(answer, [],
                           "brew doctor exited 1 with two warnings in colour and Helm read it as a clean Mac")
         if let answer { XCTAssertEqual(answer.count, 2, "a reading, when there is one, holds both findings") }
@@ -133,7 +127,7 @@ final class ADoctorThatNamedNothingReadableIsNotACleanMacTests: XCTestCase {
         runner.status = 1
         runner.plain = "\n"
         runner.coloured = "\n"
-        XCTAssertNotEqual(engine(runner).doctor(), [],
+        XCTAssertNotEqual(brewEngine(runner).doctor(), [],
                           "brew doctor exited 1 and printed no finding; Helm read it as a clean Mac")
     }
 
@@ -145,6 +139,6 @@ final class ADoctorThatNamedNothingReadableIsNotACleanMacTests: XCTestCase {
         runner.status = 0
         runner.plain = "Your system is ready to brew.\n"
         runner.coloured = "Your system is ready to brew.\n"
-        XCTAssertEqual(engine(runner).doctor(), [])
+        XCTAssertEqual(brewEngine(runner).doctor(), [])
     }
 }

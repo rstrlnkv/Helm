@@ -12,29 +12,14 @@ import HelmRuntime
 /// page prints next to the refusal.
 final class APressAfterBrewVanishedNamesItsOperationTests: XCTestCase {
 
-    private final class CountingRunner: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var n = 0
-        var launches: Int { lock.withLock { n } }
-        func run(_ l: String, _ a: [String], env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-        func runData(_ l: String, _ a: [String], env: [String: String]) -> (status: Int32, stdout: Data) { (0, Data()) }
-        func runCapturingDiagnostics(_ l: String, _ a: [String], env: [String: String]) -> (status: Int32, output: String) { (0, "") }
-        func stream(_ l: String, _ a: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            lock.withLock { n += 1 }
-            return NoProcess()
-        }
-    }
-
     private func refusal(_ press: (HomebrewEngine) -> Void) async -> (OpState?, Int) {
         let news = EngineNews<HomebrewNews>()
-        let runner = CountingRunner()
+        let runner = HangingRunner()
         let engine = HomebrewEngine(locator: NoBrew(), runner: runner, privileged: NoPrivileges(),
                                     user: "tester", news: news)
         press(engine)
         let state = await replay(news).states.last
-        return (state, runner.launches)
+        return (state, runner.streamCalls.count)
     }
 
     func testEachOperationRefusesUnderItsOwnLabel() async {

@@ -24,10 +24,9 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
 
     private func state(_ segment: HomebrewViewModel.Segment, _ selected: String?,
                        installed: [BrewPackage] = [], outdated: [OutdatedPackage] = [],
-                       hits: [SearchHit] = [],
-                       loadedOutdated: Bool = true) -> InspectorState {
+                       hits: [SearchHit] = []) -> InspectorState {
         InspectorState.of(segment: segment, selected: selected, installed: installed,
-                          outdated: outdated, loadedOutdated: loadedOutdated,
+                          outdated: outdated, loadedOutdated: true,
                           hits: hits, descriptions: [:])
     }
 

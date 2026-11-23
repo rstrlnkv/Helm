@@ -4,9 +4,9 @@ import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 // The Homebrew engine's `ProcessRunner` and `PrivilegedRunner` fakes that more than
-// one test file needed, in one place. A fake keeps its port's states only, and every
-// construction names the port it stands in for (`runner:`, `privileged:`)
-// (Architecture/TestsAndMeasurement.md § Fakes). Fakes that script one test's
+// one test file needed, in one place. A fake keeps its port's states only, and the port it
+// stands in for is named at the construction (`brewEngine`'s own parameters, or
+// `runner:`, `privileged:`) (Architecture/TestsAndMeasurement.md § Fakes). Fakes that script one test's
 // scenario (canned answers, handles, interruptions) stay beside that test.
 // `NoPrivileges` and `IdleRunner` answer with fixed stand-in values (declined, status 0,
 // empty output) that no test asserts: no test reads them, so they are inert.
@@ -27,13 +27,34 @@ struct NoBrew: BrewLocator {
     func brewPath() -> String? { nil }
 }
 
-/// Answers every query with status 0 and nothing on standard output, and ends
+/// The engine every test builds: one inert set of ports (no brew on disk is read,
+/// no dialog, an in-memory marker), so a test names only the port its question
+/// is about (`runner`, `locator`, `marker`, ...).
+func brewEngine(_ runner: ProcessRunner,
+                locator: BrewLocator = FixedLocator(),
+                privileged: PrivilegedRunner = NoPrivileges(),
+                news: EngineNews<HomebrewNews> = EngineNews(),
+                marker: OpMarker = InMemoryOpMarker(),
+                popularity: PopularityReading = NoPopularity(),
+                weight: PackageWeight = NoPackageWeight()) -> HomebrewEngine {
+    HomebrewEngine(locator: locator, runner: runner, privileged: privileged, user: "tester",
+                   news: news, marker: marker, popularity: popularity, weight: weight,
+                   tools: ToolsAlreadyInstalled(), ticker: NoWaitTicker())
+}
+
+/// A fake that answers questions only: the two stubs it would otherwise repeat,
+/// given once, **and only to a fake that asks for them by conforming**. The port
+/// gives `runCapturingDiagnostics` no default on purpose (`Ports.swift`: a silent
+/// fallback would make the one query that needs the other stream untestable), so
+/// a fake about `doctor` or about streaming conforms to `ProcessRunner` and writes
+/// its own. This one answers `runCapturingDiagnostics` with status 0 and nothing
+/// (not `doctor`: no fake here needs to answer on the diagnostics stream) and ends
 /// every streamed child at once.
-struct IdleRunner: ProcessRunner, @unchecked Sendable {
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
+protocol QueryOnlyRunner: ProcessRunner {}
+
+extension QueryOnlyRunner {
+    func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
+                                 env: [String: String]) -> (status: Int32, output: String) {
         (0, "")
     }
 
@@ -43,6 +64,13 @@ struct IdleRunner: ProcessRunner, @unchecked Sendable {
         onExit(0)
         return NoProcess()
     }
+}
+
+/// Answers every query with status 0 and nothing on standard output, and ends
+/// every streamed child at once.
+struct IdleRunner: QueryOnlyRunner, @unchecked Sendable {
+    func run(_ launchPath: String, _ args: [String],
+             env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
 }
 
 /// Records `(args, env)` of every query and every stream, and ends each streamed
@@ -160,4 +188,37 @@ extension Array where Element == HomebrewNews {
         compactMap { item -> OpState? in if case .state(let s) = item { return s }; return nil }
     }
     var sawBusy: Bool { contains { if case .busy = $0 { return true }; return false } }
+}
+
+/// The last `opState` the news holds, read through its replay: a sentinel
+/// emitted before subscribing marks where the replay ends, so the read is
+/// deterministic.
+func lastOpState(_ news: EngineNews<HomebrewNews>) async -> OpState? {
+    await replay(news).states.last
+}
+
+/// The latest `opState` the news would replay to a page opened now, and whether
+/// a `.busy` came with it.
+func replayedState(_ news: EngineNews<HomebrewNews>) async -> (state: OpState?, busy: Bool) {
+    let items = await replay(news)
+    return (items.states.last, items.sawBusy)
+}
+
+/// Everything the stream says up to and including the first item `last`
+/// accepts. A watchdog cancels the read after ten seconds, so a stream that
+/// never says it fails the assertion instead of hanging the run.
+func collect(_ news: AsyncStream<HomebrewNews>,
+             through last: @escaping @Sendable (HomebrewNews) -> Bool) async -> [HomebrewNews] {
+    let reader = Task { () -> [HomebrewNews] in
+        var got: [HomebrewNews] = []
+        for await item in news {
+            got.append(item)
+            if last(item) { break }
+        }
+        return got
+    }
+    let watchdog = Task { try? await Task.sleep(for: .seconds(10)); reader.cancel() }
+    let got = await reader.value
+    watchdog.cancel()
+    return got
 }

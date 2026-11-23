@@ -15,7 +15,7 @@ import HelmRuntime
 final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
 
     /// What `ShellProcessRunner` answers once its deadline has passed.
-    private final class TimedOutRunner: ProcessRunner, @unchecked Sendable {
+    private final class TimedOutRunner: QueryOnlyRunner, @unchecked Sendable {
         private let lock = NSLock()
         private var _calls: [[String]] = []
         var calls: [[String]] { lock.lock(); defer { lock.unlock() }; return _calls }
@@ -24,36 +24,20 @@ final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
             lock.lock(); _calls.append(args); lock.unlock()
             return (HelmProcess.timedOutStatus, "")
         }
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            onExit(0)
-            return NoProcess()
-        }
-    }
-
-    private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester")
     }
 
     func testAListThatTimedOutIsNotAnEmptyMachine() {
-        XCTAssertNil(engine(TimedOutRunner()).listInstalled(),
+        XCTAssertNil(brewEngine(TimedOutRunner()).listInstalled(),
                      "a hung brew list came back as \"no packages installed\"")
     }
 
     func testAnOutdatedCheckThatTimedOutIsNotAllCurrent() {
-        XCTAssertNil(engine(TimedOutRunner()).outdated(),
+        XCTAssertNil(brewEngine(TimedOutRunner()).outdated(),
                      "a hung brew outdated came back as \"everything is up to date\"")
     }
 
     func testASearchThatTimedOutIsNotNoResults() {
-        XCTAssertNil(engine(TimedOutRunner()).search("wget"),
+        XCTAssertNil(brewEngine(TimedOutRunner()).search("wget"),
                      "a hung brew search came back as \"no results\"")
     }
 
@@ -62,7 +46,7 @@ final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
     /// deadline, so a fifty-name batch would park the queue for hours.
     func testATimedOutDescriptionsBatchIsNotSplitAndRetried() {
         let runner = TimedOutRunner()
-        _ = engine(runner).descriptions(names: ["a", "b", "c", "d"], isCask: false)
+        _ = brewEngine(runner).descriptions(names: ["a", "b", "c", "d"], isCask: false)
         XCTAssertEqual(runner.calls.count, 1,
                        "a timed-out desc batch was split and re-asked: \(runner.calls.count) calls, "
                        + "each of which hangs for the whole deadline again")
@@ -73,7 +57,7 @@ final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
     /// keeps nothing.
     func testTheLogSaysWhatWasKeptOnlyForTheQueriesThatKeepOne() {
         tailTheLog()
-        let e = engine(TimedOutRunner())
+        let e = brewEngine(TimedOutRunner())
         _ = e.search("wget")
         _ = e.listInstalled()
         let lines = loggedLines("homebrew")
@@ -88,7 +72,7 @@ final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
     /// one out of `HomebrewEngine.outcome(of:)` turns this red.
     func testOutdatedConfigAndDescriptionsAreLoggedAsKept() {
         tailTheLog()
-        let e = engine(TimedOutRunner())
+        let e = brewEngine(TimedOutRunner())
         _ = e.outdated()
         _ = e.config()
         _ = e.descriptions(names: ["a"], isCask: false)

@@ -18,12 +18,19 @@ struct FixedLocator: BrewLocator {
     func brewPath() -> String? { "/opt/homebrew/bin/brew" }
 }
 
-/// Answers every query with status 0 and nothing on standard output, and ends
+/// A fake that answers questions only: the two stubs it would otherwise repeat,
+/// given once, **and only to a fake that asks for them by conforming**. The port
+/// gives `runCapturingDiagnostics` no default on purpose (`Ports.swift`: a silent
+/// fallback would make the one query that needs the other stream untestable), so
+/// a fake about `doctor` or about streaming conforms to `ProcessRunner` and writes
+/// its own. This one answers `runCapturingDiagnostics` with status 0 and nothing
+/// (not `doctor`: no fake here needs to answer on the diagnostics stream) and ends
 /// every streamed child at once.
-struct IdleRunner: ProcessRunner, @unchecked Sendable {
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
+protocol QueryOnlyRunner: ProcessRunner {}
+
+extension QueryOnlyRunner {
+    func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
+                                 env: [String: String]) -> (status: Int32, output: String) {
         (0, "")
     }
 
@@ -33,4 +40,11 @@ struct IdleRunner: ProcessRunner, @unchecked Sendable {
         onExit(0)
         return NoProcess()
     }
+}
+
+/// Answers every query with status 0 and nothing on standard output, and ends
+/// every streamed child at once.
+struct IdleRunner: QueryOnlyRunner, @unchecked Sendable {
+    func run(_ launchPath: String, _ args: [String],
+             env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
 }

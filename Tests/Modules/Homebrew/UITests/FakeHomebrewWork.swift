@@ -48,7 +48,6 @@ final class FakeHomebrewWork: HomebrewWork, @unchecked Sendable {
     var config: BrewConfig?
     var info: PackageInfo?
     var bytes: Int?
-    var described: [String: String] = [:]
 
     /// Every call, in order: `stream`, `readStatus`, `readInstalled`,
     /// `readOutdated`, `readDescriptions`, `find <q>`, `readDependents <name>`,
@@ -145,7 +144,7 @@ final class FakeHomebrewWork: HomebrewWork, @unchecked Sendable {
     }
     func readDescriptions(of names: [String], isCask: Bool,
                           stillWanted: @escaping @Sendable () -> Bool) async -> [String: String] {
-        await read("readDescriptions", member: "readDescriptions") { described }
+        await read("readDescriptions", member: "readDescriptions") { [:] }
     }
     func find(_ query: String) async -> [SearchHit]? {
         await read("find \(query)", member: "find") { hits }

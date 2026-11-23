@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 import HelmContract
+import HelmTestSupport
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
@@ -8,16 +9,6 @@ import HelmRuntime
 // drive it — `command grep -rlw WaitRig Tests` names them. They live beside the Homebrew engine tests and not in
 // `Tests/Support`, which sees only the runtime and the shared UI target — the
 // shape Keep Awake's own `Fakes.swift` has, for the same reason.
-
-/// One ordered record that the tools fake and the privileges fake both write
-/// into, so a test can say what came *directly before* the password dialog —
-/// two records apart could only say each happened.
-final class Journal: @unchecked Sendable {
-    private let lock = NSLock()
-    private var _entries: [String] = []
-    func note(_ entry: String) { lock.lock(); _entries.append(entry); lock.unlock() }
-    var entries: [String] { lock.lock(); defer { lock.unlock() }; return _entries }
-}
 
 /// Apple's tools, as the engine can ask about them.
 ///
@@ -27,7 +18,7 @@ final class Journal: @unchecked Sendable {
 /// itself would make "the window was never seen" unrepresentable.
 final class FakeCommandLineTools: CommandLineToolsPort, @unchecked Sendable {
     private let lock = NSLock()
-    private let journal: Journal?
+    private let journal: Locked<[String]>?
     private var _gitExecutable = false
     private var _selected: String?
     private var _executables: Set<String> = []
@@ -39,7 +30,7 @@ final class FakeCommandLineTools: CommandLineToolsPort, @unchecked Sendable {
     private var _onInstallerRead: (() -> Void)?
     private var _onRead: (() -> Void)?
 
-    init(journal: Journal? = nil) { self.journal = journal }
+    init(journal: Locked<[String]>? = nil) { self.journal = journal }
 
     /// The fixed `git` the installer looks for.
     var gitExecutable: Bool {
@@ -87,7 +78,7 @@ final class FakeCommandLineTools: CommandLineToolsPort, @unchecked Sendable {
     var selectedAsked: Int { lock.lock(); defer { lock.unlock() }; return _selectedAsked }
 
     func isExecutable(_ path: String) -> Bool {
-        journal?.note("read")
+        journal?.withLock { $0.append("read") }
         lock.lock(); let hook = _onRead; lock.unlock()
         hook?()
         lock.lock(); defer { lock.unlock() }
@@ -95,21 +86,21 @@ final class FakeCommandLineTools: CommandLineToolsPort, @unchecked Sendable {
     }
 
     func selectedDeveloperDirectory() -> String? {
-        journal?.note("select")
+        journal?.withLock { $0.append("select") }
         lock.lock(); defer { lock.unlock() }
         _selectedAsked += 1
         return _selected
     }
 
     func requestInstall() -> ToolsRequest {
-        journal?.note("request")
+        journal?.withLock { $0.append("request") }
         lock.lock(); _requests += 1; let hook = _onRequest; let answer = _request; lock.unlock()
         hook?()
         return answer
     }
 
     func installerIsRunning() -> Bool {
-        journal?.note("running?")
+        journal?.withLock { $0.append("running?") }
         lock.lock(); let answer = _installerRunning; let hook = _onInstallerRead; lock.unlock()
         hook?()
         return answer
@@ -177,14 +168,14 @@ final class FakeWaitTicker: WaitTicker, @unchecked Sendable {
 /// `osascript`.
 final class ScriptedPrivileged: PrivilegedRunner, @unchecked Sendable {
     private let lock = NSLock()
-    private let journal: Journal?
+    private let journal: Locked<[String]>?
     private var _scripts: [String] = []
     private let reply: PrivilegedOutcome
     private let appeared = DispatchSemaphore(value: 0)
     private let answered = DispatchSemaphore(value: 0)
     private let holds: Bool
 
-    init(reply: PrivilegedOutcome, holds: Bool = false, journal: Journal? = nil) {
+    init(reply: PrivilegedOutcome, holds: Bool = false, journal: Locked<[String]>? = nil) {
         self.reply = reply
         self.holds = holds
         self.journal = journal
@@ -193,7 +184,7 @@ final class ScriptedPrivileged: PrivilegedRunner, @unchecked Sendable {
     var scripts: [String] { lock.lock(); defer { lock.unlock() }; return _scripts }
 
     func runAdmin(_ script: String) -> PrivilegedOutcome {
-        journal?.note("admin")
+        journal?.withLock { $0.append("admin") }
         lock.lock(); _scripts.append(script); lock.unlock()
         appeared.signal()
         // A dialog nobody holds is answered at once, however many times it is
@@ -212,7 +203,10 @@ final class ScriptedPrivileged: PrivilegedRunner, @unchecked Sendable {
 /// An engine wired to the three fakes for the three sides of its boundary —
 /// Apple's tools, time, root — plus a runner, each named at construction.
 final class WaitRig {
-    let journal = Journal()
+    /// One ordered record that the tools fake and the privileges fake both write
+    /// into, so a test can say what came *directly before* the password dialog —
+    /// two records apart could only say each happened.
+    let journal = Locked<[String]>([])
     let tools: FakeCommandLineTools
     let ticker = FakeWaitTicker()
     let privileged: ScriptedPrivileged
@@ -220,11 +214,11 @@ final class WaitRig {
     let news = EngineNews<HomebrewNews>()
     let engine: HomebrewEngine
 
-    init(reply: PrivilegedOutcome = .done, holdsDialog: Bool = false, user: String = "tester") {
+    init(reply: PrivilegedOutcome = .done, holdsDialog: Bool = false) {
         tools = FakeCommandLineTools(journal: journal)
         privileged = ScriptedPrivileged(reply: reply, holds: holdsDialog, journal: journal)
         engine = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: privileged,
-                                user: user, news: news, marker: InMemoryOpMarker(),
+                                user: "tester", news: news, marker: InMemoryOpMarker(),
                                 tools: tools, ticker: ticker)
     }
 
@@ -232,7 +226,6 @@ final class WaitRig {
     /// opened now. A sentinel emitted before subscribing marks where the replay
     /// ends, so the read is deterministic.
     func replayed() async -> (state: OpState?, busy: Bool) {
-        let items = await replay(news)
-        return (items.states.last, items.sawBusy)
+        await replayedState(news)
     }
 }

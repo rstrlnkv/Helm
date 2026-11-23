@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import Module_Homebrew_Engine
 
@@ -8,13 +9,6 @@ import XCTest
 /// Kept: guards the defect fixed in 3075fecf fix(homebrew): the console lost the end of every long operation.
 final class LineBufferUTF8Tests: XCTestCase {
 
-    private final class Sink: @unchecked Sendable {
-        private let lock = NSLock()
-        private var storage: [String] = []
-        var lines: [String] { lock.lock(); defer { lock.unlock() }; return storage }
-        func take(_ line: String) { lock.lock(); storage.append(line); lock.unlock() }
-    }
-
     /// The trap: `availableData` splits on byte boundaries, not character
     /// boundaries, so a multi-byte character straddling two reads leaves the
     /// first chunk ending mid-sequence. `String(data:encoding:.utf8)` answers
@@ -24,71 +18,64 @@ final class LineBufferUTF8Tests: XCTestCase {
     /// Reachable with any non-ASCII output past one read. `brew` prints "🍺"
     /// on every successful install and localized paths on plenty of others.
     func testACharacterSplitAcrossTwoReadsLosesNothing() {
-        let sink = Sink()
-        let buffer = LineBuffer(onLine: { sink.take($0) })
+        let sink = Locked<[String]>([])
+        let buffer = LineBuffer(onLine: { line in sink.withLock { $0.append(line) } })
         let whole = Array("Poured 🍺 into the Cellar\n".utf8)
         // Cut inside the four bytes of the beer glass.
         let cut = Array("Poured 🍺".utf8).count - 2
         buffer.feed(Data(whole[..<cut]))
         buffer.feed(Data(whole[cut...]))
-        XCTAssertEqual(sink.lines, ["Poured 🍺 into the Cellar"])
+        XCTAssertEqual(sink.value, ["Poured 🍺 into the Cellar"])
     }
 
     /// The same defect one layer out: everything before the split character is
     /// ASCII and perfectly decodable, and it went too.
     func testTheAsciiAheadOfASplitCharacterSurvives() {
-        let sink = Sink()
-        let buffer = LineBuffer(onLine: { sink.take($0) })
+        let sink = Locked<[String]>([])
+        let buffer = LineBuffer(onLine: { line in sink.withLock { $0.append(line) } })
         let whole = Array("first line\nsecond ☕ line\n".utf8)
         let cut = Array("first line\nsecond ☕".utf8).count - 1
         buffer.feed(Data(whole[..<cut]))
         buffer.feed(Data(whole[cut...]))
-        XCTAssertEqual(sink.lines, ["first line", "second ☕ line"])
+        XCTAssertEqual(sink.value, ["first line", "second ☕ line"])
     }
 
     /// A byte sequence that is not UTF-8 at all must not stall the buffer
     /// forever waiting for a continuation that never comes — the lines around
     /// it are still somebody's log.
     func testInvalidBytesDoNotSwallowTheLinesAroundThem() {
-        let sink = Sink()
-        let buffer = LineBuffer(onLine: { sink.take($0) })
+        let sink = Locked<[String]>([])
+        let buffer = LineBuffer(onLine: { line in sink.withLock { $0.append(line) } })
         buffer.feed(Data("before\n".utf8) + Data([0xFF, 0xFE]) + Data("\nafter\n".utf8))
         buffer.flush()
-        XCTAssertEqual(sink.lines.first, "before")
-        XCTAssertEqual(sink.lines.last, "after")
+        XCTAssertEqual(sink.value.first, "before")
+        XCTAssertEqual(sink.value.last, "after")
     }
 
     /// Plain ASCII, unsplit: the control that proves the above are about the
     /// boundary and not about the buffer generally.
     func testWholeLinesArriveInOrder() {
-        let sink = Sink()
-        let buffer = LineBuffer(onLine: { sink.take($0) })
+        let sink = Locked<[String]>([])
+        let buffer = LineBuffer(onLine: { line in sink.withLock { $0.append(line) } })
         buffer.feed(Data("a\nb\n".utf8))
         buffer.feed(Data("c\n".utf8))
-        XCTAssertEqual(sink.lines, ["a", "b", "c"])
+        XCTAssertEqual(sink.value, ["a", "b", "c"])
     }
 
     /// A last line with no newline is still a line.
     func testFlushEmitsTheTrailingPartialLine() {
-        let sink = Sink()
-        let buffer = LineBuffer(onLine: { sink.take($0) })
+        let sink = Locked<[String]>([])
+        let buffer = LineBuffer(onLine: { line in sink.withLock { $0.append(line) } })
         buffer.feed(Data("no newline here".utf8))
-        XCTAssertEqual(sink.lines, [])
+        XCTAssertEqual(sink.value, [])
         buffer.flush()
-        XCTAssertEqual(sink.lines, ["no newline here"])
+        XCTAssertEqual(sink.value, ["no newline here"])
     }
 }
 
 /// The other half: what is still in the pipe when the child exits.
 /// Kept: guards the defect fixed in 3075fecf fix(homebrew): the console lost the end of every long operation.
 final class StreamTailTests: XCTestCase {
-
-    private final class Sink: @unchecked Sendable {
-        private let lock = NSLock()
-        private var storage: [String] = []
-        var lines: [String] { lock.lock(); defer { lock.unlock() }; return storage }
-        func take(_ line: String) { lock.lock(); storage.append(line); lock.unlock() }
-    }
 
     /// The trap: `terminationHandler` cleared the readability handler and
     /// reported the exit at once. A pipe holds tens of kilobytes, so whatever
@@ -112,54 +99,45 @@ final class StreamTailTests: XCTestCase {
     /// invisible.
     func testTheLastLineOfABurstIsNotLost() {
         let count = 5000
-        let sink = Sink()
+        let sink = Locked<[String]>([])
         let done = DispatchSemaphore(value: 0)
         ShellProcessRunner().stream(
             "/bin/sh",
             ["-c", "i=0; while [ $i -lt \(count) ]; do echo \"line$i\"; i=$((i+1)); done"],
             env: [:],
             onLine: { line in
-                sink.take(line)
+                sink.withLock { $0.append(line) }
                 // Stand in for the main-actor hop the real console pays.
                 if line.hasSuffix("00") { usleep(2000) }
             },
             onExit: { _ in done.signal() })
         XCTAssertEqual(done.wait(timeout: .now() + 60), .success, "stream never reported an exit")
-        XCTAssertEqual(sink.lines.last, "line\(count - 1)",
-                       "the tail was discarded at exit (\(sink.lines.count) of \(count) lines arrived)")
-        XCTAssertEqual(sink.lines.count, count)
+        XCTAssertEqual(sink.value.last, "line\(count - 1)",
+                       "the tail was discarded at exit (\(sink.value.count) of \(count) lines arrived)")
+        XCTAssertEqual(sink.value.count, count)
     }
 
     /// The exit status is what tells the page whether the operation worked, so
     /// draining must not cost it.
     func testTheExitStatusStillArrives() {
         let done = DispatchSemaphore(value: 0)
-        let box = StatusBox()
+        let box = Locked<Int32?>(nil)
         ShellProcessRunner().stream("/bin/sh", ["-c", "echo out; exit 17"], env: [:],
                                     onLine: { _ in },
-                                    onExit: { box.status = $0; done.signal() })
+                                    onExit: { box.value = $0; done.signal() })
         XCTAssertEqual(done.wait(timeout: .now() + 30), .success)
-        XCTAssertEqual(box.status, 17)
+        XCTAssertEqual(box.value, 17)
     }
 
     /// A command that cannot be launched at all still has to report, or the
     /// page keeps its spinner forever.
     func testAnUnlaunchableCommandReportsAFailure() {
         let done = DispatchSemaphore(value: 0)
-        let box = StatusBox()
+        let box = Locked<Int32?>(nil)
         ShellProcessRunner().stream("/nonexistent/tool", [], env: [:],
                                     onLine: { _ in },
-                                    onExit: { box.status = $0; done.signal() })
+                                    onExit: { box.value = $0; done.signal() })
         XCTAssertEqual(done.wait(timeout: .now() + 30), .success, "nothing reported an exit")
-        XCTAssertEqual(box.status, -1)
-    }
-
-    private final class StatusBox: @unchecked Sendable {
-        private let lock = NSLock()
-        private var value: Int32?
-        var status: Int32? {
-            get { lock.lock(); defer { lock.unlock() }; return value }
-            set { lock.lock(); value = newValue; lock.unlock() }
-        }
+        XCTAssertEqual(box.value, -1)
     }
 }

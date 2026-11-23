@@ -63,17 +63,11 @@ final class TheDoctorIsAskedForPlainTextTests: XCTestCase {
     private static let coloured = plain.replacingOccurrences(
         of: "Warning:", with: "\(esc)[33mWarning:\(esc)[0m")
 
-    private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester",
-                       marker: InMemoryOpMarker())
-    }
-
     func testAColouredMacIsReadAsItsTwoFindings() {
         let runner = RecordingRunner()
         runner.plain = Self.plain
         runner.coloured = Self.coloured
-        XCTAssertEqual(engine(runner).doctor()?.count, 2,
+        XCTAssertEqual(brewEngine(runner).doctor()?.count, 2,
                        "doctor was not asked for plain text, so its findings did not parse")
         XCTAssertEqual(runner.env(for: "doctor")?["HOMEBREW_NO_COLOR"], "1")
         XCTAssertEqual(runner.env(for: "doctor")?["HOMEBREW_NO_AUTO_UPDATE"], "1",
@@ -82,7 +76,7 @@ final class TheDoctorIsAskedForPlainTextTests: XCTestCase {
 
     func testOnlyTheDoctorCarriesIt() {
         let runner = RecordingRunner()
-        _ = engine(runner).config()
+        _ = brewEngine(runner).config()
         let seen = runner.env(for: "config")
         XCTAssertNotNil(seen, "config never reached the runner, so the absence below proves nothing")
         XCTAssertEqual(seen, HomebrewEngine.queryEnvironment)
