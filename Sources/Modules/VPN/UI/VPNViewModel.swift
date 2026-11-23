@@ -84,19 +84,6 @@ extension VPNEngine: VPNWork {}
     /// than a way to call a banner back.
     private(set) var announcement: Task<Void, Never>?
 
-    /// How loudly a firing is announced, for a tunnel that fell over by itself
-    /// or any other. Read from the store at every ask rather than cached, so a
-    /// change in Settings applies to the next firing instead of to the next
-    /// launch. The drop is a separate setting because it is separate news.
-    /// Through `VPNNotice.mode`, which is the same rule the store reads: this end
-    /// used to answer «the drop setting for a drop, the rules' setting for
-    /// everything else» in its own words, and a teardown Helm performed then took
-    /// the rules' volume however loudly the person had asked to hear about losing
-    /// a tunnel. Two spellings of one decision, and only one of them was fixed.
-    func notice(for kind: VPNAutomation.Kind) -> VPNNotice {
-        VPNNotice.mode(for: kind, rules: settings.notice, drop: settings.dropNotice)
-    }
-
     /// **The configuration a firing happened on, when the name says so without
     /// ambiguity.**
     ///
@@ -113,38 +100,25 @@ extension VPNEngine: VPNWork {}
     }
 
     /// The three questions a firing asks, resolved on the configuration it
-    /// happened on. **Nothing in the firing path may read the module-wide value
+    /// happened on, and read from the store at every ask rather than cached, so a
+    /// change in Settings applies to the next firing instead of to the next
+    /// launch. **Nothing in the firing path may read the module-wide value
     /// directly**: it did until 2026-08-17, and the switch each card had just
     /// been given was therefore written to the store and never read — the
     /// popover was a control that changed nothing (`TheRingTurnsInThisTunnelsColourTests`).
+    /// A name that does not say one configuration falls back, inside the
+    /// settings, to the module-wide rule: what a configuration without a book
+    /// entry inherits.
     func notice(for kind: VPNAutomation.Kind, on name: String) -> VPNNotice {
-        guard let id = connectionID(named: name)
-        else { return notice(for: kind) }
-        return settings.notice(for: kind, connectionID: id)
+        settings.notice(for: kind, connectionID: connectionID(named: name))
     }
 
     func automationSpin(on name: String) -> Bool {
-        guard let id = connectionID(named: name)
-        else { return automationSpin }
-        return settings.automationSpin(connectionID: id)
+        settings.automationSpin(connectionID: connectionID(named: name))
     }
 
     func spinTint(for kind: VPNAutomation.Kind, on name: String) -> String {
-        guard let id = connectionID(named: name)
-        else { return spinTint(for: kind) }
-        return settings.spinTint(for: kind, connectionID: id)
-    }
-
-    /// Whether the menu-bar ring turns when a rule fires, module-wide: what a
-    /// configuration without a book entry inherits, and nothing in the app writes
-    /// it. Read at every ask rather than cached, like `notice(for:)`.
-    var automationSpin: Bool {
-        settings.automationSpin
-    }
-
-    /// The colour that firing turns in.
-    func spinTint(for kind: VPNAutomation.Kind) -> String {
-        settings.spinTint(for: kind)
+        settings.spinTint(for: kind, connectionID: connectionID(named: name))
     }
 
     /// Whether a banner would actually be shown.

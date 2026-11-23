@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Helm
 
 import Foundation
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
@@ -35,19 +36,18 @@ final class AKeychainCallIsNotOnTheLaunchPathTests: XCTestCase {
     private final class ParkedPurge: @unchecked Sendable {
         private let started = DispatchSemaphore(value: 0)
         private let go = DispatchSemaphore(value: 0)
-        private let lock = NSLock()
-        private var _finished = false
+        private let finishedFlag = Locked(false)
 
         /// What is handed to `init` in place of the real purge.
         func run() {
             started.signal()
             _ = go.wait(timeout: .now() + 2)
-            lock.lock(); _finished = true; lock.unlock()
+            finishedFlag.value = true
         }
 
         /// Whether the purge has run to completion. Read the instant `init`
         /// returns: true there means `init` waited for it.
-        var finished: Bool { lock.lock(); defer { lock.unlock() }; return _finished }
+        var finished: Bool { finishedFlag.value }
 
         func waitForStart() -> DispatchTimeoutResult { started.wait(timeout: .now() + 5) }
         func release() { go.signal() }

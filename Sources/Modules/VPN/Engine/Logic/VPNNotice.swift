@@ -26,8 +26,9 @@ public enum VPNNotice: String, CaseIterable, Codable, Sendable {
         self == .system && !bannerAuthorized ? .menuBar : self
     }
 
-    /// Which of the two stored settings a firing answers to — the one rule both
-    /// the store and the view model read, so nobody decides this twice.
+    /// Which of the two stored settings a firing answers to — the one rule the
+    /// store reads, and the view model through the store, so nobody decides this
+    /// twice.
     ///
     /// **A teardown Helm performed is announced no more quietly than a fall.**
     /// `.disconnected` used to answer to the rules' setting alone, and the two

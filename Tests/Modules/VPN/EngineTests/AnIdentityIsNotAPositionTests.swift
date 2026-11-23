@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Helm
 
 import XCTest
-import HelmRuntime
 @testable import Module_VPN_Engine
 
 /// A row of `scutil --nc list` that carries no service id gets one made up, and

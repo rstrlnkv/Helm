@@ -43,7 +43,7 @@ final class TheTilesSayWhatIsKnownTests: XCTestCase {
     func testAMeasurementCarriesItsOwnAge() {
         let taken = now.addingTimeInterval(-180)
         let facts = VPNTunnelFacts(since: nil, bytesIn: 0, bytesOut: 0,
-                                   speed: VPNSpeedReading(down: 212, up: 95, rpm: 850, at: taken),
+                                   speed: VPNSpeedReading(down: 212, up: 95, at: taken),
                                    now: now)
         XCTAssertEqual(facts.speed?.down, 212)
         XCTAssertEqual(facts.speedAge, 180)
@@ -59,7 +59,7 @@ final class TheTilesSayWhatIsKnownTests: XCTestCase {
     func testAFreshMeasurementIsNotStale() {
         let taken = now.addingTimeInterval(-(VPNTunnelFacts.speedGoesStaleAfter - 1))
         let facts = VPNTunnelFacts(since: nil, bytesIn: 0, bytesOut: 0,
-                                   speed: VPNSpeedReading(down: 212, up: 95, rpm: 850, at: taken),
+                                   speed: VPNSpeedReading(down: 212, up: 95, at: taken),
                                    now: now)
         XCTAssertFalse(facts.speedIsStale)
     }
@@ -67,7 +67,7 @@ final class TheTilesSayWhatIsKnownTests: XCTestCase {
     func testAMeasurementOlderThanTheThresholdIsStale() {
         let taken = now.addingTimeInterval(-(VPNTunnelFacts.speedGoesStaleAfter + 1))
         let facts = VPNTunnelFacts(since: nil, bytesIn: 0, bytesOut: 0,
-                                   speed: VPNSpeedReading(down: 212, up: 95, rpm: 850, at: taken),
+                                   speed: VPNSpeedReading(down: 212, up: 95, at: taken),
                                    now: now)
         XCTAssertTrue(facts.speedIsStale)
     }
@@ -77,7 +77,7 @@ final class TheTilesSayWhatIsKnownTests: XCTestCase {
     /// either — it is a figure whose age cannot be told.
     func testAMeasurementFromTheFutureIsStale() {
         let facts = VPNTunnelFacts(since: nil, bytesIn: 0, bytesOut: 0,
-                                   speed: VPNSpeedReading(down: 212, up: 95, rpm: 850,
+                                   speed: VPNSpeedReading(down: 212, up: 95,
                                                           at: now.addingTimeInterval(60)),
                                    now: now)
         XCTAssertTrue(facts.speedIsStale)
