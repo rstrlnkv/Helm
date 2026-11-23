@@ -172,7 +172,7 @@ struct AutopilotSettingsPage: View {
             // differently. The empty state takes the flexible space and the card
             // sits under it.
             VStack(spacing: HelmSpace.s6) {
-                HelmEmptyState(symbol: "location.north.circle",
+                HelmEmptyState(symbol: AutopilotDescriptor.symbol,
                                tint: AutopilotDescriptor.tint.colour,
                                message: ApStr.startHint) {
                     // The second answer to «what do I do with this page», beside
