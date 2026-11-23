@@ -14,8 +14,6 @@ final class IOKitSleepAssertions: SleepAssertions {
     private var hasSystemAssertion = false
     private var hasDisplayAssertion = false
 
-    init() {}
-
     /// The backstop, for the same reason `IOPSPowerInfo` below has one and
     /// `CGKeyTap` now does: `deactivate()` is the ordinary route and covers the
     /// module being switched off, and it is not the only way this object is let
@@ -29,32 +27,15 @@ final class IOKitSleepAssertions: SleepAssertions {
     ///   *answer*: a refusal here is a Mac that sleeps while every surface says
     ///   Helm is holding it awake.
     func preventSleep(display: Bool) -> Bool {
-        if !hasSystemAssertion {
-            var assertionID: IOPMAssertionID = 0
-            let result = IOPMAssertionCreateWithName(
-                "PreventUserIdleSystemSleep" as CFString,
-                IOPMAssertionLevel(kIOPMAssertionLevelOn),
-                "Helm: keep the Mac awake" as CFString,
-                &assertionID
-            )
-            if result == kIOReturnSuccess {
-                systemAssertionID = assertionID
-                hasSystemAssertion = true
-            }
+        if !hasSystemAssertion, let id = take("PreventUserIdleSystemSleep", "Helm: keep the Mac awake") {
+            systemAssertionID = id
+            hasSystemAssertion = true
         }
 
-        if display, !hasDisplayAssertion {
-            var assertionID: IOPMAssertionID = 0
-            let result = IOPMAssertionCreateWithName(
-                "PreventUserIdleDisplaySleep" as CFString,
-                IOPMAssertionLevel(kIOPMAssertionLevelOn),
-                "Helm: keep the display on" as CFString,
-                &assertionID
-            )
-            if result == kIOReturnSuccess {
-                displayAssertionID = assertionID
-                hasDisplayAssertion = true
-            }
+        if display, !hasDisplayAssertion,
+           let id = take("PreventUserIdleDisplaySleep", "Helm: keep the display on") {
+            displayAssertionID = id
+            hasDisplayAssertion = true
         }
         // **The call makes the world match its argument.** It used to only ever
         // add: `display: false` created nothing and released nothing, so an
@@ -64,8 +45,7 @@ final class IOKitSleepAssertions: SleepAssertions {
         // a pair somebody has to remember to balance, in the module whose worst
         // failure is a Mac that will not sleep.
         if !display, hasDisplayAssertion {
-            IOPMAssertionRelease(displayAssertionID)
-            displayAssertionID = 0
+            give(&displayAssertionID)
             hasDisplayAssertion = false
         }
         // Everything that was asked for, not «something went up»: with the
@@ -77,39 +57,56 @@ final class IOKitSleepAssertions: SleepAssertions {
 
     func release() {
         if hasSystemAssertion {
-            IOPMAssertionRelease(systemAssertionID)
-            systemAssertionID = 0
+            give(&systemAssertionID)
             hasSystemAssertion = false
         }
         if hasDisplayAssertion {
-            IOPMAssertionRelease(displayAssertionID)
-            displayAssertionID = 0
+            give(&displayAssertionID)
             hasDisplayAssertion = false
         }
     }
+
+    /// Create one assertion of `type`; nil if IOKit refuses.
+    private func take(_ type: String, _ name: String) -> IOPMAssertionID? {
+        var assertionID: IOPMAssertionID = 0
+        let result = IOPMAssertionCreateWithName(type as CFString,
+                                                 IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                                                 name as CFString, &assertionID)
+        return result == kIOReturnSuccess ? assertionID : nil
+    }
+
+    /// Release the assertion and zero its id.
+    private func give(_ id: inout IOPMAssertionID) {
+        IOPMAssertionRelease(id)
+        id = 0
+    }
+}
+
+// MARK: - displayIDs
+
+/// Up to 16 display ids from one of CoreGraphics' list functions (online or
+/// active), or nil when it fails.
+private func displayIDs(
+    _ list: (UInt32, UnsafeMutablePointer<CGDirectDisplayID>?, UnsafeMutablePointer<UInt32>?) -> CGError
+) -> [CGDirectDisplayID]? {
+    let maxDisplays: UInt32 = 16
+    var ids = [CGDirectDisplayID](repeating: 0, count: Int(maxDisplays))
+    var count: UInt32 = 0
+    guard list(maxDisplays, &ids, &count) == .success else { return nil }
+    return Array(ids.prefix(Int(count)))
 }
 
 // MARK: - CGDisplayInfo
 
 final class CGDisplayInfo: DisplayInfoPort {
-    init() {}
-
     func builtInFlags() -> [Bool] {
-        let maxDisplays: UInt32 = 16
-        var displayIDs = [CGDirectDisplayID](repeating: 0, count: Int(maxDisplays))
-        var displayCount: UInt32 = 0
-
-        let result = CGGetOnlineDisplayList(maxDisplays, &displayIDs, &displayCount)
-        guard result == .success else { return [] }
-
-        return (0..<Int(displayCount)).map { CGDisplayIsBuiltin(displayIDs[$0]) != 0 }
+        (displayIDs(CGGetOnlineDisplayList) ?? []).map { CGDisplayIsBuiltin($0) != 0 }
     }
 }
 
 // MARK: - MacLidInfo
 
 final class MacLidInfo: LidInfoPort {
-    init() {}
     func hasLid() -> Bool { MacHardware.hasLid }
     func hasBattery() -> Bool { MacHardware.hasBattery }
 }
@@ -119,8 +116,6 @@ final class MacLidInfo: LidInfoPort {
 final class IOPSPowerInfo: PowerInfoPort {
     private var runLoopSource: CFRunLoopSource?
     private var onChange: (@Sendable () -> Void)?
-
-    init() {}
 
     /// The reading itself moved to `PowerSource` in `HelmRuntime` when
     /// background scans needed it too — a second IOKit read written in the
@@ -190,8 +185,6 @@ final class ScreenParamsObserver: DisplayObserverPort {
     /// enable, quietly.
     private var token: NSObjectProtocol?
 
-    init() {}
-
     deinit { stopObserving() }
 
     func startObserving(_ onChange: @escaping @Sendable () -> Void) {
@@ -218,8 +211,6 @@ final class WorkspaceAppPort: AppRunningPort {
     /// the module off and on stacked another pair each time — the same defect
     /// `LayoutEngine.deactivate` documents.
     private(set) var tokens: [NSObjectProtocol] = []
-
-    init() {}
 
     deinit { stopObserving() }
 
@@ -248,8 +239,6 @@ final class WorkspaceAppPort: AppRunningPort {
 // MARK: - CGEventPointer
 
 final class CGEventPointer: PointerPort {
-    init() {}
-
     func location() -> CGPoint? {
         CGEvent(source: nil)?.location
     }
@@ -260,15 +249,8 @@ final class CGEventPointer: PointerPort {
     }
 
     func displayBounds(containing p: CGPoint) -> CGRect? {
-        let maxDisplays: UInt32 = 16
-        var displayIDs = [CGDirectDisplayID](repeating: 0, count: Int(maxDisplays))
-        var displayCount: UInt32 = 0
-
-        let result = CGGetActiveDisplayList(maxDisplays, &displayIDs, &displayCount)
-        guard result == .success else { return nil }
-
-        for index in 0..<Int(displayCount) {
-            let bounds = CGDisplayBounds(displayIDs[index])
+        for id in displayIDs(CGGetActiveDisplayList) ?? [] {
+            let bounds = CGDisplayBounds(id)
             if bounds.contains(p) {
                 return bounds
             }
@@ -280,8 +262,6 @@ final class CGEventPointer: PointerPort {
 // MARK: - DispatchClock
 
 final class DispatchClock: Clock {
-    init() {}
-
     func schedule(after: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject {
         DelayedWork.schedule(on: .main, after: after, block)
     }
