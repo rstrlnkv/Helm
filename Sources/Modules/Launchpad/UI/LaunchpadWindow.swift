@@ -75,6 +75,8 @@ final class LaunchpadPanel: NSPanel {
         case .keyDown:
             // A carried tile: Esc is the state's (it ends the lift, not the window), every other key waits.
             if state.pointerBusy && event.keyCode != 53 { return true }
+            // The removal's card has the keyboard: Esc is the state's, every other key goes on to the card's buttons.
+            if state.removalAsk != nil && event.keyCode != 53 { return false }
             if let editor = firstResponder as? NSTextView, editor.hasMarkedText() { return false }
             // Option and an arrow moves the chosen tile, with Shift it combines or takes out (`LaunchpadScreenState.reorderKey`); the state
             // refuses where there is nothing to arrange (a search, a name being typed), and the key then goes on to the field as before.
@@ -260,6 +262,10 @@ private final class LaunchpadWindowEnders {
             }
         }
         state.onHide = { [weak model] id in Task { @MainActor in await model?.hide(id) } }
+        state.onVerdicts = { [weak model] candidates in await model?.removal()?.verdicts(for: candidates) ?? [] }
+        state.onPreview = { [weak model] candidate in await model?.previewRemoval(candidate) }
+        // The model, not this window, owns the removal from here: it lands and says how it went even if the window closes.
+        state.onRemove = { [weak model] candidate, quitting in Task { @MainActor in await model?.removeApp(candidate, quittingIfRunning: quitting) } }
         state.onPlace = { [weak model] edit in await model?.place(edit) }
         state.onRename = { [weak model] id, name in Task { @MainActor in await model?.rename(id, to: name) } }
         state.onResize = { [weak model] id, large in Task { @MainActor in await model?.resize(id, large: large) } }
@@ -269,7 +275,7 @@ private final class LaunchpadWindowEnders {
         state.onCopyPath = { [weak model] path, concealed in model?.copyPath(path, concealed) }
         state.onClose = { [weak self] in self?.close() }
         state.hidden.onAsking = { [weak self] on in self?.promptChanged(on) }
-        state.hidden.onLocked = { [weak model] in model?.dropNamedNotice() }
+        state.hidden.onLocked = { [weak model, weak state] in state?.cancelRemoval(); model?.dropNamedNotice() }
         state.onViewChange = { [weak model] in model?.setViewMode($0) }
         let asked = model.grid
         let grid = asked.automatic ? "automatic" : "\(asked.rows) rows asked, \(geometry.rows) fit"
@@ -456,6 +462,9 @@ private final class LaunchpadWindowEnders {
         state.onRename = nil
         state.onResize = nil
         state.onHide = nil
+        state.onVerdicts = nil
+        state.onPreview = nil
+        state.onRemove = nil
         state.onMove = nil
         state.onClose = nil
         state.onUnhide = nil

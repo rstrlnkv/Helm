@@ -171,6 +171,11 @@ struct LaunchpadGeometry: Equatable {
         (size.width - LaunchpadMetrics.searchWidth) / 2 - sideInset >= LaunchpadMetrics.switchRoom
     }
 
+    /// Whether the window leaves "Done" its room at the right of the search field (`LaunchpadMetrics.doneRoom`), as `switchFits` does for the switch.
+    var doneFits: Bool {
+        (size.width - LaunchpadMetrics.searchWidth) / 2 - sideInset >= LaunchpadMetrics.doneRoom
+    }
+
     /// The grid's left edge on a page.
     var gridLeft: CGFloat { (pageWidth - CGFloat(columns) * cellWidth) / 2 }
 

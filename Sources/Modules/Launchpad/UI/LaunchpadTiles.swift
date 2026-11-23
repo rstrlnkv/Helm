@@ -67,6 +67,12 @@ enum LaunchpadMetrics {
     /// on 2026-11-21 in the text style, which is what the window always draws (it sets no `helmHeaderChoices`).
     /// `TheSwitchFitsItsRoomInEveryLanguageTests` measures it again.
     static let switchRoom: CGFloat = 216
+    /// What "Done" is given at the right of the search field, as `switchRoom` is at the left: its button in the widest of the eight languages plus the same gap of 20 pt
+    /// (85 pt in Portuguese, the widest, measured by `fittingSize` on 2026-11-23; `TheDoneButtonFitsItsRoomInEveryLanguageTests` measures it again). A window with less room has the button above the page dots.
+    static let doneRoom: CGFloat = 105
+    /// The removal card's width, and what its buttons are given inside its padding (the 324 pt the German and Russian "Quit and Move to Trash" overflowed side by side).
+    static let removalCardWidth: CGFloat = 360
+    static let removalRoom: CGFloat = removalCardWidth - 2 * HelmSpace.s6
     /// The switch's own height (the kit's segmented tabs, a 36 pt strip), centred on the search field's.
     static let switchHeight: CGFloat = 36
     /// Between the search field and the grid. 32 is no `HelmSpace` step (s7 is 28, s8 is 40): it keeps the grid's top at 96 with the 36 pt field.
@@ -194,6 +200,40 @@ struct LaunchpadTileMoves {
     var takeOut: (() -> Void)?
 }
 
+/// What a tile wears in the edit mode: its icon wiggles (`seed` sets its place in the shake), and an app wears the badges whose press is given: the × (`remove`, only where
+/// the Uninstaller offers the app) and the eye (`hide`). The frames are `LaunchpadBadge.frames`, which the pointer's hit test reads too.
+struct LaunchpadTileEdit {
+    var seed: Int
+    var remove: (() -> Void)?
+    var hide: (() -> Void)?
+
+    var kinds: LaunchpadBadge.Kinds {
+        var kinds: LaunchpadBadge.Kinds = []
+        if remove != nil { kinds.insert(.remove) }
+        if hide != nil { kinds.insert(.hide) }
+        return kinds
+    }
+
+    /// The same number for the same id in every run, so a tile does not change its step when the window is opened again (`String.hashValue` is chosen anew at each launch).
+    static func seed(of id: String) -> Int { id.utf8.reduce(5381) { ($0 &* 33 &+ Int($1)) & 0xFFFF } }
+}
+
+/// The mark's small, endless tilt in the edit mode (`HelmMotion.wiggle`): none under Reduce Motion, where the badges alone say the mode is on.
+private struct LaunchpadWiggle: ViewModifier {
+    let seed: Int
+    let on: Bool
+    @State private var swung = false
+    static let degrees = 1.6
+
+    func body(content: Content) -> some View {
+        let animation = on ? HelmMotion.wiggle(seed: seed) : nil
+        content
+            .rotationEffect(.degrees(animation != nil ? (swung ? Self.degrees : -Self.degrees) : 0))
+            .animation(animation, value: swung)
+            .onChange(of: on, initial: true) { _, now in swung = now }
+    }
+}
+
 /// One tile: an icon over a name, pressed to open. Hiding is the context menu's and VoiceOver's action. White ink: it
 /// is drawn on the window's blur, in the dark appearance.
 struct LaunchpadTile<Mark: View>: View {
@@ -226,6 +266,10 @@ struct LaunchpadTile<Mark: View>: View {
     var isNew = false
     /// The geometry's scale (`LaunchpadGeometry.scale`): the tile's gap and padding follow it, the label font follows `max(1, scale)`.
     var scale: CGFloat = 1
+    /// The edit mode's wiggle and badges; nil outside the mode, and on the tile the lift carries.
+    var editMode: LaunchpadTileEdit?
+    /// "Edit" in the tile's menu: nil where the mode cannot begin (or already is).
+    var beginEditing: (() -> Void)?
     @ViewBuilder let mark: Mark
     @State private var hovering = false
     /// The hover scroll's offset (0 or negative): moved by `.task(id: marqueeOn)`, which owns it.
@@ -291,10 +335,11 @@ struct LaunchpadTile<Mark: View>: View {
             VStack(spacing: HelmSpace.s3 * scale) {
                 mark
                     .frame(width: iconSize, height: iconSize)
+                    .modifier(LaunchpadWiggle(seed: editMode?.seed ?? 0, on: editMode != nil))
                     .scaleEffect(popped && !HelmMotion.reduceMotion ? LaunchpadMetrics.popScale : 1)
                     .animation(HelmMotion.interface, value: popped)
                     .overlay(alignment: .topTrailing) {
-                        if isNew { newDot }
+                        if isNew, editMode == nil { newDot }
                     }
                     .accessibilityHidden(true)
                 if !hidesName {
@@ -320,6 +365,7 @@ struct LaunchpadTile<Mark: View>: View {
         .help(name)
         .onHover { hovering = $0 }
         .task(id: marqueeOn) { await scroll(by: marqueeDistance) }
+        .overlay(alignment: .topLeading) { badges }
         .accessibilityLabel(accessibleName)
         .contextMenu {
             if let menu { menu } else {
@@ -327,12 +373,42 @@ struct LaunchpadTile<Mark: View>: View {
                 if let files { Divider(); LaunchpadFileButtons(files: files) }
             }
             if let resize { Button(resize.title, action: resize.action) }
+            if let beginEditing { Button(HelmWord.edit, action: beginEditing) }
+            if let remove = editMode?.remove { Button(LpStr.removeAction, action: remove) }
         }
         .accessibilityActions {
+            if let remove = editMode?.remove { Button(LpStr.removeAction, action: remove) }
             if let hide { Button(inHidden ? HelmWord.show : LpStr.hide, action: hide) }
             if let files { LaunchpadFileButtons(files: files) }
             if let resize { Button(resize.title, action: resize.action) }
             if let reorder { moveActions(reorder) }
+        }
+    }
+
+    /// The edit mode's badges, each a button drawn where `LaunchpadBadge.frames` says: a dark disc with a white glyph. VoiceOver reaches what they do through the tile's actions, not through them.
+    @ViewBuilder private var badges: some View {
+        if let editMode, !editMode.kinds.isEmpty {
+            let side = LaunchpadBadge.side(icon: iconSize)
+            ZStack(alignment: .topLeading) {
+                ForEach(LaunchpadBadge.frames(editMode.kinds, cell: glowSize, icon: iconSize, iconTop: HelmSpace.s3 * scale)) { badge in
+                    let press = badge.kind == .remove ? editMode.remove : editMode.hide
+                    Button { press?() } label: {
+                        Image(systemName: badge.kind == .remove ? "xmark" : "eye.slash")
+                            .font(.system(size: side * 0.5, weight: .bold))
+                            .foregroundStyle(Color.white)
+                            .frame(width: side, height: side)
+                            .background(Circle().fill(Color.black.opacity(traits.increasedContrast ? 1 : 0.72)))
+                            .overlay(Circle().strokeBorder(Color.white, lineWidth: traits.increasedContrast ? 1.5 : 0).frame(width: side, height: side))
+                            .frame(width: badge.frame.width, height: badge.frame.height)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(badge.kind == .remove ? LpStr.removeNamed(name) : LpStr.hideNamed(name))
+                    .accessibilityHidden(true)
+                    .offset(x: badge.frame.minX, y: badge.frame.minY)
+                }
+            }
+            .frame(width: glowSize.width, height: glowSize.height, alignment: .topLeading)
         }
     }
 
@@ -354,11 +430,13 @@ extension LaunchpadTile where Mark == Image {
     init(app: CatalogApp, icon: NSImage?, iconSize: CGFloat, selected: Bool, glowSize: CGSize, popped: Bool, pressed: Bool = false, inHidden: Bool = false,
          moved: LaunchpadCategoryTarget?, open: @escaping () -> Void, hide: @escaping () -> Void,
          move: @escaping (LaunchpadCategoryTarget?) -> Void, reorder: LaunchpadTileMoves? = nil,
-         files: LaunchpadFileActions? = nil, showName: Bool = true, oneLine: Bool = false, isNew: Bool = false, scale: CGFloat = 1) {
+         files: LaunchpadFileActions? = nil, showName: Bool = true, oneLine: Bool = false, isNew: Bool = false, scale: CGFloat = 1,
+         editMode: LaunchpadTileEdit? = nil, beginEditing: (() -> Void)? = nil) {
         self.init(name: app.name, accessibleName: isNew ? LpStr.appIsNew(app.name) : app.name, iconSize: iconSize, selected: selected, open: open, hide: hide,
                   glowSize: glowSize, popped: popped, pressed: pressed,
                   menu: inHidden ? nil : LaunchpadAppMenu(app: app, moved: moved, hide: hide, move: move, files: files), inHidden: inHidden,
-                  reorder: reorder, files: files, hidesName: !showName, oneLine: oneLine, isNew: isNew, scale: scale) {
+                  reorder: reorder, files: files, hidesName: !showName, oneLine: oneLine, isNew: isNew, scale: scale,
+                  editMode: editMode, beginEditing: beginEditing) {
             Image(nsImage: icon ?? LaunchpadIcons.empty).resizable()
         }
     }

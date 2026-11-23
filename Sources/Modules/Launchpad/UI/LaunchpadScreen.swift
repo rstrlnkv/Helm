@@ -1,4 +1,5 @@
 import SwiftUI
+import HelmRuntime
 import HelmUI
 import Module_Launchpad_Engine
 
@@ -13,7 +14,11 @@ struct LaunchpadScreen: View {
     @ObservedObject var state: LaunchpadScreenState
     @FocusState private var searchFocused: Bool
     @FocusState private var nameFocused: Bool
+    @FocusState private var removalFocused: Bool
     @State private var nameSelection: TextSelection?
+    @State private var armed = false
+    @State private var cardShown = false
+    @Environment(\.helmTraits) private var traits
 
     var body: some View {
         let g = state.geometry
@@ -22,22 +27,25 @@ struct LaunchpadScreen: View {
             Color.black.opacity(0.2)
                 .contentShape(Rectangle())
                 .onTapGesture { state.backgroundClicked() }
+                .contextMenu { if state.editAllowed, !state.editing { Button(HelmWord.edit) { [weak state] in state?.beginEditing() } } }
             // The content settles from a little larger as the window is revealed (a scrub or a settle, `state.reveal`); the scrim stays out of the zoom.
             ZStack(alignment: .topLeading) {
                 pages(g)
                 states
                 searchField(g)
                 if g.switchFits { viewSwitch(g) }
+                if state.editing, g.doneFits { doneButton(g) }
                 bottom(g)
                 if state.openFolder != nil {
                     folderScrim(g)
                     folderCard(g)
                 }
+                if let ask = state.removalAsk { removalCard(ask, g) }
                 if let carried = state.lift {
                     // The carried tile keeps its own size: a large folder's block is two cells a side.
                     let size = CGSize(width: g.cellWidth * (carried.entry.isLarge ? 2 : 1), height: g.cellHeight * (carried.entry.isLarge ? 2 : 1))
                     LiftOverlay(point: state.liftPoint, cell: size) {
-                        tile(carried.entry, selected: false, size: size, g)
+                        tile(carried.entry, selected: false, size: size, g, carrying: true)
                     }
                 }
             }
@@ -108,16 +116,20 @@ struct LaunchpadScreen: View {
         .frame(width: g.pageWidth, height: g.pageHeight, alignment: .topLeading)
     }
 
-    private func tile(_ entry: LaunchpadEntry, selected: Bool, size: CGSize, _ g: LaunchpadGeometry) -> some View {
-        Group {
+    private func tile(_ entry: LaunchpadEntry, selected: Bool, size: CGSize, _ g: LaunchpadGeometry, carrying: Bool = false) -> some View {
+        // The edit mode's wiggle and badges stay with the tiles in the page; the one the pointer carries is plain.
+        let wearing = state.editing && !carrying
+        let canEdit = state.editAllowed && !state.editing
+        return Group {
             switch entry {
             case .app(let app):
                 LaunchpadTile(app: app, icon: state.icons.image(for: app.path, side: g.icon), iconSize: g.icon, selected: selected,
                               glowSize: size, popped: state.launching == app.id,
                               pressed: state.pressedID == app.id || state.lift?.onto == app.id,
-                              moved: state.moved[app.id], open: { [weak state] in state?.onLaunch?(app.id, app.name) }, hide: { [weak state] in state?.onHide?(app.id) },
+                              moved: state.moved[app.id], open: { [weak state] in state?.openApp(app.id, app.name) }, hide: { [weak state] in state?.onHide?(app.id) },
                               move: { [weak state] in state?.move(app.id, to: $0) }, reorder: state.moves(for: app.id),
-                              files: state.fileActions(for: app), showName: g.names, isNew: isNew(app), scale: g.scale)
+                              files: state.fileActions(for: app), showName: g.names, isNew: isNew(app) && !state.editing, scale: g.scale,
+                              editMode: wearing ? appEdit(app) : nil, beginEditing: canEdit ? { [weak state] in state?.beginEditing() } : nil)
             case .folder(let id, let name, let apps, let large):
                 if state.categoriesShown, id == LaunchpadHiddenBlock.id {
                     // The locked block: a lock and a name, nothing of what it holds; a press or Return asks the system.
@@ -155,7 +167,9 @@ struct LaunchpadScreen: View {
                                   open: { [weak state] in state?.open(folder: id) }, hide: nil, glowSize: size,
                                   pressed: (state.pressedID == entry.id && state.pressedIcon == nil) || state.lift?.onto == entry.id,
                                   resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { [weak state] in state?.resize(id, large: !large) }),
-                                  reorder: state.moves(for: entry.id), oneLine: !g.names, scale: g.scale) {
+                                  reorder: state.moves(for: entry.id), oneLine: !g.names, scale: g.scale,
+                                  editMode: wearing ? LaunchpadTileEdit(seed: LaunchpadTileEdit.seed(of: entry.id)) : nil,
+                                  beginEditing: canEdit ? { [weak state] in state?.beginEditing() } : nil) {
                         LaunchpadFolderMark(icons: cells.shown.map { state.icons.image(for: $0.path, side: mini) }, size: large ? g.largeMark : g.icon, edge: large ? g.largeEdge : nil,
                                             overflow: cells.overflow.map { state.icons.image(for: $0.path, side: LaunchpadClusterCell.tiny(mini)) },
                                             pressed: large ? cells.shown.firstIndex { $0.id == state.pressedIcon } : nil,
@@ -167,6 +181,13 @@ struct LaunchpadScreen: View {
             }
         }
         .frame(width: size.width, height: size.height)
+    }
+
+    /// What an app's tile wears in the edit mode: the eye, and the × where the Uninstaller offers the app.
+    private func appEdit(_ app: CatalogApp) -> LaunchpadTileEdit {
+        LaunchpadTileEdit(seed: LaunchpadTileEdit.seed(of: app.id),
+                          remove: state.badges(for: app).contains(.remove) ? { [weak state] in state?.askToRemove(app.id) } : nil,
+                          hide: { [weak state] in state?.onHide?(app.id) })
     }
 
     /// The "new" dot: added in the last 30 days and never opened from Launchpad, by the model's counts as they are now (a launch that
@@ -218,10 +239,21 @@ struct LaunchpadScreen: View {
             .allowsHitTesting(state.openFolder == nil)
     }
 
+    /// "Done" at the right of the search field, on its row, from the grid's right edge: the mirror of the switch. A window with no room for it (`doneFits`) has it above the dots (`bottom`).
+    private func doneButton(_ g: LaunchpadGeometry) -> some View {
+        Button(HelmWord.done) { [weak state] in state?.endEditing() }
+            .frame(height: LaunchpadMetrics.switchHeight)
+            .padding(.trailing, g.sideInset)
+            .frame(width: g.size.width, alignment: .trailing)
+            .padding(.top, g.searchTop - (LaunchpadMetrics.switchHeight - LaunchpadMetrics.searchHeight) / 2)
+            .allowsHitTesting(state.openFolder == nil)
+    }
+
     private func bottom(_ g: LaunchpadGeometry) -> some View {
         VStack(spacing: HelmSpace.s5) {
             if let notice = vm.notice { HelmBanner(LpStr.text(of: notice), fillsWidth: false) }
             if state.hidden.unavailable { HelmBanner(LpStr.hiddenUnavailable, fillsWidth: false) }
+            if state.editing, !g.doneFits { Button(HelmWord.done) { [weak state] in state?.endEditing() } }
             if state.pageCount > 1 { pageDots(count: state.pageCount, current: state.page, dot: g.dotSize, hit: g.dotHit) }
         }
         .frame(width: g.size.width, height: g.size.height, alignment: .bottom)
@@ -315,13 +347,66 @@ struct LaunchpadScreen: View {
             LaunchpadTile(app: app, icon: state.icons.image(for: app.path, side: g.icon), iconSize: g.icon,
                           selected: state.selection == index, glowSize: glowSize(g),
                           popped: state.launching == app.id, pressed: state.pressedID == app.id,
-                          inHidden: inHidden, moved: state.moved[app.id], open: { [weak state] in state?.onLaunch?(app.id, app.name) },
+                          inHidden: inHidden, moved: state.moved[app.id], open: { [weak state] in state?.openApp(app.id, app.name) },
                           hide: { [weak state] in inHidden ? state?.onUnhide?(app.id) : state?.onHide?(app.id) },
                           move: { [weak state] in state?.move(app.id, to: $0) }, reorder: state.moves(for: app.id),
-                          files: state.fileActions(for: app), showName: inHidden || state.namesAsked, oneLine: !g.names, isNew: isNew(app), scale: g.scale)
+                          files: state.fileActions(for: app), showName: inHidden || state.namesAsked, oneLine: !g.names, isNew: isNew(app) && !state.editing, scale: g.scale,
+                          editMode: state.editing && !inHidden ? appEdit(app) : nil, beginEditing: state.editAllowed && !state.editing ? { [weak state] in state?.beginEditing() } : nil)
         } else {
             Color.clear
         }
+    }
+
+    /// The question before an app is moved to the Trash, over everything: a scrim whose click cancels, and a card with the focus on its title.
+    /// Counting says it is looking for the app's files and asks nothing yet; the question comes with what was counted. The card is the folder card's:
+    /// the same material, corners and white ink. Its button waits out the state's dwell (`removalDwell`) before it works, and looks it.
+    private func removalCard(_ ask: LaunchpadScreenState.RemovalAsk, _ g: LaunchpadGeometry) -> some View {
+        ZStack {
+            Color.black.opacity(LaunchpadMetrics.scrim)
+                .contentShape(Rectangle())
+                .onTapGesture { state.cancelRemoval() }
+            VStack(spacing: HelmSpace.s5) {
+                switch ask {
+                case .counting(_, let name):
+                    removalTitle(name)
+                    HelmBusyLabel(LpStr.lookingForFiles, busy: true)
+                    Button(HelmWord.cancel) { state.cancelRemoval() }.keyboardShortcut(.cancelAction)
+                case .asking(_, let name, let counted):
+                    removalTitle(name)
+                    let items = Plural.items(1 + counted.leftoverCount, language: AppLanguage.current.rawValue)
+                    Text(counted.appBytes.map { HelmConfirm.trash(items, Bytes($0 + counted.leftoverBytes)) } ?? LpStr.moveToTrashNoSize(items))
+                        .multilineTextAlignment(.center)
+                    if counted.running {
+                        Label(LpStr.removeRunning(name), systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(HelmSignal.warning(increased: traits.increasedContrast))
+                            .multilineTextAlignment(.center)
+                    }
+                    LaunchpadRemovalButtons(confirm: counted.running ? LpStr.quitAndMoveToTrash : HelmWord.moveToTrash, armed: armed,
+                                            cancel: { state.cancelRemoval() }, remove: { state.confirmRemoval() })
+                }
+            }
+            .foregroundStyle(Color.white)
+            .padding(HelmSpace.s6)
+            .frame(maxWidth: LaunchpadMetrics.removalCardWidth)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HelmRadius.panel, style: .continuous))
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isModal)
+            .opacity(cardShown ? 1 : 0)
+        }
+        .frame(width: g.size.width, height: g.size.height)
+        .onAppear { removalFocused = true; withAnimation(HelmMotion.interface) { cardShown = true } }
+        .onDisappear { cardShown = false }
+        .onChange(of: ask) { removalFocused = true }
+        .task(id: ask) {
+            armed = false
+            try? await Task.sleep(for: .seconds(LaunchpadScreenState.removalDwell))
+            armed = true
+        }
+    }
+
+    private func removalTitle(_ name: String) -> some View {
+        Text(LpStr.removeTitle(name)).font(HelmText.sectionHeading).multilineTextAlignment(.center)
+            .focusable().focusEffectDisabled().focused($removalFocused)
     }
 
     /// The dimming behind the card; it fades and takes no clicks on its way out.
@@ -387,4 +472,24 @@ private struct RevealEffect: ViewModifier {
         content
             .scaleEffect(HelmMotion.reduceMotion ? 1 : LaunchpadMetrics.zoomFrom + (1 - LaunchpadMetrics.zoomFrom) * p)
     }
+}
+
+/// The removal card's two buttons: side by side when both fit `LaunchpadMetrics.removalRoom`, one above the other when they do not (German and Russian
+/// "Quit and Move to Trash"). Cancel answers Esc in both. The destructive one is disabled until `armed`.
+struct LaunchpadRemovalButtons: View {
+    let confirm: String
+    var armed = true
+    var cancel: () -> Void = {}
+    var remove: () -> Void = {}
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack { cancelButton; removeButton }
+            VStack { removeButton; cancelButton }
+        }
+        .frame(maxWidth: LaunchpadMetrics.removalRoom)
+    }
+
+    private var cancelButton: some View { Button(HelmWord.cancel, action: cancel).keyboardShortcut(.cancelAction) }
+    private var removeButton: some View { Button(confirm, role: .destructive, action: remove).disabled(!armed) }
 }

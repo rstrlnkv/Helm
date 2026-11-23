@@ -203,6 +203,12 @@ public enum HelmMotion {
     /// `marquee`'s length in seconds, for the caller that waits it out.
     public static func marqueeDuration(distance: CGFloat) -> TimeInterval { max(0.3, Double(distance) / 40) }
 
+    /// The wobble of a tile in Launchpad's edit mode: a short ease back and forth, forever, started a little later for some seeds (eight phases over the whole 0.24 s cycle, by `seed`) so the tiles
+    /// are not in step. **nil under Reduce Motion**: the tile then does not move at all (the badges say it is editing), never a still tilt.
+    public static func wiggle(seed: Int) -> Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.12).delay(Double(abs(seed % 8)) * 0.03).repeatForever(autoreverses: true)
+    }
+
     /// The two fades a carried tile leaves behind it, both deliberately slower
     /// than the hand.
     ///

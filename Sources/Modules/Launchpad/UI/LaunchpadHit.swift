@@ -14,6 +14,10 @@ struct LaunchpadSurface: Equatable {
     var folders: Set<Int> = []
     /// The open folder's card; the pointer's places are then the card's tiles, addressed by their index in it.
     var card: Card?
+    /// A press that stays on a tile begins the edit mode (`LaunchpadScreenState.editAllowed`, and not editing already).
+    var holdsToEdit = false
+    /// The tiles that wear badges in the edit mode, by address (the card's tiles by their index in it): the one list the drawing and `LaunchpadHit.badge` read.
+    var badged: [Int: LaunchpadBadge.Kinds] = [:]
 
     var pageCount: Int { slots.count }
 
@@ -107,6 +111,28 @@ enum LaunchpadHit: Equatable {
         let inX = x - CGFloat(column) * g.cellWidth, inY = y - CGFloat(row) * g.cellHeight
         let core = abs(inX - g.cellWidth / 2) <= g.cellWidth * 0.3 && inY >= g.iconTop && inY < g.iconTop + g.icon
         return .tile(address: address, core: core)
+    }
+
+    /// The badge `point` is on: its tile's address and which of the two, or nil. Nothing is asked of a view: the frames are `LaunchpadBadge.frames`, the ones the tile draws.
+    static func badge(at point: CGPoint, in surface: LaunchpadSurface) -> (address: Int, kind: LaunchpadBadge.Kind)? {
+        let g = surface.geometry
+        guard point.x.isFinite, point.y.isFinite, !surface.badged.isEmpty else { return nil }
+        for (address, kinds) in surface.badged {
+            let cell: CGRect
+            if let card = surface.card {
+                guard card.range(ofPage: card.page).contains(address) else { continue }
+                let center = card.center(ofSlot: address)
+                cell = CGRect(x: center.x - g.cellWidth / 2, y: center.y - g.cellHeight / 2, width: g.cellWidth, height: g.cellHeight)
+            } else {
+                let (on, item) = (address / g.capacity, address % g.capacity)
+                guard on == surface.page, surface.slots.indices.contains(on), surface.slots[on].indices.contains(item) else { continue }
+                cell = g.frame(of: surface.slots[on][item]).offsetBy(dx: 0, dy: g.gridTop)
+            }
+            for placed in LaunchpadBadge.frames(kinds, cell: cell.size, icon: g.icon, iconTop: g.iconTop) where placed.frame.offsetBy(dx: cell.minX, dy: cell.minY).contains(point) {
+                return (address, placed.kind)
+            }
+        }
+        return nil
     }
 
     /// Which of a large folder's icons `point` is on: the index of its mini icon, nil between icons, on the ninth cell when the

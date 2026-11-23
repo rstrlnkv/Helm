@@ -77,6 +77,12 @@ enum LpStr {
         case .gone(let name): appIsGone(name)
         case .couldNotOpen(let name): couldNotOpen(name)
         case .notSaved: notSaved
+        case .removed(let size): HelmBasket.movedToTrash(size)
+        case .removedWithLeftovers(let size, let left): L(.removedButLeftoversStayed(size, left), remembered: false)
+        case .removeFailed(let name, let reason): L(.removeFailed(Quoted(name), reason), remembered: false)
+        case .removeStillRunning(let name): L(.removeStillRunning(Quoted(name)), remembered: false)
+        case .removeRefused(let name): L(.removeRefused(Quoted(name)), remembered: false)
+        case .removalBusy: L(.removalBusy)
         }
     }
     static func appIsGone(_ name: String) -> String { L(.appIsGone(name)) }
@@ -126,5 +132,17 @@ enum LpStr {
     static func announceTakenOut(_ name: String, _ folder: String, place: Int, page: Int) -> String {
         L(.announceTakenOut(name, folder, "\(place)", "\(page)"), remembered: false)
     }
+    /// Said once when the edit mode begins; leaving it says the kit's "Done".
+    static var editModeOn: String { L(.editModeOn) }
+    /// The edit mode's badges, by their help text: what they do, to which app (the name quoted as the language quotes a name).
+    static func hideNamed(_ name: String) -> String { L(.hideNamed(Quoted(name)), remembered: false) }
+    static func removeNamed(_ name: String) -> String { L(.removeNamed(Quoted(name)), remembered: false) }
+    /// The confirmation of a removal: its question, what it says of an app that is open, and the buttons that are not the kit's.
+    static var removeAction: String { L(.removeAction) }
+    static func removeTitle(_ name: String) -> String { L(.removeTitle(Quoted(name)), remembered: false) }
+    static func moveToTrashNoSize(_ items: String) -> String { L(.moveToTrashNoSize(items), remembered: false) }
+    static func removeRunning(_ name: String) -> String { L(.removeRunning(Quoted(name)), remembered: false) }
+    static var quitAndMoveToTrash: String { L(.quitAndMoveToTrash) }
+    static var lookingForFiles: String { L(.lookingForFiles) }
     static func announceCannotMove(_ name: String) -> String { L(.announceCannotMove(name), remembered: false) }
 }

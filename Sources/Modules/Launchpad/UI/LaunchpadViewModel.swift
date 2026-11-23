@@ -46,6 +46,13 @@ enum LaunchNotice: Equatable {
     case gone(String)
     case couldNotOpen(String)
     case notSaved
+    /// An app was moved to the Trash from the edit mode: the sentences say how much, and what stayed (`removeFailed`'s second string is the reason in words).
+    case removed(size: String)
+    case removedWithLeftovers(size: String, left: String)
+    case removeFailed(name: String, reason: String)
+    case removeStillRunning(String)
+    case removeRefused(String)
+    case removalBusy
 }
 
 /// The module's state, the one door to its engine and the one door to its window.
@@ -303,6 +310,43 @@ enum LaunchNotice: Equatable {
     }
 
     func hide(_ id: AppID) async { await edit { $0.hide(id) } }
+
+    /// What moving this app to the Trash would take, for the card; nil when the Uninstaller refuses the app (or is off), with the notice that says so.
+    func previewRemoval(_ candidate: AppRemovalCandidate) async -> AppRemovalPreview? {
+        guard !closed else { return nil }
+        if let door = removal(), case .ready(let preview) = await door.preview(candidate) { return preview }
+        if !closed, !watchers.isEmpty { notice = .removeRefused(candidate.name) }
+        return nil
+    }
+
+    /// Hands the removal to the Uninstaller's door, which trashes only what the card counted. It lands even if the window closed meanwhile;
+    /// the notice is dropped when no watcher remains, or a newer act has the say. Counts only in the log: no name, no id, no path.
+    func removeApp(_ candidate: AppRemovalCandidate, quittingIfRunning: Bool) async {
+        guard !closed else { return }
+        notice = nil
+        let act = acts.take()
+        guard let report = await removal()?.remove(candidate, quittingIfRunning: quittingIfRunning) else {
+            if !closed, !watchers.isEmpty, acts.isLatest(act) { notice = .removeRefused(candidate.name) }
+            return
+        }
+        HelmLog.shared.info(LaunchpadEngine.moduleID, "removal from the edit mode: \(report.outcome), \(report.failed.count) refused, \(report.freedBytes) bytes")
+        guard !closed, !watchers.isEmpty else { return }
+        if acts.isLatest(act) { notice = Self.notice(of: report, name: candidate.name) }
+        await refresh(reason: .removal)
+    }
+
+    private static func notice(of report: AppRemovalReport, name: String) -> LaunchNotice {
+        switch report.outcome {
+        case .moved: .removed(size: Bytes(report.freedBytes))
+        case .movedWithFailures: .removedWithLeftovers(size: Bytes(report.freedBytes), left: Plural.items(report.failed.count, language: AppLanguage.current.rawValue))
+        case .stillRunning: .removeStillRunning(name)
+        case .refused:
+            // Two reasons end their sentence by naming another screen's control ("Scan again"), which this page has not: they say it as a refusal.
+            if let why = report.failed.first, why != .missing, why != .changedSinceScan { .removeFailed(name: name, reason: TrashReasonText.sentence(why.rawValue)) } else { .removeRefused(name) }
+        case .busy: .removalBusy
+        case .stopped: .removeRefused(name)
+        }
+    }
     func unhide(_ id: AppID) async { await edit { $0.unhide(id) } }
 
     /// A drop in the window: one edit by anchors. Answers the snapshot that is shown after it, which is the old one when the edit
@@ -373,10 +417,11 @@ enum LaunchNotice: Equatable {
     }
 
     /// The Hidden card is gone: a notice that names an app is dropped, for it may name a hidden one. One that does not stays.
+    /// A removal's notice names an app too (the edit mode never offers a hidden one, but a card up when the lock came is dropped with its name).
     func dropNamedNotice() {
         switch notice {
-        case .gone, .couldNotOpen: notice = nil
-        case .notSaved, nil: break
+        case .gone, .couldNotOpen, .removeFailed, .removeStillRunning, .removeRefused: notice = nil
+        case .notSaved, .removed, .removedWithLeftovers, .removalBusy, nil: break
         }
     }
 

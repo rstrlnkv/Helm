@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import HelmRuntime
 import HelmUI
 import Module_Launchpad_Engine
 
@@ -99,6 +100,7 @@ struct LaunchpadLiftView: Equatable {
             assign(\.page, 0)
             drag.offset = 0
             if machine.isEngaged { cancelLift() }
+            endEditing()
             withAnimation(HelmMotion.interface) {
                 closeFolderQuietly()
                 reflow(selectFirst: true)
@@ -149,6 +151,33 @@ struct LaunchpadLiftView: Equatable {
     /// release launches it. nil with a press elsewhere on the tile (the whole tile washes and its release opens the folder).
     @Published private(set) var pressedIcon: AppID?
     let liftPoint = LaunchpadLiftPoint()
+    /// The edit mode (`beginEditing`, `endEditing`): the tiles wiggle and wear badges, a click on an app launches nothing.
+    @Published private(set) var editing = false
+    /// The apps the Uninstaller itself offers to remove, asked once when the mode begins and again when the snapshot's apps or their paths change; empty until the answer comes.
+    @Published private(set) var removable: Set<AppID> = []
+    /// What `onVerdicts` was last asked about (id to path), so an unchanged snapshot asks nothing again.
+    private var removableFor: [AppID: String]?
+    private var verdictTask: Task<Void, Never>?
+    /// Asks the removal door which of these apps it would remove (the model resolves the door at each use; no answer is an empty one).
+    var onVerdicts: (([AppRemovalCandidate]) async -> [AppRemovalVerdict])?
+    /// What the card of a removal counts (nil: the door refused, and the model has said so), and the removal itself, handed on with the
+    /// card's `running` as the consent to quit; the model owns it from there, so a window that closes cancels nothing already out.
+    var onPreview: ((AppRemovalCandidate) async -> AppRemovalPreview?)?
+    var onRemove: ((AppRemovalCandidate, _ quittingIfRunning: Bool) -> Void)?
+    /// The removal the person was asked about and has not answered: counting what it takes, then the card's question. Only the answer to the
+    /// card removes anything.
+    @Published private(set) var removalAsk: RemovalAsk?
+    private var previewTask: Task<Void, Never>?
+    /// The app the card was counted for, as the snapshot held it then: the button removes only if the snapshot still holds exactly this.
+    private var askedFor: AppRemovalCandidate?
+    /// When the card turned to its question: the button does nothing for `removalDwell` after, so a click aimed at the cross lands on nothing.
+    private var askedAt: TimeInterval = 0
+    static let removalDwell: TimeInterval = 0.4
+
+    enum RemovalAsk: Equatable {
+        case counting(AppID, name: String)
+        case asking(AppID, name: String, AppRemovalPreview)
+    }
 
     var onLaunch: ((AppID, String) -> Void)?
     var onHide: ((AppID) -> Void)?
@@ -351,6 +380,8 @@ struct LaunchpadLiftView: Equatable {
         } else {
             reflow(selectFirst: false)
         }
+        askRemovable()
+        keepTheCardHonest()
         if let snapshot, !loadedOnce {
             loadedOnce = true
             onLoaded?(snapshot, self)
@@ -544,6 +575,7 @@ struct LaunchpadLiftView: Equatable {
     func setView(_ new: LaunchpadViewMode) {
         guard new != view else { return }
         cancelLift()
+        endEditing()
         drag.offset = 0
         cardDrag.offset = 0
         withAnimation(HelmMotion.interface) {
@@ -572,10 +604,11 @@ struct LaunchpadLiftView: Equatable {
 
     /// Return on the arrow keys' choice: an app opens, a folder opens its card.
     func activate() {
+        guard removalAsk == nil else { return }
         guard let selection else { return }
         if openFolder != nil {
             guard selection < folderApps.count else { return }
-            onLaunch?(folderApps[selection].id, folderApps[selection].name)
+            openApp(folderApps[selection].id, folderApps[selection].name)
             return
         }
         guard selection < top.count else { return }
@@ -586,7 +619,7 @@ struct LaunchpadLiftView: Equatable {
     /// press elsewhere on the tile, or a block that moved since so that another app (or none) is under the point, is the tile's
     /// own click: the folder opens and no app is launched.
     private func click(_ entry: LaunchpadEntry, at address: Int, icon pressed: AppID?) {
-        if let pressed, let hit = miniIcon(at: pressPoint, address: address), hit.id == pressed {
+        if !editing, let pressed, let hit = miniIcon(at: pressPoint, address: address), hit.id == pressed {
             assign(\.launchingBlock, entry.id)
             onLaunch?(hit.id, hit.name)
             return
@@ -606,10 +639,16 @@ struct LaunchpadLiftView: Equatable {
 
     private func click(_ entry: LaunchpadEntry) {
         switch entry {
-        case .app(let app): onLaunch?(app.id, app.name)
+        case .app(let app): openApp(app.id, app.name)
         case .folder(let id, _, _, _): open(folder: id)
         case .gap: break
         }
+    }
+
+    /// An app is opened by a click, Return or VoiceOver's default action: nothing in the edit mode, where the tile is a thing to arrange.
+    func openApp(_ id: AppID, _ name: String) {
+        guard !editing else { return }
+        onLaunch?(id, name)
     }
 
     /// The index of the tile at `slot` of page `page` in the whole list, as the arrow keys count.
@@ -641,18 +680,20 @@ struct LaunchpadLiftView: Equatable {
         cardDrag.offset = 0
     }
 
-    /// Esc: a lift, then the name field, then the folder, then the search, then the window.
+    /// Esc: the removal's card, then a lift, then the name field, then the folder, then the edit mode, then the search, then the window.
     func escape() {
+        if removalAsk != nil { cancelRemoval(); return }
         if machine.isEngaged { cancelLift(); return }
         if renaming { revertName(); return }
         if openFolder != nil { closeFolder() }
+        else if editing { endEditing() }
         else if !search.trimmingCharacters(in: .whitespaces).isEmpty { search = "" }
         else { onClose?() }
     }
 
-    /// A click on the window's own background: the folder card if one is open, else the window.
+    /// A click on the window's own background: the folder card if one is open, else the edit mode, else the window.
     func backgroundClicked() {
-        if openFolder != nil { closeFolder() } else { onClose?() }
+        if openFolder != nil { closeFolder() } else if editing { endEditing() } else { onClose?() }
     }
 
     func closeFolder() {
@@ -664,6 +705,7 @@ struct LaunchpadLiftView: Equatable {
 
     private func closeFolderQuietly() {
         if openFolder == LaunchpadHiddenBlock.id { hidden.lock() }
+        cancelRemoval()
         assign(\.openFolder, nil)
         assign(\.folderApps, [])
         assign(\.folderName, "")
@@ -877,6 +919,8 @@ struct LaunchpadLiftView: Equatable {
 
     private var surface: LaunchpadSurface {
         var surface = LaunchpadSurface(geometry: geometry, page: page, slots: slots, gap: gapAddress)
+        surface.holdsToEdit = editAllowed && !editing
+        if editing { surface.badged = badged }
         if let card {
             surface.card = card
             surface.gap = cardEntries.firstIndex(of: .gap)
@@ -886,9 +930,116 @@ struct LaunchpadLiftView: Equatable {
         return surface
     }
 
+    /// The edit mode may begin: a lift may (`liftAllowed`), in the app grid (not the category view), and not in the Hidden card.
+    var editAllowed: Bool { liftAllowed && !categoriesShown && openFolder != LaunchpadHiddenBlock.id }
+
+    /// The badges an app's tile wears in the edit mode: the eye on every app, the × on one the Uninstaller offers.
+    /// None in the Hidden card, whose apps are neither hidden again here nor offered to the removal door.
+    func badges(for app: CatalogApp) -> LaunchpadBadge.Kinds {
+        if openFolder == LaunchpadHiddenBlock.id { return [] }
+        return removable.contains(app.id) ? [.remove, .hide] : .hide
+    }
+
+    /// The shown tiles' badges by address: the open card's, else the page's.
+    private var badged: [Int: LaunchpadBadge.Kinds] {
+        var out: [Int: LaunchpadBadge.Kinds] = [:]
+        if openFolder != nil {
+            for (at, entry) in cardEntries.enumerated() { if case .app(let app) = entry { out[at] = badges(for: app) } }
+        } else if pages.indices.contains(page) {
+            for (slot, entry) in pages[page].enumerated() { if case .app(let app) = entry { out[page * geometry.capacity + slot] = badges(for: app) } }
+        }
+        return out
+    }
+
+    /// The mode begins (a long press, or Edit in a menu): nothing while it is not allowed or already on.
+    func beginEditing() {
+        guard editAllowed, !editing else { return }
+        assign(\.editing, true)
+        HelmA11y.announce(LpStr.editModeOn)
+        askRemovable()
+    }
+
+    /// Done, Esc, the background, a search typed, the category view: the mode ends and its answer about what is removable goes with it.
+    func endEditing() {
+        guard editing else { return }
+        leaveEditing()
+        HelmA11y.announce(HelmWord.done)
+    }
+
+    private func leaveEditing() {
+        cancelRemoval()
+        assign(\.editing, false)
+        assign(\.removable, [])
+        removableFor = nil
+        verdictTask?.cancel()
+        verdictTask = nil
+    }
+
+    /// The × on an app's tile was pressed: the confirmation of its removal, which `editing` alone does not start.
+    func askToRemove(_ id: AppID) {
+        guard editing, removalAsk == nil, removable.contains(id), openFolder != LaunchpadHiddenBlock.id,
+              let snapshot, !snapshot.layout.hidden.contains(id), let app = snapshot.apps[id], let preview = onPreview else { return }
+        assign(\.removalAsk, .counting(id, name: app.name))
+        let candidate = Self.candidate(app)
+        askedFor = candidate
+        previewTask = Task { @MainActor [weak self] in
+            let counted = await preview(candidate)
+            guard !Task.isCancelled, let self, case .counting(id, _)? = removalAsk else { return }
+            askedAt = clock()
+            assign(\.removalAsk, counted.map { .asking(id, name: app.name, $0) })
+        }
+    }
+
+    /// Cancel, Esc, the scrim, and every end of the mode or the window: nothing is removed.
+    func cancelRemoval() {
+        previewTask?.cancel()
+        previewTask = nil
+        askedFor = nil
+        assign(\.removalAsk, nil)
+    }
+
+    /// A card whose app the snapshot no longer holds as it was counted (gone, renamed, moved, hidden) is no question to answer: it closes.
+    private func keepTheCardHonest() {
+        guard removalAsk != nil else { return }
+        let id: AppID
+        switch removalAsk { case .counting(let i, _)?, .asking(let i, _, _)?: id = i; case nil: return }
+        if let app = snapshot?.apps[id], Self.candidate(app) == askedFor, snapshot?.layout.hidden.contains(id) == false { return }
+        cancelRemoval()
+    }
+
+    /// The card's button: nothing in its first moments, and nothing if the snapshot no longer holds the app exactly as the card counted it
+    /// (the card is closed instead); the consent to quit is given only if the card said the app was open.
+    func confirmRemoval() {
+        guard case .asking(let id, _, let counted)? = removalAsk, clock() - askedAt >= Self.removalDwell else { return }
+        let asked = askedFor
+        cancelRemoval()
+        guard editing, openFolder != LaunchpadHiddenBlock.id, let snapshot, !snapshot.layout.hidden.contains(id),
+              let app = snapshot.apps[id], Self.candidate(app) == asked else { return }
+        onRemove?(Self.candidate(app), counted.running)
+    }
+
+    private static func candidate(_ app: CatalogApp) -> AppRemovalCandidate { AppRemovalCandidate(bundleID: app.id, path: app.path, name: app.name) }
+
+    /// Asks the removal door about the snapshot's apps that are not macOS's own, unless it was asked about these apps at these paths already.
+    private func askRemovable() {
+        guard editing, let snapshot, let ask = onVerdicts else { return }
+        let paths = snapshot.apps.mapValues(\.path)
+        guard paths != removableFor else { return }
+        removableFor = paths
+        verdictTask?.cancel()
+        let candidates = snapshot.apps.values.filter { !$0.id.hasPrefix("com.apple.") && !snapshot.layout.hidden.contains($0.id) }.map { AppRemovalCandidate(bundleID: $0.id, path: $0.path, name: $0.name) }
+        verdictTask = Task { @MainActor [weak self] in
+            let verdicts = await ask(candidates)
+            guard !Task.isCancelled, let self, editing, removableFor == paths else { return }
+            assign(\.removable, Set(zip(candidates, verdicts).filter { $0.1 == .removable }.map(\.0.bundleID)))
+        }
+    }
+
     /// True when the press is on a tile and the window takes it (no button sees it); false leaves it to the views.
     func pointerDown(_ point: CGPoint, time: TimeInterval) -> Bool {
-        guard liftAllowed, !machine.isEngaged else { return false }
+        guard liftAllowed, removalAsk == nil, !machine.isEngaged else { return false }
+        // A badge is a button: its press is the view's, and neither lifts nor clicks the tile under it.
+        if editing, LaunchpadHit.badge(at: point, in: surface) != nil { return false }
         _ = machine.feed(.down, at: point, surface: surface, time: time)
         guard let address = machine.pressedAddress else { return false }
         lastPoint = point
@@ -909,6 +1060,7 @@ struct LaunchpadLiftView: Equatable {
     func pointerUp(_ point: CGPoint, time: TimeInterval) {
         lastPoint = point
         apply(machine.feed(.up, at: point, surface: surface, time: time))
+        if !machine.isEngaged { assign(\.pressedID, nil) }
         rearm()
     }
 
@@ -940,6 +1092,7 @@ struct LaunchpadLiftView: Equatable {
         timer = nil
         scheduled = nil
         _ = machine.feed(.abort, surface: surface)
+        leaveEditing()
         placing?.cancel()
         placing = nil
         lift = nil
@@ -969,6 +1122,7 @@ struct LaunchpadLiftView: Equatable {
         case .closeFolder: closeForLift()
         case .release(let drop): finish(drop)
         case .cancel: endLift()
+        case .beginEditing: beginEditing()
         case .click(let address):
             // The press was on the app it recorded; a snapshot that moved other tiles under the pointer since is no click on them.
             let (pressed, icon) = (pressedID, pressedIcon)

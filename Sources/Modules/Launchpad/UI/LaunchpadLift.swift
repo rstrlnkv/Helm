@@ -22,6 +22,8 @@ enum LaunchpadLiftTiming {
     /// A press with nothing to wait for is looked at this often (s), by the one tick that asks whether the button is still down:
     /// a mouse-up that never came must not leave the window pressed or lifted for good.
     static let stuckCheck: TimeInterval = 0.5
+    /// A press that stays this long (s) without a lift begins the edit mode.
+    static let editHold: TimeInterval = 0.5
 }
 
 /// A press on a tile, as the machine of what it becomes: a click, or a lift that is carried, turns pages, and ends in
@@ -52,9 +54,12 @@ struct LaunchpadLift {
         case cancel
         /// Let go without having moved: the tile at this address was pressed.
         case click(address: Int)
+        /// The press stayed `LaunchpadLiftTiming.editHold` on the tile at this address without a lift: the edit mode begins, and the press goes on (a move then lifts the tile, a release is no click).
+        case beginEditing(address: Int)
     }
 
-    private enum Phase: Equatable { case idle, pressed(address: Int, at: CGPoint), lifted }
+    /// `held`: the press has begun the edit mode and is still down.
+    private enum Phase: Equatable { case idle, pressed(address: Int, at: CGPoint), held(address: Int, at: CGPoint), lifted }
     private enum Dwell: Equatable { case none, margin(Int), core(Int), edge(Int), away }
 
     private var phase = Phase.idle
@@ -62,6 +67,9 @@ struct LaunchpadLift {
     private var since: TimeInterval = 0
     private var nextEdge: TimeInterval = 0
     private var checkAt: TimeInterval = 0
+    /// When the press went down, and whether it may become the edit mode's hold (`LaunchpadSurface.holdsToEdit` then).
+    private var pressedAt: TimeInterval = 0
+    private var holds = false
     private var armed: Int?
     /// The tile in the icon's middle holds a folder, which a longer dwell opens.
     private var opens = false
@@ -76,6 +84,7 @@ struct LaunchpadLift {
 
     /// When a `tick` would do something, or nil.
     var wake: TimeInterval? {
+        if case .pressed = phase, holds { return pressedAt + LaunchpadLiftTiming.editHold }
         guard phase == .lifted else { return nil }
         switch dwell {
         case .none: return nil
@@ -96,21 +105,32 @@ struct LaunchpadLift {
         defer { checkAt = time + LaunchpadLiftTiming.stuckCheck }
         switch (phase, input) {
         case (.idle, .down):
-            if case .tile(let address, _) = LaunchpadHit.at(point, in: surface), address != surface.gap { phase = .pressed(address: address, at: point) }
+            if case .tile(let address, _) = LaunchpadHit.at(point, in: surface), address != surface.gap {
+                phase = .pressed(address: address, at: point)
+                pressedAt = time
+                holds = surface.holdsToEdit
+            }
             return .none
         case (.idle, _), (_, .down):
             return .none
         case (.pressed(let address, let from), .moved):
             let away = hypot(point.x - from.x, point.y - from.y)
             guard away.isFinite, away >= LaunchpadLiftTiming.threshold else { return .none }
-            phase = .lifted
-            resetDwell()
-            inCard = surface.card != nil
-            return .lift(address: address)
+            return beginLift(address, surface)
         case (.pressed(let address, _), .up):
             phase = .idle
             return .click(address: address)
-        case (.pressed, .tick):
+        case (.pressed(let address, let from), .tick):
+            guard holds, time >= pressedAt + LaunchpadLiftTiming.editHold else { return .none }
+            phase = .held(address: address, at: from)
+            return .beginEditing(address: address)
+        case (.held(let address, let from), .moved):
+            guard hypot(point.x - from.x, point.y - from.y) >= LaunchpadLiftTiming.threshold else { return .none }
+            return beginLift(address, surface)
+        case (.held, .up):
+            phase = .idle
+            return .none
+        case (.held, .tick):
             return .none
         case (_, .escape), (_, .abort):
             phase = .idle
@@ -124,6 +144,13 @@ struct LaunchpadLift {
         case (.lifted, .moved), (.lifted, .tick):
             return follow(point, surface, time)
         }
+    }
+
+    private mutating func beginLift(_ address: Int, _ surface: LaunchpadSurface) -> Effect {
+        phase = .lifted
+        resetDwell()
+        inCard = surface.card != nil
+        return .lift(address: address)
     }
 
     private mutating func follow(_ point: CGPoint, _ surface: LaunchpadSurface, _ time: TimeInterval) -> Effect {
