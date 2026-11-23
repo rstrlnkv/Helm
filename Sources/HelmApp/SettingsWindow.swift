@@ -52,7 +52,7 @@ import HelmAppStrings
     /// changes with the language: German 426, French 414, Spanish 387, Russian 382, Portuguese 373, English 333,
     /// Japanese 299, Chinese 282. (Text only, as measured earlier the same day, was German 361 … Chinese 217; the
     /// glyph and its 6 pt gap add 65 to the German row.) The rest is the same in all eight: 14 + 24 plate + 12 +
-    /// the name + 36 (12, the spacer's least 12, 12) + the tabs + 8 + 471 (five 36 pt actions, 8, the search's 283)
+    /// the name + 36 (`HeaderRowLayout.nameGap`: 12, 12, 12) + the tabs + 8 + 471 (five 36 pt actions, 8, the search's 283)
     /// + 10, which is 575 + 426 = 1001 in German; the card is the window less 200 of sidebar and 4 of window inset,
     /// so 1205, and 2 more for a frame rounded to whole points. (Text only, 1142, and the old row, with 20 of
     /// gutter each side and a 200 pt search, 1096, were narrower; raised, never lowered, by the owner's decision.)
@@ -492,8 +492,7 @@ private struct SettingsDetail: View {
     @ViewBuilder
     private var content: some View {
         let tabs = HelmPageToolbarContent(tabs: SettingsTabs.all,
-                                          selectedTab: SettingsTabs.binding($model.selection),
-                                          reserves: LogView.trailingRun)
+                                          selectedTab: SettingsTabs.binding($model.selection))
         // A module that is off reads as General, as it does in the sidebar,
         // whatever the selection still says.
         switch ShellSidebarRows.settled(model.selection, enabled: model.host.enabledModuleIDs) {

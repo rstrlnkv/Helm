@@ -424,31 +424,33 @@ public struct HelmPageHeader<Trailing: View>: View {
     }
 
     private var row: some View {
-        HStack(spacing: 12) {
-            // 24, the Kit's `Toolbar` (Figma 309:216): the plate is 24 and the title starts 12 after it.
-            // Without Icon (`HelmHeaderChoices`) draws the name alone; the status after it stays.
-            if choices.pageBar == .moduleName {
-                HelmIconPlate(symbol: symbol, tint: tint, size: 24)
-            }
-            // 16, the redesign's «заголовок» step. It was 20, which is not on
-            // the ladder at all — the six sizes are 10 · 11 · 13 · 16 · 22 · 40
-            // — and with the summary gone the name no longer has to hold a
-            // two-line block up on its own.
-            Text(title)
-                .font(HelmText.plateTitle)
-                .tracking(-0.2)
-                .lineLimit(1)
-                // The name does not give way, nor do the tabs and the search beside it: the window's minimum
-                // width (`SettingsWindow.minSize`) is measured on the Log page, the fullest row, in every language.
-                .fixedSize(horizontal: true, vertical: false)
-            if let status {
-                if status.active {
-                    HelmBadge(status.word, tint: HelmSignal.success(increased: traits.increasedContrast))
-                } else {
-                    Text(status.word).font(.system(size: 11)).foregroundStyle(HelmText.quiet)
+        HeaderRowLayout(shift: (trailingInset - leadingInset) / 2) {
+            HStack(spacing: 12) {
+                // 24, the Kit's `Toolbar` (Figma 309:216): the plate is 24 and the title starts 12 after it.
+                // Without Icon (`HelmHeaderChoices`) draws the name alone; the status after it stays.
+                if choices.pageBar == .moduleName {
+                    HelmIconPlate(symbol: symbol, tint: tint, size: 24)
+                }
+                // 16, the redesign's «заголовок» step. It was 20, which is not on
+                // the ladder at all — the six sizes are 10 · 11 · 13 · 16 · 22 · 40
+                // — and with the summary gone the name no longer has to hold a
+                // two-line block up on its own.
+                Text(title)
+                    .font(HelmText.plateTitle)
+                    .tracking(-0.2)
+                    .lineLimit(1)
+                    // The name does not give way, nor do the tabs and the search beside it: the window's minimum
+                    // width (`SettingsWindow.minSize`) is measured on the Log page, the fullest row, in every language.
+                    .fixedSize(horizontal: true, vertical: false)
+                if let status {
+                    if status.active {
+                        HelmBadge(status.word, tint: HelmSignal.success(increased: traits.increasedContrast))
+                    } else {
+                        Text(status.word).font(.system(size: 11)).foregroundStyle(HelmText.quiet)
+                    }
                 }
             }
-            Spacer(minLength: 12)
+            .layoutValue(key: HeaderRoleKey.self, value: .name)
             trailing
         }
         .opacity(dimmed ? HelmText.inactiveOpacity : 1)
@@ -652,12 +654,8 @@ private struct CardHeader: ViewModifier {
     }
 }
 
-/// Tabs, then actions and search, in that order, on the right of the row; each only where the page declared it.
-///
-/// **The tab strip's place is the owner's, not the page's.** Where pages share one strip and declare different
-/// runs (the settings window's three), the owner declares the widest (`HelmPageToolbarContent.reserves`) and the
-/// run keeps at least that width, so the strip ends `HelmTrailingRun.gap` before it on every one of them. A page without a
-/// declaration gets exactly the room of what it declared, as the row had before.
+/// Tabs, then actions and search, in that order; each only where the page declared it. The tabs are the row's
+/// own part (`HeaderRole.tabs`, centred by `HeaderRowLayout`), the actions and search one run on the right.
 private struct HelmHeaderControls: View {
     let content: HelmPageToolbarContent?
     /// The page's name: the search slot's identity, so what it holds open does not leak to the next page. Never the tabs'.
@@ -665,20 +663,18 @@ private struct HelmHeaderControls: View {
 
     var body: some View {
         if let content {
-            HStack(spacing: HelmTrailingRun.gap) {
-                if !content.tabs.isEmpty, let selected = content.selectedTab {
-                    HelmHeaderTabs(tabs: content.tabs, selection: selected, enabled: content.tabsEnabled)
-                }
-                if !content.actions.isEmpty || content.search != nil || content.reserves != nil {
-                    HStack(spacing: HelmTrailingRun.gap) {
-                        if !content.actions.isEmpty {
-                            HelmHeaderActions(actions: content.actions)
-                        }
-                        if let search = content.search {
-                            HelmHeaderSearch(search: search).id(page)
-                        }
+            if !content.tabs.isEmpty, let selected = content.selectedTab {
+                HelmHeaderTabs(tabs: content.tabs, selection: selected, enabled: content.tabsEnabled)
+                    .layoutValue(key: HeaderRoleKey.self, value: .tabs)
+            }
+            if !content.actions.isEmpty || content.search != nil {
+                HStack(spacing: HelmHeaderActions.gap) {
+                    if !content.actions.isEmpty {
+                        HelmHeaderActions(actions: content.actions)
                     }
-                    .frame(minWidth: content.reserves?.width ?? 0, alignment: .trailing)
+                    if let search = content.search {
+                        HelmHeaderSearch(search: search).id(page)
+                    }
                 }
             }
         }
@@ -769,5 +765,75 @@ private struct ReportsScrolledUnderBar: ViewModifier {
         content
             .onScrolledUnder { scrolled = $0 }
             .preference(key: HelmPageScrolledKey.self, value: scrolled)
+    }
+}
+
+/// What a part of the header row is, for `HeaderRowLayout`. A part that says nothing is the run on the right.
+private enum HeaderRole { case name, tabs, run }
+
+private struct HeaderRoleKey: LayoutValueKey {
+    static let defaultValue = HeaderRole.run
+}
+
+/// **The row's three parts: the name's side, the tab strip, and the run (actions, search) — the strip centred on
+/// the card's row, giving way to either neighbour.** `shift` is how far the card's centre lies right of this
+/// layout's own (the row's insets are not equal, `CardHeader`), so the strip's centre is the card's, not the padded
+/// area's. It never overlaps: it keeps `nameGap` after the name's side and `HelmHeaderActions.gap` before the run.
+/// **The run's width is the room of every declared action, hidden or not** (`HelmHeaderActions`), so on Homebrew
+/// the strip sits ~40 pt left of centre where an action is hidden on that tab; ignoring the hidden slot would make
+/// the strip jump between that page's tabs.
+///
+/// **At the narrowest the row is what the old stack made**: name, `nameGap` (36: 12, the old stack's spacer's least 12, 12), strip,
+/// `gap`, run — the sum `SettingsWindow.minSize` is measured against — because both limits close on the strip there.
+private struct HeaderRowLayout: Layout {
+    let shift: CGFloat
+    static let nameGap = CGFloat(36)
+
+    private struct Parts {
+        let name: CGSize
+        let tabs: CGSize?
+        let runs: [CGSize]
+    }
+
+    private func parts(_ subviews: Subviews) -> Parts {
+        func size(_ role: HeaderRole) -> [CGSize] {
+            subviews.filter { $0[HeaderRoleKey.self] == role }.map { $0.sizeThatFits(.unspecified) }
+        }
+        return Parts(name: size(.name).first ?? .zero, tabs: size(.tabs).first, runs: size(.run))
+    }
+
+    /// The runs packed against the right edge, each `gap` from the next: their total width.
+    private func runWidth(_ runs: [CGSize]) -> CGFloat {
+        runs.reduce(0) { $0 + $1.width } + HelmHeaderActions.gap * CGFloat(max(0, runs.count - 1))
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let p = parts(subviews)
+        let strip = (p.tabs?.width ?? 0) + (p.tabs != nil && !p.runs.isEmpty ? HelmHeaderActions.gap : 0)
+        let beside = strip + runWidth(p.runs)
+        let least = p.name.width + (beside > 0 ? Self.nameGap : 0) + beside
+        let height = ([p.name.height, p.tabs?.height ?? 0] + p.runs.map(\.height)).max() ?? 0
+        return CGSize(width: proposal.width.map { max($0, least) } ?? least, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let p = parts(subviews)
+        let anchor = UnitPoint.leading
+        func put(_ subview: LayoutSubview, _ x: CGFloat) {
+            subview.place(at: CGPoint(x: x, y: bounds.midY), anchor: anchor, proposal: .unspecified)
+        }
+        var right = bounds.maxX
+        for subview in subviews.reversed() where subview[HeaderRoleKey.self] == .run {
+            right -= subview.sizeThatFits(.unspecified).width
+            put(subview, right)
+            right -= HelmHeaderActions.gap
+        }
+        let hasRun = !p.runs.isEmpty
+        for subview in subviews where subview[HeaderRoleKey.self] == .name { put(subview, bounds.minX) }
+        guard let strip = p.tabs, let tabs = subviews.first(where: { $0[HeaderRoleKey.self] == .tabs }) else { return }
+        let latest = (hasRun ? right : bounds.maxX) - strip.width
+        let earliest = bounds.minX + p.name.width + Self.nameGap
+        let centred = bounds.midX + shift - strip.width / 2
+        put(tabs, max(earliest, min(centred, latest)))
     }
 }

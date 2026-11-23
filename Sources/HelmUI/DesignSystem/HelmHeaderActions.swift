@@ -4,8 +4,7 @@ import SwiftUI
 ///
 /// A page shows some of its actions on some of its tabs only (`HelmToolbarAction.isVisible`); the room of
 /// every declared one is kept, so the ones that stay do not slide when another comes or goes (the old
-/// capsule's 2026-11-15 "no empty slot" rule is not carried: here the reserve is the design, and
-/// `HelmPageToolbarContent.reserves` is where a shared strip widens it; see `ThePageHeader`). Under
+/// capsule's 2026-11-15 "no empty slot" rule is not carried: here the reserve is the design). Under
 /// `.liquidGlass` each button wears the system's glass, joined into one group; under `.flat` one capsule of
 /// `HelmSurface.barPlate`, 36 high, stands behind the visible glyphs only. Pressing runs the action's own closure — there is no model between.
 struct HelmHeaderActions: View {
@@ -15,6 +14,8 @@ struct HelmHeaderActions: View {
     @Environment(\.helmBarAppearance) private var appearance
     @Environment(\.helmTraits) private var traits
 
+    /// **The one gap of the header row**: tabs to actions, actions to search, tabs to search. The Kit's 8.
+    nonisolated static let gap = HelmSpace.s4
     /// 36 pt — the Kit's control height (the row is this with 8 above and below, `CardHeader.height`), the tab strip's and the search's too.
     nonisolated static let side = CGFloat(36)
     /// A disabled glyph's dimming, fit to what AppKit's own disabled toolbar glyph reads back on screen (a
