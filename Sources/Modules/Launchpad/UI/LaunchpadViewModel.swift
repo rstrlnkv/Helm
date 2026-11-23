@@ -1,24 +1,7 @@
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmUI
 import Module_Launchpad_Engine
-
-/// What the model asks of the engine. A port, so a model's test holds the engine's place without a Mac's apps in reach.
-protocol LaunchpadWork: AnyObject, Sendable {
-    func read(reason: CatalogReadReason) -> LaunchpadSnapshot
-    func hide(_ id: AppID) -> LaunchpadSnapshot?
-    func resetArrangement() -> LaunchpadSnapshot?
-    func apply(_ edit: LaunchpadEdit) -> LaunchpadSnapshot?
-    func unhide(_ id: AppID) -> LaunchpadSnapshot?
-    func resetLaunchCounts() -> LaunchpadSnapshot?
-    func launch(_ id: AppID) async -> LaunchOutcome
-    func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject
-    /// What the trackpad watch came to; nil when none runs.
-    var pinchWatch: TouchWatchStart? { get }
-    func setPinchWatching(_ on: Bool) -> TouchWatchStart?
-    func systemPinchSetting() -> SystemPinch
-}
 
 /// Where the person's pinch switch is kept: a plain key of the module's store, off when missing. **Deployed stored data: this name never moves.**
 enum LaunchpadPinchKey {
@@ -38,8 +21,6 @@ enum PinchState: Equatable {
         }
     }
 }
-
-extension LaunchpadEngine: LaunchpadWork {}
 
 /// What the page says about the last thing that did not go through. The names are the apps', as the snapshot gave them.
 enum LaunchNotice: Equatable {
@@ -66,7 +47,7 @@ enum LaunchNotice: Equatable {
 /// snapshot by the newer read, a notice by the newer edit or launch — and a snapshot is assigned only
 /// when it differs from what is shown, so a watch event that changed nothing redraws nothing.
 @MainActor public final class LaunchpadViewModel: ObservableObject {
-    private let work: any LaunchpadWork
+    private let work: LaunchpadEngine
     /// Makes the port a lock asks Touch ID or the password through; one per lock, so one scope closing cannot cancel another's prompt. A test replaces it.
     var makeAuth: () -> any LaunchpadAuthPort = { SystemLaunchpadAuth() }
     @Published private(set) var snapshot: LaunchpadSnapshot?
@@ -116,7 +97,7 @@ enum LaunchNotice: Equatable {
     /// Opens System Settings at Trackpad; the descriptor sets it, so the page holds no AppKit.
     var openTrackpadSettings: @MainActor () -> Void = {}
 
-    init(work: any LaunchpadWork, store: NamespacedStore) {
+    init(work: LaunchpadEngine, store: NamespacedStore) {
         self.work = work
         self.store = store
         grid = LaunchpadGridSettings.read(from: store)
@@ -378,7 +359,7 @@ enum LaunchNotice: Equatable {
     }
 
     /// Refused (the app is gone since the page was drawn) reads again; a save that did not land is said.
-    private func edit(_ change: @escaping @Sendable (any LaunchpadWork) -> LaunchpadSnapshot?) async {
+    private func edit(_ change: @escaping @Sendable (LaunchpadEngine) -> LaunchpadSnapshot?) async {
         guard !closed else { return }
         notice = nil
         let mine = latest.take()

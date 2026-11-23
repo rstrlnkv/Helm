@@ -401,6 +401,28 @@ extension LaunchpadTile where Mark == Image {
     }
 }
 
+/// What a press and an opening do to one icon of a folder or category mark: the wash behind it while pressed, the swell when its app opens.
+private struct LaunchpadMiniIconPress: ViewModifier {
+    let side: CGFloat
+    let index: Int
+    let pressed: Int?
+    let popped: Int?
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                // Concentric with the icon: its own corner (0.225 of its side) plus the wash's inset (0.1).
+                RoundedRectangle(cornerRadius: side * 0.325, style: .continuous)
+                    .fill(pressed == index ? HelmSurface.rowSelection : Color.clear)
+                    .padding(-side * 0.1)
+            }
+            .animation(HelmMotion.wellFade, value: pressed)
+            .scaleEffect(popped == index && !HelmMotion.reduceMotion ? LaunchpadMetrics.popScale : 1)
+            .animation(HelmMotion.interface, value: popped)
+            .zIndex(popped == index ? 1 : 0)
+    }
+}
+
 /// A saved folder: a well with up to nine of its apps' icons, three by three, no border. The icons and the room round them
 /// follow the tile's size, like the icon does.
 struct LaunchpadFolderMark: View {
@@ -448,16 +470,7 @@ struct LaunchpadFolderMark: View {
                             if index < icons.count {
                                 Image(nsImage: icons[index] ?? LaunchpadIcons.empty).resizable()
                                     .frame(width: mini, height: mini)
-                                    .background {
-                                        // Concentric with the icon: its own corner (0.225 of its side) plus the wash's inset (0.1).
-                                        RoundedRectangle(cornerRadius: mini * 0.325, style: .continuous)
-                                            .fill(pressed == index ? HelmSurface.rowSelection : Color.clear)
-                                            .padding(-mini * 0.1)
-                                    }
-                                    .animation(HelmMotion.wellFade, value: pressed)
-                                    .scaleEffect(popped == index && !HelmMotion.reduceMotion ? LaunchpadMetrics.popScale : 1)
-                                    .animation(HelmMotion.interface, value: popped)
-                                    .zIndex(popped == index ? 1 : 0)
+                                    .modifier(LaunchpadMiniIconPress(side: mini, index: index, pressed: pressed, popped: popped))
                             } else if index == 8, !overflow.isEmpty {
                                 LaunchpadClusterCell(icons: overflow, side: mini)
                             } else {
@@ -539,16 +552,7 @@ struct LaunchpadCategoryMark: View {
                 let frame = Self.frame(ofQuadrant: index, size: size, edge: edge)
                 Image(nsImage: icon ?? LaunchpadIcons.empty).resizable()
                     .frame(width: frame.width, height: frame.height)
-                    .background {
-                        // Concentric with the icon: its own corner (0.225 of its side) plus the wash's inset (0.1).
-                        RoundedRectangle(cornerRadius: frame.width * 0.325, style: .continuous)
-                            .fill(pressed == index ? HelmSurface.rowSelection : Color.clear)
-                            .padding(-frame.width * 0.1)
-                    }
-                    .animation(HelmMotion.wellFade, value: pressed)
-                    .scaleEffect(popped == index && !HelmMotion.reduceMotion ? LaunchpadMetrics.popScale : 1)
-                    .animation(HelmMotion.interface, value: popped)
-                    .zIndex(popped == index ? 1 : 0)
+                    .modifier(LaunchpadMiniIconPress(side: frame.width, index: index, pressed: pressed, popped: popped))
                     .offset(x: frame.minX, y: frame.minY)
             }
             if !cluster.isEmpty {

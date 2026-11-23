@@ -2,11 +2,9 @@ import Foundation
 import HelmRuntime
 
 /// What the counts file said, as `LayoutRead` says it of the layout.
-enum CountsRead: Equatable, Sendable {
-    case absent
-    case loaded(LaunchCounts)
-    case unreadable
+typealias CountsRead = LaunchpadFileRead<LaunchCounts>
 
+extension LaunchpadFileRead where Value == LaunchCounts {
     /// What the order may use: nothing when the file is absent or would not read.
     var counts: [AppID: Int] {
         if case .loaded(let loaded) = self { loaded.counts } else { [:] }
@@ -19,15 +17,12 @@ enum CountsRead: Equatable, Sendable {
 /// aside once to its `.unreadable` name before writing fresh; if the move fails nothing is written. One lock covers read, bump and
 /// save together, so two launches in flight do not lose one. It is its own lock, taken after the engine's and never before it.
 final class LaunchCountStore: @unchecked Sendable {
-    private let directory: URL
+    private let file: LaunchpadFile
     private let lock = NSLock()
-    /// Size and modification time of the bad file last warned about.
-    private var warnedAbout: String?
 
-    init(directory: URL) { self.directory = directory }
+    init(directory: URL) { file = LaunchpadFile(directory: directory, name: "launch-counts.json") }
 
-    var fileURL: URL { directory.appendingPathComponent("launch-counts.json") }
-    private var asideURL: URL { directory.appendingPathComponent("launch-counts.json.unreadable") }
+    var fileURL: URL { file.url }
 
     func load() -> CountsRead { lock.withLock { read() } }
 
@@ -42,7 +37,7 @@ final class LaunchCountStore: @unchecked Sendable {
             if case .absent = read() { return true }
             // A bad file is moved aside by the write; the aside holds bundle ids and counts, and a reset is the person's word that they go.
             guard write(.empty) else { return false }
-            try? FileManager.default.removeItem(at: asideURL)
+            file.removeAside()
             return true
         }
     }
@@ -58,42 +53,16 @@ final class LaunchCountStore: @unchecked Sendable {
 
     /// Under `lock`.
     private func read() -> CountsRead {
-        guard let handle = try? FileHandle(forReadingFrom: fileURL) else {
-            return FileManager.default.fileExists(atPath: fileURL.path) ? unreadable() : .absent
-        }
-        defer { try? handle.close() }
-        guard let data = try? handle.read(upToCount: LaunchpadLimits.maxFileBytes + 1),
-              data.count <= LaunchpadLimits.maxFileBytes,
-              let counts = LaunchCounts.decode(data) else { return unreadable() }
-        return .loaded(counts)
-    }
-
-    private func unreadable() -> CountsRead {
-        let attributes = try? FileManager.default.attributesOfItem(atPath: fileURL.path)
-        let stamp = "\(attributes?[.size] ?? 0) \((attributes?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0)"
-        if stamp != warnedAbout {
-            warnedAbout = stamp
-            HelmLog.shared.warn(LaunchpadEngine.moduleID, "the launch counts could not be read — the order falls back to alphabetical until the next launch")
-        }
-        return .unreadable
+        file.read(warning: "the launch counts could not be read — the order falls back to alphabetical until the next launch",
+                  decode: LaunchCounts.decode)
     }
 
     /// Under `lock`: a bad file is moved aside first; the write is not made when that fails.
     private func write(_ counts: LaunchCounts) -> Bool {
-        if case .unreadable = read(), !moveUnreadableAside() { return false }
-        let ok = PrivateFile.writeMakingTheFolder(counts.encoded(), at: fileURL)
-        if !ok { HelmLog.shared.warn(LaunchpadEngine.moduleID, "the launch counts could not be saved") }
-        return ok
-    }
-
-    private func moveUnreadableAside() -> Bool {
-        do {
-            if FileManager.default.fileExists(atPath: asideURL.path) { try FileManager.default.removeItem(at: asideURL) }
-            try FileManager.default.moveItem(at: fileURL, to: asideURL)
-            return true
-        } catch {
-            HelmLog.shared.warn(LaunchpadEngine.moduleID, "the unreadable launch counts could not be moved aside — they are kept and nothing is written")
-            return false
+        if case .unreadable = read(),
+           !file.moveAside(warning: "the unreadable launch counts could not be moved aside — they are kept and nothing is written") { return false }
+        return file.save(warning: "the launch counts could not be saved") {
+            return PrivateFile.writeMakingTheFolder(counts.encoded(), at: $0)
         }
     }
 }

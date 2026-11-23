@@ -39,7 +39,9 @@ final class RigCatalog: AppCatalogPort, @unchecked Sendable {
 
 /// Stands for the system's way of opening an app: it opens nothing, answers what the test says. The real launcher is never built here.
 final class RigLauncher: AppLauncherPort, @unchecked Sendable {
-    func open(_ url: URL) async -> Bool { false }
+    let answer: Bool
+    init(answer: Bool = false) { self.answer = answer }
+    func open(_ url: URL) async -> Bool { answer }
 }
 
 /// The real engine over a fake catalog and a scratch layout folder, and the model on top of it.

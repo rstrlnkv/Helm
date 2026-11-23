@@ -134,7 +134,7 @@ protocol SystemPinchPort: Sendable {
 /// What asked for a catalog read, named on its log line: the window's first read (`open`), a change in the watched folders (`watch`), the model after
 /// a launch (`launch`: when the app opened and a watcher other than the window's own is there, the settings page; when it was gone or unreadable,
 /// always; a launch's own check is `launch` too), the model reading again after a refused edit (`refresh`), the settings page's own first read
-/// (`settings`), the launch counts' reset (`reset`), an edit with no read before it (`edit`) and the read after an app was moved to the Trash from the window (`removal`; nothing passes it yet, chain B does).
+/// (`settings`), the launch counts' reset (`reset`), an edit with no read before it (`edit`) and the read after an app was moved to the Trash from the window (`removal`).
 public enum CatalogReadReason: String, Sendable {
     case open, watch, launch, refresh, settings, reset, edit, removal
 }

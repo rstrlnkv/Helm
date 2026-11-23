@@ -43,7 +43,7 @@ import HelmUI
         return box
     }
 
-    private func red(_ side: CGFloat) -> NSImage {
+    private func red() -> NSImage {
         let image = NSImage(size: NSSize(width: 16, height: 16))
         image.lockFocus(); NSColor.red.setFill(); NSRect(x: 0, y: 0, width: 16, height: 16).fill(); image.unlockFocus()
         return image
@@ -59,7 +59,7 @@ import HelmUI
         for screen in screens {
             for names in [true, false] {
                 let g = make(screen, names: names)
-                let box = try XCTUnwrap(try redBox(of: tile(g, size: g.icon, image: red(g.icon)), width: g.cellWidth, height: g.cellHeight), "\(screen.name): no icon drawn")
+                let box = try XCTUnwrap(try redBox(of: tile(g, size: g.icon, image: red()), width: g.cellWidth, height: g.cellHeight), "\(screen.name): no icon drawn")
                 XCTAssertEqual(box.minY, g.iconTop, accuracy: 1.5, "\(screen.name) names \(names): drawn top \(box.minY), hit reads \(g.iconTop) (scale \(g.scale))")
                 XCTAssertEqual(box.height, g.icon, accuracy: 1.5, "\(screen.name) names \(names)")
                 XCTAssertEqual(box.midX, g.cellWidth / 2, accuracy: 1.5, "\(screen.name) names \(names)")
@@ -73,7 +73,7 @@ import HelmUI
         for screen in screens {
             let g = make(screen)
             let mark = g.largeMark
-            let box = try XCTUnwrap(try redBox(of: tile(g, size: mark, image: red(mark)), width: 2 * g.cellWidth, height: 2 * g.cellHeight), "\(screen.name)")
+            let box = try XCTUnwrap(try redBox(of: tile(g, size: mark, image: red()), width: 2 * g.cellWidth, height: 2 * g.cellHeight), "\(screen.name)")
             XCTAssertEqual(box.minY, g.iconTop, accuracy: 1.5, "\(screen.name): drawn \(box.minY), read \(g.iconTop)")
             XCTAssertEqual(box.width, mark, accuracy: 1.5, "\(screen.name)")
             XCTAssertEqual(box.midX, g.cellWidth, accuracy: 1.5, "\(screen.name)")
