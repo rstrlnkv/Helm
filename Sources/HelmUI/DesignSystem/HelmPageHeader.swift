@@ -638,7 +638,9 @@ private struct CardHeader: ViewModifier {
     @Environment(\.helmBarAppearance) private var look
     @Environment(\.helmHeaderChoices) private var choices
     @Environment(\.helmTraits) private var traits
-    /// This row's token for the tabs' sink (`HelmTabsSink`); a rebuilt pane root makes a new row and a new one.
+    /// This row's token for the tabs' sink (`HelmTabsSink`); a rebuilt pane root makes a new row and a new one, and
+    /// so does each leaving of Glass: the relay's dismantle retires the token for good, so the relay and the slot
+    /// that mount when Glass returns must not carry it.
     @State private var owner = UUID()
 
     /// The Kit's 36 pt controls (`HelmHeaderActions.side`) with `HelmSpace.s4` above and below (`HelmPageHeader`).
@@ -654,6 +656,7 @@ private struct CardHeader: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .onChange(of: look) { _, now in if now != .liquidGlass { owner = UUID() } }
             .onPreferenceChange(HelmPageScrolledKey.self) { scrolled = $0 }
             .onPreferenceChange(HelmPageStandsOnStillContentKey.self) { standsOnStillContent = $0 }
             .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: Self.height) }

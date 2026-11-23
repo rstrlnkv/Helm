@@ -1,5 +1,7 @@
 import AppKit
+import HelmTestSupport
 import HelmUI
+import SwiftUI
 import XCTest
 @testable import HelmApp
 
@@ -120,6 +122,63 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
             XCTAssertEqual(toolbar.stripForTesting.widthForTesting,
                            HelmTabsMetrics.widths(declaration.tabs, style).reduce(0, +) + 18, "\(style)")
         }
+    }
+
+    /// The owner's live finding (Helm Dev, 2 of 2): Flat to Liquid Glass with the settings window open left the page
+    /// tabs gone from the toolbar on every page until relaunch; Glass to Flat worked. Driven through the real row
+    /// (`helmCardHeader`, its `HelmTabsRelay`) in a hosting view with the toolbar's own sink and the look read the
+    /// way the pane reads it (`helmTracksBarAppearance`): the relay is dismantled under Flat and releases the row's
+    /// token, and the same row mounts it again under Glass.
+    func testTheTabsComeBackWhenTheLookGoesGlassFlatGlassOnTheSameOpenWindow() {
+        var look = HelmBarAppearance.liquidGlass
+        let toolbar = SettingsToolbar()
+        // The toolbar's own sink behind a recorder: which token each call came under, and where the slot was said to be.
+        var declared: [UUID] = []
+        var placed: [(owner: UUID, rect: CGRect?)] = []
+        let real = toolbar.sink
+        let spy = HelmTabsSink(
+            declare: { owner, declaration in
+                if declaration != nil { declared.append(owner) }
+                real.declare(owner, declaration)
+            },
+            place: { owner, rect in placed.append((owner, rect)); real.place(owner, rect) },
+            release: { real.release($0) })
+        let page = Color.clear
+            .helmWindowToolbar(HelmPageToolbarContent(tabs: tabs(["a", "b"]), selectedTab: .constant("a")))
+            .helmCardHeader(symbol: "gearshape", tint: .blue, title: "Page", status: nil)
+            .environment(\.helmHeaderInCard, true)
+            .environment(\.helmTabsSink, spy)
+            .helmTracksBarAppearance { look }
+        let mount = MountedRender(page, width: 900, height: 400, appearance: .aqua)
+        defer { mount.drop() }
+        guard let window = mount.window else { return XCTFail("no window") }
+        toolbar.attach(to: window) { look }
+        let strip = toolbar.stripForTesting
+
+        mount.settle()
+        XCTAssertFalse(toolbar.tabsItemIsHiddenForTesting, "precondition: under Glass the row's tabs reach the toolbar")
+        XCTAssertEqual(strip.segmentCountForTesting, 2, "precondition: the page's two tabs are in the strip")
+
+        look = .flat
+        NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
+        mount.settle()
+        XCTAssertNil(window.toolbar, "precondition: Flat takes the toolbar off")
+        XCTAssertTrue(toolbar.tabsItemIsHiddenForTesting, "precondition: the relay's release hid the tabs under Flat")
+
+        look = .liquidGlass
+        NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
+        mount.settle()
+        XCTAssertTrue(toolbar.isInstalledForTesting)
+        XCTAssertFalse(toolbar.tabsItemIsHiddenForTesting,
+                       "DEFECT: Glass after Flat leaves the tabs hidden: the row's token was retired by the Flat release and the remounted relay is refused")
+        XCTAssertEqual(strip.segmentCountForTesting, 2, "the page's tabs are back in the strip")
+        // The strip can be lined up with the row's placeholder only if the slot is said by the owner that declares:
+        // another owner's `place` is parked as an arrival and never reaches the spacer. (The strip's own x is not read:
+        // an offscreen window's toolbar does not lay out, 759 against the slot's 383.5 on the fix itself.)
+        guard let owner = declared.last, let slot = placed.last(where: { $0.rect != nil }) else {
+            return XCTFail("the row declared nothing or placed nothing after the return to Glass")
+        }
+        XCTAssertEqual(slot.owner, owner, "the placeholder is placed under the token that declares the tabs")
     }
 
     func testTheSpacerPutsTheStripsEdgeAtTheWantedOneWhateverItHadBefore() {
