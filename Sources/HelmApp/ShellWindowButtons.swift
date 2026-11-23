@@ -96,7 +96,11 @@ final class ShellWindowButtons {
     nonisolated(unsafe) private var tokens: [NSObjectProtocol] = []
     /// Where AppKit puts each button, and where this object last put it, in the button's superview.
     private var homes: [ObjectIdentifier: CGPoint] = [:]
-    /// Whether the window wore its toolbar when a home was read: AppKit's place differs by it (`placed`).
+    /// Whether the window wore its toolbar when a home was read: AppKit's place differs by it (`placed`). Judged by
+    /// `toolbar?.isVisible`, never `toolbar != nil`: inside `window.toolbar = nil` AppKit moves the buttons back to
+    /// the flat place and posts the frame change while `window.toolbar` is still set, but `isVisible` is already false
+    /// (and true at the move inside `window.toolbar = toolbar`), measured on macOS 27.3; by `!= nil` a flat home was
+    /// taken for a toolbar one and the shift subtracted from it.
     private var homesUnderToolbar: [ObjectIdentifier: Bool] = [:]
     private var wanted: [ObjectIdentifier: CGPoint] = [:]
     private var isPlacing = false
@@ -207,7 +211,7 @@ final class ShellWindowButtons {
         if let want = wanted[id], abs(want.x - button.frame.origin.x) < 0.5,
            abs(want.y - button.frame.origin.y) < 0.5 { return }
         homes[id] = button.frame.origin
-        homesUnderToolbar[id] = window?.toolbar != nil
+        homesUnderToolbar[id] = window?.toolbar?.isVisible == true
         applied = nil
         place(rail: rail)
         view.superview?.needsLayout = true
@@ -230,7 +234,7 @@ final class ShellWindowButtons {
             let id = ObjectIdentifier(button)
             if homes[id] == nil {
                 homes[id] = button.frame.origin
-                homesUnderToolbar[id] = window.toolbar != nil
+                homesUnderToolbar[id] = window.toolbar?.isVisible == true
             }
             guard let superview = button.superview, let origin = homes[id] else { return release() }
             home = home.union(content.convert(CGRect(origin: origin, size: button.frame.size), from: superview))
