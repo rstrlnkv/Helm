@@ -53,12 +53,14 @@ extension EnvironmentValues {
     @Entry public var helmTabsSink: HelmTabsSink?
 }
 
-/// The strip's measure, pure: what the toolbar's control sets per segment and the placeholder takes in the row.
+/// The strip's measure: what the toolbar's control sets per segment and the placeholder takes in the row.
 public enum HelmTabsMetrics {
     private static var font: NSFont { .systemFont(ofSize: 13) }
     /// Either side of a word or glyph, and the glyph's own width. With the glyph a segment is the `.flat` tab's
-    /// width (9 either side, 16 for the glyph); without it 12 either side, which for the three of the Log page
-    /// is the whole `.flat` strip's width (3 x 18 + 2 x 5 + 8), so `SettingsWindow.minSize` holds under both looks.
+    /// width (9 either side, 16 for the glyph) and the Glass strip, `total` with the track's inset, equals the whole
+    /// `.flat` strip for `.iconsAndText` (words + 138 under both looks), the style `SettingsWindow.minSize` is
+    /// measured with; `word()` rounds up, so Glass may exceed Flat by up to about 3 pt over three words. Without
+    /// the glyph 12 either side: `.text` is words + 90 under Glass against Flat's words + 72, so the equality does not hold there.
     private static let pad = CGFloat(12)
     private static let glyph = CGFloat(16)
 
@@ -78,9 +80,19 @@ public enum HelmTabsMetrics {
         style == .iconsAndText ? (glyph + 6 + word(tab)) / 2 : word(tab) / 2
     }
 
+    /// What the control keeps free either side of its segments once it stands in a toolbar item: measured on
+    /// macOS 27.3, 2026-11-23 (Homebrew page, Russian, `.text`: a 316 pt run of segments gave a 334 pt `fittingSize`). Not readable off a control outside the
+    /// toolbar, which reads the plain sum, so no test of an offscreen control can hold it: the shots can.
+    public static let trackInset = CGFloat(9)
+
+    /// The whole strip's width: the segments and the track's inset either side. The one source of the control's,
+    /// the toolbar item's and the row's placeholder's width.
+    public static func total(_ tabs: [HelmToolbarTab], _ style: ToolbarSwitcherStyle) -> CGFloat {
+        widths(tabs, style).reduce(0, +) + 2 * trackInset
+    }
+
     /// Every segment's width from its own label, so no word is cut and the dots stand where the segments are;
-    /// a segment with a dot beside its label is wider by the dot and its gap. The one source of the strip's width,
-    /// the control's and the row's placeholder's.
+    /// a segment with a dot beside its label is wider by the dot and its gap.
     public static func widths(_ tabs: [HelmToolbarTab], _ style: ToolbarSwitcherStyle) -> [CGFloat] {
         tabs.map { tab in
             let room = tab.needsAttention ? dot + dotGap : 0
@@ -149,7 +161,7 @@ struct HelmTabsSlot: View {
 
     var body: some View {
         Color.clear
-            .frame(width: HelmTabsMetrics.widths(tabs, style).reduce(0, +), height: HelmTabsMetrics.height)
+            .frame(width: HelmTabsMetrics.total(tabs, style), height: HelmTabsMetrics.height)
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { sink.place(owner, $0) }
             .onDisappear { sink.place(owner, nil) }
             .accessibilityHidden(true)

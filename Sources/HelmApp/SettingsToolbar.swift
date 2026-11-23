@@ -241,7 +241,7 @@ import SwiftUI
     }
 }
 
-/// The toolbar item's view: exactly the control's size, 36 pt high (see `SettingsToolbar`: a taller container makes
+/// The toolbar item's view: exactly the control's size (its segments and the track's inset either side), 36 pt high (see `SettingsToolbar`: a taller container makes
 /// a taller glass track and takes drags). The attention dots and the accessibility elements lie over the segments'
 /// places and take no press.
 @MainActor final class TabsStrip: NSView {
@@ -303,7 +303,7 @@ import SwiftUI
         }
         control.selectedSegment = tabs.firstIndex { $0.id == declaration.selected } ?? -1
         control.isEnabled = declaration.enabled
-        let total = widths.reduce(0, +)
+        let total = HelmTabsMetrics.total(tabs, style)
         widthConstraint.constant = total
         control.frame = NSRect(x: 0, y: 0, width: total, height: HelmTabsMetrics.height)
         layoutDots(widths)
@@ -317,7 +317,7 @@ import SwiftUI
             addSubview(dot)
             dots.append(dot)
         }
-        var x: CGFloat = 0
+        var x = HelmTabsMetrics.trackInset
         let size = HelmTabsMetrics.dot
         for (index, dot) in dots.enumerated() {
             guard index < declaration.tabs.count else { dot.isHidden = true; continue }
@@ -357,7 +357,7 @@ import SwiftUI
     private func refreshElements() {
         guard let declaration else { elements = []; return }
         let widths = HelmTabsMetrics.widths(declaration.tabs, declaration.style)
-        var x: CGFloat = 0
+        var x = HelmTabsMetrics.trackInset
         elements = declaration.tabs.enumerated().map { index, tab in
             let element = SegmentElement()
             element.setAccessibilityRole(.radioButton)

@@ -99,8 +99,27 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         let off = HelmTabsDeclaration(tabs: tabs(["a", "b"], attention: "b"), selected: "a", enabled: false,
                                       style: .text, increasedContrast: false, select: { _ in })
         toolbar.sink.declare(UUID(), off)
-        XCTAssertEqual(toolbar.stripForTesting.widthForTesting, dotted.reduce(0, +))
+        let total = HelmTabsMetrics.total(tabs(["a", "b"], attention: "b"), .text)
+        XCTAssertEqual(toolbar.stripForTesting.widthForTesting, total)
+        XCTAssertEqual(total, dotted.reduce(0, +) + 2 * HelmTabsMetrics.trackInset)
         XCTAssertLessThan(toolbar.stripForTesting.dotAlphaForTesting(1), 1)
+    }
+
+    /// The owner's screenshot of 2026-11-23: segments summing to the item's width left the control, which keeps its
+    /// own inset either side of them in a toolbar, wider than its item, so the first label sat on the track's edge
+    /// and the last pill ran past it. (The inset itself shows only in a live toolbar, off screen the control reads
+    /// the plain sum: it is measured on a shot, recorded in `ThePageHeader.md`, not held here.)
+    func testTheItemIsTheSegmentsAndTheTracksInsetEitherSideInEveryStyle() {
+        XCTAssertEqual(HelmTabsMetrics.trackInset, 9)
+        for style in [ToolbarSwitcherStyle.text, .icons, .iconsAndText] {
+            let toolbar = SettingsToolbar()
+            toolbar.attach(to: window()) { .liquidGlass }
+            let declaration = HelmTabsDeclaration(tabs: tabs(["a", "b", "c"], attention: "c"), selected: "a", enabled: true,
+                                                  style: style, increasedContrast: false, select: { _ in })
+            toolbar.sink.declare(UUID(), declaration)
+            XCTAssertEqual(toolbar.stripForTesting.widthForTesting,
+                           HelmTabsMetrics.widths(declaration.tabs, style).reduce(0, +) + 18, "\(style)")
+        }
     }
 
     func testTheSpacerPutsTheStripsEdgeAtTheWantedOneWhateverItHadBefore() {
