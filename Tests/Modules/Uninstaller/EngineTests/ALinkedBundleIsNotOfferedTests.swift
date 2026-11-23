@@ -7,7 +7,7 @@ import HelmTestSupport
 ///
 /// Measured in a scratch directory: a link named `Linked.app` pointing at a real
 /// bundle is returned by `contentsOfDirectory`, has `pathExtension == "app"`, and
-/// `NSDictionary(contentsOf:)` reads the *target's* `Info.plist` through it — so
+/// `PropertyListFile.infoPlist(ofBundleAt:)` reads the *target's* `Info.plist` through it — so
 /// the row carried the real bundle id and the real name, while `FileWeight`
 /// answered **0** bytes for it. `RemovableScope.isRemovable` allows it, so a
 /// tick, a review and a press all went through.
@@ -95,7 +95,7 @@ final class ALinkedBundleIsNotOfferedTests: XCTestCase {
                                                                  includingPropertiesForKeys: nil)
         XCTAssertEqual(entries.map(\.lastPathComponent), ["Linked.app"],
                        "the directory listing the lister runs does not return the link")
-        let info = NSDictionary(contentsOf: link.appendingPathComponent("Contents/Info.plist"))
+        let info = PropertyListFile.infoPlist(ofBundleAt: link)
         XCTAssertEqual(info?["CFBundleIdentifier"] as? String, "com.acme.target",
                        "the link does not carry the target's identity, so nothing would list it")
         XCTAssertEqual(FileWeight.allocated(of: link), 0,

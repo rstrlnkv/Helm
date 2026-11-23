@@ -27,9 +27,9 @@ enum OrphanDetector {
     /// True when `name` is a bundle-id-shaped entry whose app isn't installed.
     ///
     /// `knownToSystem` asks LaunchServices, and it is not optional politeness:
-    /// a directory listing of /Applications misses everything one folder down
-    /// (Adobe Acrobat DC/, Microsoft Office/) and every helper nested inside
-    /// another bundle. Both were being offered for deletion while their apps
+    /// a directory listing of /Applications once missed everything one folder down
+    /// (Adobe Acrobat DC/, Microsoft Office/); it still misses every helper nested
+    /// inside another bundle and any app deeper than two levels. Both were being offered for deletion while their apps
     /// were installed and running.
     static func isOrphan(name: String, installedBundleIDs: Set<String>,
                          knownToSystem: (String) -> Bool = { _ in false }) -> Bool {

@@ -15,15 +15,7 @@ public final class WorkspaceAppLister: AppLister {
     }
 
     public func installedBundleIDs() -> Set<String> {
-        var ids: Set<String> = []
-        for dir in searchDirs {
-            guard let items = try? FileManager.default.contentsOfDirectory(
-                at: dir, includingPropertiesForKeys: nil) else { continue }
-            for app in items where app.pathExtension == "app" {
-                if let id = Self.bundleID(forAppAt: app.path), !id.isEmpty { ids.insert(id) }
-            }
-        }
-        return ids
+        PropertyListFile.installedBundleIDs(home: home.path)
     }
 
     /// The `CFBundleIdentifier` in a bundle's `Info.plist`, nil when unreadable.
@@ -31,8 +23,7 @@ public final class WorkspaceAppLister: AppLister {
     /// is here, one per call (ARCHITECTURE.md § Module pattern).
     static func bundleID(forAppAt path: String) -> String? {
         autoreleasepool {
-            let info = URL(fileURLWithPath: path).appendingPathComponent("Contents/Info.plist")
-            return NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String
+            PropertyListFile.infoPlist(ofBundleAt: URL(fileURLWithPath: path))?["CFBundleIdentifier"] as? String
         }
     }
 
@@ -40,17 +31,17 @@ public final class WorkspaceAppLister: AppLister {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
     }
 
-    /// The listing above cannot answer this: `/Applications/Adobe Acrobat
-    /// DC/Adobe Acrobat.app` is one folder past what it reads, and a second
-    /// bundle declaring an id is the only evidence the scan has that the id
-    /// does not belong to the app being removed. LaunchServices knows every
-    /// copy it has ever seen, so `InstalledLocation` keeps the ones that are
-    /// installed rather than merely present.
-    /// LaunchServices rather than the listing, and not both: the listing is
-    /// already read once per scan for `installedBundleIDs()`, and reading it a
-    /// second time to group it by id would double that for an answer
-    /// LaunchServices gives more completely — it registers `/Applications`
-    /// itself, so a bundle there that it has never heard of does not arise.
+    /// Where else an id is installed: a second bundle declaring it is the only
+    /// evidence the scan has that the id does not belong to the app being
+    /// removed. The listing above cannot answer this: it keeps ids, not the
+    /// paths that declared them, and it stops at two folders below a root and
+    /// never enters a bundle, so a copy deeper than that, or inside another
+    /// bundle's `Contents`, is not in it. LaunchServices knows every copy it
+    /// has ever seen, so `InstalledLocation` keeps the ones that are installed
+    /// rather than merely present.
+    /// LaunchServices rather than the listing, and not both: grouping the
+    /// listing by id would be a second walk of every bundle's `Info.plist` for
+    /// an answer LaunchServices gives more completely.
     public func installedPaths(forBundleID id: String) -> [String] {
         NSWorkspace.shared.urlsForApplications(withBundleIdentifier: id)
             .map(\.path)
@@ -123,9 +114,7 @@ public final class WorkspaceAppLister: AppLister {
                 // Inside the iteration, and only the extracted identity leaves it
                 // (ARCHITECTURE.md § Module pattern).
                 autoreleasepool {
-                    let info = app.appendingPathComponent("Contents/Info.plist")
-                    return TrashedAppIdentity.of(path: app.path,
-                                                 info: NSDictionary(contentsOf: info) as? [String: Any])
+                    TrashedAppIdentity.of(path: app.path, info: PropertyListFile.infoPlist(ofBundleAt: app))
                 }
             }
     }
@@ -156,8 +145,7 @@ public final class WorkspaceAppLister: AppLister {
                 // One `Info.plist` per bundle: the pool goes inside the iteration and
                 // only the two Strings leave it (ARCHITECTURE.md § Module pattern).
                 let plist: (bundleID: String, name: String?)? = autoreleasepool {
-                    let info = app.appendingPathComponent("Contents/Info.plist")
-                    let dict = NSDictionary(contentsOf: info)
+                    let dict = PropertyListFile.infoPlist(ofBundleAt: app)
                     guard let bundleID = dict?["CFBundleIdentifier"] as? String, !bundleID.isEmpty else { return nil }
                     return (bundleID, (dict?["CFBundleDisplayName"] as? String)
                         ?? (dict?["CFBundleName"] as? String))
@@ -185,7 +173,7 @@ public final class WorkspaceAppLister: AppLister {
     ///
     /// **Measured**, in a scratch directory: a symlink named `Linked.app` pointing
     /// at a real 3 MB bundle is returned by `contentsOfDirectory`, has the `.app`
-    /// extension, and `NSDictionary(contentsOf:)` reads the *target's*
+    /// extension, and `PropertyListFile.infoPlist(ofBundleAt:)` reads the *target's*
     /// `Info.plist` through it — so the row carried the real name and the real
     /// bundle id while `FileWeight.allocated` answered **0** bytes for it, and
     /// `RemovableScope.isRemovable` allowed the move. What `FileManager.trashItem`

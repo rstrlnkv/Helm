@@ -64,6 +64,8 @@ refuses a restored deadline rather than bringing it down to the ceiling, and che
 dates are ordered before either bound runs. `UpdateCheck.lastChecked(stored:now:)` reads a
 stamp as a moment rather than doing arithmetic on the raw `Int`.
 
+A property list read from outside (a bundle's `Info.plist`, a launch agent's) is bounded by `PropertyListFile.byteCeiling` (`Sources/HelmRuntime/PropertyListFile.swift`), the one reader for all of them: no link, no pipe, nothing over 2 MiB.
+
 `Sources/HelmRuntime/Clamped.swift` is the shared clamp, and its doc comments say why
 `clamped(to:)` propagates a NaN rather than absorbing it. Which answer a NaN gets is
 stated at the call site through `clamped(to:whenNotANumber:)`; `clampedIfFinite(to:)` is

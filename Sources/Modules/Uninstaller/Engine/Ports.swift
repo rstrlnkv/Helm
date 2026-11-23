@@ -13,8 +13,8 @@ public protocol AppLister: Sendable {
     /// the sizes away after paying nine seconds for them.
     func installedBundleIDs() -> Set<String>
     /// Does the system know an app with this bundle id, wherever it lives?
-    /// LaunchServices sees apps one folder down and helpers nested inside
-    /// other bundles; a directory listing sees neither.
+    /// LaunchServices sees helpers nested inside other bundles and apps deeper
+    /// than the listing's two levels; a directory listing sees neither.
     func isKnownToSystem(bundleID: String) -> Bool
     /// The installed bundles declaring this id. Normally one — the app the
     /// scan is about — because an id is what identifies an application. Two is

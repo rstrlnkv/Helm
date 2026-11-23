@@ -10,9 +10,9 @@ import XCTest
 ///     LaunchAgentReader.read(plist: files.readPlist(url)?.raw ?? [:], path: url.path)
 ///
 /// and `readPlist` is nil for every reason a file resists being read:
-/// `NSDictionary(contentsOf:)` answers nil for a corrupt plist, for a truncated
-/// one, for a plist whose root is an array rather than a dictionary, and for one
-/// the process may not open. `?? [:]` turns all of that into «this job has no
+/// `PropertyListFile.dictionary(atPath:followingLink:)` answers nil for a corrupt plist, for a truncated
+/// one, for a plist whose root is an array rather than a dictionary, for one
+/// the process may not open, for a pipe, and for one over `PropertyListFile.byteCeiling`. `?? [:]` turns all of that into «this job has no
 /// `Program`», the next line turns *that* into `targetAlive = false`, and a job
 /// that points at nothing is a leftover — ticked by «Select all», counted in the
 /// batch, and moved to the Trash.

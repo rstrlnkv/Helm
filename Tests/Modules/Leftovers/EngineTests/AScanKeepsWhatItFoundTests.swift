@@ -13,23 +13,14 @@ import XCTest
 /// has handed out and not been given back — the number an autoreleased `Data`
 /// moves and a resident-page reading need not.
 ///
-/// Measured on this tree — 200 settings files, 200 launch agents, 200 plug-in
-/// bundles — three runs each, the three readings identical to the byte:
-///
-///     pools inside the loops:      1 124 928 bytes,  1820 an item
-///     `autoreleasepool` removed:   6 303 648 bytes, 10200 an item
-///
-/// The threshold sits between the two readings, never above one of them — a
-/// ceiling picked after a single measurement records the present and cannot
-/// fail. The mutation was
-/// the three `autoreleasepool` calls in `LeftoversScanner` replaced by a closure
-/// that only calls its body, read back in the file before the run and restored
-/// from a copy after it.
-///
-/// The baseline is what the scan **found**: 618 rows of two strings each, and the
-/// allocator's slack around them. What the defect adds is every plist read on the
-/// way, which is why the two are a factor of five and a half apart rather than a
-/// percentage.
+/// What it asserts: on a tree of 200 settings files, 200 launch agents and 200 plug-in
+/// bundles, the bytes in use per item after the scan stay under a ceiling that a scan
+/// without the pools exceeds. The figures the ceiling was chosen from (about 1 800 an
+/// item with the pools, about 10 200 without) were taken with the reader this module
+/// used before `PropertyListFile`, and are not remeasured for it here. The mutation that
+/// proves the guard is the three `autoreleasepool` calls in `LeftoversScanner` replaced
+/// by a closure that only calls its body, read back in the file before the run and
+/// restored from a copy after it.
 ///
 /// **The home is resolved before the scanner is given it.** `$TMPDIR` is
 /// `/var/folders/…`, `/var` is a symbolic link to `/private/var`, and
@@ -47,7 +38,7 @@ final class AScanKeepsWhatItFoundTests: XCTestCase {
 
     /// All three of the scan's loops, because they do not cost the same thing: a
     /// settings file is weighed and never opened, a launch agent is *read* — and
-    /// `NSDictionary(contentsOf:)` is where the autoreleased objects come from —
+    /// `PropertyListFile.dictionary` is where the autoreleased objects come from —
     /// and a plug-in is a bundle, read and then walked for its size. A tree of
     /// settings files alone measures the cheapest of the three and calls it the
     /// scan.

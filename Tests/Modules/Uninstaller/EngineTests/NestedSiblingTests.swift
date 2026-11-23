@@ -13,19 +13,19 @@ import XCTest
 /// own documentation says what that set is missing:
 ///
 /// > Does the system know an app with this bundle id, wherever it lives?
-/// > LaunchServices sees apps one folder down and helpers nested inside other
-/// > bundles; a directory listing sees neither.
+/// > LaunchServices sees helpers nested inside other bundles and apps deeper
+/// > than the listing's two levels; a directory listing sees neither.
 ///
-/// `installedBundleIDs()` is `contentsOfDirectory` over four folders, matching
-/// `*.app` at the top level only. `/Applications/Adobe Acrobat DC/Adobe
-/// Acrobat.app`, `/Applications/Microsoft Office/…`, and every helper inside
-/// another bundle are absent from it. `OrphanDetector` was given
+/// `installedBundleIDs()` is `PropertyListFile.installedBundleIDs`: `.app`
+/// bundles down to two levels under its roots, never inside a bundle.
+/// `/Applications/Adobe Acrobat DC/Adobe Acrobat.app` is in it; every helper
+/// inside another bundle, and any app deeper than level 2, is absent from it. `OrphanDetector` was given
 /// `isKnownToSystem` for exactly this reason — its comment records that nested
 /// apps "were being offered for deletion while their apps were installed and
 /// running" — and `scanSync`'s glob filter, written later, asks the narrow
 /// question.
 ///
-/// So the vendor's *other* product, installed one folder down, is invisible to
+/// So the vendor's *other* product, where the listing cannot reach it, is invisible to
 /// the rule meant to protect it: its container is claimed, and because a glob
 /// hit is never `matchedByName` it arrives on the review screen pre-ticked next
 /// to a Trash button.
