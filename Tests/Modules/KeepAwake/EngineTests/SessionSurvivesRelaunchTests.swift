@@ -34,13 +34,7 @@ final class SessionSurvivesRelaunchTests: XCTestCase {
 
     /// A second engine over the same store, as a relaunch gives.
     private func engine(assertions: FakeAssertions = FakeAssertions()) -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                        assertions: assertions,
-                        displayInfo: FakeDisplayInfo(),
-                        displayObserver: FakeDisplayObserver(),
-                        power: FakePower(), apps: FakeApps(),
-                        pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: clock, lidInfo: FakeLidInfo())
+        fakeEngine(store: store, assertions: assertions, clock: clock)
     }
 
     // MARK: - It comes back

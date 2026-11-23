@@ -26,11 +26,8 @@ final class AStoredSwitchIsNotAGestureTests: XCTestCase {
         lidInfo.lid = true
         apps = FakeApps()
         displayInfo = FakeDisplayInfo()
-        engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                 assertions: FakeAssertions(), displayInfo: displayInfo,
-                                 displayObserver: FakeDisplayObserver(), power: FakePower(),
-                                 apps: apps, pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock(), lidInfo: lidInfo)
+        engine = fakeEngine(store: store, displayInfo: displayInfo, apps: apps,
+                            clamshell: clamshell, lidInfo: lidInfo)
     }
 
     /// The red one. The option was stored on (an earlier launch, a declined

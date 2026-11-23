@@ -48,11 +48,8 @@ final class ASupplyNobodyNamedDoesNotHoldTheMacTests: XCTestCase {
         apps.ids = [render]
         displayInfo = FakeDisplayInfo()
         lidInfo = FakeLidInfo()
-        engine = KeepAwakeEngine(settings: settings, store: store,
-                                 assertions: FakeAssertions(), displayInfo: displayInfo,
-                                 displayObserver: FakeDisplayObserver(),
-                                 power: power, apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: lidInfo)
+        engine = fakeEngine(settings: settings, store: store, displayInfo: displayInfo,
+                            power: power, apps: apps, lidInfo: lidInfo)
     }
 
     /// IOKit answered, and what it said was not a supply this app knows: a UPS,

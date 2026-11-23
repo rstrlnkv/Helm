@@ -31,10 +31,10 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
     override func setUp() {
         super.setUp()
         shared = EngineNews<KeepAwakeEngine.StatePayload>()
-        raced = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
-                                displayInfo: displayInfo, displayObserver: displayObserver,
-                                power: power, apps: apps, pointer: pointer,
-                                clamshell: clamshell, clock: clock, lidInfo: FakeLidInfo(), news: shared)
+        raced = fakeEngine(settings: settings, store: store, assertions: assertions,
+                           displayInfo: displayInfo, displayObserver: displayObserver, power: power,
+                           apps: apps, pointer: pointer, clamshell: clamshell, clock: clock,
+                           news: shared)
     }
 
     private static func state(_ n: Int) -> KeepAwakeEngine.StatePayload {
@@ -230,9 +230,8 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
     }
 
     private func makeRaced() -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
-                        displayInfo: displayInfo, displayObserver: displayObserver,
-                        power: power, apps: apps, pointer: pointer,
-                        clamshell: clamshell, clock: clock, lidInfo: FakeLidInfo(), news: shared)
+        fakeEngine(settings: settings, store: store, assertions: assertions,
+                   displayInfo: displayInfo, displayObserver: displayObserver, power: power,
+                   apps: apps, pointer: pointer, clamshell: clamshell, clock: clock, news: shared)
     }
 }

@@ -238,12 +238,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
 
     /// The engine over this test's own store, with every port faked.
     private func engine() -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: settings, store: store,
-                        assertions: FakeAssertions(),
-                        displayInfo: FakeDisplayInfo(),
-                        displayObserver: FakeDisplayObserver(),
-                        power: FakePower(), apps: FakeApps(),
-                        pointer: FakePointer(), clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
+        fakeEngine(settings: settings, store: store)
     }
 
     // MARK: - Reading never writes

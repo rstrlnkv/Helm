@@ -39,13 +39,7 @@ final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
     }
 
     private func engine() -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                        assertions: assertions,
-                        displayInfo: FakeDisplayInfo(),
-                        displayObserver: FakeDisplayObserver(),
-                        power: FakePower(), apps: FakeApps(),
-                        pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: FakeClock(), lidInfo: FakeLidInfo())
+        fakeEngine(store: store, assertions: assertions)
     }
 
     /// IOKit said no. The one place that can account for a Mac that slept
@@ -115,13 +109,7 @@ final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
     func testTheBatteryGuardStoppingARefusedSessionTakesTheRefusalAway() async {
         assertions.succeeds = false
         let power = FakePower()
-        let engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                     assertions: assertions,
-                                     displayInfo: FakeDisplayInfo(),
-                                     displayObserver: FakeDisplayObserver(),
-                                     power: power, apps: FakeApps(),
-                                     pointer: FakePointer(), clamshell: FakeClamshell(),
-                                     clock: FakeClock(), lidInfo: FakeLidInfo())
+        let engine = fakeEngine(store: store, assertions: assertions, power: power)
         engine.activate()
         engine.startSession(minutes: 0)
         var latest = await engine.stream().first { _ in true }

@@ -53,19 +53,12 @@ public enum SessionHero: Equatable, Sendable {
         }
     }
 
-    /// What will still be holding the Mac when the countdown reaches zero, or
-    /// nil when nothing will.
-    ///
-    /// The one question a countdown cannot answer about itself. A rule that is
-    /// met now is met then, so the session does not end with the timer — unless
-    /// the person has asked the timer to end automation as well, which is the
-    /// only way this returns nil while a rule is plainly holding.
+    /// What happens when the countdown reaches zero.
     ///
     /// One condition, not the set: the line under the figure is a sentence, and
     /// «then the external display and the charger and Final Cut keep it awake»
     /// is a list where a reason was wanted. `allCases` order decides which,
     /// so the answer does not change between two runs on one machine.
-    /// What happens when the countdown reaches zero.
     ///
     /// Three answers, not two. It used to be an optional condition, and `nil`
     /// folded together the two cases that differ most: «nothing is holding this

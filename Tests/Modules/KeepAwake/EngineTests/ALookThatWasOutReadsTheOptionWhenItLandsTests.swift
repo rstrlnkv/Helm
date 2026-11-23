@@ -22,11 +22,7 @@ final class ALookThatWasOutReadsTheOptionWhenItLandsTests: XCTestCase {
         clamshell.sudoersInstalled = true
         clamshell.passwordlessGrantExists = true
         settings.setClamshellEnabled(false)
-        let engine = KeepAwakeEngine(settings: settings, store: store,
-                                     assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                                     displayObserver: FakeDisplayObserver(), power: FakePower(),
-                                     apps: FakeApps(), pointer: FakePointer(),
-                                     clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
+        let engine = fakeEngine(settings: settings, store: store, clamshell: clamshell)
         let release = DispatchSemaphore(value: 0)
         let began = expectation(description: "the look read the file and is parked")
         clamshell.lookBegan = began

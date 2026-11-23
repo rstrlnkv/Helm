@@ -25,11 +25,7 @@ final class ASessionAPlistCanInventTests: XCTestCase {
     }
 
     private func engine() -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                        assertions: assertions, displayInfo: FakeDisplayInfo(),
-                        displayObserver: FakeDisplayObserver(), power: FakePower(),
-                        apps: FakeApps(), pointer: FakePointer(),
-                        clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
+        fakeEngine(store: store, assertions: assertions)
     }
 
     // MARK: - One boolean, and the Mac never sleeps again
@@ -203,12 +199,7 @@ final class ASessionAPlistCanInventTests: XCTestCase {
             store.set(junk, for: KeepAwakeEngine.SessionKey.startedAt)
             store.set(junk, for: KeepAwakeEngine.SessionKey.endsAt)
             let fresh = FakeAssertions()
-            let module = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                         assertions: fresh, displayInfo: FakeDisplayInfo(),
-                                         displayObserver: FakeDisplayObserver(),
-                                         power: FakePower(), apps: FakeApps(),
-                                         pointer: FakePointer(), clamshell: FakeClamshell(),
-                                         clock: clock, lidInfo: FakeLidInfo())
+            let module = fakeEngine(store: store, assertions: fresh, clock: clock)
 
             module.activate()
 

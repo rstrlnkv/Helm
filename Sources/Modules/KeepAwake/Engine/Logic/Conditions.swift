@@ -36,17 +36,12 @@ enum Conditions {
         static let inactive = Result(isActive: false, conditions: [])
     }
     static func resolve(_ i: Inputs) -> Result {
-        if i.manual || i.timerRunning {
-            var c: Set<ActiveCondition> = []
-            if i.manual { c.insert(.manual) }; if i.timerRunning { c.insert(.timer) }
-            if i.externalDisplay { c.insert(.externalDisplay) }
-            if i.onPower { c.insert(.power) }; if i.appRunning { c.insert(.app) }
-            return Result(isActive: true, conditions: c)
-        }
-        if i.suppressed { return .inactive }
+        let held = i.manual || i.timerRunning
+        if !held && i.suppressed { return .inactive }
         var c: Set<ActiveCondition> = []
+        if i.manual { c.insert(.manual) }; if i.timerRunning { c.insert(.timer) }
         if i.externalDisplay { c.insert(.externalDisplay) }
         if i.onPower { c.insert(.power) }; if i.appRunning { c.insert(.app) }
-        return Result(isActive: !c.isEmpty, conditions: c)
+        return Result(isActive: held || !c.isEmpty, conditions: c)
     }
 }

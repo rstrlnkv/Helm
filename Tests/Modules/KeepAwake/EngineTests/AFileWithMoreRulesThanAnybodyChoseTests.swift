@@ -159,12 +159,7 @@ final class AFileWithMoreRulesThanAnybodyChoseTests: XCTestCase {
         backing.raw["module.keep-awake.autoAppRules"] = rules(50_001)
         let apps = FakeApps()
         apps.ids = ["com.example.0.aaaaaaaaaaaa"]
-        let engine = KeepAwakeEngine(settings: settings, store: store,
-                                     assertions: FakeAssertions(),
-                                     displayInfo: FakeDisplayInfo(),
-                                     displayObserver: FakeDisplayObserver(),
-                                     power: FakePower(), apps: apps, pointer: FakePointer(),
-                                     clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
+        let engine = fakeEngine(settings: settings, store: store, apps: apps)
 
         engine.activate()
 

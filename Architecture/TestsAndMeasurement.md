@@ -84,7 +84,11 @@ production; an encoder and decoder that disagree are green against a fake that e
 own reply; a fake that never completes leaves the engine mid-prompt for ever behind an
 in-flight guard. The fake port is named at every construction, because a defaulted port
 is the machine's own keychain, and eleven forgetful constructions rolled a real rule set
-back. A busy gate is tested with a runner that never exits, because a fake answering
+back. The one exception is `fakeEngine(...)` in
+`Tests/Modules/KeepAwake/EngineTests/Fakes.swift`, whose every port defaults to a fake
+from that file and never to a production port, so a call names only the fakes it
+configures or asserts on, and always `store:`; a factory whose default is a production
+port breaks the rule. A busy gate is tested with a runner that never exits, because a fake answering
 synchronously releases the gate before the call it gates returns and the test passes with
 the gate deleted; a cooperative yield is never a wait, because it buys a turn on the pool
 and no wall-clock time, so no number of passes widens the window a writer can land in.
