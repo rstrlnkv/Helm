@@ -86,7 +86,7 @@ Kept tests, one per guarantee:
 | the keep policy is sealed where stored | `TheKeepPolicyIsSealedWhereStoredTests`, `TheScanSettingsSealDoesNotMoveTests` |
 | a folder from the open panel is sealed | `AFolderTheOpenPanelGivesIsSealedTests` |
 | the unattended walk stays out of the Library | `TheTimersWalkStaysOutOfTheLibraryTests` |
-| a scan that could not look is not "all clear" | `AScanThatCouldNotLookIsNotAllClearTests` (optional, run by filter) |
+| a scan that could not look is not "all clear" | `AScanThatCouldNotLookIsNotAllClearTests` |
 | a stopped model reaches no work | `AStoppedDuplicatesModelReachesNoWorkTests` |
 
 The tests live in `Tests/Modules/Duplicates/EngineTests` and `Tests/Modules/Duplicates/UITests`.
@@ -102,7 +102,7 @@ The page id is the module id, `duplicates`, and a state is shot with its file `d
       --name <state>-<light|dark>[-<fr|de|ru>] --out <dir>
 
 A scratch tree of planted duplicates is enough for every state that shows a result. Nothing is removed to reach a state:
-`confirm`, `removing` and `removal-report` are not shot; `removing` is held by `AStopDuringARemovalReachesTheEngineTests` and `ATickReachesOnlyItsOwnBarTests` (optional), Stop removal's disappearance for the Trash phase by `AStopIsNotOfferedOnceTheTrashHasTheBatchTests` and the engine's `.moving` tick by `ARemovalCanBeWatchedAndStoppedTests`, the question is held by no test; the copies the press then names as staying, by `ThePageNamesEveryCopyItKeepsTests` (optional), and the figure the outcome banner counts as freed — a clone of the copy that stays is not counted — by `TheBannerCountsWhatTheDiskGivesBackTests` (optional, engine).
+`confirm`, `removing` and `removal-report` are not shot; `removing` is held by `AStopDuringARemovalReachesTheEngineTests` and `ATickReachesOnlyItsOwnBarTests` (optional), Stop removal's disappearance for the Trash phase by `AStopIsNotOfferedOnceTheTrashHasTheBatchTests` and the engine's `.moving` tick by `ARemovalCanBeWatchedAndStoppedTests`, the question is held by no test; the copies the press then names as staying, by `ThePageNamesEveryCopyItKeepsTests`, and the figure the outcome banner counts as freed — a clone of the copy that stays is not counted — by `TheBannerCountsWhatTheDiskGivesBackTests` (engine).
 
 | state | the page shows | reached by |
 |---|---|---|

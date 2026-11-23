@@ -3,6 +3,16 @@ import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Duplicates_Engine
 
+private extension XCTestCase {
+    /// Over the scanner's own floor by default, or the file is never a
+    /// candidate — which is this module's number, not the harness's.
+    @discardableResult
+    func writeCandidate(_ name: String, _ byte: UInt8, in root: URL,
+                        count: Int = 1_200_000) throws -> String {
+        try write(name, in: root, bytes: count, filler: byte).path
+    }
+}
+
 /// The scanner against a real directory: the logic is tested dry, so what is
 /// left to prove is the walking and hashing — that identical bytes group,
 /// different bytes do not, and a hard link is one file.
@@ -13,18 +23,12 @@ final class DuplicateScannerTests: XCTestCase {
         root = scratchDirectory("dup")
     }
 
-    /// Over the scanner's own floor by default, or the file is never a
-    /// candidate — which is this module's number, not the harness's.
-    private func write(_ name: String, _ byte: UInt8, count: Int = 1_200_000) throws -> String {
-        try write(name, in: root, bytes: count, filler: byte).path
-    }
-
     func testIdenticalFilesGroupAndDifferentOnesDoNot() throws {
-        let a = try write("a.bin", 7)
+        let a = try writeCandidate("a.bin", 7, in: root)
         try FileManager.default.createDirectory(at: root.appendingPathComponent("sub"),
                                                 withIntermediateDirectories: true)
-        let b = try write("sub/b.bin", 7)        // same content, one level down
-        _ = try write("c.bin", 9)                // same size, different content
+        let b = try writeCandidate("sub/b.bin", 7, in: root)        // same content, one level down
+        _ = try writeCandidate("c.bin", 9, in: root)                // same size, different content
         let groups = DuplicateScanner().find(under: root.path, by: KeepRule(.standard))
         XCTAssertEqual(groups?.count, 1)
         // Compare by tail: the spelling of the root is not what is under test.
@@ -40,18 +44,18 @@ final class DuplicateScannerTests: XCTestCase {
     }
 
     func testGroupsComeLargestWasteFirst() throws {
-        _ = try write("big1.bin", 1, count: 3_000_000)
-        _ = try write("big2.bin", 1, count: 3_000_000)
-        _ = try write("sm1.bin", 2)
-        _ = try write("sm2.bin", 2)
-        _ = try write("sm3.bin", 2)
+        _ = try writeCandidate("big1.bin", 1, in: root, count: 3_000_000)
+        _ = try writeCandidate("big2.bin", 1, in: root, count: 3_000_000)
+        _ = try writeCandidate("sm1.bin", 2, in: root)
+        _ = try writeCandidate("sm2.bin", 2, in: root)
+        _ = try writeCandidate("sm3.bin", 2, in: root)
         let groups = try XCTUnwrap(DuplicateScanner().find(under: root.path, by: KeepRule(.standard)))
         XCTAssertEqual(groups.count, 2)
         XCTAssertGreaterThan(groups[0].wasted, groups[1].wasted)
     }
 
     func testAHardLinkIsNotADuplicate() throws {
-        let a = try write("original.bin", 3)
+        let a = try writeCandidate("original.bin", 3, in: root)
         let linked = root.appendingPathComponent("link.bin").path
         try FileManager.default.linkItem(atPath: a, toPath: linked)
         let groups = DuplicateScanner().find(under: root.path, by: KeepRule(.standard))
@@ -59,15 +63,15 @@ final class DuplicateScannerTests: XCTestCase {
     }
 
     func testSmallFilesAreBelowTheFloor() throws {
-        _ = try write("small1.bin", 1, count: 10_000)
-        _ = try write("small2.bin", 1, count: 10_000)
+        _ = try writeCandidate("small1.bin", 1, in: root, count: 10_000)
+        _ = try writeCandidate("small2.bin", 1, in: root, count: 10_000)
         let groups = DuplicateScanner().find(under: root.path, by: KeepRule(.standard))
         XCTAssertEqual(groups, [])
     }
 
     func testCancelReturnsNilNotAPartialAnswer() throws {
-        _ = try write("a.bin", 7)
-        _ = try write("b.bin", 7)
+        _ = try writeCandidate("a.bin", 7, in: root)
+        _ = try writeCandidate("b.bin", 7, in: root)
         let scanner = DuplicateScanner()
         scanner.cancel()
         XCTAssertNil(scanner.find(under: root.path, by: KeepRule(.standard)))
@@ -83,8 +87,8 @@ extension DuplicateScannerTests {
     /// for every unreadable file. Two same-size unreadable files grouped as
     /// duplicates and the sheet offered to trash content nobody had read.
     func testUnreadableFilesNeverGroupTogether() throws {
-        let a = try write("locked-a.bin", 4)
-        let b = try write("locked-b.bin", 5)   // same size, different content
+        let a = try writeCandidate("locked-a.bin", 4, in: root)
+        let b = try writeCandidate("locked-b.bin", 5, in: root)   // same size, different content
         // Same size, and unreadable: if the hash answered for them anyway,
         // they would answer identically.
         for path in [a, b] {
@@ -122,21 +126,15 @@ final class SurvivorThroughTheScannerTests: XCTestCase {
         root = scratchDirectory("survivor")
     }
 
-    @discardableResult
-    /// Over the scanner's own floor, or the file is never a candidate.
-    private func write(_ relative: String, _ byte: UInt8) throws -> String {
-        try write(relative, in: root, bytes: 1_200_000, filler: byte).path
-    }
-
     /// The structural one, and the one that cannot pass by luck: whatever the
     /// rule decides, the scanner must decide it the same way. A value assertion
     /// could be satisfied by alphabet, depth or date agreeing by accident on
     /// one fixture; this cannot be satisfied by anything except the production
     /// line calling the rule.
     func testTheScannerOrdersEachGroupByTheSurvivorRule() throws {
-        try write("zebra.bin", 7)
-        try write("archive/2019/alpha.bin", 7)
-        try write("middle/beta.bin", 7)
+        try writeCandidate("zebra.bin", 7, in: root)
+        try writeCandidate("archive/2019/alpha.bin", 7, in: root)
+        try writeCandidate("middle/beta.bin", 7, in: root)
 
         let group = try XCTUnwrap(DuplicateScanner()
             .find(under: root.path, by: KeepRule(.standard))?.first)
@@ -154,9 +152,9 @@ final class SurvivorThroughTheScannerTests: XCTestCase {
     /// And the case the rule exists for, when the volume records dates at all:
     /// the filed original outranks the copy whose path happens to sort first.
     func testTheOlderFiledCopySurvivesTheOneThatSortsFirst() throws {
-        let original = try write("archive/2019/photo.bin", 9)
+        let original = try writeCandidate("archive/2019/photo.bin", 9, in: root)
         Thread.sleep(forTimeInterval: 1.1)          // a distinguishable second
-        let copy = try write("desktop-photo.bin", 9)
+        let copy = try writeCandidate("desktop-photo.bin", 9, in: root)
 
         let dates = [original, copy].map {
             try? URL(fileURLWithPath: $0)

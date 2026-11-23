@@ -6,18 +6,6 @@ import Quartz
 import SwiftUI
 import Module_Duplicates_Engine
 
-enum DuplicatePreview {
-    /// The file a preview would show, or nil when there is nothing to show.
-    ///
-    /// The selection is checked against the groups rather than trusted: a copy
-    /// that has just been trashed leaves the list while the selection still
-    /// names it, and a panel opened onto a file that is gone is an empty frame
-    /// with no explanation.
-    static func target(selection: String?, in groups: [DuplicateGroup]) -> URL? {
-        DuplicateSelection.surviving(selection, in: groups).map(URL.init(fileURLWithPath:))
-    }
-}
-
 /// The preview itself, as a view rather than the shared panel.
 ///
 /// Not `QLPreviewPanel`: the panel is a singleton driven through the responder

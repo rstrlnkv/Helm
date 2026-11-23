@@ -107,7 +107,7 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
         dvm.search()
         await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
 
-        XCTAssertEqual(work.searches.map(\.keepPolicy), [.byDate],
+        XCTAssertEqual(work.searches, [.byDate],
                        "the search ran on whatever the engine had stored, not on the popup")
     }
 }

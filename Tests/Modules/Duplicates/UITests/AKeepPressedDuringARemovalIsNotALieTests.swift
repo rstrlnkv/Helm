@@ -130,7 +130,6 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
     private func pinnedGroupWithFiledCopyInTheBatch(answer removed: Bool = true) async throws
         -> (DuplicatesViewModel, AnsweringWork, stays: String, held: String) {
         let drop = "\(home)/Downloads/photo.jpg"
-        let filed = "\(home)/Documents/Trips/photo.jpg"
         let work = AnsweringWork(
             groups: [DuplicateGroup(copies: [
                 .init(path: drop, bytes: 9_000_000, added: noon),

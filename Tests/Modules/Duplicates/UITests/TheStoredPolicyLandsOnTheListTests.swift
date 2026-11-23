@@ -30,9 +30,6 @@ import Module_Duplicates_Engine
 @MainActor
 final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
 
-    private let downloaded = "\(home)/Downloads/photo.jpg"
-    private let filed = "\(home)/Documents/Trips/photo.jpg"
-
     /// One group the two policies disagree about: the copy in Downloads arrived
     /// first, the copy in Documents was filed an hour later. By place the filed
     /// one stays; by date the download does.
@@ -98,7 +95,7 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
         dvm.search()
         await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
 
-        XCTAssertEqual(work.searches.map(\.keepPolicy), [.byDate],
+        XCTAssertEqual(work.searches, [.byDate],
                        "precondition: the request carried what the page was showing")
         XCTAssertTrue(firstRowIsWhatThePolicyKeeps(dvm))
     }
@@ -115,7 +112,7 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
 
         dvm.search()
         await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
-        XCTAssertEqual(work.searches.map(\.keepPolicy), [.byPlace],
+        XCTAssertEqual(work.searches, [.byPlace],
                        "precondition: the search ran on the default, which is what the page had")
         XCTAssertEqual(dvm.groups.first?.paths.first, filed,
                        "precondition: the list is in the order `by place` asked for")

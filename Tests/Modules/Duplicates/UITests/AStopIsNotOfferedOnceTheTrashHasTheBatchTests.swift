@@ -24,7 +24,7 @@ final class AStopIsNotOfferedOnceTheTrashHasTheBatchTests: XCTestCase {
 
         XCTAssertFalse(dvm.offersStop, "the page would still draw Stop")
         dvm.stopRemoval()
-        await settle()
+        await grace()
         XCTAssertFalse(work.calls.contains(.stopRemoval))
 
         work.releaseParked()

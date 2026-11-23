@@ -1,7 +1,6 @@
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
 /// «Clear selection» during a removal emptied the basket and the files went

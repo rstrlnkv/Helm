@@ -55,7 +55,12 @@ final class DuplicateScanner: @unchecked Sendable {
     var unreadablePaths: Int { lock.withLock { unreadable } }
 
     private func noteUnreadable() {
-        lock.lock(); unreadable += 1; lock.unlock()
+        lock.withLock { unreadable += 1 }
+    }
+
+    /// Counts one failed digest, in either pass.
+    private func noteUnreadableDigest() {
+        lock.withLock { unreadableDigests += 1 }
     }
 
     /// Files whose digest could not be taken, over both hashing passes.
@@ -73,7 +78,7 @@ final class DuplicateScanner: @unchecked Sendable {
     var librariesSkipped: Int { lock.withLock { skippedLibraries } }
 
     private func noteSkippedLibrary() {
-        lock.lock(); skippedLibraries += 1; lock.unlock()
+        lock.withLock { skippedLibraries += 1 }
     }
 
     /// Stop at the subtrees of the home an unattended reader has no business in
@@ -97,7 +102,7 @@ final class DuplicateScanner: @unchecked Sendable {
     }
 
     func cancel() {
-        lock.lock(); cancelled = true; lock.unlock()
+        lock.withLock { cancelled = true }
     }
 
     private var isCancelled: Bool { lock.withLock { cancelled } }
@@ -141,6 +146,7 @@ final class DuplicateScanner: @unchecked Sendable {
         // whatever survives it. Counting each candidate once parked the bar at
         // 100% for the entire second pass, which is the longer one.
         let progress = ThrottledProgress(total: total * 2, onProgress: onProgress)
+        lock.withLock { unreadableDigests = 0 }
 
         // Size groups are independent by construction, and hashing is where
         // the minutes go: a real home directory measured 70 GB of worst-case
@@ -172,7 +178,7 @@ final class DuplicateScanner: @unchecked Sendable {
                     }
                     let digest = Self.hash(file.path, limit: Self.prefixBytes,
                                            expecting: min(Self.prefixBytes, file.bytes))
-                    if digest == nil { progress.noteUnreadable() }
+                    if digest == nil { self.noteUnreadableDigest() }
                     if let digest {
                         cache?.setPrefix(digest, fileID: file.fileID, bytes: file.bytes,
                                          modified: file.modified)
@@ -202,7 +208,7 @@ final class DuplicateScanner: @unchecked Sendable {
                         // answer. Counting only the first pass undercounts exactly
                         // there. (No double count: a file that failed the prefix
                         // pass never reaches this one.)
-                        if digest == nil { progress.noteUnreadable() }
+                        if digest == nil { self.noteUnreadableDigest() }
                         return digest
                     }) {
                         found.append(Duplicates.group(identical, by: rule))
@@ -218,15 +224,9 @@ final class DuplicateScanner: @unchecked Sendable {
         let groups = buckets.flatMap { $0 }.sorted { $0.wasted > $1.wasted }
         // Unreadable files leave the running silently by design; the count is
         // what tells a triage session — and now the page — whether "no
-        // duplicates" meant "none" or "nothing could be read". Kept on the
-        // scanner, so the engine reads one object rather than reaching into the
-        // progress meter this function owns.
-        // Named apart from the `unreadable` property, which counts what the
-        // *walk* was refused: two different holes, and a local shadowing the
-        // other one while being assigned into a third name is a line nobody can
-        // read twice the same way.
-        let digestFailures = progress.unreadableCount
-        lock.lock(); unreadableDigests = digestFailures; lock.unlock()
+        // duplicates" meant "none" or "nothing could be read". Named apart from
+        // the `unreadable` property, which counts what the *walk* was refused.
+        let digestFailures = lock.withLock { unreadableDigests }
         HelmLog.shared.info(DuplicatesEngine.moduleID, "\(groups.count) groups from \(total) candidates"
                             + (digestFailures > 0 ? ", \(digestFailures) unreadable" : ""))
         return groups
@@ -371,21 +371,11 @@ final class DuplicateScanner: @unchecked Sendable {
         private let onProgress: (@Sendable (DuplicateProgress) -> Void)?
         private let lock = NSLock()
         private var count = 0
-        private var unreadable = 0
         private var lastEmit = Date.distantPast
 
         init(total: Int, onProgress: (@Sendable (DuplicateProgress) -> Void)?) {
             self.total = total
             self.onProgress = onProgress
-        }
-
-        /// Files whose digest could not be taken. They leave the running by
-        /// design — unknown is not identical — but a search that found nothing
-        /// because nothing could be read is a different answer from a clean one.
-        var unreadableCount: Int { lock.withLock { unreadable } }
-
-        func noteUnreadable() {
-            lock.lock(); unreadable += 1; lock.unlock()
         }
 
         func bump() {

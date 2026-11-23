@@ -15,19 +15,6 @@ import Module_Duplicates_Engine
 @MainActor
 final class ChoosingTheCopyThatStaysTests: XCTestCase {
 
-    private let downloaded = "\(home)/Downloads/photo.jpg"
-    private let filed = "\(home)/Documents/Trips/photo.jpg"
-    private let archived = "\(home)/Documents/Archive/photo.jpg"
-
-    private func trio() -> DuplicateGroup {
-        let day = Date(timeIntervalSince1970: 1_700_000_000)
-        return DuplicateGroup(copies: [
-            .init(path: downloaded, bytes: 4_000_000, added: day),
-            .init(path: filed, bytes: 4_000_000, added: day.addingTimeInterval(3600)),
-            .init(path: archived, bytes: 4_000_000, added: day.addingTimeInterval(7200)),
-        ])
-    }
-
     private func searched(_ groups: [DuplicateGroup]) async -> DuplicatesViewModel {
         await searchedModel(over: AnsweringWork(groups: groups))
     }

@@ -33,7 +33,7 @@ final class DuplicateSearchRaceTests: XCTestCase {
         XCTAssertEqual(dvm.phase, .start)
 
         work.release(0, folder: "withdrawn")
-        await settle()
+        await grace()
 
         XCTAssertTrue(dvm.groups.isEmpty, "a withdrawn search wrote its answer anyway")
         XCTAssertEqual(dvm.phase, .start)
@@ -55,7 +55,7 @@ final class DuplicateSearchRaceTests: XCTestCase {
         work.release(1, folder: "newer")
         await waitUntil("the newer search landed") { !dvm.groups.isEmpty }
         work.release(0, folder: "older")
-        await settle()
+        await grace()
 
         XCTAssertEqual(dvm.groups.count, 1)
         XCTAssertTrue(dvm.groups[0].paths.allSatisfy { $0.contains("newer") },
