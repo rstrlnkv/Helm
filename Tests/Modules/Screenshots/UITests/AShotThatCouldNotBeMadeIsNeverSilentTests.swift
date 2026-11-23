@@ -18,8 +18,6 @@ import XCTest
 @MainActor
 final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
 
-    @MainActor private final class Opened { var overlays: [CaptureOverlay] = [] }
-
     private struct Scene {
         let controller: CaptureController
         let toast: ShotToast
@@ -38,7 +36,7 @@ final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
     }
 
     override func tearDown() {
-        for controller in controllers { controller.teardown() }
+        for controller in controllers { controller.cancel() }
         controllers = []
         clock.finish()
         super.tearDown()

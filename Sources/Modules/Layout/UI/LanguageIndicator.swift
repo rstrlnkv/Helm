@@ -53,7 +53,7 @@ import Module_Layout_Engine
     }
 
     func refresh() {
-        guard store.bool(LayoutKey.indicator, default: false) else { detach(); return }
+        guard store.layoutIndicator else { detach(); return }
         if item == nil { build() }
         redraw()
     }
@@ -117,7 +117,7 @@ import Module_Layout_Engine
     private var showsName: Bool { badgeStyle.isName }
 
     private var badgeStyle: BadgeStyle {
-        BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue))
+        store.layoutBadgeStyle
     }
 
     /// The badge and its template flag together — the pair the menu bar and

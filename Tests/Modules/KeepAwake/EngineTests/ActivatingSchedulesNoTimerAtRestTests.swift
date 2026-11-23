@@ -33,10 +33,10 @@ final class ActivatingSchedulesNoTimerAtRestTests: XCTestCase {
         pointer = FakePointer()
         clamshell = FakeClamshell()
         clock = FakeClock()
-        engine = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
-                                  displayInfo: displayInfo, displayObserver: displayObserver,
-                                  power: power, apps: apps, pointer: pointer,
-                                  clamshell: clamshell, clock: clock, lidInfo: FakeLidInfo())
+        engine = fakeEngine(settings: settings, store: store, assertions: assertions,
+                            displayInfo: displayInfo, displayObserver: displayObserver,
+                            power: power, apps: apps, pointer: pointer, clamshell: clamshell,
+                            clock: clock)
     }
 
     // MARK: - 1. Is anything armed with no session and no rule?

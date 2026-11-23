@@ -16,13 +16,13 @@ import HelmAppStrings
 ///
 /// What it buys is one renderer for the whole block, which is what the version
 /// before the redesign had and what made its transition smooth without anything
-/// being asked of it: `withAnimation` around `editing` reaches every row,
-/// because there is no hosting view between them.
+/// being asked of it: there is no hosting view between the rows, so an
+/// animation on the list reaches every one of them. The list is always in its
+/// editing form; the sheet is its only caller.
 @MainActor
 struct SidebarComposerList: View {
     let layout: SidebarLayout
     @ObservedObject var host: ModuleHost
-    let editing: Bool
     @Binding var height: CGFloat
     let apply: (SidebarLayout) -> Void
     let rename: (SidebarLayout.Section) -> Void
@@ -32,25 +32,12 @@ struct SidebarComposerList: View {
     /// reported back through a binding on a later turn of the run loop.
     @State private var heights: [String: CGFloat] = [:]
 
-    /// At rest an empty section is a heading naming nothing, so it is not
-    /// drawn — the sidebar itself does not draw it either.
-    ///
-    /// One spelling, read by the view and by `estimatedHeight`. It was written
-    /// out in both, which is the pair that decides what is drawn and the pair
-    /// that decides how tall it will be: the two disagreeing is a sheet sized
-    /// for rows it does not show.
-    static func rows(of layout: SidebarLayout, editing: Bool) -> [SidebarLayout.Row] {
-        guard !editing else { return layout.flattened }
-        return layout.flattened.filter { row in
-            guard case .section(let id) = row else { return true }
-            return !(layout.sections.first { $0.id == id }?.modules.isEmpty ?? true)
-        }
-    }
-
-    private var rows: [SidebarLayout.Row] { Self.rows(of: layout, editing: editing) }
+    /// Every row is drawn, an empty section's heading included: it is the drop
+    /// target. (At rest the sidebar itself does not draw an empty section.)
+    private var rows: [SidebarLayout.Row] { layout.flattened }
 
     private var total: CGFloat {
-        max(rows.reduce(0) { $0 + (heights[$1.id] ?? Self.estimate(of: $1, in: layout, editing: editing)) }, 1)
+        max(rows.reduce(0) { $0 + (heights[$1.id] ?? Self.estimate(of: $1, in: layout)) }, 1)
     }
 
     /// What a row will be, before anything has been drawn.
@@ -62,34 +49,26 @@ struct SidebarComposerList: View {
     /// which put the sheet at its 360 pt floor while its content wanted 631 —
     /// title, Done, both footer buttons and the last two modules outside the
     /// window, and Escape the only way out.
-    static func estimate(of row: SidebarLayout.Row, in layout: SidebarLayout,
-                         editing: Bool) -> CGFloat {
+    static func estimate(of row: SidebarLayout.Row, in layout: SidebarLayout) -> CGFloat {
         switch row {
         case .module: return SidebarComposerListRow.height
         case .section(let id):
             let empty = layout.sections.first { $0.id == id }?.modules.isEmpty ?? true
-            return SidebarComposerListRow.headerHeight(empty: empty, editing: editing)
+            return SidebarComposerListRow.headerHeight(empty: empty)
         }
     }
 
     /// The whole list, for a caller that has to know before it draws.
-    static func estimatedHeight(of layout: SidebarLayout, editing: Bool) -> CGFloat {
-        max(rows(of: layout, editing: editing)
-                .reduce(0) { $0 + estimate(of: $1, in: layout, editing: editing) }, 1)
+    static func estimatedHeight(of layout: SidebarLayout) -> CGFloat {
+        max(layout.flattened
+                .reduce(0) { $0 + estimate(of: $1, in: layout) }, 1)
     }
 
     var body: some View {
-        // Spelled out rather than inlined: the ternary is an optional closure,
-        // which the type checker cannot infer inside a `List` builder. **The
-        // drag is off at rest** — a row that lifts under a pointer that meant to
-        // scroll changes an arrangement nobody asked to change, and there is no
-        // undo here.
-        var onMove: ((IndexSet, Int) -> Void)?
-        if editing { onMove = { move(from: $0, to: $1) } }
-        return List {
+        List {
             ForEach(rows, id: \.id) { row in
                 SidebarComposerListRow(row: row, layout: layout, host: host,
-                                       editing: editing, apply: apply, rename: rename)
+                                       apply: apply, rename: rename)
                     // `interface`, not the modifier's default: what these
                     // measurements correct is a row that is already being
                     // reordered on that curve, and two systems need one curve
@@ -108,7 +87,7 @@ struct SidebarComposerList: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
             }
-            .onMove(perform: onMove)
+            .onMove { move(from: $0, to: $1) }
         }
         .listStyle(.plain)
         .scrollDisabled(true)
@@ -144,7 +123,6 @@ struct SidebarComposerListRow: View {
     let row: SidebarLayout.Row
     let layout: SidebarLayout
     @ObservedObject var host: ModuleHost
-    let editing: Bool
     let apply: (SidebarLayout) -> Void
     let rename: (SidebarLayout.Section) -> Void
 
@@ -155,18 +133,17 @@ struct SidebarComposerListRow: View {
     private static let sectionGap: CGFloat = 10
     /// An 11 pt semibold line, as `HelmText.groupLabel` draws it.
     private static let headerLabelHeight: CGFloat = 13
-    /// The drop target an empty section shows while editing, and the 5 pt the
+    /// The drop target an empty section shows, and the 5 pt the
     /// header's own `VStack` puts above it.
     private static let dropZoneHeight: CGFloat = 30
 
     /// A heading row, without drawing it. Same arithmetic as `header(_:)`
     /// directly below — kept beside it so the two are read together.
-    static func headerHeight(empty: Bool, editing: Bool) -> CGFloat {
-        let showsDropZone = empty && editing
-        return sectionGap                              // .padding(.top)
+    static func headerHeight(empty: Bool) -> CGFloat {
+        sectionGap                                // .padding(.top)
             + headerLabelHeight
-            + (showsDropZone ? 5 + dropZoneHeight : 0) // VStack spacing + the zone
-            + (empty ? 0 : 5)                          // .padding(.bottom)
+            + (empty ? 5 + dropZoneHeight : 0)    // VStack spacing + the zone
+            + (empty ? 0 : 5)                     // .padding(.bottom)
     }
 
     var body: some View {
@@ -188,15 +165,15 @@ struct SidebarComposerListRow: View {
                 Text(AppStr.sectionTitle(section))
                     .font(HelmText.groupLabel)
                     .foregroundStyle(HelmText.quiet)
-                if editing, section.seed == nil {
+                if section.seed == nil {
                     HelmBadge(AppStr.yourSection)
                 }
                 Spacer(minLength: 6)
-                if editing { menu(section) }
+                menu(section)
             }
             .padding(.horizontal, 4)
 
-            if editing, section.modules.isEmpty {
+            if section.modules.isEmpty {
                 Text(AppStr.dragModuleHere)
                     .font(HelmText.rowTitle)
                     .foregroundStyle(HelmText.faint)
@@ -235,14 +212,10 @@ struct SidebarComposerListRow: View {
     private func module(_ descriptor: any ModuleDescriptor, in sectionID: String) -> some View {
         let first = isFirstInSection(sectionID)
         return HStack(spacing: HelmSpace.s5) {
-            // Plain insertion, as before the redesign: one tree, so the
-            // `withAnimation` that flips the mode reaches this.
-            if editing {
-                Image(systemName: "line.3.horizontal")
-                    .font(HelmText.rowDetail.weight(.medium))
-                    .foregroundStyle(HelmText.faint)
-                    .accessibilityHidden(true)
-            }
+            Image(systemName: "line.3.horizontal")
+                .font(HelmText.rowDetail.weight(.medium))
+                .foregroundStyle(HelmText.faint)
+                .accessibilityHidden(true)
             HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
                           tint: descriptor.moduleTint.colour, size: 22,
                           active: host.isEnabled(descriptor))

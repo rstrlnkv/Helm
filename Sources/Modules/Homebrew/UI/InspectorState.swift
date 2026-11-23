@@ -89,14 +89,6 @@ enum InspectorState: Equatable {
         if empty { return .nothingToSelect }
         guard let selected else { return .nothingSelected }
         let desc = descriptions[selected]
-        /// The one hit lookup every segment falls back to — a package offered
-        /// under the section is never anything but an install, since `hits`
-        /// has already had what is on this Mac filtered out of it.
-        func hit(_ h: SearchHit) -> InspectorState {
-            .package(InspectorSubject(id: h.id, name: h.name, isCask: h.isCask,
-                                      version: "", desc: desc, updates: .notApplicable,
-                                      action: .install))
-        }
         switch segment {
         case .installed:
             if let p = installed.first(where: { $0.id == selected }) {
@@ -106,23 +98,26 @@ enum InspectorState: Equatable {
                                                      loadedOutdated: loadedOutdated),
                     action: .uninstall))
             }
-            guard let h = hits.first(where: { $0.id == selected }) else { return .nothingSelected }
-            return hit(h)
         case .updates:
             if let p = outdated.first(where: { $0.id == selected }) {
                 return .package(InspectorSubject(
                     id: p.id, name: p.name, isCask: p.isCask,
-                    version: "\(p.installed) → \(p.latest)", desc: desc, updates: .notApplicable,
+                    version: p.versionStep, desc: desc, updates: .notApplicable,
                     // A pinned formula is listed and not offered: `brew upgrade`
                     // answers it with "…is pinned", so the button could only
                     // ever fail.
                     action: p.pinned ? .pinned : .upgrade))
             }
-            guard let h = hits.first(where: { $0.id == selected }) else { return .nothingSelected }
-            return hit(h)
         case .health:
             return .nothingToSelect // answered above
         }
+        // The one hit lookup every segment falls back to — a package offered
+        // under the section is never anything but an install, since `hits`
+        // has already had what is on this Mac filtered out of it.
+        guard let h = hits.first(where: { $0.id == selected }) else { return .nothingSelected }
+        return .package(InspectorSubject(id: h.id, name: h.name, isCask: h.isCask,
+                                         version: "", desc: desc, updates: .notApplicable,
+                                         action: .install))
     }
 }
 
@@ -149,44 +144,6 @@ enum DoctorReading: Equatable {
     /// reply, and this case is all of them). Not a
     /// clean machine — an unexamined one.
     case refused
-
-    var issues: [DoctorIssue] {
-        if case let .examined(issues) = self { return issues }
-        return []
-    }
-}
-
-/// What `brew doctor`'s reading comes to for the health tab — **four answers,
-/// and the middle two are the whole point.**
-///
-/// `AvailableSection.of` is the shape this follows, for the reason that file
-/// gives: which sentence stands over which state is the whole of the decision.
-///
-/// `.clean` and `.unexaminable` are both an empty list of findings and they are
-/// not the same sentence. One is `brew doctor` having looked and found nothing, which
-/// is the only reading that may be drawn as a healthy machine; the other is the
-/// question never having been put — brew gone, the run cut off at the deadline,
-/// a tool that printed nothing where it always prints something, or one that
-/// exited non-zero with nothing in its answer this build could read. Collapsed
-/// into one they read as «Nothing to fix» over a Mac nobody examined, which is
-/// this app telling somebody their machine is fine on the strength of an answer
-/// it never got.
-enum HealthListState: Equatable {
-    /// Nobody has asked yet, and something is on its way.
-    case busy
-    /// Examined, and nothing was found.
-    case clean
-    /// The question could not be put. Not a clean machine — an unread one.
-    case unexaminable
-    case rows([DoctorIssue])
-
-    static func of(_ reading: DoctorReading) -> HealthListState {
-        switch reading {
-        case .notAsked: return .busy
-        case .refused: return .unexaminable
-        case let .examined(issues): return issues.isEmpty ? .clean : .rows(issues)
-        }
-    }
 }
 
 /// One group of `brew config`'s lines, under one of the three headings this
@@ -222,15 +179,25 @@ struct ConfigGroup: Equatable, Identifiable {
 /// **What `brew doctor` says about this Mac, in the one line the tab opens with
 /// — the verdict.**
 ///
-/// `HealthListState`'s four answers as a value the header is drawn from, and
-/// it is read off the *unfiltered* reading and never off what the search field
+/// What `brew doctor`'s reading comes to for the health tab — **four answers,
+/// and the middle two are the whole point.** It is a value the header is drawn
+/// from, read off the *unfiltered* reading and never off what the search field
 /// leaves: a word typed over the page must not be able to say the Mac is clean
 /// (`HealthScreen.of`).
 ///
-/// `.clean` and `.unexaminable` stay two, for the reason `HealthListState`
-/// spells out: «Nothing to fix» is earned only by a `brew doctor` that ran and
-/// named nothing, and a refusal says what is *not known*. The count rides on
-/// `.findings` so a verdict of zero findings cannot be spelled.
+/// `AvailableSection.of` is the shape this follows, for the reason that file
+/// gives: which sentence stands over which state is the whole of the decision.
+///
+/// `.clean` and `.unexaminable` are both an empty list of findings and they are
+/// not the same sentence. One is `brew doctor` having looked and found nothing, which
+/// is the only reading that may be drawn as a healthy machine («Nothing to
+/// fix»); the other is the question never having been put — brew gone, the run
+/// cut off at the deadline, a tool that printed nothing where it always prints
+/// something, or one that exited non-zero with nothing in its answer this build
+/// could read. Collapsed into one they read as «Nothing to fix» over a Mac
+/// nobody examined, which is this app telling somebody their machine is fine on
+/// the strength of an answer it never got. The count rides on `.findings` so a
+/// verdict of zero findings cannot be spelled.
 enum HealthVerdict: Equatable {
     /// Nobody has asked yet, or the ask is out.
     case checking
@@ -288,37 +255,24 @@ struct HealthScreen: Equatable {
         }
     }
 
-    /// **The only finding is open, and stays open.** A card of one row that
-    /// hides its one paragraph asks a click for nothing, so it is drawn open
-    /// and given no control to close it (`canToggle`). `total` is the reading's
-    /// own count of findings and not what a needle leaves, so a word that
-    /// narrows three findings to one does not make that one uncloseable.
-    static func isOpen(_ issue: DoctorIssue, of total: Int, opened: Set<String>) -> Bool {
-        total == 1 || opened.contains(issue.id)
-    }
-
-    /// Whether a finding's title is a control at all — see `isOpen`.
-    static func canToggle(total: Int) -> Bool { total > 1 }
-
     /// `needle` is nil for the ordinary, unfiltered reading.
     static func of(_ reading: DoctorReading, config: [ConfigGroup],
                    needle: String? = nil) -> HealthScreen {
         let configuration = matchingConfigGroups(needle, config)
-        switch HealthListState.of(reading) {
-        case .busy:
-            return HealthScreen(verdict: .checking, findings: [], noMatches: false,
-                                configuration: configuration)
-        case .clean:
-            return HealthScreen(verdict: .clean, findings: [], noMatches: false,
-                                configuration: configuration)
-        case .unexaminable:
-            return HealthScreen(verdict: .unexaminable, findings: [], noMatches: false,
-                                configuration: configuration)
-        case let .rows(issues):
-            let shown = matchingIssues(needle, issues)
-            return HealthScreen(verdict: .findings(issues.count), findings: shown,
-                                noMatches: shown.isEmpty, configuration: configuration)
+        let verdict: HealthVerdict
+        switch reading {
+        case .notAsked: verdict = .checking
+        case .refused: verdict = .unexaminable
+        case let .examined(issues):
+            if !issues.isEmpty {
+                let shown = matchingIssues(needle, issues)
+                return HealthScreen(verdict: .findings(issues.count), findings: shown,
+                                    noMatches: shown.isEmpty, configuration: configuration)
+            }
+            verdict = .clean
         }
+        return HealthScreen(verdict: verdict, findings: [], noMatches: false,
+                            configuration: configuration)
     }
 }
 
@@ -474,38 +428,17 @@ enum PackageFacts {
     }
 }
 
-/// Whether the second tier's two always-present blocks have anything to draw.
-///
-/// **A stack that resolves to zero height is not the same as no stack.** A
-/// `VStack`'s spacing is not paid around an absent child, which is why
-/// `facts` collapses to nothing when it has nothing to say — but `origin` and
-/// `notes` were unconditional stacks, so for the commonest package of all (an
-/// installed formula somebody asked for, no other version lines, not deprecated)
-/// the tier paid its 24 pt step around each of two empty blocks where the
-/// design's rhythm is 12.
-///
-/// Here rather than as computed properties of the view, because the question
-/// is about the answer rather than about the layout.
-///
-/// Presence is all these ask, because presence is all there is to ask:
-/// `BrewInfoParser` maps a blank value to nil at the one place the document is
-/// read, so a field that is there has something in it.
-enum PackageBlocks {
-    /// Either half of the origin line is enough to draw it — a package with a
-    /// homepage and no tap is an ordinary answer, and so is the reverse.
-    static func hasOrigin(_ info: PackageInfo) -> Bool {
-        info.homepage != nil || info.tap != nil
-    }
-
-    /// The deprecation banner, "it came in as a dependency", and the other
-    /// version lines. `installedOnRequest` is read as a *value* rather than for
-    /// presence: nil is a cask, which records nobody, `true` is somebody asked
-    /// for it, and only `false` is something to say.
-    static func hasNotes(_ info: PackageInfo) -> Bool {
-        info.deprecationReason != nil || info.installedOnRequest == false
-            || !info.siblings.isEmpty
-    }
+extension OutdatedPackage {
+    /// "a → b", as the updates list's rows and the inspector both say it.
+    var versionStep: String { "\(installed) → \(latest)" }
 }
+
+/// What `PackageStanding.matching` needs of a package: its `BrewKey` id and a name.
+protocol NamedPackage: Identifiable where ID == String {
+    var name: String { get }
+}
+extension BrewPackage: NamedPackage {}
+extension OutdatedPackage: NamedPackage {}
 
 /// The two questions the rows and the inspector both ask, answered once —
 /// published sets built once from the same expressions the behaviour consults (ARCHITECTURE.md § Vetoes and the notice).
@@ -531,18 +464,13 @@ enum PackageStanding {
         return hits.filter { !ids.contains($0.id) }
     }
 
-    /// `installed`, kept where `needle` matches the name or — once it has
-    /// loaded — the description. nil `needle` keeps everything.
-    static func matching(_ needle: String?, _ installed: [BrewPackage],
-                         descriptions: [String: String]) -> [BrewPackage] {
-        guard let needle else { return installed }
-        return installed.filter { ListFilter.matches(needle, [$0.name, descriptions[$0.id]]) }
-    }
-
-    /// `outdated`'s twin.
-    static func matching(_ needle: String?, _ outdated: [OutdatedPackage],
-                         descriptions: [String: String]) -> [OutdatedPackage] {
-        guard let needle else { return outdated }
-        return outdated.filter { ListFilter.matches(needle, [$0.name, descriptions[$0.id]]) }
+    /// `packages`, kept where `needle` matches the name or — once it has
+    /// loaded — the description. nil `needle` keeps everything. One function
+    /// for the installed list and the outdated one, which are both a list of
+    /// named packages by `BrewKey` id.
+    static func matching<P: NamedPackage>(_ needle: String?, _ packages: [P],
+                                          descriptions: [String: String]) -> [P] {
+        guard let needle else { return packages }
+        return packages.filter { ListFilter.matches(needle, [$0.name, descriptions[$0.id]]) }
     }
 }

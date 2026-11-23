@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import os
 
 // MARK: - Locator
 
@@ -61,14 +62,6 @@ final class LineBuffer: @unchecked Sendable {
     }
 }
 
-/// Carries the exit status from the termination callback to whoever reports it.
-private final class StatusBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: Int32 = -1
-    func set(_ v: Int32) { lock.lock(); value = v; lock.unlock() }
-    var status: Int32 { lock.lock(); defer { lock.unlock() }; return value }
-}
-
 public struct ShellProcessRunner: ProcessRunner {
     /// How long a *query* may go unanswered before it is a hang, not a wait.
     ///
@@ -90,9 +83,7 @@ public struct ShellProcessRunner: ProcessRunner {
     }
 
     private func environment(_ extra: [String: String]) -> [String: String] {
-        var e = ProcessInfo.processInfo.environment
-        for (k, v) in extra { e[k] = v }
-        return e
+        ProcessInfo.processInfo.environment.merging(extra) { _, new in new }
     }
 
     /// The port stays — it is what makes the engine testable — but the body is
@@ -178,10 +169,11 @@ public struct ShellProcessRunner: ProcessRunner {
         p.standardOutput = pipe
         p.standardError = pipe
         let buffer = LineBuffer(onLine: onLine)
-        let status = StatusBox()
+        // Carries the exit status from the termination callback to whoever reports it.
+        let status = OSAllocatedUnfairLock(initialState: Int32(-1))
         let exited = DispatchSemaphore(value: 0)
         p.terminationHandler = { proc in
-            status.set(proc.terminationStatus)
+            status.withLock { $0 = proc.terminationStatus }
             exited.signal()
         }
         pipe.fileHandleForReading.readabilityHandler = { handle in
@@ -191,7 +183,7 @@ public struct ShellProcessRunner: ProcessRunner {
                 handle.readabilityHandler = nil
                 buffer.flush()
                 exited.wait()
-                onExit(status.status)
+                onExit(status.withLock { $0 })
                 return
             }
             buffer.feed(d)

@@ -307,20 +307,6 @@ struct RingView: View {
     }
 }
 
-/// One wedge of the sunburst, as a path. Free rather than a method: the ring
-/// and its animatable canvas both draw with it.
-func helmArcPath(center: CGPoint, side: CGFloat, inner: Double, outer: Double,
-                 start: Double, end: Double) -> Path {
-    let half = side / 2
-    var path = Path()
-    path.addArc(center: center, radius: half * outer,
-                startAngle: .radians(start), endAngle: .radians(end), clockwise: false)
-    path.addArc(center: center, radius: half * inner,
-                startAngle: .radians(end), endAngle: .radians(start), clockwise: true)
-    path.closeSubpath()
-    return path
-}
-
 /// The arcs themselves.
 ///
 /// `Animatable` on a `View`: a `Canvas` redraws when its inputs change, but
@@ -354,6 +340,19 @@ private struct RingCanvas: View, @MainActor Animatable {
                                lineWidth: 1)
             }
         }
+    }
+
+    /// One wedge of the sunburst, as a path.
+    private func helmArcPath(center: CGPoint, side: CGFloat, inner: Double, outer: Double,
+                             start: Double, end: Double) -> Path {
+        let half = side / 2
+        var path = Path()
+        path.addArc(center: center, radius: half * outer,
+                    startAngle: .radians(start), endAngle: .radians(end), clockwise: false)
+        path.addArc(center: center, radius: half * inner,
+                    startAngle: .radians(end), endAngle: .radians(start), clockwise: true)
+        path.closeSubpath()
+        return path
     }
 
     private typealias Drawn = (segment: RingSegment, path: Path, opacity: Double)

@@ -17,6 +17,8 @@ import HelmTestSupport
 /// Mutant, red here: `RecognizedBoxes.place` rounds the left edge up (dropping the padding alone stays green here: the padding is beyond the find's pixels).
 final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
 
+    private let srgb = CGColorSpace(name: CGColorSpace.sRGB)!
+
     /// Every pixel its own colour: three channels from a hash of the position, so no two neighbours are alike and
     /// a mean of a block is never the colour of a pixel in it (the test below proves that of its own picture).
     private func noise(width: Int, height: Int) -> CGImage {
@@ -36,15 +38,6 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
         let context = CGContext(data: &bytes, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
                                 space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
         return context.makeImage()!
-    }
-
-    private func rgba(_ image: CGImage) -> [UInt8] {
-        var bytes = [UInt8](repeating: 0, count: image.width * image.height * 4)
-        let context = CGContext(data: &bytes, width: image.width, height: image.height, bitsPerComponent: 8,
-                                bytesPerRow: image.width * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        return bytes
     }
 
     private func makeRig() throws -> Rig {
@@ -90,7 +83,7 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
         let blurred = await rig.session.annotated(freeze, display: id, local: local, layers: editing.layers)
         let result = try XCTUnwrap(blurred, "the file was refused for \(boxes)", file: file, line: line)
         XCTAssertEqual(result.width, cut.width, file: file, line: line)
-        let before = rgba(cut), after = rgba(result)
+        let before = rgbaBytes(cut, space: srgb), after = rgbaBytes(result, space: srgb)
         var left = 0, total = 0
         for box in boxes {
             guard let found = pixelsOfTheFind(box, cutWidth: cut.width, cutHeight: cut.height) else { continue }
@@ -118,7 +111,7 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
         let cut = try XCTUnwrap(rig.session.crop(freeze, display: DisplayID(1), local: local))
         let annotated = await rig.session.annotated(freeze, display: DisplayID(1), local: local, layers: [layer])
         let out = try XCTUnwrap(annotated)
-        let a = rgba(cut), b = rgba(out)
+        let a = rgbaBytes(cut, space: srgb), b = rgbaBytes(out, space: srgb)
         var same = 0, all = 0
         for y in 80..<160 { for x in 80..<280 { all += 1; let at = (y * 800 + x) * 4; if a[at..<at + 4] == b[at..<at + 4] { same += 1 } } }
         XCTAssertGreaterThan(all, 10_000)

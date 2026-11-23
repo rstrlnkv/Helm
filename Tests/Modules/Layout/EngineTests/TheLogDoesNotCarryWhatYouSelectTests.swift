@@ -16,13 +16,6 @@ import XCTest
 /// when nothing was logged at all, which is the default in a test process.
 final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
 
-    private final class Selection: SelectionPort, @unchecked Sendable {
-        var text: String?
-        var accepts = true
-        func selectedTextWithoutClipboard() -> String? { text }
-        func replaceSelection(with text: String) -> Bool { accepts }
-    }
-
     /// Text nobody would select by accident, so finding it in the log cannot
     /// be a coincidence.
     private let selected = "ghbdtn xbcnj"
@@ -37,7 +30,7 @@ final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
         loggedLines("layout")
     }
 
-    private func engine(selection: Selection,
+    private func engine(selection: FakeSelection,
                         table: [String: String]) -> LayoutEngine {
         let engine = LayoutEngine(
             tap: FakeTap(), typing: FakeTyping(), sources: FakeSources(current: "en"),
@@ -51,7 +44,7 @@ final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
     /// The translation declines, and the engine says so with a count — the one
     /// shape of that line that is safe to paste into a bug report.
     func testADeclinedSelectionLogsACountAndNotTheText() async throws {
-        let selection = Selection()
+        let selection = FakeSelection()
         selection.text = selected
         let engine = engine(selection: selection, table: [:])
 
@@ -69,7 +62,7 @@ final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
     /// The app refuses the replacement; the warning names the app as a tag and
     /// neither side of the conversion.
     func testARefusedSelectionReplacementNamesNoTextAndNoApp() async throws {
-        let selection = Selection()
+        let selection = FakeSelection()
         selection.text = selected
         selection.accepts = false
         let engine = engine(selection: selection,

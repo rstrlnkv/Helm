@@ -89,10 +89,16 @@ public enum UpdateCheck {
 
     public static func evaluate(statusCode: Int, data: Data, currentVersion: String,
                                 currentBuild: Int? = nil) -> Outcome {
-        if statusCode == 404 { return .upToDate }   // no releases published yet
-        guard statusCode == 200 else { return .error }
+        if let early = earlyOutcome(statusCode) { return early }
         guard let gh = try? JSONDecoder().decode(GHRelease.self, from: data) else { return .error }
         return outcome(for: gh, currentVersion: currentVersion, currentBuild: currentBuild)
+    }
+
+    /// What the status alone settles: 404 is no releases published yet, and
+    /// anything but 200 is an error. Nil when the body has to be read.
+    private static func earlyOutcome(_ statusCode: Int) -> Outcome? {
+        if statusCode == 404 { return .upToDate }
+        return statusCode == 200 ? nil : .error
     }
 
     /// Evaluates a releases LIST response (dev channel): the newest published
@@ -100,8 +106,7 @@ public enum UpdateCheck {
     public static func evaluateList(statusCode: Int, data: Data,
                                     currentVersion: String, currentBuild: Int? = nil,
                                     channel: Channel) -> Outcome {
-        if statusCode == 404 { return .upToDate }
-        guard statusCode == 200 else { return .error }
+        if let early = earlyOutcome(statusCode) { return early }
         guard let all = try? JSONDecoder().decode([GHRelease].self, from: data) else { return .error }
         let eligible = all.filter { r in
             guard r.draft != true else { return false }

@@ -71,8 +71,7 @@ struct FileSystemAppCatalog: AppCatalogPort {
     /// The length check below is a defensive guard no test reaches: the kernel always fills the `timespec` for a directory, and
     /// `getattrlist` has no fake.
     private static func dateAdded(_ url: URL) -> Date? {
-        var info = stat()
-        guard lstat(url.path, &info) == 0, (info.st_mode & S_IFMT) == S_IFDIR else { return nil }
+        guard Self.isPlainFolder(url) else { return nil }
         var request = attrlist()
         request.bitmapcount = u_short(ATTR_BIT_MAP_COUNT)
         request.commonattr = attrgroup_t(ATTR_CMN_ADDEDTIME)

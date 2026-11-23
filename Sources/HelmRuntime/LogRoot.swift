@@ -21,7 +21,7 @@ public enum LogRoot {
 
     /// Directories macOS named itself. A root that is one of these carries
     /// nobody's word and goes in as it stands.
-    private static let macOSOwned: Set<String> = ["/", "/System/Volumes/Data"]
+    private static let macOSOwned: Set<String> = ["/", DataVolume.mount]
 
     public static func label(_ root: String, home: String = NSHomeDirectory()) -> String {
         let shown = Redact.path(root, home: home)

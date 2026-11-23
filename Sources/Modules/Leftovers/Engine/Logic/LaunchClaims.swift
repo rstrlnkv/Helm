@@ -61,16 +61,6 @@ enum LaunchClaims {
         return claims.filter { $0.label == label }.map(\.path)
     }
 
-    /// The same question asked of a reading of the disk, which carries whether
-    /// there was a folder it could not count.
-    ///
-    /// The count and «was everything counted» are two halves of one reading and
-    /// are never useful apart: a caller holding only the count is a caller
-    /// treating a folder that did not open as a folder with nothing in it.
-    static func claimants(of label: String, in reading: Reading) -> [String] {
-        claimants(of: label, in: reading.claims)
-    }
-
     /// For every file that is not alone in registering its label, one other file
     /// that registers it too — keyed by path, which is the row's own id.
     ///

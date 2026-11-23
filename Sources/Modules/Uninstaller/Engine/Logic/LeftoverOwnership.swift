@@ -66,10 +66,6 @@ struct LeftoverOwnership {
         self.knownToSystem = knownToSystem
     }
 
-    /// Suffixes macOS appends to per-app files; they are not part of the id.
-    /// The same list `OrphanDetector` strips, for the same reason.
-    private static let fileSuffixes = [".plist", ".savedState", ".binarycookies"]
-
     /// Whether the id names something other than the app being removed as well.
     /// Reported rather than inferred from an empty result: a scan that claims
     /// nothing because the id is shared and a scan that finds nothing are the
@@ -81,8 +77,7 @@ struct LeftoverOwnership {
         // Nothing built from a contested id is this app's — not the exact
         // candidates, and not what the globs around them reach either.
         guard !idIsContested else { return false }
-        let stem = Self.fileSuffixes.first(where: name.hasSuffix)
-            .map { String(name.dropLast($0.count)) } ?? name
+        let stem = OrphanDetector.bundleID(from: name)
         guard Self.contains(stem, token: id) else { return false }
         // A longer installed id present in the same name is the better claim on
         // it. Only longer ones can be: a shorter id cannot be more specific

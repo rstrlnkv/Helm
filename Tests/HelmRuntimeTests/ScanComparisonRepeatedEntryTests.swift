@@ -17,10 +17,6 @@ import XCTest
 /// Guards: 9b750e18 (a repeated entry counted twice on the current side only).
 final class ScanComparisonRepeatedEntryTests: XCTestCase {
 
-    private func item(_ path: String, _ bytes: Int) -> ScanItem {
-        ScanItem(path: path, bytes: bytes)
-    }
-
     /// The mirror of the existing `testARepeatedPathDoesNotBreakTheComparison`,
     /// which puts the repeat on the previous side only.
     func testARepeatedEntryInTheCurrentListAppearsOnce() {

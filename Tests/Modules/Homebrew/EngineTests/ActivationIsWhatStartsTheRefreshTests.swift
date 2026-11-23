@@ -25,12 +25,6 @@ private final class RefreshSpy: PopularityReading, @unchecked Sendable {
 /// file would pass over a task nobody ever started.
 final class ActivationIsWhatStartsTheRefreshTests: XCTestCase {
 
-    private func engine(_ popularity: PopularityReading) -> HomebrewEngine {
-        HomebrewEngine(locator: NoBrew(), runner: IdleRunner(),
-                       privileged: NoPrivileges(), user: "tester",
-                       marker: InMemoryOpMarker(), popularity: popularity)
-    }
-
     /// A wall-clock wait and not a cooperative yield: the ask lands on a task
     /// of its own, so a yield would buy a turn on the pool and no time at all
     /// (ARCHITECTURE.md § Fakes).
@@ -38,7 +32,7 @@ final class ActivationIsWhatStartsTheRefreshTests: XCTestCase {
         let spy = RefreshSpy()
         // Held for the length of the wait: `deinit` cancels the refresh, so an
         // engine let go of here would be racing its own task.
-        let engine = self.engine(spy)
+        let engine = brewEngine(IdleRunner(), locator: NoBrew(), popularity: spy)
 
         engine.activate()
 
@@ -55,7 +49,7 @@ final class ActivationIsWhatStartsTheRefreshTests: XCTestCase {
     func testAnEngineThatIsNeverActivatedNeverAsks() {
         let spy = RefreshSpy()
         spy.asked.isInverted = true
-        let engine = self.engine(spy)
+        let engine = brewEngine(IdleRunner(), locator: NoBrew(), popularity: spy)
 
         XCTAssertEqual(XCTWaiter.wait(for: [spy.asked], timeout: 1), .completed,
                        "an engine nobody activated asked the store to refresh, so a module "

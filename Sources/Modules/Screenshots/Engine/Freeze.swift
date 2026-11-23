@@ -85,14 +85,14 @@ public struct Freeze: @unchecked Sendable {
     /// Front to back.
     public let windows: [FrozenWindow]
 
-    init(displays: [DisplayShot], windows: [FrozenWindow]) {
-        self.displays = displays
-        self.windows = windows
-    }
-
     /// The displays that came back with a picture, main first.
     public var frames: [FrozenDisplay] {
         displays.compactMap { if case .image(let frame) = $0 { frame } else { nil } }
+    }
+
+    /// The frame of `display`, nil when that display did not come back with a picture.
+    public func frame(of display: DisplayID) -> FrozenDisplay? {
+        frames.first { $0.id == display }
     }
 }
 
@@ -160,8 +160,7 @@ public struct PictureOnScreen: @unchecked Sendable {
     /// when the freeze has no frame or the bitmap could not be made. The composed frame carries no pointer and the
     /// freeze no windows: neither is asked of an edit.
     static func place(_ picture: CGImage, over freeze: Freeze, on display: DisplayID?) -> PictureOnScreen? {
-        let frames = freeze.frames
-        guard let frame = frames.first(where: { $0.id == display }) ?? frames.first,
+        guard let frame = display.flatMap(freeze.frame(of:)) ?? freeze.frames.first,
               let rect = Self.frame(pixels: CGSize(width: picture.width, height: picture.height),
                                     on: CGSize(width: frame.image.width, height: frame.image.height), scale: frame.scale, inset: Self.margin),
               let composed = compose(picture, over: frame.image, at: rect, scale: frame.scale)
@@ -177,10 +176,7 @@ public struct PictureOnScreen: @unchecked Sendable {
     private static func compose(_ picture: CGImage, over ground: CGImage, at rect: CGRect, scale: CGFloat) -> CGImage? {
         autoreleasepool {
             for space in Pixelate.spaces(for: ground) {
-                guard let context = CGContext(data: nil, width: ground.width, height: ground.height,
-                                              bitsPerComponent: 8, bytesPerRow: 0, space: space,
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-                else { continue }
+                guard let context = Pixelate.bitmap(width: ground.width, height: ground.height, space: space) else { continue }
                 context.draw(ground, in: CGRect(x: 0, y: 0, width: ground.width, height: ground.height))
                 context.interpolationQuality = .high
                 // Top-left points to this bitmap's pixels, bottom-left.

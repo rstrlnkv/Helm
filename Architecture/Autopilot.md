@@ -104,7 +104,7 @@ The descriptor's `stop(_:)` closes the model before the engine's `deactivate()`.
 the first; `TheModelsDoorNeverWaitsOnTheEnginesQueueTests` holds the queue rule.
 
 "New rule" opens the editor on a draft and writes nothing; only Done saves, so Cancel leaves
-no untitled rule behind (`addRule(to:)` in `AutopilotViewModel.swift`); no guard.
+no untitled rule behind (`newRule()` in `AutopilotViewModel.swift`); no guard.
 
 Words: `Sources/Modules/Autopilot/UI/Localizable.xcstrings`; shared words through `HelmWord` from the kit.
 

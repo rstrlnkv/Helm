@@ -3,6 +3,21 @@ import QuartzCore
 import HelmUI
 import Module_Screenshots_Engine
 
+extension NSFont {
+    /// What `string` measures in this font.
+    func measured(_ string: String) -> CGSize { (string as NSString).size(withAttributes: [.font: self]) }
+}
+
+extension CATextLayer {
+    /// The overlay's plate text: white, centred, in `font`.
+    func setUpPlateText(font: NSFont) {
+        self.font = font
+        fontSize = font.pointSize
+        foregroundColor = NSColor.white.cgColor
+        alignmentMode = .center
+    }
+}
+
 /// A small text plate: white digits on a dark rounded ground, sized to its text.
 ///
 /// **A plate and a text layer inside it, not one text layer.** A `CATextLayer`
@@ -25,10 +40,7 @@ final class LabelLayer: CALayer {
         backgroundColor = OverlayInk.plate
         cornerRadius = 4
         contentsScale = scale
-        text.font = Self.plateFont
-        text.fontSize = Self.plateFont.pointSize
-        text.foregroundColor = NSColor.white.cgColor
-        text.alignmentMode = .center
+        text.setUpPlateText(font: Self.plateFont)
         text.contentsScale = scale
         addSublayer(text)
     }
@@ -40,7 +52,7 @@ final class LabelLayer: CALayer {
     /// The plate's size for a string: what `show` lays out, for a caller that places it by its height.
     static func size(of string: String) -> CGSize {
         let font = plateFont
-        let measured = (string as NSString).size(withAttributes: [.font: font])
+        let measured = font.measured(string)
         return CGSize(width: ceil(measured.width) + 14, height: ceil(font.capHeight + 10))
     }
 
@@ -73,7 +85,7 @@ final class LabelLayer: CALayer {
     func show(_ string: String, near point: CGPoint, within bounds: CGRect) {
         text.string = string
         let font = Self.plateFont
-        let line = ceil((string as NSString).size(withAttributes: [.font: font]).height)
+        let line = ceil(font.measured(string).height)
         let size = Self.size(of: string)
         // The digits' top edge is `ascender - capHeight` under the line's top
         // and their foot is the baseline, `ascender` under it; the gap above

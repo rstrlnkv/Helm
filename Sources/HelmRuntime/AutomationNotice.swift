@@ -47,7 +47,7 @@ public protocol AutomationNoticePort: AnyObject, Sendable {
 /// bundled app, and an ObjC exception does not fail a test case: it kills the
 /// whole `swift test` run. Hence two defences. The centre is reached inside
 /// each method and never in `init`, so constructing one stays free for the
-/// tests that build a descriptor or an engine; and `isBundledApp` below answers
+/// tests that build a descriptor or an engine; and `AppBuild.isBundledApp` answers
 /// before anything is asked, so a test that does reach one of these methods
 /// gets a refusal instead of ending the run.
 public final class SystemAutomationNotice: AutomationNoticePort {
@@ -59,11 +59,6 @@ public final class SystemAutomationNotice: AutomationNoticePort {
 
     public init(area: String) { self.area = area }
 
-    /// Whether this process is the kind macOS will answer for. `AppBuild` owns
-    /// the question and says why the identifier is no help — VPN's credential
-    /// purge asks the same thing for the same class of reason, and a second
-    /// spelling of it is one nobody would keep in step.
-    private var isBundledApp: Bool { AppBuild.isBundledApp }
 
     /// Says so in the log, because in the app this can only mean the banners
     /// are dead: `notDetermined` is what an unbundled process knows about
@@ -75,7 +70,7 @@ public final class SystemAutomationNotice: AutomationNoticePort {
     }
 
     public func authorizationState() async -> NoticeAuthorization {
-        guard isBundledApp else { return unbundled() }
+        guard AppBuild.isBundledApp else { return unbundled() }
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         switch settings.authorizationStatus {
         // Provisional and ephemeral both post without a prompt, so for the one
@@ -90,7 +85,7 @@ public final class SystemAutomationNotice: AutomationNoticePort {
     /// macOS shows the prompt only the first time; afterwards this returns the
     /// standing answer without troubling anyone.
     public func requestAuthorization() async -> NoticeAuthorization {
-        guard isBundledApp else { return unbundled() }
+        guard AppBuild.isBundledApp else { return unbundled() }
         do {
             let granted = try await UNUserNotificationCenter.current()
                 .requestAuthorization(options: [.alert])
@@ -106,7 +101,7 @@ public final class SystemAutomationNotice: AutomationNoticePort {
     /// needs. The identifier is fresh each time so two firings stack instead of
     /// the second replacing the first.
     public func post(title: String, body: String) async {
-        guard isBundledApp else { unbundled(); return }
+        guard AppBuild.isBundledApp else { unbundled(); return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body

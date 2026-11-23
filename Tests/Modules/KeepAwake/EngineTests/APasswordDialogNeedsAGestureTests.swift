@@ -34,11 +34,7 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         apps = FakeApps()
         lidInfo = FakeLidInfo()
         lidInfo.lid = true
-        engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                 assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(), power: FakePower(),
-                                 apps: apps, pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock(), lidInfo: lidInfo)
+        engine = fakeEngine(store: store, apps: apps, clamshell: clamshell, lidInfo: lidInfo)
     }
 
     /// Every settings edit asks `sudo -n` again, on the lid's own queue. This is
@@ -96,11 +92,8 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         store.set(true, for: KeepAwakeSettings.Key.autoPower)
         let power = FakePower()
         power.says(.mains)
-        let ruled = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                    assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                                    displayObserver: FakeDisplayObserver(), power: power,
-                                    apps: apps, pointer: FakePointer(),
-                                    clamshell: clamshell, clock: FakeClock(), lidInfo: lidInfo)
+        let ruled = fakeEngine(store: store, power: power, apps: apps, clamshell: clamshell,
+                               lidInfo: lidInfo)
 
         let asked = clamshell.grantChecks
         ruled.activate()
@@ -122,11 +115,8 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         store.set(true, for: KeepAwakeSettings.Key.autoPower)
         let power = FakePower()
         power.says(.mains)
-        let ruled = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                    assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                                    displayObserver: FakeDisplayObserver(), power: power,
-                                    apps: apps, pointer: FakePointer(),
-                                    clamshell: clamshell, clock: FakeClock(), lidInfo: lidInfo)
+        let ruled = fakeEngine(store: store, power: power, apps: apps, clamshell: clamshell,
+                               lidInfo: lidInfo)
 
         ruled.activate()
 
@@ -217,11 +207,7 @@ final class TheLidSwitchAsksOutsideASessionTests: XCTestCase {
         clamshell.passwordlessGrantExists = false
         let lidInfo = FakeLidInfo()
         lidInfo.lid = true
-        engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                 assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(), power: FakePower(),
-                                 apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock(), lidInfo: lidInfo)
+        engine = fakeEngine(store: store, clamshell: clamshell, lidInfo: lidInfo)
         engine.activate()
         engine.settingsChanged()
     }
@@ -250,11 +236,7 @@ final class TheLidSwitchAsksOutsideASessionTests: XCTestCase {
     func testIdleOnAMacWithoutALidTheGestureAsksNothing() async {
         let lidless = FakeLidInfo()
         lidless.lid = false
-        let e = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                                displayObserver: FakeDisplayObserver(), power: FakePower(),
-                                apps: FakeApps(), pointer: FakePointer(),
-                                clamshell: clamshell, clock: FakeClock(), lidInfo: lidless)
+        let e = fakeEngine(store: store, clamshell: clamshell, lidInfo: lidless)
         e.activate()
         e.settingsChanged()
         XCTAssertFalse(e.isActive, "precondition: no session")

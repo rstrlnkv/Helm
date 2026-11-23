@@ -36,57 +36,11 @@ import HelmRuntime
 /// existing `PrivilegedRunner` fake in this suite returns its answer inline, so
 /// "the dialog is on screen and the person has not answered yet" is a state no
 /// test could write down — which is why this window has never been tested.
-/// `DialogOnScreen` below stops inside `runAdmin` until the test says the
+/// `ScriptedPrivileged(holds: true)` stops inside `runAdmin` until the test says the
 /// person answered, which is what the real one does.
 final class AStopBeforeTheChildExistsTests: XCTestCase {
 
-    // MARK: - Fakes
-
-    /// The admin dialog as it really behaves: it appears, and then it waits for
-    /// a human. `waitUntilOnScreen()` returns once the engine is inside it;
-    /// `answer()` is the person pressing a button.
-    private final class DialogOnScreen: PrivilegedRunner, @unchecked Sendable {
-        private let appeared = DispatchSemaphore(value: 0)
-        private let answered = DispatchSemaphore(value: 0)
-        private let lock = NSLock()
-        private var _scripts: [String] = []
-        private let reply: PrivilegedOutcome
-
-        /// `holds: false` is the dialog somebody answers instantly — the shape
-        /// every other fake in this suite has, kept for the control below. The
-        /// permit is granted by a `signal` rather than by an initial value:
-        /// libdispatch traps when a semaphore is deallocated below the value it
-        /// was born with.
-        init(reply: PrivilegedOutcome, holds: Bool = true) {
-            self.reply = reply
-            if !holds { answered.signal() }
-        }
-
-        var scripts: [String] { lock.lock(); defer { lock.unlock() }; return _scripts }
-
-        func runAdmin(_ script: String) -> PrivilegedOutcome {
-            lock.lock(); _scripts.append(script); lock.unlock()
-            appeared.signal()
-            answered.wait()
-            return reply
-        }
-
-        func waitUntilOnScreen(file: StaticString = #filePath, line: UInt = #line) {
-            XCTAssertEqual(appeared.wait(timeout: .now() + 5), .success,
-                           "the administrator dialog was never asked for",
-                           file: file, line: line)
-        }
-        func answer() { answered.signal() }
-    }
-
     // MARK: - Plumbing
-
-    /// The last `opState` the news holds, read through its replay — a
-    /// sentinel emitted before subscribing marks where the replay ends, so the
-    /// read is deterministic.
-    private func lastOpState(_ news: EngineNews<HomebrewNews>) async -> OpState? {
-        await replay(news).states.last
-    }
 
     /// Starts `installBrew` on a thread of its own — it blocks inside the
     /// dialog, exactly as the engine's own queue does — and hands back a way to
@@ -103,7 +57,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
     // MARK: - The window
 
     func testAStopPressedAtTheDialogDoesNotThenRunTheInstaller() {
-        let privileged = DialogOnScreen(reply: .done)
+        let privileged = ScriptedPrivileged(reply: .done, holds: true)
         let runner = HangingRunner()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
@@ -127,7 +81,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
     }
 
     func testAStopPressedAtTheDialogEndsTheOperation() async {
-        let privileged = DialogOnScreen(reply: .done)
+        let privileged = ScriptedPrivileged(reply: .done, holds: true)
         let runner = HangingRunner()
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
@@ -157,7 +111,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
     /// Handle-counting `HangingRunner` is what makes the installer's own
     /// termination visible.
     func testOnceTheInstallerIsRunningStopReachesIt() {
-        let privileged = DialogOnScreen(reply: .done, holds: false)
+        let privileged = ScriptedPrivileged(reply: .done)
         let runner = HangingRunner()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
@@ -175,7 +129,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
     /// And a dialog nobody stopped still installs: the guard being asked for
     /// must not become "installBrew never runs the installer".
     func testAnUnstoppedDialogStillRunsTheInstaller() {
-        let privileged = DialogOnScreen(reply: .done)
+        let privileged = ScriptedPrivileged(reply: .done, holds: true)
         let runner = HangingRunner()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
@@ -296,11 +250,6 @@ final class AStopDuringTheLaunchItselfIsNotLostTests: XCTestCase {
 /// does what the real one does to the process tree.
 final class AStopReachesTheInstallerItselfTests: XCTestCase {
 
-    private final class Exit: @unchecked Sendable {
-        let done = DispatchSemaphore(value: 0)
-        func set(_: Int32) { done.signal() }
-    }
-
     private func pid(in file: URL) -> pid_t? {
         (try? String(contentsOf: file, encoding: .utf8))
             .flatMap { pid_t($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
@@ -333,9 +282,7 @@ final class AStopReachesTheInstallerItselfTests: XCTestCase {
         }
 
         let command = try rehosted(composedInstaller(), source: installer, temporaries: temporaries)
-        let exit = Exit()
-        let handle = ShellProcessRunner().stream("/bin/bash", ["-c", command], env: [:],
-                                                 onLine: { _ in }, onExit: { exit.set($0) })
+        let (handle, run) = start(command)
 
         XCTAssertTrue(eventually(10) { pid(in: innerPID) != nil && pid(in: grandchildPID) != nil },
                       "precondition: the stand-in installer never started")
@@ -347,7 +294,7 @@ final class AStopReachesTheInstallerItselfTests: XCTestCase {
 
         handle.terminate()                                   // what Stop does
 
-        XCTAssertEqual(exit.done.wait(timeout: .now() + 10), .success,
+        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success,
                        "the stream never ended: something the wrapper started still holds its pipe")
         XCTAssertTrue(eventually(5) { !isAlive(inner) },
                       "the installer kept running after Stop")
@@ -714,7 +661,7 @@ final class InstallWaitsForApplesToolsTests: XCTestCase {
         rig.ticker.fire()
 
         XCTAssertEqual(rig.privileged.scripts.count, 1)
-        let entries = rig.journal.entries
+        let entries = rig.journal.value
         XCTAssertEqual(Array(entries.suffix(2)), ["read", "admin"],
                        "the dialog was not directly preceded by a reading of the tools: \(entries)")
         XCTAssertEqual(rig.runner.calls.count, 1)
@@ -1527,10 +1474,7 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
             echo installer-running
             exec /usr/bin/perl -e '$SIG{TERM} = sub { $SIG{TERM} = "IGNORE"; select(undef, undef, undef, \(windDown)); exit 1 }; sleep 60'
             """.write(to: installer, atomically: true, encoding: .utf8)
-            let run = Run()
-            let handle = ShellProcessRunner().stream(
-                "/bin/bash", ["-c", try rehosted(command, source: installer, temporaries: temporaries)], env: [:],
-                onLine: { run.line($0) }, onExit: { run.exit($0) })
+            let (handle, run) = start(try rehosted(command, source: installer, temporaries: temporaries))
             guard eventually(10, { run.lines.contains("installer-running") }) else {
                 XCTFail("precondition: the installer never started"); handle.terminate(); continue
             }
@@ -1565,10 +1509,8 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
         var life = TimeInterval.infinity
         for _ in 0..<5 {
             clear(temporaries)
-            let run = Run()
             let t0 = Date()
-            _ = ShellProcessRunner().stream("/bin/bash", ["-c", command], env: [:],
-                                            onLine: { run.line($0) }, onExit: { run.exit($0) })
+            let (_, run) = start(command)
             XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success)
             life = min(life, Date().timeIntervalSince(t0))
             XCTAssertEqual(run.status, 0, "precondition: the installer does not succeed on its own")
@@ -1580,10 +1522,8 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
         let steps = 300
         for _ in 0..<steps {
             clear(temporaries)
-            let run = Run()
             let delay = Double.random(in: (life * 0.6)...(life * 1.05))
-            let handle = ShellProcessRunner().stream("/bin/bash", ["-c", command], env: [:],
-                                                     onLine: { run.line($0) }, onExit: { run.exit($0) })
+            let (handle, run) = start(command)
             Thread.sleep(forTimeInterval: delay)
             handle.terminate()
             XCTAssertEqual(run.done.wait(timeout: .now() + 5), .success, "the stream never ended")

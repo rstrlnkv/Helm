@@ -66,17 +66,13 @@ final class TheLadderMeetsWhatIsReallyInTheFolderTests: XCTestCase {
     func testCapturesInTheSameSecondWrittenAtOnceEachKeepTheirOwnBytes() throws {
         let folder = scratchDirectory("shots-ladder-race")
         let count = 16
-        final class Outcomes: @unchecked Sendable {
-            let lock = NSLock()
-            var byIndex: [Int: ShotWrite] = [:]
-        }
-        let outcomes = Outcomes()
+        let outcomes = Locked<[Int: ShotWrite]>([:])
         let base = base
         DispatchQueue.concurrentPerform(iterations: count) { index in
             let outcome = FileShotWriter().write(Data("capture \(index)".utf8), into: folder, base: base, pathExtension: "png")
-            outcomes.lock.withLock { outcomes.byIndex[index] = outcome }
+            outcomes.withLock { $0[index] = outcome }
         }
-        let results = outcomes.byIndex
+        let results = outcomes.value
         var claimed: Set<String> = []
         for index in 0..<count {
             guard let url = results[index]?.url else { return XCTFail("capture \(index): \(String(describing: results[index]))") }

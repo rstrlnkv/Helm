@@ -27,11 +27,10 @@ public struct Ruler: Sendable, Equatable {
     /// Degrees, clockwise, in (-90, 90].
     public private(set) var angle: CGFloat
 
-    init(center: CGPoint, length: CGFloat = standardLength, angle: CGFloat = 0) {
+    init(center: CGPoint, length: CGFloat = standardLength) {
         self.center = center
         self.length = length
         self.angle = 0
-        rotate(to: angle)
     }
 
     /// The strip as it appears in `area`: in its middle, level.

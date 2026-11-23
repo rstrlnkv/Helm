@@ -36,24 +36,5 @@ extension KeepAwakeEngine {
         /// IOKit refused the sleep assertion, so the Mac sleeps on schedule while
         /// the session runs. The default says nothing is wrong.
         public var assertionRefused: Bool = false
-
-        init(isActive: Bool, conditions: Set<ActiveCondition>, clamshellActive: Bool,
-                    endDate: Date?, startDate: Date?, suppressed: Bool,
-                    triggeredConditions: Set<ActiveCondition> = [], holdingApps: [String] = [],
-                    batteryStopped: Bool = false, lidRefused: Bool = false,
-                    lidGrantRemains: Bool = false, assertionRefused: Bool = false) {
-            self.isActive = isActive
-            self.conditions = conditions
-            self.clamshellActive = clamshellActive
-            self.endDate = endDate
-            self.startDate = startDate
-            self.suppressed = suppressed
-            self.triggeredConditions = triggeredConditions
-            self.holdingApps = holdingApps
-            self.batteryStopped = batteryStopped
-            self.lidRefused = lidRefused
-            self.lidGrantRemains = lidGrantRemains
-            self.assertionRefused = assertionRefused
-        }
     }
 }

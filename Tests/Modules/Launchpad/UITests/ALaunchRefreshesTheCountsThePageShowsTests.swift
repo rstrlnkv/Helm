@@ -7,13 +7,9 @@ import XCTest
 /// A launch counted while a page is shown (the settings page keeps the model's snapshot) reaches that snapshot, so the page's
 /// "Reset launch counts" is enabled at once and not after the next change.
 @MainActor final class ALaunchRefreshesTheCountsThePageShowsTests: XCTestCase {
-    private final class OpeningLauncher: AppLauncherPort, @unchecked Sendable {
-        func open(_ url: URL) async -> Bool { true }
-    }
-
     func testAfterALaunchTheModelsSnapshotHoldsTheNewCountSoResetIsEnabled() async throws {
         let dir = scratchDirectory("stale")
-        let engine = LaunchpadEngine(catalog: RigCatalog(["a"]), launcher: OpeningLauncher(), store: LayoutStore(directory: dir))
+        let engine = LaunchpadEngine(catalog: RigCatalog(["a"]), launcher: RigLauncher(answer: true), store: LayoutStore(directory: dir))
         let model = LaunchpadViewModel(work: engine, store: NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore()))
         let shown = Task { await model.whileShown(reason: .settings) }
         defer { shown.cancel() }

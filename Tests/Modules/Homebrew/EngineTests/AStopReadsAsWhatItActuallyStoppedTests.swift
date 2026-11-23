@@ -112,9 +112,7 @@ final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
                            installer: "trap 'exit 1' TERM\ntouch $MARK\necho installing\n"
                                     + "while :; do /bin/sleep 0.05; done")
         let (handle, run) = start(try rehosted(try composedInstaller(), source: g.installer, temporaries: g.temporaries))
-        let deadline = Date().addingTimeInterval(10)
-        while !run.lines.contains("installing"), Date() < deadline { Thread.sleep(forTimeInterval: 0.01) }
-        XCTAssertTrue(run.lines.contains("installing"), "precondition: the installer never started")
+        XCTAssertTrue(eventually(10) { run.lines.contains("installing") }, "precondition: the installer never started")
 
         handle.terminate()
 

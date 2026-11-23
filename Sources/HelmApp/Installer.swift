@@ -102,9 +102,7 @@ enum Installer {
 
     /// The build number a bundle carries, read from the same plist as its version.
     private static func build(ofBundleAt app: URL) -> String? {
-        let plist = app.appendingPathComponent("Contents/Info.plist")
-        guard let dict = NSDictionary(contentsOf: plist) else { return nil }
-        return dict["CFBundleVersion"] as? String
+        info(ofBundleAt: app)?["CFBundleVersion"] as? String
     }
 
     /// What a bundle on disk calls itself. Read exactly the way its version is

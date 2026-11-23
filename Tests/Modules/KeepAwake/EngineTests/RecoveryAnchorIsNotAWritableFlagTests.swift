@@ -41,11 +41,7 @@ final class RecoveryAnchorIsNotAWritableFlagTests: XCTestCase {
     /// read nothing before both have run.
     @MainActor
     private func launch() async {
-        let engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                        assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                        displayObserver: FakeDisplayObserver(), power: FakePower(),
-                        apps: FakeApps(), pointer: FakePointer(),
-                        clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
+        let engine = fakeEngine(store: store, clamshell: clamshell)
         engine.activate()
         await engine.drainClamshellForTests()
     }

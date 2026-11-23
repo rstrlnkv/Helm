@@ -20,21 +20,9 @@ final class ASwitchedOffCaptureClosesEveryWindowTests: XCTestCase {
 
     private let orders = [false, true]
 
-    private func makeScene(held: Bool = true, buildOverlay: Bool = false) throws -> (FakeScreenshotsScene, PromptGate) {
-        let gate = PromptGate()
-        let screen = FakeScreen(outcome: try FakeScreen.frozen(real: buildOverlay), gate: held ? gate : nil)
-        return (FakeScreenshotsScene(screen: screen, buildOverlay: buildOverlay), gate)
-    }
-
     /// Brings the area press to an open overlay and returns it.
     private func openOverlay(_ scene: FakeScreenshotsScene, _ gate: PromptGate, pageFirst: Bool) async throws -> CaptureOverlay {
-        if pageFirst { scene.model.refresh() }
-        scene.model.press(.area)
-        await gate.reached()
-        await gate.open()
-        await waitUntil("the overlay reached the seam") { scene.overlay != nil }
-        let overlay = try XCTUnwrap(scene.overlay)
-        XCTAssertTrue(overlay.isOpen, "the control: the overlay is up before the switch")
+        let overlay = try await scene.openOverlay(gate, in: self, pageFirst: pageFirst)
         XCTAssertTrue(try XCTUnwrap(scene.controller).isBusy)
         return overlay
     }
@@ -43,7 +31,7 @@ final class ASwitchedOffCaptureClosesEveryWindowTests: XCTestCase {
     /// controller's tasks and leaves the windows.
     func testAnOpenOverlayIsClosed() async throws {
         for pageFirst in orders {
-            let (scene, gate) = try makeScene(buildOverlay: true)
+            let (scene, gate) = try FakeScreenshotsScene.withGate(buildOverlay: true)
             let overlay = try await openOverlay(scene, gate, pageFirst: pageFirst)
             scene.model.stop()
             XCTAssertFalse(overlay.isOpen, "the module went off and the overlay stayed up (page first: \(pageFirst))")
@@ -54,12 +42,10 @@ final class ASwitchedOffCaptureClosesEveryWindowTests: XCTestCase {
     /// The shot flashing after its result: the panels are up and deaf.
     func testAFlashingOverlayIsClosedAtOnce() async throws {
         for pageFirst in orders {
-            let (scene, gate) = try makeScene(buildOverlay: true)
+            let (scene, gate) = try FakeScreenshotsScene.withGate(buildOverlay: true)
             let overlay = try await openOverlay(scene, gate, pageFirst: pageFirst)
             let display = try XCTUnwrap(try OverlayRig.frames().first?.id)
-            overlay.mouseDown(on: display, at: CGPoint(x: 100, y: 100), flags: [])
-            overlay.mouseDragged(on: display, at: CGPoint(x: 400, y: 300), flags: [])
-            overlay.mouseUp(on: display)
+            OverlayRig.drag(overlay, on: display, from: CGPoint(x: 100, y: 100), to: CGPoint(x: 400, y: 300))
             overlay.perform(.exit(.confirm))
             XCTAssertTrue(overlay.isOpen && overlay.leaving, "the control: the shot is flashing (page first: \(pageFirst))")
             scene.model.stop()
@@ -71,7 +57,7 @@ final class ASwitchedOffCaptureClosesEveryWindowTests: XCTestCase {
     /// The bar and its countdown. `close()` clears both the countdown and the target.
     func testTheBarAndItsCountdownAreClosed() async throws {
         for pageFirst in orders {
-            let (scene, _) = try makeScene(held: false)
+            let (scene, _) = try FakeScreenshotsScene.withGate(held: false)
             if pageFirst { scene.model.refresh() }
             scene.model.press(.panel)
             XCTAssertEqual(scene.barsPresented, 1, "the control: the bar was raised")
@@ -90,7 +76,7 @@ final class ASwitchedOffCaptureClosesEveryWindowTests: XCTestCase {
     /// The toast with its shots.
     func testTheToastIsDismissed() async throws {
         for pageFirst in orders {
-            let (scene, _) = try makeScene(held: false)
+            let (scene, _) = try FakeScreenshotsScene.withGate(held: false)
             if pageFirst { scene.model.refresh() }
             scene.model.press(.panel)
             let toast = try XCTUnwrap(scene.controller).toast
@@ -106,7 +92,7 @@ final class ASwitchedOffCaptureClosesEveryWindowTests: XCTestCase {
     /// The control is the same press left alone, which presents its overlay.
     func testAPressInTheFreezeOpensNothingAfterTheSwitch() async throws {
         for stopped in [false, true] {
-            let (scene, gate) = try makeScene()
+            let (scene, gate) = try FakeScreenshotsScene.withGate()
             scene.model.press(.area)
             await gate.reached()
             XCTAssertEqual(scene.work.screen.freezes, 1, "the subject: the freeze is in flight (stopped: \(stopped))")

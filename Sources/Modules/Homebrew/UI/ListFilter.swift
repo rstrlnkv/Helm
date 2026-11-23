@@ -26,8 +26,7 @@ enum ListFilter {
     static func matches(_ needle: String, _ fields: [String?]) -> Bool {
         fields.contains { field in
             guard let field else { return false }
-            return field.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive],
-                               range: nil, locale: nil) != nil
+            return field.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil
         }
     }
 }

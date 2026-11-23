@@ -288,7 +288,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         let runner = FakeRunner(list: scutilListRow("Connected"))
         let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
-        speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
+        speed.answer = VPNSpeedReading(down: 240, up: 40, at: at)
         speed.blocksUntilReleased = true
         defer { speed.release() }
         let measuring = expectation(description: "the run has started and is holding a thread")
@@ -318,7 +318,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         let runner = FakeRunner(list: scutilListRow("Disconnected"))
         let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
-        speed.answer = VPNSpeedReading(down: 1, up: 1, rpm: 1, at: at)
+        speed.answer = VPNSpeedReading(down: 1, up: 1, at: at)
         let engine = makeEngine(runner, news: news,
                                 interfaces: tunnelIsTheDefaultRoute(), speed: speed)
         engine.refresh()
@@ -343,7 +343,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         let runner = FakeRunner(list: scutilListRow("Connected"))
         let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
-        speed.answer = VPNSpeedReading(down: 1, up: 1, rpm: 1, at: at)
+        speed.answer = VPNSpeedReading(down: 1, up: 1, at: at)
         let engine = makeEngine(runner, news: news,
                                 interfaces: tunnelIsTheDefaultRoute(), speed: speed)
         engine.refresh()

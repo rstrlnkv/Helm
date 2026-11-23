@@ -61,7 +61,7 @@ final class ThePressOnUpdateBeforeCheckingIsStoredTests: XCTestCase {
         XCTAssertEqual(call?.env["HOMEBREW_NO_AUTO_UPDATE"], "1")
     }
 
-    private final class RecordingRunner: ProcessRunner, @unchecked Sendable {
+    private final class RecordingRunner: QueryOnlyRunner, @unchecked Sendable {
         private let lock = NSLock()
         private var _calls: [(args: [String], env: [String: String])] = []
         var calls: [(args: [String], env: [String: String])] { lock.withLock { _calls } }
@@ -69,9 +69,5 @@ final class ThePressOnUpdateBeforeCheckingIsStoredTests: XCTestCase {
             lock.withLock { _calls.append((args, env)) }
             return (0, "")
         }
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) { (0, "") }
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess { onExit(0); return NoProcess() }
     }
 }

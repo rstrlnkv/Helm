@@ -10,8 +10,6 @@ enum DkStr {
     static var summary: String { L(.summary) }
     static var scanFolder: String { L(.scanAFolder) }
     static var scanning: String { L(.scanning) }
-    /// The ring's line under the figure while the walk runs: the kit's «Scanning…»,
-    /// which the other scanning pages read.
     /// Drops the scan from the screen and goes back to the picker — and forgets the
     /// saved one, which is the only way out of a scan that should not have been
     /// there: without it the module reopens on its last scan at every launch.

@@ -26,11 +26,6 @@ extension DuplicateGroup {
 
 // MARK: - Answers, or parks
 
-/// A search or a removal as the work saw it.
-struct SearchAsked: Equatable {
-    let keepPolicy: KeepPolicy
-}
-
 /// What reached the work, in order — so a test can assert that the act it is
 /// about really was attempted before asserting what was said about it. An
 /// assertion about an absence passes when the subject never happened.
@@ -65,7 +60,7 @@ final class AnsweringWork: DuplicatesWork, @unchecked Sendable {
     /// removal that is parked while the search answers.
     private var overrides: [Call: Answer] = [:]
     private var seen: [Call] = []
-    private var searched: [SearchAsked] = []
+    private var searched: [KeepPolicy] = []
     /// The removals that reached the work: a plan names the copy that goes and
     /// the copy it duplicates, and «the survivor was never sent» is a claim about
     /// the payload rather than about the call.
@@ -109,7 +104,7 @@ final class AnsweringWork: DuplicatesWork, @unchecked Sendable {
     var calls: [Call] { lock.withLock { seen } }
 
     /// What each search asked for, in order.
-    var searches: [SearchAsked] { lock.withLock { searched } }
+    var searches: [KeepPolicy] { lock.withLock { searched } }
 
     /// What each removal asked for, in order.
     var removals: [[DuplicatePlan]] { lock.withLock { planned.map(\.plans) } }
@@ -134,7 +129,7 @@ final class AnsweringWork: DuplicatesWork, @unchecked Sendable {
               progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateFindings? {
         lock.withLock {
             seen.append(.find)
-            searched.append(SearchAsked(keepPolicy: policy))
+            searched.append(policy)
         }
         for tick in ticks { progress?(tick) }
         await parkIfAsked(.find)
@@ -221,6 +216,23 @@ var keptCopy: String { "\(home)/Downloads/keep.bin" }
 var extraCopy: String { "\(home)/Downloads/extra.bin" }
 var secondCopy: String { "\(home)/Downloads/second.bin" }
 
+/// The three copies of one photo that the keep-policy tests choose between: one
+/// in transit and two filed, arriving in that order, so a policy change moves
+/// the survivor *and* leaves an extra behind to be removed. With two copies the
+/// basket empties itself and `emptyBasket` never reaches the work.
+var downloaded: String { "\(home)/Downloads/photo.jpg" }
+var filed: String { "\(home)/Documents/Trips/photo.jpg" }
+var archived: String { "\(home)/Documents/Archive/photo.jpg" }
+
+func trio() -> DuplicateGroup {
+    let day = Date(timeIntervalSince1970: 1_700_000_000)
+    return DuplicateGroup(copies: [
+        .init(path: downloaded, bytes: 4_000_000, added: day),
+        .init(path: filed, bytes: 4_000_000, added: day.addingTimeInterval(3600)),
+        .init(path: archived, bytes: 4_000_000, added: day.addingTimeInterval(7200)),
+    ])
+}
+
 /// The two-copy fixture most of the page tests search over, 9 MB each, with
 /// `more` as further copies: the one that stays, the extra, and a third.
 func keepAndExtra(_ more: String...) -> DuplicateGroup {
@@ -302,14 +314,6 @@ func searchedModel(over work: any DuplicatesWork, file: StaticString = #filePath
 func heldModel(_ work: HeldWork) -> DuplicatesViewModel {
     // The folder nothing walks: a search that parks never reaches it.
     duplicatesModel(over: work, folder: "/some/folder")
-}
-
-/// Room for the tasks already scheduled to land, **before an assertion that
-/// something did not happen**. It proves nothing by itself; a wait for something to
-/// appear is `waitUntil`, which fails when the thing never comes.
-@MainActor
-func settle() async {
-    await grace()
 }
 
 /// Waits for the search tasks to actually reach the work. Yielding a fixed

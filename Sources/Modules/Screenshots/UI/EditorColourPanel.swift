@@ -38,8 +38,8 @@ import Module_Screenshots_Engine
         panel.setTarget(bridge)
         panel.setAction(#selector(ColorPanelBridge.colourChanged(_:)))
         panel.hidesOnDeactivate = false
-        panel.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1)
-        panel.collectionBehavior = OverlayPanel.behaviour
+        panel.level = BorderlessPanel.aboveOverlay
+        panel.collectionBehavior = BorderlessPanel.behaviour
         panel.orderFrontRegardless()
     }
 

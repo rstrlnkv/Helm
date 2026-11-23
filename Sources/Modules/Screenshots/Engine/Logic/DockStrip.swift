@@ -31,7 +31,7 @@ enum DockStrip {
         } else {
             strip = CGRect(x: visible.maxX, y: frame.minY, width: right, height: frame.height)
         }
-        return CGRect(x: strip.minX, y: primaryHeight - strip.maxY, width: strip.width, height: strip.height)
+        return ScreenSpace.flipped(strip, primaryHeight: primaryHeight)
     }
 
     /// The strip of the first display, in the order given, that gives up room for
@@ -73,11 +73,6 @@ struct DockPlacement: Sendable, Equatable {
     /// ground — what Command-Shift-4 and Space makes) and not a cut from the freeze,
     /// which is the strip with the wallpaper behind it.
     let drawnAlone: Bool
-
-    init(rect: CGRect, drawnAlone: Bool) {
-        self.rect = rect
-        self.drawnAlone = drawnAlone
-    }
 }
 
 extension DockStrip {
@@ -113,8 +108,8 @@ extension DockStrip {
 
     /// Asks `ports` about the Dock's process as `dockPID` names it, and places the
     /// answer. The one place the pid is chosen.
-    static func placement(entries: [RawWindow], ports: DockBounds, displays: [CGRect], strip: CGRect?,
-                                 onTimeout: () -> Void = {}) -> DockPlacement? {
+    static func placement(entries: [RawWindow], ports: SystemDockBounds, displays: [CGRect], strip: CGRect?,
+                                 onTimeout: () -> Void) -> DockPlacement? {
         guard let pid = dockPID(entries) else { return nil }
         let reading = ports.read(dockPID: pid)
         if reading == .timedOut { onTimeout() }

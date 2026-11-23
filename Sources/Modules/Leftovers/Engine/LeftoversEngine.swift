@@ -37,18 +37,12 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 apps: InstalledAppsPort = WorkspaceInstalledApps(),
                 loaded: LoadedItemsPort = ActiveExtensions(),
                 switcher: LoginItemSwitchPort = ActiveExtensions(),
-                store: NamespacedStore = LeftoversEngine.defaultStore(backing: UserDefaults.standard)) {
+                store: NamespacedStore) {
         self.switcher = switcher
         self.home = home
         self.files = files
         self.store = store
         self.scanner = LeftoversScanner(home: home, files: files, apps: apps, extensions: loaded)
-    }
-
-    /// The store the init default uses; a seam so a test can read the raw stored
-    /// key (`module.leftovers.disabledByHelm`) over an in-memory backing.
-    public static func defaultStore(backing: KeyValueStore) -> NamespacedStore {
-        NamespacedStore(namespace: moduleID, backing: backing)
     }
 
     public func activate() {}
@@ -198,7 +192,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
         let reading = await offTheCooperativePool {
             LaunchClaims.onDisk(home: self.home, files: self.files)
         }
-        let claimants = LaunchClaims.claimants(of: request.label, in: reading)
+        let claimants = LaunchClaims.claimants(of: request.label, in: reading.claims)
         // **And a folder that did not open is not a folder with nothing
         // in it.** Either agent folder can refuse a listing —
         // `LaunchClaims.Reading` names the reasons, and that listing

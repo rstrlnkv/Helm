@@ -20,13 +20,9 @@ final class AFailedSwitchIsNotRecordedTests: XCTestCase {
                         switcher: switcher, store: store)
     }
 
-    private func newStore() -> NamespacedStore {
-        NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore())
-    }
-
     func testARefusedDisableLeavesTheRecordUnchanged() async {
         let switcher = LeftoversFakeSwitcher()
-        let store = newStore()
+        let store = freshLeftoversStore()
         store.set([two], for: "disabledByHelm")
         switcher.answers[one] = .refused
 
@@ -37,7 +33,7 @@ final class AFailedSwitchIsNotRecordedTests: XCTestCase {
 
     func testAnEnableThatFailsAtTheGiveBackKeepsExactlyThatLabel() async {
         let switcher = LeftoversFakeSwitcher()
-        let store = newStore()
+        let store = freshLeftoversStore()
         let e = engine(switcher, store)
         await e.setDisabled(true, label: one)
         await e.setDisabled(true, label: two)
@@ -50,7 +46,7 @@ final class AFailedSwitchIsNotRecordedTests: XCTestCase {
 
     func testADisableThatTimedOutIsRecordedBecauseItMayHaveLanded() async {
         let switcher = LeftoversFakeSwitcher()
-        let store = newStore()
+        let store = freshLeftoversStore()
         switcher.answer = .unknown
 
         await engine(switcher, store).setDisabled(true, label: one)

@@ -43,11 +43,7 @@ final class TheSecondPressIsWhatEndsTheRulesTests: XCTestCase {
     }
 
     private func makeEngine() -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                        assertions: assertions, displayInfo: FakeDisplayInfo(),
-                        displayObserver: FakeDisplayObserver(), power: FakePower(),
-                        apps: apps, pointer: FakePointer(),
-                        clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
+        fakeEngine(store: store, assertions: assertions, apps: apps, clock: clock)
     }
 
     private func timerEndsAutomation(_ on: Bool) {

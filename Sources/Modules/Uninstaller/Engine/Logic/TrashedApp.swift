@@ -12,12 +12,6 @@ public struct TrashedApp: Equatable, Sendable {
     /// What the person will recognise, which is not always what the file is called.
     let name: String
     let path: String
-
-    init(bundleID: String, name: String, path: String) {
-        self.bundleID = bundleID
-        self.name = name
-        self.path = path
-    }
 }
 
 /// Reading that bundle, minus the I/O.

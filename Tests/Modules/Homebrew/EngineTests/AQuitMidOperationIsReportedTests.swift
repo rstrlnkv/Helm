@@ -13,21 +13,16 @@ import HelmRuntime
 /// left behind — once.
 final class AQuitMidOperationIsReportedTests: XCTestCase {
 
-    private func engine(_ runner: ProcessRunner, marker: OpMarker) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester", marker: marker)
-    }
-
     func testAQuitMidOperationIsReportedAtTheNextLaunchOnce() {
         let marker = FileOpMarker(directory: scratchDirectory("brew-marker"))
 
         // Launch one: the operation starts and the app "quits" — the engine is
         // simply gone, the way a process is.
-        let before = engine(HangingRunner(), marker: marker)
+        let before = brewEngine(HangingRunner(), marker: marker)
         before.upgradeAll()
 
         // Launch two.
-        let after = engine(HangingRunner(), marker: marker)
+        let after = brewEngine(HangingRunner(), marker: marker)
         XCTAssertEqual(after.status().interruptedOp, "upgrade all",
                        "the operation Helm quit under was never reported")
         XCTAssertNil(after.status().interruptedOp,
@@ -37,11 +32,11 @@ final class AQuitMidOperationIsReportedTests: XCTestCase {
     func testAFinishedOperationLeavesNothingToReport() {
         let marker = FileOpMarker(directory: scratchDirectory("brew-marker"))
         let runner = HangingRunner()
-        let before = engine(runner, marker: marker)
+        let before = brewEngine(runner, marker: marker)
         before.upgradeAll()
         runner.finishAll(code: 0)
 
-        let after = engine(HangingRunner(), marker: marker)
+        let after = brewEngine(HangingRunner(), marker: marker)
         XCTAssertNil(after.status().interruptedOp,
                      "a clean exit left its marker behind — every launch would report a ghost")
     }
@@ -51,11 +46,11 @@ final class AQuitMidOperationIsReportedTests: XCTestCase {
     func testAFailedOperationLeavesNothingToReport() {
         let marker = FileOpMarker(directory: scratchDirectory("brew-marker"))
         let runner = HangingRunner()
-        let before = engine(runner, marker: marker)
+        let before = brewEngine(runner, marker: marker)
         before.upgradeAll()
         runner.finishAll(code: 1)
 
-        let after = engine(HangingRunner(), marker: marker)
+        let after = brewEngine(HangingRunner(), marker: marker)
         XCTAssertNil(after.status().interruptedOp)
     }
 
@@ -64,13 +59,13 @@ final class AQuitMidOperationIsReportedTests: XCTestCase {
     /// the marker exists for the launch after this one.
     func testAStatusQueryDuringTheOperationDoesNotEatTheMarker() {
         let marker = FileOpMarker(directory: scratchDirectory("brew-marker"))
-        let running = engine(HangingRunner(), marker: marker)
+        let running = brewEngine(HangingRunner(), marker: marker)
         running.upgradeAll()
 
         XCTAssertNil(running.status().interruptedOp,
                      "a running operation reported itself as an interrupted one")
 
-        let after = engine(HangingRunner(), marker: marker)
+        let after = brewEngine(HangingRunner(), marker: marker)
         XCTAssertEqual(after.status().interruptedOp, "upgrade all",
                        "the mid-operation status query above consumed the marker")
     }
@@ -87,7 +82,7 @@ final class AQuitMidOperationIsReportedTests: XCTestCase {
                        "taking the marker must remove it")
 
         try Data("upgrade all".utf8).write(to: file)
-        let fresh = engine(HangingRunner(), marker: FileOpMarker(directory: folder))
+        let fresh = brewEngine(HangingRunner(), marker: FileOpMarker(directory: folder))
         XCTAssertEqual(fresh.status().interruptedOp, "upgrade all")
     }
 }

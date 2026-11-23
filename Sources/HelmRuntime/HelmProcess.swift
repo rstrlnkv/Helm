@@ -148,7 +148,7 @@ public enum HelmProcess {
         process.arguments = arguments
         if let env {
             var merged = ProcessInfo.processInfo.environment
-            for (key, value) in env { merged[key] = value }
+            merged.merge(env) { _, new in new }
             process.environment = merged
         }
 
@@ -168,7 +168,7 @@ public enum HelmProcess {
         live.entered()
         defer { live.left(); slots.signal() }
 
-        guard launched(process, path) else { return (-1, Data()) }
+        guard start(process, path: path) else { return (-1, Data()) }
 
         guard let deadline else {
             // Read first. This returns when the child closes stdout, which is
@@ -234,10 +234,6 @@ public enum HelmProcess {
     /// updater has a hand-over note to take back, and the streaming port has a
     /// page to tell.
     public static func start(_ process: Process, path: String) -> Bool {
-        launched(process, path)
-    }
-
-    private static func launched(_ process: Process, _ path: String) -> Bool {
         var failure: NSError?
         if HelmLaunchTask(process, &failure) { return true }
         let name = failure?.userInfo[HelmLaunchExceptionNameKey] as? String

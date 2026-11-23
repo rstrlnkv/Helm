@@ -333,22 +333,11 @@ extension Notification.Name {
     /// The three buttons at the foot of the panel, each its own switch.
     /// `PanelFooterSetting` holds their keys, their default and the migration
     /// out of the one key they spent a build folded into.
-    static var showSettingsButton: Bool {
-        get { PanelFooterSetting.shows(.settings, in: store) }
-        set { show(.settings, newValue) }
+    static func shows(_ button: PanelFooterSetting.Button) -> Bool {
+        PanelFooterSetting.shows(button, in: store)
     }
 
-    static var showPanelEditButton: Bool {
-        get { PanelFooterSetting.shows(.edit, in: store) }
-        set { show(.edit, newValue) }
-    }
-
-    static var showQuitButton: Bool {
-        get { PanelFooterSetting.shows(.quit, in: store) }
-        set { show(.quit, newValue) }
-    }
-
-    private static func show(_ button: PanelFooterSetting.Button, _ on: Bool) {
+    static func setShows(_ button: PanelFooterSetting.Button, _ on: Bool) {
         store.set(on, for: button.rawValue)
         NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
     }

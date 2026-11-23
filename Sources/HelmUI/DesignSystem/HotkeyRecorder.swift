@@ -188,7 +188,7 @@ public struct HelmHotkeyRow: View {
                 } else {
                     Text(Self.none).foregroundStyle(HelmText.quiet)
                 }
-                Button(recorder.recording ? Self.cancel : Self.record) {
+                Button(recorder.recording ? HelmWord.cancel : Self.record) {
                     if recorder.recording {
                         recorder.stop()
                     } else {
@@ -201,7 +201,7 @@ public struct HelmHotkeyRow: View {
                     }
                 }
                 .controlSize(.small)
-                Button(Self.clear) { recorder.clear() }
+                Button(HelmWord.clear) { recorder.clear() }
                     .controlSize(.small)
                     .disabled(recorder.label.isEmpty)
             }
@@ -235,7 +235,5 @@ public struct HelmHotkeyRow: View {
     private static var pressKeys: String { L(.pressKeys) }
     private static var none: String { L(.none) }
     private static var record: String { L(.set) }
-    private static var cancel: String { L(.cancel) }
-    private static var clear: String { L(.clear) }
     private static var takenNote: String { L(.takenNote) }
 }

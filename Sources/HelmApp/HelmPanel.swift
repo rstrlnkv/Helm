@@ -41,9 +41,9 @@ struct HelmPanelContent: View {
     @State private var revealed = true
     /// The drawer is choosing its rows rather than showing them.
     @State private var choosingUtilities = false
-    @State private var showEditButton = AppSettings.showPanelEditButton
-    @State private var showSettingsButton = AppSettings.showSettingsButton
-    @State private var showQuitButton = AppSettings.showQuitButton
+    @State private var showEditButton = AppSettings.shows(.edit)
+    @State private var showSettingsButton = AppSettings.shows(.settings)
+    @State private var showQuitButton = AppSettings.shows(.quit)
     /// The strip the panel is drawn in, top to bottom of the screen. The card
     /// may not be taller than it, and the grid is what gives way.
     @State private var stripHeight: CGFloat = 0
@@ -140,6 +140,9 @@ struct HelmPanelContent: View {
         var byID: [String: ModuleHost.Live] = [:]
         var order: [String] = []
         var utilities: [ModuleHost.Live] = []
+        /// Everything the drawer *could* hold, ticked or not — what the pencil
+        /// offers. Its rows are the same rows; the difference is that a hidden
+        /// module is in this list and not in the other.
         var choosable: [ModuleHost.Live] = []
     }
 
@@ -172,13 +175,7 @@ struct HelmPanelContent: View {
     /// Modules that offer a widget, and the ones whose UI lives in Settings.
     /// One pass — building a widget builds a view, so each module is asked once.
     private var candidates: Candidates {
-        var byID: [String: ModuleHost.Live] = [:]
-        var order: [String] = []
-        var utilities: [ModuleHost.Live] = []
-        /// Everything the drawer *could* hold, ticked or not — what the pencil
-        /// offers. Its rows are the same rows; the difference is that a hidden
-        /// module is in this list and not in the other.
-        var choosable: [ModuleHost.Live] = []
+        var found = Candidates()
         for live in host.enabledModules {
             guard let contribution = live.menuBar() else { continue }
             let id = live.descriptor.idRaw
@@ -187,16 +184,15 @@ struct HelmPanelContent: View {
             // «not here» are different answers, and one list saying both is
             // what made taking a widget off look like deleting the module.
             if contribution.isUtility || layout.isDismissed(id) {
-                choosable.append(live)
-                if !layout.isHidden(id) { utilities.append(live) }
-                if !contribution.isUtility { byID[id] = live }   // it can be promoted back
+                found.choosable.append(live)
+                if !layout.isHidden(id) { found.utilities.append(live) }
+                if !contribution.isUtility { found.byID[id] = live }   // it can be promoted back
                 continue
             }
-            byID[id] = live
-            order.append(id)
+            found.byID[id] = live
+            found.order.append(id)
         }
-        return Candidates(byID: byID, order: order,
-                          utilities: utilities, choosable: choosable)
+        return found
     }
 
     /// The stored arrangement decides what is drawn and in what order; the live
@@ -526,8 +522,7 @@ struct HelmPanelContent: View {
                 // under the drag. There is nowhere to glide to, so the copy in
                 // the hand fades instead of being cut — the one exit from a
                 // drag that had no motion at all.
-                guard let home = frames[carried.id]?
-                        .insetBy(dx: EditChrome.overhang, dy: EditChrome.overhang) else {
+                guard let slot = frames[carried.id] else {
                     withAnimation(HelmMotion.interface) {
                         dragging = nil
                         dropping = false
@@ -541,8 +536,7 @@ struct HelmPanelContent: View {
                 // last frame of the landing.
                 withAnimation(HelmMotion.reorder, completionCriteria: .removed) {
                     dropping = true
-                    dragLocation = CGPoint(x: home.minX + grabOffset.width,
-                                           y: home.minY + grabOffset.height)
+                    dragLocation = dropPoint(in: slot)
                 } completion: {
                     // `dropping` is false if a new drag began mid-glide; the
                     // new drag owns the state now.
@@ -557,13 +551,9 @@ struct HelmPanelContent: View {
                     // *now*, after every spring has settled, the overlay is put
                     // exactly there, and the swap happens in a transaction with
                     // animation off: the same pixels, drawn by someone else.
-                    var settle = Transaction()
-                    settle.disablesAnimations = true
-                    withTransaction(settle) {
+                    withTransaction(\.disablesAnimations, true) {
                         if let frame = frames[carried.id] {
-                            let home = frame.insetBy(dx: EditChrome.overhang, dy: EditChrome.overhang)
-                            dragLocation = CGPoint(x: home.minX + grabOffset.width,
-                                                   y: home.minY + grabOffset.height)
+                            dragLocation = dropPoint(in: frame)
                         }
                         dragging = nil
                         dropping = false
@@ -593,6 +583,13 @@ struct HelmPanelContent: View {
                 .allowsHitTesting(false)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+    }
+
+    /// Where the carried copy's pointer sits when it is laid over a slot: the
+    /// slot's frame inset by the overhang, plus the grab offset.
+    private func dropPoint(in frame: CGRect) -> CGPoint {
+        let home = frame.insetBy(dx: EditChrome.overhang, dy: EditChrome.overhang)
+        return CGPoint(x: home.minX + grabOffset.width, y: home.minY + grabOffset.height)
     }
 
     /// Keyboard reordering. The panel is reachable from the keyboard and the
@@ -694,9 +691,9 @@ struct HelmPanelContent: View {
             reload()
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmMenuBarStyleChanged)) { _ in
-            showEditButton = AppSettings.showPanelEditButton
-            showSettingsButton = AppSettings.showSettingsButton
-            showQuitButton = AppSettings.showQuitButton
+            showEditButton = AppSettings.shows(.edit)
+            showSettingsButton = AppSettings.shows(.settings)
+            showQuitButton = AppSettings.shows(.quit)
         }
         // Every opening, not only the first: the view is built once and stays
         // mounted between them, so `onAppear` fires exactly once in a session
@@ -865,9 +862,7 @@ struct HelmPanelContent: View {
                     // plain. The first measurement is plain for the same reason.
                     guard measured > 0, gridHeight != measured else { return }
                     if gridHeight == nil || cutsGridHeight {
-                        var plain = Transaction()
-                        plain.disablesAnimations = true
-                        withTransaction(plain) { gridHeight = measured }
+                        withTransaction(\.disablesAnimations, true) { gridHeight = measured }
                     } else {
                         withAnimation(HelmMotion.disclosure) { gridHeight = measured }
                     }

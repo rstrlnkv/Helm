@@ -115,7 +115,12 @@ public struct ActiveExtensions: LoadedItemsPort, LoginItemSwitchPort {
     /// list: the exit status is the only thing that tells them apart, and dropping
     /// it made a tool that failed say «nobody has switched anything off».
     public func disabledLabels() -> Set<String>? {
-        let result = HelmProcess.run("/bin/launchctl", ["print-disabled", "gui/\(getuid())"])
+        disabledLabels(timeout: nil)
+    }
+
+    private func disabledLabels(timeout: TimeInterval?) -> Set<String>? {
+        let result = HelmProcess.run("/bin/launchctl", ["print-disabled", "gui/\(getuid())"],
+                                     timeout: timeout)
         guard result.status == 0 else { return nil }
         return LaunchctlDisabled.parse(result.output)
     }
@@ -135,7 +140,7 @@ public struct ActiveExtensions: LoadedItemsPort, LoginItemSwitchPort {
         let domain = "gui/\(getuid())"
         let first = run([disabled ? "disable" : "enable", "\(domain)/\(label)"])
         let answer = Self.answer(status: first.status, disabled: disabled, label: label,
-                                 listed: disabledLabelsWithinDeadline)
+                                 listed: { disabledLabels(timeout: Self.launchctlDeadline) })
         // `disable` only stops it from loading next time; boot it out so the
         // switch means something now. Failure is fine — it may not be running.
         _ = run([disabled ? "bootout" : "kickstart", "\(domain)/\(label)"])
@@ -161,11 +166,5 @@ public struct ActiveExtensions: LoadedItemsPort, LoginItemSwitchPort {
 
     private func run(_ arguments: [String]) -> HelmProcess.Result {
         HelmProcess.run("/bin/launchctl", arguments, timeout: Self.launchctlDeadline)
-    }
-
-    private func disabledLabelsWithinDeadline() -> Set<String>? {
-        let result = run(["print-disabled", "gui/\(getuid())"])
-        guard result.status == 0 else { return nil }
-        return LaunchctlDisabled.parse(result.output)
     }
 }

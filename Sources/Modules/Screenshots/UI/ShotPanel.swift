@@ -8,9 +8,8 @@ import AppKit
 ///
 /// That `makeKey` from a mouse-up on a non-activating panel gives it the keys while another app stays active is
 /// not measured.
-final class ShotPanel: NSPanel {
+final class ShotPanel: BorderlessPanel {
     var isUnfolded: () -> Bool = { false }
-    var onEscape: () -> Void = {}
 
     override var canBecomeKey: Bool {
         ShotPanel.takesKey(from: NSApp.currentEvent, windowNumber: windowNumber, unfolded: isUnfolded())
@@ -21,12 +20,4 @@ final class ShotPanel: NSPanel {
         return (event.type == .leftMouseDown || event.type == .leftMouseUp) && event.windowNumber == windowNumber
     }
     override var canBecomeMain: Bool { false }
-
-    /// Esc.
-    override func cancelOperation(_ sender: Any?) { onEscape() }
-
-    override func keyDown(with event: NSEvent) {
-        // Esc is also `cancelOperation`, but only when the responder chain gets that far.
-        if event.keyCode == ShotKey.escape { onEscape() } else { super.keyDown(with: event) }
-    }
 }

@@ -77,8 +77,7 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
     }
 
     private func engine(_ runner: ProcessRunner, _ marker: OpMarker, news: EngineNews<HomebrewNews> = EngineNews()) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
-                       user: "tester", news: news, marker: marker)
+        brewEngine(runner, privileged: AllowingPrivileged(), news: news, marker: marker)
     }
 
     func testASwitchOffTerminatesOnlyTheInstallAndTheMarkerGoesWhenTheChildDoes() {

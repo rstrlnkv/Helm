@@ -92,7 +92,7 @@ public enum AreaFrame {
         case .bottomLeft: (left, bottom) = (x, y)
         case .left: left = x
         }
-        let result = CGRect(x: min(left, right), y: min(top, bottom), width: abs(right - left), height: abs(bottom - top))
+        let result = CGRect(corner: CGPoint(x: left, y: top), opposite: CGPoint(x: right, y: bottom))
         return result.width >= 1 && result.height >= 1 ? result : nil
     }
 

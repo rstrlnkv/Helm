@@ -13,10 +13,6 @@ import HelmContract
 /// would finish before there is anything to stop.
 final class ARunningOperationCanBeStoppedTests: XCTestCase {
 
-    private func lastOpState(_ news: EngineNews<HomebrewNews>) async -> OpState? {
-        await replay(news).states.last
-    }
-
     func testStopTerminatesTheChildAndNamesTheOutcome() async {
         let runner = HangingRunner()
         let news = EngineNews<HomebrewNews>()

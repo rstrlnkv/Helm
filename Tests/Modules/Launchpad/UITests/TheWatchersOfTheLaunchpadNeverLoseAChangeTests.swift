@@ -40,13 +40,11 @@ final class TheWatchersOfTheLaunchpadNeverLoseAChangeTests: XCTestCase {
         }
     }
 
-    private final class NoLauncher: AppLauncherPort, @unchecked Sendable { func open(_ url: URL) async -> Bool { false } }
-
     /// The window's watch is reading change A when change B arrives and the window is closed: the page is the only watcher left, and the model
     /// must end up showing B's catalog.
     func testAChangeThatCameWhileTheOldestWasReadingAndThenLeftIsNotLost() async {
         let catalog = HeldCatalog(["a"])
-        let engine = LaunchpadEngine(catalog: catalog, launcher: NoLauncher(), store: LayoutStore(directory: scratchDirectory("held")))
+        let engine = LaunchpadEngine(catalog: catalog, launcher: RigLauncher(), store: LayoutStore(directory: scratchDirectory("held")))
         let model = LaunchpadViewModel(work: engine, store: NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore()))
         let window = Task { await model.whileShown() }
         await waitUntil("the window's snapshot") { model.snapshot != nil }
@@ -110,20 +108,9 @@ final class TheWatchersOfTheLaunchpadNeverLoseAChangeTests: XCTestCase {
         try? await Task.sleep(for: .milliseconds(600))
     }
 
-    private final class Opens: AppLauncherPort, @unchecked Sendable { func open(_ url: URL) async -> Bool { true } }
-    private final class Handle: LaunchpadWindowHandle {
-        var onClose: (@MainActor () -> Void)?
-        func present() {}
-        func close() { onClose?() }
-        func bringForward() {}
-        func beginScrub(_ direction: PinchDirection) {}
-        func scrub(to progress: Double) {}
-        func endScrub(_ outcome: PinchOutcome) {}
-    }
-
     private func make(_ label: String, apps: [String] = ["a", "b"]) -> (RigCatalog, LaunchpadViewModel) {
         let catalog = RigCatalog(apps)
-        let engine = LaunchpadEngine(catalog: catalog, launcher: Opens(), store: LayoutStore(directory: scratchDirectory(label)))
+        let engine = LaunchpadEngine(catalog: catalog, launcher: RigLauncher(answer: true), store: LayoutStore(directory: scratchDirectory(label)))
         return (catalog, LaunchpadViewModel(work: engine, store: NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore())))
     }
 
@@ -141,7 +128,7 @@ final class TheWatchersOfTheLaunchpadNeverLoseAChangeTests: XCTestCase {
     /// The window and the page both watch; a launch (from either) leaves the page's counts current.
     func testALaunchWithTheWindowAndThePageWatchingShowsTheNewCount() async {
         let (_, model) = make("launch-both")
-        model.present = { _ in Handle() }
+        model.present = { _ in ALaunchpadWindowIsOneDoorTests.FakeWindow() }
         model.showLaunchpad()
         let window = Task { await model.whileShown() }
         await waitUntil("the window's snapshot") { model.snapshot != nil }
@@ -155,7 +142,7 @@ final class TheWatchersOfTheLaunchpadNeverLoseAChangeTests: XCTestCase {
     /// An app that went while the window was alone: the launch says gone and the snapshot must lose it (the alone window still refreshes).
     func testAGoneAppLaunchedFromTheAloneWindowIsRefreshedAway() async {
         let (catalog, model) = make("launch-gone")
-        model.present = { _ in Handle() }
+        model.present = { _ in ALaunchpadWindowIsOneDoorTests.FakeWindow() }
         model.showLaunchpad()
         let window = Task { await model.whileShown() }
         await waitUntil("the window's snapshot") { model.snapshot != nil }
@@ -168,7 +155,7 @@ final class TheWatchersOfTheLaunchpadNeverLoseAChangeTests: XCTestCase {
     /// The page is the only watcher while the window's handle is still held (its watch not yet running): a launch must still refresh the page.
     func testALaunchWhileTheWindowIsHeldButNotYetWatchingStillRefreshesThePage() async {
         let (_, model) = make("launch-held")
-        model.present = { _ in Handle() }
+        model.present = { _ in ALaunchpadWindowIsOneDoorTests.FakeWindow() }
         model.showLaunchpad()
         let page = Task { await model.whileShown(reason: .settings) }
         await waitUntil("the page's snapshot") { model.snapshot != nil }

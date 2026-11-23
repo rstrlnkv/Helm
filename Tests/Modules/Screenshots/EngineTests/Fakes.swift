@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import HelmRuntime
 import HelmTestSupport
+import ImageIO
 import XCTest
 @testable import Module_Screenshots_Engine
 
@@ -72,6 +73,64 @@ func rgbaBytes(_ image: CGImage, space: CGColorSpace = CGColorSpaceCreateDeviceR
 func packedRGB(_ image: CGImage, space: CGColorSpace = CGColorSpaceCreateDeviceRGB()) -> [UInt32] {
     let bytes = rgbaBytes(image, space: space)
     return (0..<(image.width * image.height)).map { UInt32(bytes[$0 * 4]) << 16 | UInt32(bytes[$0 * 4 + 1]) << 8 | UInt32(bytes[$0 * 4 + 2]) }
+}
+
+/// One pixel of a picture as red, green, blue, read at (x, y) from the top left, in the picture's own colour space:
+/// reading it in another converts it, and a ground that was composed in sRGB would read as a stranger to itself.
+func pixel(_ image: CGImage, _ x: Int, _ y: Int) -> (UInt8, UInt8, UInt8) {
+    let context = CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                            space: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(),
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.draw(image, in: CGRect(x: -x, y: y - image.height + 1, width: image.width, height: image.height))
+    let bytes = context.data!.assumingMemoryBound(to: UInt8.self)
+    return (bytes[0], bytes[1], bytes[2])
+}
+
+/// The width of the picture a PNG holds.
+func width(of png: Data) throws -> Int {
+    let source = try XCTUnwrap(CGImageSourceCreateWithData(png as CFData, nil), "a write that is no picture")
+    return try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil)).width
+}
+
+/// A picture in which every pixel has a colour of its own, in `space` at `bits` a channel.
+func hashedPattern(width: Int, height: Int, space: CGColorSpace? = nil, bits: Int = 8) -> CGImage {
+    let space = space ?? CGColorSpace(name: CGColorSpace.sRGB)!
+    let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: bits, bytesPerRow: 0, space: space,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.setShouldAntialias(false)
+    for y in 0..<height { for x in 0..<width {
+        let colour = (UInt32(y * width + x) &* 2_654_435_761 &+ 12_345) & 0xFF_FFFF
+        context.setFillColor(CGColor(colorSpace: space, components: [CGFloat(colour >> 16) / 255, CGFloat(colour >> 8 & 0xFF) / 255,
+                                                                     CGFloat(colour & 0xFF) / 255, 1])!)
+        context.fill(CGRect(x: x, y: height - 1 - y, width: 1, height: 1))
+    } }
+    return context.makeImage()!
+}
+
+/// One recognised line of text, with `matches` found in it.
+func reading(_ matches: [PrivateMatch], line string: String = "line") -> [RecognizedLine] {
+    [RecognizedLine(string: string, box: CGRect(x: 0, y: 0, width: 1, height: 1), matches: matches)]
+}
+
+/// A layer of `tool` over `rect`, the standard style unless `filled`.
+func layer(_ tool: AnnotationTool, _ rect: CGRect, filled: Bool = false, id: Annotation.ID = 1) -> Annotation {
+    Annotation(tool: tool, start: rect.origin, end: CGPoint(x: rect.maxX, y: rect.maxY),
+               style: AnnotationStyle(filled: filled), id: id)
+}
+
+/// A recognised line with a box at (`x`, `y`) of `size` in the picture's unit square.
+func line(_ string: String, x: CGFloat = 0.1, y: CGFloat = 0.5, size: CGSize = CGSize(width: 0.3, height: 0.05)) -> RecognizedLine {
+    RecognizedLine(string: string, box: CGRect(origin: CGPoint(x: x, y: y), size: size))
+}
+
+// A scratch home with its Desktop folder made, for a test that resolves a save folder against real directories.
+extension XCTestCase {
+    func homeWithDesktop(_ label: String) -> (home: URL, desktop: URL) {
+        let home = scratchDirectory(label)
+        let desktop = home.appendingPathComponent("Desktop", isDirectory: true)
+        try? FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
+        return (home, desktop)
+    }
 }
 
 final class FakeCapture: ScreenCapturing, @unchecked Sendable {
@@ -326,10 +385,9 @@ final class FakePreferences: CapturePreferences, @unchecked Sendable {
 
 /// Counts the shutters it was asked to play, and plays nothing.
 final class FakeShutter: ShutterPlaying, @unchecked Sendable {
-    private let lock = NSLock()
-    private var _plays = 0
-    var plays: Int { lock.withLock { _plays } }
-    func play() { lock.withLock { _plays += 1 } }
+    private let _plays = LockedCount()
+    var plays: Int { _plays.value }
+    func play() { _plays.bump() }
 }
 
 /// Everything a capture needs, every port named at the construction — a

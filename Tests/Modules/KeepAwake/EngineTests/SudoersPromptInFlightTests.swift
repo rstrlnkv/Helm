@@ -98,13 +98,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
         store = NamespacedStore(namespace: "keep-awake", backing: backing)
         settings = KeepAwakeSettings(store: store)
         clamshell = PromptClamshell()
-        engine = KeepAwakeEngine(settings: settings, store: store,
-                                 assertions: FakeAssertions(),
-                                 displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(),
-                                 power: FakePower(), apps: FakeApps(),
-                                 pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine = fakeEngine(settings: settings, store: store, clamshell: clamshell)
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
     }
 

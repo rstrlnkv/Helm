@@ -273,7 +273,7 @@ public final class HelmLog: @unchecked Sendable {
         let fm = FileManager.default
         guard !fm.fileExists(atPath: marker.path) else { return }
         queue.async {
-            for url in Self.allFileURLs { try? FileManager.default.removeItem(at: url) }
+            Self.removeAllFiles()
             Self.writePurgeLatch()
         }
     }
@@ -479,8 +479,12 @@ public final class HelmLog: @unchecked Sendable {
             // All of it. Clearing only `helm.log` left the rollover behind, so
             // the button said the log was gone while up to two megabytes of it
             // sat beside the file it had just emptied.
-            for url in Self.allFileURLs { try? FileManager.default.removeItem(at: url) }
+            Self.removeAllFiles()
         }
+    }
+
+    private static func removeAllFiles() {
+        for url in allFileURLs { try? FileManager.default.removeItem(at: url) }
     }
 
     // MARK: - IO (always on the private queue)
@@ -544,7 +548,7 @@ public final class HelmLog: @unchecked Sendable {
         outOfBand.error("the diagnostics log could not be written; this session's lines are in the app's live log view only, and not in the file Copy log hands over")
     }
 
-    private static let outOfBand = Logger(subsystem: "com.helm.app", category: "log")
+    private static let outOfBand = Logger(subsystem: AppBuild.releaseIdentifier, category: "log")
 
     private func rotate() {
         let fm = FileManager.default

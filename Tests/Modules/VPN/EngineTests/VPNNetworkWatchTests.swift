@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Helm
 
 import XCTest
-@testable import HelmRuntime
 @testable import Module_VPN_Engine
 
 /// The module exists to answer one question — is a tunnel up — and it asked the

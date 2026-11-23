@@ -45,15 +45,6 @@ final class InstallBrewTests: XCTestCase {
         return (engine, news)
     }
 
-    /// The news's replay, split by case: the latest `.state` and
-    /// the latest `.line`. A sentinel emitted *before* subscribing marks
-    /// where the replay ends, so the read is deterministic — everything the
-    /// engine emitted happened synchronously before this call.
-    private func replayed(_ news: EngineNews<HomebrewNews>) async -> (state: OpState?, busy: Bool) {
-        let items = await replay(news)
-        return (items.states.last, items.sawBusy)
-    }
-
     // MARK: - The account name gate
 
     /// `user` is `NSUserName()`, and on a managed Mac that is whatever the
@@ -73,7 +64,7 @@ final class InstallBrewTests: XCTestCase {
         XCTAssertTrue(runner.streamCalls.isEmpty,
                       "the installer download started for an account the module refused")
 
-        let (state, _) = await replayed(news)
+        let (state, _) = await replayedState(news)
         XCTAssertEqual(state?.phase, .failed,
                        "the refusal is invisible: the page shows a spinner or nothing at all")
         XCTAssertEqual(state?.reason, .unsupportedAccount,
@@ -117,7 +108,7 @@ final class InstallBrewTests: XCTestCase {
         XCTAssertTrue(runner.streamCalls.isEmpty,
                       "the installer ran although the person declined the admin dialog")
 
-        let (state, _) = await replayed(news)
+        let (state, _) = await replayedState(news)
         XCTAssertEqual(state?.phase, .failed, "a declined dialog must land as a failed state")
         XCTAssertEqual(state?.reason, .authorizationDeclined,
                        "the page cannot say «cancelled» without the reason — the English console "
@@ -235,7 +226,7 @@ final class InstallBrewTests: XCTestCase {
                        "a brew operation ran beside the Homebrew installer")
 
         runner.finishAll(code: 0)
-        let (state, _) = await replayed(news)
+        let (state, _) = await replayedState(news)
         XCTAssertEqual(state?.phase, .done)
 
         engine.install(name: "wget", isCask: false)
@@ -271,7 +262,7 @@ final class InstallBrewTests: XCTestCase {
         engine.installBrew()
         runner.finishAll(code: 7)
 
-        let (state, _) = await replayed(news)
+        let (state, _) = await replayedState(news)
         XCTAssertEqual(state?.phase, .failed)
         XCTAssertEqual(state?.exitCode, 7, "the page cannot say what happened without the code")
         XCTAssertEqual(state?.reason, .installerFailed,
@@ -296,7 +287,7 @@ final class InstallBrewTests: XCTestCase {
         engine.install(name: "wget", isCask: false)
         engine.upgradeAll()   // refused: the install is still streaming
 
-        let (state, busy) = await replayed(news)
+        let (state, busy) = await replayedState(news)
         XCTAssertEqual(state?.phase, .running,
                        "the refusal overwrote the running state — a reopened page shows "
                        + "the live install as over")

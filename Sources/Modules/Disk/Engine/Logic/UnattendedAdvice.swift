@@ -38,7 +38,7 @@ enum UnattendedAdvice {
         let items = advice
             .filter { !ScanRoot.refusesDescentInHome(into: $0.path, home: home) }
             .map { ScanItem(path: $0.path, bytes: $0.bytes) }
-        return ScanReport(bytes: items.reduce(0) { $0 + $1.bytes },
+        return ScanReport(bytes: items.map(\.bytes).saturatingSum(),
                           count: items.count, items: items)
     }
 }

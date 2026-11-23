@@ -34,9 +34,8 @@ struct LayoutSettingsPage: View {
         _exceptionCount = State(initialValue: store.stringArray(LayoutKey.exceptions).count)
         _showTour = State(initialValue: !store.bool(LayoutKey.introSeen, default: false))
         _audible = State(initialValue: store.layoutAudible)
-        _indicator = State(initialValue: store.bool(LayoutKey.indicator, default: false))
-        _badgeStyle = State(initialValue:
-            BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue)))
+        _indicator = State(initialValue: store.layoutIndicator)
+        _badgeStyle = State(initialValue: store.layoutBadgeStyle)
         _tapKey = State(initialValue: store.layoutTapKey)
         _convertKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: LayoutHotkey.storePrefix))

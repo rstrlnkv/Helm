@@ -87,12 +87,6 @@ final class ADoctorReadingIsNotGatedOnExitStatusTests: XCTestCase {
 
         """
 
-    private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester",
-                       marker: InMemoryOpMarker())
-    }
-
     /// Case 1: a fake whose diagnostics carry this machine's real captured
     /// output answers two issues — the ordinary path, exit status matching
     /// what the plan measured (1).
@@ -100,7 +94,7 @@ final class ADoctorReadingIsNotGatedOnExitStatusTests: XCTestCase {
         let runner = DoctorRunner()
         runner.status = 1
         runner.output = Self.capturedOutput
-        let issues = engine(runner).doctor()
+        let issues = brewEngine(runner).doctor()
         XCTAssertEqual(issues?.count, 2,
                        "real captured doctor output must parse into its two distinct issues")
         XCTAssertEqual(runner.diagnosticsCalls.first, ["doctor"])
@@ -114,7 +108,7 @@ final class ADoctorReadingIsNotGatedOnExitStatusTests: XCTestCase {
         let runner = DoctorRunner()
         runner.status = 1
         runner.output = ""
-        XCTAssertNil(engine(runner).doctor(),
+        XCTAssertNil(brewEngine(runner).doctor(),
                      "empty diagnostics must not read as «doctor ran and found nothing»")
     }
 
@@ -129,7 +123,7 @@ final class ADoctorReadingIsNotGatedOnExitStatusTests: XCTestCase {
         let runner = DoctorRunner()
         runner.status = 1
         runner.output = Self.capturedOutput
-        let issues = engine(runner).doctor()
+        let issues = brewEngine(runner).doctor()
         XCTAssertEqual(issues?.count, 2,
                        "exit 1 is brew doctor's ordinary shape when it has something to say — "
                        + "it must not be read as a refusal")
@@ -146,7 +140,7 @@ final class ADoctorReadingIsNotGatedOnExitStatusTests: XCTestCase {
         let runner = DoctorRunner()
         runner.status = 1
         runner.output = Self.capturedOutput
-        _ = engine(runner).doctor()
+        _ = brewEngine(runner).doctor()
         XCTAssertEqual(runner.diagnosticsCalls.count, 1,
                        "the query must call runCapturingDiagnostics exactly once")
         XCTAssertEqual(runner.runCalls, 0,

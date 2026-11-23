@@ -20,7 +20,7 @@ import XCTest
 final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
 
     private let app = InstalledApp(name: "Sample", bundleID: "com.example.sample",
-                                   path: "/Applications/Sample.app", sizeBytes: 0)
+                                   path: "/Applications/Sample.app")
 
     private func model(_ work: StoppedWork,
                        arrivals: AsyncStream<Void> = AsyncStream { _ in }) -> UninstallerViewModel {

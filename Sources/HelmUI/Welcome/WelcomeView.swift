@@ -74,9 +74,9 @@ public struct WelcomeView: View {
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.faint)
                 Spacer()
-                Button(WelcomeStr.back) { flow.back() }
+                Button(HelmWord.back) { flow.back() }
                     .disabled(!flow.canGoBack)
-                Button(flow.isLastStep ? WelcomeStr.done : WelcomeStr.next) {
+                Button(flow.isLastStep ? HelmWord.done : HelmWord.next) {
                     if flow.isLastStep { onClose() } else { flow.next() }
                 }
                 .keyboardShortcut(.defaultAction)
@@ -171,7 +171,7 @@ public struct WelcomeView: View {
                 }
             }
         } else {
-            Toggle(WelcomeStr.launchAtLogin, isOn: $switchOn)
+            Toggle(HelmWord.openHelmAtLogin, isOn: $switchOn)
                 .toggleStyle(.switch)
                 .onChange(of: switchOn) { _, on in
                     let settled = actions.setLaunchAtLogin(on)

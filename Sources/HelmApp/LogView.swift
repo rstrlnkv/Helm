@@ -212,8 +212,7 @@ struct LogView: View {
                                     + LogFilter.categories(in: entries).filter { !$0.isEmpty }.map { category in
                                         HelmHeaderMenuItem(id: category, title: category,
                                                             isOn: chosen.contains(category)) {
-                                            if chosen.contains(category) { chosen.remove(category) }
-                                            else { chosen.insert(category) }
+                                            chosen.formSymmetricDifference([category])
                                         }
                                     }),
                 HelmHeaderAction(id: "follow", title: AppStr.logFollow,
@@ -226,7 +225,13 @@ struct LogView: View {
                 HelmHeaderAction(id: "copy", title: AppStr.copyLog, symbol: "doc.on.doc",
                                   isEnabled: !page.lines.isEmpty) {
                     NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(Self.pasteboardText(page.lines), forType: .string)
+                    // The lines the file carries. It used to be
+                    // `"\(time) [\(category)] \(message)"` — a second format,
+                    // written here, which dropped the level, the date and the
+                    // source site. On the machine this was measured on, 469 of
+                    // 500 warnings in the file were one wording from one place,
+                    // and pasted out of Helm they arrived with neither.
+                    NSPasteboard.general.setString(LogLine.lines(page.lines), forType: .string)
                 },
                 // Whether anything is written to the file at all, and what ends
                 // up in it. Dev builds always log — the file is the evidence a
@@ -244,8 +249,14 @@ struct LogView: View {
                         HelmReveal.inFinder(HelmLog.fileURL.path)
                     },
                     HelmHeaderMenuItem(id: "clear", title: HelmWord.clear, isOn: false,
-                                        isEnabled: Self.canClear(entries: entries,
-                                                                 storedLog: hasStoredLog)) {
+                                        // **The file, not the page.** It was gated
+                                        // on the tail, so a build with logging
+                                        // switched off said «Nothing logged yet»,
+                                        // greyed both buttons, and left the log on
+                                        // disk — which is exactly the person who
+                                        // most wants it gone. Clear means the log:
+                                        // both files and the window onto them.
+                                        isEnabled: !entries.isEmpty || hasStoredLog) {
                         // Both, because there is one Clear now and a person
                         // pressing it means the log, not the window onto it.
                         HelmLog.shared.clear()
@@ -590,8 +601,7 @@ struct LogView: View {
     /// removal, and this is not animated.
     private func startupFold(_ card: LogPresentation.Card, lines: Int, open: Bool) -> some View {
         Button {
-            if openStartups.contains(card.id) { openStartups.remove(card.id) }
-            else { openStartups.insert(card.id) }
+            openStartups.formSymmetricDifference([card.id])
         } label: {
             HStack(spacing: HelmSpace.s4) {
                 Image(systemName: open ? "chevron.down" : "chevron.right")
@@ -619,27 +629,6 @@ struct LogView: View {
     }
 
     // MARK: - Copy, Clear and the footer
-
-    /// What the button puts on the pasteboard: the lines the file carries.
-    ///
-    /// It used to be `"\(time) [\(category)] \(message)"` — a second format,
-    /// written here, which dropped the level, the date and the source site. On
-    /// the machine this was measured on, 469 of 500 warnings in the file were one
-    /// wording from one place, and pasted out of Helm they arrived with neither.
-    static func pasteboardText(_ entries: [LogEntry]) -> String {
-        LogLine.lines(entries)
-    }
-
-    /// Whether «Clear» has anything to clear.
-    ///
-    /// **The file, not the page.** It was gated on the tail, so a build with
-    /// logging switched off said «Nothing logged yet», greyed both buttons, and
-    /// left the log on disk — which is exactly the person who most wants it gone.
-    /// Clear means the log: both files and the window onto them, which is what
-    /// the button has always done once it could be pressed.
-    static func canClear(entries: [LogEntry], storedLog: Bool) -> Bool {
-        !entries.isEmpty || storedLog
-    }
 
     /// Whether the file can hold lines the page does not: the tail is full, so
     /// the oldest went to make room, and there is a file. A tail that is not full

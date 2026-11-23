@@ -18,11 +18,6 @@ final class PrivateFileTests: XCTestCase {
         directory = scratchDirectory("private-file")
     }
 
-    private func mode(of url: URL) throws -> Int {
-        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
-        return (attributes[.posixPermissions] as? NSNumber)?.intValue ?? 0
-    }
-
     func testAFreshWriteIsPrivate() throws {
         let url = directory.appendingPathComponent("fresh.json")
         XCTAssertTrue(PrivateFile.write(["a", "b"], to: url))

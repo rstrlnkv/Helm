@@ -67,7 +67,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
                         _ recorder: LeftoversFakeSwitcher) -> LeftoversEngine {
         LeftoversEngine(home: home, files: files, apps: LeftoversFakeApps(),
                         loaded: LeftoversFakeLoaded(), switcher: recorder,
-                        store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                        store: freshLeftoversStore())
     }
 
     private func press(_ path: String, on engine: LeftoversEngine) async {
@@ -77,7 +77,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
     /// What `LaunchClaims` reports to the engine, for the failure message: the count
     /// is the whole mechanism, and printing it saves the reader a second run.
     private func claimsSeen(_ files: LeftoversFakeFiles) -> [String] {
-        LaunchClaims.claimants(of: label, in: LaunchClaims.onDisk(home: home, files: files))
+        LaunchClaims.claimants(of: label, in: LaunchClaims.onDisk(home: home, files: files).claims)
     }
 
     // MARK: - The finding

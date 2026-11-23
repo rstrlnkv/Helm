@@ -11,21 +11,11 @@ import AppKit
 /// shown on the cells of the two bars the palette replaced, and the overlay forces the crosshair on every move (its cursor sets climbed by hundreds per
 /// open). Not yet measured: whether that forced crosshair is what hides the tooltips, and whether a menu
 /// item's SF Symbol image is drawn on its own (it was not, beside `state = .on`). The palette is hosted by `EditorBarHostingView`.
-final class OverlayPanel: NSPanel {
-    /// Every Space and full-screen apps; the colour panel that stands over the overlay (`EditorColourPanel`) takes the same.
-    static let behaviour: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-
+final class OverlayPanel: BorderlessPanel {
     init(screen: NSScreen, view: NSView) {
-        super.init(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel],
-                   backing: .buffered, defer: false)
+        super.init(contentRect: screen.frame)
         // Above the menu bar and the Dock, over full-screen apps, in every Space.
         level = .screenSaver
-        collectionBehavior = Self.behaviour
-        isOpaque = false
-        backgroundColor = .clear
-        hasShadow = false
-        hidesOnDeactivate = false
-        isReleasedWhenClosed = false
         acceptsMouseMovedEvents = true
         contentView = view
         setFrame(screen.frame, display: false)

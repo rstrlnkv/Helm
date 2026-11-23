@@ -84,19 +84,12 @@ final class AConfigReadingComesOffStandardOutputTests: XCTestCase {
 
         """
 
-    private func engine(_ runner: ProcessRunner,
-                        locator: BrewLocator = FixedLocator()) -> HomebrewEngine {
-        HomebrewEngine(locator: locator, runner: runner,
-                       privileged: NoPrivileges(), user: "tester",
-                       marker: InMemoryOpMarker())
-    }
-
     /// The ordinary path: exit 0, the real document, eighteen lines and the
     /// argv brew was actually given.
     func testTheRealDocumentAnswersEveryLine() throws {
         let runner = ConfigRunner()
         runner.output = Self.capturedOutput
-        let config = try XCTUnwrap(engine(runner).config())
+        let config = try XCTUnwrap(brewEngine(runner).config())
 
         XCTAssertEqual(config.lines.count, 18)
         XCTAssertEqual(runner.runCalls.first, ["config"],
@@ -118,7 +111,7 @@ final class AConfigReadingComesOffStandardOutputTests: XCTestCase {
     func testTheQueryUsesPlainRunAndNotTheDiagnosticsCapturingRunner() {
         let runner = ConfigRunner()
         runner.output = Self.capturedOutput
-        _ = engine(runner).config()
+        _ = brewEngine(runner).config()
 
         XCTAssertEqual(runner.runCalls.count, 1, "the query must call `run` exactly once")
         XCTAssertEqual(runner.diagnosticsCalls, 0, """
@@ -138,7 +131,7 @@ final class AConfigReadingComesOffStandardOutputTests: XCTestCase {
     func testTheDocumentIsCarriedWholeAndNotRebuiltFromTheReading() throws {
         let runner = ConfigRunner()
         runner.output = "HOMEBREW_VERSION: 7.0.1\nMetal Tool"
-        let config = try XCTUnwrap(engine(runner).config())
+        let config = try XCTUnwrap(brewEngine(runner).config())
 
         XCTAssertEqual(config.lines.map(\.key), ["HOMEBREW_VERSION"],
                        "precondition: the parser dropped the partial line")
@@ -156,7 +149,7 @@ final class AConfigReadingComesOffStandardOutputTests: XCTestCase {
         let runner = ConfigRunner()
         runner.status = 1
         runner.output = Self.capturedOutput
-        XCTAssertNil(engine(runner).config(), """
+        XCTAssertNil(brewEngine(runner).config(), """
             brew declined — exit 1 where it always exits 0 — and the engine drew a configuration \
             off it anyway
             """)
@@ -166,7 +159,7 @@ final class AConfigReadingComesOffStandardOutputTests: XCTestCase {
     func testNoBrewIsNilAndRunsNothing() {
         let runner = ConfigRunner()
         runner.output = Self.capturedOutput
-        XCTAssertNil(engine(runner, locator: NoBrew()).config())
+        XCTAssertNil(brewEngine(runner, locator: NoBrew()).config())
         XCTAssertEqual(runner.runCalls.count, 0)
     }
 
@@ -176,9 +169,9 @@ final class AConfigReadingComesOffStandardOutputTests: XCTestCase {
     func testOutputWithNothingReadableInItIsNil() {
         let runner = ConfigRunner()
         runner.output = "==> Downloading\nsomething went wrong\n"
-        XCTAssertNil(engine(runner).config())
+        XCTAssertNil(brewEngine(runner).config())
 
         runner.output = ""
-        XCTAssertNil(engine(runner).config())
+        XCTAssertNil(brewEngine(runner).config())
     }
 }

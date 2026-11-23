@@ -117,16 +117,21 @@ public enum AnnotationText {
         // The line is composited whole as a group, so the alpha is the emoji's and not each of its glyphs'.
         if isEmoji { context.setAlpha(CGFloat(annotation.style.opacity)); context.beginTransparencyLayer(auxiliaryInfo: nil) }
         context.setShouldAntialias(true)
+        setUpText(in: context)
+        context.textPosition = CGPoint(x: annotation.start.x, y: annotation.start.y + ascent)
+        CTLineDraw(line, context)
+        if isEmoji { context.endTransparencyLayer() }
+        context.restoreGState()
+    }
+
+    /// What text and a step's digit are set with in a context of top-left points: no font smoothing, positions kept to the subpixel, the glyphs upright.
+    static func setUpText(in context: CGContext) {
         context.setShouldSmoothFonts(false)
         context.setAllowsFontSubpixelPositioning(true)
         context.setShouldSubpixelPositionFonts(true)
         context.setAllowsFontSubpixelQuantization(false)
         context.setShouldSubpixelQuantizeFonts(false)
         context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
-        context.textPosition = CGPoint(x: annotation.start.x, y: annotation.start.y + ascent)
-        CTLineDraw(line, context)
-        if isEmoji { context.endTransparencyLayer() }
-        context.restoreGState()
     }
 
     /// The text as a picture of whole display pixels (top-left origin, `pixels`), transparent where there is no ink,
@@ -149,13 +154,8 @@ public enum AnnotationText {
         let x1 = (box.maxX * scale).rounded(.up), y1 = (box.maxY * scale).rounded(.up)
         guard x1 > x0, y1 > y0, (x1 - x0) * (y1 - y0) < 1e8 else { return nil }
         let (width, height) = (Int(x1 - x0), Int(y1 - y0))
-        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                                      space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else { return nil }
-        // The export's own transform, display-local points to a bitmap's pixels, bottom-left.
-        context.translateBy(x: 0, y: CGFloat(height))
-        context.scaleBy(x: scale, y: -scale)
-        context.translateBy(x: -x0 / scale, y: -y0 / scale)
+        guard let context = Pixelate.bitmap(width: width, height: height, space: space) else { return nil }
+        context.mapDisplayPoints(toBitmapOfHeight: height, scale: scale, origin: CGPoint(x: x0, y: y0))
         drawing(context)
         guard let image = context.makeImage() else { return nil }
         return Pixelate.Tile(image: image, pixels: CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0))

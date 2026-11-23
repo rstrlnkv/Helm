@@ -1,5 +1,6 @@
 import SwiftUI
 import HelmRuntime
+import HelmUI
 import Module_KeepAwake_Engine
 
 /// What the slot under the presets says: the battery guard first, then a
@@ -15,6 +16,51 @@ enum KeepAwakeNotice: Equatable {
         if batteryStopped { return .battery }
         if assertionRefused { return .assertionRefused }
         return suppressed ? .paused : .none
+    }
+}
+
+/// The slot under the presets, drawn: one `HelmBanner` per notice, for the hero
+/// and the panel alike.
+///
+/// `notice` has the battery first, and the battery has no button: «Resume»
+/// would be a control that cannot do what it says while the guard is in force,
+/// and the notice goes by itself when the charger goes in. A refusal has none
+/// either. Only a paused rule carries the way back.
+///
+/// `compact` is the panel: the short sentences (the hero says «— plug in»
+/// after the battery one, which is the way out; in a 320 pt card there is no
+/// room for a second clause beside a symbol, and the long pause sentence wraps
+/// to four lines beside a button), the compact banner, and a small button. The
+/// panel's battery banner needs no button: the presets going grey above it say
+/// the panel cannot help.
+/// The hero's banner does not fill the width; the panel's does.
+struct KeepAwakeNoticeBanner: View {
+    let notice: KeepAwakeNotice
+    let batteryFloor: Int
+    let compact: Bool
+    let resume: () -> Void
+
+    var body: some View {
+        switch notice {
+        case .battery:
+            HelmBanner(compact ? KAStr.stoppedByBatteryShort(batteryFloor)
+                               : KAStr.stoppedByBattery(batteryFloor),
+                       symbol: "battery.25", fillsWidth: compact, compact: compact) { EmptyView() }
+        case .assertionRefused:
+            HelmBanner(KAStr.assertionRefused, symbol: "exclamationmark.triangle.fill",
+                       fillsWidth: compact, compact: compact) { EmptyView() }
+        case .paused, .none:
+            HelmBanner(compact ? KAStr.automationPausedShort : KAStr.automationPaused,
+                       symbol: "pause.circle.fill", fillsWidth: compact, compact: compact) {
+                if compact {
+                    Button(KAStr.resume, action: resume)
+                        .controlSize(.small)
+                        .fixedSize()
+                } else {
+                    Button(KAStr.resume, action: resume)
+                }
+            }
+        }
     }
 }
 

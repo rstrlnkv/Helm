@@ -185,8 +185,7 @@ import HelmRuntime
     private func stop() {
         active = false
         calibration = nil
-        events.stop()
-        eventsStarted = false
+        stopEvents()
         teardownVisuals()
     }
 
@@ -195,8 +194,7 @@ import HelmRuntime
     private func reconcile() {
         guard active, !asleep else { return }
         guard settings.builtIn || settings.external || calibration != nil else {
-            events.stop()
-            eventsStarted = false
+            stopEvents()
             teardownVisuals()
             return
         }
@@ -209,18 +207,37 @@ import HelmRuntime
 
     /// The ticker, the pointer and every mask gone, and what was kept about them.
     private func teardownVisuals() {
-        ticker.stop()
-        currentHz = nil
-        pointer.stop()
-        pointerMode = .off
+        stopTicker()
+        stopPointer()
         masks.removeAll()
         specs = []
         windows = [:]
         motion = [:]
         resting = [:]
         geometry = [:]
+        forgetPointerState()
+    }
+
+    private func stopEvents() {
+        events.stop()
+        eventsStarted = false
+    }
+
+    private func stopTicker() {
+        ticker.stop()
+        currentHz = nil
+    }
+
+    private func stopPointer() {
+        pointer.stop()
+        pointerMode = .off
+    }
+
+    /// What the pointer logic remembered about the masks: which hold the pointer, which displays are away, the active corners and the last contact.
+    /// Dropped when the masks are rebuilt (`relayout()`) and when they are all removed (`teardownVisuals()`).
+    private func forgetPointerState() {
         holding = [:]
-        away = [] // no mask stands, so none is away; `relayout()` resets it too, this keeps the teardown whole
+        away = []
         activeCorners = []
         contact = nil
     }
@@ -262,22 +279,17 @@ import HelmRuntime
         for id in Set(diff.added.map(\.key.display)) where motion[id]?.rounded == false {
             masks.setRounded(false, display: id)
         }
-        holding = [:]
-        away = []
-        activeCorners = []
-        contact = nil
+        forgetPointerState()
 
         if windows.isEmpty {
-            ticker.stop()
-            currentHz = nil
+            stopTicker()
         } else {
             tune()
         }
         if windows.keys.contains(where: { geometry[$0]?.boundary != nil }) {
             if pointerMode == .off || pointerMode == .unavailable { startPointer() }
         } else {
-            pointer.stop()
-            pointerMode = .off
+            stopPointer()
         }
     }
 

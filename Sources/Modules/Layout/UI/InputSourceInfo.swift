@@ -33,7 +33,7 @@ struct InputSourceInfo {
     private static func make(from source: TISInputSource) -> InputSourceInfo? {
         guard let id = InputSources.identifier(of: source) else { return nil }
         let name = InputSources.string(source, kTISPropertyLocalizedName) ?? id
-        let language = languages(source).first ?? ""
+        let language = InputSources.languages(of: source).first ?? ""
         // From the layout's name first. `Locale("en").region` is nil — the tag
         // for a plain US layout names no country at all — so asking the tag
         // first left every flag style falling back to letters on an ordinary
@@ -42,11 +42,5 @@ struct InputSourceInfo {
         return InputSourceInfo(id: id, name: name,
                                badge: LanguageBadge.label(language: language, region: region),
                                region: region)
-    }
-
-    private static func languages(_ source: TISInputSource) -> [String] {
-        guard let pointer = TISGetInputSourceProperty(source, kTISPropertyInputSourceLanguages)
-        else { return [] }
-        return (Unmanaged<CFArray>.fromOpaque(pointer).takeUnretainedValue() as? [String]) ?? []
     }
 }

@@ -24,18 +24,7 @@ struct LeftoversSettingsPage: View {
     /// dialog follows the row says exactly what the bar below it says, because
     /// it is the same act.
     private static func deleteLabel(for item: StaleItem) -> String {
-        LeftoverActions.needsConfirmation(item) ? LfStr.deleteItem : HelmWord.moveToTrash
-    }
-
-    /// What «Found: N» is about: the rows the list under it draws.
-    ///
-    /// It counted `leftoverCount` — *how many you may tick* — beside the control
-    /// that decides what is shown: «Found: 3 items» over 542 rows with the filter
-    /// on «All», and «Found: 1 item» over four rows every one of which is badged
-    /// «Leftover». Both quantities are wanted; `leftoverCount` goes on gating
-    /// «Select all», which is the question it actually answers.
-    private static func foundCaption(_ lvm: LeftoversViewModel) -> String {
-        LfStr.foundLine(lvm.visibleItems.count)
+        LeftoverActions.askBeforeDeleting(item) != nil ? LfStr.deleteItem : HelmWord.moveToTrash
     }
 
     private var grouped: [(kind: StaleKind, items: [StaleItem])] {
@@ -214,7 +203,9 @@ struct LeftoversSettingsPage: View {
     /// arrangement whose ideal width the strip can give it, so nothing here is
     /// measured by hand or truncated.
     @ViewBuilder private var captions: some View {
-        let found = caption(Self.foundCaption(lvm))
+        // The rows the list draws, not `leftoverCount` (what may be ticked):
+        // that one goes on gating «Select all».
+        let found = caption(LfStr.foundLine(lvm.visibleItems.count))
         if lvm.uncheckedCount > 0 {
             let unchecked = caption(LfStr.uncheckedLine(lvm.uncheckedCount))
             ViewThatFits(in: .horizontal) {
@@ -434,7 +425,7 @@ struct LeftoversSettingsPage: View {
                 Button(HelmA11y.showInFinder) { HelmReveal.inFinder(item.path) }
                 if item.actions.contains(.delete) {
                     Button(Self.deleteLabel(for: item), role: .destructive) {
-                        if LeftoverActions.needsConfirmation(item) {
+                        if LeftoverActions.askBeforeDeleting(item) != nil {
                             pendingDeletion = item
                         } else {
                             Task { await lvm.remove(item) }

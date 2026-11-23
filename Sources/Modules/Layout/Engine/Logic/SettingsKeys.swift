@@ -48,6 +48,10 @@ extension NamespacedStore {
     /// pages share the read as well as the table: one test of these pins every
     /// caller.
     public var layoutAutomatic: Bool { bool(LayoutKey.automatic, default: LayoutDefault.automatic) }
+    public var layoutIndicator: Bool { bool(LayoutKey.indicator, default: false) }
+    public var layoutBadgeStyle: BadgeStyle {
+        BadgeStyle.from(string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue))
+    }
     public var layoutAudible: Bool { bool(LayoutKey.audible, default: LayoutDefault.audible) }
     public var layoutFixCapitals: Bool { bool(LayoutKey.fixCapitals, default: LayoutDefault.fixCapitals) }
     public var layoutTapKey: TapKey {

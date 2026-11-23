@@ -180,7 +180,7 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
     func testAScanWhoseVolumeDoesNotAnswerDrawsNoWedge() async throws {
         let root = scratchDirectory("disk-silent-wedge")
         try Data(count: 4096).write(to: root.appendingPathComponent("a.bin"))
-        let engine = DiskEngine(capacity: SilentCapacity(), trashing: neverTrashes)
+        let engine = DiskEngine(capacity: FakeCapacity(), trashing: neverTrashes)
         let scan = await engine.scan(path: root.path)
         let result = try XCTUnwrap(scan)
         XCTAssertEqual(result.freeBytes, 0)
@@ -271,11 +271,4 @@ private struct AnyPathCapacity: VolumeCapacityPort {
     }
     func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject { NSObject() }
 
-}
-
-/// A port with nothing mounted and no answer for any path.
-struct SilentCapacity: VolumeCapacityPort {
-    func mounted() -> [VolumeReadout] { [] }
-    func readout(at path: String) -> VolumeReadout? { nil }
-    func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject { NSObject() }
 }

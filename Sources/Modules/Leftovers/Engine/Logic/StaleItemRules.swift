@@ -33,14 +33,20 @@ enum StaleItemRules {
         // Reverse-DNS with at least vendor + name: a bare word says nothing
         // about who owns the file.
         guard identifier.split(separator: ".").count >= 3 else { return false }
-        // A helper of an installed app carries its prefix; that app still needs it.
-        guard !installedIDs.contains(where: { identifier.hasPrefix($0 + ".") }) else { return false }
         // A dry run on a real machine offered com.adobe.Photoshop and
         // com.microsoft.office: settings whose ids match no app bundle, while
         // the software was very much installed. If a vendor has anything
         // installed at all, leave their files alone.
         guard !vendorHasInstalledApp(identifier, installedIDs) else { return false }
-        return !installedIDs.contains(identifier)
+        // An installed app's own id, or a helper carrying its prefix: that app still needs it.
+        return !isOwned(identifier, byInstalled: installedIDs)
+    }
+
+    /// An item belongs to an installed app when its id matches one, or extends
+    /// one (helpers and extensions carry their app's id as a prefix).
+    static func isOwned(_ identifier: String, byInstalled installed: Set<String>) -> Bool {
+        installed.contains(identifier)
+            || installed.contains { identifier.hasPrefix($0 + ".") }
     }
 
     /// "com.adobe.Photoshop" → "com.adobe."

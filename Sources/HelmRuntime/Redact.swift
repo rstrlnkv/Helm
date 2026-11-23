@@ -19,16 +19,11 @@ public enum Redact {
     /// pointed at `/System/Volumes/Data` by hand, and the scan root is logged.
     public static func path(_ path: String, home: String = NSHomeDirectory()) -> String {
         guard !home.isEmpty else { return path }
-        for prefix in [home, FirmlinkTwin.dataMount + home] {
+        for prefix in [home, DataVolume.mount + home] {
             if path == prefix { return "~" }
             if path.hasPrefix(prefix + "/") { return "~" + path.dropFirst(prefix.count) }
         }
         return path
-    }
-
-    /// The Data volume's mount point, where the same files appear a second time.
-    enum FirmlinkTwin {
-        static let dataMount = "/System/Volumes/Data"
     }
 
     /// What the last component of a module's paths is, which decides how much of a

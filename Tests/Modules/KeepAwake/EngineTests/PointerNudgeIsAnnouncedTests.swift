@@ -40,12 +40,7 @@ final class PointerNudgeIsAnnouncedTests: XCTestCase {
         pointer.bounds = CGRect(x: 0, y: 0, width: 1440, height: 900)
         clock = FakeClock()
         store.set(true, for: "jiggleEnabled")
-        engine = KeepAwakeEngine(settings: settings, store: store,
-                                 assertions: FakeAssertions(),
-                                 displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(),
-                                 power: FakePower(), apps: FakeApps(),
-                                 pointer: pointer, clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
+        engine = fakeEngine(settings: settings, store: store, pointer: pointer, clock: clock)
     }
 
     /// Fires the jiggle timer once, at the interval the settings ask for.

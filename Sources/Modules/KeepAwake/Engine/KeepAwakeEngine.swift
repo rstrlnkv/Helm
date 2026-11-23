@@ -440,12 +440,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             if settings.jiggleEnabled { scheduleJiggle() }
             scheduleBatteryWatch()
         } else if !r.isActive && isActive {
-            assertions.release()
-            assertionRefused = false
             HelmLog.shared.info(Self.moduleID, "released")
-            if lid.active { lid.disengage() }
-            cancelTimers()
-            isActive = false
+            letGo()
         }
         activeConditions = r.conditions
         emitState()
@@ -510,12 +506,17 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // or from a hand-edited plist, would otherwise hold a Mac mini awake
         // for ever through a row nobody can see to switch off.
         guard lidInfo.hasLid() else { return false }
-        return settings.autoExternalDisplay && externalDisplayAttached()
+        return settings.autoExternalDisplay && hasExternalDisplay()
     }
 
     private func externalDisplayAttached() -> Bool {
-        lidInfo.hasLid() && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags())
+        lidInfo.hasLid() && hasExternalDisplay()
     }
+
+    private func hasExternalDisplay() -> Bool {
+        ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags())
+    }
+
     /// **Definitely** on mains — the only reading that may hold a Mac awake, and
     /// this module's fold of the port's three answers (`PowerInfoPort.supply()`
     /// has the history). A supply nothing named fails toward sleep, which is the
@@ -569,11 +570,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             // or the charger is holding it. Without this line the countdown simply
             // disappears and nothing accounts for the assertion still being held.
             HelmLog.shared.info(Self.moduleID, "timer ended; an automatic condition still holds")
-            manualOn = false
-            endDate = nil
-            startDate = nil
-            rememberSession()
-            recompute()
+            endSession(pausingRules: false)
         case .deactivate:
             // A session ending because a rule was asked to end with its timer
             // reads, from outside, exactly like one ending because the timer
@@ -622,6 +619,17 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                              threshold: settings.batteryGuardPercent)
     }
 
+    /// Everything a running session holds, put down: the assertion, the lid
+    /// option, the timers, and with them `assertionRefused` and `isActive`,
+    /// which it clears. The caller's log line comes first.
+    private func letGo() {
+        assertions.release()
+        assertionRefused = false
+        if lid.active { lid.disengage() }
+        cancelTimers()
+        isActive = false
+    }
+
     /// Let go, and say so once — not once per power notification.
     private func releaseForBattery() {
         activeConditions = []
@@ -644,11 +652,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         let charge = power.snapshot().map { "\($0.percent)%" } ?? "an unreadable charge"
         HelmLog.shared.info(Self.moduleID, "battery guard stopped the session at "
                             + "\(charge) (floor \(settings.batteryGuardPercent)%)")
-        assertions.release()
-        assertionRefused = false
-        if lid.active { lid.disengage() }
-        cancelTimers()
-        isActive = false
+        letGo()
         // A hand-started session really is over — there is no deadline left to
         // come back to. A rule is not: it holds again the moment the veto lifts.
         manualOn = false

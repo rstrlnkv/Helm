@@ -31,10 +31,10 @@ final class HelmTrashBatchOutcomeTests: XCTestCase {
     /// A folder holding one 300 KB file. Returns (parent, child).
     private func makeTree() throws -> (String, String) {
         let root = scratchDirectory("batch")
-        let name = "helm-batch-folder-\(UUID().uuidString)"
+        let name = unownableLeaf("helm-batch-folder")
         let folder = root.appendingPathComponent(name)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let childName = "helm-batch-file-\(UUID().uuidString).bin"
+        let childName = unownableLeaf("helm-batch-file.bin")
         try Data(repeating: 0x41, count: 300_000)
             .write(to: folder.appendingPathComponent(childName))
         reclaimFromTrash(name)

@@ -111,7 +111,7 @@ public struct HelmRemovalOutcome: View {
                         .helmQuietDetail()
                     Spacer(minLength: 8)
                     if needsFullDiskAccess {
-                        Button(Self.grant) { PermissionNeed.fullDiskAccess.openSettings() }
+                        Button(HelmWord.grant) { PermissionNeed.fullDiskAccess.openSettings() }
                             .controlSize(.small)
                     }
                 }
@@ -176,8 +176,6 @@ public struct HelmRemovalOutcome: View {
     private static func more(_ n: Int) -> String {
         L(.andMore(String(n)))
     }
-
-    private static var grant: String { L(.grant) }
 
     /// The sentence this row says quietly: what is known, with nothing to act on.
     private func quiet(_ text: String) -> some View {

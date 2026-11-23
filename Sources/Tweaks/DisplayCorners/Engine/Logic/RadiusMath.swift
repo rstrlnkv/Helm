@@ -53,7 +53,7 @@ enum RadiusMath {
     /// at that scale, clamped to `bounds`. A scale that is not finite or not positive is 1 (14 px).
     static func defaultPixels(scale: CGFloat) -> Double {
         let scale = scale.isFinite && scale > 0 ? min(Double(scale), bounds.upperBound) : 1
-        return min(max(defaultPoints * scale, bounds.lowerBound), bounds.upperBound)
+        return (defaultPoints * scale).clamped(to: bounds)
     }
 
     static func pixels(stored: Double?, scale: CGFloat) -> Double {

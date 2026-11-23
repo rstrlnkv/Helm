@@ -4,7 +4,7 @@ import XCTest
 /// Russian's commonest words are one letter long, and the module refused every
 /// one of them.
 ///
-/// `LayoutVerdict.minimumLength` was 2, under a comment saying «one character is
+/// The minimum word length was 2, under a comment saying «one character is
 /// a keystroke, not a word». That is an English sentence about a Russian
 /// problem: English has `a` and `I`, Russian has `в`, `и`, `с`, `к`, `о`, `у`,
 /// `а` and `я` — prepositions, conjunctions and a pronoun in almost every

@@ -19,14 +19,16 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
     // opened longest ago, Delta never recorded — so every order is a different
     // sequence and no assertion passes by the name order being the answer.
     private static let alpha = InstalledApp(name: "Alpha", bundleID: "com.x.alpha",
-                                            path: "/Applications/Alpha.app", sizeBytes: 10_000)
+                                            path: "/Applications/Alpha.app")
     private static let beta = InstalledApp(name: "Beta", bundleID: "com.x.beta",
-                                           path: "/Applications/Beta.app", sizeBytes: 500_000_000)
+                                           path: "/Applications/Beta.app")
     private static let gamma = InstalledApp(name: "Gamma", bundleID: "com.x.gamma",
-                                            path: "/Applications/Gamma.app", sizeBytes: 9_000_000_000)
+                                            path: "/Applications/Gamma.app")
     private static let delta = InstalledApp(name: "Delta", bundleID: "com.x.delta",
-                                            path: "/Applications/Delta.app", sizeBytes: 70_000_000)
+                                            path: "/Applications/Delta.app")
     private static let apps = [alpha, beta, gamma, delta]
+    private static let sizes = [alpha.path: 10_000, beta.path: 500_000_000,
+                                gamma.path: 9_000_000_000, delta.path: 70_000_000]
 
     private static var opened: [String: Date] {
         [alpha.path: Date(timeIntervalSinceNow: -3_600),
@@ -41,7 +43,7 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
     }
 
     private func work(_ list: [InstalledApp] = TheSortedListUnderOddInputsTests.apps,
-                      sizes: [String: Int]? = nil) -> AnsweringWork {
+                      sizes: [String: Int]? = TheSortedListUnderOddInputsTests.sizes) -> AnsweringWork {
         let work = AnsweringWork(apps: list, scans: Self.scans(list),
                                  removal: UninstallResult(trashed: [], freedBytes: 0), sizes: sizes)
         work.setOpened(Self.opened)
@@ -93,12 +95,8 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
     /// under Size the rows change places between the ticks and the review. The
     /// review, the scans and the batch name exactly the ticked apps, each once.
     func testUnderEveryOrderWithTheSizesArrivingTheBatchIsExactlyTheTicked() async throws {
-        let listed = Self.apps.map {
-            InstalledApp(name: $0.name, bundleID: $0.bundleID, path: $0.path, sizeBytes: 0)
-        }
-        let sizes = Dictionary(uniqueKeysWithValues: Self.apps.map { ($0.path, $0.sizeBytes) })
         for order in AppSortOrder.allCases {
-            let work = work(listed, sizes: sizes)
+            let work = work()
             work.holdSizes()
             let uvm = modelOver(work)
             await uvm.setSortOrder(order)

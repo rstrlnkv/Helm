@@ -53,7 +53,7 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
         let engine = LeftoversEngine(home: home, files: files(shared: true),
                                      apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                      switcher: recorder,
-                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                                     store: freshLeftoversStore())
 
         await send(LeftoversToggle(label: label, path: path, disabled: true), to: engine)
 
@@ -73,7 +73,7 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
         let engine = LeftoversEngine(home: home, files: files(shared: false),
                                      apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                      switcher: recorder,
-                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                                     store: freshLeftoversStore())
 
         await send(LeftoversToggle(label: label, path: path, disabled: true), to: engine)
 
@@ -87,7 +87,7 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
         let engine = LeftoversEngine(home: home, files: files(shared: true),
                                      apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                      switcher: recorder,
-                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                                     store: freshLeftoversStore())
 
         await send(LeftoversToggle(label: label,
                                    path: "/Library/LaunchAgents/\(label).plist",
@@ -103,7 +103,7 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
     /// Read off `LaunchClaims` rather than off the scan, because this is the half
     /// the engine uses and the scan's half is `OneLabelIsOneSwitchTests`.
     func testALabelIsClaimedByWhateverRegistersIt() {
-        let claims = LaunchClaims.onDisk(home: home, files: files(shared: true))
+        let claims = LaunchClaims.onDisk(home: home, files: files(shared: true)).claims
 
         XCTAssertEqual(LaunchClaims.claimants(of: label, in: claims).count, 2)
         XCTAssertEqual(LaunchClaims.claimants(of: "com.other.agent", in: claims), [])

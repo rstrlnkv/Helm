@@ -36,11 +36,7 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
         clamshell.sudoersInstalled = true
         clamshell.passwordlessGrantExists = true
         settings.setClamshellEnabled(true)
-        engine = KeepAwakeEngine(settings: settings, store: store,
-                                 assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(), power: FakePower(),
-                                 apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine = fakeEngine(settings: settings, store: store, clamshell: clamshell)
     }
 
     private var guardFlag: Bool {
@@ -179,11 +175,7 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
     /// A second engine over the same store and the same lid, which is what the
     /// next launch is.
     private func atLaunch() -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: settings, store: store,
-                        assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                        displayObserver: FakeDisplayObserver(), power: FakePower(),
-                        apps: FakeApps(), pointer: FakePointer(),
-                        clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
+        fakeEngine(settings: settings, store: store, clamshell: clamshell)
     }
 
     // MARK: - Where the grant is still load-bearing

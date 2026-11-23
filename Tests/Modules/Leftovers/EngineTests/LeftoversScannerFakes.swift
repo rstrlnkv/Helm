@@ -210,3 +210,8 @@ func firstAgent(home: URL, files: LeftoversFakeFiles,
     return try XCTUnwrap(items.first { $0.kind == .launchAgent },
                          "precondition: the agent is listed at all")
 }
+
+/// A store no other test shares: its own namespace over its own memory.
+func freshLeftoversStore() -> NamespacedStore {
+    NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore())
+}

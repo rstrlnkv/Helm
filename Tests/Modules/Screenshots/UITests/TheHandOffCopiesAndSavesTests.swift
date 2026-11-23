@@ -48,7 +48,7 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
     func testTheOneSaveTargetDecidesWhatAnAreaMakes() async throws {
         for target in SaveTarget.allCases {
             let (controller, board, disk) = controller(saving: target)
-            await controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 20, height: 10)))
+            await controller.handOff(try ShotToastRig.picture(width: 20, height: 10))
             XCTAssertEqual(board.copies, 1, "target \(target): an area was not copied")
             XCTAssertEqual(disk.written, target == .clipboard ? 0 : 1,
                            "target \(target): an area was \(target == .clipboard ? "saved as a file though the target is the clipboard" : "not saved")")

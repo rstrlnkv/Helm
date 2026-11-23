@@ -115,7 +115,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let (runner, interfaces) = bothUp(routed: "utun7")      // the route is on «home»
         let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
-        speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
+        speed.answer = VPNSpeedReading(down: 240, up: 40, at: at)
         let engine = makeEngine(runner, news: news, interfaces: interfaces, speed: speed)
         engine.refresh()
         let count = await lastState(on: news)?.tunnels.count
@@ -136,7 +136,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let (runner, interfaces) = bothUp(routed: "utun7")
         let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
-        speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
+        speed.answer = VPNSpeedReading(down: 240, up: 40, at: at)
         let engine = makeEngine(runner, news: news, interfaces: interfaces, speed: speed)
         engine.refresh()
 
@@ -166,7 +166,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let (runner, interfaces) = bothUp(routed: "utun7")
         let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
-        speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
+        speed.answer = VPNSpeedReading(down: 240, up: 40, at: at)
         speed.blocksUntilReleased = true       // a run that started would still be going
         defer { speed.release() }
         let engine = makeEngine(runner, news: news, interfaces: interfaces, speed: speed)
@@ -188,7 +188,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let (runner, interfaces) = bothUp(routed: "utun7")
         let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
-        speed.answer = VPNSpeedReading(down: 1, up: 1, rpm: 1, at: at)
+        speed.answer = VPNSpeedReading(down: 1, up: 1, at: at)
         let engine = makeEngine(runner, news: news, interfaces: interfaces, speed: speed)
         engine.refresh()
 
@@ -206,7 +206,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let (runner, interfaces) = bothUp(routed: "utun7")
         let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
-        speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
+        speed.answer = VPNSpeedReading(down: 240, up: 40, at: at)
         speed.blocksUntilReleased = true
         defer { speed.release() }
         let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
@@ -247,7 +247,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let (runner, interfaces) = bothUp(routed: "utun7")      // «home» holds the route
         let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
-        speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
+        speed.answer = VPNSpeedReading(down: 240, up: 40, at: at)
         let engine = makeEngine(runner, news: news, interfaces: interfaces, speed: speed)
         engine.refresh()
         let landed = expectation(description: "the reading reached the page")
@@ -279,7 +279,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let (runner, interfaces) = bothUp(routed: "utun7")
         let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
-        speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
+        speed.answer = VPNSpeedReading(down: 240, up: 40, at: at)
         let engine = makeEngine(runner, news: news, interfaces: interfaces, speed: speed)
         engine.refresh()
         let landed = expectation(description: "the reading reached the page")

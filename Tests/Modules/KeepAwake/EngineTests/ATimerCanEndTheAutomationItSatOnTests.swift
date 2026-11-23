@@ -24,11 +24,7 @@ final class ATimerCanEndTheAutomationItSatOnTests: XCTestCase {
         apps.ids = ["com.example.render"]
         store.set(AppTriggerRules.encode([AppTrigger(bundleID: "com.example.render")]),
                   for: KeepAwakeSettings.Key.autoAppRules)
-        engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                 assertions: assertions, displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(), power: FakePower(),
-                                 apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
+        engine = fakeEngine(store: store, assertions: assertions, apps: apps, clock: clock)
     }
 
     /// Today's behaviour, which the setting must not change when it is off:

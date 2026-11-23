@@ -169,4 +169,29 @@ final class FakeScreenshotsScene {
     }
 
     private final class Holder { weak var scene: FakeScreenshotsScene? }
+
+    /// A scene over a screen that freezes one blank frame per real screen at once, no overlay built.
+    static func plain() throws -> FakeScreenshotsScene {
+        FakeScreenshotsScene(screen: FakeScreen(outcome: try FakeScreen.frozen(real: false)))
+    }
+
+    /// A scene whose screen's freeze waits on the returned gate (`held`), over frames of the real screens when the
+    /// overlay is built.
+    static func withGate(held: Bool = true, buildOverlay: Bool = false) throws -> (FakeScreenshotsScene, PromptGate) {
+        let gate = PromptGate()
+        let screen = FakeScreen(outcome: try FakeScreen.frozen(real: buildOverlay), gate: held ? gate : nil)
+        return (FakeScreenshotsScene(screen: screen, buildOverlay: buildOverlay), gate)
+    }
+
+    /// Brings the area press to an open overlay and returns it.
+    func openOverlay(_ gate: PromptGate, in test: XCTestCase, pageFirst: Bool = false) async throws -> CaptureOverlay {
+        if pageFirst { model.refresh() }
+        model.press(.area)
+        await gate.reached()
+        await gate.open()
+        await test.waitUntil("the overlay reached the seam") { self.overlay != nil }
+        let overlay = try XCTUnwrap(self.overlay)
+        XCTAssertTrue(overlay.isOpen, "the control: the overlay is up before the switch")
+        return overlay
+    }
 }

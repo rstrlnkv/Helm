@@ -110,8 +110,9 @@ final class LogReaderPlace {
     /// with Follow lit; nil when it was not at the end then.
     private var endTop: CGFloat?
     private var asked = 0
-    private var lastReport = Date.distantPast
-    private var timerPending = false
+    /// The wait for quiet: replaced by every report, so it fires `quiet` after
+    /// the last one, once per quiet spell.
+    private var quietTimer: AnyObject?
 
     /// What the page does for the place, set by the page. `drawEarlier` draws at
     /// least one launch before the oldest one drawn whenever there is one not
@@ -181,22 +182,8 @@ final class LogReaderPlace {
     // MARK: - At rest
 
     private func restart() {
-        lastReport = Date()
-        guard !timerPending else { return }
-        timerPending = true
-        schedule(after: Self.quiet)
-    }
-
-    private func schedule(after delay: TimeInterval) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self else { return }
-            let waited = Date().timeIntervalSince(self.lastReport)
-            if waited < Self.quiet {
-                self.schedule(after: Self.quiet - waited)
-            } else {
-                self.timerPending = false
-                self.atRest()
-            }
+        quietTimer = DelayedWork.schedule(on: .main, after: Self.quiet) { [weak self] in
+            MainActor.assumeIsolated { self?.atRest() }
         }
     }
 
@@ -266,13 +253,11 @@ final class LogReaderPlace {
     /// room is chosen too, which is a known defect, `log-tall-line` in the defect log.
     private func capture() {
         let top = metrics.top
-        var best: (id: LogEntry.ID, frame: CGRect)?
-        for (id, frame) in frames where frame.minY >= top - 0.5 {
-            if best == nil || frame.minY < best!.frame.minY { best = (id, frame) }
-        }
+        let best = frames.filter { $0.value.minY >= top - 0.5 }
+            .min { $0.value.minY < $1.value.minY }
         anchor = best.map { found in
-            let distance = found.frame.minY - top
-            let room = metrics.visibleHeight - found.frame.height
+            let distance = found.value.minY - top
+            let room = metrics.visibleHeight - found.value.height
             // With `room` of 1 or less there is no room to be a fraction of, so the
             // fraction is 0 and no division happens. Past that check a not-a-number
             // cannot arise (finite frames); if one did, it reads as the bottom of
@@ -280,7 +265,7 @@ final class LogReaderPlace {
             let fraction = room > 1
                 ? (distance / room).clamped(to: 0...1, whenNotANumber: 1)
                 : 0
-            return (found.id, distance, top, fraction)
+            return (found.key, distance, top, fraction)
         }
     }
 }

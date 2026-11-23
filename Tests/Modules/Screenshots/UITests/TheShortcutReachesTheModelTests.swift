@@ -14,17 +14,13 @@ import Module_Screenshots_Engine
 @MainActor
 final class TheShortcutReachesTheModelTests: XCTestCase {
 
-    private func makeScene() throws -> FakeScreenshotsScene {
-        FakeScreenshotsScene(screen: FakeScreen(outcome: try FakeScreen.frozen(real: false)))
-    }
-
     /// Fails against a descriptor that maps by position or ignores the slot: some slot has another's effect.
     func testEachSlotReachesItsOwnPress() async throws {
         let hotkeys = ScreenshotsDescriptor.hotkeys
         XCTAssertEqual(hotkeys.count, 3, "the descriptor declares the three shortcuts, or this walks nothing")
         let descriptor = ScreenshotsDescriptor()
         for hotkey in hotkeys {
-            let scene = try makeScene()
+            let scene = try FakeScreenshotsScene.plain()
             descriptor.hotkeyPressed(hotkey, scene.model)
             switch hotkey.slot {
             case ScreenshotsHotkey.panel.slot:
@@ -48,7 +44,7 @@ final class TheShortcutReachesTheModelTests: XCTestCase {
     /// The control is the test above (a known slot does something on an identical scene); this one asserts the
     /// absence. Fails against a descriptor that falls to a default press for a slot it does not know.
     func testAnUnknownSlotReachesNothing() async throws {
-        let scene = try makeScene()
+        let scene = try FakeScreenshotsScene.plain()
         ScreenshotsDescriptor().hotkeyPressed(ModuleHotkey(slot: "\(ScreenshotsEngine.moduleID).nothing", prefix: "nothing"),
                                               scene.model)
         ScreenshotsDescriptor().hotkeyPressed(ModuleHotkey(slot: "", prefix: ""), scene.model)
@@ -61,7 +57,7 @@ final class TheShortcutReachesTheModelTests: XCTestCase {
     /// Fails against a model that builds a session per
     /// press: the engine is asked twice, and the first controller's state is dropped on the floor.
     func testTwoPressesBuildOneSession() async throws {
-        let scene = try makeScene()
+        let scene = try FakeScreenshotsScene.plain()
         let panel = try XCTUnwrap(ScreenshotsDescriptor.hotkeys.first { $0.slot == ScreenshotsHotkey.panel.slot })
         ScreenshotsDescriptor().hotkeyPressed(panel, scene.model)
         XCTAssertEqual(scene.barsPresented, 1, "the control: the first press raised the bar")

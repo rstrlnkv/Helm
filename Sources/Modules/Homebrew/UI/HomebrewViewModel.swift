@@ -84,9 +84,9 @@ private final class SharedLatestRequest: @unchecked Sendable {
     @Published private(set) var installedReading: ListReading = .notAsked
     /// Whether there is an installed list to speak from, for the readers that
     /// only need that much — the status line's counts and the fix judge.
-    /// Derived rather than stored beside the reading, for the reason `issues`
-    /// is derived from `doctor`: two fields are two accounts of one answer, and
-    /// the one that goes stale is the one a page reads.
+    /// Derived rather than stored beside the reading: two fields are two
+    /// accounts of one answer, and the one that goes stale is the one a page
+    /// reads.
     var loadedInstalled: Bool { installedReading == .answered }
     @Published private(set) var outdated: [OutdatedPackage] = []
     /// `installedReading`'s twin for `brew outdated`.
@@ -364,6 +364,14 @@ private final class SharedLatestRequest: @unchecked Sendable {
         scheduleAutomaticSearch(for: q)
     }
 
+    /// `scheduleAutomaticSearch` for the word the field holds now, when it holds
+    /// one — what `refreshInstalled`, `refreshOutdated` (answer or refusal) and
+    /// the retiring of a refused search do, since each can make the word newly
+    /// qualify.
+    private func rearmSearch() {
+        if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
+    }
+
     /// Starts the pause toward an automatic search for `q`, when the trigger
     /// rule allows it — shared by `queryMoved()` and by `segment`'s own
     /// `didSet`, and by every list refresh that can make a word newly
@@ -490,7 +498,7 @@ private final class SharedLatestRequest: @unchecked Sendable {
                     // between — nothing here may clear a claim it did not make.
                     self.searchedQuery = nil
                     self.searchReading = .notAsked
-                    if let q = ListFilter.needle(self.query) { self.scheduleAutomaticSearch(for: q) }
+                    self.rearmSearch()
                 }
             }
         }
@@ -561,24 +569,21 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// cannot disagree about which package is on screen.
     private var selectedPackage: PackageRef? {
         guard let id = selected else { return nil }
-        func ref(_ name: String, _ isCask: Bool) -> PackageRef {
-            PackageRef(name: name, isCask: isCask)
-        }
         // The two package tabs fall back to the "Available to install"
         // section under them, since search is a field on every tab rather than
         // a list of its own. Состояние has no section and no selection: its
         // findings open in place (`HomebrewHealthPage`), so nothing there names
         // a package for `brew info` to be asked about.
+        let own: PackageRef?
         switch segment {
         case .installed:
-            if let p = installed.first(where: { $0.id == id }) { return ref(p.name, p.isCask) }
-            return shownHits.first { $0.id == id }.map { ref($0.name, $0.isCask) }
+            own = installed.first { $0.id == id }.map { PackageRef(name: $0.name, isCask: $0.isCask) }
         case .updates:
-            if let p = outdated.first(where: { $0.id == id }) { return ref(p.name, p.isCask) }
-            return shownHits.first { $0.id == id }.map { ref($0.name, $0.isCask) }
+            own = outdated.first { $0.id == id }.map { PackageRef(name: $0.name, isCask: $0.isCask) }
         case .health:
             return nil
         }
+        return own ?? shownHits.first { $0.id == id }.map { PackageRef(name: $0.name, isCask: $0.isCask) }
     }
 
     /// Asks, then assigns only if this is still the ask the page is waiting on.
@@ -673,8 +678,8 @@ private final class SharedLatestRequest: @unchecked Sendable {
     // MARK: - What each tab actually shows
 
     /// `installed`, filtered by `query` against the name and — once it has
-    /// loaded — the description. Derived rather than stored, for `issues`'s
-    /// own reason: two fields are two accounts of one answer.
+    /// loaded — the description. Derived rather than stored: two fields are
+    /// two accounts of one answer.
     var shownInstalled: [BrewPackage] {
         PackageStanding.matching(ListFilter.needle(query), installed, descriptions: descriptions)
     }
@@ -937,7 +942,7 @@ private final class SharedLatestRequest: @unchecked Sendable {
             // anything typed during the wait, not now and not on the next
             // keystroke either, since nothing re-reads a reading that never
             // changes.
-            if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
+            rearmSearch()
             return
         }
         installed = answer
@@ -949,7 +954,7 @@ private final class SharedLatestRequest: @unchecked Sendable {
         installedReading = .answered
         listedBrew = status.brewPath
         reconcileVisible()
-        if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
+        rearmSearch()
         await loadDescriptions(formulae: installed.filter { !$0.isCask }.map(\.name),
                                casks: installed.filter(\.isCask).map(\.name))
     }
@@ -964,11 +969,6 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// never answered.
     @Published private(set) var doctor: DoctorReading = .notAsked
 
-    /// The issues to draw, which only an `.examined` reading has. Computed
-    /// rather than stored beside `doctor`: two fields are two accounts of one
-    /// answer, and the one that goes stale is the one a page reads.
-    var issues: [DoctorIssue] { doctor.issues }
-
     /// What `brew config` last answered — the lines the configuration card
     /// is drawn from, **and the document «Copy for a bug report» puts on the
     /// pasteboard**. nil until it has been asked, which is every launch:
@@ -976,8 +976,8 @@ private final class SharedLatestRequest: @unchecked Sendable {
     @Published private(set) var config: BrewConfig?
 
     /// Those lines as the three groups the configuration card draws. Computed
-    /// rather than stored beside `config`, for the reason `issues` is: two
-    /// fields are two accounts of one answer.
+    /// rather than stored beside `config`: two fields are two accounts of one
+    /// answer, and the one that goes stale is the one a page reads.
     var configGroups: [ConfigGroup] { ConfigGroup.grouping(config?.lines ?? []) }
 
     /// What `brew config` says about this Homebrew and this Mac.
@@ -1118,7 +1118,7 @@ private final class SharedLatestRequest: @unchecked Sendable {
             // `refreshInstalled`'s own reason: a refusal is a reading, and
             // nothing else re-opens the pause for a word typed while this
             // list sat `.waiting`.
-            if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
+            rearmSearch()
             return
         }
         outdated = answer
@@ -1128,7 +1128,7 @@ private final class SharedLatestRequest: @unchecked Sendable {
         reconcile(.updates, against: Set(answer.map(\.id)).union(shownHits.map(\.id)))
         outdatedReading = .answered
         reconcileVisible()
-        if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
+        rearmSearch()
     }
     /// `loadedInstalled`'s twin, derived from `outdatedReading` for the same
     /// reason. `loadIfNeeded` deliberately never asks `brew outdated`, so this

@@ -124,13 +124,8 @@ final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
     private func engine(clock: FakeClock = FakeClock(),
                         apps: FakeApps = FakeApps(),
                         assertions: FakeAssertions = FakeAssertions()) -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                        assertions: assertions,
-                        displayInfo: FakeDisplayInfo(),
-                        displayObserver: FakeDisplayObserver(),
-                        power: FakePower(), apps: apps,
-                        pointer: FakePointer(), clamshell: clamshell,
-                        clock: clock, lidInfo: FakeLidInfo())
+        fakeEngine(store: store, assertions: assertions, apps: apps, clamshell: clamshell,
+                   clock: clock)
     }
 
     /// The control: with neither anchor, launch asks `pmset` nothing at all —

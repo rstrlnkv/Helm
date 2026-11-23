@@ -24,8 +24,7 @@ public enum Spotlights {
 
     /// The spotlight's box with round corners: the one geometry the dim and a press both read.
     static func outline(of annotation: Annotation) -> CGPath {
-        let box = CGRect(x: min(annotation.start.x, annotation.end.x), y: min(annotation.start.y, annotation.end.y),
-                         width: abs(annotation.end.x - annotation.start.x), height: abs(annotation.end.y - annotation.start.y))
+        let box = CGRect(corner: annotation.start, opposite: annotation.end)
         let radius = min(cornerRadius, box.width / 2, box.height / 2)
         return CGPath(roundedRect: box, cornerWidth: radius, cornerHeight: radius, transform: nil)
     }

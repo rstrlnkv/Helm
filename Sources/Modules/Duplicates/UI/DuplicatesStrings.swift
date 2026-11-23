@@ -14,20 +14,8 @@ enum DupStr {
     /// the sentence does not ask for one again.
     static var startHintWithFolder: String { L(.helmWillReadThisFolder) }
     static var needsAccess: String { L(.withoutFullDiskAccess) }
-    /// `HelmBasket` in HelmUI: Disk draws the same bar, so its two lines are
-    /// built in one place.
-    static func basketLine(_ count: Int, _ size: String) -> String {
-        HelmBasket.line(count: count, size: size)
-    }
-    static func basketItem(_ name: String, _ size: String) -> String {
-        HelmBasket.item(name: name, size: size)
-    }
     static var systemFile: String { L(.systemFile) }
     static var quickLook: String { L(.quickLook) }
-    /// `HelmBasket.movedToTrash`: Disk, Duplicates and the Uninstaller end a removal on one sentence; Leftovers counts the rows as well (`LfStr.movedToTrash`).
-    static func movedToTrash(_ size: String) -> String {
-        HelmBasket.movedToTrash(size)
-    }
     static func confirmTrash(_ count: Int, _ size: String) -> String {
         // The size stays — how much is going is worth knowing — but the promise
         // that it will be freed does not: the Trash is on the same volume.

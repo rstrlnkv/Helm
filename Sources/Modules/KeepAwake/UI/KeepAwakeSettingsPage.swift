@@ -194,7 +194,7 @@ struct KeepAwakeSettingsPage: View {
                 // the sentence names the number the row below shows.
                 batteryFloor: batteryGuardPercent,
                 timedNote: timedNote,
-                start: start,
+                start: { vm.start(minutes: $0) },
                 stop: { vm.stopSession() },
                 resume: { vm.resumeAutomation() })
         }
@@ -221,8 +221,6 @@ struct KeepAwakeSettingsPage: View {
     private var anyRuleOn: Bool {
         !enabledRules.rules.isEmpty || !appTriggers.isEmpty
     }
-
-    private func start(_ minutes: Int) { vm.start(minutes: minutes) }
 
     /// Four rules, and every row answers two questions at once: the mark on the
     /// left is what is happening now — a condition from the engine — and the

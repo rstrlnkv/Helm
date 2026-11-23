@@ -694,7 +694,7 @@ enum KeepGrounds: Equatable, Sendable {
         // freed" is a claim and its own refutation in one line.
         banner = removal.removed.isEmpty
             ? nil
-            : DupStr.movedToTrash(Bytes(removal.freedBytes))
+            : HelmBasket.movedToTrash(Bytes(removal.freedBytes))
     }
 
     func dismissBanner() {

@@ -203,22 +203,19 @@ final class ClamshellCoordinator: @unchecked Sendable {
             // page with nothing to say until the first settings edit.
             let ruleOnDisk = lookForTheRule()
             guard noted || ruleOnDisk else { return }
-            guard let report = clamshell.pmsetReport() else {
-                // Not an empty report: nothing was read. With Helm's note set,
-                // sleep may be off and putting it back is idempotent; with only
-                // the rule on disk the person may have set the block themselves.
-                if noted {
-                    HelmLog.shared.warn(KeepAwakeEngine.moduleID,
-                                        "pmset -g could not be read; restoring sleep because Helm's note says it may have disabled it")
-                    restoreSleep(refused: "closed-lid sleep could not be restored at launch",
-                                 restored: "closed-lid sleep restored at launch")
-                } else {
-                    HelmLog.shared.info(KeepAwakeEngine.moduleID,
-                                        "pmset -g could not be read; leaving system sleep as it is")
-                }
+            // A nil report is not an empty one: nothing was read. With Helm's
+            // note set, sleep may be off and putting it back is idempotent; with
+            // only the rule on disk the person may have set the block themselves.
+            if let report = clamshell.pmsetReport() {
+                guard ClamshellRecovery.sleepDisabled(inPmsetOutput: report) else { return }
+            } else if noted {
+                HelmLog.shared.warn(KeepAwakeEngine.moduleID,
+                                    "pmset -g could not be read; restoring sleep because Helm's note says it may have disabled it")
+            } else {
+                HelmLog.shared.info(KeepAwakeEngine.moduleID,
+                                    "pmset -g could not be read; leaving system sleep as it is")
                 return
             }
-            guard ClamshellRecovery.sleepDisabled(inPmsetOutput: report) else { return }
             restoreSleep(refused: "closed-lid sleep could not be restored at launch",
                          restored: "closed-lid sleep restored at launch")
         }

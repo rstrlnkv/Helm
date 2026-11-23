@@ -26,7 +26,7 @@ import HelmTestSupport
 final class ABatchThatAskedEveryNameDidNotGiveUpTests: XCTestCase {
 
     /// A brew that refuses every call, and remembers each one.
-    private final class RefusingBrew: ProcessRunner, @unchecked Sendable {
+    private final class RefusingBrew: QueryOnlyRunner, @unchecked Sendable {
         private let lock = NSLock()
         private var _descCalls: [[String]] = []
         var descCalls: [[String]] { lock.withLock { _descCalls } }
@@ -38,24 +38,6 @@ final class ABatchThatAskedEveryNameDidNotGiveUpTests: XCTestCase {
             return (1, "")
         }
 
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            onExit(0)
-            return NoProcess()
-        }
-    }
-
-    private struct Locator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-
-    private struct NoAdmin: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
 
     private func gaveUpLines() -> [String] {
@@ -65,7 +47,7 @@ final class ABatchThatAskedEveryNameDidNotGiveUpTests: XCTestCase {
     private func describeAllRefused(_ count: Int) -> (calls: [[String]], gaveUp: [String]) {
         tailTheLog()
         let runner = RefusingBrew()
-        let engine = HomebrewEngine(locator: Locator(), runner: runner, privileged: NoAdmin(),
+        let engine = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: NoPrivileges(),
                                     user: "tester", marker: InMemoryOpMarker())
         _ = engine.descriptions(names: (0..<count).map { "pkg-\($0)" }, isCask: false)
         return (runner.descCalls, gaveUpLines())

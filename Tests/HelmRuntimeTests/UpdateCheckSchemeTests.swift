@@ -11,11 +11,7 @@ import XCTest
 final class UpdateCheckSchemeTests: XCTestCase {
 
     private func release(tag: String, page: String, assets: [(String, String)] = []) -> Data {
-        let assetsJSON = assets.map {
-            #"{"name":"\#($0.0)","browser_download_url":"\#($0.1)"}"#
-        }.joined(separator: ",")
-        return #"{"tag_name":"\#(tag)","html_url":"\#(page)","body":"n","assets":[\#(assetsJSON)]}"#
-            .data(using: .utf8)!
+        ReleaseJSON.releaseData(tag: tag, page: page, body: "n", assets: assets)
     }
 
     func testAPageURLThatIsNotHTTPSIsNotAnOffer() {

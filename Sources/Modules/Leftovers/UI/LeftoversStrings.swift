@@ -213,14 +213,6 @@ enum LfStr {
     /// Nil for a system extension, and that is not an omission: the scan gives one
     /// its identifier as its path (`LeftoversScanner.systemExtensions`), so the
     /// line would be the name again a step quieter.
-    /// **The dot is language-shaped too**, and this was the one join in the module
-    /// that did not know it: `selectedLine` twenty lines down sets `・` for
-    /// Japanese, as does every other join in the app, and this one handed all eight
-    /// languages a Latin middle dot.
-    ///
-    /// **The separator belongs to the reason.** Left on the path it is the first
-    /// thing a truncation eats, and a middle dot with nothing after it is the same
-    /// defect one character shorter.
     struct Detail: Equatable, Sendable {
         /// Where the file is: the half that gives way, and is cut in the middle,
         /// because both its ends carry meaning — or is not drawn at all, below
@@ -230,7 +222,8 @@ enum LfStr {
         /// drawn: with nothing in front of it, a separator would dangle at the
         /// line's *start*, the defect below one character earlier.
         let clause: String?
-        /// The language-shaped mark between the halves. It belongs to the
+        /// The language-shaped mark between the halves (`・` for Japanese, as in
+        /// every other join in the app). It belongs to the
         /// reason, not the path: left on the path it is the first thing the
         /// truncation eats, and a middle dot with nothing after it is the same
         /// defect one character shorter.

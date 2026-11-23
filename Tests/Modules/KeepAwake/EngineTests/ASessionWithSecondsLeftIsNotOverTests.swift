@@ -38,13 +38,7 @@ final class ASessionWithSecondsLeftIsNotOverTests: XCTestCase {
     }
 
     private func engine(assertions: FakeAssertions = FakeAssertions()) -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                        assertions: assertions,
-                        displayInfo: FakeDisplayInfo(),
-                        displayObserver: FakeDisplayObserver(),
-                        power: FakePower(), apps: FakeApps(),
-                        pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: clock, lidInfo: FakeLidInfo())
+        fakeEngine(store: store, assertions: assertions, clock: clock)
     }
 
     /// A session with 39 seconds left is a session. It comes back, it holds the

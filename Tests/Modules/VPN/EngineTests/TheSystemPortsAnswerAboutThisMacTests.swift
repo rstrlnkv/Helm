@@ -161,14 +161,14 @@ final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
     /// The arguments the tool is actually given: machine-readable, and bound
     /// only when the caller named an interface.
     func testTheInterfaceIsOnTheCommandLineOnlyWhenThereIsOne() {
-        let seen = ArgumentBox()
+        let seen = Locked<[[String]]>([])
         let port = NetworkQualitySpeed(run: { args in
-            seen.record(args)
+            seen.withLock { $0.append(args) }
             return HelmProcess.Result(status: 0, output: "")
         })
         _ = port.measure(onInterface: nil)
         _ = port.measure(onInterface: "utun6")
-        XCTAssertEqual(seen.all, [["-c"], ["-c", "-I", "utun6"]])
+        XCTAssertEqual(seen.value, [["-c"], ["-c", "-I", "utun6"]])
     }
 }
 
@@ -192,12 +192,4 @@ private final class ClockBox: @unchecked Sendable {
         guard !remaining.isEmpty else { return last }
         return remaining.removeFirst()
     }
-}
-
-/// The arguments a run was given, across the thread it was given them on.
-private final class ArgumentBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var seen: [[String]] = []
-    func record(_ args: [String]) { lock.lock(); seen.append(args); lock.unlock() }
-    var all: [[String]] { lock.lock(); defer { lock.unlock() }; return seen }
 }

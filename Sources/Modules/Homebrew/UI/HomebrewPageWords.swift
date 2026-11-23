@@ -148,24 +148,16 @@ extension HomebrewSettingsPage {
         (["brew"] + fix.argv).joined(separator: " ")
     }
 
-    /// The word on a finding's badge — **and nil for a caution, which has no
-    /// badge.** A caution is what nearly every finding is, and a pill saying so
-    /// on each row said the same word on all of them; only the severity that
-    /// stands out is worded. No `default:` on either switch: a third severity
-    /// has to be a build error here, where the decision is made.
-    static func severityWord(_ severity: DoctorSeverity) -> String? {
+    /// The word on a finding's badge and its ink — **and nil for a caution,
+    /// which has no badge.** A caution is what nearly every finding is, and a
+    /// pill saying so on each row said the same word on all of them; only the
+    /// severity that stands out is worded, and a finding with no badge has no
+    /// tint to draw. No `default:`: a third severity has to be a build error
+    /// here, where the decision is made.
+    static func severityBadge(_ severity: DoctorSeverity, increased: Bool) -> (word: String, tint: Color)? {
         switch severity {
         case .caution: return nil
-        case .danger: return HbStr.severityDanger
-        }
-    }
-
-    /// The badge's ink, nil exactly where `severityWord` is: a finding with no
-    /// badge has no tint to draw.
-    static func severityTint(_ severity: DoctorSeverity, increased: Bool) -> Color? {
-        switch severity {
-        case .caution: return nil
-        case .danger: return HelmSignal.danger(increased: increased)
+        case .danger: return (HbStr.severityDanger, HelmSignal.danger(increased: increased))
         }
     }
 }

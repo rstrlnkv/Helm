@@ -79,7 +79,7 @@ struct LeftoversScanner: Sendable {
         var spelled: [String: Int] = [:]
         return list.map { info in
             let host = StaleItemRules.hostIdentifier(of: info.identifier)
-            // The separator, as in UninstallerEngine and `owner(of:)`:
+            // The separator, as in UninstallerEngine and `StaleItemRules.isOwned`:
             // "com.acmecorp.vpn.ext" is not owned by an installed "com.acme",
             // and an empty id in the installed set is a prefix of everything —
             // it used to mark every extension on the machine as in use.
@@ -396,19 +396,12 @@ struct LeftoversScanner: Sendable {
     /// either in use (an owner exists, or its target is alive) or protected.
     private func status(identifier: String, path: String,
                         installed: Set<String>, inUse: Bool) -> ItemStatus {
-        let ownerInstalled = owner(of: identifier, in: installed)
+        let ownerInstalled = StaleItemRules.isOwned(identifier, byInstalled: installed)
         if StaleItemRules.isRemovable(identifier: identifier, path: path,
                                       ownerInstalled: ownerInstalled || inUse,
                                       installedIDs: installed) {
             return .orphaned
         }
         return (ownerInstalled || inUse) ? .inUse : .protectedItem
-    }
-
-    /// An item belongs to an installed app when its id matches one, or extends
-    /// one (helpers and extensions carry their app's id as a prefix).
-    private func owner(of identifier: String, in installed: Set<String>) -> Bool {
-        installed.contains(identifier)
-            || installed.contains { identifier.hasPrefix($0 + ".") }
     }
 }

@@ -17,7 +17,8 @@ import CoreGraphics
 /// of a different part of the desk.
 public enum ScreenSpace {
 
-    static func appKitRect(fromCG rect: CGRect, primaryHeight: CGFloat) -> CGRect {
+    /// `rect` flipped in y about the primary display's height: CG-global to AppKit-global, and AppKit to CG, the flip being its own inverse.
+    static func flipped(_ rect: CGRect, primaryHeight: CGFloat) -> CGRect {
         CGRect(x: rect.minX, y: primaryHeight - rect.maxY, width: rect.width, height: rect.height)
     }
 
@@ -44,10 +45,23 @@ public enum ScreenSpace {
         else { return nil }
         let scaled = CGRect(x: rect.minX * scale, y: rect.minY * scale,
                             width: rect.width * scale, height: rect.height * scale)
-        let x0 = max(0, scaled.minX.rounded(.down)), y0 = max(0, scaled.minY.rounded(.down))
-        let x1 = min(CGFloat(imageWidth), scaled.maxX.rounded(.up))
-        let y1 = min(CGFloat(imageHeight), scaled.maxY.rounded(.up))
+        return outward(minX: scaled.minX, minY: scaled.minY, maxX: scaled.maxX, maxY: scaled.maxY,
+                       width: imageWidth, height: imageHeight)
+    }
+
+    /// The box with these edges, in pixels, rounded outward to whole pixels and clamped into a `width` × `height` image;
+    /// nil when nothing is left. Each caller judges what it is given before it asks.
+    static func outward(minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat, width: Int, height: Int) -> CGRect? {
+        let x0 = max(0, minX.rounded(.down)), y0 = max(0, minY.rounded(.down))
+        let x1 = min(CGFloat(width), maxX.rounded(.up)), y1 = min(CGFloat(height), maxY.rounded(.up))
         guard x1 > x0, y1 > y0 else { return nil }
         return CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
+    }
+}
+
+extension CGRect {
+    /// The rectangle between two opposite corners, whichever way they lie.
+    init(corner a: CGPoint, opposite b: CGPoint) {
+        self.init(x: min(a.x, b.x), y: min(a.y, b.y), width: abs(b.x - a.x), height: abs(b.y - a.y))
     }
 }

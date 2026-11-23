@@ -93,7 +93,7 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
     func testARunTheToolRefusesLeavesTheLastFigureOnThePage() async {
         let taken = Date(timeIntervalSince1970: 1_700_000_000)
         let speed = FakeSpeed()
-        speed.answer = VPNSpeedReading(down: 343, up: 358, rpm: 1200, at: taken, took: 19)
+        speed.answer = VPNSpeedReading(down: 343, up: 358, at: taken, took: 19)
         let (engine, news) = oneTunnel(speed)
         defer { speed.release(); engine.deactivate() }
 

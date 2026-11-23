@@ -20,15 +20,11 @@ import XCTest
 final class UpdateAheadOfChannelTests: XCTestCase {
 
     private func release(tag: String) -> Data {
-        #"{"tag_name":"\#(tag)","html_url":"https://example.com/r","body":"","assets":[]}"#
-            .data(using: .utf8)!
+        ReleaseJSON.releaseData(tag: tag)
     }
 
     private func list(_ tags: [(String, Bool)]) -> Data {
-        let items = tags.map { tag, pre in
-            #"{"tag_name":"\#(tag)","html_url":"https://example.com/r","body":"","assets":[],"prerelease":\#(pre)}"#
-        }.joined(separator: ",")
-        return "[\(items)]".data(using: .utf8)!
+        ReleaseJSON.list(tags.map { ReleaseJSON.release(tag: $0.0, prerelease: $0.1) })
     }
 
     func testADevBuildAheadOfTheBetaChannelSaysSo() {

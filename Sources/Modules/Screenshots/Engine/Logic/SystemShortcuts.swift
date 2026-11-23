@@ -83,13 +83,6 @@ public struct SystemBoxReading: Sendable, Equatable {
     /// when the state is unknown and there is nothing to compare.
     let keyCode: Int?
     let modifiers: Int?
-
-    init(box: SystemBox, state: BoxState, keyCode: Int?, modifiers: Int?) {
-        self.box = box
-        self.state = state
-        self.keyCode = keyCode
-        self.modifiers = modifiers
-    }
 }
 
 public enum SystemShortcuts {

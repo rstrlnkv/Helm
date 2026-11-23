@@ -1,6 +1,7 @@
 import Foundation
 import HelmContract
 import HelmRuntime
+import os
 
 /// Scans volumes and folders, and trashes what the user baskets. Long work
 /// goes through `offTheCooperativePool` so the concurrency pool is never parked.
@@ -108,7 +109,7 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
         defer { HelmActivity.end("disk.scan") }
         let started = Date()
 
-        let counter = FileCounter()
+        let counter = OSAllocatedUnfairLock(initialState: 0)
         let freeNow = freeBytes(forPathOn: path)
         var onPartial: (@Sendable (DiskNode) -> Void)?
         if let updates {
@@ -117,7 +118,7 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
                 // walk is still running.
                 let snapshot = ScanResult(root: DiskEntry(partialTree, depth: 4, path: path),
                                           freeBytes: freeNow,
-                                          filesScanned: counter.value, seconds: 0)
+                                          filesScanned: counter.withLock { $0 }, seconds: 0)
                 updates(.partial(snapshot))
             }
         }
@@ -127,12 +128,12 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
             // callback is passed only to a caller that wants snapshots, because
             // asking for it makes the scanner build one every `BulkWalk.progressInterval`.
             guard let tree = scanner.scan(root: path, onProgress: { progress in
-                counter.value = progress.filesSeen
-                updates?(.progress(ScanTick(files: progress.filesSeen)))
+                counter.withLock { $0 = progress.files }
+                updates?(.progress(progress))
             }, onPartial: onPartial) else { return nil }
             let free = self.freeBytes(forPathOn: path)
             return ScanResult(root: DiskEntry(tree, depth: 6, path: path), freeBytes: free,
-                              filesScanned: counter.value,
+                              filesScanned: counter.withLock { $0 },
                               seconds: Date().timeIntervalSince(started),
                               advice: DiskAdvisor.advise(root: tree, rootPath: path,
                                                          home: NSHomeDirectory()))
@@ -189,17 +190,6 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
     }
 }
 
-/// Progress arrives from worker threads; the count needs a home that is safe
-/// to write from any of them.
-private final class FileCounter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var stored = 0
-    var value: Int {
-        get { lock.lock(); defer { lock.unlock() }; return stored }
-        set { lock.lock(); stored = newValue; lock.unlock() }
-    }
-}
-
 public struct ScanTick: Equatable, Sendable {
     public let files: Int
 
@@ -214,7 +204,7 @@ public struct ScanTick: Equatable, Sendable {
 /// update that travelled on one shared channel had to name its scan to be told
 /// from the other's. Here each call has its own sink, so it cannot be another's.
 public enum DiskScanUpdate: Sendable {
-    /// How far the walk has got — files seen, bytes so far.
+    /// How far the walk has got: files seen so far.
     case progress(ScanTick)
     /// A tree good enough to draw, before the walk has finished.
     case partial(ScanResult)

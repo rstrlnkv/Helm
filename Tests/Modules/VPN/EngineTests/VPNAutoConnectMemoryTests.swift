@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Helm
 
 import XCTest
-import HelmRuntime
 @testable import Module_VPN_Engine
 
 /// `_cameUp` — the set added today so `refreshNow` can tell "not up yet" from

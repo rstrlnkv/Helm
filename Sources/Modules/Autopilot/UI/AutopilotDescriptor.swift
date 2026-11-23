@@ -19,8 +19,9 @@ import SwiftUI
     /// only while there is no rule at all.
     public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: ApStr.moduleName, summary: ApStr.summary,
-        sfSymbol: "location.north.circle", permissions: [.fullDisk],
+        sfSymbol: symbol, permissions: [.fullDisk],
         welcomeOffer: ApStr.tourOffer) }
+    static let symbol = "location.north.circle"
     public static let category: ModuleCategory = .files
     public static let tint = ModuleTint(
         ordinary: (light: (0.000, 0.533, 1.000), dark: (0.000, 0.569, 1.000)),

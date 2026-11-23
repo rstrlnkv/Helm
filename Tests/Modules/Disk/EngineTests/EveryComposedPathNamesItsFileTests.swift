@@ -178,11 +178,10 @@ final class EveryComposedPathNamesItsFileTests: XCTestCase {
     /// counted rather than as a crash.
     func testTheCountIsEveryFileTheFixtureMade() throws {
         let root = try makeFixture()
-        final class Box: @unchecked Sendable { var last: ScanProgress? }
-        let box = Box()
-        _ = DiskScanner(foldThreshold: 0).scan(root: root.path, onProgress: { box.last = $0 })
-        let last = try XCTUnwrap(box.last)
-        XCTAssertEqual(last.filesSeen, Self.hostileNames.count + 1)
+        let box = Locked<ScanTick?>(nil)
+        _ = DiskScanner(foldThreshold: 0).scan(root: root.path, onProgress: { box.value = $0 })
+        let last = try XCTUnwrap(box.value)
+        XCTAssertEqual(last.files, Self.hostileNames.count + 1)
     }
 
     /// A directory handed over with a trailing slash joins with one slash, not

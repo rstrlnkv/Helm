@@ -10,10 +10,6 @@ import XCTest
 /// banner somebody would otherwise have been shown for nothing.
 final class AScanNobodyWatchedSaysWhatItFoundTests: XCTestCase {
 
-    private func item(_ path: String, _ bytes: Int) -> ScanItem {
-        ScanItem(path: path, bytes: bytes)
-    }
-
     private func change(previous: [ScanItem]?, current: [ScanItem]) -> ScanChange {
         ScanComparison.between(previous: previous, current: current)
     }

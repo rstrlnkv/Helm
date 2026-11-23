@@ -101,7 +101,7 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
         let recorder = LeftoversFakeSwitcher()
         let engine = LeftoversEngine(home: home, files: switchable, apps: LeftoversFakeApps(),
                                      loaded: LeftoversFakeLoaded(), switcher: recorder,
-                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                                     store: freshLeftoversStore())
 
         await send(LeftoversToggle(label: victim,
                                    path: "/Users/x/Library/LaunchAgents/zz-innocent.plist",
@@ -120,7 +120,7 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
         let recorder = LeftoversFakeSwitcher()
         let engine = LeftoversEngine(home: home, files: switchable, apps: LeftoversFakeApps(),
                                      loaded: LeftoversFakeLoaded(), switcher: recorder,
-                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                                     store: freshLeftoversStore())
 
         await send(LeftoversToggle(label: "com.vendor.updater",
                                    path: "/Users/x/Library/LaunchAgents/com.vendor.updater.plist",
@@ -135,7 +135,7 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
         let recorder = LeftoversFakeSwitcher()
         let engine = LeftoversEngine(home: home, files: switchable, apps: LeftoversFakeApps(),
                                      loaded: LeftoversFakeLoaded(), switcher: recorder,
-                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                                     store: freshLeftoversStore())
 
         await send(LeftoversToggle(label: "com.vendor.updater",
                                    path: "/tmp/com.vendor.updater.plist",

@@ -446,23 +446,8 @@ struct KeepAwakeHero: View {
     /// hierarchical style resolves again when that layer is dropped — which
     /// reads as a blink.
     @ViewBuilder private var suppressionRow: some View {
-        // `notice` has the battery first: «resume» would be a button that cannot
-        // do what it says while the guard is in force.
-        Group {
-            switch notice {
-            case .battery:
-                HelmBanner(KAStr.stoppedByBattery(batteryFloor), symbol: "battery.25",
-                           fillsWidth: false)
-            case .assertionRefused:
-                HelmBanner(KAStr.assertionRefused, symbol: "exclamationmark.triangle.fill",
-                           fillsWidth: false)
-            case .paused, .none:
-                HelmBanner(KAStr.automationPaused, symbol: "pause.circle.fill",
-                           fillsWidth: false) {
-                    Button(KAStr.resume, action: resume)
-                }
-            }
-        }
+        KeepAwakeNoticeBanner(notice: notice, batteryFloor: batteryFloor, compact: false,
+                              resume: resume)
         .frame(maxWidth: .infinity)
         // Inside the measured row, not between it and the block above: the gap
         // has to be part of what collapses to zero.

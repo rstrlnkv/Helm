@@ -23,7 +23,7 @@ enum KeyRemap {
     /// layout has nothing to say about it.
     ///
     /// **Nil, not the string back.** A "conversion" that returns its input is
-    /// still an edit where it lands: `SelectionTransform` would hand it to the
+    /// still an edit where it lands: `convertSelection` would hand it to the
     /// app, which clears that app's undo stack, scrolls the view and in some
     /// apps drops the selection — three visible consequences for a keystroke
     /// that did nothing. The caller cannot tell the two apart from a string

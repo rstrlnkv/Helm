@@ -1,6 +1,7 @@
 import AppKit
 import AVFoundation
 import QuartzCore
+import HelmRuntime
 import HelmUI
 import Tweak_DisplayCorners_Engine
 
@@ -111,7 +112,7 @@ import Tweak_DisplayCorners_Engine
             visibility.duration = duration
             group.animations = [scale, visibility]
         }
-        let rate = Float(max(30, min(maxFPS, 120)))
+        let rate = Float(maxFPS.clamped(to: 30...120))
         group.preferredFrameRateRange = CAFrameRateRange(minimum: min(60, rate), maximum: rate, preferred: rate)
         maskLayer.add(group, forKey: Self.morphKey)
     }

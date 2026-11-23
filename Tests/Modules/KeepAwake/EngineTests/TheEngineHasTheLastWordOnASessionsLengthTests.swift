@@ -32,13 +32,7 @@ final class TheEngineHasTheLastWordOnASessionsLengthTests: XCTestCase {
     }
 
     private func engine() -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                        assertions: assertions,
-                        displayInfo: FakeDisplayInfo(),
-                        displayObserver: FakeDisplayObserver(),
-                        power: FakePower(), apps: FakeApps(),
-                        pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: clock, lidInfo: FakeLidInfo())
+        fakeEngine(store: store, assertions: assertions, clock: clock)
     }
 
     /// Asserted as the property the arithmetic needs rather than as a

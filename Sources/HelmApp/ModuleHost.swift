@@ -39,7 +39,7 @@ import SwiftUI
     private init() {}
 
     private func store(for d: any ModuleDescriptor) -> NamespacedStore {
-        NamespacedStore(namespace: type(of: d).id.rawValue, backing: UserDefaults.standard)
+        NamespacedStore(namespace: d.idRaw, backing: UserDefaults.standard)
     }
 
     func isEnabled(_ d: any ModuleDescriptor) -> Bool {
@@ -67,7 +67,7 @@ import SwiftUI
     func bootstrap() {
         AppSettings.migrateAndPurge(in: UserDefaults.standard)
         for d in ModuleRegistry.all
-        where isEnabled(d) && live[type(of: d).id.rawValue] == nil { enable(d) }
+        where isEnabled(d) && live[d.idRaw] == nil { enable(d) }
     }
 
     /// A stand-in engine is live (`ModuleEngine.standsIn`): what is shown is not what
@@ -76,17 +76,17 @@ import SwiftUI
     var anyStandsIn: Bool { live.values.contains { $0.engine.standsIn } }
 
     func setEnabled(_ d: any ModuleDescriptor, _ on: Bool) {
-        if !on, standsInLive(type(of: d).id.rawValue) {
-            HelmLog.shared.warn("host", "refused: a stand-in engine is live, \(type(of: d).id.rawValue) stays on")
+        if !on, standsInLive(d.idRaw) {
+            HelmLog.shared.warn("host", "refused: a stand-in engine is live, \(d.idRaw) stays on")
             return
         }
         store(for: d).set(on, for: "enabled")
         if on {
-            if live[type(of: d).id.rawValue] == nil { enable(d) }
+            if live[d.idRaw] == nil { enable(d) }
             // Only from here, never from `bootstrap`: this is somebody switching
             // a module on, which is the moment a module may act unasked.
             NotificationCenter.default.post(name: .helmModuleEnabled,
-                                            object: type(of: d).id.rawValue)
+                                            object: d.idRaw)
         } else {
             disable(d)
         }
@@ -104,14 +104,22 @@ import SwiftUI
     /// (`ResetPlan.Step.stopEveryModule`), and the quit calls it again.
     func shutdown() {
         for key in live.keys.sorted() {
-            live[key]?.stop()
-            live[key]?.engine.deactivate()
-            live[key]?.descriptor.detachMenuBarPresence()
-            live[key] = nil
-            // The same sweep `disable` does: a scan task can outlive the
-            // engine that started it.
-            HelmActivity.sweep(module: key)
+            if let descriptor = live[key]?.descriptor { tearDown(key, descriptor) }
         }
+    }
+
+    /// The teardown `shutdown` and `disable` share, in this order.
+    private func tearDown(_ key: String, _ d: any ModuleDescriptor) {
+        live[key]?.stop()
+        live[key]?.engine.deactivate()
+        // The module's own menu-bar item goes with the module. Nothing used to
+        // take Keyboard's indicator away here at all: it sat in the menu bar
+        // until somebody switched the module back on, which is what rebuilt it.
+        d.detachMenuBarPresence()
+        live[key] = nil
+        // A scan task can outlive the engine that started it, and an interval
+        // nobody closes would name a module that is no longer there.
+        HelmActivity.sweep(module: key)
     }
 
     /// Measured **around** the construction, which is the whole point.
@@ -128,7 +136,7 @@ import SwiftUI
     /// ask. The pair is still the signal that matters: 3 MB on and nothing back off
     /// is the leak family of a model that outlives its module.
     private func enable(_ d: any ModuleDescriptor) {
-        let key = type(of: d).id.rawValue
+        let key = d.idRaw
         HelmLog.shared.info("host", "enable \(key)")
         let before = MemoryFootprint.current()
         let s = store(for: d)
@@ -176,7 +184,7 @@ import SwiftUI
     /// every module switch.
     func registerHotkeys() {
         for d in ModuleRegistry.all {
-            let id = type(of: d).id.rawValue
+            let id = d.idRaw
             for hotkey in type(of: d).hotkeys {
                 HotkeyManager.shared.register(
                     hotkey.slot, store: store(for: d), prefix: hotkey.prefix,
@@ -223,7 +231,7 @@ import SwiftUI
     }
 
     private func disable(_ d: any ModuleDescriptor) {
-        let key = type(of: d).id.rawValue
+        let key = d.idRaw
         HelmLog.shared.info("host", "disable \(key)")
         let before = MemoryFootprint.current()
         // Before the teardown: this is the person's own switch, so it is the
@@ -232,16 +240,7 @@ import SwiftUI
         // `shutdown()` — quitting — deliberately does not call it
         // (`ModuleEngine.willDisable` has the story).
         live[key]?.engine.willDisable()
-        live[key]?.stop()
-        live[key]?.engine.deactivate()
-        // The module's own menu-bar item goes with the module. Nothing used to
-        // take Keyboard's indicator away here at all: it sat in the menu bar
-        // until somebody switched the module back on, which is what rebuilt it.
-        d.detachMenuBarPresence()
-        live[key] = nil
-        // A scan task can outlive the engine that started it, and an interval
-        // nobody closes would name a module that is no longer there.
-        HelmActivity.sweep(module: key)
+        tearDown(key, d)
         // Whoever listens for the module's end lets go (the hotkeys).
         NotificationCenter.default.post(name: .helmModuleDisabled, object: key)
         // The reading comes last, so it covers the whole teardown.
@@ -299,8 +298,7 @@ import SwiftUI
     /// `reconciled` runs on every read, so a module that arrived with this
     /// build is in the list without anything being rearranged first.
     var orderedModuleIDs: [String] {
-        SidebarLayoutStore.read(from: AppSettings.store,
-                                registry: SidebarLayoutStore.registry())
+        SidebarLayoutStore.current()
             .flattened.compactMap { row in
                 if case .module(let id, _) = row { return id }
                 return nil

@@ -5,10 +5,6 @@ public struct InstalledApp: Equatable, Sendable {
     public let name: String
     public let bundleID: String
     public let path: String
-    public let sizeBytes: Int
-    init(name: String, bundleID: String, path: String, sizeBytes: Int) {
-        self.name = name; self.bundleID = bundleID; self.path = path; self.sizeBytes = sizeBytes
-    }
 }
 
 public enum LeftoverKind: String, Sendable, CaseIterable {
@@ -21,17 +17,11 @@ public struct Leftover: Equatable, Sendable {
     public let kind: LeftoverKind
     public let sizeBytes: Int
     public let matchedByName: Bool
-    init(path: String, kind: LeftoverKind, sizeBytes: Int, matchedByName: Bool) {
-        self.path = path; self.kind = kind; self.sizeBytes = sizeBytes; self.matchedByName = matchedByName
-    }
 }
 
 public struct ScanResult: Equatable, Sendable {
     public let leftovers: [Leftover]
     public let runningNow: Bool
-    init(leftovers: [Leftover], runningNow: Bool) {
-        self.leftovers = leftovers; self.runningNow = runningNow
-    }
 }
 
 /// An app sitting in the Trash and what it left behind — one group in the window
@@ -50,11 +40,6 @@ public struct TrashedAppLeftovers: Equatable, Sendable {
     /// where the person put it.
     public let appPath: String
     public let leftovers: [Leftover]
-
-    init(bundleID: String, name: String, appPath: String, leftovers: [Leftover]) {
-        self.bundleID = bundleID; self.name = name
-        self.appPath = appPath; self.leftovers = leftovers
-    }
 
     public var totalBytes: Int { leftovers.reduce(0) { $0 + $1.sizeBytes } }
 }
@@ -122,7 +107,4 @@ public struct OrphanGroup: Equatable, Sendable {
     public let bundleID: String
     public let leftovers: [Leftover]
     public var totalBytes: Int { leftovers.reduce(0) { $0 + $1.sizeBytes } }
-    init(bundleID: String, leftovers: [Leftover]) {
-        self.bundleID = bundleID; self.leftovers = leftovers
-    }
 }

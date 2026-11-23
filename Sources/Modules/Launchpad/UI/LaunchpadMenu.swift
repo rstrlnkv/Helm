@@ -36,9 +36,6 @@ struct LaunchpadMenu: Equatable {
         moved ?? LaunchpadCategoryTarget(raw: raw)
     }
 
-    /// The undo row has something to undo only while the app is moved.
-    static func canReturn(moved: LaunchpadCategoryTarget?) -> Bool { moved != nil }
-
     /// An app's menu. `hasFiles`: its file is offered; `canEdit`: the mode can begin; `removable`: the mode is on and the Uninstaller offers the app.
     static func app(_ app: CatalogApp, moved: LaunchpadCategoryTarget?, hasFiles: Bool, inHidden: Bool = false, canEdit: Bool = false,
                     removable: Bool = false, language: AppLanguage = AppLanguage.current) -> LaunchpadMenu {
@@ -48,7 +45,7 @@ struct LaunchpadMenu: Equatable {
         } else {
             let effective = Self.effective(moved: moved, raw: app.category)
             items.append(.action(title: LpStr.hide, .hide(app.id)))
-            var rows: [Item] = [.action(title: LpStr.ownCategory, .move(app.id, nil), enabled: canReturn(moved: moved)), .separator]
+            var rows: [Item] = [.action(title: LpStr.ownCategory, .move(app.id, nil), enabled: moved != nil), .separator]
             rows += LaunchpadCategoryName.choices(language: language).map { choice in
                 .action(title: choice.title, .move(app.id, choice.target), checked: choice.target == effective)
             }

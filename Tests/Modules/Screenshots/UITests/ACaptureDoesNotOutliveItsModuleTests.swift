@@ -10,7 +10,7 @@ import XCTest
 ///
 /// The freeze is the one long wait in a capture — some hundred milliseconds of
 /// ScreenCaptureKit on three displays — and the module's switch can be turned
-/// in it. The model's `stop()` then calls `CaptureController.teardown`, which cancels the press and
+/// in it. The model's `stop()` then calls `CaptureController.cancel`, which cancels the press and
 /// closes an overlay that does not exist yet, and the model lets the controller go;
 /// the task that was waiting on the freeze still holds the controller and
 /// resumes. On the area shortcut what it resumes into is `CaptureOverlay.present` — panels
@@ -70,7 +70,7 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
             let (controller, gate, disk, board) = try rig(target)
             controller.begin(.fullScreen)
             await gate.reached()
-            // What `teardown` does first; the model's `stop()` calls it when the switch is turned.
+            // What the model's `stop()` calls when the switch is turned.
             controller.cancel()
             await gate.open()
             await grace(0.5)
@@ -111,7 +111,7 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
     /// finds them. The control is the same shot left alone, which is still open and leaving right after it.
     func testTheModuleGoingOffDuringTheFlashClosesTheOverlayAtOnce() async throws {
         for cancelled in [false, true] {
-            let held = Held()
+            let held = PanelRig.Held()
             let (controller, gate, _, _) = try rig(.clipboard, realScreens: true, presenting: { overlay in
                 overlay.reducesMotion = { false }
                 held.overlay = overlay
@@ -123,9 +123,7 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
             await waitUntil("the overlay reached the seam") { held.overlay != nil }
             let overlay = try XCTUnwrap(held.overlay)
             let display = try XCTUnwrap(try OverlayRig.frames().first?.id)
-            overlay.mouseDown(on: display, at: CGPoint(x: 100, y: 100), flags: [])
-            overlay.mouseDragged(on: display, at: CGPoint(x: 400, y: 300), flags: [])
-            overlay.mouseUp(on: display)
+            OverlayRig.drag(overlay, on: display, from: CGPoint(x: 100, y: 100), to: CGPoint(x: 400, y: 300))
             overlay.perform(.exit(.confirm))
             XCTAssertTrue(overlay.isOpen && overlay.leaving, "the subject: the shot is flashing (\(cancelled))")
             if cancelled {
@@ -138,10 +136,6 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
             }
             overlay.close()
         }
-    }
-
-    @MainActor private final class Held {
-        var overlay: CaptureOverlay?
     }
 
 }

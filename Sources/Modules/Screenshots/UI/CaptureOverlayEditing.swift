@@ -76,7 +76,7 @@ extension CaptureOverlay {
         // this display. It is not routed through the `disarm` below: that is what ends a run of
         // presses, and a run of arrows is one undo step. A held key repeats on purpose.
         if case .nudge(let dx, let dy, let pixels)? = action {
-            guard !current.layers.isBusy, let frame = freeze.frames.first(where: { $0.id == current.display }) else { return }
+            guard !current.layers.isBusy, let frame = freeze.frame(of: current.display) else { return }
             let delta = AreaFrame.step(CGPoint(x: dx, y: dy), pixels: pixels, scale: frame.scale)
             let hadSelection = current.layers.selected != nil
             if !current.layers.nudgeSelected(by: delta) {

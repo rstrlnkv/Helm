@@ -18,7 +18,7 @@ import XCTest
 /// The payload is JSON, so this one runs through `runData` — the same reason
 /// `outdated()` does, and the same reason its fake speaks `Data` rather than
 /// `String`.
-private final class InfoRunner: ProcessRunner, @unchecked Sendable {
+private final class InfoRunner: QueryOnlyRunner, @unchecked Sendable {
     private let lock = NSLock()
     private var _calls: [[String]] = []
     var calls: [[String]] { lock.lock(); defer { lock.unlock() }; return _calls }
@@ -38,26 +38,9 @@ private final class InfoRunner: ProcessRunner, @unchecked Sendable {
         return (status, stdout)
     }
 
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        onExit(0)
-        return NoProcess()
-    }
 }
 
 final class AnInfoQueryIsAboutOnePackageTests: XCTestCase {
-
-    private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester",
-                       marker: InMemoryOpMarker())
-    }
 
     // Trimmed the same way `BrewInfoParserTests` trims its fixtures: real
     // keys, real nesting, nothing invented for the test's convenience.
@@ -79,7 +62,7 @@ final class AnInfoQueryIsAboutOnePackageTests: XCTestCase {
     func testTheSubcommandNamesTheKindAndTerminatesBeforeTheName() {
         let runner = InfoRunner()
         runner.stdout = formulaDocument
-        let info = engine(runner).info(name: "openssl@3", isCask: false)
+        let info = brewEngine(runner).info(name: "openssl@3", isCask: false)
         XCTAssertEqual(runner.calls.first, ["info", "--json=v2", "--formula", "--", "openssl@3"])
         XCTAssertEqual(info?.name, "openssl@3", "the document brew answered was not read back")
         XCTAssertFalse(info?.isCask ?? true, "a formula came back marked as a cask")
@@ -93,7 +76,7 @@ final class AnInfoQueryIsAboutOnePackageTests: XCTestCase {
     func testACaskAsksWithItsOwnFlag() {
         let runner = InfoRunner()
         runner.stdout = Data(#"{"formulae":[],"casks":[]}"#.utf8)
-        _ = engine(runner).info(name: "firefox", isCask: true)
+        _ = brewEngine(runner).info(name: "firefox", isCask: true)
         XCTAssertEqual(runner.calls.first, ["info", "--json=v2", "--cask", "--", "firefox"])
     }
 
@@ -103,7 +86,7 @@ final class AnInfoQueryIsAboutOnePackageTests: XCTestCase {
     func testTheQueryDoesNotRefreshTheCatalogue() {
         let runner = InfoRunner()
         runner.stdout = formulaDocument
-        _ = engine(runner).info(name: "openssl@3", isCask: false)
+        _ = brewEngine(runner).info(name: "openssl@3", isCask: false)
         XCTAssertEqual(runner.envs.first, HomebrewEngine.queryEnvironment)
     }
 
@@ -114,7 +97,7 @@ final class AnInfoQueryIsAboutOnePackageTests: XCTestCase {
         let runner = InfoRunner()
         runner.status = 1
         runner.stdout = formulaDocument
-        XCTAssertNil(engine(runner).info(name: "openssl@3", isCask: false),
+        XCTAssertNil(brewEngine(runner).info(name: "openssl@3", isCask: false),
                      "brew refusing must not read as «nothing to say about this package»")
     }
 
@@ -123,7 +106,7 @@ final class AnInfoQueryIsAboutOnePackageTests: XCTestCase {
     func testADocumentTheParserRefusesIsNotAnAnswer() {
         let runner = InfoRunner()
         runner.stdout = Data("not json".utf8)
-        XCTAssertNil(engine(runner).info(name: "openssl@3", isCask: false),
+        XCTAssertNil(brewEngine(runner).info(name: "openssl@3", isCask: false),
                      "a shape this build cannot read must not surface as an empty package")
     }
 

@@ -86,8 +86,8 @@ final class LeftoverActionsTests: XCTestCase {
     /// Deleting something that is in use is a different promise from clearing
     /// a leftover — the caller has to say so out loud.
     func testDeletingSomethingInUseNeedsConfirmation() {
-        XCTAssertTrue(LeftoverActions.needsConfirmation(item(.launchAgent, .inUse)))
-        XCTAssertFalse(LeftoverActions.needsConfirmation(item(.preference, .orphaned)))
+        XCTAssertNotNil(LeftoverActions.askBeforeDeleting(item(.launchAgent, .inUse)))
+        XCTAssertNil(LeftoverActions.askBeforeDeleting(item(.preference, .orphaned)))
     }
 }
 

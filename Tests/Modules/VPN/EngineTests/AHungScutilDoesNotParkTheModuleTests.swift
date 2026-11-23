@@ -3,6 +3,7 @@
 
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
@@ -244,7 +245,7 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
     func testAShowThatNeverAnswersReturnsWithinTheBoundAndSaysSo() {
         runner.handler = { _, _ in .hang }
         let credentials = Unsafe(credentialsOnThis())
-        let answer = ResultBox()
+        let answer = Locked<VPNCredentialRead?>(nil)
         XCTAssertTrue(finishes("a credential read whose `--nc show` never answers") {
             answer.value = credentials.value.credentials(for: "Quiet Office", promptingAllowed: false)
         }, "the credential read is still waiting on `scutil --nc show` after \(Int(bound)) s")
@@ -290,7 +291,7 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
         let credentials = Unsafe(KeychainCredentials(purge: {}, runner: runner,
                                                      keychainTool: tool.path, keychainDeadline: 1))
         let queue = DispatchQueue(label: "test.vpn.work")
-        let answer = ResultBox()
+        let answer = Locked<VPNCredentialRead?>(nil)
         let next = expectation(description: "a call behind the read on the same queue")
         let started = Date()
         queue.async { answer.value = credentials.value.credentials(for: "Quiet Office", promptingAllowed: true) }
@@ -308,15 +309,6 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
     private final class Unsafe<T>: @unchecked Sendable {
         let value: T
         init(_ value: T) { self.value = value }
-    }
-
-    private final class ResultBox: @unchecked Sendable {
-        private let lock = NSLock()
-        private var _value: VPNCredentialRead?
-        var value: VPNCredentialRead? {
-            get { lock.lock(); defer { lock.unlock() }; return _value }
-            set { lock.lock(); _value = newValue; lock.unlock() }
-        }
     }
 
     // MARK: - 4. Exit status read with stdout

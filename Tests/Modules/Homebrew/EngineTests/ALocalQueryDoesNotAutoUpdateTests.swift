@@ -27,15 +27,9 @@ import XCTest
 /// Kept: guards the defect fixed in 11f8f602 Stop a purely local brew query from refreshing the catalogue.
 final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
 
-    private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester",
-                       marker: InMemoryOpMarker())
-    }
-
     func testListAndDescribeRefuseTheAutoUpdate() {
         let runner = EnvironmentRecorder()
-        _ = engine(runner).listInstalled()
+        _ = brewEngine(runner).listInstalled()
         XCTAssertFalse(runner.calls.isEmpty, "the query never ran")
         for call in runner.calls {
             XCTAssertEqual(call.env["HOMEBREW_NO_AUTO_UPDATE"], "1",
@@ -45,7 +39,7 @@ final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
 
     func testDescriptionsRefuseTheAutoUpdate() {
         let runner = EnvironmentRecorder()
-        _ = engine(runner).descriptions(names: ["wget"], isCask: false)
+        _ = brewEngine(runner).descriptions(names: ["wget"], isCask: false)
         XCTAssertEqual(runner.calls.first?.env["HOMEBREW_NO_AUTO_UPDATE"], "1")
     }
 
@@ -54,7 +48,7 @@ final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
     /// moved. Without this half, "set it everywhere" passes the test above.
     func testOutdatedAndSearchStillRefreshTheCatalogue() {
         let runner = EnvironmentRecorder()
-        let e = engine(runner)
+        let e = brewEngine(runner)
         _ = e.outdated()
         _ = e.search("wget")
         XCTAssertFalse(runner.calls.isEmpty)
@@ -69,7 +63,7 @@ final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
     /// install a person is watching.
     func testAnOperationSilencesTheEnvironmentHints() {
         let runner = EnvironmentRecorder()
-        engine(runner).install(name: "wget", isCask: false)
+        brewEngine(runner).install(name: "wget", isCask: false)
         XCTAssertEqual(runner.calls.first?.env["HOMEBREW_NO_ENV_HINTS"], "1")
     }
 }

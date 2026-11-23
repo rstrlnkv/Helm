@@ -57,17 +57,6 @@ final class TheEditOfALargerPictureExportsAtItsOwnSizeTests: XCTestCase {
         try XCTUnwrap(PictureOnScreen.place(picture, over: freeze(scale: scale, points: points), on: nil), "the picture was not placed", file: file, line: line)
     }
 
-    /// One pixel of a picture as red, green, blue, read at (x, y) from the top left, in the picture's own colour space:
-    /// reading it in another converts it, and a ground that was composed in sRGB would read as a stranger to itself.
-    private func pixel(_ image: CGImage, _ x: Int, _ y: Int) -> (UInt8, UInt8, UInt8) {
-        let context = CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
-                                space: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.draw(image, in: CGRect(x: -x, y: y - image.height + 1, width: image.width, height: image.height))
-        let bytes = context.data!.assumingMemoryBound(to: UInt8.self)
-        return (bytes[0], bytes[1], bytes[2])
-    }
-
     /// A rectangle whose top edge is 20 % down the picture and whose bottom edge is 60 % down, in the points of the display.
     private func marks(on shown: PictureOnScreen) -> [Annotation] {
         let r = shown.rect

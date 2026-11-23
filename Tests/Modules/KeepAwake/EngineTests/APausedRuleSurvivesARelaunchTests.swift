@@ -58,13 +58,7 @@ final class APausedRuleSurvivesARelaunchTests: XCTestCase {
     /// Every port named, so no construction can take a default that reaches the
     /// machine this runs on.
     private func engine(assertions: FakeAssertions = FakeAssertions()) -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                        assertions: assertions,
-                        displayInfo: FakeDisplayInfo(),
-                        displayObserver: FakeDisplayObserver(),
-                        power: FakePower(), apps: apps,
-                        pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: clock, lidInfo: FakeLidInfo())
+        fakeEngine(store: store, assertions: assertions, apps: apps, clock: clock)
     }
 
     /// The control, first: without the pause the rule really does take the Mac

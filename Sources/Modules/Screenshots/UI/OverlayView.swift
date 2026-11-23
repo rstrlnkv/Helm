@@ -75,10 +75,16 @@ final class OverlayView: NSView {
         addSubview(host)
         return host
     }()
-    var popoverMade = false
+    private var popoverMade = false
     /// The thickness and opacity pop-over's card laid out whole, measured once like the palette.
     private lazy var measuredPopover = NSHostingView(rootView: EditorPopover(model: overlay!.palette, height: nil)).fittingSize
     var popoverSize: CGSize { measuredPopover }
+
+    /// Hides the two pop-over hosts, all but `shown`; one not made is left alone, a host is not made to be hidden.
+    func hidePopoverHosts(except shown: NSView? = nil) {
+        if popoverMade, popoverHost !== shown { popoverHost.isHidden = true }
+        if coloursMade, coloursHost !== shown { coloursHost.isHidden = true }
+    }
 
     /// The colours pop-over's host and size, made and measured the same way, at the first need.
     lazy var coloursHost: EditorBarHostingView<EditorColoursPopover> = {
@@ -88,7 +94,7 @@ final class OverlayView: NSView {
         addSubview(host)
         return host
     }()
-    var coloursMade = false
+    private var coloursMade = false
     private lazy var measuredColours = NSHostingView(rootView: EditorColoursPopover(model: overlay!.palette)).fittingSize
     var coloursSize: CGSize { measuredColours }
 

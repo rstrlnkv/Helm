@@ -13,11 +13,16 @@ import HelmAppStrings
 /// own, and `SettingsDetail` declares General's and About's; what
 /// they share is this list, so the switcher reads the same on all three.
 enum SettingsTabs {
+    /// One row per tab, in the order they are drawn.
+    private static var table: [(id: String, selection: SettingsSelection, title: String, symbol: String)] {
+        [("general", .general, AppStr.settingsTabGeneral, "gearshape"),
+         ("log", .log, AppStr.logPane, "text.alignleft"),
+         ("about", .about, AppStr.aboutHelm, "info.circle")]
+    }
+
     /// In the order they are drawn; the ids are the ones `binding` understands.
     static var all: [HelmHeaderTab] {
-        [HelmHeaderTab(id: "general", title: AppStr.settingsTabGeneral, symbol: "gearshape"),
-         HelmHeaderTab(id: "log", title: AppStr.logPane, symbol: "text.alignleft"),
-         HelmHeaderTab(id: "about", title: AppStr.aboutHelm, symbol: "info.circle")]
+        table.map { HelmHeaderTab(id: $0.id, title: $0.title, symbol: $0.symbol) }
     }
 
     /// The tab a selection stands on: Log and About for themselves, and
@@ -25,13 +30,7 @@ enum SettingsTabs {
     /// tabs, so its answer only has to be harmless.
     static func binding(_ selection: Binding<SettingsSelection?>) -> Binding<String> {
         Binding(
-            get: {
-                switch selection.wrappedValue {
-                case .log: return "log"
-                case .about: return "about"
-                default: return "general"
-                }
-            },
+            get: { table.first { $0.selection == selection.wrappedValue }?.id ?? "general" },
             set: { id in
                 if let tab = Self.selection(id) { selection.wrappedValue = tab }
             })
@@ -39,11 +38,6 @@ enum SettingsTabs {
 
     /// The selection a tab id stands for, nil for an id that is no tab.
     static func selection(_ id: String) -> SettingsSelection? {
-        switch id {
-        case "general": return .general
-        case "log": return .log
-        case "about": return .about
-        default: return nil
-        }
+        table.first { $0.id == id }?.selection
     }
 }

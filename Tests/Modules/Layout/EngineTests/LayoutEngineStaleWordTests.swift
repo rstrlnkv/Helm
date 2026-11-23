@@ -19,13 +19,6 @@ private final class StaleContext: SecureContextPort, @unchecked Sendable {
     func frontmostBundleID() -> String { bundle }
 }
 
-private final class StaleSelection: SelectionPort, @unchecked Sendable {
-    var text: String?
-    var replaced: [String] = []
-    func selectedTextWithoutClipboard() -> String? { text }
-    func replaceSelection(with text: String) -> Bool { replaced.append(text); return true }
-}
-
 /// The third place a word lives.
 ///
 /// `buffer` is the word being typed and `undo` is the conversion that can still
@@ -49,7 +42,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     private var context = StaleContext()
     private var tap = FakeTap()
     private var sources = StuckSources()
-    private var selection = StaleSelection()
+    private var selection = FakeSelection()
 
     /// A store with that binding in it, because these suites use a chord as the
     /// boundary that remembers.
@@ -68,7 +61,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
 
     private func engine(                        fixCapitals: Bool = false) -> LayoutEngine {
         typing = FakeTyping(); context = StaleContext()
-        tap = FakeTap(); sources = StuckSources(); selection = StaleSelection()
+        tap = FakeTap(); sources = StuckSources(); selection = FakeSelection()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: SameLengthTranslation(), spell: CyrillicSpell(latin: ["Hello"]),
                                   secure: context, activation: FakeActivation(), selection: selection,

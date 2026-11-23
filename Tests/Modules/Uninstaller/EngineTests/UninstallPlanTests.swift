@@ -1,15 +1,15 @@
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-private func app(_ name: String, _ id: String, size: Int = 1000) -> InstalledApp {
-    InstalledApp(name: name, bundleID: id, path: "/Applications/\(name).app", sizeBytes: size)
+private func app(_ name: String, _ id: String) -> InstalledApp {
+    InstalledApp(name: name, bundleID: id, path: "/Applications/\(name).app")
 }
 private func leftover(_ path: String, _ size: Int) -> Leftover {
     Leftover(path: path, kind: .caches, sizeBytes: size, matchedByName: false)
 }
-private func group(_ name: String, running: Bool, appSize: Int = 1000,
+private func group(_ name: String, running: Bool,
                    leftovers: [Leftover] = []) -> UninstallGroup {
-    UninstallGroup(app: app(name, "com.test.\(name)", size: appSize),
+    UninstallGroup(app: app(name, "com.test.\(name)"),
                    leftovers: leftovers, running: running)
 }
 
@@ -19,7 +19,7 @@ final class UninstallPlanTests: XCTestCase {
     // MARK: - Paths and sizes
 
     func testPathsCoverTheAppBundleAndItsSelectedLeftovers() {
-        let g = group("Alpha", running: false, appSize: 500,
+        let g = group("Alpha", running: false,
                       leftovers: [leftover("/L1", 10), leftover("/L2", 20)])
         let selected: Set<String> = ["/L1"]
         XCTAssertEqual(UninstallPlan.paths([g], selectedLeftovers: selected),
@@ -27,8 +27,8 @@ final class UninstallPlanTests: XCTestCase {
     }
 
     func testEverySelectedAppContributesEvenWithoutLeftovers() {
-        let groups = [group("Alpha", running: false, appSize: 100),
-                      group("Beta", running: false, appSize: 250)]
+        let groups = [group("Alpha", running: false),
+                      group("Beta", running: false)]
         XCTAssertEqual(UninstallPlan.paths(groups, selectedLeftovers: []),
                        ["/Applications/Alpha.app", "/Applications/Beta.app"])
     }
@@ -84,7 +84,7 @@ final class UninstallPlanFiguresTests: XCTestCase {
     // MARK: - Sizes
 
     func testSizeCountsTheBundlePlusSelectedLeftoversOnly() {
-        let g = group("Alpha", running: false, appSize: 500,
+        let g = group("Alpha", running: false,
                       leftovers: [leftover("/L1", 10), leftover("/L2", 20)])
         let alpha500 = ["/Applications/Alpha.app": 500]
         XCTAssertEqual(UninstallPlan.totalBytes([g], appBytes: alpha500, selectedLeftovers: ["/L1"]), 510)
@@ -93,8 +93,8 @@ final class UninstallPlanFiguresTests: XCTestCase {
     }
 
     func testEverySelectedAppIsCounted() {
-        let groups = [group("Alpha", running: false, appSize: 100),
-                      group("Beta", running: false, appSize: 250)]
+        let groups = [group("Alpha", running: false),
+                      group("Beta", running: false)]
         XCTAssertEqual(UninstallPlan.totalBytes(groups, appBytes: ["/Applications/Alpha.app": 100,
                                                                     "/Applications/Beta.app": 250],
                                                      selectedLeftovers: []), 350)
@@ -103,7 +103,7 @@ final class UninstallPlanFiguresTests: XCTestCase {
     func testSizeCountsADuplicatedPathOnce() {
         let leftover = Leftover(path: "/L/x", kind: .containers, sizeBytes: 10, matchedByName: false)
         let duplicate = Leftover(path: "/L/x", kind: .caches, sizeBytes: 10, matchedByName: false)
-        let g = UninstallGroup(app: app("Alpha", "com.a.b", size: 100),
+        let g = UninstallGroup(app: app("Alpha", "com.a.b"),
                                leftovers: [leftover, duplicate], running: false)
         XCTAssertEqual(UninstallPlan.totalBytes([g], appBytes: [g.app.path: 100],
                                                      selectedLeftovers: ["/L/x"]), 110)

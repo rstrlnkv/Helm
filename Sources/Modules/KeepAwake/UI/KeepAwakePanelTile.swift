@@ -239,35 +239,8 @@ struct KeepAwakePanelTile: View {
     /// window you happened to open. The wrapping and the literal colours it
     /// needs are in the component.
     @ViewBuilder private var suppressedRow: some View {
-        Group {
-            // `vm.notice` has the battery first. No button beside it:
-            // «Resume» while the guard is in force is a control that cannot do
-            // what it says, and the notice goes by itself when the charger goes
-            // in. The settings page draws the same pair the same way round.
-            switch vm.notice {
-            case .battery:
-                // The short form. The hero says «— plug in» after it, which is
-                // the way out; here there is no room for a second clause beside a
-                // symbol in a 320 pt card, and the presets going grey above it
-                // are what says the panel cannot help.
-                HelmBanner(KAStr.stoppedByBatteryShort(batteryFloor), symbol: "battery.25", compact: true) {
-                    EmptyView()
-                }
-            case .assertionRefused:
-                HelmBanner(KAStr.assertionRefused, symbol: "exclamationmark.triangle.fill", compact: true) {
-                    EmptyView()
-                }
-            case .paused, .none:
-                // The short form. In a 320 pt card beside a button the long
-                // sentence wraps to four lines — a paragraph where everything
-                // else is a row.
-                HelmBanner(KAStr.automationPausedShort, symbol: "pause.circle.fill", compact: true) {
-                    Button(KAStr.resume) { vm.resumeAutomation() }
-                        .controlSize(.small)
-                        .fixedSize()
-                }
-            }
-        }
+        KeepAwakeNoticeBanner(notice: vm.notice, batteryFloor: batteryFloor, compact: true,
+                              resume: { vm.resumeAutomation() })
         .padding(.top, HelmSpace.s4)
     }
 

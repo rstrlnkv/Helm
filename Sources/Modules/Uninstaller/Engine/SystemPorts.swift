@@ -20,16 +20,20 @@ public final class WorkspaceAppLister: AppLister {
             guard let items = try? FileManager.default.contentsOfDirectory(
                 at: dir, includingPropertiesForKeys: nil) else { continue }
             for app in items where app.pathExtension == "app" {
-                // A bulk read of file contents: the pool goes inside the iteration
-                // (ARCHITECTURE.md § Module pattern).
-                autoreleasepool {
-                    let info = app.appendingPathComponent("Contents/Info.plist")
-                    if let id = NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String,
-                       !id.isEmpty { ids.insert(id) }
-                }
+                if let id = Self.bundleID(forAppAt: app.path), !id.isEmpty { ids.insert(id) }
             }
         }
         return ids
+    }
+
+    /// The `CFBundleIdentifier` in a bundle's `Info.plist`, nil when unreadable.
+    /// A bulk read of file contents: the pool goes inside the iteration, so it
+    /// is here, one per call (ARCHITECTURE.md § Module pattern).
+    static func bundleID(forAppAt path: String) -> String? {
+        autoreleasepool {
+            let info = URL(fileURLWithPath: path).appendingPathComponent("Contents/Info.plist")
+            return NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String
+        }
     }
 
     public func isKnownToSystem(bundleID: String) -> Bool {
@@ -164,10 +168,9 @@ public final class WorkspaceAppLister: AppLister {
                     continue
                 }
                 let name = plist?.name ?? app.deletingPathExtension().lastPathComponent
-                // Size 0: `appSizes()` fills these in afterwards, so the list
+                // No size: `appSizes()` fills these in afterwards, so the list
                 // appears at once instead of after a walk of every bundle.
-                out.append(InstalledApp(name: name, bundleID: bundleID,
-                                        path: app.path, sizeBytes: 0))
+                out.append(InstalledApp(name: name, bundleID: bundleID, path: app.path))
             }
         }
         if linked > 0 {

@@ -132,7 +132,7 @@ final class APresetBringsItsFolderWithItTests: PresetModelRig {
                                                       paths: FakePresetFolders(home: home),
                                                       home: home)
             .first { $0.preset.kind == .screenshots })
-        XCTAssertFalse(offer.folderIsNew, "precondition: the folder is already watched")
+        XCTAssertEqual(offer.folder.id, watched.id, "precondition: the folder is already watched")
 
         await model.save(draft(offer), in: offer.folder)
 
@@ -188,8 +188,7 @@ final class APresetBringsItsFolderWithItTests: PresetModelRig {
         let model = model(on: work)
         await model.load()
         let offer = OfferedPreset(preset: RulePreset(kind: .screenshots),
-                                  folder: WatchedFolder(path: home + "/Desktop"),
-                                  folderIsNew: true)
+                                  folder: WatchedFolder(path: home + "/Desktop"))
 
         await model.save(draft(offer), in: offer.folder)
 

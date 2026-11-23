@@ -33,10 +33,10 @@ class KeepAwakeEngineRig: XCTestCase {
         pointer = FakePointer()
         clamshell = FakeClamshell()
         clock = FakeClock()
-        engine = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
-                                  displayInfo: displayInfo, displayObserver: displayObserver,
-                                  power: power, apps: apps, pointer: pointer,
-                                  clamshell: clamshell, clock: clock, lidInfo: FakeLidInfo())
+        engine = fakeEngine(settings: settings, store: store, assertions: assertions,
+                            displayInfo: displayInfo, displayObserver: displayObserver,
+                            power: power, apps: apps, pointer: pointer, clamshell: clamshell,
+                            clock: clock)
     }
 }
 
@@ -253,13 +253,7 @@ final class PowerObserverTeardownTests: XCTestCase {
         let power = FakePower()
         let store = NamespacedStore(namespace: "keep-awake",
                                     backing: InMemoryKeyValueStore())
-        let engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                     assertions: FakeAssertions(),
-                                     displayInfo: FakeDisplayInfo(),
-                                     displayObserver: FakeDisplayObserver(),
-                                     power: power, apps: FakeApps(),
-                                     pointer: FakePointer(), clamshell: FakeClamshell(),
-                                     clock: FakeClock(), lidInfo: FakeLidInfo())
+        let engine = fakeEngine(store: store, power: power)
         engine.activate()
         XCTAssertTrue(power.observing, "the engine watches the power source while it is on")
 
@@ -277,13 +271,8 @@ final class PowerObserverTeardownTests: XCTestCase {
                                     backing: InMemoryKeyValueStore())
         let settings = KeepAwakeSettings(store: store)
         settings.setAppTriggers([AppTrigger(bundleID: "com.example.render")])
-        let engine = KeepAwakeEngine(settings: settings, store: store,
-                                     assertions: assertions,
-                                     displayInfo: FakeDisplayInfo(),
-                                     displayObserver: FakeDisplayObserver(),
-                                     power: FakePower(), apps: apps,
-                                     pointer: FakePointer(), clamshell: FakeClamshell(),
-                                     clock: FakeClock(), lidInfo: FakeLidInfo())
+        let engine = fakeEngine(settings: settings, store: store, assertions: assertions,
+                                apps: apps)
         engine.activate()
         XCTAssertTrue(apps.observing, "the engine watches launches while it is on")
         let before = assertions.preventCount

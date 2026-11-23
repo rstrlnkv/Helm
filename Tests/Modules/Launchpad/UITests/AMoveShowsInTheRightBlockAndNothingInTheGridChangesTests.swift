@@ -115,9 +115,7 @@ import XCTest
         XCTAssertEqual(rig.state.moved, ["d": .category(.music)], "the category view reads the same moves")
     }
 
-    func testTheMenuOffersTheUndoOnlyForAMovedAppAndChecksTheEffectiveCategory() {
-        XCTAssertFalse(LaunchpadMenu.canReturn(moved: nil))
-        XCTAssertTrue(LaunchpadMenu.canReturn(moved: .others))
+    func testTheMenuChecksTheEffectiveCategory() {
         XCTAssertEqual(LaunchpadMenu.effective(moved: nil, raw: "public.app-category.music"), .category(.music))
         XCTAssertEqual(LaunchpadMenu.effective(moved: nil, raw: nil), .others)
         XCTAssertEqual(LaunchpadMenu.effective(moved: .category(.games), raw: "public.app-category.music"), .category(.games))

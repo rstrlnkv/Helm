@@ -23,17 +23,13 @@ import XCTest
 /// Guards a past defect: 1677af73 fix: seven agents over the whole app, and what they found.
 final class DuplicateIdentityTests: XCTestCase {
 
-    private func file(_ path: String, bytes: Int, id: UInt64) -> FileFacts {
-        FileFacts(path: path, bytes: bytes, fileID: id)
-    }
-
     /// Two distinct files whose id the walk did not return both arrive with
     /// fileID 0. They are not hard links of each other — nothing is known about
     /// them — so they must stay in the running as separate candidates.
     func testTwoUnknownIdentitiesAreNotCollapsedAsHardLinks() {
         let groups = Duplicates.sizeGroups([
-            file("/a", bytes: 5_000_000, id: 0),
-            file("/b", bytes: 5_000_000, id: 0),
+            fileWithID("/a", bytes: 5_000_000, id: 0),
+            fileWithID("/b", bytes: 5_000_000, id: 0),
         ], minBytes: 1_000_000, by: KeepRule(.standard))
         XCTAssertEqual(groups.count, 1,
                        "two files of unknown identity were collapsed into one — "
@@ -47,9 +43,9 @@ final class DuplicateIdentityTests: XCTestCase {
     /// because a 5 MB stranger claimed id 0 first.
     func testAnUnknownIdentityDoesNotSwallowAFileOfAnotherSize() {
         let groups = Duplicates.sizeGroups([
-            file("/small-unknown", bytes: 5_000_000, id: 0),
-            file("/big-unknown", bytes: 7_000_000, id: 0),
-            file("/big-twin", bytes: 7_000_000, id: 9),
+            fileWithID("/small-unknown", bytes: 5_000_000, id: 0),
+            fileWithID("/big-unknown", bytes: 7_000_000, id: 0),
+            fileWithID("/big-twin", bytes: 7_000_000, id: 9),
         ], minBytes: 1_000_000, by: KeepRule(.standard))
         XCTAssertEqual(groups.count, 1,
                        "the 7 MB candidate pair is gone — a 5 MB file with the "
@@ -62,8 +58,8 @@ final class DuplicateIdentityTests: XCTestCase {
     /// real inode, two names, still one file.
     func testRealHardLinksStayCollapsed() {
         let groups = Duplicates.sizeGroups([
-            file("/original", bytes: 5_000_000, id: 42),
-            file("/hardlink", bytes: 5_000_000, id: 42),
+            fileWithID("/original", bytes: 5_000_000, id: 42),
+            fileWithID("/hardlink", bytes: 5_000_000, id: 42),
         ], minBytes: 1_000_000, by: KeepRule(.standard))
         XCTAssertTrue(groups.isEmpty)
     }

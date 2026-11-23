@@ -96,7 +96,7 @@ final class ARefusedReadIsNotAMissingProgramTests: XCTestCase {
         let item = try agent { $0.unreadable = [self.program] }
 
         XCTAssertEqual(LeftoverActions.askBeforeDeleting(item), .cannotBeChecked)
-        XCTAssertTrue(LeftoverActions.needsConfirmation(item))
+        XCTAssertNotNil(LeftoverActions.askBeforeDeleting(item))
         XCTAssertTrue(item.actions.contains(.delete),
                       "the row's own delete stays — clearing it deliberately is allowed")
     }

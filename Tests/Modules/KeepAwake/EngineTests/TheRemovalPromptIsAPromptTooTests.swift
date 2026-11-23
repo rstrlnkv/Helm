@@ -127,11 +127,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         // who has used the feature starts — and it is what makes switching it
         // off below an *edge* rather than a value that was always false.
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
-        engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                 assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(), power: FakePower(),
-                                 apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine = fakeEngine(store: store, clamshell: clamshell)
         engine.activate()
     }
 

@@ -10,12 +10,6 @@ import XCTest
 /// that the shapes the whole-disk scan produces are among them.
 /// Past defect: fixed in commit 6c7f39b5.
 final class DiskSpliceReachabilityTests: XCTestCase {
-    private func entry(_ path: String, _ bytes: Int = 1,
-                       _ children: [DiskEntry] = []) -> DiskEntry {
-        DiskEntry(name: (path as NSString).lastPathComponent, path: path, bytes: bytes,
-                  isDirectory: true, noAccess: false, children: children)
-    }
-
     /// The whole-disk scan is rooted at "/", where every other path arithmetic
     /// bug in this codebase has started: joining a child onto "/" with a plain
     /// `+ "/" +` gives "//Users", and the prefix test then matches nothing at

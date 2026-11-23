@@ -18,7 +18,7 @@ struct DuplicatesView: View {
     @State private var selection: String?
     /// The copy being previewed in the sheet, nil when it is closed.
     /// A String rather than a URL because the selection is one, and
-    /// `DuplicatePreview.target` is what turns it into a file to show.
+    /// `DuplicateSelection.surviving` is what checks it still names a file to show.
     @State private var previewPath: String?
 
     var body: some View {
@@ -61,7 +61,7 @@ struct DuplicatesView: View {
         // at nothing.
         .onChange(of: dvm.groups) { _, groups in
             selection = DuplicateSelection.surviving(selection, in: groups)
-            if DuplicatePreview.target(selection: previewPath, in: groups) == nil {
+            if DuplicateSelection.surviving(previewPath, in: groups) == nil {
                 previewPath = nil
             }
         }
@@ -96,8 +96,8 @@ struct DuplicatesView: View {
     private func preview(_ path: String?) {
         if previewPath != nil {
             previewPath = nil
-        } else if let url = DuplicatePreview.target(selection: path, in: dvm.groups) {
-            previewPath = url.path
+        } else if let surviving = DuplicateSelection.surviving(path, in: dvm.groups) {
+            previewPath = surviving
         }
     }
 

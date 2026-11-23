@@ -165,7 +165,7 @@ appears by a clipped, measured height under `HelmMotion.disclosure`. With an obj
 re-weights it; the opacity does not (the line is in `CaptureOverlay.perform`).
 
 The palette's colour grid holds five inks (red, yellow, blue, green, black); the sixth cell is the colour wheel, named
-`ScStr.allColours`, and its press (`EditorAction.colours`, at `EditorBarModel.wheelFrame`'s centre) opens the colours
+`ScStr.allColours`, and its press (`EditorAction.colours`, at `EditorBarModel.colourCell`'s centre) opens the colours
 pop-over (`Sources/Modules/Screenshots/UI/EditorColoursPopover.swift`): all eight inks, `EditorColoursPopover.inks`, in
 the order `AnnotationColor` lists them, and that one line says so. It is placed,
 closed and revealed as the thickness one is, through the one `popoverCard` card and `CaptureOverlay`'s one `popover`, so

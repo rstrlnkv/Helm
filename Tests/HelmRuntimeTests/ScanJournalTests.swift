@@ -2,12 +2,12 @@ import XCTest
 import HelmTestSupport
 @testable import HelmRuntime
 
-/// The journal and its scratch folder, and an entry to put in it; both journal
-/// classes below inherit them. It holds no test of its own.
+/// The journal and its scratch folder, and an entry to put in it; every journal
+/// test class inherits them, in this file and in others. It holds no test of its own.
 class ScanJournalRig: XCTestCase {
 
-    fileprivate var directory: URL!
-    fileprivate var journal: ScanJournal!
+    var directory: URL!
+    var journal: ScanJournal!
 
     override func setUp() {
         super.setUp()
@@ -15,7 +15,7 @@ class ScanJournalRig: XCTestCase {
         journal = ScanJournal(directory: directory)
     }
 
-    fileprivate func entry(_ bytes: Int, _ count: Int, at seconds: TimeInterval = 0) -> ScanEntry {
+    func entry(_ bytes: Int, _ count: Int, at seconds: TimeInterval = 0) -> ScanEntry {
         ScanEntry(at: Date(timeIntervalSince1970: 1_785_600_000 + seconds),
                   bytes: bytes, count: count, seconds: 1.5)
     }
@@ -57,14 +57,11 @@ final class ScanJournalTests: ScanJournalRig {
     /// with the ordinary umask lands at `0644`.
     func testTheFilesArePrivate() throws {
         journal.record(entry(1, 1), items: [ScanItem(path: "/a", bytes: 1)], module: "disk")
-        let fm = FileManager.default
         for url in [journal.entriesURL(module: "disk"),
                     journal.listURL(module: "disk", .current)] {
-            let mode = try fm.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int
-            XCTAssertEqual(mode, 0o600, url.lastPathComponent)
+            XCTAssertEqual(try mode(of: url), 0o600, url.lastPathComponent)
         }
-        let dir = try fm.attributesOfItem(atPath: journal.directory(module: "disk").path)
-        XCTAssertEqual(dir[.posixPermissions] as? Int, 0o700)
+        XCTAssertEqual(try mode(of: journal.directory(module: "disk")), 0o700)
     }
 
     /// Written a second time, the mode still holds. This is the assertion that
@@ -73,9 +70,7 @@ final class ScanJournalTests: ScanJournalRig {
         journal.record(entry(1, 1), items: [ScanItem(path: "/a", bytes: 1)], module: "disk")
         journal.record(entry(2, 1, at: 60), items: [ScanItem(path: "/b", bytes: 2)],
                        module: "disk")
-        let mode = try FileManager.default
-            .attributesOfItem(atPath: journal.listURL(module: "disk", .current).path)[.posixPermissions] as? Int
-        XCTAssertEqual(mode, 0o600)
+        XCTAssertEqual(try mode(of: journal.listURL(module: "disk", .current)), 0o600)
     }
 
     /// A corrupt file costs the journal, never the launch.

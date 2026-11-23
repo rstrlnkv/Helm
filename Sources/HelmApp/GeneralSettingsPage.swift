@@ -25,9 +25,8 @@ struct MenuBarSettingsView: View {
     @State private var launchAtLogin: LoginItemState = LoginItem.current()
     @State private var appearance: AppAppearance = AppSettings.appearance
     @State private var language: String? = AppSettings.language?.rawValue
-    @State private var showPanelEditButton = AppSettings.showPanelEditButton
-    @State private var showSettingsButton = AppSettings.showSettingsButton
-    @State private var showQuitButton = AppSettings.showQuitButton
+    @State private var footerButtons = Dictionary(
+        uniqueKeysWithValues: PanelFooterSetting.Button.allCases.map { ($0, AppSettings.shows($0)) })
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
     @State private var screenRecording: PermissionState = .granted
@@ -91,6 +90,15 @@ struct MenuBarSettingsView: View {
         // under it.
         settingsPage
             .helmPageHeader(symbol: "gearshape", tint: ModuleTint.hostColour, title: AppStr.settingsPane)
+    }
+
+    /// The switch's label, by the button it governs.
+    private func footerLabel(_ button: PanelFooterSetting.Button) -> String {
+        switch button {
+        case .settings: AppStr.showSettingsButton
+        case .edit: AppStr.showPanelEditButton
+        case .quit: AppStr.showQuitButton
+        }
     }
 
     /// One scan, named by its module and captioned with when it last came back.
@@ -320,18 +328,15 @@ struct MenuBarSettingsView: View {
             // The panel keeps its own arrangement, so what is decided here is
             // how it is dressed: which of the three ways out are on it.
             HelmSettingsSection(AppStr.panel) {
-                Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
-                    .onChange(of: showSettingsButton) { _, v in
-                        AppSettings.showSettingsButton = v
-                    }
-                Toggle(AppStr.showPanelEditButton, isOn: $showPanelEditButton)
-                    .onChange(of: showPanelEditButton) { _, v in
-                        AppSettings.showPanelEditButton = v
-                    }
-                Toggle(AppStr.showQuitButton, isOn: $showQuitButton)
-                    .onChange(of: showQuitButton) { _, v in
-                        AppSettings.showQuitButton = v
-                    }
+                // `allCases` is the order the page draws them: settings, pencil, Quit.
+                ForEach(PanelFooterSetting.Button.allCases, id: \.self) { button in
+                    Toggle(footerLabel(button), isOn: Binding(
+                        get: { footerButtons[button] ?? true },
+                        set: { footerButtons[button] = $0 }))
+                        .onChange(of: footerButtons[button]) { _, v in
+                            if let v { AppSettings.setShows(button, v) }
+                        }
+                }
                 // Helm is `LSUIElement`: no Dock icon, no application menu, so
                 // the footer's Settings button and this menu are the whole set
                 // of doors — and this sentence is one of exactly two places the

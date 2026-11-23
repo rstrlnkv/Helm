@@ -53,7 +53,7 @@ final class ASelectionIsMoreThanOneWordTests: XCTestCase {
     /// Nothing to convert is not a conversion. Latin text read through the
     /// Russian table has no letter in common with it, and returning the string
     /// unchanged would report a conversion that did not happen — which
-    /// `SelectionTransform` would then hand to the app as an edit.
+    /// `convertSelection` would then hand to the app as an edit.
     func testTextWithNoTranslatableLetterIsRefused() {
         XCTAssertNil(KeyRemap.map("ghbdtn", from: cyrillic, to: latin))
         XCTAssertNil(KeyRemap.map("12:34 — ...", from: latin, to: cyrillic))

@@ -39,6 +39,13 @@ public enum Pixelate {
         return spaces
     }
 
+    /// An 8-bit RGBA bitmap `width` × `height` in `space`; `alpha` is the site's own, `bytesPerRow` 0 when the system may choose.
+    static func bitmap(width: Int, height: Int, bytesPerRow: Int = 0, space: CGColorSpace,
+                       alpha: CGImageAlphaInfo = .premultipliedLast) -> CGContext? {
+        CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: bytesPerRow,
+                  space: space, bitmapInfo: alpha.rawValue)
+    }
+
     /// The block's side in pixels: `points` at `scale`, rounded, never under one.
     static func block(points: CGFloat, scale: CGFloat) -> Int {
         guard points.isFinite, scale.isFinite, points > 0, scale > 0 else { return 1 }
@@ -50,10 +57,10 @@ public enum Pixelate {
     static func pixels(of rect: CGRect, scale: CGFloat, width: Int, height: Int) -> CGRect? {
         guard scale > 0, scale.isFinite,
               [rect.minX, rect.minY, rect.maxX, rect.maxY].allSatisfy(\.isFinite) else { return nil }
-        let x0 = max(0, (rect.minX * scale).rounded(.down)), y0 = max(0, (rect.minY * scale).rounded(.down))
-        let x1 = min(CGFloat(width), (rect.maxX * scale).rounded(.up)), y1 = min(CGFloat(height), (rect.maxY * scale).rounded(.up))
-        guard x1 > x0, y1 > y0, (x1 - x0) * (y1 - y0) < 1e9 else { return nil }
-        return CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
+        guard let pixels = ScreenSpace.outward(minX: rect.minX * scale, minY: rect.minY * scale,
+                                               maxX: rect.maxX * scale, maxY: rect.maxY * scale, width: width, height: height),
+              pixels.width * pixels.height < 1e9 else { return nil }
+        return pixels
     }
 
     /// `part` as it is, or, when it is a single pixel, with one neighbouring pixel inside a `width` × `height` display
@@ -89,8 +96,7 @@ public enum Pixelate {
         let side = block(points: blockPoints, scale: scale)
         let w = cut.width, h = cut.height, left = Int(part.minX), top = Int(part.minY)
         for space in spaces(for: display) {
-            guard let context = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
-                                          space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+            guard let context = bitmap(width: w, height: h, bytesPerRow: w * 4, space: space),
                   let data = context.data
             else { continue }
             context.draw(cut, in: CGRect(x: 0, y: 0, width: w, height: h))
@@ -124,5 +130,15 @@ public enum Pixelate {
             return Tile(image: image, pixels: part)
         }
         return nil
+    }
+}
+
+extension CGContext {
+    /// Display-local points (top-left) to the pixels of a bitmap `height` high (bottom-left) that starts at `origin` in the
+    /// display's pixels, `scale` pixels to a point: the export's own transform.
+    func mapDisplayPoints(toBitmapOfHeight height: Int, scale: CGFloat, origin: CGPoint) {
+        translateBy(x: 0, y: CGFloat(height))
+        scaleBy(x: scale, y: -scale)
+        translateBy(x: -origin.x / scale, y: -origin.y / scale)
     }
 }
