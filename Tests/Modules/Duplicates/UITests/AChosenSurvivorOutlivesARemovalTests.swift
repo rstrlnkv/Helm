@@ -32,14 +32,13 @@ final class AChosenSurvivorOutlivesARemovalTests: XCTestCase {
     /// first, and the assertion below therefore about the pin rather than about
     /// a ladder that happens to agree.
     private let chosen = "\(home)/Downloads/photo.jpg"
-    /// Filed and the oldest: what `.byPlace` and `.byDate` both keep.
-    private let filed = "\(home)/Documents/Trips/photo.jpg"
+    // `filed`, the shared fixture, is the oldest: what `.byPlace` and `.byDate` both keep.
     /// The third copy, and the one the removal takes.
     private let spare = "\(home)/Documents/Archive/photo.jpg"
 
     private let noon = Date(timeIntervalSince1970: 1_700_000_000)
 
-    private func trio() -> DuplicateGroup {
+    private func pinnedTrio() -> DuplicateGroup {
         DuplicateGroup(copies: [
             .init(path: chosen, bytes: 4_000_000, added: noon.addingTimeInterval(7200)),
             .init(path: filed, bytes: 4_000_000, added: noon),
@@ -52,7 +51,7 @@ final class AChosenSurvivorOutlivesARemovalTests: XCTestCase {
     /// survives a removal proves nothing if the choice was never made or the
     /// removal never happened.
     private func page() async throws -> (DuplicatesViewModel, AnsweringWork) {
-        let work = AnsweringWork(groups: [trio()],
+        let work = AnsweringWork(groups: [pinnedTrio()],
                                   removal: DuplicateRemoval(removed: [spare], refused: [],
                                                             freedBytes: 4_000_000))
         let dvm = await searchedModel(over: work)

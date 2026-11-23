@@ -1,7 +1,6 @@
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
 /// «Search again» during a removal is the second way out of a destructive act,
@@ -82,7 +81,7 @@ final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
             draws the removal's tick and its Stop button inside the bar those three bring up — \
             so a removal the person started has no control anywhere on screen that reaches it
             """)
-        await settle()
+        await grace()
         XCTAssertTrue(dvm.busy, "precondition: still running once the search has answered")
         XCTAssertTrue(pageDrawsTheBasketBar(dvm),
                       "and the search answering does not bring the Stop control back either")

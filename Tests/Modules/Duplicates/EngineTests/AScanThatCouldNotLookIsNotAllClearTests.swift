@@ -49,4 +49,53 @@ final class AScanThatCouldNotLookIsNotAllClearTests: XCTestCase {
         XCTAssertEqual(DuplicatesEmpty.reason(groups: 0, unreadable: 0, librariesSkipped: 3),
                        .librariesNotOpened(3))
     }
+
+    // MARK: - The count itself
+
+    /// Two same-size files the scan may list but not read, made unreadable and
+    /// given back before the scratch sweep deletes them (teardown blocks unwind
+    /// in reverse, so the restore registered here runs first).
+    private func unreadablePair(in root: URL) throws -> [URL] {
+        let urls = ["a.bin", "b.bin"].map { root.appendingPathComponent($0) }
+        for url in urls {
+            try Data(repeating: 0x41, count: DuplicateScanner.minBytes + 1).write(to: url)
+            addTeardownBlock { Self.setMode(0o644, url) }
+            Self.setMode(0o000, url)
+        }
+        return urls
+    }
+
+    private static func setMode(_ mode: Int, _ url: URL) {
+        try? FileManager.default.setAttributes([.posixPermissions: mode], ofItemAtPath: url.path)
+    }
+
+    /// The scanner's digest failures reach the finding the page reads. Both
+    /// files fail their prefix hash, so the answer is exactly two.
+    func testTwoFilesThatCannotBeReadAreCountedInTheFinding() async throws {
+        let root = scratchDirectory("dup-unreadable")
+        _ = try unreadablePair(in: root)
+        try XCTSkipIf(FileManager.default.isReadableFile(atPath: root.appendingPathComponent("a.bin").path),
+                      "this process reads past file modes (root)")
+        let engine = DuplicatesEngine(settings: suiteSealGuard(), trashing: neverTrashes,
+                                      verifying: { { _, _ in fatalError("a scan verifies nothing") } })
+        let found = await engine.find(under: root.path, keeping: .standard, progress: nil)
+        let findings = try XCTUnwrap(found)
+        XCTAssertTrue(findings.groups.isEmpty, "unreadable files must not be grouped")
+        XCTAssertEqual(findings.unreadable, 2)
+    }
+
+    /// One scanner searched twice: the second answer is about the second search.
+    func testTheCountOfOneSearchIsNotCarriedIntoTheNext() throws {
+        let root = scratchDirectory("dup-unreadable-twice")
+        let urls = try unreadablePair(in: root)
+        try XCTSkipIf(FileManager.default.isReadableFile(atPath: urls[0].path),
+                      "this process reads past file modes (root)")
+        let scanner = DuplicateScanner()
+        _ = scanner.find(under: root.path, by: KeepRule(.standard))
+        XCTAssertEqual(scanner.unreadableFiles, 2, "precondition: the first search counted both")
+        urls.forEach { Self.setMode(0o644, $0) }
+        let groups = try XCTUnwrap(scanner.find(under: root.path, by: KeepRule(.standard)))
+        XCTAssertEqual(groups.count, 1, "precondition: the second search could read the pair")
+        XCTAssertEqual(scanner.unreadableFiles, 0)
+    }
 }

@@ -17,9 +17,6 @@ import Module_Duplicates_Engine
 @MainActor
 final class PolicyChangeRearrangesTheListTests: XCTestCase {
 
-    private let downloaded = "\(home)/Downloads/photo.jpg"
-    private let filed = "\(home)/Documents/Trips/photo.jpg"
-
     /// One group: the copy in Downloads arrived first, the copy in Documents was
     /// filed later. The two policies disagree about it, which is the whole point
     /// of there being two.
@@ -182,19 +179,5 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
         XCTAssertEqual(plans.map(\.remove), [archived])
         XCTAssertFalse(plans.map(\.remove).contains(survivor),
                        "the copy the page says stays was sent to the Trash")
-    }
-
-    private let archived = "\(home)/Documents/Archive/photo.jpg"
-
-    /// Three copies, one in transit and two filed, so that a policy change moves
-    /// the survivor *and* leaves an extra behind to be removed. With two copies
-    /// the basket empties itself and `emptyBasket` never reaches the work.
-    private func trio() -> DuplicateGroup {
-        let day = Date(timeIntervalSince1970: 1_700_000_000)
-        return DuplicateGroup(copies: [
-            .init(path: downloaded, bytes: 4_000_000, added: day),
-            .init(path: filed, bytes: 4_000_000, added: day.addingTimeInterval(3600)),
-            .init(path: archived, bytes: 4_000_000, added: day.addingTimeInterval(7200)),
-        ])
     }
 }

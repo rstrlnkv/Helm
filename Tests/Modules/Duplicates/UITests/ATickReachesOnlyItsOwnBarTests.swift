@@ -95,7 +95,7 @@ final class ATickReachesOnlyItsOwnBarTests: XCTestCase {
 
         dvm.cancel()
         work.release()
-        await settle()
+        await grace()
 
         XCTAssertEqual(dvm.phase, .start)
         XCTAssertNil(dvm.progress, "a late tick of a cancelled search is on the start screen")
@@ -109,7 +109,7 @@ final class ATickReachesOnlyItsOwnBarTests: XCTestCase {
         dvm.cancel()
         dvm.search()
         work.release()
-        await settle()
+        await grace()
 
         XCTAssertNil(dvm.progress, "the older search's tick landed on the newer search")
     }

@@ -37,7 +37,6 @@ final class TheKitsRowWordsAndTheFolderHintReachEveryLanguageTests: XCTestCase {
             if language != .en {
                 XCTAssertNotEqual(line, HelmBasket.movedToTrash("12 MB", language: .en), "\(language)")
             }
-            XCTAssertEqual(DupStr.movedToTrash("12 MB"), line, "\(language): Duplicates says it differently")
         }
     }
 

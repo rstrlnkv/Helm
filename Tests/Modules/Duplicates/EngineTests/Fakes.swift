@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_Engine
 
@@ -17,8 +18,7 @@ import XCTest
 /// file. A comment in the second called it «the same class with the other
 /// verdict», which is the note such a duplication is.
 final class ParkedVerify: @unchecked Sendable {
-    private let lock = NSLock()
-    private var count = 0
+    private let count = LockedCount()
     private let gate = DispatchSemaphore(value: 0)
     private let verdict: DuplicateVerification.Verdict
 
@@ -26,11 +26,11 @@ final class ParkedVerify: @unchecked Sendable {
         self.verdict = verdict
     }
 
-    var calls: Int { lock.lock(); defer { lock.unlock() }; return count }
+    var calls: Int { count.value }
     func release(_ n: Int) { for _ in 0..<n { gate.signal() } }
 
     func check(_: String, _: String) -> DuplicateVerification.Verdict {
-        lock.lock(); count += 1; lock.unlock()
+        count.bump()
         gate.wait()
         return verdict
     }
@@ -44,6 +44,12 @@ func day(_ n: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(n) * 86_40
 /// path so two paths are two files.
 func facts(_ path: String, added: Date? = nil, bytes: Int = 4_096) -> FileFacts {
     FileFacts(path: path, bytes: bytes, fileID: UInt64(abs(path.hashValue)), added: added)
+}
+
+/// One file whose identity the test names, rather than taking it from the path
+/// as `facts` does.
+func fileWithID(_ path: String, bytes: Int, id: UInt64) -> FileFacts {
+    FileFacts(path: path, bytes: bytes, fileID: id)
 }
 
 /// A rule with no transit tier and no `.system` read: every rung above `.date` is
@@ -77,11 +83,10 @@ extension XCTestCase {
 /// fake to `trashing:` — this recorder, `neverTrashes` or a closure — so no test
 /// here can reach the person's Trash.
 final class TrashRecorder: @unchecked Sendable {
-    private let lock = NSLock()
-    private var urls: [URL] = []
-    var count: Int { lock.lock(); defer { lock.unlock() }; return urls.count }
-    var paths: [String] { lock.lock(); defer { lock.unlock() }; return urls.map(\.path) }
-    func add(_ url: URL) { lock.lock(); urls.append(url); lock.unlock() }
+    private let urls = Locked<[URL]>([])
+    var count: Int { urls.value.count }
+    var paths: [String] { urls.value.map(\.path) }
+    func add(_ url: URL) { urls.withLock { $0.append(url) } }
     /// The `trashing:` argument that records, then removes the file as a real move leaves it.
     var trashing: @Sendable (URL) throws -> Void { { self.add($0); try FileManager.default.removeItem(at: $0) } }
 }

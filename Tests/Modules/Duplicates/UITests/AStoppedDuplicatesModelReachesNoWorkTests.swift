@@ -73,7 +73,7 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
         XCTAssertEqual(dvm.basket, [extraCopy], "precondition: something is marked to send")
         await dvm.emptyBasket()
         let report = await dvm.backgroundScan()
-        await settle()
+        await grace()
 
         XCTAssertNil(report)
         XCTAssertEqual(work.calls, before, "a call reached the work after stop()")
@@ -90,7 +90,7 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
 
         dvm.stop()
         work.releaseParked()
-        await settle()
+        await grace()
 
         XCTAssertTrue(dvm.groups.isEmpty, "an answer landed on a stopped model")
         XCTAssertNotEqual(dvm.phase, .result)
@@ -126,7 +126,7 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
         dvm.stop()
         dvm.appear()
         await dvm.firstLoad?.value
-        await settle()
+        await grace()
         XCTAssertEqual(probe.reads, 0, "a stopped model asked the keychain")
 
         let live = SealKeyProbe()
@@ -149,7 +149,7 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
             released = dvm
             dvm.stop()
         }
-        await settle()
+        await grace()
         XCTAssertNil(released, "a stopped model is still held after its owner let go")
     }
 }

@@ -33,6 +33,13 @@ enum DuplicateVerification {
         case unreadable
     }
 
+    /// A survivor's one reading — or the fact that it could not be taken,
+    /// remembered so an unreadable survivor is not retried per copy.
+    private enum Survivor {
+        case unreadable
+        case read(fileNumber: UInt64?, bytes: Int, digest: String)
+    }
+
     /// One removal's verifications, with the survivor read once per batch.
     ///
     /// A group of N copies names the same survivor N−1 times, and reading it
@@ -50,19 +57,13 @@ enum DuplicateVerification {
     /// whatever happens, so the freshness its reading needs is "within the
     /// operation the person pressed the button for" — the memo's first pair
     /// reads it from disk inside this same removal, before the last pair
-    /// asks. The cache the doc comment above refuses is the *scan's*
+    /// asks. The cache the enum's doc comment refuses is the *scan's*
     /// — a digest older than the offer, standing in for a file nobody re-read —
     /// and nothing here outlives the press.
+    ///
     /// `@unchecked Sendable` because the engine's default `verifying` closure
     /// is `@Sendable` and captures one: the memo is mutated from the one serial
     /// loop of the removal that made it, which the compiler cannot see.
-    /// A survivor's one reading — or the fact that it could not be taken,
-    /// remembered so an unreadable survivor is not retried per copy.
-    private enum Survivor {
-        case unreadable
-        case read(fileNumber: UInt64?, bytes: Int, digest: String)
-    }
-
     final class Batch: @unchecked Sendable {
         private var survivors: [String: Survivor] = [:]
         private let hash: (_ path: String, _ expecting: Int) -> String?
