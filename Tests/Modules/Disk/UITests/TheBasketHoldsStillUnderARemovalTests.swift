@@ -12,9 +12,8 @@ import HelmRuntime
 /// and exactly the wrong shape in trust, in a flow whose whole subject is
 /// deletion: the app quietly un-picks what somebody picked.
 ///
-/// `OneRemovalAtATimeEverywhereTests` cannot see it. That scan reads the methods
-/// that set `busy = true`, and `toggleBasket` does not set it: `emptyBasket`,
-/// which does, is the other method. (Architecture/Removal.md § One removal at a
+/// A test of `emptyBasket` alone cannot see it: `toggleBasket` does not set
+/// `busy`, `emptyBasket`, which does, is the other method. (Architecture/Removal.md § One removal at a
 /// time) states the rule this breaks in a sentence about both halves: «The model
 /// refuses; the page dims. Both, or neither is reliable.»
 ///
@@ -100,6 +99,23 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
 
         XCTAssertEqual(dvm.basket.map(\.path), [other],
                        "the guard outlived the removal it belongs to")
+    }
+
+    /// The press itself, twice: the second «Remove» while the first is held sends
+    /// nothing to the engine.
+    func testASecondRemovePressWhileOneRunsSendsNothing() async {
+        let work = HeldWork()
+        let dvm = await removing(work)
+
+        // Started, not awaited: with no guard the second press parks on the held
+        // fake too, and awaiting it would hang instead of failing.
+        let second = Task { await dvm.emptyBasket() }
+        await grace()
+
+        XCTAssertEqual(work.trashRequests, [[sub]], "a second removal reached the engine")
+        work.releaseTrash()
+        await second.value
+        await waitUntil("the removal is over") { !dvm.busy }
     }
 
     /// And the batch is the one that was sent: nothing added in the meantime got

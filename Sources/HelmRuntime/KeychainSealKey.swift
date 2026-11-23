@@ -45,7 +45,7 @@ public extension SealKeyPort {
 /// every one of those installations as "somebody rewrote your rules".
 public final class KeychainSealKey: SealKeyPort {
     private let service: String
-    private let account: String
+    let account: String
     /// The log category, so a failure names the feature that lost its key
     /// rather than the mechanism.
     private let category: String

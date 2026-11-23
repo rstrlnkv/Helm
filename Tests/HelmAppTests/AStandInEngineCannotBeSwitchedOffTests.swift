@@ -18,13 +18,12 @@ import XCTest
 /// same defect through another door: it would forget the preferences that say the
 /// module ran.
 ///
-/// **The switch is driven; the reset is read off the source.** `setEnabled` runs for
-/// real on the shared host against a recording descriptor (as
-/// `TheHostPutsAModulesOwnItemInTheMenuBarTests` does). `ResetEverything.run()` is not
-/// called: with its guard gone it trashes this Mac's Helm folders, forgets the
-/// preferences of the running bundle and relaunches. What is pinned there is that the
-/// guard on `anyStandsIn` stands before the first step, and the behaviour it asks
-/// (`anyStandsIn`) is driven here both ways.
+/// **Both are driven.** `setEnabled` runs for real on the shared host against a
+/// recording descriptor (as `TheHostPutsAModulesOwnItemInTheMenuBarTests` does). The
+/// reset runs through `ResetEverything.run(standInIsLive:perform:)` with a recorder
+/// for `perform`: the real steps trash this Mac's Helm folders, forget the preferences
+/// of the running bundle and relaunch. `anyStandsIn`, the answer it is given, is
+/// driven here both ways.
 @MainActor
 final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
 
@@ -106,16 +105,10 @@ final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
         XCTAssertNil(host.liveModule(Self.ordinaryID))
     }
 
-    /// The reset's guard stands before the first step of the plan, and asks the host.
-    func testTheResetRefusesBeforeAnyStep() throws {
-        let source = try RepoSource.text(of: "Sources/HelmApp/ResetEverything.swift")
-        let body = try XCTUnwrap(SwiftSource.body(of: "run", in: source), "ResetEverything.run is gone")
-        let guardAt = try XCTUnwrap(body.range(of: "guard !ModuleHost.shared.anyStandsIn"),
-                                    "«Reset all settings» no longer asks whether a stand-in is live")
-        let loopAt = try XCTUnwrap(body.range(of: "for step in ResetPlan.order"))
-        XCTAssertLessThan(guardAt.lowerBound, loopAt.lowerBound,
-                          "the guard comes after a step has already run")
-        let guardText = String(body[guardAt.lowerBound..<loopAt.lowerBound])
-        XCTAssertTrue(guardText.contains("return"), "the guard does not leave `run()`")
+    /// A live stand-in refuses the reset before its first step.
+    func testTheResetRefusesBeforeAnyStep() {
+        var performed: [ResetPlan.Step] = []
+        ResetEverything.run(standInIsLive: true) { performed.append($0) }
+        XCTAssertEqual(performed, [], "a step ran while a stand-in engine was live")
     }
 }

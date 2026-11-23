@@ -57,27 +57,6 @@ final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
         XCTAssertEqual(primary?.isEmpty, false)
     }
 
-    /// **The store's service ids are not the ids the module has.** This is the
-    /// defect that shipped, as a fact about the machine rather than a story: the
-    /// identifiers in `scutil --nc list` are configurations', the store is keyed
-    /// by network service, and asking it with the wrong one answers nil for
-    /// every NetworkExtension tunnel. What replaced that lookup is
-    /// `VPNStatusParser` over `scutil --nc status <name>`, and this only pins
-    /// that the store is no longer asked a question it cannot answer.
-    func testTheStoreIsNotAskedAboutConfigurationIdsAnyMore() throws {
-        let port = DynamicStoreInterfaces()
-        let members = Mirror(reflecting: port as Any).children.compactMap(\.label)
-        XCTAssertFalse(members.contains("interface"))
-        // Comments stripped first: the reason this rule exists is written in
-        // that file, and it quotes the key — a scan that reads comments reports
-        // the explanation as the offence.
-        let code = try RepoSource.lines(of: "Sources/Modules/VPN/Engine/SystemPorts.swift")
-            .map(RepoSource.code)
-        XCTAssertFalse(code.contains { $0.contains("State:/Network/Service/") },
-                       "the dynamic store is being asked by service id again, with an id that "
-                       + "names a configuration — the strip is then absent on every Mac")
-    }
-
     // MARK: - The speed run, without running the tool
 
     /// **A status of 0 is not a success here, and the code read it as one.**

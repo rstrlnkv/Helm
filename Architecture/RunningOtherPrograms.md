@@ -5,8 +5,8 @@ launch paths and the `@try`/`@catch` has to sit in Objective-C, with no Swift fr
 between it and the raise; `HelmReadNumber` has the same `@try` around a call to a window's own getter for
 `WindowCorner`, and catches anything thrown there, not only an `NSException`. The reasons
 are on the doc comments of `HelmLaunchTask`, `HelmLaunchExceptionNameKey` and `HelmReadNumber` in `Sources/HelmLaunch/include/HelmLaunch.h`.
-`Tests/HelmAppTests/NoBareLaunchInTheShellTests.swift` refuses a bare
-`try process.run()` anywhere but `HelmProcess`'s own door.
+`Tests/HelmRuntimeTests/TheRulesTheCompilerCannotHoldTests.swift` refuses a bare
+`try process.run()` in `Sources/HelmApp`.
 
 `Sources/HelmRuntime/HelmProcess.swift` is the one way to run a tool, and its doc
 comments hold the rules: output is read to the end before the wait; stderr is the null

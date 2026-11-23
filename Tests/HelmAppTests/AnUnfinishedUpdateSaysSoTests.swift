@@ -74,43 +74,6 @@ final class AnUnfinishedUpdateSaysSoTests: XCTestCase {
         XCTAssertNil(UpdateHandoff.take(), "the report left the note behind")
     }
 
-    /// **Read off the source, and the reason is worth stating.** Driving this
-    /// means `Installer.installZip`, which ends in `NSApp.terminate` and hands a
-    /// detached script the path of the bundle the suite is running out of. The
-    /// script itself is driven for real next door
-    /// (`AFailedCopyKeepsTheInstalledAppTests`); this pins the half
-    /// that decides what the script is given and when.
-    func testTheAppWritesTheNoteBeforeItHandsOver() throws {
-        let source = SwiftSource.uncommented(try RepoSource.text(of: "Sources/HelmApp/Installer.swift"))
-        XCTAssertGreaterThan(source.count, 2000, "the installer was not read at all")
-
-        let note = try XCTUnwrap(source.range(of: "UpdateHandoff.note("),
-                                 "the installer hands the swap over without leaving a note, "
-                                 + "so a swap that fails is reported nowhere: the app that "
-                                 + "owns the log is dead before the script starts")
-        // The hand-over, by the name of the door it goes through. It was
-        // `proc.run()` until 2026-08-20, when the launch moved onto
-        // `HelmProcess.start` — the one that answers instead of raising, since
-        // an `NSTask` that raises aborts the app, and here it would abort it
-        // while it is replacing itself. Any source scan anchors on a spelling;
-        // what this one can do is say which spelling, so the next rename is an
-        // edit here rather than a puzzle.
-        let spawn = try XCTUnwrap(source.range(of: "HelmProcess.start(proc"),
-                                  "the installer no longer hands the swap over through "
-                                  + "`HelmProcess.start`, so this scan cannot see where the "
-                                  + "hand-over is — find the launch and name it here")
-        XCTAssertLessThan(note.lowerBound, spawn.lowerBound,
-                          "the note is written after the handover, so a swap that beats "
-                          + "this process to it clears a note that is not there yet")
-
-        XCTAssertTrue(source.contains("UpdateSwap.script"),
-                      "the installer carries a swap script of its own again — one that "
-                      + "no test drives and that nothing keeps in step with the arguments")
-        XCTAssertTrue(source.contains("UpdateSwap.arguments("),
-                      "the spawn assembles its own argument array, which is the order "
-                      + "spelled twice with nothing between the halves")
-    }
-
     /// And the launch after a swap that worked says nothing, or the line means
     /// nothing.
     func testASwapThatWorkedIsNotReportedAsAFailure() {

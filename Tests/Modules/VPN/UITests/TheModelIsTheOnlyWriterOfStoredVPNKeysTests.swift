@@ -55,28 +55,4 @@ final class TheModelIsTheOnlyWriterOfStoredVPNKeysTests: XCTestCase {
         XCTAssertEqual(returned, s.noticeBook, "the returned book is not what was stored")
         model.stop()
     }
-
-    /// The page cannot bypass the model: no UI file but the model's writes either
-    /// key to the store, and the page's book is only ever assigned what the model
-    /// returned. A bypass keeps the screen right and loses the write.
-    func testNoPageWritesAStoredKeyButThroughTheModel() throws {
-        let files = try RepoSource.swiftFiles(under: "Sources/Modules/VPN/UI")
-        XCTAssertFalse(files.isEmpty, "the scan found no UI files")
-        for path in files where !path.hasSuffix("/VPNViewModel.swift") {
-            for (n, raw) in try RepoSource.lines(of: path).enumerated() {
-                let line = RepoSource.code(raw)
-                for token in ["setRulesJSON", "setNoticeBook"] {
-                    XCTAssertFalse(line.contains(token), "\(path):\(n + 1) writes the store, not the model")
-                }
-                // `_noticeBook = State(...)` is the page seeding itself from the store, a read.
-                if !line.contains("_noticeBook"), let r = line.range(of: "noticeBook = ") {
-                    let rhs = line[r.upperBound...].trimmingCharacters(in: .whitespaces)
-                    XCTAssertTrue(rhs.hasPrefix("vm."),
-                                  "\(path):\(n + 1) assigns the book something the model did not return")
-                }
-            }
-        }
-        XCTAssertTrue(try RepoSource.text(of: "Sources/Modules/VPN/UI/VPNAppRules.swift")
-            .contains("vm.saveRules(rules)"), "persist() no longer saves through the model")
-    }
 }

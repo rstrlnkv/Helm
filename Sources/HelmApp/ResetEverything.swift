@@ -30,26 +30,32 @@ import HelmRuntime
 /// Settings. Nothing here pretends otherwise.
 @MainActor enum ResetEverything {
 
-    /// The steps are `ResetPlan.order` and the switch is exhaustive: a step
-    /// added to the plan and not carried out here is a build error rather than
-    /// a promise nothing keeps.
     static func run() {
+        run(standInIsLive: ModuleHost.shared.anyStandsIn, perform: carryOut)
+    }
+
+    /// The steps are `ResetPlan.order`; `perform` is the seam a test drives it through.
+    static func run(standInIsLive: Bool, perform: (ResetPlan.Step) -> Void) {
         // A stand-in engine would not give back what the real one holds, and the
         // reset would forget the real settings that say the module ran.
-        guard !ModuleHost.shared.anyStandsIn else {
+        guard !standInIsLive else {
             HelmLog.shared.warn("host", "refused: a stand-in engine is live, reset everything not run")
             return
         }
-        for step in ResetPlan.order {
-            switch step {
-            case .handBackWhatIsOutsideHelm: ModuleHost.shared.handBackSystemState()
-            case .giveBackTheLoginItem: LoginItem.setEnabled(false)
-            case .stopEveryModule: ModuleHost.shared.shutdown()
-            case .trashHelmsOwnFolders: trashHelmsOwnFolders()
-            case .relatchTheLogPurge: HelmLog.shared.rewritePurgeLatch()
-            case .forgetPreferences: forgetPreferences()
-            case .relaunch: relaunch()
-            }
+        for step in ResetPlan.order { perform(step) }
+    }
+
+    /// The switch is exhaustive: a step added to the plan and not carried out
+    /// here is a build error rather than a promise nothing keeps.
+    private static func carryOut(_ step: ResetPlan.Step) {
+        switch step {
+        case .handBackWhatIsOutsideHelm: ModuleHost.shared.handBackSystemState()
+        case .giveBackTheLoginItem: LoginItem.setEnabled(false)
+        case .stopEveryModule: ModuleHost.shared.shutdown()
+        case .trashHelmsOwnFolders: trashHelmsOwnFolders()
+        case .relatchTheLogPurge: HelmLog.shared.rewritePurgeLatch()
+        case .forgetPreferences: forgetPreferences()
+        case .relaunch: relaunch()
         }
     }
 

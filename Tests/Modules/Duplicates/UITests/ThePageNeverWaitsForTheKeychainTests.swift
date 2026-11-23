@@ -132,46 +132,6 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
 
     // MARK: - And the page reads the cheap one
 
-    /// **Read from the source, because the type system cannot say this.** Both
-    /// readings answer a `KeepPolicy` and both compile anywhere in this target;
-    /// what separates them is that one can take 19 seconds, and everything in
-    /// this target is `@MainActor`.
-    ///
-    /// A **write** is allowed and is not this defect: `choose` and `chooseFolder`
-    /// seal what somebody just pressed, and there is no control to press until
-    /// the page has been up — the key is warm by construction. The same exception
-    /// `TheSettingsPageNeverWaitsForTheKeychainTests` makes, one target over.
-    func testNothingOnThePageReadsTheBlockingPolicy() throws {
-        var offences: [String] = []
-        for path in try RepoSource.swiftFiles(under: "Sources/Modules/Duplicates/UI") {
-            for (index, line) in try RepoSource.lines(of: path).enumerated() {
-                let code = RepoSource.code(line)
-                guard code.contains("DuplicatesSettings.keepPolicy("),
-                      !code.contains("DuplicatesSettings.keepPolicyIfWarm(") else { continue }
-                offences.append("\(path):\(index + 1): \(code.trimmingCharacters(in: .whitespaces))")
-            }
-        }
-        XCTAssertEqual(offences, [], """
-            the policy is read through the reading that can go to the keychain, on the thread that \
-            draws — `keepPolicyIfWarm` is the one that answers «not yet» instead of standing \
-            behind a modal authorization dialog
-            """)
-    }
-
-    /// And the scan above can only fail if the spelling it hunts for is one this
-    /// target still uses — a rule whose subject has been renamed passes for ever.
-    func testThePageDoesReadWhatIsInForce() throws {
-        var readers: [String] = []
-        for path in try RepoSource.swiftFiles(under: "Sources/Modules/Duplicates/UI")
-        where try RepoSource.text(of: path).contains("DuplicatesSettings.keepPolicyIfWarm(") {
-            readers.append(path)
-        }
-        XCTAssertFalse(readers.isEmpty, """
-            nothing on this page reads what is in force any more, so the popup shows a belief of \
-            its own and the scan above is looking for a spelling that is gone
-            """)
-    }
-
     /// A keychain that cannot answer — locked at login — leaves the page on the
     /// standard belief rather than waiting for one. It is the answer the engine
     /// applies in the same state, so the screen and the sweep still agree.

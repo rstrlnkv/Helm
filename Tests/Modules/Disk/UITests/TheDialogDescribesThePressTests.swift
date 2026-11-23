@@ -62,21 +62,4 @@ final class TheDialogDescribesThePressTests: XCTestCase {
         XCTAssertEqual(work.trashRequests, [question.paths])
         XCTAssertEqual(question.count, 4)
     }
-
-    /// The page is what puts the sentence on screen, and it is a view: nothing
-    /// above reaches it. The title and the message are both read off the one
-    /// `removalQuestion` the press hands over, so this reads the page for the
-    /// two places that spell it. A dialog titled by a count of its own, or a
-    /// message naming the basket rather than the paths, is a different act.
-    func testThePageTitlesAndNamesTheDialogFromTheQuestionThePressSends() throws {
-        let page = SwiftSource.code(try RepoSource.text(of: "Sources/Modules/Disk/UI/DiskSettingsPage.swift"))
-        let squeezed = page.filter { !$0.isWhitespace }
-
-        XCTAssertTrue(squeezed.contains("letquestion=dvm.removalQuestion"),
-                      "precondition: the page reads the question once")
-        XCTAssertTrue(squeezed.contains(".confirmationDialog(DkStr.confirmTrash(question),"),
-                      "the dialog's title is not the question's count and size")
-        XCTAssertTrue(squeezed.contains("Text(question.named())"),
-                      "the dialog's message is not the paths the press sends")
-    }
 }

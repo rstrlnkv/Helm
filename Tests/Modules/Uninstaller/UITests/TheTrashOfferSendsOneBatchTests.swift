@@ -8,11 +8,8 @@ import XCTest
 ///
 /// «The model refuses; the page dims. Both, or neither is reliable» —
 /// Architecture/Removal.md § One removal at a time, stated once for the four view
-/// models that send a removal. `OneRemovalAtATimeEverywhereTests` enforces
-/// it by reading every file under `Sources/Modules` that sends a removal
-/// (`work.trash(`, `work.trashPaths(` or `uvm.trashPaths(`), which `TrashedLeftoversView.swift` does
-/// too; the model in it, `TrashedLeftoversModel`, is not called a view model, so a
-/// scan by file name misses it. It calls the model's `trashPaths`, and
+/// models that send a removal. Each model has its own test of it. The model here,
+/// `TrashedLeftoversModel`, is not called a view model. It calls the model's `trashPaths`, and
 /// it has `busy` for the footer to read with nothing standing beside the request:
 /// `removeSelection` sets the flag and starts the batch whatever was already in
 /// flight.

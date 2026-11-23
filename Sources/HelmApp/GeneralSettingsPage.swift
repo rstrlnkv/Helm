@@ -147,8 +147,7 @@ struct MenuBarSettingsView: View {
 
     /// Take the off-list if it is free, and pay for it elsewhere if it is not.
     ///
-    /// **Every read of that setting on this page goes through here**, and
-    /// `TheSettingsPageNeverWaitsForTheKeychainTests` reads this file to say so.
+    /// **Every read of that setting on this page goes through here**.
     /// The setting verifies a seal on every read, the key behind that seal comes
     /// from the login keychain, and on an ad-hoc build a keychain read is a
     /// modal authorization dialog — 19,09 s of it in

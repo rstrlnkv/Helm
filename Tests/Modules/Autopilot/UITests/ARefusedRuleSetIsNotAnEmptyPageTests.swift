@@ -143,7 +143,8 @@ final class ARefusedRuleSetIsNotAnEmptyPageTests: XCTestCase {
         XCTAssertEqual(model.screen, .rulesRefused(.tampered), "precondition")
 
         work.answers(AutopilotStatus(refusal: nil))
-        await model.discardRefusedRules()
+        model.ask(.rules)
+        await model.confirmDiscard()
 
         XCTAssertTrue(work.calls.contains("dropRefusedRules"),
                       "the button drew and sent nothing")

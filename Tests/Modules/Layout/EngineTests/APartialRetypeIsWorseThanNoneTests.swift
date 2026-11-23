@@ -23,8 +23,8 @@ import XCTest
 /// its place, `perform` answers `false`, and the module records the whole thing
 /// as «the app refused, nothing to see».
 ///
-/// **The first test in this file is the one to satisfy first, and the order is
-/// not a preference.** Tests two, three and four are about the engine trusting
+/// **The port's all-or-nothing shape is the one to satisfy first, and the order is
+/// not a preference.** The tests below are about the engine trusting
 /// `false` too little — it forgets a word the field still holds, and drops an
 /// undo the app never carried out. Each is repaired by *keeping* state across a
 /// refusal. Do that while `perform` can still half-apply and the kept state is
@@ -34,39 +34,6 @@ import XCTest
 /// build every `CGEvent` before posting any of them, as `SystemCommandKeys.press` in the same
 /// file already does — and only then let the engine believe `false`.
 final class APartialRetypeIsWorseThanNoneTests: XCTestCase {
-
-    // MARK: - The port
-
-    /// The shape the contract requires: nothing is posted until the whole plan
-    /// can be posted.
-    ///
-    /// Read off the source because the failure is unreachable from a test — it
-    /// needs `CGEvent(...)` to return nil, which is the system declining an
-    /// allocation — and because posting real Delete keystrokes to check would
-    /// type into whatever window is in front of the test runner. What is
-    /// checkable is the arrangement: a `return false` after the first `.post(`
-    /// is the half-applied plan, spelled out.
-    func testTheReplacementPostsNothingItCannotFinish() throws {
-        let path = "Sources/Modules/Layout/Engine/SystemPorts.swift"
-        let source = SwiftSource.code(try RepoSource.text(of: path))
-        let bodies = SwiftSource.bodiesNamed("perform", in: source)
-        XCTAssertEqual(bodies.count, 1,
-                       "\(path) no longer holds exactly one perform(_:) — this check has "
-                       + "lost its subject and is not guarding anything")
-        let body = try XCTUnwrap(bodies.first)
-        let firstPost = try XCTUnwrap(
-            body.range(of: ".post("),
-            "perform(_:) posts nothing at all — the subject of this check is gone")
-
-        let afterTheFirstPost = String(body[firstPost.upperBound...])
-        XCTAssertFalse(afterTheFirstPost.contains("return false"), """
-            perform(_:) can answer «refused» with keystrokes already posted. The \
-            deletes for plan.backspaces go to the HID tap in the first loop; the \
-            second loop builds the events for plan.insert and returns false if \
-            CGEvent hands back nil. The person watched a word disappear and \
-            nothing arrive, and every caller was told nothing happened.
-            """)
-    }
 
     // MARK: - The engine, once the port can be believed
 

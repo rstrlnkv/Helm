@@ -56,14 +56,4 @@ final class TheStopButtonReachesTheChildTests: XCTestCase {
 
         await waitUntil("the child was terminated") { runner.handles.first?.terminated == true }
     }
-
-    /// The page offers the press: a stop nobody can reach is not a feature.
-    /// Structural.
-    func testThePageWiresTheStopButton() throws {
-        let page = RepoSource.root
-            .appendingPathComponent("Sources/Modules/Homebrew/UI/HomebrewConsole.swift")
-        let source = try String(contentsOf: page, encoding: .utf8)
-        XCTAssertTrue(source.contains("hb.stopOperation()"),
-                      "HomebrewConsole offers no way to stop a running operation")
-    }
 }

@@ -44,9 +44,6 @@ dims. Both, or neither is reliable. `DiskViewModel.toggleBasket` declining while
 is the same guard read from the basket's own door, and so are Disk's `newScan` («Choose another…») and `rescan` («Scan again», which also declines while a walk runs); Duplicates' `toggleBasket`, `keep`, `choose` and
 `restoreRecommendation` decline too, and their controls dim.
 
-`Tests/HelmAppTests/OneRemovalAtATimeEverywhereTests.swift` fails on any file under
-`Sources/Modules/` that sends a removal and has a method setting `busy = true` with no
-`guard` on `!busy` before that line, or no such method at all; the files it finds are the
-output of `command grep -rlE 'work\.(trash(Paths)?|removeApp)\(|uvm\.trashPaths\(' Sources/Modules/`, since the count itself
-does not belong in this sentence. Its doc comments say
-why it scans by what a file **sends** rather than by what a type is named.
+Each model that sends a removal has its own second-press test: `OneRemovalAtATimeTests` (Leftovers),
+`TheOrphansTabRefusesASecondPressTests`, `TheTrashOfferSendsOneBatchTests` and `TheDoorTakesOneRemovalAtATimeTests` (Uninstaller),
+`TheBasketHoldsStillUnderARemovalTests` (Disk), `AKeepPressedDuringARemovalIsNotALieTests` (Duplicates).

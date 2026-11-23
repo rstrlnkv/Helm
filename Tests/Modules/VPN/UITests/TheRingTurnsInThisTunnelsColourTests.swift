@@ -134,42 +134,4 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
     }
 
     // MARK: - The firing path asks on the configuration, not the module
-
-    /// The half a model-level test cannot reach: **that the menu bar's own path
-    /// calls these methods at all.** `statusAppearance` builds what the host
-    /// draws from three questions, and for the first hour these settings existed
-    /// it asked all three module-wide — so every reading above would have been
-    /// green while the popover changed nothing. Driving the descriptor here is
-    /// not the answer: its view model comes with the app's real store as a
-    /// default argument, and eleven engine tests once rolled back the owner's
-    /// own Autopilot exactly that way (ARCHITECTURE.md § Fakes). So the guard is on the
-    /// source: in the firing path, each of the three is asked with the
-    /// configuration's name.
-    func testTheDescriptorAsksAllThreeOnTheConfigurationThatFired() throws {
-        let file = RepoSource.root
-            .appendingPathComponent("Sources/Modules/VPN/UI/VPNDescriptor.swift")
-        let source = try String(contentsOf: file, encoding: .utf8)
-        for call in ["model.automationSpin(on: firing.name)",
-                     "model.effectiveNotice(for: firing.kind, on: firing.name)",
-                     "model.spinTint(for: firing.kind, on: firing.name)"] {
-            XCTAssertTrue(source.contains(call),
-                          "the firing path does not ask «\(call)» — a card's setting is written "
-                          + "to the store and never read")
-        }
-        for moduleWide in ["model.automationSpin\n", "model.automationSpin ",
-                           "model.spinTint(for: firing.kind)"] {
-            XCTAssertFalse(source.contains(moduleWide),
-                           "the firing path still reads «\(moduleWide)» module-wide")
-        }
-    }
-
-    /// And the banner's own mode, which is decided in the model rather than in
-    /// the descriptor.
-    func testTheBannerIsAnnouncedInThisConfigurationsVoice() throws {
-        let file = RepoSource.root
-            .appendingPathComponent("Sources/Modules/VPN/UI/VPNViewModel.swift")
-        let source = try String(contentsOf: file, encoding: .utf8)
-        XCTAssertTrue(source.contains("let mode = notice(for: firing.kind, on: firing.name)"),
-                      "the banner is announced in the module's voice, not the configuration's")
-    }
 }

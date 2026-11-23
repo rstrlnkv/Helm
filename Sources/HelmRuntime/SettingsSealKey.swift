@@ -27,7 +27,7 @@ public enum SettingsSealKey {
     /// one and the item is *absent*, which `KeychainSealKey` answers by creating
     /// a new one — so every setting the person really did save reads as
     /// tampered with, and Helm calls their own configuration a forgery. Nothing
-    /// is an error anywhere. `TheSettingsSealKeyIsAskedOnceTests` records them.
+    /// is an error anywhere. `TheRulesTheCompilerCannotHoldTests` holds that no other file spells them.
     ///
     /// **The name was load-bearing and is not any more.**
     /// `ATestNamesTheKeychainPortsItBuildsOverTests` — the guard that stops a
@@ -41,10 +41,15 @@ public enum SettingsSealKey {
     /// constant failed. The scan keys by the owning type now, so the collision
     /// is closed at its own end; the name is kept because it says what the
     /// constant is, not because anything depends on it.
-    public static let overScanSettings: SealKeyPort =
+    public static let overScanSettings: SealKeyPort = overKeychain(forBundle: Bundle.main.bundleIdentifier)
+
+    /// The cache over the item `identifier`'s build seals under. Building it reads nothing
+    /// from the keychain; the first `key()` does.
+    static func overKeychain(forBundle identifier: String?) -> SealKeyPort {
         SealKeyCache(KeychainSealKey(service: SettingsSealItems.service,
-                                     account: SettingsSealItems.of(bundle: Bundle.main.bundleIdentifier).account,
+                                     account: SettingsSealItems.of(bundle: identifier).account,
                                      category: "scan"))
+    }
 }
 
 /// Which keychain account the scan settings are sealed under.

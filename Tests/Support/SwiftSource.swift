@@ -407,16 +407,6 @@ public enum SwiftSource {
         bodies.filter { $0.contains(offset) }.min { $0.width < $1.width }
     }
 
-    /// The text of the first body named `name`, or nothing.
-    ///
-    /// «First», not «the one», and deliberately: an overloaded name has more than
-    /// one, and a caller that cares asks `functionBodies` and picks. A caller that
-    /// does not is asking about a name it believes is unique, and
-    /// `bodiesNamed(_:in:)` is what proves that belief.
-    public static func body(of name: String, in source: String) -> String? {
-        bodiesNamed(name, in: source).first
-    }
-
     /// The text of every body declared under `name`.
     public static func bodiesNamed(_ name: String, in source: String) -> [String] {
         let characters = Array(source)

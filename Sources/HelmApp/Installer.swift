@@ -36,8 +36,20 @@ enum Installer {
     /// The unzipped payload is removed on every way out that does not hand it to
     /// the swap script; once handed over, the script owns it (and keeps it on a
     /// failed copy, `UpdateSwap`).
+    ///
+    /// `installedID` and `handOver` default to the running app and the real swap
+    /// plus `terminate`; they are what the refusals are driven through.
     @MainActor
-    static func installZip(at zipURL: URL, expectedVersion: String) async throws {
+    static func installZip(
+        at zipURL: URL, expectedVersion: String,
+        installedID: String? = Bundle.main.bundleIdentifier,
+        handOver: (_ newApp: URL, _ installPath: String, _ workDir: String, _ version: String) throws -> Void
+            = { newApp, installPath, workDir, version in
+                try launchSwapScript(newApp: newApp.path, installPath: installPath,
+                                     workDir: workDir, version: version)
+                NSApp.terminate(nil)
+            }
+    ) async throws {
         let fm = FileManager.default
         let work = fm.temporaryDirectory
             .appendingPathComponent("HelmUpdate-\(UUID().uuidString)", isDirectory: true)
@@ -69,7 +81,7 @@ enum Installer {
         // Beta's release, which is newer than its own prerelease, and ends up
         // holding a bundle that calls itself the release's identifier at the
         // dev build's own address.
-        guard isSameProgram(newApp, as: Bundle.main.bundleIdentifier) else {
+        guard isSameProgram(newApp, as: installedID) else {
             throw InstallError.identityMismatch
         }
 
@@ -79,10 +91,8 @@ enum Installer {
             throw InstallError.notReplaceable
         }
 
-        try launchSwapScript(newApp: newApp.path, installPath: installPath,
-                             workDir: work.path, version: expectedVersion)
+        try handOver(newApp, installPath, work.path, expectedVersion)
         handedOver = true
-        NSApp.terminate(nil)
     }
 
     // MARK: - Helpers

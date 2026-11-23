@@ -12,7 +12,7 @@ import HelmRuntime
 /// `fix()`'s hop back to main), and the tap, on the main run loop, hears the
 /// echo only after `perform` has returned. A flag set around `perform` would
 /// always be down by then, so there is none.
-private let helmEventMarker: Int64 = 0x48_45_4C_4D   // "HELM"
+let helmEventMarker: Int64 = 0x48_45_4C_4D   // "HELM"
 
 /// One source for every event this module posts, so the marker is set in one place.
 private func helmEventSource() -> CGEventSource? {
@@ -335,15 +335,20 @@ public struct SynthesisTyping: TypingPort {
     /// not be built.
     static func events(for plan: SwitchPlan) -> [CGEvent]? {
         guard let source = helmEventSource() else { return nil }
+        return events(for: plan) { CGEvent(keyboardEventSource: source, virtualKey: $0, keyDown: $1) }
+    }
+
+    /// The building and the clearing, with the event factory a parameter so a test
+    /// can hand it events that carry the live modifier state.
+    static func events(for plan: SwitchPlan,
+                       make: (CGKeyCode, Bool) -> CGEvent?) -> [CGEvent]? {
 
         var events: [CGEvent] = []
         events.reserveCapacity(plan.backspaces * 2 + plan.insert.count * 2)
 
         for _ in 0..<plan.backspaces {
-            guard let down = CGEvent(keyboardEventSource: source,
-                                     virtualKey: CGKeyCode(kVK_Delete), keyDown: true),
-                  let up = CGEvent(keyboardEventSource: source,
-                                   virtualKey: CGKeyCode(kVK_Delete), keyDown: false)
+            guard let down = make(CGKeyCode(kVK_Delete), true),
+                  let up = make(CGKeyCode(kVK_Delete), false)
             else { return nil }
             // **Cleared, not inherited — this is the one that eats words.**
             // `CGEventSource(stateID: .combinedSessionState)` carries the *live*
@@ -364,8 +369,7 @@ public struct SynthesisTyping: TypingPort {
 
         for character in plan.insert {
             var utf16 = Array(String(character).utf16)
-            guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
-                  let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
+            guard let down = make(0, true), let up = make(0, false)
             else { return nil }
             down.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
             up.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)

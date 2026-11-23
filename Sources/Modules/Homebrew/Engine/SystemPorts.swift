@@ -463,7 +463,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     private static let wireDeadline: TimeInterval = 120
 
     private let directory: URL
-    private let transfer: Transfer
+    let transfer: Transfer
     private let lock = NSLock()
     /// nil until the first ask, which is what reads the two documents off the
     /// disk. See `loadedUnderTheLock`.
