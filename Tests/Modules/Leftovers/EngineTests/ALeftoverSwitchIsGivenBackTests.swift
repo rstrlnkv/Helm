@@ -98,13 +98,14 @@ final class ALeftoverSwitchIsGivenBackTests: XCTestCase {
     }
 
     /// The full stored key, spelled out: the record sits under
-    /// `module.leftovers.disabledByHelm` in the default store. The tests above
-    /// pin the bare key only, through a namespace of their own.
-    func testTheDefaultStoreReadsTheKeyTheShippedBuildWrote() throws {
+    /// `module.leftovers.disabledByHelm` under the module id's namespace, as
+    /// the host builds the store. The tests above pin the bare key only, through
+    /// a namespace of their own.
+    func testTheHostsStoreReadsTheKeyTheShippedBuildWrote() throws {
         let switcher = LeftoversFakeSwitcher()
         let backing = InMemoryKeyValueStore()
         backing.set(["com.example.a"], forKey: "module.leftovers.disabledByHelm")
-        let e = engine(switcher, LeftoversEngine.defaultStore(backing: backing))
+        let e = engine(switcher, NamespacedStore(namespace: LeftoversEngine.moduleID, backing: backing))
 
         e.willDisable()
 
