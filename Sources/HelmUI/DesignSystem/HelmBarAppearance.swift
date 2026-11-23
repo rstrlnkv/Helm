@@ -30,9 +30,9 @@ import SwiftUI
 /// **Two defaults, and they differ.** The stored one, `init(stored:)`, is
 /// `flat`: it is the value read back for a person who chose nothing. The
 /// environment's, below, is `liquidGlass`: it is what a view mounted with
-/// nobody having set a look gets: for a bare actions row `liquidGlass`
-/// is the plate that existed before the setting did. The settings window is the one place that sets a look on it,
-/// so no user sees the environment's default: only `LivePageUnderTheHeaderFixture` mounts a view without one.
+/// nobody having set a look gets. The settings window sets a look on its pane;
+/// Launchpad's `HelmHeaderTabs` (`LaunchpadScreen`) and
+/// `LivePageUnderTheHeaderFixture` mount without one and read the default.
 ///
 /// **Not sealed:** nothing unattended reads it (`AppSettings.barAppearance`).
 public enum HelmBarAppearance: String, CaseIterable, Sendable {

@@ -178,10 +178,8 @@ public struct HelmToolbarSearch {
 
 /// **The whole of what a page asks the window's header row to show**, beyond the
 /// name every page gets for nothing. Any of the three may be empty or nil — a
-/// page with none of them still gets tabs-less, action-less, search-less
-/// treatment rather than an error, which is what "temporarily show only the
-/// name" (the migration's own words for every page not yet converted) means
-/// in practice: such a page simply never calls `helmWindowToolbar` at all.
+/// page with none of them gets a row with the name only, not an error; a page
+/// that has nothing to declare simply never calls `helmWindowToolbar`.
 public struct HelmPageToolbarContent {
     public var tabs: [HelmToolbarTab]
     /// nil when `tabs` is empty; set when it is not. Two facts kept apart

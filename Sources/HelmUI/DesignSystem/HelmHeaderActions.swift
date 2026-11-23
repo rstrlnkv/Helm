@@ -3,8 +3,7 @@ import SwiftUI
 /// **The page's actions in the header row: one run of glyph buttons, every declared one's width held.**
 ///
 /// A page shows some of its actions on some of its tabs only (`HelmToolbarAction.isVisible`); the room of
-/// every declared one is kept, so the ones that stay do not slide when another comes or goes (the old
-/// capsule's 2026-11-15 "no empty slot" rule is not carried: here the reserve is the design). Under
+/// every declared one is kept, so the ones that stay do not slide when another comes or goes. Under
 /// `.liquidGlass` each button wears the system's glass, joined into one group; under `.flat` one capsule of
 /// `HelmSurface.barPlate`, 36 high, stands behind the visible glyphs only. Pressing runs the action's own closure — there is no model between.
 struct HelmHeaderActions: View {

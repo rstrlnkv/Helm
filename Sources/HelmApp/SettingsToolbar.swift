@@ -45,7 +45,6 @@ import SwiftUI
     private var owner: UUID?
     private var declaration: HelmTabsDeclaration?
     private var slot: CGRect?
-    private var passes = 0
     nonisolated(unsafe) private var tokens: [NSObjectProtocol] = []
 
     override init() {
@@ -111,7 +110,8 @@ import SwiftUI
 
     /// An owner that was replaced or released is dead: nothing it says later (a late `place`, `declare` or `release`
     /// of a row that a change of language rebuilt) touches the new one. A first word from an owner never heard of is
-    /// its arrival: `place` may come before `declare`, so a `place` alone is held until it declares.
+    /// its arrival: `place` may come before `declare`, so a `place` alone is held until it declares. Deliberately
+    /// unbounded: an evicted owner would read as new and could take the toolbar back.
     private var retired: Set<UUID> = []
     private var arrival: (owner: UUID, rect: CGRect?)?
 

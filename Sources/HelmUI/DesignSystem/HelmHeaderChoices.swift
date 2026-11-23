@@ -71,8 +71,8 @@ extension EnvironmentValues {
 
 extension View {
     /// Sets `helmHeaderChoices` from `current` and again whenever `.helmHeaderChoicesChanged` is posted. Set only
-    /// at the settings pane's root, and **never as an identity** (`.id`): the row's tabs keep their pick
-    /// sliding across a change of label, and the page below is not rebuilt for a choice it does not draw.
+    /// at the settings pane's root, and **never as an identity** (`.id`): the page below is not rebuilt for
+    /// a choice it does not draw, and under `.flat` (and on Launchpad) the row's tabs keep their sliding pick.
     public func helmTracksHeaderChoices(_ current: @escaping () -> HelmHeaderChoices) -> some View {
         modifier(HelmHeaderChoicesTracker(current: current))
     }

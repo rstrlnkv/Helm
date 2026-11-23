@@ -90,11 +90,8 @@ import HelmAppStrings
         window.delegate = self
         toolbar.attach(to: window) { AppSettings.barAppearance }
         // **The window's title is the page's name**, set here on the
-        // `NSWindow` rather than through SwiftUI: the bridge that used to
-        // carry a detail pane's toolbar into the window carried its subtitle
-        // and dropped its title (measured on macOS 27 — «Untitled» over a
-        // pane that had set one), and the window's title is still this class's to set. The
-        // page says what it is called with `HelmPageTitleKey`; this is the
+        // `NSWindow` rather than through SwiftUI, so it is this class's to
+        // set. The page says what it is called with `HelmPageTitleKey`; this is the
         // one place that listens.
         titleWatch = model.$pageTitle.sink { [weak self] title in
             self?.applyTitle(title)

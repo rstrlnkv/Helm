@@ -83,6 +83,7 @@ public enum HelmTabsMetrics {
     /// What the control keeps free either side of its segments once it stands in a toolbar item: measured on
     /// macOS 27.3, 2026-11-23 (Homebrew page, Russian, `.text`: a 316 pt run of segments gave a 334 pt `fittingSize`). Not readable off a control outside the
     /// toolbar, which reads the plain sum, so no test of an offscreen control can hold it: the shots can.
+    /// Without it a width of the segments alone left the first label on the track's edge and the last pill past the other end.
     public static let trackInset = CGFloat(9)
 
     /// The whole strip's width: the segments and the track's inset either side. The one source of the control's,
