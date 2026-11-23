@@ -98,6 +98,24 @@ public enum HelmMotion {
         return (Double(first[0]), Double(first[1]), Double(second[0]), Double(second[1]))
     }()
 
+    /// The curve of the Display Corners mask's morph: ease in and out, the control points of `.easeInEaseOut`
+    /// (0.42, 0, 0.58, 1). The standalone app's own curve, kept by the owner's decision of 2026-11-18 ("as in the
+    /// original tweak") over `interfaceCurve`; it is not the app's interface curve and nothing else takes it. A
+    /// caller using this is responsible for its own `reduceMotion` branch.
+    public static var cornerMorphCurve: CAMediaTimingFunction {
+        CAMediaTimingFunction(controlPoints: 0.42, 0, 0.58, 1)
+    }
+
+    /// How long a Display Corners mask takes to grow or shrink by `travel`, the distance its scale has to cover
+    /// (0 to 1): 0.26 s per square root of the travel when rounding, 0.19 s when unrounding, never under 0.08 s.
+    /// The lengths are the standalone app's, as is its curve, `cornerMorphCurve`. A
+    /// travel that is not finite reads as 1 and one outside 0...1 is held to it. It does not ask `reduceMotion`: the caller, a layer animation, has
+    /// its own branch, as with `interfaceDuration`.
+    public static func cornerMorphDuration(rounding: Bool, travel: Double) -> TimeInterval {
+        let travel = travel.isFinite ? min(max(travel, 0), 1) : 1
+        return max(0.08, (rounding ? 0.26 : 0.19) * travel.squareRoot())
+    }
+
     /// The sidebar folding to the rail and unfolding again: the rows' half of the move, written inside
     /// `withAnimation` where the fold flag lands. The width itself is driven by the shell's own clock
     /// along `interfaceCurve` for `sidebarFoldDuration`; the shell asks for this token only when it starts
@@ -142,6 +160,30 @@ public enum HelmMotion {
         reduceMotion ? instant : .easeOut(duration: 0.12)
     }
 
+    /// How long a full-screen surface takes to come in, in seconds: its content settling from a little larger to its size as
+    /// the window is revealed. The window runs its own clock and reads `interfaceProgress(at:)`, so there is no animation
+    /// to hand over. A caller using this is responsible for its own `reduceMotion` branch, as with `interfaceDuration`.
+    public static var windowZoomDuration: TimeInterval { 0.32 }
+
+    /// A page that was dragged by the fingers coming to rest: a spring with no bounce that takes up the speed the fingers
+    /// let go at, so a flick carries on and a slow let-go eases in. `velocity` is points a second along the move (negative
+    /// is against it), `distance` the points still to travel; the speed is passed to the spring as distances a second
+    /// (`pageSettleSpeed`), held to 0 to 8 so a hand-shake of a release cannot fling the page.
+    public static func pageSettle(velocity: CGFloat, distance: CGFloat) -> Animation {
+        guard !reduceMotion else { return instant }
+        return .interpolatingSpring(duration: pageSettleDuration, bounce: 0, initialVelocity: Double(pageSettleSpeed(velocity: velocity, distance: distance)))
+    }
+
+    /// `pageSettle`'s initial speed, in distances a second: `velocity` over `distance`, 0 for a speed that is against the move,
+    /// not a number, infinite, or over no distance, and never over 8.
+    public static func pageSettleSpeed(velocity: CGFloat, distance: CGFloat) -> CGFloat {
+        distance > 1 && velocity.isFinite ? (velocity / distance).clamped(to: 0...8) : 0
+    }
+
+    /// `pageSettle`'s duration alone, in seconds, for a caller that must know how long a settle lasts (the swipe ignores a new
+    /// touch until it is over). A caller using this is responsible for its own `reduceMotion` branch.
+    public static var pageSettleDuration: TimeInterval { 0.36 }
+
     /// A tile moving out of the way of one being dragged over it.
     ///
     /// A spring, and the one place in this app where the overshoot is the
@@ -151,6 +193,20 @@ public enum HelmMotion {
     /// anybody has to wait out.
     public static var reorder: Animation {
         reduceMotion ? instant : .spring(response: 0.28, dampingFraction: 0.72)
+    }
+
+    /// A cut name scrolling to its end under the pointer: steady, at a reading pace (40 pt a second, never under 0.3 s), no spring. Instant under Reduce Motion.
+    public static func marquee(distance: CGFloat) -> Animation {
+        reduceMotion ? instant : .linear(duration: marqueeDuration(distance: distance))
+    }
+
+    /// `marquee`'s length in seconds, for the caller that waits it out.
+    public static func marqueeDuration(distance: CGFloat) -> TimeInterval { max(0.3, Double(distance) / 40) }
+
+    /// The wobble of a tile in Launchpad's edit mode: a short ease back and forth, forever, started a little later for some seeds (eight phases over the whole 0.24 s cycle, by `seed`) so the tiles
+    /// are not in step. **nil under Reduce Motion**: the tile then does not move at all (the badges say it is editing), never a still tilt.
+    public static func wiggle(seed: Int) -> Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.12).delay(Double(abs(seed % 8)) * 0.03).repeatForever(autoreverses: true)
     }
 
     /// The two fades a carried tile leaves behind it, both deliberately slower

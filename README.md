@@ -40,7 +40,9 @@ or one that disagrees, is never installed silently: the release page opens inste
 | **Disk** | What is taking up room: a sunburst ring over the volume, firmlink-aware so an APFS volume group is not counted twice; folders open under the names Finder gives them, and anything you want gone collects in one list before it goes to the Trash. |
 | **Duplicates** | Files that exist more than once, from 1 MB up, matched by content rather than by name. The copy that stays is the one that was there first — by the Date Added the Finder shows — not the one an alphabetical sort happened to put on top. Hard links are one file and are never offered. |
 | **Autopilot** | Folders that keep themselves in order. Rules on name, extension, kind, size, dates, Finder tag and where a file was downloaded from; actions to move, sort into subfolders by kind or by month, rename by pattern, tag, or trash. A rule is shown against the folder's real files before it is switched on, nothing is ever overwritten, and no file is acted on twice. No script action, deliberately — the rules live in a plist any process can write. |
+| **Launchpad** | Every installed app on one full-screen window you open with a shortcut you record: pages, search by the name Finder shows, saved folders it opens, apps hidden and shown again, Apple's apps first with the system utilities in a folder, and the arrangement reset to that when you want it back, and an icon you drag to the Dock to open it with a click. A click opens the app that is installed now, not the one that was there when the window was drawn. |
 | **Keyboard** | Fixes a word typed in the wrong keyboard layout — `ghbdtn` becomes `привет` — and moves the input source with it. Only when the word is not a word as typed and is one once swapped; terminals and password managers are left alone. Needs Accessibility. |
+| **Tweaks** | Small utilities, each off until you switch it on. The first is **Display Corners**: rounded black masks over the bottom corners of the built-in display and, if you choose, over all four corners of an external display, with the radius set from presets or in pixels. The pointer is kept off the hidden corner, following the curve instead. The masks are built to stay out of screenshots and recordings. A calibration shows the radius in a colour on the built-in display's top corners, and is temporary: it ends when you turn it off, close its colour panel, leave the page or switch the tweak off. |
 
 Everything is localized in eight languages: English, 中文, Español, Français,
 Deutsch, 日本語, Русский, Português.
@@ -52,7 +54,9 @@ bundle a release ships is arm64 only. There is no Intel build and no back-deploy
 
 Permissions are asked for where they are turned on, not at first launch: Accessibility
 for Keyboard and for Keep Awake's pointer jiggle, Full Disk Access for the modules that
-read protected folders, Screen & System Audio Recording for Screenshots. Because the build is signed ad-hoc, macOS ties a grant to the
+read protected folders, Screen & System Audio Recording for Screenshots. Display Corners
+never asks for Input Monitoring: it watches the pointer through a mouse tap only when
+macOS has already granted that, and through ordinary event monitors otherwise. Because the build is signed ad-hoc, macOS ties a grant to the
 exact binary — every reinstall costs every toggle again.
 
 Hosts Helm itself names: `api.github.com` for update checks, and the
@@ -82,7 +86,8 @@ the version scheme and the shape of a tag are described in ARCHITECTURE.md § Re
 
 ## Build from source
 
-Requires Xcode with the macOS 26 SDK and a Swift 6 toolchain.
+Requires Xcode with the macOS 26 SDK and a Swift 6 toolchain, and its Metal toolchain component
+(`xcodebuild -downloadComponent MetalToolchain`).
 
 ```bash
 bash Scripts/test.sh            # the suite less its optional classes, read for you

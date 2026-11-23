@@ -50,6 +50,7 @@ let modules: [Module] = [
     // picker, modified for Helm, and the Spotlight, its shape drawn for Helm — NOTICE.md records the source and the owner's decision;
     // author and licence are placeholders there for the owner.
     Module(name: "Screenshots", uiResources: [.process("PaletteObjects.xcassets")], engineTests: true, uiTests: true),
+    Module(name: "Launchpad", uiResources: [.process("LaunchpadGlow.metal")], engineTests: true, uiTests: true),
 ]
 
 extension Module {
@@ -79,6 +80,50 @@ extension Module {
                                     path: "Tests/Modules/\(name)/EngineTests")] : [])
             + (uiTests ? [.testTarget(name: "\(ui)Tests", dependencies: [.byName(name: ui), "HelmTestSupport"],
                                       path: "Tests/Modules/\(name)/UITests")] : [])
+    }
+}
+
+/// **A tweak is the smaller kind of part, and the manifest says so the way it says a module.**
+///
+/// Two source targets and the test targets it keeps, with a smaller contract (`TweakDescriptor`): no menu-bar
+/// presence, hotkey, scan or panel widget. The same three holds isolate it from every other tweak and from every
+/// module (ARCHITECTURE.md § The modules), and the manifest never reads the filesystem here either.
+struct Tweak {
+    let name: String
+    /// A test target only where a kept test lives; `Tests/Tweaks/<Name>/EngineTests` and `.../UITests`.
+    var engineTests = false
+    var uiTests = false
+
+    var engine: String { "Tweak_\(name)_Engine" }
+    var ui: String { "Tweak_\(name)_UI" }
+}
+
+let tweaks: [Tweak] = [
+    Tweak(name: "DisplayCorners", engineTests: true, uiTests: true),
+]
+
+extension Tweak {
+
+    var sourceTargets: [Target] {
+        [
+            .target(
+                name: engine,
+                dependencies: ["HelmContract", "HelmRuntime"],
+                path: "Sources/Tweaks/\(name)/Engine"
+            ),
+            .target(
+                name: ui,
+                dependencies: ["HelmContract", "HelmUI", .byName(name: engine)],
+                path: "Sources/Tweaks/\(name)/UI"
+            ),
+        ]
+    }
+
+    var testTargets: [Target] {
+        (engineTests ? [.testTarget(name: "\(engine)Tests", dependencies: [.byName(name: engine), "HelmTestSupport"],
+                                    path: "Tests/Tweaks/\(name)/EngineTests")] : [])
+            + (uiTests ? [.testTarget(name: "\(ui)Tests", dependencies: [.byName(name: ui), "HelmTestSupport"],
+                                      path: "Tests/Tweaks/\(name)/UITests")] : [])
     }
 }
 
@@ -131,6 +176,13 @@ let support: [Target] = [
     .target(name: "HelmTestSupport", dependencies: ["HelmRuntime", "HelmUI"], path: "Tests/Support"),
 ]
 
+/// The Launchpad's Dock helper: a tiny app nested in Helm's bundle by `Scripts/package-app.sh`. Built by
+/// `--product HelmLaunchpadHelper`; no dependencies, so an import of Helm's own target fails its build, and no
+/// dependency of `HelmApp`.
+let helper: [Target] = [
+    .executableTarget(name: "HelmLaunchpadHelper"),
+]
+
 /// Screen instruments: built by `swift build --target HelmReadout`, listed in no
 /// product (SwiftPM synthesises one for an executable target) and no dependency of
 /// `HelmApp`, so `--product HelmApp` in `Scripts/package-app.sh` never builds them;
@@ -163,6 +215,7 @@ let host: [Target] = [
         // here is a door past the descriptor into an engine's internals.
         dependencies: ["HelmAppStrings", "HelmContract", "HelmRuntime", "HelmUI", "HelmLaunch"]
             + modules.map { .byName(name: $0.ui) }
+            + tweaks.map { .byName(name: $0.ui) }
     ),
     .testTarget(name: "HelmContractTests",
                 dependencies: ["HelmContract", "HelmTestSupport"]),
@@ -178,10 +231,11 @@ let package = Package(
     name: "Helm",
     defaultLocalization: "en",
     platforms: [.macOS("26.0")],
-    // One product: the app. Declared so `--product HelmApp` in
-    // `Scripts/package-app.sh` names something this file says exists, rather
-    // than the product SwiftPM synthesises for an executable target — a rename
-    // of that target would otherwise break the release build silently.
+    // Two products: the app and its Dock helper. Declared so the two `--product` lines
+    // (one each, HelmApp and HelmLaunchpadHelper) in `Scripts/package-app.sh` name things
+    // this file says exist, rather than the products SwiftPM synthesises for
+    // executable targets — a rename of a target would otherwise break the
+    // release build silently.
     //
     // It is not what keeps the harness out of Release. Measured: with this list
     // in place a bare `swift build -c release` still builds every target,
@@ -189,12 +243,16 @@ let package = Package(
     // what prunes the graph.
     products: [
         .executable(name: "HelmApp", targets: ["HelmApp"]),
+        .executable(name: "HelmLaunchpadHelper", targets: ["HelmLaunchpadHelper"]),
     ],
     targets: foundation
         + modules.flatMap(\.sourceTargets)
+        + tweaks.flatMap(\.sourceTargets)
         + support
+        + helper
         + instruments
         + showcase
         + host
         + modules.flatMap(\.testTargets)
+        + tweaks.flatMap(\.testTargets)
 )

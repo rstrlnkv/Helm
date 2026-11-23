@@ -11,9 +11,9 @@ import XCTest
 /// of a target reached through a declared one, which is how `HelmApp`,
 /// declaring every module's UI target, could import every engine.
 ///
-/// **What the build does hold, it holds on two lines.** `Scripts/test.sh`'s
-/// `swift test` and `Scripts/package-app.sh`'s `swift build` each carry that
-/// flag, and `testTheBuildLinesCarryTheImportCheck` reads the line that runs,
+/// **What the build does hold, it holds on three lines.** `Scripts/test.sh`'s
+/// `swift test` and each of `Scripts/package-app.sh`'s two `swift build` lines
+/// (one per product) carry that flag, and `testTheBuildLinesCarryTheImportCheck` reads the line that runs,
 /// not the comment or the echo that names the flag.
 ///
 /// **What counts as an import.** The reader runs over `SwiftSource.code`, so
@@ -27,10 +27,15 @@ import XCTest
 /// `canImport(…)`, `.import`, a backticked `import`, an `import:` label.
 ///
 /// **AppKit is pinned by path.** An engine imports AppKit, or Cocoa, which
-/// brings it, only in `Sources/Modules/<Name>/Engine/SystemPorts.swift`, one
+/// brings it, only in `Sources/Modules/<Name>/Engine/SystemPorts.swift` (a tweak's
+/// in `Sources/Tweaks/<Name>/Engine/SystemPorts.swift`), one
 /// level under the engine's folder and no deeper. What an import line cannot
 /// tell is whether a line in that file is a system call or a drawing; that
 /// half is read in review.
+///
+/// **A tweak is read as a module is.** Its engine (`Tweak_<Name>_Engine`, `Sources/Tweaks/<Name>/Engine`) is held to
+/// the same two rules, the host imports only its UI target, and a tweak and a module cannot see each other
+/// (`testTweaksAndModulesAreBlindToEachOther`).
 final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
 
     private static let importRule = try! NSRegularExpression(pattern:
@@ -48,7 +53,7 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
 
     private static func isUI(_ module: String) -> Bool { module == "HelmUI" || module.hasPrefix("SwiftUI") }
     private static func isEngine(_ module: String) -> Bool {
-        module.hasPrefix("Module_") && module.hasSuffix("_Engine")
+        (module.hasPrefix("Module_") || module.hasPrefix("Tweak_")) && module.hasSuffix("_Engine")
     }
 
     private struct Found {
@@ -75,9 +80,14 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
             .map(\.lastPathComponent))
     }
 
-    /// A file under `Sources/Modules/<Name>/Engine`, by its path components.
+    /// The tweaks, as `Sources/Tweaks` lists them: its directories, hidden ones aside.
+    private static func tweaks() throws -> Set<String> {
+        try modules(in: RepoSource.root.appendingPathComponent("Sources/Tweaks"))
+    }
+
+    /// A file under `Sources/Modules/<Name>/Engine` or `Sources/Tweaks/<Name>/Engine`, by its path components.
     private static func isEngineSource(_ path: [Substring]) -> Bool {
-        path.count > 4 && path[0] == "Sources" && path[1] == "Modules" && path[3] == "Engine"
+        path.count > 4 && path[0] == "Sources" && (path[1] == "Modules" || path[1] == "Tweaks") && path[3] == "Engine"
     }
     /// A file under `Sources/HelmApp`, by its path components.
     private static func isHostSource(_ path: [Substring]) -> Bool {
@@ -86,9 +96,10 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
 
     func testNoEngineImportsSwiftUIOrHelmUI() throws {
         let engines = try Self.found(where: Self.isEngineSource)
-        let reached = Set(engines.map { String($0.path.split(separator: "/")[2]) })
-        XCTAssertEqual(reached, try Self.modules(),
-                       "the reader found no import in some module's engine — the check below is over nothing there")
+        let reached = Set(engines.map { $0.path.split(separator: "/").prefix(3).joined(separator: "/") })
+        XCTAssertEqual(reached, Set(try Self.modules().map { "Sources/Modules/\($0)" })
+                       .union(try Self.tweaks().map { "Sources/Tweaks/\($0)" }),
+                       "the reader found no import in some module's or tweak's engine — the check below is over nothing there")
         let offences = engines.filter { Self.isUI($0.module) }.map(\.place)
         XCTAssertTrue(offences.isEmpty, "an engine imports UI:\n" + offences.joined(separator: "\n"))
     }
@@ -109,11 +120,31 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
 
     func testTheHostImportsNoEngine() throws {
         let host = try Self.found(where: Self.isHostSource)
-        let interfaces = Set(host.map(\.module).filter { $0.hasPrefix("Module_") && $0.hasSuffix("_UI") })
-        XCTAssertEqual(interfaces, Set(try Self.modules().map { "Module_\($0)_UI" }),
-                       "the reader did not find HelmApp importing every module's UI — the check below is over nothing")
+        let interfaces = Set(host.map(\.module).filter { ($0.hasPrefix("Module_") || $0.hasPrefix("Tweak_")) && $0.hasSuffix("_UI") })
+        XCTAssertEqual(interfaces, Set(try Self.modules().map { "Module_\($0)_UI" })
+                       .union(try Self.tweaks().map { "Tweak_\($0)_UI" }),
+                       "the reader did not find HelmApp importing every module's and tweak's UI — the check below is over nothing")
         let offences = host.filter { Self.isEngine($0.module) }.map(\.place)
         XCTAssertTrue(offences.isEmpty, "the host imports an engine:\n" + offences.joined(separator: "\n"))
+    }
+
+    /// A tweak and a module cannot see each other, and no tweak sees another: the build holds the engines (a UI target
+    /// declares its own engine alone), and the import lines are read for the rest. The canary: the reader found files of
+    /// both kinds, or a path that moved would pass over nothing.
+    func testTweaksAndModulesAreBlindToEachOther() throws {
+        let tweakFiles = try Self.found { $0.count > 3 && $0[0] == "Sources" && $0[1] == "Tweaks" }
+        let moduleFiles = try Self.found { $0.count > 3 && $0[0] == "Sources" && $0[1] == "Modules" }
+        XCTAssertFalse(tweakFiles.isEmpty, "the reader found no import under Sources/Tweaks — the checks below are over nothing")
+        XCTAssertFalse(moduleFiles.isEmpty, "the reader found no import under Sources/Modules — the check below is over nothing")
+        let tweaksSeeingModules = tweakFiles.filter { $0.module.hasPrefix("Module_") }.map(\.place)
+        XCTAssertTrue(tweaksSeeingModules.isEmpty, "a tweak imports a module:\n" + tweaksSeeingModules.joined(separator: "\n"))
+        let modulesSeeingTweaks = moduleFiles.filter { $0.module.hasPrefix("Tweak_") }.map(\.place)
+        XCTAssertTrue(modulesSeeingTweaks.isEmpty, "a module imports a tweak:\n" + modulesSeeingTweaks.joined(separator: "\n"))
+        let others = tweakFiles.filter { found in
+            let own = found.path.split(separator: "/")[2]
+            return found.module.hasPrefix("Tweak_") && !found.module.hasPrefix("Tweak_\(own)_")
+        }.map(\.place)
+        XCTAssertTrue(others.isEmpty, "a tweak imports another tweak:\n" + others.joined(separator: "\n"))
     }
 
     /// `HelmShowcase` depends on `HelmUI` alone, and the build's import check passes an import of a
@@ -181,12 +212,16 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
         XCTAssertFalse(Self.isUI("HelmRuntime"))
         XCTAssertFalse(Self.isUI("AppKit"))
         XCTAssertTrue(Self.isEngine("Module_Disk_Engine"))
+        XCTAssertTrue(Self.isEngine("Tweak_DisplayCorners_Engine"))
+        XCTAssertFalse(Self.isEngine("Tweak_DisplayCorners_UI"))
         XCTAssertFalse(Self.isEngine("Module_Disk_UI"))
         XCTAssertFalse(Self.isEngine("Disk_Engine"))
         for (path, engine, host) in [
             ("Sources/Modules/Leftovers/Engine/Model.swift", true, false),
             ("Sources/Modules/Disk/Engine/Logic/DiskAdvisor.swift", true, false),
             ("Sources/Modules/Disk/UI/RingView.swift", false, false),
+            ("Sources/Tweaks/DisplayCorners/Engine/Logic/Corner.swift", true, false),
+            ("Sources/Tweaks/DisplayCorners/UI/Card.swift", false, false),
             ("Sources/HelmUI/Disk/Engine/Model.swift", false, false),
             ("Tests/Modules/Disk/Engine/Model.swift", false, false),
             ("Sources/HelmApp/LogSessions.swift", false, true),
@@ -259,22 +294,24 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
         return words
     }
 
-    /// What is wrong with the build in `lines` of `script`, or nil: exactly one
-    /// line must start with the words `start`, and the words of that line, not
-    /// of its comment, must carry `--explicit-target-dependency-import-check`
+    /// What is wrong with the build in `lines` of `script`, or nil: exactly `count`
+    /// lines (one by default) must start with the words `start`, and the words of
+    /// each, not of its comment, must carry `--explicit-target-dependency-import-check`
     /// followed by `error` wherever the flag stands.
     private static func missingImportCheck(
-        in lines: [String], of script: String, startingWith start: String
+        in lines: [String], of script: String, startingWith start: String, count: Int = 1
     ) -> String? {
         let runs = lines.filter { shellWords($0).prefix(2).joined(separator: " ") == start }
-        guard runs.count == 1, let run = runs.first else {
-            return "\(script): expected one line starting `\(start)`, found \(runs.count): \(runs)"
+        guard runs.count == count else {
+            return "\(script): expected \(count == 1 ? "one line" : "\(count) lines") starting `\(start)`, found \(runs.count): \(runs)"
         }
-        let words = shellWords(run)
-        let flags = words.indices.filter { words[$0] == "--explicit-target-dependency-import-check" }
-        guard !flags.isEmpty, flags.allSatisfy({ words.indices.contains($0 + 1) && words[$0 + 1] == "error" }) else {
-            return "\(script) builds without `--explicit-target-dependency-import-check error` among the words "
-                + "of its command, so an undeclared import compiles (ARCHITECTURE.md § The boundaries): \(run)"
+        for run in runs {
+            let words = shellWords(run)
+            let flags = words.indices.filter { words[$0] == "--explicit-target-dependency-import-check" }
+            guard !flags.isEmpty, flags.allSatisfy({ words.indices.contains($0 + 1) && words[$0 + 1] == "error" }) else {
+                return "\(script) builds without `--explicit-target-dependency-import-check error` among the words "
+                    + "of its command, so an undeclared import compiles (ARCHITECTURE.md § The boundaries): \(run)"
+            }
         }
         return nil
     }
@@ -312,8 +349,9 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
         rejected(["\(run) \(flag)", "\(run) \(flag)"], saying: "expected one line")  // only the count can refuse this
         rejected(["# \(run) \(flag)", "echo \(run) \(flag)"], saying: "expected one line")
 
-        for (script, start) in [("Scripts/package-app.sh", "swift build"), ("Scripts/test.sh", "swift test")] {
-            if let problem = Self.missingImportCheck(in: try RepoSource.lines(of: script), of: script, startingWith: start) {
+        // package-app.sh builds one product per line (SwiftPM honours only the last `--product` of a line).
+        for (script, start, count) in [("Scripts/package-app.sh", "swift build", 2), ("Scripts/test.sh", "swift test", 1)] {
+            if let problem = Self.missingImportCheck(in: try RepoSource.lines(of: script), of: script, startingWith: start, count: count) {
                 XCTFail(problem)
             }
         }

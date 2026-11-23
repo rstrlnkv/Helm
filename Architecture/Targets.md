@@ -4,9 +4,9 @@
 `swift package describe --type json` is the census. Dependencies run one way:
 `HelmContract` depends on nothing, `HelmRuntime` and `HelmUI` build on it, a
 module's engine on the contract and the runtime, its UI target on the contract,
-`HelmUI` and its own engine, and `HelmApp` on `HelmAppStrings`, every module's UI target and on no
+`HelmUI` and its own engine, and `HelmApp` on `HelmAppStrings`, every module's and every tweak's UI target and on no
 engine. `HelmTestSupport` (`Tests/Support`) is a plain target every test target
-depends on and no product lists. `HelmReadout` depends on nothing, and `HelmShowcase` on `HelmUI` alone; `HelmApp` depends on neither.
+depends on and no product lists. `HelmReadout` and `HelmLaunchpadHelper` depend on nothing, and `HelmShowcase` on `HelmUI` alone; `HelmApp` depends on none of them.
 
 Each target and what it holds:
 
@@ -16,9 +16,11 @@ Each target and what it holds:
 - `HelmUI` — the design system, `L()`, the `ModuleDescriptor` protocol, `HelmWord` (the shared words, `String` only) and the kit's own `Localizable.xcstrings`.
 - `Module_<X>_Engine` — a module's headless logic.
 - `Module_<X>_UI` — a module's descriptor, settings page, panel tile and view model.
+- `Tweak_<X>_Engine` and `Tweak_<X>_UI` — a tweak's two targets, declared by a `Tweak` row in `Package.swift`: the same dependencies as a module's pair, `HelmApp` depends on the UI target alone, and `Tweak_<X>_EngineTests` and `Tweak_<X>_UITests` exist where the row sets the flag.
 - `HelmTestSupport` — `Tests/Support`, below.
 - Test targets — `Module_<X>_EngineTests` and `Module_<X>_UITests`, each where the module's row in `Package.swift` sets its flag, and `HelmContractTests`, `HelmAppTests`, `HelmRuntimeTests`, `HelmUITests`; each depends on `HelmTestSupport`, and `HelmAppTests` holds the app-layer checks.
 - `HelmReadout` — `Sources/HelmReadout`: the screen instrument that reads a capture and a window; no dependency on any other target, so an import of Helm's own target fails its build, and declared in no product (SwiftPM synthesises one for it, but `HelmApp` does not depend on it), so `--product HelmApp` never builds it. ARCHITECTURE.md § Two screen instruments.
+- `HelmLaunchpadHelper` — `Sources/HelmLaunchpadHelper`: the Launchpad's Dock icon, a tiny AppKit app nested in Helm's bundle by `Scripts/package-app.sh`; no dependency on any other target, so an import of Helm's own target fails its build, listed in a product of its own that `HelmApp` does not depend on. Architecture/Launchpad.md § The Dock icon.
 - `HelmShowcase` — `Sources/HelmShowcase`: the kit's components in every state, one board per launch; depends on `HelmUI` only and is declared in no product (SwiftPM synthesises one for it), so `--product HelmApp` never builds it, and the build's import check cannot hold it off `HelmRuntime` (reached through `HelmUI`), which `TheBoundariesTheBuildCannotHoldTests` reads from its import lines. Architecture/DesignSystem.md § The showcase.
 - `HelmAppStrings` — `Sources/HelmAppStrings`: the host's words (`AppStrings.swift`, `LogStrings.swift`), the changelog (`ChangelogData.swift`) and their two catalogs; depends on `HelmRuntime` and `HelmUI`, never on a module or an engine, and `HelmApp` and `HelmAppTests` depend on it. A library, because an executable's catalogs do not reach its test build (below).
 - `HelmApp` — the executable.
@@ -27,7 +29,7 @@ Beside `DesignSystem/`, `HelmUI` holds by role (the reason is on each file's doc
 words (`ControlStrings.swift`, `SectionStrings.swift`, `BasketStrings.swift`, `ConfirmStrings.swift`,
 `HelmWord.swift`, `L10n.swift`); the stored layouts and their drags (`PanelLayout.swift`, `PanelGrid.swift`,
 `PanelDrag.swift`, `SidebarLayout.swift`, `SidebarLayoutDrag.swift`); the module contract
-(`ModuleDescriptor.swift`, `MenuBarContribution.swift`); the pickers (`AppPicker.swift`, `FolderPicker.swift`);
+(`ModuleDescriptor.swift`, `MenuBarContribution.swift`) and the tweak's (`TweakDescriptor.swift`); the pickers (`AppPicker.swift`, `FolderPicker.swift`);
 `HostWindow.swift`; and `Welcome/`.
 
 The declarations in the contract are what this prints:

@@ -83,12 +83,12 @@ public struct ShellGlyph: Sendable {
 /// glyph's own layers and not to what is behind it. An off-screen render does
 /// not show the cut stopping at the glyph, and no window has shown either
 /// answer.
-struct ShellGlyphView: View {
+public struct ShellGlyphView: View {
     private let glyph: ShellGlyph
     private let filled: Bool
     private let size: CGFloat
 
-    init(_ glyph: ShellGlyph, filled: Bool, size: CGFloat) {
+    public init(_ glyph: ShellGlyph, filled: Bool, size: CGFloat) {
         self.glyph = glyph
         self.filled = filled
         self.size = size
@@ -107,7 +107,7 @@ struct ShellGlyphView: View {
         size.clamped(to: 0...largest, whenNotANumber: 0)
     }
 
-    var body: some View {
+    public var body: some View {
         let side = Self.side(for: size)
         if side > 0 {
             let scale = CGAffineTransform(scaleX: side / ShellGlyph.grid, y: side / ShellGlyph.grid)

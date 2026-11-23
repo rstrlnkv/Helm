@@ -1,7 +1,7 @@
 # Helm — architecture
 
 Helm is a menu-bar utility suite for macOS: one accessory application that hosts
-its independent modules, which `ls Sources/Modules` lists. A module is a
+its independent modules: the directories of `Sources/Modules`, and Tweaks, one more registered in `Sources/HelmApp`. A module is a
 headless engine and a settings page with its model, which calls the engine's methods. Around them stand four foundation targets — `Sources/HelmContract`
 for what crosses the engine/host boundary,
 `Sources/HelmRuntime` for plumbing without UI, `Sources/HelmUI` for the design
@@ -29,6 +29,7 @@ comment, not on a page.
 | a module's pure logic | a `Logic` folder under `Sources/Modules/<Module>/Engine/`, where it has any |
 | its engine, its store | `Sources/Modules/<Module>/Engine/` |
 | its screen, and its descriptor with the module's tint and glyph | `Sources/Modules/<Module>/UI/` |
+| a tweak's engine, and its descriptor with the rows its card is made of | `Sources/Tweaks/<Tweak>/Engine/` and `Sources/Tweaks/<Tweak>/UI/` |
 | a module's kept tests, each directory flagged on its row in `Package.swift` | `Tests/Modules/` |
 | what crosses the engine/host boundary | `Sources/HelmContract/` |
 | plumbing two modules both want | `Sources/HelmRuntime/` |
@@ -84,18 +85,27 @@ A page lists its own headings on the line below its link.
 
 - [Module pattern](Architecture/ModulePattern.md) — how a module is built from two source directories and the test directories it keeps, and what holds its parts apart; § The boundaries, § Ports and logic, § The stream and the store, § Bulk reads, § A value crossing to the main thread.
 
-One page per module, in the order `ls Sources/Modules` prints.
+A tweak is a second, smaller kind of part: `Sources/Tweaks/<Name>/Engine` and `UI`, declared by a `Tweak` row in
+`Package.swift`, with no menu-bar presence, hotkey, scan or panel widget. The same three holds keep it apart from every
+module and every other tweak (Architecture/ModulePattern.md § The boundaries), and `ls Sources/Tweaks` lists them.
+Every tweak lives under the one entry, Tweaks, which is a module: its descriptor and engine are in `Sources/HelmApp`, and
+the entry has no page of its own here, because it holds nothing a module's page would. A tweak that holds reasons of its own has one:
+
+- [Display Corners](Architecture/DisplayCorners.md) — the masks over a display's corners and the pointer held off them; § The masks and the capture, § The pointer guard, § The suppression interval, § The sampling rate and away, § Calibration is temporary, § What is stored.
+
+One page per directory of `Sources/Modules`, in the order `ls Sources/Modules` prints.
 
 - [Autopilot](Architecture/Autopilot.md) — the refusals that bound acting on files unasked, starting with sealed rules; its model calls the engine directly (Architecture/Autopilot.md § How Autopilot's model reaches its engine, § The states of the Autopilot page).
 - [Disk](Architecture/Disk.md) — reading where the space went on an APFS volume group without leaving the largest folder out; its model calls the engine directly (Architecture/Disk.md § How Disk's model reaches its engine, § The states of the Disk page).
 - [Duplicates](Architecture/Duplicates.md) — the keep policies that decide which of several identical files is the extra one; its model calls the engine directly (Architecture/Duplicates.md § How Duplicates' model reaches its engine, § Keys, phases, guards and files, § The states of the Duplicates page).
 - [Homebrew](Architecture/Homebrew.md) — how another program's package manager is run, with read-only queries and other runs governed differently; § The one setting, § The model, § Operations, § Installing Homebrew, § Install counts, § Searching for a package, § The Health tab, § The states of the Homebrew page.
 - [KeepAwake](Architecture/KeepAwake.md) — holding sleep off through pure logic units orchestrated by one engine; § How the model reaches the engine, § The closed lid, § Vetoes and the notice, § Rules read from the machine, § State a person asked for outlives the process, § Its states.
+- [Launchpad](Architecture/Launchpad.md) — the app launcher: apps kept by bundle id, a layout reconciled in memory against what is installed (a default arrangement when the person has none) and written only on an edit, a launch that opens only what a fresh read finds, a full-screen window that measures nothing and whose grid Automatic sets from the screen (seven by five, scaled) or the person sets by hand, an optional trackpad pinch from a private framework behind one port; § The catalog and the layout, § The default arrangement, § How Launchpad's model reaches its engine, § The window, § The icons, § Show in Finder, Copy Path and the new dot, § The grid settings, § The grid scales to the screen, § A cut name scrolls on hover, § Lifting a tile, § Edit mode, § The category view, § The Hidden block, § The Dock icon, § The trackpad pinch, § The Launchpad settings page.
 - [Layout](Architecture/Layout.md) — shown to the user as "Keyboard" (`LyStr.moduleName`); the four limits on a module that reads every keystroke and types into other applications; its model calls the engine directly (Architecture/Layout.md § How Layout's model reaches its engine, § Keys, waits, guards and files, § The states of the Layout page).
 - [Leftovers](Architecture/Leftovers.md) — what it will offer to remove: login items and plug-in files whose owner is gone; § How Leftovers' model reaches its engine, § Reads, predicates, guards and files, § The states of the Leftovers page.
 - [Screenshots](Architecture/Screenshots.md) — freezing the displays, picking an area, a window, the Dock or the menu bar, and the inline editor over the frozen picture, which has a page of its own (Architecture/ScreenshotsEditor.md); § The overlay, § The capture panel, § Writing a shot and replacing it, § The settings page, § The after-shot window, § How Screenshots' model reaches its engine, § The states of the Screenshots page and its windows.
 - [Screenshots editor](Architecture/ScreenshotsEditor.md) — the inline editor over the frozen picture: its layers, the marks that are no stroke, the palette, the eraser and the ruler, the pop-overs, the area and Crop, reading text and leaving; § The editor and its layers, § Marks that are no stroke, § The blur and the text, § The step and the spotlight, § The magnifier and the emoji, § The palette, § The eraser and the ruler, § The pop-overs, § The area and Crop, § Reading the text of the area, § Leaving the editor.
-- [Uninstaller](Architecture/Uninstaller.md) — deciding whether a path belongs to the application being removed; its model calls the engine directly (Architecture/Uninstaller.md § How the Uninstaller's model reaches its engine, § Keys, gates, guards and files, § The states of the Uninstaller page).
+- [Uninstaller](Architecture/Uninstaller.md) — deciding whether a path belongs to the application being removed; its model calls the engine directly (Architecture/Uninstaller.md § How the Uninstaller's model reaches its engine, § Keys, gates, guards and files, § The states of the Uninstaller page, § The door for another module's removal of one app).
 - [VPN](Architecture/VPN.md) — raising and dropping tunnels from rules, and the books it keeps, keyed by configuration id or, where `scutil` takes a name, by name; its model calls the engine directly (Architecture/VPN.md § How VPN's model reaches its engine), and every state of its page has a row in Architecture/VPN.md § The states of the VPN page.
 
 ### Tests and release
@@ -115,9 +125,12 @@ sealed (§ Sealed settings); a number read from a file is bounded (§ A number t
 | Duplicates | its sealed settings, the digests of files it has read | `Sources/Modules/Duplicates/Engine/Logic/DuplicatesSettings.swift`, `Sources/Modules/Duplicates/Engine/HashCache.swift` |
 | Homebrew | its one setting (`module.homebrew.updateBeforeChecking`, default ON, not sealed), the install-count documents it downloads, each with its `.etag` file, and a file for the operation in progress; nothing about packages themselves, which are read from `brew` | `Sources/Modules/Homebrew/Engine/UpdateBeforeChecking.swift`, `Sources/Modules/Homebrew/Engine/SystemPorts.swift`; Architecture/Homebrew.md § The one setting, § Install counts |
 | KeepAwake | its settings, and a session a person started, which outlives the process | `Sources/Modules/KeepAwake/Engine/KeepAwakeSettings.swift`, `Sources/Modules/KeepAwake/Engine/Logic/SessionRestore.swift` |
+| Launchpad | the arrangement of apps: items, folders, hidden ids; by bundle id only | `Sources/Modules/Launchpad/Engine/LayoutStore.swift` (a private `layout.json` in a `Launchpad` folder of the Application Support directory); the grid's six plain keys `grid.automatic`, `grid.rows`, `grid.columns`, `grid.iconSize`, `grid.showNames`, `grid.sizeMultiplier` in the module's store, `Sources/Modules/Launchpad/UI/LaunchpadGridSettings.swift`; the pinch switch's plain key `gesture.pinch` (off), `Sources/Modules/Launchpad/UI/LaunchpadViewModel.swift` |
 | Layout | its ledger of words put right | `Sources/Modules/Layout/Engine/LedgerStore.swift` |
 | Leftovers | the login items Helm switched off, so a reset can give them back | a `NamespacedStore` over the property list (`Sources/Modules/Leftovers/Engine/LeftoversEngine.swift`) |
 | Screenshots | where a capture goes, and the other settings of the page | `Sources/Modules/Screenshots/Engine/Logic/ScreenshotsSettings.swift` |
+| Tweaks | whether each tweak is switched on, `module.tweak.<id>.enabled`, off until switched on | a `NamespacedStore` per tweak (`Sources/HelmApp/TweakHost.swift`) |
+| Display Corners | its two switches, the radius in pixels, the built-in display's last scale, as `module.tweak.display-corners.<key>`, not sealed, with the host's `enabled` beside them (the switch above) | `Sources/Tweaks/DisplayCorners/Engine/StoredCornerSettings.swift` |
 | Uninstaller | its settings | `Architecture/Uninstaller.md` § Keys, gates, guards and files |
 | VPN | its rules, and the credentials it caches for a tunnel | `Sources/Modules/VPN/Engine/VPNSettings.swift`, `Sources/Modules/VPN/Engine/SystemPorts.swift` |
 | the scan settings of every scannable module | one sealed value | `Sources/HelmRuntime/SettingGuard.swift` |
@@ -135,7 +148,7 @@ Architecture/RunningOtherPrograms.md.
 | Leftovers | `/bin/launchctl` |
 | VPN | `/usr/sbin/scutil`, `/usr/bin/security`, `/usr/bin/networkQuality` |
 | the host and the runtime | `/usr/bin/osascript` (`Sources/HelmRuntime/PrivilegedRun.swift`), `/usr/bin/systemextensionsctl` (`Sources/HelmRuntime/SystemExtensionParser.swift`), `/usr/bin/ditto` and `/bin/bash` (`Sources/HelmApp/Installer.swift`) |
-| Autopilot, Disk, Duplicates, Layout, Screenshots, Uninstaller | no tool of their own; the Uninstaller reads the applications through `Sources/HelmRuntime/RunningApps.swift` |
+| Autopilot, Disk, Duplicates, Launchpad, Layout, Screenshots, Uninstaller | no tool of their own; the Uninstaller reads the applications through `Sources/HelmRuntime/RunningApps.swift` |
 
 ## What else to read
 

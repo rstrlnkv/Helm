@@ -52,7 +52,8 @@ import Module_Uninstaller_Engine
                                  running: WorkspaceRunningApps(),
                                  extensions: SystemExtensionLister(),
                                  fullDiskAccess: FullDiskAccessProbe(),
-                                 store: store, trashChanged: trashChanged)
+                                 store: store, trashChanged: trashChanged,
+                                 ownApp: Bundle.main.bundleIdentifier.map { ($0, Bundle.main.bundlePath) })
     }
 
     /// The engine and the model that calls it. The engine's "look at the Trash
@@ -77,6 +78,11 @@ import Module_Uninstaller_Engine
     /// that is stopped answers nil.
     public func backgroundScan(_ parts: ModuleParts<UninstallerViewModel>) async -> ScanReport? {
         await parts.model.backgroundScan()
+    }
+
+    /// The model itself, unless it is stopped: a switched-off module has no door.
+    public func appRemoval(_ model: UninstallerViewModel) -> (any AppRemovalService)? {
+        model.closed ? nil : model
     }
 
     public func menuBar(_ model: UninstallerViewModel) -> MenuBarContribution? { .utility }

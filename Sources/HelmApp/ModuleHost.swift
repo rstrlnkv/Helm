@@ -3,6 +3,8 @@ import Foundation
 import HelmContract
 import HelmRuntime
 import HelmUI
+import Module_Launchpad_UI
+import Module_Uninstaller_UI
 import SwiftUI
 
 /// Owns module lifecycle: per-module namespaced store, enabled flag, and
@@ -26,6 +28,7 @@ import SwiftUI
         let panelWidget: @MainActor (PanelWidgetSize) -> AnyView?
         let panelWidgetSizes: @MainActor () -> Set<PanelWidgetSize>
         let backgroundScan: @MainActor () async -> ScanReport?
+        let appRemoval: @MainActor () -> (any AppRemovalService)?
         let stop: @MainActor () -> Void
         let hotkeyPressed: @MainActor (ModuleHotkey) -> Void
     }
@@ -157,8 +160,15 @@ import SwiftUI
                     panelWidget: { d.panelWidget($0, model) },
                     panelWidgetSizes: { d.panelWidgetSizes(model) },
                     backgroundScan: { await d.backgroundScan(parts) },
+                    appRemoval: { d.appRemoval(model) },
                     stop: { d.stop(model) },
                     hotkeyPressed: { d.hotkeyPressed($0, model) })
+    }
+
+    /// The Uninstaller's door for removing one app, read at each use: nil when the module is off.
+    /// Its id comes from its descriptor's type, never a literal here.
+    var appRemoval: (any AppRemovalService)? {
+        live[UninstallerDescriptor.id.rawValue]?.appRemoval()
     }
 
     /// Every module's declared shortcuts, one loop. A key is held only while its
@@ -182,6 +192,34 @@ import SwiftUI
                     })
             }
         }
+    }
+
+    /// What a Launchpad link came to, for the log and for a test that has no window to look at.
+    enum LinkOutcome: Equatable { case refused, throttled, moduleOff, toggled }
+
+    private var linkThrottle = LaunchpadLink.Throttle()
+    /// A program that sends links in a loop writes one `link refused` line per throttle window, not one per link.
+    private var refusalLogThrottle = LaunchpadLink.Throttle()
+
+    /// The Dock helper's URL, opened at Helm: toggles the Launchpad window as its shortcut does. Anything
+    /// but the exact link is refused (`LaunchpadLink.accepts`) and does not count against the throttle.
+    /// With the module off there is no window to toggle, so the person lands on the module's settings page.
+    @discardableResult
+    func openLaunchpadFromLink(_ url: URL, now: TimeInterval = ProcessInfo.processInfo.systemUptime) -> LinkOutcome {
+        guard LaunchpadLink.accepts(url, scheme: AppBuild.pairedLaunchpadLinkScheme) else {
+            if refusalLogThrottle.admits(at: now) { HelmLog.shared.warn("launchpad", "link refused") }
+            return .refused
+        }
+        guard linkThrottle.admits(at: now) else { return .throttled }
+        let id = LaunchpadDescriptor.id.rawValue
+        guard let running = live[id] else {
+            HelmLog.shared.info("launchpad", "link: module is off")
+            NotificationCenter.default.post(name: .helmOpenSettings, object: id)
+            return .moduleOff
+        }
+        HelmLog.shared.info("launchpad", "link: toggle")
+        running.hotkeyPressed(LaunchpadDescriptor.hotkeys[0])
+        return .toggled
     }
 
     private func disable(_ d: any ModuleDescriptor) {

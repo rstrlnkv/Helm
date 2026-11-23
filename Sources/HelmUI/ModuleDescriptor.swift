@@ -51,6 +51,9 @@ import HelmRuntime
     /// empty report. Asked only of the modules `ScanRunner.scannableModules`
     /// lists; each of them overrides this.
     func backgroundScan(_ parts: ModuleParts<Model>) async -> ScanReport?
+    /// The door another module removes an app through: only the Uninstaller answers, and nil
+    /// is "no such door now" (stopped, or not this module), never an empty service.
+    func appRemoval(_ model: Model) -> (any AppRemovalService)?
     /// A presence in the menu bar this module owns outright, apart from Helm's
     /// own status item — Keyboard's language indicator is the only one today.
     ///
@@ -118,6 +121,7 @@ import HelmRuntime
 }
 public extension ModuleDescriptor {
     func backgroundScan(_ parts: ModuleParts<Model>) async -> ScanReport? { nil }
+    func appRemoval(_ model: Model) -> (any AppRemovalService)? { nil }
     func statusAppearance(_ model: Model) -> StatusAppearance { .inactive }
     func attachMenuBarPresence() {}
     func detachMenuBarPresence() {}

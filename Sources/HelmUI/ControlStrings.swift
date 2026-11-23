@@ -17,4 +17,6 @@ public enum HelmControlName {
     /// act, and perfective in the languages that mark it — a button that does one
     /// thing when pressed.
     public static var openExtensions: String { L(.openExtensions) }
+    /// The search field of a page that lists applications: the Uninstaller's and Launchpad's, one control, one name.
+    public static var searchApps: String { L(.searchApps) }
 }

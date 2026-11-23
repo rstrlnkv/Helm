@@ -6,7 +6,6 @@ import Module_Uninstaller_Engine
 enum UnStr {
     static var moduleName: String { L(.uninstaller) }
     static var summary: String { L(.removeAnAppWithAllOfItsFiles) }
-    static var searchApps: String { L(.searchApps) }
     /// The same note when the Trash switch is on, because then the missing
     /// grant costs two things rather than one — and one grant deserves one
     /// notice, not a second row with its own Grant button saying the same.

@@ -94,8 +94,10 @@ attached with a `sha256` line for each in the notes, which `Scripts/make-zip.sh`
 silent install; the dmg is the manual drag-install path.
 
 `Scripts/package-app.sh` builds with
-`swift build -c release --product HelmApp --explicit-target-dependency-import-check error`,
-assembles and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for
+`swift build -c release --product HelmApp --explicit-target-dependency-import-check error` and the same for
+`HelmLaunchpadHelper`, one line each (given two `--product` flags SwiftPM honours only the last, and the
+old single line left `HelmApp` unbuilt after an edit; `ReleaseBuildsTheProductTests` and
+`TheBoundariesTheBuildCannotHoldTests` refuse a line with two `--product` flags), assembles and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for
 inspection. Only the signed copy under `$TMPDIR` is installed: it is the bundle the
 script signed and verified, while `.build/` holds an unsigned one with no usable
 identity at all. `Scripts/make-dmg.sh` and
@@ -120,6 +122,8 @@ lower than what they are running, until the next beta passes them.
 Before a release the tree is built from a fresh `git clone`: the manifest is refused whole
 when a declared test path does not exist, so an untracked test directory makes `swift
 test` work in one checkout and on nobody else's, and the working copy is not evidence.
+A fresh machine also needs Xcode's Metal toolchain, a separate download (`xcodebuild -downloadComponent MetalToolchain`):
+without it the Launchpad's `.metal` file does not compile and the build fails.
 
 ## Signing and grants
 
@@ -151,6 +155,8 @@ does not survive an ad-hoc rebuild either.
 
 A stable signing identity is the only real fix, and the same purchase is what
 an `SMAppService` helper and notarization each need.
+
+The Launchpad's Dock helper (`Helm Launchpad.app`, § The Dock icon in `Architecture/Launchpad.md`) is built with Helm (`swift build -c release --product HelmLaunchpadHelper`, a line of its own), staged into `Contents/Helpers` by `Scripts/package-app.sh` with its own plist (`Resources/HelmLaunchpadHelper/Info.plist`; the version is Helm's, read from the staged plist, the build number written as Helm's) and its own icon (`Resources/Icon/LaunchpadHelper.icon`, a second `actool` call) and its shown names (`Resources/HelmLaunchpadHelper/<lang>.lproj`, copied whole). **Signing goes inside out** (`Scripts/staged-bundle.sh` checks that both signatures are ad-hoc before a zip or an image is made): the helper first, then the bundle that holds it, and the strict deep verification covers both. `Scripts/rewrite-as-dev.sh` makes Helm Dev from a staged bundle (ids, names, scheme, the helper's parent and link) and signs again in the same order, because editing a plist breaks the seal; `Scripts/package-dev.sh` calls it. The update swap replaces the bundle at its own path, so a pinned helper keeps pointing at the right place after an update; a Helm that is moved by hand leaves the pin stale until the person drags the icon again. The release is ad-hoc signed and not notarized, so a download shows Gatekeeper's prompt for Helm and a second one for the nested helper the first time its Dock icon is clicked; that is accepted until a Developer ID signs both.
 
 ## The updater
 

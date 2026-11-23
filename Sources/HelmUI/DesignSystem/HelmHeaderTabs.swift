@@ -8,7 +8,7 @@ import SwiftUI
 /// a pressed tab, inside `HelmMotion.interface` and only where `HelmMotion.moves` says so; a tab the page
 /// itself selects (a page switch, an Uninstaller step) moves it without travel. The selection the page
 /// owns is written outside the animation, so the page below is not swapped inside it.
-struct HelmHeaderTabs: View {
+public struct HelmHeaderTabs: View {
     let tabs: [HelmToolbarTab]
     let selection: Binding<String>
     let enabled: Bool
@@ -22,7 +22,7 @@ struct HelmHeaderTabs: View {
     /// change of label keeps the pick where it is and sliding.
     @Environment(\.helmHeaderChoices) private var choices
 
-    init(tabs: [HelmToolbarTab], selection: Binding<String>, enabled: Bool) {
+    public init(tabs: [HelmToolbarTab], selection: Binding<String>, enabled: Bool) {
         self.tabs = tabs
         self.selection = selection
         self.enabled = enabled
@@ -34,7 +34,7 @@ struct HelmHeaderTabs: View {
     private static let plate: CGFloat = 4
     private static let pill = HelmHeaderActions.side - 2 * plate
 
-    var body: some View {
+    public var body: some View {
         group
             .opacity(enabled ? 1 : 0.4)
             .disabled(!enabled)

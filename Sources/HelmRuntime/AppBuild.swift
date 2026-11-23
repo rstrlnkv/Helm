@@ -88,6 +88,36 @@ public enum AppBuild {
     /// dev-channel build, the person's own installed Helm among them.
     public static let devIdentifier = "com.helm.app.dev"
 
+    /// The Dock helper that opens the Launchpad window: a second, tiny app nested in
+    /// `Contents/Helpers` that the person pins to the Dock, because Helm itself has no Dock icon.
+    /// Each Helm has its own, named after its parent; `HelmParentBundleID` in the helper's plist
+    /// carries the parent id back, and `Scripts/rewrite-as-dev.sh` rewrites all of it for Helm Dev.
+    public static let launchpadHelperIdentifier = "com.helm.app.launchpad"
+    public static let devLaunchpadHelperIdentifier = "com.helm.app.dev.launchpad"
+
+    /// The URL scheme the helper opens and the parent declares in `CFBundleURLTypes`; one pair per parent id.
+    public static let launchpadLinkScheme = "helm-launchpad"
+    public static let devLaunchpadLinkScheme = "helm-dev-launchpad"
+
+    /// The helper that belongs to this running Helm, by its identifier. Helm Dev's is not the release's:
+    /// a Helm Dev link must never reach the release Helm.
+    public static var pairedLaunchpadHelperIdentifier: String {
+        isDevIdentifier(Bundle.main.bundleIdentifier) ? devLaunchpadHelperIdentifier : launchpadHelperIdentifier
+    }
+
+    /// The scheme this Helm accepts a Launchpad link on.
+    public static var pairedLaunchpadLinkScheme: String {
+        isDevIdentifier(Bundle.main.bundleIdentifier) ? devLaunchpadLinkScheme : launchpadLinkScheme
+    }
+
+    /// The helper bundle inside this Helm, or nil when there is none: `swift run`, a test host and a
+    /// bundle packaged before the helper existed all have no `Contents/Helpers` to look in.
+    public static var launchpadHelperURL: URL? {
+        let name = isDevIdentifier(Bundle.main.bundleIdentifier) ? "Helm Dev Launchpad.app" : "Helm Launchpad.app"
+        let url = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/\(name)", isDirectory: true)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
     /// Whether `identifier` is Helm Dev's. Nil is not: a bundle that will not say
     /// what it is stays on what is deployed.
     public static func isDevIdentifier(_ identifier: String?) -> Bool { identifier == devIdentifier }

@@ -89,6 +89,9 @@ final class AnsweringWork: UninstallerWork, @unchecked Sendable {
         case trashPaths([String], quitting: Bool)
         case setWatchingTrash(Bool)
         case dismissTrashedApp(String)
+        case removalVerdicts([String])
+        case removalPreview(String)
+        case removeApp(String, quitting: Bool)
     }
 
     private let lock = NSLock()
@@ -98,6 +101,9 @@ final class AnsweringWork: UninstallerWork, @unchecked Sendable {
     private let removal: UninstallResult
     private let offers: [TrashedAppLeftovers]
     private let sizes: [String: Int]?
+    /// What the door answers: the engine's own states, written down as values.
+    var appReport = AppRemovalReport(.moved, freedBytes: 1)
+    var appVerdict = AppRemovalVerdict.removable
     private var opens: [String: Date] = [:]
     private var unreadDates: [String] = []
     private var order: AppSortOrder = .standard
@@ -191,6 +197,22 @@ final class AnsweringWork: UninstallerWork, @unchecked Sendable {
         return removal
     }
 
+    func removalVerdicts(for candidates: [AppRemovalCandidate]) async -> [AppRemovalVerdict] {
+        note(.removalVerdicts(candidates.map(\.path)))
+        return candidates.map { _ in appVerdict }
+    }
+
+    func removalPreview(_ candidate: AppRemovalCandidate) async -> AppRemovalAsk {
+        note(.removalPreview(candidate.path))
+        if case .refused(let why) = appVerdict { return .refused(why) }
+        return .ready(AppRemovalPreview(appBytes: nil, leftoverCount: 0, leftoverBytes: 0, running: false))
+    }
+
+    func removeApp(_ candidate: AppRemovalCandidate, quittingIfRunning: Bool) async -> AppRemovalReport {
+        note(.removeApp(candidate.path, quitting: quittingIfRunning))
+        return appReport
+    }
+
     var trashWatch: TrashWatch { .off }
     func setWatchingTrash(_ on: Bool) { note(.setWatchingTrash(on)) }
 
@@ -247,6 +269,14 @@ final class HeldWork: UninstallerWork, @unchecked Sendable {
         // caller resumed, and the gate would be untested.
         for await _ in released.stream {}
         return removal
+    }
+
+    func removalVerdicts(for candidates: [AppRemovalCandidate]) async -> [AppRemovalVerdict] {
+        candidates.map { _ in .removable }
+    }
+    func removalPreview(_ candidate: AppRemovalCandidate) async -> AppRemovalAsk { .refused(.notOffered) }
+    func removeApp(_ candidate: AppRemovalCandidate, quittingIfRunning: Bool) async -> AppRemovalReport {
+        AppRemovalReport(.moved)
     }
 
     func listApps() async -> [InstalledApp] { [] }

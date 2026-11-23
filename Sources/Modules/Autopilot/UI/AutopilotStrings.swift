@@ -248,7 +248,7 @@ enum ApStr {
         case .image: L(.image)
         case .document: L(.document)
         case .archive: L(.archive)
-        case .video: L(.video)
+        case .video: HelmWord.video
         case .audio: L(.audio)
         case .folder: L(.folder)
         case .other: L(.other)

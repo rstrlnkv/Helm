@@ -73,10 +73,13 @@ final class TheRuleItemsAreTheOnesThatShippedTests: XCTestCase {
     }
 
     /// Without this a rename of the Dev bundle silently puts Dev back on the
-    /// deployed items.
+    /// deployed items. `rewrite-as-dev.sh` writes the identifier; `package-dev.sh` must still run it.
     func testTheDevScriptWritesTheIdentifierTheItemsAreKeyedOn() throws {
-        let script = try RepoSource.text(of: "Scripts/package-dev.sh")
-        XCTAssertTrue(script.contains("Set :CFBundleIdentifier \(AppBuild.devIdentifier)"))
+        let rewrite = try RepoSource.text(of: "Scripts/rewrite-as-dev.sh")
+        // The closing quote: the helper's `com.helm.app.dev.launchpad` line begins the same way.
+        XCTAssertTrue(rewrite.contains("Set :CFBundleIdentifier \(AppBuild.devIdentifier)\""))
+        let package = try RepoSource.text(of: "Scripts/package-dev.sh")
+        XCTAssertTrue(package.contains("rewrite-as-dev.sh"))
     }
 
     func testNoVersionEntersTheChoice() throws {

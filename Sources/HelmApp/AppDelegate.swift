@@ -205,6 +205,11 @@ import Module_Uninstaller_UI
         }
     }
 
+    /// The Launchpad Dock helper opens its link here (`CFBundleURLTypes`); the host decides what it means.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls { host.openLaunchpadFromLink(url) }
+    }
+
     /// Opening Helm again (Finder, Spotlight, Launchpad, `open -a`) does not start a
     /// second copy of a running app: the running one is sent this reopen event.
     /// Helm is an accessory app with no window of its own until Settings is
