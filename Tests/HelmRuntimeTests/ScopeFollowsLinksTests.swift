@@ -31,10 +31,6 @@ final class ScopeFollowsLinksTests: XCTestCase {
         }
     }
 
-    override func tearDownWithError() throws {
-        if let home { try? FileManager.default.removeItem(at: home) }
-    }
-
     /// The planted link: an allowed root holds a symlink to a protected folder.
     private func plantLink() throws -> String {
         let link = home.appendingPathComponent("Library/Caches/com.evil.app")

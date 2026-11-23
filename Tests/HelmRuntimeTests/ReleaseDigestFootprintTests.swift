@@ -30,10 +30,6 @@ final class ReleaseDigestFootprintTests: XCTestCase {
         for _ in 0..<1200 { handle.write(chunk) }   // 1200 MB
     }
 
-    override func tearDownWithError() throws {
-        if let file { try? FileManager.default.removeItem(at: file) }
-    }
-
     func testHashingARealeaseAssetCostsItsSliceNotItsVolume() throws {
         let before = try XCTUnwrap(MemoryFootprint.current())
         let digest = try ReleaseDigest.sha256(ofFileAt: file)

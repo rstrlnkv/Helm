@@ -3,10 +3,6 @@ import XCTest
 
 final class ScanComparisonTests: XCTestCase {
 
-    private func item(_ path: String, _ bytes: Int) -> ScanItem {
-        ScanItem(path: path, bytes: bytes)
-    }
-
     func testNothingChanged() {
         let list = [item("/a", 10), item("/b", 20)]
         let change = ScanComparison.between(previous: list, current: list)

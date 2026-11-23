@@ -17,8 +17,7 @@ final class HelmTrashTests: XCTestCase {
     /// says why the parent directory's UUID does not do that job.
     private func file(_ name: String, bytes: Int = 16) throws -> String {
         let leaf = unownableLeaf(name)
-        let url = root.appendingPathComponent(leaf)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
+        let url = try write(leaf, in: root, bytes: bytes)
         reclaimFromTrash(leaf)
         return url.path
     }

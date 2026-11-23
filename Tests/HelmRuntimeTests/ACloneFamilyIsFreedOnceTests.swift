@@ -32,16 +32,10 @@ final class ACloneFamilyIsFreedOnceTests: XCTestCase {
         root = scratchDirectory("disk-clones")
     }
 
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
-    }
-
     /// A file, and a clone of it: one allocation, two names, and the same clone
     /// family id.
     private func original(_ name: String) throws -> URL {
-        let url = root.appendingPathComponent(name)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
-        return url
+        try write(name, in: root, bytes: bytes)
     }
 
     private func clone(of url: URL, as name: String) throws -> URL {

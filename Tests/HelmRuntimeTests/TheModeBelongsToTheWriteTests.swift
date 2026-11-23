@@ -63,11 +63,6 @@ final class TheModeBelongsToTheWriteTests: XCTestCase {
 
     // MARK: - The mode arrives with the file
 
-    private func mode(ofPath path: String) throws -> Int {
-        let attributes = try FileManager.default.attributesOfItem(atPath: path)
-        return (attributes[.posixPermissions] as? NSNumber)?.intValue ?? 0
-    }
-
     /// The inode the bytes go into is 0600 before it holds a byte and before it
     /// holds the name — which is what «private from the moment it exists» means
     /// and what a mode set afterwards cannot say.
@@ -81,7 +76,7 @@ final class TheModeBelongsToTheWriteTests: XCTestCase {
             try? FileManager.default.removeItem(atPath: scratch.path)
         }
 
-        XCTAssertEqual(try mode(ofPath: scratch.path), 0o600,
+        XCTAssertEqual(try mode(of: URL(fileURLWithPath: scratch.path)), 0o600,
                        "the bytes are about to be written into a file anything running as "
                        + "this user can read")
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path),
@@ -109,7 +104,7 @@ final class TheModeBelongsToTheWriteTests: XCTestCase {
             try? FileManager.default.removeItem(atPath: scratch.path)
         }
 
-        XCTAssertEqual(try mode(ofPath: scratch.path), 0o600)
+        XCTAssertEqual(try mode(of: URL(fileURLWithPath: scratch.path)), 0o600)
     }
 
     /// A write that cannot land leaves nothing in the folder it was aimed at.

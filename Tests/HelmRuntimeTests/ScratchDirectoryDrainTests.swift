@@ -20,21 +20,6 @@ import HelmTestSupport
 /// drain has had its turn.
 final class ScratchDirectoryDrainTests: XCTestCase {
 
-    /// The directory and whether the writer is still using it, in something a
-    /// `@Sendable` teardown block may hold. The block is registered before the
-    /// directory exists, so it cannot capture the value and must not capture
-    /// the test case.
-    private final class LateWrite: @unchecked Sendable {
-        private let lock = NSLock()
-        private var url: URL?
-        private var running = true
-
-        func begin(at url: URL) { lock.lock(); self.url = url; lock.unlock() }
-        func finished() { lock.lock(); running = false; lock.unlock() }
-        var directory: URL? { lock.lock(); defer { lock.unlock() }; return url }
-        var isRunning: Bool { lock.lock(); defer { lock.unlock() }; return running }
-    }
-
     /// How many times the late write arrives, and it stops an order of
     /// magnitude before the drain does.
     ///
@@ -47,16 +32,21 @@ final class ScratchDirectoryDrainTests: XCTestCase {
     private static let writes = 20
 
     func testAWriteThatLandsAfterTheRemovalIsStillReclaimed() {
-        let late = LateWrite()
+        // The directory and whether the writer is still using it, in something
+        // a `@Sendable` teardown block may hold. The block is registered before
+        // the directory exists, so it cannot capture the value and must not
+        // capture the test case.
+        let directoryBox = Locked<URL?>(nil)
+        let running = Locked(true)
 
         // Registered first, so it runs last: after the drain, and after the
         // writer has stopped. Asserting before either would pass on a drain
         // that never ran at all.
         addTeardownBlock {
             await waitUntilReached("the writer finished, so something was proven", within: .seconds(10)) {
-                !late.isRunning
+                !running.value
             }
-            guard let directory = late.directory else {
+            guard let directory = directoryBox.value else {
                 return XCTFail("the probe never got a scratch directory")
             }
             XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path),
@@ -65,7 +55,7 @@ final class ScratchDirectoryDrainTests: XCTestCase {
         }
 
         let root = scratchDirectory("drain-probe")
-        late.begin(at: root)
+        directoryBox.value = root
 
         // The view model's own task, in miniature: it comes back after the test
         // body has ended and makes the folder again to put its file in.
@@ -75,13 +65,13 @@ final class ScratchDirectoryDrainTests: XCTestCase {
         // toolchain ("pattern that ... does not understand how to check"), and
         // a capture list is the shape that says what crosses anyway.
         let writes = Self.writes
-        Task.detached { [late, root, writes] in
+        Task.detached { [running, root, writes] in
             for index in 0..<writes {
                 try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
                 try? Data([0x41]).write(to: root.appendingPathComponent("late-\(index).bin"))
                 await Task.yield()
             }
-            late.finished()
+            running.value = false
         }
     }
 }
