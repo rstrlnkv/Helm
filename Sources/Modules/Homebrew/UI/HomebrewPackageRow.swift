@@ -1,29 +1,18 @@
 import SwiftUI
 import HelmUI
 
-/// A row of the master list — no button, at any width:
-/// `mark · name · badges … version · chevron`.
-/// The one place an action ever draws is `packageDetail`, whether it sits
-/// beside this list or replaces it — selecting a row is what reaches it,
-/// which is the only way a selectable `List` row and a button never fight
-/// the same click.
-///
-/// `desc` is passed only from the single-column branch, where there is no
-/// package view beside the row to carry it — the row has the whole pane
-/// to itself there, and keeps the description rather than dropping it,
-/// since nothing else on that screen says what the package is before it is
-/// selected. `nil` omits the second line entirely rather than reserving an
-/// empty one, since the split layout never re-flows a row that never draws
-/// a description at all.
+/// A row of the master list — no button:
+/// `mark · name · badges … version`.
+/// The one place an action ever draws is the inspector beside this list —
+/// selecting a row is what reaches it, which is the only way a selectable
+/// `List` row and a button never fight the same click.
 struct HomebrewPackageRow: View {
     @Environment(\.helmTraits) private var traits
     let name: String
     let detail: String?
     let isCask: Bool
-    let singleColumn: Bool
     var pinned = false
     var hasUpdate: Bool?
-    var desc: String?
 
     var body: some View {
         HStack(spacing: HelmSpace.s3) {
@@ -69,9 +58,6 @@ struct HomebrewPackageRow: View {
                     if isCask { HelmBadge(HbStr.cask, tint: Self.caskTint) }
                     if pinned { HelmBadge(HbStr.pinned) }
                 }
-                if let desc {
-                    Text(desc).font(HelmText.smallPrint).foregroundStyle(HelmText.quiet).lineLimit(1)
-                }
             }
             Spacer(minLength: 0)
             // **A column, not a word after the name**: inline, a version starts
@@ -83,7 +69,6 @@ struct HomebrewPackageRow: View {
                     .lineLimit(1)
                     .layoutPriority(1)
             }
-            RowChevron(singleColumn: singleColumn)
         }
         // **One row of either package list on this page: what does not divide it from
         // the next one.**
@@ -107,7 +92,6 @@ struct HomebrewPackageRow: View {
         // the app's other striped list screens: `OrphansView`, Uninstaller and Leftovers
         // all hide theirs on the row.
         .listRowSeparator(.hidden)
-        .helmOpensAScreen(singleColumn)
     }
 
     /// The update mark's symbol — named once because the heading over the
@@ -129,16 +113,13 @@ struct HomebrewPackageRow: View {
 /// is the whole of how it lines up: the list insets its headers and rows by
 /// one amount, so nothing here measures an inset. The one thing a header cannot know is
 /// what a row puts at its two edges, so it reserves those widths with the
-/// same views, hidden: the update mark's slot on the installed list, and
-/// the chevron in the single-column pane, which would otherwise push every
-/// version a chevron's width left of «Version».
+/// same view, hidden: the update mark's slot on the installed list.
 ///
 /// In the house's section voice (`HelmSectionTitle`), and marked a header
 /// for the rotor.
 struct HomebrewColumnHeader: View {
     /// Whether the rows under it keep the update mark's slot.
     let marksUpdates: Bool
-    let singleColumn: Bool
 
     var body: some View {
         HStack(spacing: HelmSpace.s3) {
@@ -148,60 +129,8 @@ struct HomebrewColumnHeader: View {
             HelmSectionTitle(HbStr.columnPackage)
             Spacer(minLength: 0)
             HelmSectionTitle(HbStr.tileVersion)
-            RowChevron(singleColumn: singleColumn).hidden()
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
-    }
-}
-
-/// **The mark that says a row leads somewhere, and only where it does.**
-///
-/// Below `HomebrewSplit`'s threshold a press on a row replaces the list
-/// with that row's own screen; above it the same press moves the inspector
-/// beside the list and the pane does not change. So the chevron is drawn
-/// from the one fact that decides which of those happens, and never
-/// otherwise: a chevron over a row that opens nothing is a promise the
-/// wide page does not keep.
-///
-/// `HelmText.separator` is the token for exactly this — "marks, never
-/// text", 3.07:1 light and 4.07:1 dark, over the 3:1 a mark that carries
-/// meaning answers to. It is hidden from the accessibility tree because it
-/// is not a control and says nothing the row does not: the row itself
-/// carries the hint, in `helmOpensAScreen`.
-private struct RowChevron: View {
-    let singleColumn: Bool
-
-    var body: some View {
-        if singleColumn {
-            Image(systemName: "chevron.forward")
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.separator)
-                .accessibilityHidden(true)
-        }
-    }
-}
-
-private extension View {
-    /// **What a row promises when pressing it changes the whole pane.**
-    ///
-    /// The chevron beside the row is a mark and not an element
-    /// (`RowChevron` says why), so without this the single-column list
-    /// reads to VoiceOver exactly as the two-column one does — same rows, same
-    /// names, and no word anywhere about the press replacing the list. A hint
-    /// is the right channel for it: it is read after the row's own name, it is
-    /// skipped by anyone who has hints off, and it does not become part of the
-    /// row's name the way a label would.
-    ///
-    /// Nothing at all above the threshold, rather than a hint saying something
-    /// milder: there the press moves the inspector beside the list, which is a
-    /// selection and is what macOS already announces for a selectable row.
-    @ViewBuilder
-    func helmOpensAScreen(_ singleColumn: Bool) -> some View {
-        if singleColumn {
-            accessibilityHint(HbStr.opensItsOwnScreen)
-        } else {
-            self
-        }
     }
 }

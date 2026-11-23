@@ -93,8 +93,8 @@ final class OpeningThePageAsksWhatItAlwaysAskedTests: XCTestCase {
         // The subject happened: the lists are on the model, the rows are named.
         XCTAssertEqual(model.installed.map(\.name).sorted(), ["iterm2", "jq", "wget"],
                        "control: the lists never reached the model")
-        XCTAssertEqual(model.description(name: "wget", isCask: false), "Internet file retriever")
-        XCTAssertEqual(model.description(name: "iterm2", isCask: true), "Terminal emulator")
+        XCTAssertEqual(model.descriptions[BrewKey.of(name: "wget", isCask: false)], "Internet file retriever")
+        XCTAssertEqual(model.descriptions[BrewKey.of(name: "iterm2", isCask: true)], "Terminal emulator")
 
         let quiet = ["HOMEBREW_NO_AUTO_UPDATE": "1"]
         XCTAssertEqual(runner.calls.map(\.args), [

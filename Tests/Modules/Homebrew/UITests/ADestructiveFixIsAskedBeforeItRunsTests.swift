@@ -9,23 +9,21 @@ import HelmUI
 ///
 /// Measured 2026-09-16 on the inspector: «Скопировать» 106.5×24 at x 675.5…782
 /// and «Выполнить» 93.5×24 at x 788 — a 6 pt gap, no weight difference, no
-/// role, no question. `DoctorFix.Allowed` holds two commands and only one of
-/// them is recoverable: a cached download comes back, and a cellar directory
-/// does not. Every other irreversible deletion in Helm asks first, and the
+/// role, no question. `DoctorFix.Allowed` holds one command, and a cellar
+/// directory does not come back. Every other irreversible deletion in Helm asks first, and the
 /// Uninstall button three lines up the same file raises a dialog that names the
 /// package and says what it takes with it.
 ///
 /// **What makes this a guard rather than a claim about a `role:`.** The
 /// behaviour is what is asserted: the press does not reach the engine at all
-/// until the question is answered, and the cleanup press still does — otherwise
+/// until the question is answered, and the confirmed press does — otherwise
 /// «nothing was sent» would be true of a view model with the command deleted.
 @MainActor
 final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
 
     // MARK: - The decision
 
-    func testTheTwoAllowedCommandsAreNotTheSameKindOfAct() {
-        XCTAssertEqual(FixAsk.of(["cleanup"]), .runsOnThePress)
+    func testAnUninstallIsAskedAbout() {
         XCTAssertEqual(FixAsk.of(["uninstall", "periphery"]), .uninstalls(name: "periphery"), """
             a fix that removes a package for good was read as one to run on the press — which is \
             the single click this whole file is about
@@ -33,15 +31,13 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
     }
 
     /// **Anything else asks too.** `DoctorFix.judge` is argument-exact, so
-    /// nothing outside those two reaches Run today; that is a fact about today's
-    /// allowlist, and a third entry added by somebody who did not read
+    /// nothing outside that one reaches Run today; that is a fact about today's
+    /// allowlist, and a second entry added by somebody who did not read
     /// `DoctorFix.Allowed`'s checklist gets a question rather than a press.
     func testAnUnrecognisedCommandIsAskedAboutRatherThanRun() {
         XCTAssertEqual(FixAsk.of(["update-reset"]), .unrecognised)
         XCTAssertEqual(FixAsk.of(["untap", "somebody/tap"]), .unrecognised)
-        // Argument-exact in this direction as well: `cleanup --prune=all` throws
-        // away every cached download regardless of age, which is not the act
-        // `cleanup` performs.
+        XCTAssertEqual(FixAsk.of(["cleanup"]), .unrecognised)
         XCTAssertEqual(FixAsk.of(["cleanup", "--prune=all"]), .unrecognised)
     }
 
@@ -53,7 +49,6 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
     /// a person decides on and this Mac reads one of the eight.
     func testTheQuestionNamesThePackageTheWayTheUninstallDialogDoes() {
         let uninstall = DoctorFix(argv: ["uninstall", "periphery"], kind: .runnable)
-        let cleanup = DoctorFix(argv: ["cleanup"], kind: .runnable)
         AppLanguage.each { language in
             XCTAssertEqual(HomebrewSettingsPage.fixQuestion(uninstall),
                            HbStr.confirmUninstall("periphery"), """
@@ -63,10 +58,6 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
             XCTAssertEqual(HomebrewSettingsPage.fixQuestionNote(uninstall, dependents: .read([])),
                            HbStr.uninstallIsPermanent,
                            "\(language.rawValue): the dialog does not say the removal is permanent")
-            XCTAssertNil(HomebrewSettingsPage.fixQuestion(cleanup), """
-                \(language.rawValue): `brew cleanup` raises a question — a dialog in front of a \
-                recoverable act is how people learn to dismiss dialogs
-                """)
         }
     }
 
@@ -78,20 +69,6 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
             if case .doctorFix(let argv) = act { return argv }
             return nil
         }
-    }
-
-    /// **The recoverable one still goes on the press.** Asserted first: without
-    /// it, every «nothing was sent» below is true of a view model that sends
-    /// nothing at all.
-    func testCleanupStillRunsOnThePress() async {
-        let work = FakeHomebrewWork()
-        let model = HomebrewViewModel(work: work)
-        await model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
-        XCTAssertEqual(fired(work), [["cleanup"]], """
-            `brew cleanup` did not reach the engine on the press — so this fake sees no commands \
-            at all, and the absences below prove nothing
-            """)
-        XCTAssertNil(model.pendingFix, "a recoverable fix left a question standing")
     }
 
     func testTheDestructiveOneReachesNothingUntilItIsConfirmed() async {
@@ -194,18 +171,12 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         XCTAssertEqual(model.dependentsOfPending, .notAsked)
     }
 
-    /// A fix that is not an uninstall has no package to ask about: `cleanup`
-    /// runs on the press and an unrecognised command waits for its answer, and
-    /// neither reads dependents (a reading no dialog would show is a `brew uses`
+    /// A fix that is not an uninstall has no package to ask about: an unrecognised
+    /// command waits for its answer and reads no dependents (a reading no dialog would show is a `brew uses`
     /// launched for nothing).
     func testOnlyAnUninstallFixReadsDependents() async {
         let work = FakeHomebrewWork()
         let model = HomebrewViewModel(work: work)
-        await model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
-        XCTAssertEqual(fired(work), [["cleanup"]], "control: the cleanup press did not reach the engine")
-        XCTAssertEqual(work.dependentsAsked, [], "a cleanup press read what depends on a package")
-        XCTAssertEqual(model.dependentsOfPending, .notAsked)
-
         let unrecognised = DoctorFix(argv: ["foo"], kind: .runnable)
         await model.askToRunFix(unrecognised)
         XCTAssertEqual(model.pendingFix, unrecognised, "control: the unrecognised ask raised no question")

@@ -60,8 +60,7 @@ import HelmAppStrings
     /// + 10, which is 575 + 426 = 1001 in German; the card is the window less 200 of sidebar and 4 of window inset,
     /// so 1205, and 2 more for a frame rounded to whole points. (Text only, 1142, and the old row, with 20 of
     /// gutter each side and a 200 pt search, 1096, were narrower; raised, never lowered, by the owner's decision.)
-    /// The search could not give way instead. A sidebar stored wider than the default
-    /// (`ShellGeometry.sidebarRange` goes to 320) is not held by this number.
+    /// The search could not give way instead.
     private static let minSize = NSSize(width: 1207, height: 540)
 
     /// The header row's band is the running system's decision (`HelmBandChoice.running`), handed to the pane.
@@ -351,15 +350,10 @@ enum SettingsSelection: Hashable {
     /// Where the fold state is remembered (`AppSettings.sidebarCollapsed(in:)`).
     private let store = AppSettings.store
 
-    /// The width the sidebar has when expanded, read from the store once, when the window is built.
-    /// Nothing in the window changes it, so an unfold always ends here.
-    private let expandedWidth: CGFloat
-
     init(model: SettingsModel, band: HelmBandChoice, tabs: HelmTabsSink) {
         self.model = model
         self.band = band
         self.tabs = tabs
-        self.expandedWidth = AppSettings.sidebarWidth(in: store)
         super.init(nibName: nil, bundle: nil)
         fold.collapsed = AppSettings.sidebarCollapsed(in: store)
     }
@@ -388,7 +382,7 @@ enum SettingsSelection: Hashable {
     }
 
     private func width(collapsed: Bool) -> CGFloat {
-        collapsed ? ShellGeometry.railWidth : expandedWidth
+        collapsed ? ShellGeometry.railWidth : ShellGeometry.defaultSidebarWidth
     }
 
     private func makeShell() -> ShellContentView {

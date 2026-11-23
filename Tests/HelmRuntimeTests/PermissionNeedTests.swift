@@ -1,26 +1,8 @@
 import XCTest
 @testable import HelmRuntime
 
-/// Every option that needs a grant must be able to say which one, so the UI can
-/// warn instead of failing silently — the pointer nudge shipped for months
-/// doing nothing because nothing connected the setting to the permission.
+/// A grant is read back from the probe for its own need and nobody else's.
 final class PermissionNeedTests: XCTestCase {
-    func testFeaturesMapToTheirPermission() {
-        XCTAssertEqual(PermissionNeed.of(.pointerNudge), .accessibility)
-        XCTAssertEqual(PermissionNeed.of(.appContainers), .fullDiskAccess)
-        XCTAssertEqual(PermissionNeed.of(.wholeDiskScan), .fullDiskAccess)
-        XCTAssertEqual(PermissionNeed.of(.leftoverRemoval), .fullDiskAccess)
-        XCTAssertEqual(PermissionNeed.of(.screenCapture), .screenRecording)
-    }
-
-    /// A feature that needs nothing must say so rather than pointing at a
-    /// permission it does not use — a false warning trains people to ignore
-    /// real ones.
-    func testFeaturesWithoutARequirement() {
-        XCTAssertNil(PermissionNeed.of(.vpnControl))
-        XCTAssertNil(PermissionNeed.of(.homebrew))
-    }
-
     func testStateReadsBackFromTheProbe() {
         XCTAssertEqual(PermissionNeed.accessibility.state(accessibility: .granted,
                                                           fullDisk: .denied,
@@ -44,9 +26,5 @@ final class PermissionNeedTests: XCTestCase {
                                "\(need) read the answer for \(denied)")
             }
         }
-    }
-
-    func testTheDeclaredNameOfScreenRecordingIsTheContractsOwn() {
-        XCTAssertEqual(PermissionNeed.screenRecording.declaredName, "screenRecording")
     }
 }

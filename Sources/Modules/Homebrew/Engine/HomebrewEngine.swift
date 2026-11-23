@@ -1072,12 +1072,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// A Cellar that could not be read is not a Cellar the name is in:
     /// `listInstalled` answers nil for a refused or timed-out `brew list`, and
     /// that refuses the run rather than falling through to an empty list, which
-    /// would refuse `uninstall` by luck and admit `cleanup` by mistake.
+    /// would refuse `uninstall` by luck rather than by reading.
     ///
     /// Every operand goes behind `--`, for the reason the type's own doc
     /// comment gives: `brew` reads a leading `-` as a flag wherever it finds
     /// one, and these operands are words parsed out of brew's own prose.
-    /// `["cleanup"]` has no operand and gets no `--`.
     func runDoctorFix(_ argv: [String]) {
         // The command itself, which is what the console's pill and the marker
         // both show — "uninstall periphery", the same shape the other labels
@@ -1097,7 +1096,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         }
         let operands = Array(argv.dropFirst())
         runOp(verb: "doctor fix", subject: operands.first, label: label, launch: brew,
-              args: operands.isEmpty ? argv : [argv[0], "--"] + operands)
+              args: [argv[0], "--"] + operands)
     }
 
     /// Install Homebrew itself, in three parts that only ever run in this order:

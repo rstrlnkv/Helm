@@ -88,20 +88,9 @@ final class ObsoleteDefaultsTests: XCTestCase {
     /// `store.string("menuBarIconSize", default: "")` is the whole declaration, so
     /// looking only for `= "name"` let `module.app.menuBarIconSize` join the list
     /// unnoticed (a mutation said so).
-    ///
-    /// The exception is a key still read *once* by the migration that carries
-    /// its value somewhere new before the purge takes it. There is one, it is
-    /// named here with its reason, and adding a second should be an argument
-    /// rather than an edit.
     func testNoRetiredKeyStillHasAConstant() throws {
-        /// Retired *and* still declared, on purpose. `PanelFooterSetting` reads
-        /// this key once at launch to unfold the three switches it became, and
-        /// `AppSettings.migrateAndPurge` is one function so the read cannot
-        /// happen after the delete.
-        let migrating: Set<String> = ["module.app.showPanelFooter"]
-
         var checked = 0
-        for key in ObsoleteDefaults.retired where !migrating.contains(key) {
+        for key in ObsoleteDefaults.retired {
             let parts = key.split(separator: ".")
             guard parts.count >= 3, parts[0] == "module" else {
                 return XCTFail("\(key) is not `module.<namespace>.<name>`")

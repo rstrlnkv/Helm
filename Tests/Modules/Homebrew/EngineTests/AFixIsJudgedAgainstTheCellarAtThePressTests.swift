@@ -140,7 +140,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
 
     /// A Cellar nobody could read is not a Cellar the name is in. `listInstalled`
     /// answers nil for a refused `brew list`, and folding that to an empty list
-    /// would refuse `uninstall` by luck while admitting `cleanup` by mistake.
+    /// would refuse `uninstall` by luck rather than by reading.
     func testACellarThatCouldNotBeReadRefusesTheRun() async {
         let runner = MovingCellar(installed: ["periphery"])
         let news = EngineNews<HomebrewNews>()
@@ -160,31 +160,6 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
         XCTAssertEqual(refusals.count, 1, "the refusal was silent")
     }
 
-    /// **The half an `uninstall` cannot see.** Folding an unreadable Cellar to
-    /// an empty list refuses `uninstall` by luck — the name is not in an empty
-    /// list either — and admits `cleanup`, which takes no name and so is
-    /// admitted by every list there is. So the rule has to be read with the one
-    /// command whose verdict does not depend on what the list holds.
-    func testACellarThatCouldNotBeReadRefusesEvenACommandWithNoOperand() {
-        let runner = MovingCellar(installed: [])
-        let engine = brewEngine(runner)
-
-        engine.runDoctorFix(["cleanup"])
-        XCTAssertEqual(runner.launched, [["cleanup"]], """
-            precondition: against a Cellar that answered \u{2014} empty, but answered \u{2014} \
-            `cleanup` runs, so the refusal below is about the reading and not about the command
-            """)
-        runner.finishAll()
-
-        runner.installed = nil          // `brew list` exits 1 with nothing to say
-        engine.runDoctorFix(["cleanup"])
-        XCTAssertEqual(runner.launched.count, 1, """
-            a `brew list` that refused was folded to an empty list, and `cleanup` \u{2014} which \
-            no list can refuse \u{2014} ran against a Cellar nothing managed to read: \
-            \(runner.launched)
-            """)
-    }
-
     /// **Nothing through this door is trusted to have been judged.** No page draws a
     /// button for `untap`, for an `uninstall` carrying two names, or for one
     /// carrying a flag — but `perform(_:)` is public, and the engine is the gate
@@ -197,7 +172,8 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
             ["uninstall", "--force"],              // a flag, not a name
             ["uninstall", "peri phery"],           // not spellable
             ["brew", "uninstall", "periphery"],    // not parsed: `brew` is not argv[0]
-            ["cleanup", "--prune=all"],            // a different act from `cleanup`
+            ["cleanup"],                           // off the list: no page offers it
+            ["cleanup", "--prune=all"],            // not on the list either
         ]
         for argv in never {
             let runner = MovingCellar(installed: ["periphery", "wget"])
@@ -213,16 +189,6 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
         brewEngine(runner).runDoctorFix(["uninstall", "periphery"])
         XCTAssertEqual(runner.launched, [["uninstall", "--", "periphery"]],
                        "the fixture refuses everything, so the refusals above prove nothing")
-    }
-
-    /// `cleanup` takes no operand, so it gets no `--`. Every *value* goes behind
-    /// one — that is the engine's own first sentence — and a `--` with nothing
-    /// after it is not a value.
-    func testCleanupRunsWithNoSeparatorBecauseItHasNoOperand() {
-        let runner = MovingCellar(installed: [])
-        brewEngine(runner).runDoctorFix(["cleanup"])
-        XCTAssertEqual(runner.launched, [["cleanup"]],
-                       "a command with no operand was given a separator: \(runner.launched)")
     }
 
     /// The operand goes behind `--` because it is a word parsed out of brew's

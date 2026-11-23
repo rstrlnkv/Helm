@@ -315,30 +315,11 @@ enum HbStr {
         L(.pinned)
     }
 
-    /// The package view with nothing to describe. Not "on the left": there is
-    /// no left below `HomebrewSplit`'s threshold, where the package replaces
-    /// the list rather than sitting beside it, and one key serves both layouts.
-    /// Japanese and Chinese had gone further than the English and named the
-    /// list itself («左のリストから», «请在左侧»), so the sentence was wrong in
-    /// two languages more loudly than in the other six.
+    /// The package view with nothing to describe. Not "on the left": the
+    /// sentence points at no side. Japanese and Chinese had gone further than
+    /// the English and named the list itself («左のリストから», «请在左侧»), so
+    /// the sentence was wrong in two languages more loudly than in the other six.
     static var nothingSelected: String { L(.nothingSelected) }
-    /// The narrow screen's way out of a selected package, back to the list.
-    ///
-    /// One English text is one word (`testOneEnglishTextIsOneWordAcrossEveryCatalog`),
-    /// so every back control in the app that means this word is `HelmWord.back`,
-    /// one entry and one translation each.
-    /// Which modules those are is not written here: a list or a count in prose
-    /// goes stale at the next module. `command grep -rn 'HelmWord.back' Sources`
-    /// answers it today.
-    static var back: String { HelmWord.back }
-    /// **What a row in the single-column list does when it is pressed** — the
-    /// accessibility hint the chevron beside it cannot carry, because a mark
-    /// is not an element.
-    ///
-    /// Its own key rather than `back`'s neighbour in some shared file: the
-    /// sentence is about this module's own two-screen shape, which
-    /// `HomebrewSplit.singleColumn` alone decides.
-    static var opensItsOwnScreen: String { L(.opensItsOwnScreen) }
     /// The accessibility label of the row's update marker, and the word the
     /// package screen spells beside the same symbol — the only carrier of "an
     /// update exists" for a colourblind reader or one using VoiceOver.
@@ -502,13 +483,11 @@ enum HbStr {
     /// from draws the verb alone.
     static var runTheFix: String { L(.runTheFix) }
     /// Run, when pressing it raises a question first — `uninstallAsking`'s
-    /// reason. Not for `brew cleanup`, which would run on the press and which
-    /// no page path produces today: `HomebrewSettingsPage.runLabel` is where
-    /// the two are told apart.
+    /// reason; every fix does.
     static var runTheFixAsking: String { L(.runTheFixAsking) }
     /// The question a press on Run raises when the command is one this build
     /// has no sentence for — `FixAsk.unrecognised`, which nothing on
-    /// `DoctorFix.Allowed` reaches today and which a third entry added without
+    /// `DoctorFix.Allowed` reaches today and which a second entry added without
     /// reading that file would. It names the command, because a question that
     /// names nothing is a question people learn to dismiss. The command is
     /// the one argument of the catalog's sentence.

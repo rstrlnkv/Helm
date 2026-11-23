@@ -52,8 +52,7 @@ import HelmUI
 @MainActor
 final class ShellContentView: NSView {
 
-    /// The sidebar's width; the view does not clamp it (`ShellGeometry.railWidth` is
-    /// outside `ShellGeometry.sidebarRange`). Setting it asks for a layout, and writing the
+    /// The sidebar's width; the view does not clamp it. Setting it asks for a layout, and writing the
     /// width a fold is travelling to ends that fold's claim on the buttons (`foldTarget`).
     ///
     /// `layout()` places everything from the value standing. Every write other than the link's moves the width at

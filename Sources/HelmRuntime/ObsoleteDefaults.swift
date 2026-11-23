@@ -19,10 +19,9 @@ public enum ObsoleteDefaults {
         // The panel's width was a setting for one night. 480 pt buys a third
         // column, and that is not a reason to ask.
         "module.app.panelWidth",
-        // The panel's three footer switches spent one unreleased build folded
-        // into this. They are three settings again; `PanelFooterSetting.unfolded`
-        // reads this key before the list reaches it, and
-        // `AppSettings.migrateAndPurge` is one function for exactly that reason.
+        // The panel's three footer switches were folded into this for one
+        // unreleased build. They are three settings again and nothing reads it;
+        // only a dev build can still have it on disk.
         "module.app.showPanelFooter",
         // Keyboard's three «when to fix» triggers. Space and punctuation
         // confirm a word and Return does not — which is what they were set to

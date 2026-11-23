@@ -15,10 +15,9 @@ import CoreGraphics
 /// The settings window is 1211 pt wide by default and 1207 at its minimum
 /// (`SettingsWindow`), and the card takes the window less the sidebar and a 4 pt
 /// inset (`ShellGeometry.cardFrame`). At the default sidebar of 200 the detail
-/// pane is 1007 pt, or 1003 at the minimum, and the full bar (788) fits in both;
-/// a sidebar stored at its widest, 320 (`ShellGeometry.sidebarRange`), leaves
-/// 887 and 883, and it fits there too. The window no longer gives the layout a
-/// pane too narrow for it; the layout still adapts to the width it is handed.
+/// pane is 1007 pt, or 1003 at the minimum, and the full bar (788) fits in both.
+/// The window no longer gives the layout a pane too narrow for it; the layout
+/// still adapts to the width it is handed.
 ///
 /// Leaving the scan statement out of the bar for good would pay for the narrow
 /// case with the wide one: on a large window the bar would hold a path on the
@@ -51,8 +50,8 @@ struct DiskLayout {
 
     /// **A warning is not a thing to drop when the window is small.** Behind
     /// `showsScanStatement` alone, all three sentences would go below 800 pt of
-    /// pane — which the minimum window (1207) leaves only to a sidebar wider than
-    /// 403 pt, past the 320 the range allows — and a stopped tree would be drawn in full with
+    /// pane — which the pane never is: it is 1003 or 1007 pt, so 800 pt is never
+    /// reached — and a stopped tree would be drawn in full with
     /// nothing saying its figures are floors. The `stoppedHint` that explains it
     /// hangs on the same `Text`, so a screen reader would lose it too.
     ///

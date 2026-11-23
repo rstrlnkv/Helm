@@ -65,7 +65,7 @@ import SwiftUI
     /// until the process exits. The `deinit`s are the backstop for the
     /// routes nobody remembers; not building the orphan is the fix.
     func bootstrap() {
-        AppSettings.migrateAndPurge(in: UserDefaults.standard)
+        ObsoleteDefaults.purge(from: UserDefaults.standard)
         for d in ModuleRegistry.all
         where isEnabled(d) && live[d.idRaw] == nil { enable(d) }
     }

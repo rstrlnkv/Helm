@@ -4,13 +4,8 @@ import HelmUI
 /// The one dispatcher over `InspectorState`, and the only thing either
 /// container mounts.
 ///
-/// Above `HomebrewSplit`'s threshold this sits beside the list, in
-/// `HomebrewManager`'s `HStack`; below it, `HomebrewManager` puts the same builder
-/// full width behind `backBar`, in place of the list. Neither call site
-/// passes it anything beyond what it already reads off `hb`: the width
-/// only decides which container it sits in, never what it draws, which is
-/// what keeps a wide reading and a narrow one from disagreeing about what
-/// one subject offers.
+/// It sits beside the list, in `HomebrewManager`'s `HStack`, and is passed
+/// nothing beyond what it already reads off `hb`.
 ///
 /// It decides nothing itself: `InspectorState.of` answers what is being
 /// looked at, and `packageDetail` is the one builder.
@@ -70,8 +65,7 @@ struct HomebrewInspector: View {
     ///
     /// Scrolled, because the second tier is as long as the package makes it:
     /// openssl@3 answers with three rows, a homepage, a tap, two notes, a
-    /// dependency chip and four lines of caveats, and below `HomebrewSplit`'s
-    /// threshold this has the console under it as well. A fixed column simply
+    /// dependency chip and four lines of caveats. A fixed column simply
     /// clipped the caveats.
     private func packageDetail(_ subject: InspectorSubject) -> some View {
         ScrollView {
@@ -210,9 +204,9 @@ struct HomebrewInspector: View {
 /// middle of the pane.
 ///
 /// Centring costs nothing where there is nothing to centre: beside the list at
-/// `HomebrewSplit`'s threshold the inspector is narrower than the cap, so the
-/// block already fills it and both readings are the same number; at the
-/// threshold's own 268 pt pane the column is 304…548 either way (read once by
+/// 560 pt (once `HomebrewSplit`'s threshold) the inspector is narrower than the cap, so the
+/// block already fills it and both readings are the same number; at that
+/// width's own 268 pt pane the column is 304…548 either way (read once by
 /// hand, no guard). It is not a margin: the width of the content never changes,
 /// only where the slack falls.
 ///

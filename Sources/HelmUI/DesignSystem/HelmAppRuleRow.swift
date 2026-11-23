@@ -27,42 +27,32 @@ public enum HelmAppRuleGeometry {
 /// It lives here rather than in a module because `AppInfo` does: this file and
 /// that one answer the same question, "what is this bundle id called and what
 /// does it look like".
-public struct HelmAppRuleRow<Controls: View, Note: View>: View {
+public struct HelmAppRuleRow<Controls: View>: View {
     private let info: (name: String, icon: NSImage)
     private let controls: Controls
-    private let note: Note
     private let remove: () -> Void
 
-    /// `note` is a line under the row, empty unless the caller passes one;
-    /// neither list passes one today. It is a slot rather than something the
-    /// caller wraps around the row, because a row wrapped at each site is how
-    /// per-module copies drift.
     public init(bundleID: String,
                 @ViewBuilder controls: () -> Controls,
-                @ViewBuilder note: () -> Note = { EmptyView() },
                 remove: @escaping () -> Void) {
         self.info = AppInfo.resolve(bundleID)
         self.controls = controls()
-        self.note = note()
         self.remove = remove
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: HelmAppRuleGeometry.iconGap) {
-                Image(nsImage: info.icon)
-                    .resizable().frame(width: HelmAppRuleGeometry.iconSide, height: HelmAppRuleGeometry.iconSide)
-                    // The name is the next thing in the row, so reading the
-                    // icon aloud says the application twice.
-                    .accessibilityHidden(true)
-                Text(info.name).lineLimit(1)
-                Spacer(minLength: 12)
-                controls
-                // Which app this removes. A list of these offered VoiceOver
-                // five identical buttons called "remove".
-                HelmRemoveButton(label: "\(HelmA11y.remove), \(info.name)", action: remove)
-            }
-            note
+        HStack(spacing: HelmAppRuleGeometry.iconGap) {
+            Image(nsImage: info.icon)
+                .resizable().frame(width: HelmAppRuleGeometry.iconSide, height: HelmAppRuleGeometry.iconSide)
+                // The name is the next thing in the row, so reading the
+                // icon aloud says the application twice.
+                .accessibilityHidden(true)
+            Text(info.name).lineLimit(1)
+            Spacer(minLength: 12)
+            controls
+            // Which app this removes. A list of these offered VoiceOver
+            // five identical buttons called "remove".
+            HelmRemoveButton(label: "\(HelmA11y.remove), \(info.name)", action: remove)
         }
         // No extra vertical padding. Measured on a Form-based page, not
         // re-measured in a card: an app row came out 55 pt where every other

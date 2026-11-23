@@ -16,7 +16,7 @@ final class OnlyAnAllowedFixMayBeRunTests: XCTestCase {
     /// exercised against a list with more than one entry in it.
     private let installed = ["periphery", "git", "python@3.12"]
 
-    // MARK: - The two entries, from the front
+    // MARK: - The one entry, from the front
 
     func testUninstallingAnInstalledPackageIsRunnable() {
         let fix = DoctorFix.judge(["uninstall", "periphery"], installed: installed)
@@ -25,8 +25,10 @@ final class OnlyAnAllowedFixMayBeRunTests: XCTestCase {
                        "judge repeats the argv it was given; it does not rewrite one")
     }
 
-    func testCleanupIsRunnable() {
-        XCTAssertEqual(DoctorFix.judge(["cleanup"], installed: installed).kind, .runnable)
+    /// `cleanup` is no entry: no page offers it (defect M031), so the bare
+    /// command is refused like any other the list does not name.
+    func testCleanupIsCopyOnly() {
+        XCTAssertEqual(DoctorFix.judge(["cleanup"], installed: installed).kind, .copyOnly)
     }
 
     /// A name with the characters a real Homebrew name carries — `@`, a digit,
@@ -56,7 +58,7 @@ final class OnlyAnAllowedFixMayBeRunTests: XCTestCase {
         XCTAssertEqual(DoctorFix.judge(["uninstall"], installed: installed).kind, .copyOnly)
     }
 
-    // MARK: - The two a reader expects and that are deliberately absent
+    // MARK: - The ones a reader expects and that are deliberately absent
 
     func testUntapIsCopyOnly() {
         XCTAssertEqual(DoctorFix.judge(["untap", "sozercan/homebrew-repo"],
@@ -73,10 +75,8 @@ final class OnlyAnAllowedFixMayBeRunTests: XCTestCase {
     // MARK: - Arguments are part of the match, not decoration
 
     /// An argument spelled like a name, which the character rule has no
-    /// opinion about: this is the case that holds `cleanup`'s match exact, and
-    /// it is the one that goes red the moment the entry is matched on argv[0].
-    /// `brew cleanup periphery` cleans one package's downloads; the bare
-    /// command cleans every package's, and the two are different acts.
+    /// opinion about: it goes red the moment an entry is matched on a prefix.
+    /// `brew cleanup periphery` cleans one package's downloads.
     func testCleanupWithANameBesideItIsCopyOnly() {
         XCTAssertEqual(DoctorFix.judge(["cleanup", "periphery"], installed: installed).kind,
                        .copyOnly)
@@ -84,8 +84,7 @@ final class OnlyAnAllowedFixMayBeRunTests: XCTestCase {
 
     /// Held by two rules at once — the character rule refuses a leading `-`,
     /// and the match is argument-exact — so it takes both being loosened
-    /// together to make it red. Kept because it is the argument a reader will
-    /// picture, and the case above is the one that fails on its own.
+    /// together to make it red.
     func testCleanupWithAPruneArgumentIsCopyOnly() {
         XCTAssertEqual(DoctorFix.judge(["cleanup", "--prune=all"], installed: installed).kind,
                        .copyOnly)
@@ -178,20 +177,17 @@ final class OnlyAnAllowedFixMayBeRunTests: XCTestCase {
 
     // MARK: - The list itself
 
-    /// The hand-written list, named entry by entry. A third entry cannot be
+    /// The hand-written list, named entry by entry. A second entry cannot be
     /// added without this failing, which is the point: the checklist a new
     /// entry has to pass is written in `DoctorFix.swift` beside the list, and
     /// this is what sends its author to read it.
-    func testTheAllowlistHoldsExactlyTheseTwoEntries() {
-        XCTAssertEqual(DoctorFix.Allowed.allCases, [.cleanup, .uninstallAnInstalledPackage])
+    func testTheAllowlistHoldsExactlyThisOneEntry() {
+        XCTAssertEqual(DoctorFix.Allowed.allCases, [.uninstallAnInstalledPackage])
     }
 
-    /// Each entry admits its own command and nothing of the other's — so an
-    /// entry cannot be quietly widened into a second one.
-    func testEachEntryAdmitsOnlyItsOwnCommand() {
-        XCTAssertTrue(DoctorFix.Allowed.cleanup.admits(["cleanup"], installed: installed))
-        XCTAssertFalse(DoctorFix.Allowed.cleanup.admits(["uninstall", "periphery"],
-                                                        installed: installed))
+    /// The entry admits its own command and nothing else — so it cannot be
+    /// quietly widened.
+    func testTheEntryAdmitsOnlyItsOwnCommand() {
         XCTAssertTrue(DoctorFix.Allowed.uninstallAnInstalledPackage
             .admits(["uninstall", "periphery"], installed: installed))
         XCTAssertFalse(DoctorFix.Allowed.uninstallAnInstalledPackage.admits(["cleanup"],

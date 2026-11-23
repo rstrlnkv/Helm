@@ -54,14 +54,12 @@ final class AStoppedHomebrewModelReachesNoWorkTests: XCTestCase {
         model.upgradeAll()
         model.installBrew()
         pressStopButton(model)
-        await model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
         await model.askToRunFix(DoctorFix(argv: ["uninstall", "wget"], kind: .runnable))
         model.confirmFix()
         let live: [HomebrewAct] = [
             .install(PackageRef(name: "wget", isCask: false)),
             .uninstall(PackageRef(name: "wget", isCask: false)),
             .upgrade(name: "wget"), .upgradeAll, .installBrew, .stop,
-            .doctorFix(argv: ["cleanup"]),
             .doctorFix(argv: ["uninstall", "wget"]),
         ]
         XCTAssertEqual(work.acts, live, "control: the presses did not reach the work")
@@ -79,7 +77,6 @@ final class AStoppedHomebrewModelReachesNoWorkTests: XCTestCase {
         model.upgradeAll()
         model.installBrew()
         pressStopButton(model)
-        await model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
         await model.askToRunFix(DoctorFix(argv: ["uninstall", "wget"], kind: .runnable))
         model.confirmFix()
         await grace()

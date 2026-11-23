@@ -3,21 +3,21 @@ import HelmRuntime
 import XCTest
 @testable import HelmApp
 
-/// `PermissionSummary` turns what a module declares into the macOS gate behind
+/// `PermissionNeed.init?(_:)` turns what a module declares into the macOS gate behind
 /// it. The panel and the settings page both count from this mapping, so a
 /// swapped case would send the person to the wrong pane.
 @MainActor
 final class ADeclaredPermissionMapsToItsPrivacyPaneTests: XCTestCase {
 
     func testEachDeclaredPermissionMapsToItsOwnGate() {
-        XCTAssertEqual(PermissionSummary.need(for: .fullDisk), .fullDiskAccess)
-        XCTAssertEqual(PermissionSummary.need(for: .accessibility), .accessibility)
-        XCTAssertEqual(PermissionSummary.need(for: .screenRecording), .screenRecording)
+        XCTAssertEqual(PermissionNeed(.fullDisk), .fullDiskAccess)
+        XCTAssertEqual(PermissionNeed(.accessibility), .accessibility)
+        XCTAssertEqual(PermissionNeed(.screenRecording), .screenRecording)
     }
 
     /// The admin helper is a sudoers rule, not a privacy pane.
     func testTheAdminHelperHasNoPrivacyPane() {
-        XCTAssertNil(PermissionSummary.need(for: .adminHelper))
+        XCTAssertNil(PermissionNeed(.adminHelper))
     }
 
     /// The call sites: a swapped flag would ask about the wrong pane.

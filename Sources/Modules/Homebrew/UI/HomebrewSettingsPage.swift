@@ -66,8 +66,8 @@ struct HomebrewSettingsPage: View {
         .onDisappear { hb.cancelUninstall(); hb.cancelFix() }
         // The second irreversible deletion this page can reach; it asks first. The question names the
         // package with the words the Uninstall dialog uses — `FixAsk` decides
-        // which of the two questions is asked, and whether one is asked at all.
-        .confirmationDialog(hb.pendingFix.flatMap { Self.fixQuestion($0) } ?? "",
+        // which of the two questions is asked.
+        .confirmationDialog(hb.pendingFix.map { Self.fixQuestion($0) } ?? "",
                             isPresented: Binding(get: { hb.pendingFix != nil },
                                                  set: { if !$0 { hb.cancelFix() } }),
                             titleVisibility: .visible) {

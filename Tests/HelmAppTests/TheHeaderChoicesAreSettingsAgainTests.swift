@@ -26,7 +26,7 @@ final class TheHeaderChoicesAreSettingsAgainTests: XCTestCase {
         let store = InMemoryKeyValueStore()
         store.raw = ["module.app.pageBarStyle": "windowTitle", "module.app.toolbarSwitcherStyle": "icons",
                      "module.app.alwaysCollapseSearch": true]
-        AppSettings.migrateAndPurge(in: store)
+        ObsoleteDefaults.purge(from: store)
         let app = AppSettings.store.over(store)
         XCTAssertEqual(AppSettings.pageBarStyle(in: app), .windowTitle)
         XCTAssertEqual(AppSettings.tabLabels(in: app), .icons)
