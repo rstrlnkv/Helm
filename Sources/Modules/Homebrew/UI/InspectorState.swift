@@ -11,8 +11,8 @@ import Module_Homebrew_Engine
 /// page never mounts.
 ///
 /// `AvailableSection.of` is the shape this follows: the page asks a value type
-/// what it is looking at, and the decision is held by a test
-/// (`InspectorStateDecisionsTests`, optional) rather than by a screenshot. Everything here is a function of what the page already has — no
+/// what it is looking at, and the decision is read off the value
+/// rather than off a screenshot. Everything here is a function of what the page already has — no
 /// query of its own, and nothing that can be waited on.
 ///
 /// Internal, not `public` — nothing outside `Module_Homebrew_UI` reads this

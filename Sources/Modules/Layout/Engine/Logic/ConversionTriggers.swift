@@ -20,7 +20,7 @@ import Foundation
 /// three `var`s with an initialiser, and `reloadSettings` assigned `.default`
 /// over whatever it had been given, unconditionally, on every `activate()`. So
 /// the only code that could ever see another combination was a test — and
-/// `ConversionTriggersTests` used that freedom to plant `onReturn: true`, a
+/// a test used that freedom to plant `onReturn: true`, a
 /// state production cannot reach, and prove a branch nothing runs. A fake freer
 /// than the port proves nothing about the port.
 enum ConversionTriggers {

@@ -78,8 +78,7 @@ enum BrewConfigParser {
 
     /// Key to heading, hand-written, **beside the parser that reads it** — a
     /// list of names living next to the thing it names rather than becoming a
-    /// comment somewhere else. `BrewConfigParserTests` names every key this Mac
-    /// produced and fails on any of them this table stops knowing.
+    /// comment somewhere else.
     ///
     /// Captured 2026-09-15, Homebrew 7.0.1:
     ///

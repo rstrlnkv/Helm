@@ -30,9 +30,7 @@ stream replays the latest state and registers the subscriber in the one hold of
 leaves a window in which an emit is lost, and registering before replaying delivers an
 older state after a newer one. It is synchronous and not actor-isolated so that the
 model takes it in its own synchronous `init`, before the first suspension: no emit
-falls between the model's construction and its subscription. `TheStreamReplaysTheStateInOrderTests` races an emit against the
-subscription and asserts the order is kept, and
-`ASwitchedOffModuleLetsItsSubscriberGoTests` that stopping the model returns the
+falls between the model's construction and its subscription. `ASwitchedOffModuleLetsItsSubscriberGoTests` holds that stopping the model returns the
 subscriber.
 
 `emitState()` compares each payload with the last one said, under one lock, and says

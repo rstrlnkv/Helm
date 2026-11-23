@@ -66,8 +66,8 @@ struct FileSystemAppCatalog: AppCatalogPort {
 
     /// When Finder says the bundle was added to its folder (`ATTR_CMN_ADDEDTIME`, the attribute behind `addedToDirectoryDateKey`).
     /// nil for a symlinked bundle (Safari in `/Applications` is one: the link's date is not the app's) and for a date that would not
-    /// read. One `getattrlist` per app: `resourceValues` measured 350 bytes an app more than the walk without it
-    /// (`TheDateAddedIsReadOncePerAppAndCostsTheWalkNothingTests`), and this makes no object.
+    /// read. One `getattrlist` per app: `resourceValues` measured 350 bytes an app more than the walk without it,
+    /// and this makes no object.
     /// The length check below is a defensive guard no test reaches: the kernel always fills the `timespec` for a directory, and
     /// `getattrlist` has no fake.
     private static func dateAdded(_ url: URL) -> Date? {

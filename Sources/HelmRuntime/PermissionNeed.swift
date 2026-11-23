@@ -39,7 +39,6 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
     /// `rawValue`, which is true of Accessibility by coincidence and could
     /// never have matched for the disk — so the check would have passed for the
     /// grant it was written for and silently failed open for the other.
-    /// `FeaturePermissionsTests` pins this string against the real cases.
     public var declaredName: String {
         switch self {
         case .fullDiskAccess: "fullDisk"

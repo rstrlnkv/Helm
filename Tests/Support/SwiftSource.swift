@@ -61,8 +61,8 @@ public enum SwiftSource {
     /// was. Measured over every file of `Sources/` on 2026-08-21, three readings
     /// each: **3.728 / 3.734 / 3.743 s before, 0.557 / 0.559 / 0.558 s after**,
     /// with the output byte-identical on every file of `Sources/` and `Tests/`
-    /// and on the corpus of unterminated literals, raw blocks, CRLF and emoji
-    /// that `ACommentIsNotAUseOfAKeyTests` keeps. Worth having because XCTest
+    /// and on a corpus of unterminated literals, raw blocks, CRLF and emoji.
+    /// Worth having because XCTest
     /// builds an instance per test case, so a class of ten whole-tree scans paid
     /// the old cost ten times.
     private static let lineComment: [Character] = ["/", "/"]

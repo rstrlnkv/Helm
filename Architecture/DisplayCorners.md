@@ -50,7 +50,7 @@ The engine finds out whether a display's masks are at rest by asking the window 
 slowly while nothing moves, fast while a display is unsettled and for a time after a Space change, so that a slow sample does not miss the start of a slide. A display whose masks are all
 missing from the sample is **away**, not unsettled: a native full-screen Space does not show the masks, and a missing window read as motion kept the sampler at its fastest
 rate for as long as the app stayed full screen. An away display is not rounded and holds no pointer, and a relayout forgets which displays are away until the next
-sample finds them so again. The test that holds it is `DisplayCornersEngineTests.testADisplayWhoseMasksAreAllOffScreenIsAwayAndDoesNotRaiseTheRate`.
+sample finds them so again.
 
 ## Calibration is temporary
 

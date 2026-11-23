@@ -26,7 +26,7 @@ import Foundation
 /// **Nothing prunes it.** `scutil` can answer with a short list or none at all —
 /// a refusal, a Mac mid-boot — and dropping every entry that did not match the
 /// current answer would throw away a person's choices on the strength of one bad
-/// read. `EachTunnelKeepsItsOwnVoiceTests` holds that.
+/// read.
 public struct VPNNoticeBook: Equatable, Codable {
 
     /// One configuration's overrides. Every field is optional, and `nil` is the

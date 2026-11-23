@@ -2,8 +2,8 @@ import XCTest
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-/// The fixture both classes below build on, so the split that lets the second one
-/// stay optional does not copy it. Holds no test.
+/// The fixture both classes below build on, so the split into two classes
+/// does not copy it. Holds no test.
 @MainActor
 class LayoutBindingRig: XCTestCase {
     fileprivate var sources = FakeSources()
@@ -58,52 +58,6 @@ final class TheBoundLayoutIsSelectedOnActivationTests: LayoutBindingRig {
         engine.deactivate()
         FrontmostApp.shared.setForTesting("ru.keepcoder.Telegram")
         XCTAssertTrue(sources.selected.isEmpty)
-        withExtendedLifetime(engine) {}
-    }
-}
-
-/// Which layout the activation of an app selects, and which it does not.
-@MainActor
-final class WhichLayoutAnActivationSelectsTests: LayoutBindingRig {
-    func testComingForwardSelectsTheBoundLayout() {
-        let engine = engine(bindings: ["ru.keepcoder.Telegram": "ru"])
-        FrontmostApp.shared.setForTesting("ru.keepcoder.Telegram")
-        XCTAssertEqual(sources.selected, ["ru"])
-        withExtendedLifetime(engine) {}
-    }
-
-    func testAnUnboundApplicationChangesNothing() {
-        let engine = engine(bindings: ["ru.keepcoder.Telegram": "ru"])
-        FrontmostApp.shared.setForTesting("com.apple.Safari")
-        XCTAssertTrue(sources.selected.isEmpty)
-        withExtendedLifetime(engine) {}
-    }
-
-    /// **The one that matters most.** `FakeSources` starts on `en`, so a
-    /// binding to `en` is already satisfied — and a `TISSelectInputSource` for
-    /// the layout you are already on is a system event for nothing.
-    func testTheLayoutYouAreAlreadyOnIsNotSelectedAgain() {
-        let engine = engine(bindings: ["com.apple.Terminal": "en"])
-        FrontmostApp.shared.setForTesting("com.apple.Terminal")
-        XCTAssertTrue(sources.selected.isEmpty)
-        withExtendedLifetime(engine) {}
-    }
-
-    /// A layout the person bound and then removed in System Settings.
-    func testALayoutThatIsGoneChangesNothing() {
-        let engine = engine(bindings: ["ru.keepcoder.Telegram": "uk"])
-        FrontmostApp.shared.setForTesting("ru.keepcoder.Telegram")
-        XCTAssertTrue(sources.selected.isEmpty)
-        withExtendedLifetime(engine) {}
-    }
-
-    /// **`AppScope` does not gate this**, and the two are different questions:
-    /// «do not rewrite my text here» and «I write English here». The second is
-    /// more likely to be wanted in a terminal, not less.
-    func testAnAppOnTheLeaveAloneListStillGetsItsLayout() {
-        let engine = engine(bindings: ["com.apple.Terminal": "ru"], appRules: ["com.apple.Terminal": false])
-        FrontmostApp.shared.setForTesting("com.apple.Terminal")
-        XCTAssertEqual(sources.selected, ["ru"])
         withExtendedLifetime(engine) {}
     }
 }

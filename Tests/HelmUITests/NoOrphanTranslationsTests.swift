@@ -46,7 +46,7 @@ final class NoOrphanTranslationsTests: XCTestCase {
     /// in a language whose catalog never got the word; `L(.open)` is a symbol the build refuses when the
     /// catalog lacks it. `L(` followed by a quote is the old spelling. The raw text is read, comments
     /// included, because a comment that shows `L("…")` for a lookup that is gone is a sentence the code
-    /// no longer makes true (`ACommentIsNotAUseOfAKeyTests` keeps the reading that tells a call from prose).
+    /// no longer makes true.
     static func englishLookups(in text: String) -> [Int] {
         text.matches(of: /\bL\(\s*"/).map { text[..<$0.range.lowerBound].filter { $0 == "\n" }.count + 1 }
     }

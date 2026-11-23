@@ -50,8 +50,7 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
 
     // The three cases that were here — nobody asked yet, refused, granted — are
     // `NoticeChannel.step`'s now, with the scan and sweep channels asking macOS
-    // the same question in the same order, and they are held in
-    // `Tests/HelmRuntimeTests/OneConversationWithMacOSAboutABannerTests.swift`.
+    // the same question in the same order.
     // What this module still owns is *why* it asks from an unattended moment at
     // all, which is prose at `BatteryVetoNews.tell` — and the engine cases below,
     // which drive the whole conversation through this module's own path.

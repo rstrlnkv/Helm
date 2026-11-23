@@ -7,8 +7,8 @@ import XCTest
 /// why — unless it is flagged.
 ///
 /// **The `.denied` branch had no test at all.** No file under `Tests/Modules/Disk`
-/// produced an unreadable directory (`grep -rn chmod` was empty); `TreeBuilderTests`
-/// calls `markNoAccess` directly, so what was pinned was the builder rather than
+/// produced an unreadable directory (`grep -rn chmod` was empty); the builder's test
+/// called `markNoAccess` directly, so what was pinned was the builder rather than
 /// the classification. The row that says «No access» is the module's whole answer
 /// to a missing permission, and it was unguarded end to end.
 ///

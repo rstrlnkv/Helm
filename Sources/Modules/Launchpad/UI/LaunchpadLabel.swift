@@ -2,8 +2,7 @@ import AppKit
 import CoreGraphics
 import HelmUI
 
-/// Whether a tile's name is cut, and how far the hover scroll has to go to show all of it: one place, pure computation from the name and the room, no view asked
-/// (`TheLaunchpadWindowMeasuresNothingTests`). The tile draws a name in the room its width leaves (`room(width:scale:)`, the tile's width less its side padding on both sides; a large block's
+/// Whether a tile's name is cut, and how far the hover scroll has to go to show all of it: one place, pure computation from the name and the room, no view asked. The tile draws a name in the room its width leaves (`room(width:scale:)`, the tile's width less its side padding on both sides; a large block's
 /// is two cells wide): two lines when it has a place to break, one that shrinks when it has not (`LaunchpadMetrics.unbreakableShrink`), and a name that still does not fit is cut with an ellipsis.
 enum LaunchpadLabel {
     /// The tile's side padding at `scale`: the one place the tile's padding and the label's room read.

@@ -9,7 +9,7 @@ final class AStoredArrangementIsNeverRearrangedByTheDefaultTests: XCTestCase {
     private func catalog() -> FakeAppCatalog {
         let catalog = FakeAppCatalog()
         catalog.reading = CatalogReading(apps: ["com.apple.mail", "com.apple.Safari", "com.apple.Terminal", "com.apple.Automator"]
-            .map { ADefaultArrangementTests.app($0) }, complete: true)
+            .map { CatalogApp(id: $0, name: $0, path: "/Applications/\($0).app") }, complete: true)
         return catalog
     }
 

@@ -27,12 +27,9 @@ The proof follows the class of the defect, and only some classes keep theirs in 
 | logic that costs no data | the repro or a command printing the value, before and after | no |
 
 A proof that is not kept is the same command run before the fix and after it, the before
-already red, and its files stay outside the tree. A test outside the kept classes is
-optional, and its class decides it: `Tests/optional-tests.txt` names such classes one per
-line, `Scripts/test.sh` passes each to `--skip` on every run without a `--filter`, and
-`HELM_FULL_SUITE=1` runs the full suite before a release. A name on the list that no test
-class declares fails the run, because a stale name skips nothing and says so nowhere. A
-defect found and not fixed goes to the defect log — the owner's private record
+already red, and its files stay outside the tree. A test outside the kept classes is not
+written, or is deleted: a class that never runs guards nothing, and `Scripts/test.sh`
+skips none. A defect found and not fixed goes to the defect log — the owner's private record
 `~/.helm-work/defects-private.md`, never a new public issue, the repository's open issues
 being its older entries — and not into the tree as a skipped test: a skip reads as a pass
 in a failures-only summary, and a reproduction nobody runs goes stale.
@@ -44,7 +41,7 @@ in the same commit; the project's rules and knowledge notes, which live outside 
 lose their lines in the same change. A test of removed code no longer builds, and a
 backticked Swift file name, a path with an extension `DocumentsNameTheTreeTests` knows
 (slashed, or bare with a `:line`), a directory in the map or a `§` pointer left behind
-fails the checks of the tree, and a class left on `Tests/optional-tests.txt` fails the run;
+fails the checks of the tree;
 any other name, a bare type or a name in a doc comment, fails nothing, so the commit that
 removes a name first runs
 `command grep -rn '<name>' ARCHITECTURE.md Architecture README.md Sources Tests Scripts`

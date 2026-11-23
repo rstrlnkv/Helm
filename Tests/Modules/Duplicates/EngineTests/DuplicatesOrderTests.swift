@@ -4,9 +4,9 @@ import XCTest
 /// The one thing the pipeline decides that nobody can check by looking: which
 /// copy is offered for deletion.
 ///
-/// `DuplicatesTests` already covers it — but through assertions that cannot
-/// see what they claim to check. `testAHardLinkPairPlusARealCopyStillGroups`
-/// asserts a count of 2 and that `/realcopy` is in there; it never asks which
+/// A count-based test covered it — but through assertions that cannot
+/// see what they claim to check. It asserted a count of 2 and that
+/// `/realcopy` is in there; it never asked which
 /// of the two linked names came with it, which is the only part that decides
 /// what gets trashed.
 ///

@@ -103,8 +103,7 @@ final class ListsAgreeWithTheTreeTests: XCTestCase {
     /// **The manifest is read as code.** A flag spelled in a comment is no flag, so block comments go, every line is cut
     /// at `//`, and only then is the row looked for. And the rows only count if the composition still lists the
     /// test targets they switch on, which a row cannot say. Both are read as text: the getter between them,
-    /// `testTargets`, is not read, so a lost half of it stays green here, and a `HELM_FULL_SUITE=1` run names it
-    /// through `Tests/optional-tests.txt` while each directory holds a listed class (`Scripts/test.sh`).
+    /// `testTargets`, is not read, so a lost half of it stays green here.
     func testEveryTestDirectoryOfAModuleIsDeclaredInTheManifest() throws {
         let checked = try checkedTestDirectories(kind: "Module", list: "modules", root: "Tests/Modules")
         XCTAssertGreaterThan(checked, 0, "no module test directory was read: the path is wrong")

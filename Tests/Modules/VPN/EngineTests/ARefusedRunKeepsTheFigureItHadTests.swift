@@ -57,7 +57,7 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
     /// of the defaults reach the network or run a subprocess for twenty seconds
     /// (`NoTestTakesAProductionPortTests`).
     ///
-    /// **A quiet link**, `carriesPerRead` at its default 0: with traffic on it
+    /// **A quiet link**, counters that never move: with traffic on it
     /// the byte counters move between emissions and every payload differs, so a
     /// figure could survive on screen by luck of some other field having changed.
     private func oneTunnel(_ speed: FakeSpeed)

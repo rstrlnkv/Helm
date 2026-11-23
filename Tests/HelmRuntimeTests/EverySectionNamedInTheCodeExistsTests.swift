@@ -43,7 +43,7 @@ import XCTest
 /// among them, both citing `CLAUDE.local.md` § What not to do, and what breaks if
 /// you do. A Swift string literal split by `+` concatenation is a fourth
 /// continuation shape with no comment marker anywhere near it:
-/// `Tests/HelmAppTests/PanelBarsCarryNoLifetimeTests.swift` closes one line
+/// a test file once closed one line
 /// with the document name, `§`, and an opening quote, then reopens the next
 /// with `+ "` and the heading text. An independent reader that did not join
 /// that boundary reported this exact, real pointer as the only dead one in

@@ -7,7 +7,7 @@ import XCTest
 /// app's seal guard before each test and puts them back after, so a test may overwrite all three.
 ///
 /// A base with no tests of its own, as `KeepAwakeEngineRig` is: the classes keep their names, so
-/// `Tests/optional-tests.txt` and `--filter` still match them.
+/// `--filter` still matches them.
 @MainActor
 class DisabledScansTestCase: XCTestCase {
 

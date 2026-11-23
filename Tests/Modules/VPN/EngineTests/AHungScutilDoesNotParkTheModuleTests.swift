@@ -314,8 +314,7 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
     // MARK: - 4. Exit status read with stdout
 
     /// A tool that printed a list and then exited non-zero is not a good
-    /// answer: the exit status is read together with the output. This case
-    /// stays in this optional class.
+    /// answer: the exit status is read together with the output.
     func testAListFromAToolThatExitedNonZeroIsNotAGoodAnswer() {
         runner.handler = { args, nth in
             guard args == ["--nc", "list"] else { return .answer(.init(status: 0, output: "")) }

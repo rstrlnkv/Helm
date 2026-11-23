@@ -246,7 +246,7 @@ public enum BulkWalk {
             // `offTheCooperativePool` for two of the three callers — so the only
             // pool that would ever drain is the one closing when the whole scan
             // returns: measured at 524 bytes a file over a fixture 16 levels
-            // deep, against 4 with this (`ScanFootprintTests`).
+            // deep, against 4 with this.
             autoreleasepool { consume(batch) }
         }
         group.wait()

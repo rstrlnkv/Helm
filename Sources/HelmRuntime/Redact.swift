@@ -169,7 +169,7 @@ public enum Redact {
     /// `app#c40b` on Tuesday are one application, and the log cannot say so.
     /// The two properties pull against each other and only one survives an
     /// unwritable disk; the paragraph had already chosen, and the code now
-    /// obeys it. `ASaltThatCannotBeSavedIsNotASaltTests` holds the promise.
+    /// obeys it.
     static func loadOrCreateSalt(at url: URL, writing write: (Data, URL) -> Bool) -> [UInt8] {
         if let existing = try? Data(contentsOf: url), existing.count == 16 {
             return [UInt8](existing)

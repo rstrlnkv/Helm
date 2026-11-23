@@ -11,8 +11,7 @@ import XCTest
 /// **The engine publishes why a rule will not fire; the page must say it.** The
 /// engine half is `ARuleThatWillNotFireSaysSoTests`; these are the two UI hops it
 /// cannot reach: the verdict -> sentence mapping (a nil there is an unattended rule
-/// that silently does nothing again). The view model carrying the payload is
-/// `TheModelCarriesTheRefusalsTests`.
+/// that silently does nothing again).
 @MainActor
 final class ARefusedRuleIsDrawnWithItsNoteTests: XCTestCase {
 

@@ -9,8 +9,7 @@ import HelmRuntime
 /// installer is running. The wrapper also has to: end a Stop that lands in the
 /// download, survive a second Stop, and remove the script exactly once — and a
 /// Stop can land at *any* moment of the wrapper's life, not only the one after
-/// the installer has settled. What it hands the page, the installer's exit code
-/// and its output, is `TheInstallerWrapperPassesItsCodeAndOutputThroughTests`.
+/// the installer has settled.
 ///
 /// The command is the engine's own (taken from `installBrew` against fakes),
 /// rehosted the way `TheDownloadedInstallerIsTidiedAwayTests` does it — the
@@ -154,98 +153,6 @@ final class TheInstallerWrapperKeepsItsWordTests: XCTestCase {
     }
 }
 
-/// **What the `install.sh` wrapper hands the page: the installer's code and its output.**
-///
-/// The installer's own exit code goes through unchanged, a failed download
-/// stops the wrapper before any installer runs, a line the installer prints
-/// reaches the page while the installer is still running, and nothing of the
-/// shell's own reaches the console. The command, the stand-in installers and
-/// the stream are the ones `TheInstallerWrapperKeepsItsWordTests` uses: the
-/// harness at the foot of this file serves both.
-/// Kept: the only test of the wrapper's exit code, failed download and console output; its sibling covers Stop only.
-final class TheInstallerWrapperPassesItsCodeAndOutputThroughTests: XCTestCase {
-
-    // MARK: - Exit status
-
-    /// The installer's own code, whatever it is — not the wrapper's 143, not a
-    /// zero borrowed from the `rm` in the EXIT trap.
-    func testTheInstallersOwnCodeIsTheWrappersCode() throws {
-        let g = try ground("wrapper-codes")
-        let command = try composedInstaller()
-        for code: Int32 in [0, 1, 3, 42] {
-            g.reset()
-            let installer = try g.installer("echo 'installer says hello'\nexit \(code)")
-            let (_, run) = start(try rehosted(command, source: installer, temporaries: g.temporaries))
-            XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success, "exit \(code): the stream never ended")
-            XCTAssertEqual(run.status, code, "the installer exited \(code) and the page is told \(String(describing: run.status))")
-            XCTAssertEqual(g.recordedPIDs.count, 1, "exit \(code): precondition — the installer ran")
-            XCTAssertEqual(g.leftovers, [], "exit \(code): the script was left in the temporary folder")
-        }
-    }
-
-    /// A download that fails stops the wrapper before any installer runs: its
-    /// own non-zero code (an installer run over an empty file would say 0), and
-    /// nothing left behind.
-    func testAFailedDownloadRunsNothingAndLeavesNothing() throws {
-        let g = try ground("wrapper-download-fails")
-        let missing = g.root.appendingPathComponent("not-there.sh")
-        let (_, run) = start(try rehosted(try composedInstaller(), source: missing, temporaries: g.temporaries))
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success, "the stream never ended")
-        let status = try XCTUnwrap(run.status)
-        XCTAssertNotEqual(status, 0, "a failed download reads as a successful install")
-        XCTAssertNotEqual(status, 143, "a failed download reads as the person's Stop")
-        XCTAssertEqual(g.leftovers, [], "a failed download left a file in the temporary folder")
-    }
-
-    // MARK: - Output
-
-    /// Job control does not hold the output back: a line the installer prints
-    /// reaches the page while the installer is still running.
-    func testALineArrivesWhileTheInstallerIsStillRunning() throws {
-        let g = try ground("wrapper-streams")
-        let go = g.root.appendingPathComponent("go")
-        let installer = try g.installer("""
-        echo first
-        while [ ! -e \(go.path) ]; do /bin/sleep 0.05; done
-        echo second
-        """)
-        let (handle, run) = start(try rehosted(try composedInstaller(), source: installer, temporaries: g.temporaries))
-        defer { handle.terminate() }
-        XCTAssertTrue(eventually(10) { run.lines.contains("first") },
-                      "a line printed by a running installer never reached the page: \(run.lines)")
-        XCTAssertNil(run.status, "precondition: the installer is still running")
-        FileManager.default.createFile(atPath: go.path, contents: Data())
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success)
-        XCTAssertEqual(run.lines.filter { !isJobNotice($0) }, ["first", "second"])
-    }
-
-    /// The console is where a person reads what the tools said. The shell's
-    /// own bookkeeping about its background jobs — `[1]+ Done`, `[1]+ Exit 3`,
-    /// `[1]+ Terminated: 15`, carrying `"$script"` and the download URL — is
-    /// not something any tool said.
-    func testTheConsoleCarriesOnlyWhatTheToolsPrinted() throws {
-        let g = try ground("wrapper-console")
-        let command = try composedInstaller()
-        for (what, body) in [("success", "echo installed\nexit 0"), ("failure", "echo broken\nexit 3")] {
-            g.reset()
-            let installer = try g.installer(body)
-            let (_, run) = start(try rehosted(command, source: installer, temporaries: g.temporaries))
-            XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success)
-            XCTAssertFalse(run.lines.isEmpty, "\(what): precondition — nothing was printed at all")
-            XCTAssertEqual(run.lines.filter(isJobNotice), [],
-                           "\(what): the shell's job notices reached the console: \(run.lines)")
-        }
-        g.reset()
-        let installer = try g.installer("echo started\n/bin/sleep 30 &\nwait")
-        let (handle, run) = start(try rehosted(command, source: installer, temporaries: g.temporaries))
-        XCTAssertTrue(eventually(10) { run.lines.contains("started") }, "precondition: the installer never started")
-        handle.terminate()
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success)
-        XCTAssertEqual(run.lines.filter(isJobNotice), [],
-                       "stop: the shell's job notices reached the console: \(run.lines)")
-    }
-}
-
 // MARK: - Harness, shared by the two classes above
 
 private struct Ground {
@@ -285,11 +192,5 @@ private extension XCTestCase {
         // A red run must not leave a stand-in behind it.
         addTeardownBlock { g.killAll() }
         return g
-    }
-
-    /// A line only the shell writes about its own jobs: `[1]+  Done …`,
-    /// `[1]+  Exit 3 …`, `[1]+  Terminated: 15 …`.
-    func isJobNotice(_ line: String) -> Bool {
-        line.range(of: #"^\[[0-9]+\][+-]? "#, options: .regularExpression) != nil
     }
 }

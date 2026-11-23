@@ -93,7 +93,7 @@ Nothing on the Mac is switched or removed to reach a state; a state that needs a
 | `hidden-by-filter` | filter mark, «Everything found is hidden by the filter.» | the kind menu with every kind off |
 | `not-everything-checked` | question mark, «Helm could not check N items.», Scan again | a scan that could not judge some rows (real use) |
 | `no-disk-access` | the Full Disk Access note over the content | Helm Dev without Full Disk Access (real use) |
-| `confirm-row`, `confirm-batch`, `removal-report`, `busy` | the question dialogs, the outcome row, controls dimmed | a removal: not shot; `busy` and the report held by `OneRemovalAtATimeTests`, the bar's figures by `LeftoversPageContractTests`; the dialogs by no test |
+| `confirm-row`, `confirm-batch`, `removal-report`, `busy` | the question dialogs, the outcome row, controls dimmed | a removal: not shot; `busy` and the report held by `OneRemovalAtATimeTests`; the dialogs by no test |
 | `worst` | ru and de at the narrowest pane: captions give way through `ViewThatFits`, long paths cut in the middle | `--arg module.app.interfaceLanguage ru` or `de` on `leftovers` and `all` |
 
 The panel row: `--panel` alone shows the «Utilities» list collapsed; expanding it needs a press inside the open panel (`utilitiesExpanded` is `@State`, `Sources/HelmApp/HelmPanel.swift`) that `Scripts/shoot.sh` does not have.
