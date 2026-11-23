@@ -12,7 +12,7 @@ import HelmRuntime
 /// never written at all, is the shipped default said out loud, and the three
 /// keys are left alone to say it themselves.
 ///
-/// The keys are named here rather than at each property, so the switch that
+/// The keys are named here rather than at each call site, so the switch that
 /// reads one, the migration that writes it and the purge list that must **not**
 /// name it are looking at the same string.
 enum PanelFooterSetting {

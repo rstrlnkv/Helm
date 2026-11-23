@@ -110,8 +110,9 @@ final class LogReaderPlace {
     /// with Follow lit; nil when it was not at the end then.
     private var endTop: CGFloat?
     private var asked = 0
-    private var lastReport = Date.distantPast
-    private var timerPending = false
+    /// The wait for quiet: replaced by every report, so it fires `quiet` after
+    /// the last one, once per quiet spell.
+    private var quietTimer: AnyObject?
 
     /// What the page does for the place, set by the page. `drawEarlier` draws at
     /// least one launch before the oldest one drawn whenever there is one not
@@ -181,22 +182,8 @@ final class LogReaderPlace {
     // MARK: - At rest
 
     private func restart() {
-        lastReport = Date()
-        guard !timerPending else { return }
-        timerPending = true
-        schedule(after: Self.quiet)
-    }
-
-    private func schedule(after delay: TimeInterval) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self else { return }
-            let waited = Date().timeIntervalSince(self.lastReport)
-            if waited < Self.quiet {
-                self.schedule(after: Self.quiet - waited)
-            } else {
-                self.timerPending = false
-                self.atRest()
-            }
+        quietTimer = DelayedWork.schedule(on: .main, after: Self.quiet) { [weak self] in
+            MainActor.assumeIsolated { self?.atRest() }
         }
     }
 

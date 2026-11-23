@@ -104,14 +104,22 @@ import SwiftUI
     /// (`ResetPlan.Step.stopEveryModule`), and the quit calls it again.
     func shutdown() {
         for key in live.keys.sorted() {
-            live[key]?.stop()
-            live[key]?.engine.deactivate()
-            live[key]?.descriptor.detachMenuBarPresence()
-            live[key] = nil
-            // The same sweep `disable` does: a scan task can outlive the
-            // engine that started it.
-            HelmActivity.sweep(module: key)
+            if let descriptor = live[key]?.descriptor { tearDown(key, descriptor) }
         }
+    }
+
+    /// The teardown `shutdown` and `disable` share, in this order.
+    private func tearDown(_ key: String, _ d: any ModuleDescriptor) {
+        live[key]?.stop()
+        live[key]?.engine.deactivate()
+        // The module's own menu-bar item goes with the module. Nothing used to
+        // take Keyboard's indicator away here at all: it sat in the menu bar
+        // until somebody switched the module back on, which is what rebuilt it.
+        d.detachMenuBarPresence()
+        live[key] = nil
+        // A scan task can outlive the engine that started it, and an interval
+        // nobody closes would name a module that is no longer there.
+        HelmActivity.sweep(module: key)
     }
 
     /// Measured **around** the construction, which is the whole point.
@@ -232,16 +240,7 @@ import SwiftUI
         // `shutdown()` — quitting — deliberately does not call it
         // (`ModuleEngine.willDisable` has the story).
         live[key]?.engine.willDisable()
-        live[key]?.stop()
-        live[key]?.engine.deactivate()
-        // The module's own menu-bar item goes with the module. Nothing used to
-        // take Keyboard's indicator away here at all: it sat in the menu bar
-        // until somebody switched the module back on, which is what rebuilt it.
-        d.detachMenuBarPresence()
-        live[key] = nil
-        // A scan task can outlive the engine that started it, and an interval
-        // nobody closes would name a module that is no longer there.
-        HelmActivity.sweep(module: key)
+        tearDown(key, d)
         // Whoever listens for the module's end lets go (the hotkeys).
         NotificationCenter.default.post(name: .helmModuleDisabled, object: key)
         // The reading comes last, so it covers the whole teardown.
