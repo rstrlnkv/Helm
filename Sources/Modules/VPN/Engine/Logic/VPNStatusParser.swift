@@ -144,11 +144,13 @@ enum VPNStatusParser {
     }
 
     /// The value of a `Field : value` line, or nil when this is not that field.
-    /// `scutil` writes the separator with spaces around it and `KeychainCredentials`
-    /// reads its own fields the same way; this is the one that has to be sure it
+    /// `scutil` writes the separator with spaces around it. This is the one reader
+    /// of such a line, here and in `KeychainCredentials`; it has to be sure it
     /// matched the whole key, since `InterfaceName` is a prefix of nothing here
     /// but a looser match is how the next field with a common stem gets read.
-    private static func value(of field: String, in text: String) -> String? {
+    /// The value is empty when the line carries none; callers that read an
+    /// empty value as absence say so themselves.
+    static func value(of field: String, in text: String) -> String? {
         guard text.hasPrefix(field) else { return nil }
         let rest = text.dropFirst(field.count).trimmingCharacters(in: .whitespaces)
         guard rest.hasPrefix(":") else { return nil }

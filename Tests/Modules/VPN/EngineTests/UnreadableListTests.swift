@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Helm contributors
 
 import XCTest
-import HelmRuntime
 @testable import Module_VPN_Engine
 
 /// "No VPNs are configured" and "scutil did not answer" are different facts,

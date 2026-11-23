@@ -3,19 +3,12 @@
 
 import Foundation
 
-/// One `networkQuality` run: what came down, what went up, and how responsive
-/// the link was while it did — with the moment it was taken, because a figure
-/// without its age is read as live.
+/// One `networkQuality` run: what came down and what went up, with the moment
+/// it was taken, because a figure without its age is read as live.
 public struct VPNSpeedReading: Equatable, Sendable {
     /// Megabits per second, rounded. The tool answers in bits.
     public let down: Int
     public let up: Int
-    /// Apple's responsiveness figure, in round trips per minute — **nil when the
-    /// tool did not print one**, which is what it does for a link it could not
-    /// characterise. It used to be stored as `0`, a figure, in a type whose
-    /// throughput figures `parse` requires: nobody measured a responsiveness of
-    /// zero, and nobody measured one at all.
-    let rpm: Int?
     public let at: Date
     /// **How long the run that produced this took**, or nil when nobody timed
     /// it.
@@ -35,16 +28,14 @@ public struct VPNSpeedReading: Equatable, Sendable {
     /// reading a test's fixed clock produces.
     public let took: TimeInterval?
 
-    init(down: Int, up: Int, rpm: Int?, at: Date, took: TimeInterval? = nil) {
+    init(down: Int, up: Int, at: Date, took: TimeInterval? = nil) {
         self.down = down
         self.up = up
-        self.rpm = rpm
         self.at = at
         self.took = took
     }
 
-    /// **Both throughput figures or nothing**; responsiveness is the one figure
-    /// that may be missing. A run that was killed at its deadline prints
+    /// **Both throughput figures or nothing.** A run that was killed at its deadline prints
     /// part of its JSON, and a reading built out of the half that arrived claims
     /// the link is 0 Mbit/s in the direction nobody measured.
     ///
@@ -61,17 +52,7 @@ public struct VPNSpeedReading: Equatable, Sendable {
               let downMbit = whole(down / 1_000_000),
               let upMbit = whole(up / 1_000_000)
         else { return nil }
-        // Responsiveness is the one figure the tool omits on a link it could not
-        // characterise, and its absence is the reading's own nil. A number that
-        // is *there* and cannot be held (negative, out of range) is a different
-        // matter: the document is then saying something impossible, and none of
-        // it is worth keeping.
-        var rpm: Int?
-        if let responsiveness = json["responsiveness"] as? Double {
-            guard let value = whole(responsiveness) else { return nil }
-            rpm = value
-        }
-        return VPNSpeedReading(down: downMbit, up: upMbit, rpm: rpm, at: at, took: took)
+        return VPNSpeedReading(down: downMbit, up: upMbit, at: at, took: took)
     }
 
     /// A figure the tool printed as a whole number this app can hold, or nil for

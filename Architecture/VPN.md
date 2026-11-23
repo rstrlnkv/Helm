@@ -67,7 +67,7 @@ reaches.
 
 The speed reading is a press rather than a timer, and runs off the serial work
 queue and the cooperative pool (`VPNEngine`'s doc on the measurement).
-`VPNSpeedReading` takes both throughput figures or none; responsiveness may be missing. Names reach the log through
+`VPNSpeedReading` takes both throughput figures or none. Names reach the log through
 `Redact.vpn`; counts and outcomes are free. An engine refuses a payload equal in
 every field to the last one it sent (`emitState`).
 

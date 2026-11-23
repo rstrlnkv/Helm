@@ -512,16 +512,14 @@ public final class KeychainCredentials: VPNCredentialsPort {
         }
     }
 
-    /// The value of a `Field : value` line in `scutil --nc show` output.
+    /// The value of a `Field : value` line in `scutil --nc show` output, read by
+    /// `VPNStatusParser.value(of:in:)`. A line with an empty value is skipped and
+    /// the first non-empty one wins; none means nil, so an empty `AuthPassword` is
+    /// no secret.
     private static func value(inScutilShow output: String, field: String) -> String? {
         for line in output.split(separator: "\n") {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard trimmed.hasPrefix("\(field) :") else { continue }
-            let parts = trimmed.components(separatedBy: " : ")
-            if parts.count >= 2 {
-                let v = parts[1].trimmingCharacters(in: .whitespaces)
-                return v.isEmpty ? nil : v
-            }
+            if let v = VPNStatusParser.value(of: field, in: trimmed), !v.isEmpty { return v }
         }
         return nil
     }

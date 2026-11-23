@@ -21,7 +21,6 @@ final class TheSpeedIsReadFromTheToolsOwnWordsTests: XCTestCase {
         let reading = VPNSpeedReading.parse(real, at: at)
         XCTAssertEqual(reading?.down, 212)
         XCTAssertEqual(reading?.up, 95)
-        XCTAssertEqual(reading?.rpm, 850)
         XCTAssertEqual(reading?.at, at)
     }
 
@@ -42,17 +41,6 @@ final class TheSpeedIsReadFromTheToolsOwnWordsTests: XCTestCase {
         XCTAssertNil(VPNSpeedReading.parse("networkQuality: command failed", at: at))
     }
 
-    /// **The tool omits `responsiveness` on a link it could not characterise**,
-    /// and this used to read that absence as `0 rpm` — a figure, in the type
-    /// whose own rule is «both throughput figures or nothing». Nobody measured a
-    /// responsiveness of zero; nobody measured one at all.
-    func testALinkWithNoResponsivenessFigureHasNone() {
-        let reading = VPNSpeedReading.parse(
-            #"{"dl_throughput": 212345678, "ul_throughput": 95123456}"#, at: at)
-        XCTAssertEqual(reading?.down, 212)
-        XCTAssertNil(reading?.rpm, "0 rpm is a claim about a link nobody characterised")
-    }
-
     /// A number the tool should never print, in the function whose whole job is
     /// not trusting what it printed. `Int(_: Double)` **traps** on a value
     /// outside `Int`'s range, so refusing it is the difference between a nil
@@ -63,9 +51,6 @@ final class TheSpeedIsReadFromTheToolsOwnWordsTests: XCTestCase {
             #"{"dl_throughput": 1e30, "ul_throughput": 95123456}"#, at: at))
         XCTAssertNil(VPNSpeedReading.parse(
             #"{"dl_throughput": 212345678, "ul_throughput": 1e30}"#, at: at))
-        XCTAssertNil(VPNSpeedReading.parse(
-            #"{"dl_throughput": 212345678, "ul_throughput": 95123456, "#
-            + #""responsiveness": 1e30}"#, at: at))
     }
 
     /// Nobody measured a negative link either.
