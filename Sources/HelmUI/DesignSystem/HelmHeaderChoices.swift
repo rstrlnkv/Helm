@@ -6,7 +6,7 @@ import SwiftUI
 /// Their keys and raw values are the ones of the toolbar's day, so a Mac that chose any before reads the
 /// same choice after (`ObsoleteDefaults` no longer purges them).
 ///
-/// **Not sealed:** nothing unattended reads any (`AppSettings.pageBarStyle`, `AppSettings.toolbarSwitcherStyle`,
+/// **Not sealed:** nothing unattended reads any (`AppSettings.pageBarStyle`, `AppSettings.tabLabels`,
 /// `AppSettings.alwaysCollapseSearch`).
 ///
 /// - `moduleName` — "With Icon": the plate, then the name; today's row.
@@ -31,14 +31,14 @@ public enum PageBarStyle: String, CaseIterable, Sendable {
 ///
 /// A fourth, `iconsNamingSelected`, lived for a day and was cut on 2026-09-18: it is not a case and reads
 /// back as `text`, as does anything `init(stored:)` does not know.
-public enum ToolbarSwitcherStyle: String, CaseIterable, Sendable {
+public enum HeaderTabLabels: String, CaseIterable, Sendable {
     case text, icons, iconsAndText
 
     public static let storageKey = "toolbarSwitcherStyle"
 
     /// Anything unknown, including nothing stored, is `text`.
     public init(stored: String) {
-        self = ToolbarSwitcherStyle(rawValue: stored) ?? .text
+        self = HeaderTabLabels(rawValue: stored) ?? .text
     }
 }
 
@@ -46,11 +46,11 @@ public enum ToolbarSwitcherStyle: String, CaseIterable, Sendable {
 /// tracker carry them.
 public struct HelmHeaderChoices: Equatable, Sendable {
     public var pageBar: PageBarStyle
-    public var tabLabels: ToolbarSwitcherStyle
+    public var tabLabels: HeaderTabLabels
     /// "Always Collapse Search": the page's search rests as a magnifier unless it holds a query or is being edited.
     public var collapseSearch: Bool
 
-    public init(pageBar: PageBarStyle, tabLabels: ToolbarSwitcherStyle, collapseSearch: Bool = false) {
+    public init(pageBar: PageBarStyle, tabLabels: HeaderTabLabels, collapseSearch: Bool = false) {
         self.pageBar = pageBar
         self.tabLabels = tabLabels
         self.collapseSearch = collapseSearch
@@ -71,8 +71,8 @@ extension EnvironmentValues {
 
 extension View {
     /// Sets `helmHeaderChoices` from `current` and again whenever `.helmHeaderChoicesChanged` is posted. Set only
-    /// at the settings pane's root, and **never as an identity** (`.id`): the row's tabs keep their pick
-    /// sliding across a change of label, and the page below is not rebuilt for a choice it does not draw.
+    /// at the settings pane's root, and **never as an identity** (`.id`): the page below is not rebuilt for
+    /// a choice it does not draw, and under `.flat` (and on Launchpad) the row's tabs keep their sliding pick.
     public func helmTracksHeaderChoices(_ current: @escaping () -> HelmHeaderChoices) -> some View {
         modifier(HelmHeaderChoicesTracker(current: current))
     }

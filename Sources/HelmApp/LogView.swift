@@ -33,7 +33,7 @@ import HelmAppStrings
 ///
 /// **The controls are the window's, not the page's.** Level, module, search,
 /// Follow, Copy and the rest live in the header row of the card like every other
-/// page's (`toolbarContent`, drawn by `helmCardHeader`); the page is the cards and a footer. The permanent
+/// page's (`headerContent`, drawn by `helmCardHeader`); the page is the cards and a footer. The permanent
 /// band that held the writing switch is gone — the switch is one line in the
 /// «More actions» menu, which is as often as anyone needs it.
 struct LogView: View {
@@ -45,7 +45,7 @@ struct LogView: View {
     /// take the bar's one switcher slot, and the level filter that stands there
     /// when none are handed becomes the first action, before the module filter.
     /// Nil leaves the bar as it is.
-    var settingsTabs: HelmPageToolbarContent?
+    var settingsTabs: HelmHeaderContent?
 
     /// Polled rather than subscribed. A log has no interesting event to observe
     /// — it has a tail — and one timer that exists while the page is on screen
@@ -127,7 +127,7 @@ struct LogView: View {
         .helmPageStandsOnStillContent()
         .helmPageBar(title: AppStr.settingsPane)
         // Declared unconditionally: this page's shape never changes.
-        .helmWindowToolbar(toolbarContent(page))
+        .helmHeaderContent(headerContent(page))
         .onAppear {
             refresh()
             // One second: the log is read, not animated, and a person watching
@@ -158,34 +158,27 @@ struct LogView: View {
         Self.levelTabs.first { $0.level == minimumLevel } ?? Self.levelTabs[0]
     }
 
-    /// **The widest run of the three settings pages: Log's** — the level, the module filter, Follow, Copy, «More
-    /// actions», and the search. The window hands it to General, About and Log as `reserves` (Log carries the
-    /// window's value on, below), so the tab strip stands in one place on all three. A sixth action here widens Log's run alone and
-    /// shows at once as the strip moving, until this count says it.
-    static let trailingRun = HelmTrailingRun(actions: 5, search: true)
-
     /// **What the page asks of the header row**, in one place:
-    /// `levelToolbarContent` as it stands when no tabs were handed; with
+    /// `levelHeaderContent` as it stands when no tabs were handed; with
     /// `settingsTabs`, those tabs and the level as the first action.
-    private func toolbarContent(_ page: LogPresentation) -> HelmPageToolbarContent {
-        var content = levelToolbarContent(page)
+    private func headerContent(_ page: LogPresentation) -> HelmHeaderContent {
+        var content = levelHeaderContent(page)
         guard let settingsTabs else { return content }
         content.tabs = settingsTabs.tabs
         content.selectedTab = settingsTabs.selectedTab
         content.actions.insert(levelAction, at: 0)
-        content.reserves = settingsTabs.reserves
         return content
     }
 
     /// The level filter as an action: its title is the level in force, its
     /// items are the three levels, the same words the tabs say.
-    private var levelAction: HelmToolbarAction {
-        HelmToolbarAction(
+    private var levelAction: HelmHeaderAction {
+        HelmHeaderAction(
             id: "level",
             title: levelInForce.title,
             symbol: "list.bullet",
             menu: Self.levelTabs.map { tab in
-                HelmToolbarMenuItem(id: tab.id, title: tab.title,
+                HelmHeaderMenuItem(id: tab.id, title: tab.title,
                                     isOn: tab.level == minimumLevel) { minimumLevel = tab.level }
             })
     }
@@ -199,9 +192,9 @@ struct LogView: View {
     /// state carried by colour alone is not read by everyone. Its word is in the
     /// tooltip and the accessibility label, as it always was, and what it is
     /// doing is the accessibility value.
-    private func levelToolbarContent(_ page: LogPresentation) -> HelmPageToolbarContent {
-        HelmPageToolbarContent(
-            tabs: Self.levelTabs.map { HelmToolbarTab(id: $0.id, title: $0.title, symbol: $0.symbol) },
+    private func levelHeaderContent(_ page: LogPresentation) -> HelmHeaderContent {
+        HelmHeaderContent(
+            tabs: Self.levelTabs.map { HelmHeaderTab(id: $0.id, title: $0.title, symbol: $0.symbol) },
             selectedTab: Binding(
                 get: { levelInForce.id },
                 set: { id in minimumLevel = Self.levelTabs.first { $0.id == id }?.level ?? .info }),
@@ -210,26 +203,26 @@ struct LogView: View {
                 // spoke rather than every one that exists. A line with no module
                 // (an unreadable one) has no entry of its own here: it is not
                 // something to filter *to*.
-                HelmToolbarAction(id: "modules",
+                HelmHeaderAction(id: "modules",
                                   title: chosen.isEmpty ? AppStr.logAllModules
                                                         : AppStr.logSomeModules(chosen.count),
                                   symbol: "line.3.horizontal.decrease",
-                                  menu: [HelmToolbarMenuItem(id: "all", title: AppStr.logAllModules,
+                                  menu: [HelmHeaderMenuItem(id: "all", title: AppStr.logAllModules,
                                                              isOn: chosen.isEmpty) { chosen = [] }]
                                     + LogFilter.categories(in: entries).filter { !$0.isEmpty }.map { category in
-                                        HelmToolbarMenuItem(id: category, title: category,
+                                        HelmHeaderMenuItem(id: category, title: category,
                                                             isOn: chosen.contains(category)) {
                                             chosen.formSymmetricDifference([category])
                                         }
                                     }),
-                HelmToolbarAction(id: "follow", title: AppStr.logFollow,
+                HelmHeaderAction(id: "follow", title: AppStr.logFollow,
                                   symbol: "eye", isOn: following,
-                                  face: HelmToolbarToggleFace(offSymbol: "eye.slash",
+                                  face: HelmHeaderToggleFace(offSymbol: "eye.slash",
                                                               onValue: AppStr.logFollowing,
                                                               offValue: AppStr.logNotFollowing)) {
                     following.toggle()
                 },
-                HelmToolbarAction(id: "copy", title: AppStr.copyLog, symbol: "doc.on.doc",
+                HelmHeaderAction(id: "copy", title: AppStr.copyLog, symbol: "doc.on.doc",
                                   isEnabled: !page.lines.isEmpty) {
                     NSPasteboard.general.clearContents()
                     // The lines the file carries. It used to be
@@ -244,18 +237,18 @@ struct LogView: View {
                 // up in it. Dev builds always log — the file is the evidence a
                 // build is triaged on — so the switch is theirs to read, not to
                 // change.
-                HelmToolbarAction(id: "more", title: HelmA11y.moreActions, symbol: "ellipsis", menu: [
-                    HelmToolbarMenuItem(id: "write", title: AppStr.writeLog, isOn: loggingOn,
+                HelmHeaderAction(id: "more", title: HelmA11y.moreActions, symbol: "ellipsis", menu: [
+                    HelmHeaderMenuItem(id: "write", title: AppStr.writeLog, isOn: loggingOn,
                                         isEnabled: !AppBuild.isDev) {
                         let on = !loggingOn
                         loggingOn = on
                         AppSettings.loggingOverride = on
                         HelmLog.shared.setEnabled(on)
                     },
-                    HelmToolbarMenuItem(id: "reveal", title: HelmWord.showInFinder, isOn: false) {
+                    HelmHeaderMenuItem(id: "reveal", title: HelmWord.showInFinder, isOn: false) {
                         HelmReveal.inFinder(HelmLog.fileURL.path)
                     },
-                    HelmToolbarMenuItem(id: "clear", title: HelmWord.clear, isOn: false,
+                    HelmHeaderMenuItem(id: "clear", title: HelmWord.clear, isOn: false,
                                         // **The file, not the page.** It was gated
                                         // on the tail, so a build with logging
                                         // switched off said «Nothing logged yet»,
@@ -273,7 +266,7 @@ struct LogView: View {
                     },
                 ]),
             ],
-            search: HelmToolbarSearch(prompt: AppStr.logSearch, text: $query))
+            search: HelmHeaderQuery(prompt: AppStr.logSearch, text: $query))
     }
 
     // MARK: - The cards

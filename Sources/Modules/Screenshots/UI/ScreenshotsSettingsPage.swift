@@ -83,7 +83,7 @@ struct ScreenshotsSettingsPage: View {
             }
         }
         .formStyle(.grouped)
-        .helmWindowToolbar(toolbarContent)
+        .helmHeaderContent(headerContent)
         .helmIdlesOffScreen()
         .helmTracksScreenRecording($screenRecording)
         .task { model.refresh() }
@@ -127,12 +127,12 @@ struct ScreenshotsSettingsPage: View {
 
     /// The switcher's three segments. **The dot on the system tab is `holdsSystemKeys`**, the reading beside the one that
     /// offers «Use ⇧⌘3 and ⇧⌘4» (`offersToUseSystemKeys`), so the tab and the page below it cannot say different things.
-    private var toolbarContent: HelmPageToolbarContent {
+    private var headerContent: HelmHeaderContent {
         let holds = Self.holdsSystemKeys(model.state.boxes)
-        return HelmPageToolbarContent(
-            tabs: [HelmToolbarTab(id: Tab.capturing.rawValue, title: ScStr.tabCapturing, symbol: "camera.viewfinder"),
-                   HelmToolbarTab(id: Tab.editor.rawValue, title: ScStr.tabEditor, symbol: "pencil.tip.crop.circle"),
-                   HelmToolbarTab(id: Tab.system.rawValue, title: ScStr.systemSection, symbol: "command",
+        return HelmHeaderContent(
+            tabs: [HelmHeaderTab(id: Tab.capturing.rawValue, title: ScStr.tabCapturing, symbol: "camera.viewfinder"),
+                   HelmHeaderTab(id: Tab.editor.rawValue, title: ScStr.tabEditor, symbol: "pencil.tip.crop.circle"),
+                   HelmHeaderTab(id: Tab.system.rawValue, title: ScStr.systemSection, symbol: "command",
                                   needsAttention: holds, attentionNote: holds ? ScStr.stillOn : nil)],
             selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }))
     }

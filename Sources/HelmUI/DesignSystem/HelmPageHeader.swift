@@ -370,6 +370,10 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// where the row heads a page on its own; the card's row passes the Kit's 14 and 10 (`CardHeader`).
     let leadingInset: CGFloat
     let trailingInset: CGFloat
+    /// How far the row's content stands above where its height centres it: the card's row under Glass raises it by
+    /// 4 so its centre (window y 26) is the toolbar item's, and the tabs' glass track is the control's own 36 pt
+    /// (`CardHeader.raise`). The row keeps its 52.
+    let raise: CGFloat
     let trailing: Trailing
     @Environment(\.helmHeaderChoices) private var choices
 
@@ -389,7 +393,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     init(symbol: String, tint: Color, title: String, bleeds: Bool,
          overContent: Bool, scrolled: Bool, standsOnStillContent: Bool, status: HelmHeaderStatus? = nil,
          dimmed: Bool = false, leadingInset: CGFloat = HelmLayout.formInset,
-         trailingInset: CGFloat = HelmLayout.formInset,
+         trailingInset: CGFloat = HelmLayout.formInset, raise: CGFloat = 0,
          @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.symbol = symbol
         self.tint = tint
@@ -402,6 +406,7 @@ public struct HelmPageHeader<Trailing: View>: View {
         self.dimmed = dimmed
         self.leadingInset = leadingInset
         self.trailingInset = trailingInset
+        self.raise = raise
         self.trailing = trailing()
     }
 
@@ -424,31 +429,33 @@ public struct HelmPageHeader<Trailing: View>: View {
     }
 
     private var row: some View {
-        HStack(spacing: 12) {
-            // 24, the Kit's `Toolbar` (Figma 309:216): the plate is 24 and the title starts 12 after it.
-            // Without Icon (`HelmHeaderChoices`) draws the name alone; the status after it stays.
-            if choices.pageBar == .moduleName {
-                HelmIconPlate(symbol: symbol, tint: tint, size: 24)
-            }
-            // 16, the redesign's «заголовок» step. It was 20, which is not on
-            // the ladder at all — the six sizes are 10 · 11 · 13 · 16 · 22 · 40
-            // — and with the summary gone the name no longer has to hold a
-            // two-line block up on its own.
-            Text(title)
-                .font(HelmText.plateTitle)
-                .tracking(-0.2)
-                .lineLimit(1)
-                // The name does not give way, nor do the tabs and the search beside it: the window's minimum
-                // width (`SettingsWindow.minSize`) is measured on the Log page, the fullest row, in every language.
-                .fixedSize(horizontal: true, vertical: false)
-            if let status {
-                if status.active {
-                    HelmBadge(status.word, tint: HelmSignal.success(increased: traits.increasedContrast))
-                } else {
-                    Text(status.word).font(.system(size: 11)).foregroundStyle(HelmText.quiet)
+        HeaderRowLayout(shift: (trailingInset - leadingInset) / 2) {
+            HStack(spacing: 12) {
+                // 24, the Kit's `Toolbar` (Figma 309:216): the plate is 24 and the title starts 12 after it.
+                // Without Icon (`HelmHeaderChoices`) draws the name alone; the status after it stays.
+                if choices.pageBar == .moduleName {
+                    HelmIconPlate(symbol: symbol, tint: tint, size: 24)
+                }
+                // 16, the redesign's «заголовок» step. It was 20, which is not on
+                // the ladder at all — the six sizes are 10 · 11 · 13 · 16 · 22 · 40
+                // — and with the summary gone the name no longer has to hold a
+                // two-line block up on its own.
+                Text(title)
+                    .font(HelmText.plateTitle)
+                    .tracking(-0.2)
+                    .lineLimit(1)
+                    // The name does not give way, nor do the tabs and the search beside it: the window's minimum
+                    // width (`SettingsWindow.minSize`) is measured on the Log page, the fullest row, in every language.
+                    .fixedSize(horizontal: true, vertical: false)
+                if let status {
+                    if status.active {
+                        HelmBadge(status.word, tint: HelmSignal.success(increased: traits.increasedContrast))
+                    } else {
+                        Text(status.word).font(.system(size: 11)).foregroundStyle(HelmText.quiet)
+                    }
                 }
             }
-            Spacer(minLength: 12)
+            .layoutValue(key: HeaderRoleKey.self, value: .name)
             trailing
         }
         .opacity(dimmed ? HelmText.inactiveOpacity : 1)
@@ -461,7 +468,8 @@ public struct HelmPageHeader<Trailing: View>: View {
         // The row is **52**: the Kit's 36 pt controls with 8 above and below. `minHeight` holds the 36 on a page
         // whose row has no control (24 pt plate alone), so no page's row is shorter than another's.
         .frame(minHeight: HelmHeaderActions.side)
-        .padding(.vertical, HelmSpace.s4)
+        .padding(.top, HelmSpace.s4 - raise)
+        .padding(.bottom, HelmSpace.s4 + raise)
         // On the same column as the content below it. Which column that is
         // depends on the page: outside the card a grouped Form is capped at 744 pt
         // and centred, so its header is too — but a full-bleed page draws its toolbar
@@ -588,100 +596,6 @@ private struct PageHeaderOverContent: ViewModifier {
                                overContent: true, scrolled: scrolled,
                                standsOnStillContent: standsOnStillContent)
             }
-    }
-}
-
-extension View {
-    /// **The header row in the card, over this page.** One row for every page of the settings window, drawn
-    /// at the root of the detail pane so it keeps its identity across a page switch: the page's name and
-    /// status on the left, on the right what the page declared through `helmWindowToolbar` — tabs, actions,
-    /// search (`HelmPageToolbarKey`). The page scrolls under it, as it does under `helmPageHeader`, and
-    /// the pane reserves the row's height as a top inset.
-    ///
-    /// The declaration is read with `overlayPreferenceValue`: the value carries closures cut from the page's
-    /// state at its last body, and a copy kept in `@State` behind an `==` would hold the old ones
-    /// (`LogView`'s Copy captures `page.lines`).
-    ///
-    /// The empty part of the row drags the window, since there is no title bar under it any more.
-    ///
-    /// **The row has no right-click menu of its own**: it lies in the window's title bar zone, where a SwiftUI
-    /// `.contextMenu` is never reached; the window pops one up (`HeaderBarMenu`) over the band
-    /// `HelmCardHeaderBand.height` names.
-    public func helmCardHeader(symbol: String, tint: Color, title: String, status: HelmHeaderStatus?) -> some View {
-        modifier(CardHeader(symbol: symbol, tint: tint, title: title, status: status))
-    }
-}
-
-/// The header row's height, for the window that decides which presses are the row's.
-@MainActor public enum HelmCardHeaderBand {
-    public static let height = CardHeader.height
-}
-
-private struct CardHeader: ViewModifier {
-    let symbol: String
-    let tint: Color
-    let title: String
-    let status: HelmHeaderStatus?
-
-    @State private var scrolled = false
-    @State private var standsOnStillContent = false
-    @Environment(\.helmWindowAppearsActive) private var windowAppearsActive
-
-    /// The Kit's 36 pt controls (`HelmHeaderActions.side`) with `HelmSpace.s4` above and below (`HelmPageHeader`).
-    static let height = HelmSpace.s4 * 2 + HelmHeaderActions.side
-    /// The Kit's `Toolbar` (Figma 309:216): the plate 14 from the card's left edge, the controls 10 from its right.
-    static let leadingInset = CGFloat(14)
-    static let trailingInset = CGFloat(10)
-
-    func body(content: Content) -> some View {
-        content
-            .onPreferenceChange(HelmPageScrolledKey.self) { scrolled = $0 }
-            .onPreferenceChange(HelmPageStandsOnStillContentKey.self) { standsOnStillContent = $0 }
-            .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: Self.height) }
-            .overlayPreferenceValue(HelmPageToolbarKey.self, alignment: .top) { controls in
-                HelmPageHeader(symbol: symbol, tint: tint, title: title, bleeds: true,
-                               overContent: true, scrolled: scrolled,
-                               standsOnStillContent: standsOnStillContent, status: status,
-                               dimmed: !windowAppearsActive, leadingInset: Self.leadingInset,
-                               trailingInset: Self.trailingInset) {
-                    HelmHeaderControls(content: controls, page: title)
-                }
-                .frame(height: Self.height)
-                .background { Color.clear.contentShape(Rectangle()).gesture(WindowDragGesture()) }
-            }
-    }
-}
-
-/// Tabs, then actions and search, in that order, on the right of the row; each only where the page declared it.
-///
-/// **The tab strip's place is the owner's, not the page's.** Where pages share one strip and declare different
-/// runs (the settings window's three), the owner declares the widest (`HelmPageToolbarContent.reserves`) and the
-/// run keeps at least that width, so the strip ends `HelmTrailingRun.gap` before it on every one of them. A page without a
-/// declaration gets exactly the room of what it declared, as the row had before.
-private struct HelmHeaderControls: View {
-    let content: HelmPageToolbarContent?
-    /// The page's name: the search slot's identity, so what it holds open does not leak to the next page. Never the tabs'.
-    let page: String
-
-    var body: some View {
-        if let content {
-            HStack(spacing: HelmTrailingRun.gap) {
-                if !content.tabs.isEmpty, let selected = content.selectedTab {
-                    HelmHeaderTabs(tabs: content.tabs, selection: selected, enabled: content.tabsEnabled)
-                }
-                if !content.actions.isEmpty || content.search != nil || content.reserves != nil {
-                    HStack(spacing: HelmTrailingRun.gap) {
-                        if !content.actions.isEmpty {
-                            HelmHeaderActions(actions: content.actions)
-                        }
-                        if let search = content.search {
-                            HelmHeaderSearch(search: search).id(page)
-                        }
-                    }
-                    .frame(minWidth: content.reserves?.width ?? 0, alignment: .trailing)
-                }
-            }
-        }
     }
 }
 

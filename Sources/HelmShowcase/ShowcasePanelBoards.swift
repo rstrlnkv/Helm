@@ -62,7 +62,7 @@ struct ToolbarBoard: View {
 
     var body: some View {
         Board(name: "Header row: tabs, actions, search", caption: """
-            The header row from what a page declares through helmWindowToolbar, under both bar looks. Glass is \
+            The header row from what a page declares through helmHeaderContent, under both bar looks. Glass is \
             over an empty ground here: the page's own shot is the proof of the look. The search field's and the \
             glass buttons' hover and press cannot be forced. In the disabled rows the tabs and the actions are \
             disabled; the search stays enabled.
@@ -83,34 +83,34 @@ struct ToolbarBoard: View {
     }
 
     private func bar(_ name: String, look: HelmBarAppearance, active: Bool = true, title: String = Sample.title,
-                     status: HelmHeaderStatus? = nil, content: HelmPageToolbarContent) -> some View {
+                     status: HelmHeaderStatus? = nil, content: HelmHeaderContent) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s2) {
             Text(verbatim: name).font(.caption).foregroundStyle(.secondary)
             Color.clear.frame(width: 1260, height: 0)
-                .helmWindowToolbar(content)
+                .helmHeaderContent(content)
                 .helmCardHeader(symbol: "gearshape", tint: Sample.tint(traits), title: title, status: status)
                 .environment(\.helmBarAppearance, look)
                 .environment(\.helmWindowAppearsActive, active)
         }
     }
 
-    private func full(enabled: Bool = true, attention: Bool = false, busy: Bool = false) -> HelmPageToolbarContent {
-        HelmPageToolbarContent(
-            tabs: [HelmToolbarTab(id: "one", title: Sample.short, symbol: "circle"),
-                   HelmToolbarTab(id: "two", title: Sample.russianTitle, symbol: "square",
+    private func full(enabled: Bool = true, attention: Bool = false, busy: Bool = false) -> HelmHeaderContent {
+        HelmHeaderContent(
+            tabs: [HelmHeaderTab(id: "one", title: Sample.short, symbol: "circle"),
+                   HelmHeaderTab(id: "two", title: Sample.russianTitle, symbol: "square",
                                   needsAttention: attention, attentionNote: attention ? Sample.note : nil),
-                   HelmToolbarTab(id: "three", title: Sample.title, symbol: "triangle")],
+                   HelmHeaderTab(id: "three", title: Sample.title, symbol: "triangle")],
             selectedTab: .constant("one"), tabsEnabled: enabled,
-            actions: [HelmToolbarAction(id: "refresh", title: Sample.short, symbol: "arrow.clockwise",
+            actions: [HelmHeaderAction(id: "refresh", title: Sample.short, symbol: "arrow.clockwise",
                                         isEnabled: enabled, isBusy: busy) {},
-                      HelmToolbarAction(id: "follow", title: Sample.title, symbol: "pin", isEnabled: enabled,
+                      HelmHeaderAction(id: "follow", title: Sample.title, symbol: "pin", isEnabled: enabled,
                                         isOn: true,
-                                        face: HelmToolbarToggleFace(offSymbol: "pin.slash", onValue: Sample.short,
+                                        face: HelmHeaderToggleFace(offSymbol: "pin.slash", onValue: Sample.short,
                                                                     offValue: Sample.title)) {},
-                      HelmToolbarAction(id: "filter", title: Sample.menu, symbol: "line.3.horizontal.decrease",
+                      HelmHeaderAction(id: "filter", title: Sample.menu, symbol: "line.3.horizontal.decrease",
                                         isEnabled: enabled,
-                                        menu: [HelmToolbarMenuItem(id: "a", title: Sample.short, isOn: true) {}])],
-            search: HelmToolbarSearch(prompt: Sample.russianTitle, text: .constant("")))
+                                        menu: [HelmHeaderMenuItem(id: "a", title: Sample.short, isOn: true) {}])],
+            search: HelmHeaderQuery(prompt: Sample.russianTitle, text: .constant("")))
     }
 }
 

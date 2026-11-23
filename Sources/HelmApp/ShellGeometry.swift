@@ -55,6 +55,15 @@ enum ShellGeometry {
     /// How far right of where AppKit puts them the window's three buttons stand when the sidebar is expanded.
     nonisolated static let buttonShift: CGFloat = 6
 
+    /// How far right and down of where they stand without a toolbar AppKit puts the window's three buttons once the
+    /// window wears one (`SettingsToolbar`): measured on macOS 27.3, 19 against 9 across and as far down. Helm holds
+    /// the buttons at the same place under both looks (`ShellWindowButtons.placed`).
+    nonisolated static let toolbarShift = CGSize(width: 10, height: 10)
+
+    /// The title bar's band without a toolbar, which the sidebar's content stands below (measured: 32 against 66 with
+    /// the toolbar, `SettingsToolbar`): the same under both looks.
+    nonisolated static let titleBand: CGFloat = 32
+
     /// Whether a sidebar of `sidebarWidth` is the rail. Not-a-number is not the
     /// rail, so a bad number never folds the buttons away.
     nonisolated static func isRail(sidebarWidth: CGFloat) -> Bool {

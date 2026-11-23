@@ -24,11 +24,12 @@ import HelmUI
 /// (`ShellWindowButtons`), above everything and hit by nothing.
 /// The card carries the fill and the shadow and never masks, so the shadow is
 /// not cut; the clip masks, so the pane's band does not run square to the
-/// window's corner. The sidebar and the pane are handed in. This view names no page and builds no toolbar; the settings window has none.
+/// window's corner. The sidebar and the pane are handed in. This view names no page and builds no toolbar: the window's, under Glass, carries the page tabs alone (`SettingsToolbar`).
 ///
 /// **The clip holds the pane alone, and the pane starts where AppKit's strip ends:** this view adds nothing
-/// to the pane's top safe-area inset; the pane's own hosting controller takes none from the title bar
-/// (`safeAreaRegions = []`, `SettingsWindow`). It neither writes the
+/// to the pane's top safe-area inset; the pane's and the sidebar's own hosting controllers take none from the
+/// title bar (`safeAreaRegions = []`, `SettingsWindow`), which the toolbar under Glass makes taller, so both start
+/// at the same y under both looks. It neither writes the
 /// window buttons' frames nor reads them; `ShellWindowButtons` does.
 ///
 /// **One reader on macOS 26.** `layout()` reads the corner, whoever asked for the layout:

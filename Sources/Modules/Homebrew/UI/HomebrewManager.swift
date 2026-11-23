@@ -136,27 +136,27 @@ struct HomebrewManager: View {
         .transaction(value: hb.segment) { $0.animation = nil }
         .animation(HelmMotion.interface, value: hb.selected == nil)
         // **The page's controls, in the header row of the window's card**, through the contract every module
-        // page shares (`HelmWindowToolbar.swift` in `HelmUI`).
+        // page shares (`HelmHeaderContent.swift` in `HelmUI`).
         //
         // **Upgrade all leaves the actions off Updates rather than being dimmed on every segment**
         // (`isVisible`). The row reserves the full width of every
         // declared action (`HelmHeaderActions`), so Refresh, always visible, stays exactly still while
         // Upgrade All comes and goes.
-        .helmWindowToolbar(HelmPageToolbarContent(
+        .helmHeaderContent(HelmHeaderContent(
             tabs: HomebrewViewModel.Segment.allCases.map {
-                HelmToolbarTab(id: $0.rawValue, title: $0.label, symbol: $0.symbol)
+                HelmHeaderTab(id: $0.rawValue, title: $0.label, symbol: $0.symbol)
             },
             selectedTab: Binding(
                 get: { hb.segment.rawValue },
                 set: { hb.segment = HomebrewViewModel.Segment(rawValue: $0) ?? hb.segment }),
             actions: [
-                HelmToolbarAction(id: "upgradeAll", title: HbStr.upgradeAll,
+                HelmHeaderAction(id: "upgradeAll", title: HbStr.upgradeAll,
                                   symbol: "arrow.down.to.line",
                                   isEnabled: !hb.running && !hb.outdated.isEmpty,
                                   isVisible: hb.segment == .updates) {
                     hb.upgradeAll()
                 },
-                HelmToolbarAction(id: "refresh", title: HbStr.refreshList,
+                HelmHeaderAction(id: "refresh", title: HbStr.refreshList,
                                   symbol: "arrow.clockwise", isEnabled: !hb.running) {
                     Task { await refresh(hb.segment) }
                 }
@@ -168,7 +168,7 @@ struct HomebrewManager: View {
             // is `searchNow()`, which asks at once, with no pause and no
             // minimum length, unless that word is already answered or still
             // out — a refusal earns nothing kept, so Return asks again then.
-            search: HelmToolbarSearch(
+            search: HelmHeaderQuery(
                 prompt: HbStr.searchPlaceholder,
                 text: Binding(get: { hb.query }, set: { hb.query = $0 })) {
                 hb.searchNow()

@@ -9,7 +9,7 @@ import HelmAppStrings
 /// they write.
 ///
 /// Each tab is a `SettingsSelection` of its own, and each of the three pages
-/// declares its own tabs and actions (`helmWindowToolbar`): Log declares its
+/// declares its own tabs and actions (`helmHeaderContent`): Log declares its
 /// own, and `SettingsDetail` declares General's and About's; what
 /// they share is this list, so the switcher reads the same on all three.
 enum SettingsTabs {
@@ -21,8 +21,8 @@ enum SettingsTabs {
     }
 
     /// In the order they are drawn; the ids are the ones `binding` understands.
-    static var all: [HelmToolbarTab] {
-        table.map { HelmToolbarTab(id: $0.id, title: $0.title, symbol: $0.symbol) }
+    static var all: [HelmHeaderTab] {
+        table.map { HelmHeaderTab(id: $0.id, title: $0.title, symbol: $0.symbol) }
     }
 
     /// The tab a selection stands on: Log and About for themselves, and

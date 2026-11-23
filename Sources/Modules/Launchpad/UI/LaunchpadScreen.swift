@@ -222,8 +222,8 @@ struct LaunchpadScreen: View {
     /// "Apps" and "Categories" at the left of the search field, on its row, from the grid's left edge. The kit's segmented tabs; dimmed
     /// and off while a search is typed, since a search shows its matches flat.
     private func viewSwitch(_ g: LaunchpadGeometry) -> some View {
-        let tabs = [HelmToolbarTab(id: LaunchpadViewMode.apps.rawValue, title: HelmWord.apps, symbol: "square.grid.2x2"),
-                    HelmToolbarTab(id: LaunchpadViewMode.categories.rawValue, title: LpStr.categories, symbol: "rectangle.3.group")]
+        let tabs = [HelmHeaderTab(id: LaunchpadViewMode.apps.rawValue, title: HelmWord.apps, symbol: "square.grid.2x2"),
+                    HelmHeaderTab(id: LaunchpadViewMode.categories.rawValue, title: LpStr.categories, symbol: "rectangle.3.group")]
         return HelmHeaderTabs(tabs: tabs, selection: Binding(get: { state.view.rawValue },
                                                             set: { state.setView(LaunchpadViewMode(rawValue: $0) ?? .apps) }),
                               enabled: state.search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

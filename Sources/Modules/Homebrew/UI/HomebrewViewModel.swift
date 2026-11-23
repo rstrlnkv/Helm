@@ -229,7 +229,7 @@ private final class SharedLatestRequest: @unchecked Sendable {
             }
         }
 
-        /// The glyph the header row's tab draws when the tabs are labelled by glyphs (`HelmToolbarTab.symbol`).
+        /// The glyph the header row's tab draws when the tabs are labelled by glyphs (`HelmHeaderTab.symbol`).
         /// Updates keeps the module's own "an update exists" symbol.
         var symbol: String {
             switch self {

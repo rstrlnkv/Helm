@@ -39,8 +39,8 @@ final class TheHeaderBarMenuTests: XCTestCase {
 
     func testTabLabelsArePresentOnlyWhereThePageHasTabs() {
         let app = AppSettings.store.over(InMemoryKeyValueStore())
-        let with = HeaderBarMenu.items(hasTabs: true, hasSearch: false, in: app)
-        let without = HeaderBarMenu.items(hasTabs: false, hasSearch: false, in: app)
+        let with = HeaderBarMenu.menu(hasTabs: true, hasSearch: false, in: app).items
+        let without = HeaderBarMenu.menu(hasTabs: false, hasSearch: false, in: app).items
         XCTAssertEqual(with.count, 12)
         XCTAssertEqual(without.count, 7)
         XCTAssertTrue(titles(with).contains(AppStr.tabLabels))
@@ -51,7 +51,7 @@ final class TheHeaderBarMenuTests: XCTestCase {
     func testTheTickIsTheStoredChoiceAndEachItemWritesItsSetting() {
         let app = AppSettings.store.over(InMemoryKeyValueStore())
         func item(_ title: String, tabs: Bool = true) -> NSMenuItem {
-            HeaderBarMenu.items(hasTabs: tabs, hasSearch: true, in: app).first { $0.title == title && $0.action != nil }!
+            HeaderBarMenu.menu(hasTabs: tabs, hasSearch: true, in: app).items.first { $0.title == title && $0.action != nil }!
         }
         func ticked(_ title: String) -> Bool { item(title).state == .on }
         XCTAssertTrue(ticked(AppStr.pageBarWithIcon))
@@ -67,7 +67,7 @@ final class TheHeaderBarMenuTests: XCTestCase {
         choose(item(AppStr.alwaysCollapseSearch))
         XCTAssertTrue(AppSettings.alwaysCollapseSearch(in: app))
         XCTAssertEqual(AppSettings.pageBarStyle(in: app), .windowTitle)
-        XCTAssertEqual(AppSettings.toolbarSwitcherStyle(in: app), .icons)
+        XCTAssertEqual(AppSettings.tabLabels(in: app), .icons)
         XCTAssertEqual(AppSettings.barAppearance(in: app), .liquidGlass)
         XCTAssertTrue(ticked(AppStr.pageBarWithoutIcon))
         XCTAssertFalse(ticked(AppStr.pageBarWithIcon))
@@ -82,8 +82,8 @@ final class TheHeaderBarMenuTests: XCTestCase {
     /// page has no search.
     func testAlwaysCollapseSearchIsOfferedOnlyWhereThePageHasASearch() {
         let app = AppSettings.store.over(InMemoryKeyValueStore())
-        let with = titles(HeaderBarMenu.items(hasTabs: false, hasSearch: true, in: app))
-        let without = titles(HeaderBarMenu.items(hasTabs: false, hasSearch: false, in: app))
+        let with = titles(HeaderBarMenu.menu(hasTabs: false, hasSearch: true, in: app).items)
+        let without = titles(HeaderBarMenu.menu(hasTabs: false, hasSearch: false, in: app).items)
         XCTAssertEqual(with.suffix(2), ["-", AppStr.alwaysCollapseSearch])
         XCTAssertFalse(without.contains(AppStr.alwaysCollapseSearch))
         XCTAssertEqual(with.count, without.count + 2)
@@ -92,16 +92,16 @@ final class TheHeaderBarMenuTests: XCTestCase {
     /// The menu's has-search fact is the declaration too.
     func testTheHasSearchFactIsTheDeclaredContent() {
         let model = SettingsModel(host: .shared)
-        func hosted(_ content: HelmPageToolbarContent?) -> Bool {
-            let view = Color.clear.helmWindowToolbar(content).mirrorsHeaderFacts(into: model)
+        func hosted(_ content: HelmHeaderContent?) -> Bool {
+            let view = Color.clear.helmHeaderContent(content).mirrorsHeaderFacts(into: model)
             let host = NSHostingView(rootView: view.frame(width: 200, height: 100))
             host.frame = NSRect(x: 0, y: 0, width: 200, height: 100)
             host.layoutSubtreeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
             return model.pageHasSearch
         }
-        XCTAssertTrue(hosted(HelmPageToolbarContent(search: HelmToolbarSearch(prompt: "p", text: .constant("")))))
-        XCTAssertFalse(hosted(HelmPageToolbarContent()))
+        XCTAssertTrue(hosted(HelmHeaderContent(search: HelmHeaderQuery(prompt: "p", text: .constant("")))))
+        XCTAssertFalse(hosted(HelmHeaderContent()))
         XCTAssertFalse(hosted(nil))
     }
 
@@ -110,17 +110,17 @@ final class TheHeaderBarMenuTests: XCTestCase {
     func testTheHasTabsFactIsTheDeclaredContentNotTheSelection() {
         let model = SettingsModel(host: .shared)
         model.selection = .module("homebrew")
-        let tab = HelmToolbarTab(id: "a", title: "A", symbol: "tray")
-        func hosted(_ content: HelmPageToolbarContent?) -> Bool {
-            let view = Color.clear.helmWindowToolbar(content).mirrorsHeaderFacts(into: model)
+        let tab = HelmHeaderTab(id: "a", title: "A", symbol: "tray")
+        func hosted(_ content: HelmHeaderContent?) -> Bool {
+            let view = Color.clear.helmHeaderContent(content).mirrorsHeaderFacts(into: model)
             let host = NSHostingView(rootView: view.frame(width: 200, height: 100))
             host.frame = NSRect(x: 0, y: 0, width: 200, height: 100)
             host.layoutSubtreeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
             return model.pageHasTabs
         }
-        XCTAssertTrue(hosted(HelmPageToolbarContent(tabs: [tab], selectedTab: .constant("a"))))
-        XCTAssertFalse(hosted(HelmPageToolbarContent(tabs: [])), "Leftovers with an empty list declares none")
+        XCTAssertTrue(hosted(HelmHeaderContent(tabs: [tab], selectedTab: .constant("a"))))
+        XCTAssertFalse(hosted(HelmHeaderContent(tabs: [])), "Leftovers with an empty list declares none")
         XCTAssertFalse(hosted(nil))
     }
 }

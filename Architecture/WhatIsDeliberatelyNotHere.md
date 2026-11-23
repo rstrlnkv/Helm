@@ -24,9 +24,10 @@ nothing reaches a socket, a pipe or a second binary.
 bundle is arm64 only. Supporting an older system means the ports grow a second path each, and there
 is no second machine to prove that path on.
 
-**No page bar of Helm's own.** A bar drawn by the shell (`ShellPageBar`) and a hybrid that drew only
-the tabs were both replaced by the system `NSToolbar`, now `Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift`,
-on the owner's feedback about the look, so nobody puts a custom bar back.
+**No page bar of Helm's own.** A bar drawn by the shell (`ShellPageBar`) was replaced by a header row in the
+card (`helmCardHeader`, declared through `Sources/HelmUI/DesignSystem/HelmHeaderContent.swift`); the bar is the
+card's, and only the page tabs are a system `NSToolbar` item, under Glass (`SettingsToolbar`; the owner chose it on
+2026-11-23), so nobody puts a custom bar back or moves the name, actions or search into the toolbar.
 
 **Not in Screenshots' first version.** Video, a long screenshot, a history of shots, Beautify, a real window editor, Save As, Pin, a "Start with" choice and a panel place per display are not here and are not proposed as gaps; the owner left them out, and `Architecture/Screenshots.md` and `Architecture/ScreenshotsEditor.md` describe what is. Copy All names a shot that is gone by its position in the pile ("Screenshot 2"), by the owner's choice.
 

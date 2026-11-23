@@ -10,13 +10,17 @@ import HelmAppStrings
 /// `ShellContentView`. Each of the two hosts a SwiftUI view; a shared
 /// `SettingsModel` carries the selection between them.
 ///
-/// **The window wears no `NSToolbar`.** The header row is the card's own, drawn at the top of the detail pane
-/// by `SettingsDetail` (`helmCardHeader`): the page's name and status on the left, what the page declared
-/// through `helmWindowToolbar` on the right. The title bar is transparent over it and the pane takes no safe
-/// area from it, so the row starts at the card's top edge.
+/// **The header row is the card's, and only the page tabs are a system toolbar item, under Glass.** The row is
+/// drawn at the top of the detail pane by `SettingsDetail` (`helmCardHeader`): the page's name and status on the
+/// left, what the page declared through `helmHeaderContent` on the right. Under `.liquidGlass` the tabs of that
+/// declaration are shown by the window's `NSToolbar` (`SettingsToolbar`) and the row keeps a placeholder for them;
+/// under `.flat` the window has no toolbar and the row draws the tabs. The title bar is transparent over it and
+/// the pane takes no safe area from it, so the row starts at the card's top edge.
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private let model: SettingsModel
+    /// The page tabs' toolbar, worn under Liquid Glass only (`SettingsToolbar`).
+    private let toolbar: SettingsToolbar
     /// One size for every page. Switching pages must never resize the window
     /// under the user's cursor; the size they pick is remembered instead.
     ///
@@ -41,7 +45,7 @@ import HelmAppStrings
     /// there are ten, one 40 pt row fewer; the height was left at 760.
     nonisolated static let defaultSize = NSSize(width: 1211, height: 760)
     /// Below this the Log page's header row, the fullest one, no longer fits the card in German with its tabs
-    /// labelled by glyph and word (`ToolbarSwitcherStyle.iconsAndText`, the widest of the three labellings).
+    /// labelled by glyph and word (`HeaderTabLabels.iconsAndText`, the widest of the three labellings).
     ///
     /// **1207 is that row in German at the default sidebar** (`ShellGeometry.defaultSidebarWidth`, 200, which
     /// nothing in the window changes): «Einstellungen», the tabs «Grundlagen | Protokoll | Über Helm» each with its
@@ -52,7 +56,7 @@ import HelmAppStrings
     /// changes with the language: German 426, French 414, Spanish 387, Russian 382, Portuguese 373, English 333,
     /// Japanese 299, Chinese 282. (Text only, as measured earlier the same day, was German 361 … Chinese 217; the
     /// glyph and its 6 pt gap add 65 to the German row.) The rest is the same in all eight: 14 + 24 plate + 12 +
-    /// the name + 36 (12, the spacer's least 12, 12) + the tabs + 8 + 471 (five 36 pt actions, 8, the search's 283)
+    /// the name + 36 (`HeaderRowLayout.nameGap`: 12, 12, 12) + the tabs + 8 + 471 (five 36 pt actions, 8, the search's 283)
     /// + 10, which is 575 + 426 = 1001 in German; the card is the window less 200 of sidebar and 4 of window inset,
     /// so 1205, and 2 more for a frame rounded to whole points. (Text only, 1142, and the old row, with 20 of
     /// gutter each side and a 200 pt search, 1096, were narrower; raised, never lowered, by the owner's decision.)
@@ -65,7 +69,9 @@ import HelmAppStrings
         let band = HelmBandChoice.running
         let model = SettingsModel(host: host)
         self.model = model
-        let shell = SettingsShellViewController(model: model, band: band)
+        let toolbar = SettingsToolbar()
+        self.toolbar = toolbar
+        let shell = SettingsShellViewController(model: model, band: band, tabs: toolbar.sink)
         let window = NSWindow(contentViewController: shell)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.title = AppStr.settingsWindowTitle
@@ -82,12 +88,10 @@ import HelmAppStrings
         self.window = window
         super.init()
         window.delegate = self
+        toolbar.attach(to: window) { AppSettings.barAppearance }
         // **The window's title is the page's name**, set here on the
-        // `NSWindow` rather than through SwiftUI: the bridge that used to
-        // carry a detail pane's toolbar into the window carried its subtitle
-        // and dropped its title (measured on macOS 27 — «Untitled» over a
-        // pane that had set one), and the window's title is still this class's to set. The
-        // page says what it is called with `HelmPageTitleKey`; this is the
+        // `NSWindow` rather than through SwiftUI, so it is this class's to
+        // set. The page says what it is called with `HelmPageTitleKey`; this is the
         // one place that listens.
         titleWatch = model.$pageTitle.sink { [weak self] title in
             self?.applyTitle(title)
@@ -285,10 +289,10 @@ enum SettingsSelection: Hashable {
     private var liveWatch: AnyCancellable?
 
     /// Whether the page on screen declared tabs in its header row, mirrored from what the row draws
-    /// (`HelmPageHasTabsKey`, through `mirrorsHeaderFacts`): a module's page declares its own (Homebrew's three,
+    /// (`HelmPageHeaderFactsKey`, through `mirrorsHeaderFacts`): a module's page declares its own (Homebrew's three,
     /// Leftovers' two only while its list is not empty), General, Log and About the settings tabs.
     @Published var pageHasTabs = false
-    /// Whether it declared a search (`HelmPageHasSearchKey`): the menu's Always Collapse Search is offered only then.
+    /// Whether it declared a search (`HelmPageHeaderFactsKey`): the menu's Always Collapse Search is offered only then.
     @Published var pageHasSearch = false
 
     init(host: ModuleHost) {
@@ -331,13 +335,16 @@ enum SettingsSelection: Hashable {
 /// hosted in it. A plain view controller; the window's size is the user's and
 /// the controller asks nothing of it.
 ///
-/// The controller assigns the window no toolbar: the header row is a view in the page's own hosting view.
+/// The controller assigns the window no toolbar itself: the header row is a view in the page's own hosting view,
+/// and only its tabs are handed to the window's toolbar under Glass (`SettingsToolbar`, through `tabs`).
 @MainActor final class SettingsShellViewController: NSViewController {
     private let model: SettingsModel
     /// The window's own band decision, handed down rather than read again —
     /// no default, so the pane cannot be built on one system's decision
     /// under a title bar set from another's.
     private let band: HelmBandChoice
+    /// Where the row's tabs go under Glass (`SettingsToolbar`).
+    private let tabs: HelmTabsSink
 
     private let fold = SidebarFold()
 
@@ -348,9 +355,10 @@ enum SettingsSelection: Hashable {
     /// Nothing in the window changes it, so an unfold always ends here.
     private let expandedWidth: CGFloat
 
-    init(model: SettingsModel, band: HelmBandChoice) {
+    init(model: SettingsModel, band: HelmBandChoice, tabs: HelmTabsSink) {
         self.model = model
         self.band = band
+        self.tabs = tabs
         self.expandedWidth = AppSettings.sidebarWidth(in: store)
         super.init(nibName: nil, bundle: nil)
         fold.collapsed = AppSettings.sidebarCollapsed(in: store)
@@ -392,6 +400,7 @@ enum SettingsSelection: Hashable {
         // it and never the other way around.
         let sidebar = NSHostingController(
             rootView: SidebarInTheShell(model: model, fold: fold) { [weak self] in self?.flipSidebar() }
+                .safeAreaPadding(.top, ShellGeometry.titleBand)
                 .modifier(RebuiltOnLanguageChange(model: model))
                 // Its own hosting controller, its own root: the pane's environment stops at the pane.
                 .helmRoot()
@@ -401,6 +410,9 @@ enum SettingsSelection: Hashable {
                 // `OffScreenIdle` in HelmUI has the measurements.
                 .helmIdlesOffScreen())
         sidebar.sizingOptions = []
+        // The toolbar grows the title bar's safe area, and the sidebar would start lower under Glass: it takes none
+        // from the title bar and holds the Flat title bar's own band instead, the same under both looks.
+        sidebar.safeAreaRegions = []
 
         let detail = NSHostingController(
             rootView: SettingsDetail(model: model)
@@ -412,6 +424,7 @@ enum SettingsSelection: Hashable {
                 .helmTracksHeaderChoices { AppSettings.headerChoices }
                 // Whether the row wears Helm's band at all, as the system's decision.
                 .environment(\.helmBandChoice, band)
+                .environment(\.helmTabsSink, tabs)
                 .modifier(TellsWindowActivity(model: model))
                 .onPreferenceChange(HelmPageTitleKey.self) { [model] title in
                     model.pageTitle = title
@@ -426,7 +439,7 @@ enum SettingsSelection: Hashable {
                 .helmIdlesOffScreen())
         // **The pane takes no safe area from the title bar**: the header row starts at the card's top edge,
         // and the inset above the page is the row's own (`helmCardHeader`). A page says what it wants in
-        // the row through `helmWindowToolbar`, a preference in this same hosting view.
+        // the row through `helmHeaderContent`, a preference in this same hosting view.
         detail.sizingOptions = []
         detail.safeAreaRegions = []
         addChild(sidebar)
@@ -491,19 +504,18 @@ private struct SettingsDetail: View {
 
     @ViewBuilder
     private var content: some View {
-        let tabs = HelmPageToolbarContent(tabs: SettingsTabs.all,
-                                          selectedTab: SettingsTabs.binding($model.selection),
-                                          reserves: LogView.trailingRun)
+        let tabs = HelmHeaderContent(tabs: SettingsTabs.all,
+                                          selectedTab: SettingsTabs.binding($model.selection))
         // A module that is off reads as General, as it does in the sidebar,
         // whatever the selection still says.
         switch ShellSidebarRows.settled(model.selection, enabled: model.host.enabledModuleIDs) {
         case .none, .general:
             // General and About put nothing in the row but the tabs.
             MenuBarSettingsView()
-                .helmWindowToolbar(tabs)
+                .helmHeaderContent(tabs)
         case .about:
             AboutHelmView()
-                .helmWindowToolbar(tabs)
+                .helmHeaderContent(tabs)
         case .log:
             LogView(settingsTabs: tabs)
         case .module(let id):
@@ -623,11 +635,9 @@ private struct RebuiltOnLanguageChange: ViewModifier {
 extension View {
     /// Keeps `model.pageHasTabs` and `model.pageHasSearch` equal to what the page on screen declared for the row.
     func mirrorsHeaderFacts(into model: SettingsModel) -> some View {
-        onPreferenceChange(HelmPageHasTabsKey.self) { [model] hasTabs in
-            model.pageHasTabs = hasTabs ?? false
-        }
-        .onPreferenceChange(HelmPageHasSearchKey.self) { [model] hasSearch in
-            model.pageHasSearch = hasSearch ?? false
+        onPreferenceChange(HelmPageHeaderFactsKey.self) { [model] facts in
+            model.pageHasTabs = facts?.hasTabs ?? false
+            model.pageHasSearch = facts?.hasSearch ?? false
         }
     }
 }

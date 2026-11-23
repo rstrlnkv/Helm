@@ -103,7 +103,7 @@ is idle (ARCHITECTURE.md § The activity registry).
 `Sources/HelmApp/LogView.swift` is the same lines readable while they are being written,
 on every build. It computes nothing about the file: one `write`, one format, and the pane
 is a window onto it. Its controls live in the header row of the settings window's card rather than
-in a band of the page (`LogView.toolbarContent`), so the place a person is sent to when
+in a band of the page (`LogView.headerContent`), so the place a person is sent to when
 they report a problem is the one named after it.
 
 Each launch is **a card** (under a filter, one with nothing to show has none), and what a

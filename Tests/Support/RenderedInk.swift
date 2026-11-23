@@ -43,7 +43,7 @@ public final class MountedRender {
 
     /// **The page's search field: the one in the header row of the card, inside `host`.**
     ///
-    /// A page asks for one through `helmWindowToolbar`, and the header row (`helmCardHeader`) draws it
+    /// A page asks for one through `helmHeaderContent`, and the header row (`helmCardHeader`) draws it
     /// as `HelmHeaderSearch` in the same hosting view as the page, so a walk of `host` finds it — but only
     /// where the mount was given the row: a mount of a bare page declares into a preference nothing reads and
     /// finds none (`LivePageUnderTheHeaderFixture`, `Tests/HelmAppTests`, is the one that draws the row).
@@ -58,7 +58,7 @@ public final class MountedRender {
     /// Type `text` into the header row's search field the way AppKit delivers a
     /// keystroke — the value on the control, then the notification the field's
     /// delegate (`HelmHeaderSearch.Coordinator`) listens for. Assigning `stringValue` alone moves the
-    /// control and not the binding `HelmToolbarSearch.text` carries.
+    /// control and not the binding `HelmHeaderQuery.text` carries.
     ///
     /// Returns false when there is no field to type into, so a caller can fail
     /// in its own words. Only `host` is settled afterwards, which holds
@@ -73,7 +73,7 @@ public final class MountedRender {
     }
 
     /// Press Return in the header row's search field, which is what
-    /// `HelmToolbarSearch.onSubmit` answers to — `HelmHeaderSearch` wires a real
+    /// `HelmHeaderQuery.onSubmit` answers to — `HelmHeaderSearch` wires a real
     /// `target`/`action` to the field it builds and turns
     /// `sendsActionOnEndEditing` off, so no end of editing reaches the action;
     /// Return and the clear button do, and `HelmHeaderSearch.Coordinator.submitted(_:)` calls `onSubmit` only when

@@ -1,15 +1,35 @@
 import SwiftUI
 
+/// **The numbers of a tab, which the Flat strip draws and the toolbar's strip is measured from** (`HelmTabsMetrics`):
+/// one name each, so the two cannot drift. The look's own: padding either side of a segment, the gap before a dot and
+/// between a glyph and its word, the type sizes, a glyph-only tab's width, the dot, and the dimming of a disabled strip.
+public enum HelmTabNumbers {
+    static let segmentPadding = CGFloat(9)
+    static let dotGap = CGFloat(5)
+    static let glyphGap = CGFloat(6)
+    public static let wordSize = CGFloat(13)
+    public static let iconSize = CGFloat(15)
+    static let iconWidth = CGFloat(20)
+    static let dot = CGFloat(6)
+    public static let dimmed = 0.4
+}
+
 /// **The page's tabs in the header row: always whole, never folded.** Labelled by their word, a glyph or both
-/// (`ToolbarSwitcherStyle`, `HelmHeaderChoices`).
+/// (`HeaderTabLabels`, `HelmHeaderChoices`).
 ///
-/// Under `.flat` a plate of `HelmSurface.barPlate` holds the tabs and the pick is `HelmSurface.barPick`;
-/// under `.liquidGlass` the group is one glass container and the pick is a clear capsule with an outline. The pick slides to
-/// a pressed tab, inside `HelmMotion.interface` and only where `HelmMotion.moves` says so; a tab the page
-/// itself selects (a page switch, an Uninstaller step) moves it without travel. The selection the page
-/// owns is written outside the animation, so the page below is not swapped inside it.
+/// Under `.flat` a plate of `HelmSurface.barPlate` holds the tabs and the pick is `HelmSurface.barPick`. Under
+/// `.liquidGlass` the strip is one `GlassEffectContainer`: a glass capsule for the track and, for the pick, a glass
+/// capsule of its own, `.interactive()` and tinted with a little of the label colour (lighter than the track in Dark,
+/// darker in Light, as the system's toolbar segmented control draws it). **The settings window does not draw this
+/// strip under Glass**: there the tabs are a real `NSToolbar` item, the system's own `NSSegmentedControl`
+/// (`HelmTabsRelay`, `SettingsToolbar`); outside a toolbar that control draws a solid accent-blue pick in an active
+/// window, so it was rejected for any other place. This glass strip is what a view with no `helmTabsSink` gets: the
+/// Launchpad's panel, a borderless panel that cannot carry a toolbar, and the fixtures. The pick slides to a
+/// pressed tab, inside `HelmMotion.interface` and only where `HelmMotion.moves` says so; a tab the page itself
+/// selects (a page switch, an Uninstaller step) moves it without travel. The selection the page owns is written
+/// outside the animation, so the page below is not swapped inside it.
 public struct HelmHeaderTabs: View {
-    let tabs: [HelmToolbarTab]
+    let tabs: [HelmHeaderTab]
     let selection: Binding<String>
     let enabled: Bool
 
@@ -22,36 +42,28 @@ public struct HelmHeaderTabs: View {
     /// change of label keeps the pick where it is and sliding.
     @Environment(\.helmHeaderChoices) private var choices
 
-    public init(tabs: [HelmToolbarTab], selection: Binding<String>, enabled: Bool) {
+    public init(tabs: [HelmHeaderTab], selection: Binding<String>, enabled: Bool) {
         self.tabs = tabs
         self.selection = selection
         self.enabled = enabled
         _shown = State(initialValue: selection.wrappedValue)
     }
 
-    /// The Kit's Segmented tabs (Figma 8:91): a 36 pt strip, 4 inside it a pill of 28 (radius 14, a capsule), 9 pt
-    /// either side of a word, 5 between two tabs. The same numbers under both looks.
+    /// The Kit's Segmented tabs (Figma 8:91): a 36 pt strip, 4 inside it a pill of 28 (radius 14, a
+    /// capsule), 9 pt either side of a word, 5 between two tabs. The same numbers under both looks.
     private static let plate: CGFloat = 4
     private static let pill = HelmHeaderActions.side - 2 * plate
 
     public var body: some View {
         group
-            .opacity(enabled ? 1 : 0.4)
+            .opacity(enabled ? 1 : HelmTabNumbers.dimmed)
             .disabled(!enabled)
             .onChange(of: selection.wrappedValue) { _, now in shown = now }
             .accessibilityElement(children: .contain)
     }
 
-    @ViewBuilder
     private var group: some View {
-        switch appearance {
-        case .flat:
-            strip.padding(Self.plate).background(HelmSurface.barPlate, in: Capsule())
-        case .liquidGlass:
-            GlassEffectContainer(spacing: 0) {
-                strip.padding(Self.plate).glassEffect(.regular.interactive(), in: Capsule())
-            }
-        }
+        strip.padding(Self.plate).helmBarCapsule(appearance, spacing: 0)
     }
 
     private var strip: some View {
@@ -66,10 +78,10 @@ public struct HelmHeaderTabs: View {
         }
     }
 
-    private func label(_ tab: HelmToolbarTab) -> some View {
+    private func label(_ tab: HelmHeaderTab) -> some View {
         let style = choices.tabLabels
         let ink = tab.id == shown ? Color(nsColor: .labelColor) : Color(nsColor: .secondaryLabelColor)
-        return HStack(spacing: 5) {
+        return HStack(spacing: HelmTabNumbers.dotGap) {
             switch style {
             case .text:
                 word(tab, ink)
@@ -77,25 +89,30 @@ public struct HelmHeaderTabs: View {
             case .icons:
                 // The Kit's glyph: SF Symbol, Regular, 15. The dot sits on the glyph, since there is no word
                 // to stand beside; the word is the tooltip and, as ever, the accessibility label.
-                Image(systemName: tab.symbol).font(.system(size: 15)).foregroundStyle(ink)
-                    .frame(width: 20)
+                Image(systemName: tab.symbol).font(.system(size: HelmTabNumbers.iconSize)).foregroundStyle(ink)
+                    .frame(width: HelmTabNumbers.iconWidth)
                     .overlay(alignment: .topTrailing) { dot(tab).offset(x: 3, y: -1) }
                     .help(tab.title)
             case .iconsAndText:
-                HStack(spacing: 6) {
-                    Image(systemName: tab.symbol).font(.system(size: 13)).foregroundStyle(ink)
+                HStack(spacing: HelmTabNumbers.glyphGap) {
+                    Image(systemName: tab.symbol).font(.system(size: HelmTabNumbers.wordSize)).foregroundStyle(ink)
                     word(tab, ink)
                 }
                 dot(tab)
             }
         }
-        .padding(.horizontal, 9)
+        .padding(.horizontal, HelmTabNumbers.segmentPadding)
         .frame(height: Self.pill)
         .background {
             if tab.id == shown {
-                Capsule().fill(appearance == .flat ? AnyShapeStyle(HelmSurface.barPick) : AnyShapeStyle(.clear))
-                    .matchedGeometryEffect(id: "pick", in: space)
-                    .overlay { if appearance == .liquidGlass { Capsule().strokeBorder(Color.primary.opacity(0.12)) } }
+                switch appearance {
+                case .flat:
+                    Capsule().fill(HelmSurface.barPick).matchedGeometryEffect(id: "pick", in: space)
+                case .liquidGlass:
+                    Capsule().fill(.clear)
+                        .glassEffect(.regular.tint(Color(nsColor: .labelColor).opacity(0.14)).interactive(), in: Capsule())
+                        .glassEffectID("pick", in: space)
+                }
             }
         }
         .contentShape(Capsule())
@@ -104,18 +121,18 @@ public struct HelmHeaderTabs: View {
     /// Never cut: a tab keeps its whole word, and `SettingsWindow.minSize` is measured with it. The selected tab
     /// reads by its ink as well as by its pick, (`.labelColor` over `.secondaryLabelColor`); the Kit's one weight,
     /// Regular, for every state, so a pick does not change a width.
-    private func word(_ tab: HelmToolbarTab, _ ink: Color) -> some View {
-        Text(tab.title).font(.system(size: 13)).lineLimit(1).fixedSize().foregroundStyle(ink)
+    private func word(_ tab: HelmHeaderTab, _ ink: Color) -> some View {
+        Text(tab.title).font(.system(size: HelmTabNumbers.wordSize)).lineLimit(1).fixedSize().foregroundStyle(ink)
     }
 
     @ViewBuilder
-    private func dot(_ tab: HelmToolbarTab) -> some View {
+    private func dot(_ tab: HelmHeaderTab) -> some View {
         if tab.needsAttention {
-            Circle().fill(HelmSignal.warning(increased: traits.increasedContrast)).frame(width: 6, height: 6).accessibilityHidden(true)
+            Circle().fill(HelmSignal.warning(increased: traits.increasedContrast)).frame(width: HelmTabNumbers.dot, height: HelmTabNumbers.dot).accessibilityHidden(true)
         }
     }
 
-    private func press(_ tab: HelmToolbarTab) {
+    private func press(_ tab: HelmHeaderTab) {
         if HelmMotion.moves(reduceMotion: traits.reducedMotion) {
             withAnimation(HelmMotion.interface) { shown = tab.id }
         } else {

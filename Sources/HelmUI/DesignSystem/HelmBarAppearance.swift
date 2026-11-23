@@ -15,7 +15,8 @@ import SwiftUI
 /// The header row in the card reads the look from the environment, and the window sets it at the root of
 /// the detail pane from the stored value (`helmTracksBarAppearance`): under `flat` its tabs sit on a plate
 /// of `HelmSurface.barPlate` with the pick `HelmSurface.barPick` (`HelmHeaderTabs`) and its actions stand
-/// bare (`HelmHeaderActions`); under `liquidGlass` both are the system's glass.
+/// bare (`HelmHeaderActions`); under `liquidGlass` both are the system's glass, the tabs as the window's `NSToolbar`
+/// item (`SettingsToolbar`), which exists under this look only.
 ///
 /// **The key is its own, and it is not `appearance`.** That key, in the same
 /// namespace, already holds light, dark or the system's choice
@@ -29,9 +30,9 @@ import SwiftUI
 /// **Two defaults, and they differ.** The stored one, `init(stored:)`, is
 /// `flat`: it is the value read back for a person who chose nothing. The
 /// environment's, below, is `liquidGlass`: it is what a view mounted with
-/// nobody having set a look gets: for a bare actions row `liquidGlass`
-/// is the plate that existed before the setting did. The settings window is the one place that sets a look on it,
-/// so no user sees the environment's default: only `LivePageUnderTheHeaderFixture` mounts a view without one.
+/// nobody having set a look gets. The settings window sets a look on its pane;
+/// Launchpad's `HelmHeaderTabs` (`LaunchpadScreen`) and
+/// `LivePageUnderTheHeaderFixture` mount without one and read the default.
 ///
 /// **Not sealed:** nothing unattended reads it (`AppSettings.barAppearance`).
 public enum HelmBarAppearance: String, CaseIterable, Sendable {
@@ -60,6 +61,23 @@ extension View {
     /// rebuilt for a look it does not draw.
     public func helmTracksBarAppearance(_ current: @escaping () -> HelmBarAppearance) -> some View {
         modifier(HelmBarAppearanceTracker(current: current))
+    }
+}
+
+extension View {
+    /// **The capsule a header group stands on** (`HelmHeaderTabs`, `HelmHeaderSearch`): under `.flat` a
+    /// `HelmSurface.barPlate` behind it; under `.liquidGlass` a glass capsule of `glass` in a
+    /// `GlassEffectContainer` of its own, `spacing` apart from another.
+    @ViewBuilder
+    func helmBarCapsule(_ look: HelmBarAppearance, glass: Glass = .regular, spacing: CGFloat? = nil) -> some View {
+        switch look {
+        case .flat:
+            background(HelmSurface.barPlate, in: Capsule())
+        case .liquidGlass:
+            GlassEffectContainer(spacing: spacing) {
+                glassEffect(glass, in: Capsule())
+            }
+        }
     }
 }
 
