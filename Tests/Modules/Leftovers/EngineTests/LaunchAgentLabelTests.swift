@@ -10,7 +10,7 @@ final class LaunchAgentLabelTests: XCTestCase {
     /// ".plist" is stripped with `replacingOccurrences`, which removes EVERY
     /// occurrence — including one in the middle of the name.
     /// `com.vendor.plistwatcher.plist` → `com.vendorwatcher`.
-    /// `OrphanDetector.stripKnownSuffix` does the same job with
+    /// `OrphanDetector.bundleID(from:)` does the same job with
     /// `hasSuffix` + `dropLast`; this is the sibling that never got it.
     func testOnlyTheTrailingExtensionIsStripped() {
         let info = LaunchAgentReader.read(plist: [:],
