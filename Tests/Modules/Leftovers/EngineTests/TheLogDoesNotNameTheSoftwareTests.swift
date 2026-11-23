@@ -48,7 +48,7 @@ final class TheLogDoesNotNameTheSoftwareTests: XCTestCase {
         _ = await LeftoversEngine(home: home, files: LeftoversFakeFiles(),
                                   apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                   switcher: LeftoversFakeSwitcher(),
-                                  store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                                  store: freshLeftoversStore())
             .trash([outOfScope, inScope])
         return lines
     }

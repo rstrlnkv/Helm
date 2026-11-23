@@ -67,7 +67,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
                         _ recorder: LeftoversFakeSwitcher) -> LeftoversEngine {
         LeftoversEngine(home: home, files: files, apps: LeftoversFakeApps(),
                         loaded: LeftoversFakeLoaded(), switcher: recorder,
-                        store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                        store: freshLeftoversStore())
     }
 
     private func press(_ path: String, on engine: LeftoversEngine) async {

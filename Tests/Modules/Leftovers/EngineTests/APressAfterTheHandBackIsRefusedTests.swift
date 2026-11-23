@@ -10,8 +10,7 @@ import XCTest
 final class APressAfterTheHandBackIsRefusedTests: XCTestCase {
     func testAPressAfterWillDisableSwitchesNothingAndRecordsNothing() async {
         let switcher = LeftoversFakeSwitcher()
-        let store = NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)",
-                                    backing: InMemoryKeyValueStore())
+        let store = freshLeftoversStore()
         let e = LeftoversEngine(home: URL(fileURLWithPath: "/Users/x"), files: LeftoversFakeFiles(),
                                 apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                 switcher: switcher, store: store)

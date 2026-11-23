@@ -32,8 +32,7 @@ final class ALeftoverSwitchIsGivenBackTests: XCTestCase {
 
     func testTheLabelsHelmDisabledAreRecorded() async throws {
         let switcher = LeftoversFakeSwitcher()
-        let store = NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)",
-                                    backing: InMemoryKeyValueStore())
+        let store = freshLeftoversStore()
         let e = engine(switcher, store)
 
         await e.setDisabled(true, label: "com.example.agent.one")
@@ -45,8 +44,7 @@ final class ALeftoverSwitchIsGivenBackTests: XCTestCase {
 
     func testSwitchingOneBackOnLeavesTheRecordWithoutIt() async throws {
         let switcher = LeftoversFakeSwitcher()
-        let store = NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)",
-                                    backing: InMemoryKeyValueStore())
+        let store = freshLeftoversStore()
         let e = engine(switcher, store)
 
         await e.setDisabled(true, label: "com.example.agent.one")
@@ -58,8 +56,7 @@ final class ALeftoverSwitchIsGivenBackTests: XCTestCase {
 
     func testDisablingTheModuleGivesBackEveryLabelItTook() async throws {
         let switcher = LeftoversFakeSwitcher()
-        let store = NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)",
-                                    backing: InMemoryKeyValueStore())
+        let store = freshLeftoversStore()
         let e = engine(switcher, store)
 
         await e.setDisabled(true, label: "com.example.agent.one")
@@ -79,8 +76,7 @@ final class ALeftoverSwitchIsGivenBackTests: XCTestCase {
 
     func testAModuleThatDisabledNothingAsksTheSystemNothing() throws {
         let switcher = LeftoversFakeSwitcher()
-        let store = NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)",
-                                    backing: InMemoryKeyValueStore())
+        let store = freshLeftoversStore()
         engine(switcher, store).willDisable()
         XCTAssertEqual(switcher.labels, [],
                        "an empty record must not become a sweep over the system's own list")
@@ -91,8 +87,7 @@ final class ALeftoverSwitchIsGivenBackTests: XCTestCase {
     /// that reads it is.
     func testARecordTheShippedBuildWroteIsGivenBack() throws {
         let switcher = LeftoversFakeSwitcher()
-        let store = NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)",
-                                    backing: InMemoryKeyValueStore())
+        let store = freshLeftoversStore()
         store.set(["com.example.a", "com.example.b"], for: "disabledByHelm")
 
         engine(switcher, store).willDisable()
@@ -124,8 +119,7 @@ extension ALeftoverSwitchIsGivenBackTests {
     func testAHandEnableThatLaunchdDidNotAcceptKeepsTheLabelRecorded() async throws {
         for notAccepted in [SwitchAnswer.refused, .unknown] {
             let switcher = LeftoversFakeSwitcher()
-            let store = NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)",
-                                        backing: InMemoryKeyValueStore())
+            let store = freshLeftoversStore()
             let e = engine(switcher, store)
             await e.setDisabled(true, label: "com.example.agent.one")
             switcher.answer = notAccepted

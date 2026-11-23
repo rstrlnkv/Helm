@@ -24,7 +24,7 @@ struct LeftoversSettingsPage: View {
     /// dialog follows the row says exactly what the bar below it says, because
     /// it is the same act.
     private static func deleteLabel(for item: StaleItem) -> String {
-        LeftoverActions.needsConfirmation(item) ? LfStr.deleteItem : HelmWord.moveToTrash
+        LeftoverActions.askBeforeDeleting(item) != nil ? LfStr.deleteItem : HelmWord.moveToTrash
     }
 
     private var grouped: [(kind: StaleKind, items: [StaleItem])] {
@@ -425,7 +425,7 @@ struct LeftoversSettingsPage: View {
                 Button(HelmA11y.showInFinder) { HelmReveal.inFinder(item.path) }
                 if item.actions.contains(.delete) {
                     Button(Self.deleteLabel(for: item), role: .destructive) {
-                        if LeftoverActions.needsConfirmation(item) {
+                        if LeftoverActions.askBeforeDeleting(item) != nil {
                             pendingDeletion = item
                         } else {
                             Task { await lvm.remove(item) }

@@ -53,7 +53,7 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
         let engine = LeftoversEngine(home: home, files: files(shared: true),
                                      apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                      switcher: recorder,
-                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                                     store: freshLeftoversStore())
 
         await send(LeftoversToggle(label: label, path: path, disabled: true), to: engine)
 
@@ -73,7 +73,7 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
         let engine = LeftoversEngine(home: home, files: files(shared: false),
                                      apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                      switcher: recorder,
-                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                                     store: freshLeftoversStore())
 
         await send(LeftoversToggle(label: label, path: path, disabled: true), to: engine)
 
@@ -87,7 +87,7 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
         let engine = LeftoversEngine(home: home, files: files(shared: true),
                                      apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                      switcher: recorder,
-                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                                     store: freshLeftoversStore())
 
         await send(LeftoversToggle(label: label,
                                    path: "/Library/LaunchAgents/\(label).plist",
