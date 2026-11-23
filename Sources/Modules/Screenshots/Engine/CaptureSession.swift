@@ -65,8 +65,6 @@ public struct Delivery: @unchecked Sendable {
     public var refusals: [CaptureRefusal] = []
     /// The first picture that was made, for the thumbnail.
     public var image: CGImage?
-
-    init() {}
 }
 
 /// Where a shot's full picture is, for a copy of several at once: in memory for a shot that was only copied, in its

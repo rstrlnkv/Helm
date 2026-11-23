@@ -15,7 +15,7 @@ ticked — as `ScreenshotsState` (§ How Screenshots' model reaches its engine).
 
 Everything the session asks of the machine is a port with a fake
 (`Sources/Modules/Screenshots/Engine/Ports.swift`): the capture, the file write, the move of
-an edit's original to the Trash, the clipboard, the shutter, the Dock's bounds, the reading of text, and three preference reads of what macOS owns. All three are **read and
+an edit's original to the Trash, the clipboard, the shutter, the reading of text (the Dock's bounds are read through `SystemDockBounds` directly, with no fake, because no test needs one), and three preference reads of what macOS owns. All three are **read and
 never written** — com.apple.screencapture for the save folder, com.apple.symbolichotkeys
 for the boxes, and the global domain's user-interface-sound switch for the shutter — and `Sources/Modules/Screenshots/Engine/Logic/SaveLocation.swift` and
 `Sources/Modules/Screenshots/Engine/Logic/SystemShortcuts.swift` judge the first two:

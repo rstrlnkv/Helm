@@ -105,9 +105,6 @@ public struct SelectionDrag: Sendable {
 }
 
 public enum Selection {
-    /// Enter with nothing selected: the whole display, which is what macOS does.
-    public static func wholeDisplay(_ bounds: CGRect) -> CGRect { bounds }
-
     /// The size a person reads while dragging, in pixels — a point is one to
     /// three pixels and the picture is made of pixels.
     public static func pixelSize(of rect: CGRect, scale: CGFloat) -> (width: Int, height: Int) {

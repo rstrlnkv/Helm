@@ -85,11 +85,6 @@ public struct Freeze: @unchecked Sendable {
     /// Front to back.
     public let windows: [FrozenWindow]
 
-    init(displays: [DisplayShot], windows: [FrozenWindow]) {
-        self.displays = displays
-        self.windows = windows
-    }
-
     /// The displays that came back with a picture, main first.
     public var frames: [FrozenDisplay] {
         displays.compactMap { if case .image(let frame) = $0 { frame } else { nil } }

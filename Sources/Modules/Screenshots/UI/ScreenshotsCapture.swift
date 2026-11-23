@@ -379,9 +379,10 @@ struct CapturedShot {
                     failed("the edited shot could not be made (exit \(exit))")
                 }
             case .wholeDisplay(let display):
+                // Nothing selected: the whole display, which is what macOS does.
                 if let frame = freeze.frames.first(where: { $0.id == display }),
                    let image = session.crop(freeze, display: display,
-                                            local: Selection.wholeDisplay(CGRect(origin: .zero, size: frame.frame.size))) {
+                                            local: CGRect(origin: .zero, size: frame.frame.size)) {
                     await handOff(CapturedShot(image: image))
                 } else {
                     failed("the whole-display shot could not be made")

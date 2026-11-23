@@ -26,12 +26,12 @@ private struct Unshared<T>: @unchecked Sendable {
 /// defect this excludes.
 final class SCKCapture: ScreenCapturing, @unchecked Sendable {
     private let store: NamespacedStore
-    private let dockBounds: DockBounds
+    private let dockBounds: SystemDockBounds
     private let request: @Sendable () -> Void
 
     init(store: NamespacedStore = NamespacedStore(namespace: ScreenshotsEngine.moduleID,
                                                          backing: UserDefaults.standard),
-                dockBounds: DockBounds = SystemDockBounds(),
+                dockBounds: SystemDockBounds = SystemDockBounds(),
                 request: @escaping @Sendable () -> Void = { _ = CGRequestScreenCaptureAccess() }) {
         self.store = store
         self.dockBounds = dockBounds
@@ -219,7 +219,7 @@ final class SCKCapture: ScreenCapturing, @unchecked Sendable {
     /// actor, as every AppKit screen reading is. The Dock's pid is the window list's
     /// own (`DockStrip.dockPID`), so no workspace reading is made here. A Dock that
     /// did not answer in time is logged: it is the system declining, not an absence.
-    @MainActor private static func dockPlacement(entries: [RawWindow], ports: DockBounds) -> DockPlacement? {
+    @MainActor private static func dockPlacement(entries: [RawWindow], ports: SystemDockBounds) -> DockPlacement? {
         let screens = NSScreen.screens
         let strip = DockStrip.rect(displays: screens.map { (frame: $0.frame, visible: $0.visibleFrame) })
         let height = screens.first?.frame.height ?? 0
@@ -239,17 +239,20 @@ final class SCKCapture: ScreenCapturing, @unchecked Sendable {
 /// uses for it. Never prompts: `AXIsProcessTrusted` is the non-prompting reading, and
 /// the prompting variant is not called anywhere. Main thread only.
 ///
+/// **Optional by design:** the module declares no Accessibility permission and never
+/// asks for it; a Mac that has granted it to Helm for another module gets the Dock's
+/// exact bounds, any other gets `.notTrusted` and the strip. `pid` is the Dock's
+/// process, from the window list.
+///
 /// **Bounded:** the messaging timeout belongs to the element it is set on (measured on
 /// a stopped process: the application element failed after 0.105 s, a child with no
 /// timeout of its own after 1.505 s), so it is set on every element read, and the
 /// whole read gives up at `budget` between calls and at the first call that does not
 /// answer. A stalled Dock costs at most one call's timeout past the budget, and the
 /// reading is `.timedOut`.
-struct SystemDockBounds: DockBounds {
+struct SystemDockBounds: Sendable {
     static let timeout: Float = 0.05
     static let budget: TimeInterval = 0.15
-
-    init() {}
 
     func read(dockPID pid: pid_t) -> DockBoundsReading {
         guard AXIsProcessTrusted() else { return .notTrusted }
@@ -308,8 +311,6 @@ struct SystemDockBounds: DockBounds {
 /// Files get the process's ordinary umask, as macOS's own screenshots do; they
 /// are not `PrivateFile`, because the person is about to drag them into a chat.
 struct FileShotWriter: ShotWriting {
-    init() {}
-
     /// A seam for a test, run with the new name right after the move and before the answer is made: it swaps what
     /// stands under that name, to prove the reading is the descriptor's and not an `lstat` of the name. Nothing by default.
     var afterTheMove: @Sendable (URL) -> Void = { _ in }
@@ -400,8 +401,6 @@ struct FileShotWriter: ShotWriting {
 /// `FileManager.trashItem`, and nothing of its own: the rules of a removal are `HelmTrash.remove`'s, which is the
 /// only caller this has (`CaptureSession.replace`).
 struct SystemShotTrash: ShotTrashing {
-    init() {}
-
     func trash(_ url: URL) throws {
         try FileManager.default.trashItem(at: url, resultingItemURL: nil)
     }
@@ -503,8 +502,6 @@ struct SystemShotPasteboard: ShotPasteboard {
 /// editor's reading still working when the next is asked) are one entry, and the first of them to end takes it away.
 /// The order is the request's, which is a reading order: in a picture of two columns the left one comes first. Nothing the picture says is logged: only that the request threw, and what kind of error.
 struct VisionTextReader: ScreenTextReading {
-    init() {}
-
     func read(_ image: CGImage) async -> TextReading {
         var request = RecognizeTextRequest()
         request.recognitionLevel = .accurate
@@ -608,8 +605,6 @@ final class SystemShutter: ShutterPlaying, @unchecked Sendable {
     /// Read and written on the main thread only.
     private var sound: NSSound?
     private var loaded = false
-
-    init() {}
 
     func play() {
         DispatchQueue.main.async { [self] in
