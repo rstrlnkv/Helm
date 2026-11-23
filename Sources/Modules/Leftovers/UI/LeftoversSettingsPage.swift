@@ -27,17 +27,6 @@ struct LeftoversSettingsPage: View {
         LeftoverActions.needsConfirmation(item) ? LfStr.deleteItem : HelmWord.moveToTrash
     }
 
-    /// What «Found: N» is about: the rows the list under it draws.
-    ///
-    /// It counted `leftoverCount` — *how many you may tick* — beside the control
-    /// that decides what is shown: «Found: 3 items» over 542 rows with the filter
-    /// on «All», and «Found: 1 item» over four rows every one of which is badged
-    /// «Leftover». Both quantities are wanted; `leftoverCount` goes on gating
-    /// «Select all», which is the question it actually answers.
-    private static func foundCaption(_ lvm: LeftoversViewModel) -> String {
-        LfStr.foundLine(lvm.visibleItems.count)
-    }
-
     private var grouped: [(kind: StaleKind, items: [StaleItem])] {
         StaleKind.allCases.compactMap { kind in
             let items = lvm.visibleItems.filter { $0.kind == kind }
@@ -214,7 +203,9 @@ struct LeftoversSettingsPage: View {
     /// arrangement whose ideal width the strip can give it, so nothing here is
     /// measured by hand or truncated.
     @ViewBuilder private var captions: some View {
-        let found = caption(Self.foundCaption(lvm))
+        // The rows the list draws, not `leftoverCount` (what may be ticked):
+        // that one goes on gating «Select all».
+        let found = caption(LfStr.foundLine(lvm.visibleItems.count))
         if lvm.uncheckedCount > 0 {
             let unchecked = caption(LfStr.uncheckedLine(lvm.uncheckedCount))
             ViewThatFits(in: .horizontal) {

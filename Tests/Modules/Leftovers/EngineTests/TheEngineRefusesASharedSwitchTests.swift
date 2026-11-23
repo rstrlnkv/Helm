@@ -103,7 +103,7 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
     /// Read off `LaunchClaims` rather than off the scan, because this is the half
     /// the engine uses and the scan's half is `OneLabelIsOneSwitchTests`.
     func testALabelIsClaimedByWhateverRegistersIt() {
-        let claims = LaunchClaims.onDisk(home: home, files: files(shared: true))
+        let claims = LaunchClaims.onDisk(home: home, files: files(shared: true)).claims
 
         XCTAssertEqual(LaunchClaims.claimants(of: label, in: claims).count, 2)
         XCTAssertEqual(LaunchClaims.claimants(of: "com.other.agent", in: claims), [])

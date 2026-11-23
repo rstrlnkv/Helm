@@ -4,7 +4,7 @@ import HelmRuntime
 
 /// The bug family this file exists for: an id matched as a bare character
 /// prefix instead of as a namespace. `UninstallerEngine` (extension-host blame)
-/// and `LeftoversScanner.owner(of:)` both spell it `$0 + "."`; the system
+/// and `StaleItemRules.isOwned` both spell it `$0 + "."`; the system
 /// extension branch does not, and it is the one branch with no test.
 ///
 /// Past defect: fixed in `87b659b9`.

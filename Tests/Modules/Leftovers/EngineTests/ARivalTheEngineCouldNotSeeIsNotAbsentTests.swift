@@ -77,7 +77,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
     /// What `LaunchClaims` reports to the engine, for the failure message: the count
     /// is the whole mechanism, and printing it saves the reader a second run.
     private func claimsSeen(_ files: LeftoversFakeFiles) -> [String] {
-        LaunchClaims.claimants(of: label, in: LaunchClaims.onDisk(home: home, files: files))
+        LaunchClaims.claimants(of: label, in: LaunchClaims.onDisk(home: home, files: files).claims)
     }
 
     // MARK: - The finding
