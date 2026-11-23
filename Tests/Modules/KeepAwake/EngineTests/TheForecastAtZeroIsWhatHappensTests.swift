@@ -44,11 +44,8 @@ final class TheForecastAtZeroIsWhatHappensTests: XCTestCase {
         apps.ids = [render]
         clock = FakeClock()
         assertions = FakeAssertions()
-        engine = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
-                                 displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(),
-                                 power: FakePower(), apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
+        engine = fakeEngine(settings: settings, store: store, assertions: assertions, apps: apps,
+                            clock: clock)
     }
 
     /// Exactly what `KeepAwakeSettingsPage.timedNote` computes, from exactly

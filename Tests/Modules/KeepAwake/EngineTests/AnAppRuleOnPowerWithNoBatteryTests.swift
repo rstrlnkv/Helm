@@ -48,13 +48,8 @@ final class AnAppRuleOnPowerWithNoBatteryTests: XCTestCase {
         apps = FakeApps()
         apps.ids = [render]
         displayInfo = FakeDisplayInfo()
-        engine = KeepAwakeEngine(settings: settings, store: store,
-                                 assertions: FakeAssertions(),
-                                 displayInfo: displayInfo,
-                                 displayObserver: FakeDisplayObserver(),
-                                 power: power, apps: apps,
-                                 pointer: FakePointer(), clamshell: FakeClamshell(),
-                                 clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine = fakeEngine(settings: settings, store: store, displayInfo: displayInfo,
+                            power: power, apps: apps)
     }
 
     /// A Mac Studio: no power source list at all, so `snapshot()` answers nil,

@@ -24,11 +24,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         clamshell = FakeClamshell()
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
-        engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                 assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(), power: FakePower(),
-                                 apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine = fakeEngine(store: store, clamshell: clamshell)
     }
 
     /// The control: with no grant of any kind, the person's gesture on the lid

@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import XCTest
@@ -337,4 +338,33 @@ extension XCTestCase {
         }
         await drainMainActor()
     }
+}
+
+/// One `KeepAwakeEngine` over fakes. `KeepAwakeEngine.init` has no port defaults,
+/// so a forgotten port there does not compile; here a forgotten port is a fresh
+/// fake the test holds no reference to, and asserting on a fake the engine never
+/// saw is the hazard. A call names every fake it configures or asserts on, and
+/// always `store:`. Defaults are fakes, never a production port (`IOPSPowerInfo`,
+/// `CGEventPointer`, `MacLidInfo`): that would drive the machine's own power
+/// source, pointer or lid. `settings` is `KeepAwakeSettings` over `store`; `news`
+/// and `batteryVeto` repeat the engine's defaults, they are not linked to them.
+func fakeEngine(settings: KeepAwakeSettings? = nil,
+                store: NamespacedStore = NamespacedStore(namespace: "keep-awake",
+                                                         backing: InMemoryKeyValueStore()),
+                assertions: SleepAssertions = FakeAssertions(),
+                displayInfo: DisplayInfoPort = FakeDisplayInfo(),
+                displayObserver: DisplayObserverPort = FakeDisplayObserver(),
+                power: PowerInfoPort = FakePower(),
+                apps: AppRunningPort = FakeApps(),
+                pointer: PointerPort = FakePointer(),
+                clamshell: ClamshellPort = FakeClamshell(),
+                clock: Clock = FakeClock(),
+                lidInfo: LidInfoPort = FakeLidInfo(),
+                news: EngineNews<KeepAwakeEngine.StatePayload> = EngineNews(),
+                batteryVeto: BatteryVetoChannel? = nil) -> KeepAwakeEngine {
+    KeepAwakeEngine(settings: settings ?? KeepAwakeSettings(store: store), store: store,
+                    assertions: assertions, displayInfo: displayInfo,
+                    displayObserver: displayObserver, power: power, apps: apps,
+                    pointer: pointer, clamshell: clamshell, clock: clock, lidInfo: lidInfo,
+                    news: news, batteryVeto: batteryVeto)
 }

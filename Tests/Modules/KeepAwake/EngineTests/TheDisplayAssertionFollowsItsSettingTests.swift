@@ -40,12 +40,7 @@ final class TheDisplayAssertionFollowsItsSettingTests: XCTestCase {
         store = NamespacedStore(namespace: "keep-awake", backing: backing)
         settings = KeepAwakeSettings(store: store)
         assertions = FakeAssertions()
-        engine = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
-                                 displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(),
-                                 power: FakePower(), apps: FakeApps(),
-                                 pointer: FakePointer(), clamshell: FakeClamshell(),
-                                 clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine = fakeEngine(settings: settings, store: store, assertions: assertions)
     }
 
     /// What the settings page does: write the store, then send the command.

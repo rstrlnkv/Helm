@@ -36,11 +36,8 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
         apps.ids = [render]
         clock = FakeClock()
         assertions = FakeAssertions()
-        engine = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
-                                 displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(),
-                                 power: power, apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
+        engine = fakeEngine(settings: settings, store: store, assertions: assertions, power: power,
+                            apps: apps, clock: clock)
     }
 
     private func onMains() {

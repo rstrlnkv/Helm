@@ -34,11 +34,7 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
         clamshell = FakeClamshell()
         clamshell.sudoersInstalled = true
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
-        engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                 assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(), power: FakePower(),
-                                 apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine = fakeEngine(store: store, clamshell: clamshell)
     }
 
     private var guardFlag: Bool {
@@ -205,10 +201,6 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
     /// A second engine over the same store and the same lid, which is what the
     /// next launch is.
     private func atLaunch() -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                        assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                        displayObserver: FakeDisplayObserver(), power: FakePower(),
-                        apps: FakeApps(), pointer: FakePointer(),
-                        clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
+        fakeEngine(store: store, clamshell: clamshell)
     }
 }

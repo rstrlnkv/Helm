@@ -76,14 +76,8 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
         settings = KeepAwakeSettings(store: store)
         power = FakePower()
         notices = notice
-        engine = KeepAwakeEngine(settings: settings, store: store,
-                                 assertions: FakeAssertions(),
-                                 displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(),
-                                 power: power, apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: FakeClock(),
-                                 lidInfo: FakeLidInfo(), batteryVeto: BatteryVetoChannel(port: notice,
-                                                                 words: { Self.words($0) }))
+        engine = fakeEngine(settings: settings, store: store, power: power,
+                            batteryVeto: BatteryVetoChannel(port: notice, words: { Self.words($0) }))
     }
 
     private func onMains() {
@@ -308,11 +302,7 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
         settings = KeepAwakeSettings(store: store)
         power = FakePower()
         let assertions = FakeAssertions()
-        engine = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
-                                 displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(),
-                                 power: power, apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine = fakeEngine(settings: settings, store: store, assertions: assertions, power: power)
         power.snap = (onBattery: false, percent: 100)
         power.says(.mains)
         engine.activate()

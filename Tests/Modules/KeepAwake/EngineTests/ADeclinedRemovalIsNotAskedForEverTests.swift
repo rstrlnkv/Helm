@@ -59,11 +59,7 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         clamshell.sudoersInstalled = true
         clamshell.passwordlessGrantExists = true
         settings.setClamshellEnabled(true)
-        engine = KeepAwakeEngine(settings: settings, store: store,
-                                 assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                                 displayObserver: FakeDisplayObserver(), power: FakePower(),
-                                 apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine = fakeEngine(settings: settings, store: store, clamshell: clamshell)
     }
 
     override func tearDown() {

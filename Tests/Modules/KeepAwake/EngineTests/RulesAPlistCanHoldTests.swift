@@ -154,12 +154,7 @@ final class RulesAPlistCanHoldTests: XCTestCase {
         plant("autoAppRules", AppTriggerRules.encode(rules))
         let apps = FakeApps()
         apps.ids = ["com.example.render"]
-        let engine = KeepAwakeEngine(settings: settings, store: store,
-                                     assertions: FakeAssertions(),
-                                     displayInfo: FakeDisplayInfo(),
-                                     displayObserver: FakeDisplayObserver(),
-                                     power: FakePower(), apps: apps, pointer: FakePointer(),
-                                     clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
+        let engine = fakeEngine(settings: settings, store: store, apps: apps)
 
         engine.activate()
 
