@@ -6,18 +6,13 @@ import XCTest
 /// Pruning applies the deletion to the tree we have.
 /// Past defect: fixed in commit 76f18e41.
 final class DiskTreePruneTests: XCTestCase {
-    private func entry(_ path: String, _ bytes: Int, _ children: [DiskEntry] = []) -> DiskEntry {
-        DiskEntry(name: (path as NSString).lastPathComponent, path: path, bytes: bytes,
-                  isDirectory: !children.isEmpty, noAccess: false, children: children)
-    }
-
     private var tree: DiskEntry {
         entry("/root", 1000, [
             entry("/root/a", 700, [
-                entry("/root/a/big", 500),
-                entry("/root/a/small", 200),
+                entry("/root/a/big", 500, isDirectory: false),
+                entry("/root/a/small", 200, isDirectory: false),
             ]),
-            entry("/root/b", 300),
+            entry("/root/b", 300, isDirectory: false),
         ])
     }
 

@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// Puts a freshly measured subtree back where it belongs.
 ///
@@ -15,7 +16,7 @@ public enum DiskTreeSplice {
         guard path != root.path else { return subtree }
         // Only walk the branch that contains it: a volume has hundreds of
         // thousands of nodes and all but one branch is untouched.
-        guard path.hasPrefix(root.path == "/" ? "/" : root.path + "/") else { return root }
+        guard path.hasPrefix(ScanPath.child(of: root.path, name: "")) else { return root }
         return DiskEntry(name: root.name, path: root.path, bytes: root.bytes,
                          isDirectory: root.isDirectory, noAccess: root.noAccess,
                          children: root.children.map { child in

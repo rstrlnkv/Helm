@@ -70,7 +70,7 @@ final class ScanFootprintTests: XCTestCase {
         let box = Locked(0)
         let before = try XCTUnwrap(MemoryFootprint.current())
         let tree = DiskScanner().scan(root: root.path,
-                                      onProgress: { box.value = $0.filesSeen })
+                                      onProgress: { box.value = $0.files })
         let after = try XCTUnwrap(MemoryFootprint.current())
 
         XCTAssertNotNil(tree, "the fixture did not walk at all")

@@ -28,7 +28,7 @@ struct DiskWidget: View {
 
     var body: some View {
         HelmWidgetBody {
-            HelmWidgetHeader(symbol: "chart.pie", tint: DiskDescriptor.tint.colour,
+            HelmWidgetHeader(symbol: DiskDescriptor.metadata.sfSymbol, tint: DiskDescriptor.tint.colour,
                              name: DkStr.moduleName, compact: size == .compact) {
                 OpenTheModule()
             }

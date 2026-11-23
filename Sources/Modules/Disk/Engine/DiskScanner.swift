@@ -1,9 +1,6 @@
 import Foundation
 import HelmRuntime
-
-struct ScanProgress: Sendable {
-    let filesSeen: Int
-}
+import os
 
 /// Turns a directory tree into the tree this module draws.
 ///
@@ -15,8 +12,7 @@ struct ScanProgress: Sendable {
 /// directories this module refuses.
 final class DiskScanner: @unchecked Sendable {
     private let foldThreshold: Int
-    private var cancelled = false
-    private let lock = NSLock()
+    private let cancelled = OSAllocatedUnfairLock(initialState: false)
 
     /// `skip` is injected only by tests; production reads the live firmlink
     /// table for the scan root.
@@ -40,10 +36,10 @@ final class DiskScanner: @unchecked Sendable {
     }
 
     func cancel() {
-        lock.lock(); cancelled = true; lock.unlock()
+        cancelled.withLock { $0 = true }
     }
 
-    private var isCancelled: Bool { lock.withLock { cancelled } }
+    private var isCancelled: Bool { cancelled.withLock { $0 } }
 
     /// Synchronous; run it via `offTheCooperativePool`.
     ///
@@ -61,7 +57,7 @@ final class DiskScanner: @unchecked Sendable {
     /// What stays here is everything that is Disk's: the tree, the folding
     /// threshold, and which directories this module refuses.
     func scan(root: String,
-              onProgress: (@Sendable (ScanProgress) -> Void)? = nil,
+              onProgress: (@Sendable (ScanTick) -> Void)? = nil,
               onPartial: (@Sendable (DiskNode) -> Void)? = nil) -> DiskNode? {
         let builder = TreeBuilder(root: root, foldThreshold: foldThreshold)
         let rootDevice = BulkWalk.deviceID(of: root)
@@ -97,7 +93,7 @@ final class DiskScanner: @unchecked Sendable {
                 let now = Date()
                 if now.timeIntervalSince(lastEmit) > BulkWalk.progressInterval {
                     lastEmit = now
-                    onProgress?(ScanProgress(filesSeen: filesSeen))
+                    onProgress?(ScanTick(files: filesSeen))
                     // The builder thread owns the tree, so snapshotting here
                     // races with nothing.
                     onPartial?(builder.build())
@@ -105,7 +101,7 @@ final class DiskScanner: @unchecked Sendable {
             })
 
         guard completed else { return nil }
-        onProgress?(ScanProgress(filesSeen: filesSeen))
+        onProgress?(ScanTick(files: filesSeen))
         return builder.build()
     }
 }

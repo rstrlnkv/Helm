@@ -15,17 +15,12 @@ import XCTest
 /// what gets sent; the count, the size and the names now come from the same
 /// computation, which is what makes them unable to drift apart.
 final class TheQuestionIsAboutWhatIsSentTests: XCTestCase {
-    private func entry(_ path: String, bytes: Int) -> DiskEntry {
-        DiskEntry(name: (path as NSString).lastPathComponent, path: path, bytes: bytes,
-                  isDirectory: true, noAccess: false, children: [])
-    }
-
     /// The defect itself: one row, four removals. The row's own figure is larger
     /// than the contents (the folder also holds the folded bucket of small
     /// files), so the size has to come from the advice and not from the row.
     func testACacheRowIsAskedAboutAsItsContents() {
         let advice = cacheAdvice([("Firefox", 40), ("Adobe", 30), ("Yarn", 20), ("pip", 10)])
-        let question = DiskRemovalPlan.question(basket: [entry(caches, bytes: 130)],
+        let question = DiskRemovalPlan.question(basket: [entry(caches, 130)],
                                                 advice: [advice])
 
         XCTAssertEqual(question.count, 4,
@@ -37,7 +32,7 @@ final class TheQuestionIsAboutWhatIsSentTests: XCTestCase {
     /// And the folder that stays behind is not named as something being removed.
     func testTheFolderThatStaysIsNotNamed() {
         let advice = cacheAdvice([("Firefox", 40)])
-        let question = DiskRemovalPlan.question(basket: [entry(caches, bytes: 40)],
+        let question = DiskRemovalPlan.question(basket: [entry(caches, 40)],
                                                 advice: [advice])
 
         XCTAssertFalse(question.paths.contains(caches),
@@ -50,7 +45,7 @@ final class TheQuestionIsAboutWhatIsSentTests: XCTestCase {
     /// the ordinary case, which must read exactly as it did.
     func testARowPickedOffTheRingIsItsOwnQuestion() {
         let picked = "/Users/test/Movies/raw.mov"
-        let question = DiskRemovalPlan.question(basket: [entry(picked, bytes: 700)],
+        let question = DiskRemovalPlan.question(basket: [entry(picked, 700)],
                                                 advice: [cacheAdvice([("Firefox", 1)])])
 
         XCTAssertEqual(question.count, 1)
@@ -61,7 +56,7 @@ final class TheQuestionIsAboutWhatIsSentTests: XCTestCase {
     /// The question and the act are one computation, not two that agree today.
     func testTheQuestionNamesExactlyWhatWillBeSent() {
         let advice = cacheAdvice([("Firefox", 40), ("Adobe", 30)])
-        let basket = [entry(caches, bytes: 70), entry("/Users/test/Movies/raw.mov", bytes: 700)]
+        let basket = [entry(caches, 70), entry("/Users/test/Movies/raw.mov", 700)]
 
         XCTAssertEqual(DiskRemovalPlan.question(basket: basket, advice: [advice]).paths,
                        DiskRemovalPlan.targets(basket: basket.map(\.path), advice: [advice]))
@@ -77,8 +72,7 @@ final class TheQuestionIsAboutWhatIsSentTests: XCTestCase {
                                     DiskAdvice.Target(path: home + "/Library/Caches/c\($0)",
                                                       bytes: 10)
                                 })
-        let question = DiskRemovalPlan.question(basket: [entry(home + "/Library/Caches",
-                                                               bytes: 50)],
+        let question = DiskRemovalPlan.question(basket: [entry(home + "/Library/Caches", 50)],
                                                 advice: [advice])
 
         XCTAssertEqual(question.named(),
@@ -91,7 +85,7 @@ final class TheQuestionIsAboutWhatIsSentTests: XCTestCase {
     /// path that does not exist.
     func testExactlyFourNamesCarryNoEllipsis() {
         let advice = cacheAdvice([("a", 1), ("b", 1), ("c", 1), ("d", 1)])
-        let question = DiskRemovalPlan.question(basket: [entry(caches, bytes: 4)],
+        let question = DiskRemovalPlan.question(basket: [entry(caches, 4)],
                                                 advice: [advice])
 
         XCTAssertFalse(question.named().hasSuffix("…"), question.named())
