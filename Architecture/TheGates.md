@@ -57,7 +57,21 @@ that sends it to the Trash (ARCHITECTURE.md § Screenshots).
 
 Reading a path by opening it and asking the descriptor (`open` and `F_GETPATH`, the way
 `Sources/Modules/Autopilot/Engine/FolderReader.swift` reads a level it already holds
-open) was rejected as the *shared* reading of a path: it is refused where only a
+open) is not the *shared* reading of a path: it is refused where only a
 lookup is answered, and it costs 9.4 µs against 1.1 µs for the string form (DEC-1a).
-Nobody needs to propose it again. A `GatedPath` type, a path that carries the proof
+A `GatedPath` type, a path that carries the proof
 of the gate it passed, is deferred by the owner until the first removal defect.
+
+## Permissions
+
+`PermissionCheck.probeURLs` (`Sources/HelmRuntime/PermissionCheck.swift`) probes Full
+Disk Access by reading protected files, one byte each (`canRead`). The doc comments
+there hold the reasons: the probe is a read, since a write is refused even where access
+is granted; every entry is a file, never a directory, since opening a directory throws
+whatever the grant; and the entry that is on every Mac and gated by this grant alone, the
+system-wide `TCC.db`, is asked first. The probe runs off the thread that draws:
+`PermissionCheck.fullDiskAccess` hops through `offTheCooperativePool`, and the settings page, the panel and
+`PermissionAudit` read it through the trackers or that call, never inline. What a declared permission stands behind
+(`.fullDisk`, `.accessibility`, `.screenRecording` to a `PermissionNeed`, `.adminHelper` to none) is one mapping,
+`PermissionSummary.need(for:)` in `Sources/HelmApp/PermissionSummary.swift`; the settings page and the panel both count
+what is withheld through it.

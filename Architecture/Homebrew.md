@@ -45,17 +45,15 @@ order it was said.
 
 The host calls the descriptor's `stop(_:)` before the engine's `deactivate()`. A closed
 model hears nothing and asks nothing, so an install that `deactivate()` ends is not
-followed by a re-read of a module going off. `deactivate()` shuts the gate to every operation until `activate()` and ends the install of Homebrew as Stop does (one SIGTERM, the exit read as the person's stop). A package operation or a doctor fix is not terminated, because a half-built `brew` run can leave the Cellar broken: it finishes on its own, `busy` stays true and the quit marker stays until its exit, which the engine still hears (it is held strongly by the exit), and then the marker is cleared. `deinit` gives the shared gate back, and only if this engine holds it: `OperationGate.release` is owner-checked, which is what keeps a dropped idle engine from opening the gate under a running one. The busy gate is shared by every engine of the process (`OperationGate`, passed as `.process` by the descriptor, a fresh one per engine elsewhere): the host builds a new engine on every enable, so a fresh engine beside one still running is refused like a second press, and its `status()` takes no marker while any engine holds the gate. An operation clears its marker before it gives the gate back, so a late exit cannot delete a newer marker; the marker file keeps its format (a label), and one left by a real quit is read by the next launch's first `status()` as before. The page's Stop button is
+followed by a re-read of a module going off. `deactivate()` shuts the gate to every operation until `activate()` and ends the install of Homebrew as Stop does (one SIGTERM, the exit read as the person's stop). A package operation or a doctor fix is not terminated, because a half-built `brew` run can leave the Cellar broken: it finishes on its own, `busy` stays true and the quit marker stays until its exit, which the engine still hears (it is held strongly by the exit), and then the marker is cleared. The busy gate is shared by every engine of the process (`OperationGate`, whose doc comment holds the owner-checked release and the marker order; the descriptor passes `.process`, a fresh gate per engine elsewhere): a fresh engine beside one still running is refused like a second press, and its `status()` takes no marker while any engine holds the gate. The marker file keeps its format (a label), and one left by a real quit is read by the next launch's first `status()`. The page's Stop button is
 `stopOperation()`; `stop()` is the seam's.
 
 Where brew is arrives first: `activate()` files it from the locator (`HomebrewNews.brew`; no
 `brew` runs, and the quit marker is not taken), so that a model which has heard it draws the
-right page on its first frame and not the install screen. Bench recordings over a fake
-`HomebrewWork` show that frame. `testWhereBrewIsSeedsTheStatusBeforeAnyRead` holds only that
+right page on its first frame and not the install screen. `testWhereBrewIsSeedsTheStatusBeforeAnyRead` holds only that
 the seed reaches the model and asks the machine nothing. In the app `ModuleHost` builds the
-model before `activate()`, so the model has subscribed when the event is filed; the event then
-reaches the model through its own task, and where the page's first body falls against its landing is unproved. If
-the page draws first, it shows the install screen until the news or `readStatus` lands. It only
+model before `activate()`, so the model has subscribed when the event is filed; where the page's first body falls against its landing is unproved, and if
+the page draws first it shows the install screen until the news or `readStatus` lands. The seed only
 seeds `status`: once the engine's own reading has answered, a later seed is ignored, because that reading carries what the seed cannot (`interruptedOp`).
 
 Words: `Sources/Modules/Homebrew/UI/Localizable.xcstrings`; shared words through `HelmWord` from the kit.
@@ -102,15 +100,12 @@ Stop really reached is read against the real runner in
 The module reaches one other place on the network unprompted, and one more on a
 press: `installBrew` downloads Homebrew's installer from `raw.githubusercontent.com`.
 Unprompted, `FilePopularityStore` fetches Homebrew's two published analytics documents
-from `formulae.brew.sh` at most once a day. The fetch is started by the engine's
+from `formulae.brew.sh` at most once a day, started by the engine's
 `activate`, so a module the person has switched off never makes it; under a test
-runner the transfer refuses, so a suite run asks the endpoint nothing. Nothing the
-request puts on the wire names this Mac, this person, or what was searched. The
-store's doc comments hold the rest (`session` for the pinned headers, `stored` for
-the cost of the reading; the type's own for the files and their daily clock), and
-what `PopularityRefresh` judges. All it ever does
+runner the transfer refuses. Nothing the request puts on the wire names this Mac, this person, or what was searched.
+The store's doc comments hold the rest, and `PopularityRefresh` what is judged. All it does
 is reorder search results (`SearchRanking`); a Mac that fetches nothing searches
-exactly as it did before any of this existed.
+as it always did.
 
 ## Searching for a package
 
@@ -163,4 +158,4 @@ The crew never opens the page on a real prefix: a `brew` run may write its own c
 | dialogs | Uninstall's question, a fix's question | Uninstall…, Run… |
 | worst | de and ru at the narrowest pane, 772 pt (the minimum window with the sidebar at its widest), 36 packages, the inspector full: tabs, refresh and search keep one row, a long formula name ends in "…", the homepage cuts in the middle, the warning and the notes wrap, eight dependency tags hold one line. A long name in the inspector, hundreds of rows, the other five languages, en at 772 pt: not rendered: no bench state names the long package in the inspector (`inspector-full` is `alpha-cli`), the list stops at 36, and its arguments name en, ru and de; en stands at 892 pt and in a sweep of other widths | the bench's `inspector-full` with `--width 772` and its language argument |
 
-Motion: the console's height moves on `HelmMotion.disclosure`, read on bench recordings, no guard. At opening the well arrives empty and rises with the list, and the lines land at their place while it rises: a clip keeps them inside the well, so they appear inside it, the first about 150 ms after the start, and none is drawn over the pill or above the well. At close the lines are already gone, Clear having removed them, so an empty well shrinks. A pane swap below the threshold runs on `HelmMotion.interface`; a switch of tab and the second tier's arrival are cuts, compared by frame counts on the bench, no guard; a row leaving is the list's own removal, about 15 frames, the same before and after, read off the frame tables, no guard. The real window's motion and Reduce Motion are unproved: the bench has no shell and cannot force the flag. Increase Contrast: the signal colours read their pairs through `\.helmTraits`, shot with the setting forced on the bench's environment, not on a Mac; no guard. Not reachable on the bench: the administrator's dialog, Apple's tools window, the shell's own ground, and real `brew` timings.
+Motion: the console's height moves on `HelmMotion.disclosure`, read on bench recordings, no guard. At opening the well arrives empty and rises with the list, and the lines land at their place while it rises, clipped inside the well; at close the lines are already gone, Clear having removed them, so an empty well shrinks. A pane swap below the threshold runs on `HelmMotion.interface`; a switch of tab and the second tier's arrival are cuts, no guard; a row leaving is the list's own removal, no guard. The real window's motion and Reduce Motion are unproved: the bench has no shell and cannot force the flag. Increase Contrast: the signal colours read their pairs through `\.helmTraits`, shot with the setting forced on the bench's environment, not on a Mac; no guard. Not reachable on the bench: the administrator's dialog, Apple's tools window, the shell's own ground, and real `brew` timings.

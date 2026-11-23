@@ -9,8 +9,8 @@ comments of the code that carries them:
 - the unattended refusal of media-library bundles, by name and never by reading: `ScanRoot.refusesDescent`, used by `DiskScanner.swift`; a person watching the ring gets the whole volume, and the `~/Library` refusal is applied at the report, not at the descent: `UnattendedAdvice.swift`;
 - a scan has an identity, a token only its owner can spend: `ScanRegistry.swift`; what a scan says while it runs goes to the sink of that one call, so no update has to name its scan: `DiskScanUpdate` in `DiskEngine.swift`; the model drops what a scan says once the screen no longer belongs to it: `DiskViewModel.apply`;
 - the three cache folders whose *contents* are regenerable, and the children swapped in for them: `DiskAdvisor.swift`, `DiskRemovalPlan.swift`, then `UserFileScope.partition` and `HelmTrash.remove` like any other path;
-- the move to the Trash is a port with no default: `DiskEngine.init(capacity:trashing:)` takes the move and the descriptor passes `HelmTrash.moveToTrash`, so a construction that forgot it does not build, in the app or in a test; the gate stays first in `DiskEngine.trash`, `UserFileScope.partition` and then `HelmTrash.remove`, and a test hands the engine a recording move and a path the gate refuses (`DiskTrashGateTests`);
-- the folder colours: eight swatches keyed by path, each a light/dark pair in an ordinary and an Increase Contrast form, and every folder's wedge, row bar and hover wash is its swatch blended into the window background inside its appearance, so the ring and the list draw one colour for a folder: `DiskPalette.swift`;
+- the move to the Trash is a port with no default (`DiskEngine.init(capacity:trashing:)`, its doc comment); the descriptor passes `HelmTrash.moveToTrash`, the gate stays first in `DiskEngine.trash` (`UserFileScope.partition`, then `HelmTrash.remove`), and `DiskTrashGateTests` hands the engine a recording move and a path the gate refuses;
+- the folder colours, one swatch per folder drawn the same in the ring and the list: `DiskPalette.swift`;
 - the ring lays out one level more than it draws, and the drill lands before the animation starts: `RingView.visibleRings`, `RingView.open`.
 
 Words: `Sources/Modules/Disk/UI/Localizable.xcstrings`; shared words through `HelmWord`.
@@ -24,10 +24,9 @@ return. A scan's progress and partial snapshots go to a sink the model hands ove
 that call, an `AsyncStream` it drains while it awaits the answer, so they are applied on
 the main actor and all of them before the answer is. There is no stream on the engine:
 Disk's events exist only inside a call the model made, so there is no window between
-reading a state and subscribing to its changes, and two scans walking at once (the
-volume and a folder a drill measures) need no name to be told apart: the volume's walk
-hands over a sink of its own, and a folder measurement passes none, so the engine builds
-no snapshots for it. The gates stay in the engine: `trash` partitions through
+reading a state and subscribing to its changes, and two scans walking at once need no name
+to be told apart (a folder measurement passes no sink, so the engine builds no snapshots for it).
+The gates stay in the engine: `trash` partitions through
 `UserFileScope` before `HelmTrash.remove`, and the basket's `canBasket` asks
 `UserFileScope.isRemovable` as well.
 

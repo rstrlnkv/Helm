@@ -12,7 +12,7 @@ import HelmRuntime
 /// The exception is anything whose height is measured and clipped. A bouncy
 /// spring overshoots its target, and an overshooting height clips its own
 /// content for a frame or two — exactly the class of panel glitch
-/// Architecture/DesignSystem.md § Motion warns about. Those use `disclosure`, which is a spring with
+/// Architecture/DesignSystem.md § Motion, which warns about. Those use `disclosure`, which is a spring with
 /// the bounce set to zero: physical timing, no overshoot.
 public enum HelmMotion {
     /// "Reduce motion" is a medical setting, not a preference: springs that

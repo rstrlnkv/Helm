@@ -28,7 +28,7 @@ deadline, and the deadline ends the *wait* rather than the question:
 The quit is by bundle identifier and reaches every copy of the app that is running;
 `RunningAppsPort.quit(bundleID:force:)` says what that costs the fakes.
 
-The picker's ticks are bundle paths, not bundle ids: two installed copies of one app (a Setapp copy beside a direct download) are two rows and ticking one reviews and removes only that copy. A twice-installed id's id-derived leftovers are already refused as contested (`LeftoverOwnership.idIsContested`), so removing one copy takes its bundle and any ticked name guesses.
+The picker's ticks are bundle paths, not bundle ids: two installed copies of one app are two rows and ticking one reviews and removes only that copy. A twice-installed id's id-derived leftovers are already refused as contested (`LeftoverOwnership.idIsContested`), so removing one copy takes its bundle and any ticked name guesses.
 
 ## How the Uninstaller's model reaches its engine
 
@@ -43,14 +43,12 @@ reached around: `trashPaths` asks who is up, quits, asks again, partitions throu
 
 The one thing the engine says unasked, "look at the Trash again", is not a call of
 the model's. It goes out when a path that could be an app reaches the Trash and when
-the person switches the offer on. The engine is built with a `trashChanged` closure; the descriptor makes it
-yield into a one-slot `AsyncStream` that the model reads in `listenForTrash`, once for
+the person switches the offer on, through the engine's `trashChanged` closure into a one-slot `AsyncStream` that the model reads in `listenForTrash`, once for
 the life of the module. With the Trash offer open the arrival goes to the offer, which
 takes the new app into the list it shows; otherwise it goes to the host's handler, which
 sweeps and opens the window only if the sweep finds something. The offer registers on the model (`openOffer`) before its first read,
-so an arrival between the read and the registration is not lost.
-`AStoppedUninstallerModelReachesNoWorkTests.testAnArrivalWithTheOfferOpenGoesToTheOffer`
-holds the routing.
+so an arrival between the read and the registration is not lost
+(`AStoppedUninstallerModelReachesNoWorkTests.testAnArrivalWithTheOfferOpenGoesToTheOffer`).
 
 The host reaches the trash window through the live module's model with one `as?` in
 `AppDelegate`; a model that is not an `UninstallerViewModel` is logged and there is no
@@ -59,9 +57,7 @@ nothing. On the person's switch and on quit the host calls the descriptor's `sto
 the model then reaches no work, shows no list or review still in flight, and lets go of the
 arrival subscription and the open offer; saving a chosen sort order is not refused.
 
-The model keeps no state for a reply that never arrives, and the Apps tab has two empty
-states, no apps found and a search that hides all of them: before the first answer the
-page draws a spinner and the footer says "Counting apps…" (`AppsEmpty.status(answered:loading:apps:)`).
+The model keeps no state for a reply that never arrives; before the first answer the Apps tab draws a spinner and the footer says "Counting apps…" (`AppsEmpty.status(answered:loading:apps:)`).
 
 Words: `Sources/Modules/Uninstaller/UI/Localizable.xcstrings`; shared words through `HelmWord`, and the removal's sentence through `HelmBasket` in `Sources/HelmUI/BasketStrings.swift`.
 
@@ -71,13 +67,13 @@ The engine stores three keys of its own in its `NamespacedStore`, under the modu
 
 The gate order of a removal is fixed: `trashPaths` asks who is up (`UninstallPlan.verdict(running:mayQuit:)`), quits, asks again, partitions through `RemovableScope.partition`, and only then hands each path to `HelmTrash.remove`. The Leftovers tab's state lives in `OrphansModel` (the scan's groups, the selection, the failures and the banner), which `UninstallerViewModel` owns, so the scan and the ticks outlive a sidebar click and only `stop()` (the module switched off) clears them, and a scan still in flight at that moment does not refill them (a generation counter bumped by `clear()`), `TheLeftoversScanOutlivesTheSidebarTests`; it reaches the engine through the view model's `scanOrphans` and `trashPaths`; the unattended scan is `backgroundScan()`, which asks the `FullDiskAccessPort` first and answers nil, with one log line when the refusal begins and no path, unless the grant was confirmed (a probe that could not answer is not a grant): no unattended leftovers notification without Full Disk Access (`UninstallerBackgroundScanHonestyTests`).
 
-The Apps tab's failure list is today's `failureReport` (`UninstallerSettingsPage.swift`); changing it is owner decision 22, in the post-programme queue.
+The Apps tab's failure list is `failureReport` (`UninstallerSettingsPage.swift`); changing it is owner decision 22, in the post-programme queue.
 
 ## The door for another module's removal of one app
 
 Launchpad's edit mode removes one app through the Uninstaller and never reaches `HelmTrash` itself. The vocabulary is `Sources/HelmRuntime/AppRemoval.swift` (`AppRemovalCandidate`, `AppRemovalVerdict`, `AppRemovalAsk`, `AppRemovalPreview`, `AppRemovalReport`, and `AppRemovalService`, which carries no path back out). `ModuleDescriptor.appRemoval(_:)` answers nil by default; `UninstallerDescriptor` answers its model unless the model is stopped; `ModuleHost.appRemoval` reads the live Uninstaller by `UninstallerDescriptor.id`, and `ModuleRegistry.all` hands `LaunchpadDescriptor` the closure `{ ModuleHost.shared.appRemoval }`, which the Launchpad model (`model.removal`) calls at each use, so a module switched off between two uses is no door.
 
-**The gate is in the engine, and asked again where it acts.** `AppRemovability.verdict` (`Sources/Modules/Uninstaller/Engine/Logic/AppRemovability.swift`) refuses in this order: no bundle id (`notOffered`); Helm itself (`notOffered`, no case of its own: the id the running app carries, an id under it with a dot such as Helm Dev or the Launchpad helper, or the running app's own bundle path, all handed to the engine's init as `ownApp` because the engine imports no app code); a `com.apple.` id (`system`); a path that is not a plainly spelled `.app` (a `..` or a trailing slash; `notOffered`); a parent folder that, resolved, is not exactly one of the four the lister reads (`/Applications`, `~/Applications`, and the two `Setapp` folders; `notOffered`, which takes a nested vendor folder, `/Applications/Utilities` and `/System/Applications`); an entry that is not there (`gone`); a leaf that leads elsewhere (`WorkspaceAppLister.leadsElsewhere`, the same question the list asks; `notOffered`); a path `RemovableScope` does not allow (`notOffered`). `UninstallerEngine.removalVerdict` then re-reads the bundle's own `Info.plist` id and refuses a bundle that says another one. `removalPreview` and `removeApp` run that verdict first, before anything is scanned or quit, and `removeApp` runs it once more after a quit and before the move (`trashPaths`'s `stillAllowed`): a bundle swapped, linked or renamed during the quit wait moves nothing. `SystemApp.isSystem` was the page's alone: the engine's `trashPaths` would take a `com.apple.` app in `/Applications` if a batch named it, and it still does (defect log, Uninstaller).
+**The gate is in the engine, and asked again where it acts.** `AppRemovability.verdict` (`Sources/Modules/Uninstaller/Engine/Logic/AppRemovability.swift`, whose doc comment holds the order of its refusals) refuses Helm's own family (the id, an id under it, or the bundle path, handed to the engine's init as `ownApp` because the engine imports no app code), a `com.apple.` id, a path that is not a plainly spelled `.app`, a parent folder that is not one of the four the lister reads, a missing entry, a leaf that leads elsewhere and a path `RemovableScope` does not allow. `UninstallerEngine.removalVerdict` then re-reads the bundle's own `Info.plist` id and refuses a bundle that says another one. `removalPreview` and `removeApp` run that verdict first, before anything is scanned or quit, and `removeApp` runs it once more after a quit and before the move (`trashPaths`'s `stillAllowed`): a bundle swapped, linked or renamed during the quit wait moves nothing. `SystemApp.isSystem` is asked by the page and the lister, not by the engine's `trashPaths`, which would take a `com.apple.` app in `/Applications` if a batch named it (defect log, Uninstaller).
 
 `removeApp` moves the bundle alone and first, through `trashPaths`, so the question «is it up» is asked at the act and again after the quit loop, and `HelmTrash` does the moving; only if the bundle moved do the leftovers follow, in a second batch. They are the ones the preview counted (`UninstallPlan.ownLeftovers`: found by bundle id, never by name) and the fresh scan still finds: nothing that appeared after the card, and none at all when no preview came first. A bundle macOS refuses therefore takes no data with it. `stillRunning` is the answer to an app that is up with no quit agreed or still up after the quit. The report says `moved`, `movedWithFailures` (the bundle moved, something of its own did not), or `refused` (the bundle did not move: the verdict, or macOS; `failed` holds the reasons), so every refused path is in the removed-or-failed list. The preview waits at most `appSizeDeadline` for the bundle's size and answers `nil` after it.
 
@@ -92,9 +88,8 @@ Kept tests, one per guarantee:
 | a name is a guess, an id is not | `ANameIsAGuessNotAnOwnershipQuestionTests` |
 | the app is asked again at removal | `TheAppIsAskedAgainAtRemovalTests`, `TheRunningQuestionIsAskedAtRemovalTests` |
 | the door's gate is the engine's, and refuses before anything is quit or moved | `AnAppRemovedFromLaunchpadPassesTheUninstallersGateInTheEngineTests` |
-| the door asks again after the quit, and holds | `TheAppIsAskedAgainAtLaunchpadRemovalTests` |
+| the door asks again after the quit, and holds; it never removes Helm's own family | `TheAppIsAskedAgainAtLaunchpadRemovalTests`, `TheDoorNeverRemovesHelmAndAsksAgainAfterAQuitTests` |
 | the door moves only what the id owns, and lists every refusal | `ALaunchpadRemovalMovesOnlyWhatTheIdOwnsAndListsEveryRefusalTests` |
-| the door never removes Helm's own family, and asks again after a quit | `TheDoorNeverRemovesHelmAndAsksAgainAfterAQuitTests` |
 | the door takes one removal at a time, with the page | `ADoorRemovalMeetsTheRestOfThePageTests`, `TheDoorTakesOneRemovalAtATimeTests`, `OneRemovalAtATimeEverywhereTests` |
 | the door's log does not name the app or its id | `TheLogDoesNotNameTheAppAtLaunchpadRemovalTests` |
 | the quit is waited for, and its deadline ends the wait | `TheQuitIsWaitedForTests` |
@@ -116,19 +111,18 @@ The page id is the module id, `uninstaller`, and a state is shot with its file `
       [--arg module.app.interfaceLanguage <ru|de>] \
       --name <state>-<light|dark>[-<ru|de>] --out <dir>
 
-Nothing is removed or quit to reach a state: the presses only tick, open the review and scan. `confirm`, `removing`, `removal-report` and the failure list are not shot. The removal report on the review is held by `TheReviewIsNotTheLastWordTests`, its verdict by `RemovalOutcomeTests` (optional); the Trash window's busy flag by `TheTrashOfferSendsOneBatchTests`, its refusal at the close by `ARefusalIsNotADeclineAtTheCloseTests`; a second press on the Leftovers tab by `TheOrphansTabRefusesASecondPressTests`, which drives `OrphansModel` against a work that does not answer until released. The confirmation, the page's "Removing…" and the failure list have no guard.
+Nothing is removed or quit to reach a state: the presses only tick, open the review and scan. `confirm`, `removing`, `removal-report` and the failure list are not shot. The removal report on the review is held by `TheReviewIsNotTheLastWordTests`, its verdict by `RemovalOutcomeTests` (optional); the Trash window's busy flag by `TheTrashOfferSendsOneBatchTests`, its refusal at the close by `ARefusalIsNotADeclineAtTheCloseTests`; a second press on the Leftovers tab by `TheOrphansTabRefusesASecondPressTests`. The confirmation, the page's "Removing…" and the failure list have no guard.
 
 | state | the page shows | reached by |
 |---|---|---|
-| `counting` | `HelmBusyState`, and "Counting apps…" in the footer | not caught by `shoot.sh` or a rectangle burst on this Mac: the list arrived before the window was first on screen; no test holds the page's frame |
+| `counting` | `HelmBusyState`, and "Counting apps…" in the footer | not caught by `shoot.sh`: the list arrived before the window was first on screen; no test holds the page's frame |
 | `apps` | the striped list of apps, the footer with the count | the page as it opens |
 | `apps-basket` | the footer with "N selected · size" and Review N | `--press "<app>"` on `apps` |
 | `review` | one group per app, its bundle first with "The app itself — always removed", and Move to Trash | `apps-basket`, then `--press "Review 1"` |
 | `review-running` | the warning "Still running: …" with the force-quit switch over the review | `review` with a running app ticked |
 | `orphans-start` | the invitation to scan, and the switch for the Trash below | `--press "Leftovers" --nth <n>` (the sidebar row shares the name) |
 | `orphans` | the leftovers grouped by bundle id, nothing ticked | `orphans-start`, then `--press "Scan for leftovers"` |
-| `orphans-none` | "No leftovers found." with Scan again | `orphans`, only when this Mac has none |
-| `orphans-basket` | "N selected · size" and Move to Trash enabled | `orphans`, then `--press "Select all"` |
+| `orphans-none`, `orphans-basket` | "No leftovers found." with Scan again; "N selected · size" and Move to Trash enabled | `orphans`, only when this Mac has none; `orphans`, then `--press "Select all"` |
 | `no-disk-access` | the Full Disk Access note over any of the above | Helm Dev without the grant (real use; the crew changes no grant) |
 | `trash-offer` | the Trash window: the standing line, one card per app, Keep these files | only when the real Trash already holds an app with leftovers |
-| `worst` | de, the review of two apps with four leftovers each, on a bench over invented apps: every path on one line in full, sizes up to 1.24 GB, the total and Move to Trash on one row. A long app name, a path too long for its row, the review of many apps, the narrowest pane, fr: not rendered, the bench's twelve apps have short names and its script takes no width, and Helm Dev lists this Mac's apps | a bench of the crew outside the tree, its `review` with its language argument; no such page is shot from Helm Dev |
+| `worst` | de, the review of two apps with four leftovers each, on a bench over invented apps: every path on one line in full, sizes up to 1.24 GB, the total and Move to Trash on one row. A long app name, a path too long for its row, many apps, the narrowest pane, fr: not rendered | a bench of the crew outside the tree; no such page is shot from Helm Dev |

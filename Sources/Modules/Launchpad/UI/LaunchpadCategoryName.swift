@@ -9,7 +9,7 @@ import Module_Launchpad_Engine
 /// Autopilot draw too: `HelmWord`). The first source is the iPhone's own folder-naming table, `FolderNaming.loctable` in
 /// `FrontBoard.framework`, which is what a person sees when the phone names a folder; the second, for the categories that table
 /// lacks (Developer Tools, Graphics & Design, Video, Food & Drink, Magazines & Newspapers, Shopping), is the type descriptions of
-/// `public.app-category.*` in `CoreTypes.bundle`'s `InfoPlist.loctable` (`Architecture/Launchpad.md` § Folder names). Every
+/// `public.app-category.*` in `CoreTypes.bundle`'s `InfoPlist.loctable` (`Architecture/Launchpad.md` § The catalog and the layout). Every
 /// games subtype is Games.
 enum LaunchpadCategoryName {
     /// The category's name, or nil when it is none of the known ones.

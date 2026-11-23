@@ -31,23 +31,19 @@ by the host. It calls `find`, `cancel`, `trash`, `stopRemoval` and `backgroundSc
 through its `DuplicatesWork` port, which the engine conforms to, and each is answered by
 return: a search that was stopped answers nil, a removal that was stopped answers
 `cancelled`. The progress of a search and of a removal goes to a sink the model hands
-over with that call, an `AsyncStream` that keeps the newest tick and that the model
-drains while it awaits the answer, so there is no stream on the engine and two calls in
+over with that call, an `AsyncStream` that keeps the newest tick, so there is no stream on the engine and two calls in
 flight need no name to be told apart. The gates stay in the engine: `trash` partitions
 through `KeptCopies` and `UserFileScope`, re-reads each pair through
 `DuplicateVerification`, and only then hands the path to `HelmTrash.remove`;
 `DuplicatesRemovalGateTests.testAPathTheGateRefusesIsRefusedByTheEngineAndNotAttempted`
-holds that a refused path is reported and never handed to the `trashing:` port, which
-production sets to `HelmTrash.moveToTrash` and no test leaves to a default.
+holds that a refused path is reported and never handed to the `trashing:` port.
 
-The model asks the keychain for the stored keep policy in `appear()`, which the page
-calls from its `.task`, not in `init`: `makeModule` runs when the module starts. On the
-person's switch and on quit the host calls the descriptor's `stop(_:)`, after which the
-model reaches no work, shows no search answer still in flight and asks the keychain
+The model asks the keychain for the stored keep policy in `appear()`, not in `init`:
+`makeModule` runs when the module starts. On the person's switch and on quit the host calls the descriptor's
+`stop(_:)`, after which the model reaches no work, shows no search answer still in flight and asks the keychain
 nothing more except by saving a chosen folder or policy, which `stop` does not refuse;
 a removal already handed to the engine still lands, unless it is still re-reading the
-pairs, which a stop ends with nothing moved. The model keeps no state for a reply that never
-arrives: an answer is always a return.
+pairs, which a stop ends with nothing moved. An answer is always a return, so the model keeps no state for a reply that never arrives.
 
 A background scan and a search the person started share the engine's one finder slot, so
 one begins by cancelling the other. The model keeps the person's side of that: while a
@@ -57,20 +53,17 @@ scan still supersedes it.
 
 While a removal runs, the marks (`toggleBasket`), Keep this copy, Restore the
 recommendation, the policy popup and Choose another folder (`chooseFolder`,
-`use(folder:)`; the latter ends in `search()` and would save a folder under a
-running request) are refused by the model and their controls dim,
+`use(folder:)`) are refused by the model and their controls dim,
 as Disk's `toggleBasket` declines (Architecture/Removal.md § One removal at a time):
-`emptyBasket` captures the plans and the staying copies at the press, so a mark or a
-re-ordering made afterwards would draw «stays» on a copy the engine still sends to the
-Trash. The refusal sits in `apply`, which the stored-policy reading shares, so a late
+`emptyBasket` captures the plans and the staying copies at the press, so a later mark or
+re-ordering would draw «stays» on a copy the engine still sends to the Trash. The refusal sits in `apply`, which the stored-policy reading shares, so a late
 keychain answer cannot re-order the groups either. `basketExtras` and
-`basketAllExtras` stay live: they only add marks outside the batch, and what moved
-afterwards is filtered out of the basket.
+`basketAllExtras` stay live: they only add marks outside the batch.
 
 
 ## Keys, phases, guards and files
 
-The module stores two keys in its namespace, `keepPolicy` and `folder`, both sealed with the one guard over the scan settings (`DuplicatesSettings.guardOfScanSettings`); the seal and its rules are in ARCHITECTURE.md § Sealed settings. `DuplicatesSettings` is the only writer of the sealed pair (`setKeepPolicy` and `setFolder`, both through the private `setSealed`), and the reader the engine uses for both keys and the page uses for the policy (the page reads the remembered `folder` once, directly, at start), so a screen cannot say `by date` while a search runs `by place`. A broken seal on the policy is the default; on the folder it stops the unattended walk. The reader's read of the value-and-MAC pair, its verdict and its adopting write are one act under the same lock a save takes (`saving`, synchronous, never across a suspension), so a save cannot land between a reader's read of the old value and its write of that value's MAC; `DuplicatesSealRaceTests`.
+The module stores two keys in its namespace, `keepPolicy` and `folder`, both sealed with the one guard over the scan settings (`DuplicatesSettings.guardOfScanSettings`); the seal and its rules are in ARCHITECTURE.md § Sealed settings. `DuplicatesSettings` is the only writer of the sealed pair (`setKeepPolicy` and `setFolder`, both through the private `setSealed`), and the reader the engine uses for both keys and the page uses for the policy (the page reads the remembered `folder` once, directly, at start), so a screen cannot say `by date` while a search runs `by place`. A broken seal on the policy is the default; on the folder it stops the unattended walk. The reader's read, verdict and adopting write are one act under the same lock a save takes (`saving`, synchronous, never across a suspension); `DuplicatesSealRaceTests`.
 
 The scan's phases are `duplicates.walk` and `duplicates.hash`, the acting step's is `duplicates.verify`. The walk and the hashing throttle their progress by the one `BulkWalk.progressInterval`, the same interval Disk's partial snapshots use.
 
@@ -102,14 +95,14 @@ The page id is the module id, `duplicates`, and a state is shot with its file `d
       --name <state>-<light|dark>[-<fr|de|ru>] --out <dir>
 
 A scratch tree of planted duplicates is enough for every state that shows a result. Nothing is removed to reach a state:
-`confirm`, `removing` and `removal-report` are not shot; `removing` is held by `AStopDuringARemovalReachesTheEngineTests` and `ATickReachesOnlyItsOwnBarTests` (optional), Stop removal's disappearance for the Trash phase by `AStopIsNotOfferedOnceTheTrashHasTheBatchTests` and the engine's `.moving` tick by `ARemovalCanBeWatchedAndStoppedTests`, the question is held by no test; the copies the press then names as staying, by `ThePageNamesEveryCopyItKeepsTests`, and the figure the outcome banner counts as freed — a clone of the copy that stays is not counted — by `TheBannerCountsWhatTheDiskGivesBackTests` (engine).
+A scratch tree of planted duplicates is enough for every state that shows a result. Nothing is removed to reach a state: `confirm`, `removing` and `removal-report` are not shot. `removing` is held by `AStopDuringARemovalReachesTheEngineTests` and `ATickReachesOnlyItsOwnBarTests` (optional), Stop removal's disappearance for the Trash phase by `AStopIsNotOfferedOnceTheTrashHasTheBatchTests` and the engine's `.moving` tick by `ARemovalCanBeWatchedAndStoppedTests`; the question is held by no test; the copies the press names as staying, by `ThePageNamesEveryCopyItKeepsTests`, and the figure the banner counts as freed (a clone of the copy that stays is not counted) by `TheBannerCountsWhatTheDiskGivesBackTests` (engine).
 
 | state | the page shows | reached by |
 |---|---|---|
 | `start` | «Pick a folder and Helm will read what is in it…» with Choose folder; no toolbar | no folder stored |
 | `start-folder` | the folder in the toolbar, the policy row, «Helm will read what is in this folder…» with Search now | a scratch folder: `--arg module.duplicates.folder "${TMPDIR}helm-dup-scratch"` (`TMPDIR` ends in `/`; `"$TMPDIR/…"` gives `//` in the toolbar path) |
 | `no-disk-access` | the Full Disk Access note over any phase | Helm Dev without the grant (real use; the crew changes no grant) |
-| `searching` | `HelmBusyState` with «Reading files…» during the walk and then «N of M checks done», two checks to a candidate file (the prefix pass, the full pass); Stop scan in the toolbar | `--press "Search now" --nth 2` on `start-folder` (transient: on a 7-file scratch tree it is over before the instrument, which waits 1 s after a press, shoots; not shot there) |
+| `searching` | `HelmBusyState` with «Reading files…» during the walk and then «N of M checks done», two checks to a candidate file (the prefix pass, the full pass); Stop scan in the toolbar | `--press "Search now" --nth 2` on `start-folder` (transient: not shot on a small scratch tree) |
 | `search-stopped` | «Search stopped — the folder was not read to the end.» | Stop scan mid-search |
 | `nothing-found` | «No duplicates here…» and the 1 MB note | a search of a scratch folder with no duplicates |
 | `result` | the 1 MB note, the «Groups: N · …» line, one section per group, its first copy marked as the one that stays | a search of a folder with planted duplicates |

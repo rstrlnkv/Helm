@@ -9,22 +9,14 @@ Its removal path goes through `RemovableScope.partition` inside
 `Sources/Modules/Leftovers/Engine/LeftoversEngine.swift` and then through
 `HelmTrash.remove`; why the gate gets the engine's own `home` is on that `home`.
 
-Turning a login item off is not deleting it, and the switch is aimed at a launchd
-*label*, which is not a file: `Sources/Modules/Leftovers/Engine/Logic/LaunchctlDisabled.swift`
-says why the per-user disabled-label list is the switch, and
-`Sources/Modules/Leftovers/Engine/Logic/LaunchClaims.swift` says how many files
-claim one label.
-
-`LeftoversEngine` keeps its own record of the labels it disabled (`recordKey`, whose
-doc comment says why not the system's list), so switching the module off gives back
-exactly those; the edge that record cannot close is in ARCHITECTURE.md § Giving everything back.
-
-Writability is asked of a directory rather than of each item in it
+Turning a login item off is not deleting it: the switch is aimed at a launchd *label*, not a file, and
+`Sources/Modules/Leftovers/Engine/Logic/LaunchctlDisabled.swift` and `Sources/Modules/Leftovers/Engine/Logic/LaunchClaims.swift` say why that list is the switch and how many files
+claim one label. `LeftoversEngine` keeps its own record of the labels it disabled (`recordKey`, whose doc comment says why not the system's list), so switching the module off gives back
+exactly those; the edge that record cannot close is in ARCHITECTURE.md § Giving everything back. Writability is asked of a directory rather than of each item in it
 (`LeftoversFilePort.isWritableDirectory`).
 
-The question before a deletion names the reason it is asked. `LeftoverActions.askBeforeDeleting` gives the
-reason a row is asked about (`loadedNow`, `cannotBeRead`, `cannotBeChecked`), or nil for a leftover, which is
-moved without a question, and `LfStr.confirmDelete` switches over it with no `default:`. A row Helm could not read is asked about being unreadable, never told it is loaded.
+The question before a deletion names the reason it is asked: `LeftoverActions.askBeforeDeleting` gives it (`loadedNow`, `cannotBeRead`, `cannotBeChecked`), or nil for a leftover, which is
+moved without a question, and `LfStr.confirmDelete` switches over it with no `default:`.
 
 Words: `Sources/Modules/Leftovers/UI/Localizable.xcstrings`; shared words through `HelmWord`.
 
@@ -39,9 +31,9 @@ label stays in the engine: `trash` partitions through `RemovableScope` before
 two agent folders before it reaches the switch, so a caller of the model cannot go
 round them. On the person's switch the host calls the descriptor's `stop(_:)` after
 `willDisable()` has given the switches back, and the model stops sending presses.
-«Reset all settings» runs `willDisable()` on every live module too, and its `stop(_:)` waits for `shutdown()` on the way out of the relaunch. A press in that window, and a press already in flight when `willDisable()` runs, are refused by the engine's latch: `willDisable()` sets `handedBack` under `switchLock` before it reads the record, and every press checks it under the same lock, so no switch lands and no record is written after the give-back. The same lock makes two presses one at a time, so neither loses the other's label.
+«Reset all settings» runs `willDisable()` on every live module too, and its `stop(_:)` waits for `shutdown()` on the way out of the relaunch. A press in that window, or already in flight when `willDisable()` runs, is refused by the engine's latch: `willDisable()` sets `handedBack` under `switchLock` before it reads the record, and every press checks it under the same lock, so no switch lands and no record is written after the give-back, and two presses go one at a time without losing a label.
 
-The port answers with a `SwitchAnswer`, read from launchd: a label is left out of the record only on `.refused`, and a label whose enable did not answer `.accepted` stays in it, so a timed-out call neither records a switch launchd refused nor forgets one it may have applied. Each `launchctl` call runs under a ten-second deadline (`ActiveExtensions.launchctlDeadline`), which is what bounds the main thread when `willDisable()` runs there.
+The port answers with a `SwitchAnswer`, read from launchd: a label is left out of the record only on `.refused`, so a timed-out call neither records a switch launchd refused nor forgets one it may have applied. Each `launchctl` call runs under a ten-second deadline (`ActiveExtensions.launchctlDeadline`), which is what bounds the main thread when `willDisable()` runs there.
 
 ## Reads, predicates, guards and files
 
@@ -49,7 +41,7 @@ The engine asks whether a path is there through the port's `exists`, which is `D
 
 `LeftoverActions.isApplesOrProtected` is the one Apple-or-protected predicate, and both `available(for:)` and `whyDeleteIsWithheld(from:)` stand on it, so the page cannot offer what the reason says is withheld.
 
-`StaleItemRules.protectedPrefixes` is a second protected-prefix list, kept on purpose beside `UserFileScope.protectedPrefixes`: the first judges what the scan offers, the second is the gate a removal of the user's files passes (Leftovers' own removal passes `RemovableScope.partition`, `LeftoversEngine.trash`), and each stays authoritative for its own question (Architecture/WhatIsDeliberatelyNotHere.md, "Not one list of protected prefixes").
+`StaleItemRules.protectedPrefixes` is a second protected-prefix list, kept on purpose beside `UserFileScope.protectedPrefixes`: the first judges what the scan offers, the second is the gate a removal of the user's files passes (Leftovers' own removal passes `RemovableScope.partition`, `LeftoversEngine.trash`), and each stays authoritative for its own question (Architecture/Targets.md § What is deliberately not here, "Not one list of protected prefixes").
 
 Kept tests, one per guarantee:
 
@@ -89,11 +81,10 @@ Nothing on the Mac is switched or removed to reach a state; a state that needs a
 | `scanning` | the invitation's Scan with a spinner, dimmed | a press on Scan (transient) |
 | `leftovers` | «Leftovers» tab, Found caption, the review line, rows grouped by kind, selection line, action bar | a scan on a Mac with leftovers |
 | `all` | «All» tab: in-use, system, unreadable and not-checked badges, Turn off/on, «Open Extensions…» on extension rows | the «All» tab |
-| `nothing-found` | check mark, «No leftovers found.», Scan only in the header | a scan on a Mac with none (real use) |
-| `hidden-by-filter` | filter mark, «Everything found is hidden by the filter.» | the kind menu with every kind off |
+| `nothing-found`, `hidden-by-filter` | check mark, «No leftovers found.», Scan only in the header; filter mark, «Everything found is hidden by the filter.» | a scan on a Mac with none (real use); the kind menu with every kind off |
 | `not-everything-checked` | question mark, «Helm could not check N items.», Scan again | a scan that could not judge some rows (real use) |
 | `no-disk-access` | the Full Disk Access note over the content | Helm Dev without Full Disk Access (real use) |
-| `confirm-row`, `confirm-batch`, `removal-report`, `busy` | the question dialogs, the outcome row, controls dimmed | a removal: not shot; `busy` and the report held by `OneRemovalAtATimeTests`, the bar's figures by `LeftoversPageContractTests`; the dialogs by no test |
+| `confirm-row`, `confirm-batch`, `removal-report`, `busy` | the question dialogs, the outcome row, controls dimmed | a removal: not shot; `busy` and the report held by `OneRemovalAtATimeTests`, the bar's figures by `LeftoversPageContractTests` |
 | `worst` | ru and de at the narrowest pane: captions give way through `ViewThatFits`, long paths cut in the middle | `--arg module.app.interfaceLanguage ru` or `de` on `leftovers` and `all` |
 
 The panel row: `--panel` alone shows the «Utilities» list collapsed; expanding it needs a press inside the open panel (`utilitiesExpanded` is `@State`, `Sources/HelmApp/HelmPanel.swift`) that `Scripts/shoot.sh` does not have.

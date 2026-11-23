@@ -31,7 +31,7 @@ import XCTest
 /// `Foo(A|B)Tests` has none.
 final class AnEmptyFilterAlternativeIsRefusedBeforeSwiftRunsTests: XCTestCase {
 
-    private static let a = "TheMapNamesRealDirectoriesTests"
+    private static let a = "EveryPointerArrivesTests"
     private static let b = "AStartedToolCannotKillTheAppTests"
 
     private struct Outcome {

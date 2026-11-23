@@ -26,10 +26,7 @@ list of path and size, the shape unlike scanners can all speak, and nil is not a
 report. `ScanJournal` keeps the numbers for the last scans per module and the item lists
 for the newest two, stores no localized text, and redirects itself out of the real
 Application Support under test through `TestScratch`, which sweeps the abandoned siblings of
-its prefix. The risk is in the judgement rather than the removal: `TestScratch.abandoned`
-is pure and tested (`ScanJournal.abandonedTestJournals` forwards to it with the journal's
-prefix), liveness is asked of the kernel, and the sanity check on the number lives inside
-the decision rather than beside the kill.
+its prefix; `TestScratch.abandoned` is pure and its doc comment holds the judgement (`ScanJournal.abandonedTestJournals` forwards to it with the journal's prefix).
 
 `ScanComparison` is the arithmetic on those two lists and carries whether there was a
 previous one at all; `ScanNews` turns that into something worth saying, measured on
