@@ -62,7 +62,7 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
         var body: some View {
             Text("the list")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .helmWindowToolbar(HelmPageToolbarContent(search: HelmToolbarSearch(
+                .helmHeaderContent(HelmHeaderContent(search: HelmHeaderQuery(
                     prompt: "Search packages",
                     text: Binding(get: { page.text }, set: { page.text = $0 }),
                     onSubmit: { page.submits += 1 })))

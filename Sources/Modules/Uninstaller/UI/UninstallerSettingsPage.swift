@@ -25,7 +25,7 @@ struct UninstallerSettingsPage: View {
     @State private var search = ""
 
     /// Installed apps, or leftovers from apps that are already gone — a
-    /// string-backed id rather than an index, the way `HelmToolbarTab.id`
+    /// string-backed id rather than an index, the way `HelmHeaderTab.id`
     /// wants it: an index would silently mis-read if the two tabs ever
     /// reordered.
     private enum Tab: String { case apps, orphans }
@@ -74,7 +74,7 @@ struct UninstallerSettingsPage: View {
     }
 
     /// **The page's switcher and Refresh, in the header row of the window's card**, through the contract every
-    /// module page shares (`HelmWindowToolbar.swift` in `HelmUI`).
+    /// module page shares (`HelmHeaderContent.swift` in `HelmUI`).
     ///
     /// The switcher carries no width of its own — it sizes itself from what it
     /// shows — and Refresh is only on the Apps tab: Orphans has its own scan
@@ -84,13 +84,13 @@ struct UninstallerSettingsPage: View {
     /// **Dims rather than disables per tab.** `tabsEnabled: step != .review`
     /// dims the whole tab strip while a
     /// removal is being reviewed, when switching tabs would abandon it —
-    /// per-tab disabling was never asked for, and `HelmPageToolbarContent`
+    /// per-tab disabling was never asked for, and `HelmHeaderContent`
     /// has no way to disable one tab and not the other.
-    private var toolbarContent: HelmPageToolbarContent {
-        HelmPageToolbarContent(
+    private var headerContent: HelmHeaderContent {
+        HelmHeaderContent(
             tabs: [
-                HelmToolbarTab(id: Tab.apps.rawValue, title: HelmWord.apps, symbol: "square.grid.2x2"),
-                HelmToolbarTab(id: Tab.orphans.rawValue, title: HelmWord.leftovers, symbol: "doc.badge.ellipsis"),
+                HelmHeaderTab(id: Tab.apps.rawValue, title: HelmWord.apps, symbol: "square.grid.2x2"),
+                HelmHeaderTab(id: Tab.orphans.rawValue, title: HelmWord.leftovers, symbol: "doc.badge.ellipsis"),
             ],
             selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }),
             tabsEnabled: step != .review,
@@ -98,30 +98,30 @@ struct UninstallerSettingsPage: View {
                 // Nothing to order on the review or the failure report, and
                 // nothing to order on the Leftovers tab. The choice is the
                 // engine's to remember; a press answers at once.
-                HelmToolbarAction(id: "sort", title: UnStr.sortBy, symbol: "arrow.up.arrow.down",
+                HelmHeaderAction(id: "sort", title: UnStr.sortBy, symbol: "arrow.up.arrow.down",
                                   isEnabled: step == .pick && failures.isEmpty,
                                   isVisible: tab == .apps,
                                   menu: AppSortOrder.allCases.map { order in
-                    HelmToolbarMenuItem(id: order.rawValue, title: UnStr.sortName(order),
+                    HelmHeaderMenuItem(id: order.rawValue, title: UnStr.sortName(order),
                                         isOn: uvm.effectiveSortOrder == order,
                                         isEnabled: order != .dateLastOpened || uvm.dateOrderAvailable) {
                         Task { await uvm.setSortOrder(order) }
                     }
                 }),
-                HelmToolbarAction(id: "refresh", title: HelmWord.refreshList, symbol: "arrow.clockwise",
+                HelmHeaderAction(id: "refresh", title: HelmWord.refreshList, symbol: "arrow.clockwise",
                                   isEnabled: !loading, isVisible: tab == .apps, isBusy: loading) {
                     Task { await refreshApps() }
                 },
             ],
             // No `onSubmit`: the term filters the Apps list live, on every keystroke.
-            search: HelmToolbarSearch(prompt: HelmControlName.searchApps, text: $search))
+            search: HelmHeaderQuery(prompt: HelmControlName.searchApps, text: $search))
     }
 
     private var pageBody: some View {
         // One token, `HelmMotion.interface`, on the step: the list and the review are the one change that moves.
         VStack(spacing: 0) {
             // The switcher, Refresh and the search control are all the
-            // window's own toolbar's (`toolbarContent`, `.helmWindowToolbar`
+            // window's own toolbar's (`headerContent`, `.helmHeaderContent`
             // below) — nothing is drawn in the page for any of them.
             //
             // Page level: the user used to tick apps, sit through a scan and
@@ -149,7 +149,7 @@ struct UninstallerSettingsPage: View {
         // only under `tab == .apps && step == .pick`.** Dropping the field shifted every other item sharing the
         // bar, Refresh included. The header row keeps the declared width of every action (`HelmHeaderActions`),
         // and `filtered` still only narrows the Apps tab's list at `step == .pick`.
-        .helmWindowToolbar(toolbarContent)
+        .helmHeaderContent(headerContent)
         .animation(HelmMotion.interface, value: step)
     }
 

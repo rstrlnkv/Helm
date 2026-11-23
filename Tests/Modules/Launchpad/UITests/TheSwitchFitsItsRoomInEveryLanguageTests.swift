@@ -9,8 +9,8 @@ import XCTest
 @MainActor final class TheSwitchFitsItsRoomInEveryLanguageTests: XCTestCase {
     func testTheStripAndItsGapFitTheRoomInEveryLanguage() {
         AppLanguage.each { language in
-            let tabs = [HelmToolbarTab(id: "apps", title: HelmWord.apps, symbol: "square.grid.2x2"),
-                        HelmToolbarTab(id: "categories", title: LpStr.categories, symbol: "rectangle.3.group")]
+            let tabs = [HelmHeaderTab(id: "apps", title: HelmWord.apps, symbol: "square.grid.2x2"),
+                        HelmHeaderTab(id: "categories", title: LpStr.categories, symbol: "rectangle.3.group")]
             let strip = HelmHeaderTabs(tabs: tabs, selection: .constant("apps"), enabled: true)
             let width = NSHostingView(rootView: strip).fittingSize.width
             XCTAssertGreaterThan(width, 60, "\(language): the strip was measured")

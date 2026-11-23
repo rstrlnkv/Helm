@@ -101,7 +101,7 @@ struct HomebrewPackageList: View {
             .helmPageStrip()
             Divider()
             // No bar of its own: «Upgrade all» is a declared action of the page's header
-            // row, beside Refresh, on `HomebrewManager`'s `.helmWindowToolbar`, visible on
+            // row, beside Refresh, on `HomebrewManager`'s `.helmHeaderContent`, visible on
             // this segment only.
             listOrEmpty(hb.outdated, shown: hb.shownOutdated, reading: hb.outdatedReading,
                         nothing: HbStr.upToDate, unanswerable: HbStr.couldNotCheckForUpdates,

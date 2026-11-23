@@ -67,7 +67,7 @@ final class TheHeaderBarMenuTests: XCTestCase {
         choose(item(AppStr.alwaysCollapseSearch))
         XCTAssertTrue(AppSettings.alwaysCollapseSearch(in: app))
         XCTAssertEqual(AppSettings.pageBarStyle(in: app), .windowTitle)
-        XCTAssertEqual(AppSettings.toolbarSwitcherStyle(in: app), .icons)
+        XCTAssertEqual(AppSettings.tabLabels(in: app), .icons)
         XCTAssertEqual(AppSettings.barAppearance(in: app), .liquidGlass)
         XCTAssertTrue(ticked(AppStr.pageBarWithoutIcon))
         XCTAssertFalse(ticked(AppStr.pageBarWithIcon))
@@ -92,16 +92,16 @@ final class TheHeaderBarMenuTests: XCTestCase {
     /// The menu's has-search fact is the declaration too.
     func testTheHasSearchFactIsTheDeclaredContent() {
         let model = SettingsModel(host: .shared)
-        func hosted(_ content: HelmPageToolbarContent?) -> Bool {
-            let view = Color.clear.helmWindowToolbar(content).mirrorsHeaderFacts(into: model)
+        func hosted(_ content: HelmHeaderContent?) -> Bool {
+            let view = Color.clear.helmHeaderContent(content).mirrorsHeaderFacts(into: model)
             let host = NSHostingView(rootView: view.frame(width: 200, height: 100))
             host.frame = NSRect(x: 0, y: 0, width: 200, height: 100)
             host.layoutSubtreeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
             return model.pageHasSearch
         }
-        XCTAssertTrue(hosted(HelmPageToolbarContent(search: HelmToolbarSearch(prompt: "p", text: .constant("")))))
-        XCTAssertFalse(hosted(HelmPageToolbarContent()))
+        XCTAssertTrue(hosted(HelmHeaderContent(search: HelmHeaderQuery(prompt: "p", text: .constant("")))))
+        XCTAssertFalse(hosted(HelmHeaderContent()))
         XCTAssertFalse(hosted(nil))
     }
 
@@ -110,17 +110,17 @@ final class TheHeaderBarMenuTests: XCTestCase {
     func testTheHasTabsFactIsTheDeclaredContentNotTheSelection() {
         let model = SettingsModel(host: .shared)
         model.selection = .module("homebrew")
-        let tab = HelmToolbarTab(id: "a", title: "A", symbol: "tray")
-        func hosted(_ content: HelmPageToolbarContent?) -> Bool {
-            let view = Color.clear.helmWindowToolbar(content).mirrorsHeaderFacts(into: model)
+        let tab = HelmHeaderTab(id: "a", title: "A", symbol: "tray")
+        func hosted(_ content: HelmHeaderContent?) -> Bool {
+            let view = Color.clear.helmHeaderContent(content).mirrorsHeaderFacts(into: model)
             let host = NSHostingView(rootView: view.frame(width: 200, height: 100))
             host.frame = NSRect(x: 0, y: 0, width: 200, height: 100)
             host.layoutSubtreeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
             return model.pageHasTabs
         }
-        XCTAssertTrue(hosted(HelmPageToolbarContent(tabs: [tab], selectedTab: .constant("a"))))
-        XCTAssertFalse(hosted(HelmPageToolbarContent(tabs: [])), "Leftovers with an empty list declares none")
+        XCTAssertTrue(hosted(HelmHeaderContent(tabs: [tab], selectedTab: .constant("a"))))
+        XCTAssertFalse(hosted(HelmHeaderContent(tabs: [])), "Leftovers with an empty list declares none")
         XCTAssertFalse(hosted(nil))
     }
 }

@@ -11,8 +11,8 @@ import XCTest
 @MainActor
 final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
 
-    private func tabs(_ ids: [String], attention: String? = nil) -> [HelmToolbarTab] {
-        ids.map { HelmToolbarTab(id: $0, title: "Tab " + $0, symbol: "circle", needsAttention: $0 == attention,
+    private func tabs(_ ids: [String], attention: String? = nil) -> [HelmHeaderTab] {
+        ids.map { HelmHeaderTab(id: $0, title: "Tab " + $0, symbol: "circle", needsAttention: $0 == attention,
                                  attentionNote: $0 == attention ? "Look" : nil) }
     }
 
@@ -113,7 +113,7 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
     /// the plain sum: it is measured on a shot, recorded in `ThePageHeader.md`, not held here.)
     func testTheItemIsTheSegmentsAndTheTracksInsetEitherSideInEveryStyle() {
         XCTAssertEqual(HelmTabsMetrics.trackInset, 9)
-        for style in [ToolbarSwitcherStyle.text, .icons, .iconsAndText] {
+        for style in [HeaderTabLabels.text, .icons, .iconsAndText] {
             let toolbar = SettingsToolbar()
             toolbar.attach(to: window()) { .liquidGlass }
             let declaration = HelmTabsDeclaration(tabs: tabs(["a", "b", "c"], attention: "c"), selected: "a", enabled: true,
@@ -144,7 +144,7 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
             place: { owner, rect in placed.append((owner, rect)); real.place(owner, rect) },
             release: { real.release($0) })
         let page = Color.clear
-            .helmWindowToolbar(HelmPageToolbarContent(tabs: tabs(["a", "b"]), selectedTab: .constant("a")))
+            .helmHeaderContent(HelmHeaderContent(tabs: tabs(["a", "b"]), selectedTab: .constant("a")))
             .helmCardHeader(symbol: "gearshape", tint: .blue, title: "Page", status: nil)
             .environment(\.helmHeaderInCard, true)
             .environment(\.helmTabsSink, spy)

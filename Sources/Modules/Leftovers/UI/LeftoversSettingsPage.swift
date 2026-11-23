@@ -109,8 +109,8 @@ struct LeftoversSettingsPage: View {
             Button(HelmWord.cancel, role: .cancel) { pendingDeletion = nil }
         }
         // The page's controls, in the header row of the window's card, through the contract every module page
-        // shares (`HelmWindowToolbar.swift` in `HelmUI`) — see `toolbarContent` below for what each carries.
-        .helmWindowToolbar(toolbarContent)
+        // shares (`HelmHeaderContent.swift` in `HelmUI`) — see `headerContent` below for what each carries.
+        .helmHeaderContent(headerContent)
         // **No curve on the page, on the tab or on the count.** «Leftovers» and
         // «All» are one `List` whose rows `visibleItems` changes, and a rescan or
         // a removal changes the same list, so a curve on the whole page (keyed to
@@ -129,7 +129,7 @@ struct LeftoversSettingsPage: View {
 
     /// **What is left of the page's bar once its controls are in the
     /// window's header row: what the scan found.** The filter, the kind menu and
-    /// Scan moved to `toolbarContent`; the captions stay in the page because
+    /// Scan moved to `headerContent`; the captions stay in the page because
     /// they describe the list under them rather than act on it, and a count
     /// is not a control to put glass behind.
     private var toolbar: some View {
@@ -156,26 +156,26 @@ struct LeftoversSettingsPage: View {
     /// old toolbar showed them: the menu over a list, Scan wherever the
     /// page's own invitation is not already offering one
     /// (`invitationCarriesTheScan`).
-    private var toolbarContent: HelmPageToolbarContent {
+    private var headerContent: HelmHeaderContent {
         let hasList = !lvm.items.isEmpty
-        return HelmPageToolbarContent(
-            tabs: hasList ? [HelmToolbarTab(id: "onlyLeftovers", title: HelmWord.leftovers,
+        return HelmHeaderContent(
+            tabs: hasList ? [HelmHeaderTab(id: "onlyLeftovers", title: HelmWord.leftovers,
                                             symbol: "doc.badge.ellipsis"),
-                            HelmToolbarTab(id: "all", title: LfStr.filterAll, symbol: "list.bullet")] : [],
+                            HelmHeaderTab(id: "all", title: LfStr.filterAll, symbol: "list.bullet")] : [],
             selectedTab: hasList ? Binding(get: { lvm.showAll ? "all" : "onlyLeftovers" },
                                            set: { lvm.showAll = ($0 == "all") }) : nil,
             actions: [
-                HelmToolbarAction(id: "kinds", title: LfStr.filter,
+                HelmHeaderAction(id: "kinds", title: LfStr.filter,
                                   symbol: "line.3.horizontal.decrease", isVisible: hasList,
                                   menu: StaleKind.allCases.map { kind in
-                    HelmToolbarMenuItem(id: kind.rawValue, title: LfStr.kindName(kind),
+                    HelmHeaderMenuItem(id: kind.rawValue, title: LfStr.kindName(kind),
                                         isOn: !lvm.hiddenKinds.contains(kind)) {
                         if lvm.hiddenKinds.contains(kind) { lvm.hiddenKinds.remove(kind) }
                         else { lvm.hiddenKinds.insert(kind) }
                         lvm.dropHiddenSelections()
                     }
                 }),
-                HelmToolbarAction(id: "scan", title: scanTitle, symbol: "arrow.clockwise",
+                HelmHeaderAction(id: "scan", title: scanTitle, symbol: "arrow.clockwise",
                                   isEnabled: !scanRefused, isVisible: !invitationCarriesTheScan,
                                   isBusy: lvm.scanning) {
                     Task { await lvm.scan() }
@@ -191,7 +191,7 @@ struct LeftoversSettingsPage: View {
     /// reliable.
     private var scanRefused: Bool { lvm.scanning || lvm.busy }
 
-    /// **What the verb says right now** — read by both `toolbarContent` and
+    /// **What the verb says right now** — read by both `headerContent` and
     /// `scanButton`, for the same reason as `scanRefused` above: one
     /// derivation, so the toolbar and the invitation cannot say two
     /// different things about the same scan.
@@ -271,7 +271,7 @@ struct LeftoversSettingsPage: View {
     }
 
     /// **The invitation's own verb, now that Scan has moved into the
-    /// window's header row** (`toolbarContent` above) — drawn only on the
+    /// window's header row** (`headerContent` above) — drawn only on the
     /// empty-state screens `LeftoversEmpty.invites` names, where the
     /// invitation is the call to action and the header row's own Scan is
     /// hidden by `invitationCarriesTheScan`. The header row's own button and

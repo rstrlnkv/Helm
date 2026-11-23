@@ -11,15 +11,15 @@ import SwiftUI
 
 /// What the toolbar needs to draw the page's tabs and to answer a press.
 public struct HelmTabsDeclaration {
-    public let tabs: [HelmToolbarTab]
+    public let tabs: [HelmHeaderTab]
     public let selected: String
     public let enabled: Bool
-    public let style: ToolbarSwitcherStyle
+    public let style: HeaderTabLabels
     public let increasedContrast: Bool
     /// Writes the page's selection with animations off, so the page below is not swapped inside one.
     public let select: (String) -> Void
 
-    public init(tabs: [HelmToolbarTab], selected: String, enabled: Bool, style: ToolbarSwitcherStyle,
+    public init(tabs: [HelmHeaderTab], selected: String, enabled: Bool, style: HeaderTabLabels,
                 increasedContrast: Bool, select: @escaping (String) -> Void) {
         self.tabs = tabs
         self.selected = selected
@@ -79,13 +79,13 @@ public enum HelmTabsMetrics {
     public static let dot = HelmTabNumbers.dot
     public static let dotGap = HelmTabNumbers.dotGap
 
-    public static func word(_ tab: HelmToolbarTab) -> CGFloat {
+    public static func word(_ tab: HelmHeaderTab) -> CGFloat {
         ceil((tab.title as NSString).size(withAttributes: [.font: font]).width)
     }
 
     /// Where a segment's label ends from the segment's centre: the label is centred by the control, so the dot
     /// stands `dotGap` after it. Text: the word; with the glyph: glyph, `glyphGap` and the word.
-    public static func labelHalf(_ tab: HelmToolbarTab, _ style: ToolbarSwitcherStyle) -> CGFloat {
+    public static func labelHalf(_ tab: HelmHeaderTab, _ style: HeaderTabLabels) -> CGFloat {
         style == .iconsAndText ? (glyph + HelmTabNumbers.glyphGap + word(tab)) / 2 : word(tab) / 2
     }
 
@@ -97,13 +97,13 @@ public enum HelmTabsMetrics {
 
     /// The whole strip's width: the segments and the track's inset either side. The one source of the control's,
     /// the toolbar item's and the row's placeholder's width.
-    public static func total(_ tabs: [HelmToolbarTab], _ style: ToolbarSwitcherStyle) -> CGFloat {
+    public static func total(_ tabs: [HelmHeaderTab], _ style: HeaderTabLabels) -> CGFloat {
         widths(tabs, style).reduce(0, +) + 2 * trackInset
     }
 
     /// Every segment's width from its own label, so no word is cut and the dots stand where the segments are;
     /// a segment with a dot beside its label is wider by the dot and its gap.
-    public static func widths(_ tabs: [HelmToolbarTab], _ style: ToolbarSwitcherStyle) -> [CGFloat] {
+    public static func widths(_ tabs: [HelmHeaderTab], _ style: HeaderTabLabels) -> [CGFloat] {
         tabs.map { tab in
             let room = tab.needsAttention ? dot + dotGap : 0
             switch style {
@@ -118,8 +118,8 @@ public enum HelmTabsMetrics {
 /// Hands the page's declaration to the sink, every update; nil when the page declares no tabs. Zero size.
 struct HelmTabsRelay: NSViewRepresentable {
     let target: HelmTabsTarget
-    let content: HelmPageToolbarContent?
-    let style: ToolbarSwitcherStyle
+    let content: HelmHeaderContent?
+    let style: HeaderTabLabels
     let increasedContrast: Bool
 
     func makeNSView(context: Context) -> NSView {
@@ -162,8 +162,8 @@ struct HelmTabsRelay: NSViewRepresentable {
 /// the row's layout; it reports its rectangle in the window to the sink.
 struct HelmTabsSlot: View {
     let target: HelmTabsTarget
-    let tabs: [HelmToolbarTab]
-    let style: ToolbarSwitcherStyle
+    let tabs: [HelmHeaderTab]
+    let style: HeaderTabLabels
 
     var body: some View {
         Color.clear

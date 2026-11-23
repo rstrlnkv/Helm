@@ -13,7 +13,7 @@ import XCTest
 final class TheHeaderChoicesAreSettingsAgainTests: XCTestCase {
 
     func testTheRestoredHeaderKeysAreNoLongerRetired() {
-        for key in ["module.app." + PageBarStyle.storageKey, "module.app." + ToolbarSwitcherStyle.storageKey,
+        for key in ["module.app." + PageBarStyle.storageKey, "module.app." + HeaderTabLabels.storageKey,
                     "module.app.alwaysCollapseSearch"] {
             XCTAssertFalse(ObsoleteDefaults.retired.contains(key), """
                 \(key) is a setting again and is still on the purge list, so the launch \
@@ -29,12 +29,12 @@ final class TheHeaderChoicesAreSettingsAgainTests: XCTestCase {
         AppSettings.migrateAndPurge(in: store)
         let app = AppSettings.store.over(store)
         XCTAssertEqual(AppSettings.pageBarStyle(in: app), .windowTitle)
-        XCTAssertEqual(AppSettings.toolbarSwitcherStyle(in: app), .icons)
+        XCTAssertEqual(AppSettings.tabLabels(in: app), .icons)
         XCTAssertTrue(AppSettings.alwaysCollapseSearch(in: app))
     }
 
     func testTheLongGoneFourthSpellingReadsAsText() {
-        XCTAssertEqual(ToolbarSwitcherStyle(stored: "iconsNamingSelected"), .text)
+        XCTAssertEqual(HeaderTabLabels(stored: "iconsNamingSelected"), .text)
         XCTAssertEqual(PageBarStyle(stored: "nonsense"), .moduleName)
     }
 
@@ -46,11 +46,11 @@ final class TheHeaderChoicesAreSettingsAgainTests: XCTestCase {
                                                            queue: nil) { _ in posted += 1 }
         defer { NotificationCenter.default.removeObserver(token) }
         AppSettings.setPageBarStyle(.moduleName, in: app)
-        AppSettings.setToolbarSwitcherStyle(.text, in: app)
+        AppSettings.setTabLabels(.text, in: app)
         AppSettings.setAlwaysCollapseSearch(false, in: app)
         XCTAssertEqual(posted, 0, "writing the value already read posted a change")
         AppSettings.setPageBarStyle(.windowTitle, in: app)
-        AppSettings.setToolbarSwitcherStyle(.iconsAndText, in: app)
+        AppSettings.setTabLabels(.iconsAndText, in: app)
         AppSettings.setAlwaysCollapseSearch(true, in: app)
         XCTAssertEqual(posted, 3)
         XCTAssertTrue(AppSettings.headerChoices.collapseSearch == AppSettings.alwaysCollapseSearch)

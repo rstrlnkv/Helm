@@ -9,15 +9,15 @@ import HelmAppStrings
 /// they write.
 ///
 /// Each tab is a `SettingsSelection` of its own, and each of the three pages
-/// declares its own tabs and actions (`helmWindowToolbar`): Log declares its
+/// declares its own tabs and actions (`helmHeaderContent`): Log declares its
 /// own, and `SettingsDetail` declares General's and About's; what
 /// they share is this list, so the switcher reads the same on all three.
 enum SettingsTabs {
     /// In the order they are drawn; the ids are the ones `binding` understands.
-    static var all: [HelmToolbarTab] {
-        [HelmToolbarTab(id: "general", title: AppStr.settingsTabGeneral, symbol: "gearshape"),
-         HelmToolbarTab(id: "log", title: AppStr.logPane, symbol: "text.alignleft"),
-         HelmToolbarTab(id: "about", title: AppStr.aboutHelm, symbol: "info.circle")]
+    static var all: [HelmHeaderTab] {
+        [HelmHeaderTab(id: "general", title: AppStr.settingsTabGeneral, symbol: "gearshape"),
+         HelmHeaderTab(id: "log", title: AppStr.logPane, symbol: "text.alignleft"),
+         HelmHeaderTab(id: "about", title: AppStr.aboutHelm, symbol: "info.circle")]
     }
 
     /// The tab a selection stands on: Log and About for themselves, and

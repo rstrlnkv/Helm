@@ -3,8 +3,8 @@ import SwiftUI
 extension View {
     /// **The header row in the card, over this page.** One row for every page of the settings window, drawn
     /// at the root of the detail pane so it keeps its identity across a page switch: the page's name and
-    /// status on the left, on the right what the page declared through `helmWindowToolbar` — tabs, actions,
-    /// search (`HelmPageToolbarKey`). The page scrolls under it, as it does under `helmPageHeader`, and
+    /// status on the left, on the right what the page declared through `helmHeaderContent` — tabs, actions,
+    /// search (`HelmHeaderContentKey`). The page scrolls under it, as it does under `helmPageHeader`, and
     /// the pane reserves the row's height as a top inset.
     ///
     /// The declaration is read with `overlayPreferenceValue`: the value carries closures cut from the page's
@@ -63,7 +63,7 @@ private struct CardHeader: ViewModifier {
             .onPreferenceChange(HelmPageScrolledKey.self) { scrolled = $0 }
             .onPreferenceChange(HelmPageStandsOnStillContentKey.self) { standsOnStillContent = $0 }
             .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: Self.height) }
-            .overlayPreferenceValue(HelmPageToolbarKey.self, alignment: .top) { controls in
+            .overlayPreferenceValue(HelmHeaderContentKey.self, alignment: .top) { controls in
                 HelmPageHeader(symbol: symbol, tint: tint, title: title, bleeds: true,
                                overContent: true, scrolled: scrolled,
                                standsOnStillContent: standsOnStillContent, status: status,
@@ -88,12 +88,12 @@ private struct CardHeader: ViewModifier {
 /// own part (`HeaderRole.tabs`, centred by `HeaderRowLayout`), the actions and the search two runs on the right, which the
 /// layout packs `HelmHeaderActions.gap` apart.
 private struct HelmHeaderControls: View {
-    let content: HelmPageToolbarContent?
+    let content: HelmHeaderContent?
     /// The page's name: the search slot's identity, so what it holds open does not leak to the next page. Never the tabs'.
     let page: String
     /// Set where the tabs are the window's toolbar item: the row keeps a placeholder for them (`HelmTabsSlot`).
     let tabs: HelmTabsTarget?
-    let style: ToolbarSwitcherStyle
+    let style: HeaderTabLabels
 
     var body: some View {
         if let content {

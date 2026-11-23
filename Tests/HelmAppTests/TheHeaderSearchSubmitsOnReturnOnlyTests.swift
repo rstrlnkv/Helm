@@ -24,7 +24,7 @@ final class TheHeaderSearchSubmitsOnReturnOnlyTests: XCTestCase {
         @ObservedObject var page: Page
         var body: some View {
             Text("the list").frame(maxWidth: .infinity, maxHeight: .infinity)
-                .helmWindowToolbar(HelmPageToolbarContent(search: HelmToolbarSearch(
+                .helmHeaderContent(HelmHeaderContent(search: HelmHeaderQuery(
                     prompt: "Search",
                     text: $page.text,
                     onSubmit: { page.submits += 1 })))

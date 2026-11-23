@@ -25,7 +25,7 @@ bundle is arm64 only. Supporting an older system means the ports grow a second p
 is no second machine to prove that path on.
 
 **No page bar of Helm's own.** A bar drawn by the shell (`ShellPageBar`) was replaced by a header row in the
-card (`helmCardHeader`, declared through `Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift`); the bar is the
+card (`helmCardHeader`, declared through `Sources/HelmUI/DesignSystem/HelmHeaderContent.swift`); the bar is the
 card's, and only the page tabs are a system `NSToolbar` item, under Glass (`SettingsToolbar`; the owner chose it on
 2026-11-23), so nobody puts a custom bar back or moves the name, actions or search into the toolbar.
 

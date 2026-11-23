@@ -27,7 +27,7 @@ struct HelmHeaderSearch: View {
         alwaysCollapse && !isOpen && !hasQuery
     }
 
-    let search: HelmToolbarSearch
+    let search: HelmHeaderQuery
     @Environment(\.helmBarAppearance) private var appearance
     @Environment(\.helmHeaderChoices) private var choices
     @State private var isOpen = false

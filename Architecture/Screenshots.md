@@ -133,8 +133,8 @@ shot, or only copied under the clipboard target, as any shot is.
 ## The settings page
 
 The settings page (`Sources/Modules/Screenshots/UI/ScreenshotsSettingsPage.swift`) hands the window's header row three tabs
-through `HelmPageToolbarContent`: Capturing (the shortcuts, what a capture makes, the folder), Editor and System shortcuts.
-The third carries a dot, `HelmToolbarTab.needsAttention`, while a capture box is read as still ticked in macOS
+through `HelmHeaderContent`: Capturing (the shortcuts, what a capture makes, the folder), Editor and System shortcuts.
+The third carries a dot, `HelmHeaderTab.needsAttention`, while a capture box is read as still ticked in macOS
 (`ScreenshotsSettingsPage.holdsSystemKeys`, the other side of `offersToUseSystemKeys`, which offers «Use ⇧⌘3 and ⇧⌘4» once
 both are read as off). The Editor tab holds the default colour, which is `editorColor`, the start of a tool with no colour of its own (a pick on it also removes `editorInk`, which would be read first), and
 «Tools in the palette»: a list of the row's objects, `EditorPalette.rowKinds` (the pens, the eraser, the ruler and the spotlight), each a checkbox. What it writes is

@@ -67,20 +67,20 @@ extension Notification.Name {
         NotificationCenter.default.post(name: .helmHeaderChoicesChanged, object: nil)
     }
 
-    /// How the header row's tabs are labelled (`ToolbarSwitcherStyle`): by text unless another is stored.
+    /// How the header row's tabs are labelled (`HeaderTabLabels`): by text unless another is stored.
     /// Nothing unattended reads it, so it is not sealed; writes equal to the stored value are refused.
-    static var toolbarSwitcherStyle: ToolbarSwitcherStyle {
-        get { toolbarSwitcherStyle(in: store) }
-        set { setToolbarSwitcherStyle(newValue, in: store) }
+    static var tabLabels: HeaderTabLabels {
+        get { tabLabels(in: store) }
+        set { setTabLabels(newValue, in: store) }
     }
 
-    static func toolbarSwitcherStyle(in store: NamespacedStore) -> ToolbarSwitcherStyle {
-        ToolbarSwitcherStyle(stored: store.string(ToolbarSwitcherStyle.storageKey, default: ""))
+    static func tabLabels(in store: NamespacedStore) -> HeaderTabLabels {
+        HeaderTabLabels(stored: store.string(HeaderTabLabels.storageKey, default: ""))
     }
 
-    static func setToolbarSwitcherStyle(_ value: ToolbarSwitcherStyle, in store: NamespacedStore) {
-        guard value != toolbarSwitcherStyle(in: store) else { return }
-        store.set(value.rawValue, for: ToolbarSwitcherStyle.storageKey)
+    static func setTabLabels(_ value: HeaderTabLabels, in store: NamespacedStore) {
+        guard value != tabLabels(in: store) else { return }
+        store.set(value.rawValue, for: HeaderTabLabels.storageKey)
         NotificationCenter.default.post(name: .helmHeaderChoicesChanged, object: nil)
     }
 
@@ -106,7 +106,7 @@ extension Notification.Name {
 
     /// The three choices as the header row reads them.
     static var headerChoices: HelmHeaderChoices {
-        HelmHeaderChoices(pageBar: pageBarStyle, tabLabels: toolbarSwitcherStyle,
+        HelmHeaderChoices(pageBar: pageBarStyle, tabLabels: tabLabels,
                           collapseSearch: alwaysCollapseSearch)
     }
 

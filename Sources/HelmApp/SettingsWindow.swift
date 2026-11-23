@@ -12,7 +12,7 @@ import HelmAppStrings
 ///
 /// **The header row is the card's, and only the page tabs are a system toolbar item, under Glass.** The row is
 /// drawn at the top of the detail pane by `SettingsDetail` (`helmCardHeader`): the page's name and status on the
-/// left, what the page declared through `helmWindowToolbar` on the right. Under `.liquidGlass` the tabs of that
+/// left, what the page declared through `helmHeaderContent` on the right. Under `.liquidGlass` the tabs of that
 /// declaration are shown by the window's `NSToolbar` (`SettingsToolbar`) and the row keeps a placeholder for them;
 /// under `.flat` the window has no toolbar and the row draws the tabs. The title bar is transparent over it and
 /// the pane takes no safe area from it, so the row starts at the card's top edge.
@@ -45,7 +45,7 @@ import HelmAppStrings
     /// there are ten, one 40 pt row fewer; the height was left at 760.
     nonisolated static let defaultSize = NSSize(width: 1211, height: 760)
     /// Below this the Log page's header row, the fullest one, no longer fits the card in German with its tabs
-    /// labelled by glyph and word (`ToolbarSwitcherStyle.iconsAndText`, the widest of the three labellings).
+    /// labelled by glyph and word (`HeaderTabLabels.iconsAndText`, the widest of the three labellings).
     ///
     /// **1207 is that row in German at the default sidebar** (`ShellGeometry.defaultSidebarWidth`, 200, which
     /// nothing in the window changes): «Einstellungen», the tabs «Grundlagen | Protokoll | Über Helm» each with its
@@ -439,7 +439,7 @@ enum SettingsSelection: Hashable {
                 .helmIdlesOffScreen())
         // **The pane takes no safe area from the title bar**: the header row starts at the card's top edge,
         // and the inset above the page is the row's own (`helmCardHeader`). A page says what it wants in
-        // the row through `helmWindowToolbar`, a preference in this same hosting view.
+        // the row through `helmHeaderContent`, a preference in this same hosting view.
         detail.sizingOptions = []
         detail.safeAreaRegions = []
         addChild(sidebar)
@@ -504,7 +504,7 @@ private struct SettingsDetail: View {
 
     @ViewBuilder
     private var content: some View {
-        let tabs = HelmPageToolbarContent(tabs: SettingsTabs.all,
+        let tabs = HelmHeaderContent(tabs: SettingsTabs.all,
                                           selectedTab: SettingsTabs.binding($model.selection))
         // A module that is off reads as General, as it does in the sidebar,
         // whatever the selection still says.
@@ -512,10 +512,10 @@ private struct SettingsDetail: View {
         case .none, .general:
             // General and About put nothing in the row but the tabs.
             MenuBarSettingsView()
-                .helmWindowToolbar(tabs)
+                .helmHeaderContent(tabs)
         case .about:
             AboutHelmView()
-                .helmWindowToolbar(tabs)
+                .helmHeaderContent(tabs)
         case .log:
             LogView(settingsTabs: tabs)
         case .module(let id):

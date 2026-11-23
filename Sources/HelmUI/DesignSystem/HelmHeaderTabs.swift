@@ -15,7 +15,7 @@ public enum HelmTabNumbers {
 }
 
 /// **The page's tabs in the header row: always whole, never folded.** Labelled by their word, a glyph or both
-/// (`ToolbarSwitcherStyle`, `HelmHeaderChoices`).
+/// (`HeaderTabLabels`, `HelmHeaderChoices`).
 ///
 /// Under `.flat` a plate of `HelmSurface.barPlate` holds the tabs and the pick is `HelmSurface.barPick`. Under
 /// `.liquidGlass` the strip is one `GlassEffectContainer`: a glass capsule for the track and, for the pick, a glass
@@ -29,7 +29,7 @@ public enum HelmTabNumbers {
 /// selects (a page switch, an Uninstaller step) moves it without travel. The selection the page owns is written
 /// outside the animation, so the page below is not swapped inside it.
 public struct HelmHeaderTabs: View {
-    let tabs: [HelmToolbarTab]
+    let tabs: [HelmHeaderTab]
     let selection: Binding<String>
     let enabled: Bool
 
@@ -42,7 +42,7 @@ public struct HelmHeaderTabs: View {
     /// change of label keeps the pick where it is and sliding.
     @Environment(\.helmHeaderChoices) private var choices
 
-    public init(tabs: [HelmToolbarTab], selection: Binding<String>, enabled: Bool) {
+    public init(tabs: [HelmHeaderTab], selection: Binding<String>, enabled: Bool) {
         self.tabs = tabs
         self.selection = selection
         self.enabled = enabled
@@ -78,7 +78,7 @@ public struct HelmHeaderTabs: View {
         }
     }
 
-    private func label(_ tab: HelmToolbarTab) -> some View {
+    private func label(_ tab: HelmHeaderTab) -> some View {
         let style = choices.tabLabels
         let ink = tab.id == shown ? Color(nsColor: .labelColor) : Color(nsColor: .secondaryLabelColor)
         return HStack(spacing: HelmTabNumbers.dotGap) {
@@ -121,18 +121,18 @@ public struct HelmHeaderTabs: View {
     /// Never cut: a tab keeps its whole word, and `SettingsWindow.minSize` is measured with it. The selected tab
     /// reads by its ink as well as by its pick, (`.labelColor` over `.secondaryLabelColor`); the Kit's one weight,
     /// Regular, for every state, so a pick does not change a width.
-    private func word(_ tab: HelmToolbarTab, _ ink: Color) -> some View {
+    private func word(_ tab: HelmHeaderTab, _ ink: Color) -> some View {
         Text(tab.title).font(.system(size: HelmTabNumbers.wordSize)).lineLimit(1).fixedSize().foregroundStyle(ink)
     }
 
     @ViewBuilder
-    private func dot(_ tab: HelmToolbarTab) -> some View {
+    private func dot(_ tab: HelmHeaderTab) -> some View {
         if tab.needsAttention {
             Circle().fill(HelmSignal.warning(increased: traits.increasedContrast)).frame(width: HelmTabNumbers.dot, height: HelmTabNumbers.dot).accessibilityHidden(true)
         }
     }
 
-    private func press(_ tab: HelmToolbarTab) {
+    private func press(_ tab: HelmHeaderTab) {
         if HelmMotion.moves(reduceMotion: traits.reducedMotion) {
             withAnimation(HelmMotion.interface) { shown = tab.id }
         } else {

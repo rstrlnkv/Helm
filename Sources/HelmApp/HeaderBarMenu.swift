@@ -63,12 +63,12 @@ enum HeaderBarMenu {
                 tick(title, choice == pageBar) { AppSettings.setPageBarStyle(choice, in: store) }
             }
         if hasTabs {
-            let labels = AppSettings.toolbarSwitcherStyle(in: store)
+            let labels = AppSettings.tabLabels(in: store)
             items.append(.separator())
             items.append(.sectionHeader(title: AppStr.tabLabels))
-            items += [(ToolbarSwitcherStyle.text, AppStr.tabLabelsText), (.icons, AppStr.tabLabelsIcons),
+            items += [(HeaderTabLabels.text, AppStr.tabLabelsText), (.icons, AppStr.tabLabelsIcons),
                       (.iconsAndText, AppStr.tabLabelsIconsAndText)].map { choice, title in
-                tick(title, choice == labels) { AppSettings.setToolbarSwitcherStyle(choice, in: store) }
+                tick(title, choice == labels) { AppSettings.setTabLabels(choice, in: store) }
             }
         }
         let look = AppSettings.barAppearance(in: store)

@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 struct HelmHeaderSearchField: NSViewRepresentable {
-    let search: HelmToolbarSearch
+    let search: HelmHeaderQuery
     @Binding var isOpen: Bool
     @Binding var focusRequests: Int
     let collapses: Bool
@@ -71,7 +71,7 @@ struct HelmHeaderSearchField: NSViewRepresentable {
     }
 
     @MainActor final class Coordinator: NSObject, NSSearchFieldDelegate {
-        var search: HelmToolbarSearch
+        var search: HelmHeaderQuery
         var collapses = false
         var servedFocusRequests = 0
         /// The F key by position (kVK_ANSI_F): ⌘F is where the key is, not what a Cyrillic layout prints on it.
@@ -81,7 +81,7 @@ struct HelmHeaderSearchField: NSViewRepresentable {
         private let monitor = Monitor()
         private weak var field: NSSearchField?
 
-        init(_ search: HelmToolbarSearch, isOpen: Binding<Bool>, focusRequests: Binding<Int>) {
+        init(_ search: HelmHeaderQuery, isOpen: Binding<Bool>, focusRequests: Binding<Int>) {
             self.search = search
             self.isOpen = isOpen
             self.focusRequests = focusRequests
