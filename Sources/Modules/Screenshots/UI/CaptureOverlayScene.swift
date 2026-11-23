@@ -5,7 +5,7 @@ extension CaptureOverlay {
     // MARK: - Reading and drawing
 
     func windowUnder(display: DisplayID, local: CGPoint) -> FrozenWindow? {
-        guard let frame = freeze.frames.first(where: { $0.id == display }) else { return nil }
+        guard let frame = freeze.frame(of: display) else { return nil }
         return WindowPick.window(at: ScreenSpace.global(CGRect(origin: local, size: .zero), in: frame.frame).origin,
                                  in: freeze.windows)
     }
@@ -17,7 +17,7 @@ extension CaptureOverlay {
     /// What an area on `display` stays inside: the display, or the picture the overlay was opened on.
     func displayBounds(_ display: DisplayID) -> CGRect? {
         if let picture, picture.display == display { return picture.rect }
-        return freeze.frames.first { $0.id == display }.map { CGRect(origin: .zero, size: $0.frame.size) }
+        return freeze.frame(of: display).map { CGRect(origin: .zero, size: $0.frame.size) }
     }
 
     /// Where the palette stands on `display`, under the area (under the base area while Crop is on): nil when it is not the edited one, and nil while an
@@ -98,7 +98,7 @@ extension CaptureOverlay {
 
     /// The part of `window` that lies on `display`, in that display's top-left points; nil where it has none.
     func windowPart(_ window: FrozenWindow, on display: DisplayID) -> CGRect? {
-        guard let frame = freeze.frames.first(where: { $0.id == display }) else { return nil }
+        guard let frame = freeze.frame(of: display) else { return nil }
         let part = ScreenSpace.local(window.frame, in: frame.frame)
             .intersection(CGRect(origin: .zero, size: frame.frame.size))
         return !part.isNull && part.width > 0 && part.height > 0 ? part : nil

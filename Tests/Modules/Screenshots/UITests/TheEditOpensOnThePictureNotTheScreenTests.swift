@@ -54,7 +54,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
 
     override func tearDown() {
         AppLanguage.override = nil
-        for controller in controllers { controller.teardown() }
+        for controller in controllers { controller.cancel() }
         controllers = []
         clock.finish()
         super.tearDown()
@@ -89,7 +89,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
     // MARK: Helpers
 
     private func take(_ s: Scene, width: Int = 1200, height: Int = 700) async throws -> WrittenShot {
-        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: width, height: height)))
+        await s.controller.handOff(try ShotToastRig.picture(width: width, height: height))
         let shot = try XCTUnwrap(s.toast.model.editSource?.shot, "nothing to edit after a saved shot")
         let written = try XCTUnwrap(image(shot.url), "the shot's file is no picture")
         let read = rgb(written, 3, 3)
@@ -573,7 +573,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
     /// and no original is moved.
     func testAClipboardOnlyShotEditsAndCopiesAndSavesNoFile() async throws {
         let s = try scene(target: .clipboard)
-        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 400, height: 300)))
+        await s.controller.handOff(try ShotToastRig.picture(width: 400, height: 300))
         let source = try XCTUnwrap(s.toast.model.editSource)
         XCTAssertNil(source.shot, "a shot with no file has no original")
         XCTAssertNotNil(source.held)
@@ -593,7 +593,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
     /// nothing is replaced, since the shot had no file.
     func testAClipboardOnlyShotEditedAfterTheSettingChangedIsSavedAsANewShot() async throws {
         let s = try scene(target: .clipboard)
-        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 400, height: 300)))
+        await s.controller.handOff(try ShotToastRig.picture(width: 400, height: 300))
         let overlay = try await openEditor(s)
         s.store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         await finish(s, overlay)

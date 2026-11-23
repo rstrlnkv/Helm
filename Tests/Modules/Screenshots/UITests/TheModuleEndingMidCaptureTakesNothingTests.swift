@@ -13,7 +13,7 @@ import Module_Screenshots_Engine
 final class TheModuleEndingMidCaptureTakesNothingTests: XCTestCase {
     private var boxes: [PanelRig.Rig] = []
     override func tearDown() {
-        boxes.forEach { $0.controller.teardown() }
+        boxes.forEach { $0.controller.cancel() }
         boxes = []
         super.tearDown()
     }
@@ -41,7 +41,7 @@ final class TheModuleEndingMidCaptureTakesNothingTests: XCTestCase {
     func testTheModuleEndingDuringATimedCountdownTakesNothingAndLeavesNoOverlay() async throws {
         let (box, gate, _) = try await counting()
         XCTAssertNotEqual(box.controller.bar.model.countdownLength, 0, "the ring has no length to clear")
-        box.controller.teardown()
+        box.controller.cancel()
         XCTAssertEqual(box.controller.bar.model.countdownLength, 0, "a cut-short ring left its length for the next shot")
         await gate.open()
         await grace(0.3)
@@ -65,7 +65,7 @@ final class TheModuleEndingMidCaptureTakesNothingTests: XCTestCase {
         box.controller.begin(.panel)
         box.controller.bar.model.choose(.area)
         await gate.reached()
-        box.controller.teardown()
+        box.controller.cancel()
         await gate.open()
         await grace(0.3)
         XCTAssertEqual(box.held.overlays, 0, "an overlay opened for a module that is off")
@@ -76,7 +76,7 @@ final class TheModuleEndingMidCaptureTakesNothingTests: XCTestCase {
         let (box, gate) = try await heldFreeze()
         box.controller.begin(.fullScreen)
         await gate.reached()
-        box.controller.teardown()
+        box.controller.cancel()
         await gate.open()
         await grace(0.3)
         XCTAssertEqual(box.disk.written, 0, "a full-screen shot was delivered after the module went off")
@@ -93,8 +93,8 @@ final class TheModuleEndingMidCaptureTakesNothingTests: XCTestCase {
         let overlay = try XCTUnwrap(box.held.overlay)
         PanelRig.drag(overlay, on: box.display, PanelRig.area)
         box.controller.capture(from: .area)
-        box.controller.teardown()
-        // Before any wait: the flash ends by itself, so only the instant after the teardown tells the module's end from it.
+        box.controller.cancel()
+        // Before any wait: the flash ends by itself, so only the instant after `cancel` tells the module's end from it.
         XCTAssertFalse(overlay.isOpen, "the flash's panels outlived the module")
         XCTAssertFalse(overlay.leaving)
         await grace(0.4)

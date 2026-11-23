@@ -236,7 +236,7 @@ public final class CaptureSession: @unchecked Sendable {
     /// The one place a selection becomes pixels of a frame: the frame, the whole pixels the selection covers on it
     /// and the cut of `shot` there, so the file and a reading of the text are cut from the same picture.
     private func part(of freeze: Freeze, display: DisplayID, local rect: CGRect) -> FramePart? {
-        guard let frame = freeze.frames.first(where: { $0.id == display }),
+        guard let frame = freeze.frame(of: display),
               let pixels = ScreenSpace.pixels(ofLocal: rect, scale: frame.scale,
                                               imageWidth: frame.image.width, imageHeight: frame.image.height),
               let cut = frame.shot.cropping(to: pixels)
@@ -293,7 +293,7 @@ public final class CaptureSession: @unchecked Sendable {
         }
         let displays = freeze.frames.map { (id: $0.id, frame: $0.frame) }
         guard let home = WindowPick.home(of: window.frame, among: displays),
-              let frame = freeze.frames.first(where: { $0.id == home.id }),
+              let frame = freeze.frame(of: home.id),
               let image = crop(freeze, display: frame.id,
                                local: ScreenSpace.local(home.part, in: frame.frame))
         else { return .refused(.windowGone) }

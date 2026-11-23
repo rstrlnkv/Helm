@@ -38,7 +38,7 @@ final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
     }
 
     override func tearDown() {
-        for controller in controllers { controller.teardown() }
+        for controller in controllers { controller.cancel() }
         controllers = []
         clock.finish()
         super.tearDown()

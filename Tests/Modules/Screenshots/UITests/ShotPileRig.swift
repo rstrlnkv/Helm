@@ -136,7 +136,7 @@ final class PileScene {
     }
 
     private func teardown() {
-        controller.teardown()
+        controller.cancel()
         toast.dismiss()
     }
 
@@ -148,7 +148,7 @@ final class PileScene {
     @discardableResult
     func take(width: Int, height: Int = 300) async throws -> ShotToastModel.Shot {
         let before = toast.model.shots.count
-        await controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: width, height: height)))
+        await controller.handOff(try ShotToastRig.picture(width: width, height: height))
         let shot = try XCTUnwrap(toast.model.shots.last, "no shot after a hand-off")
         XCTAssertNotNil(shot.file, "the shot has no file")
         XCTAssertNotNil(shot.reading, "the shot has no reading, so it cannot be edited")

@@ -207,7 +207,7 @@ returns, one task in the model that `stop(_:)` cancels before the engine's `deac
 
 The session and the controller are built at the first press and not in the model's init: the one
 makes the capture ports, the other a panel and a toast, and a press may never come. `stop()` ends the controller
-with `CaptureController.teardown`, so a switch-off in the middle of a capture, or after
+with `CaptureController.cancel`, so a switch-off in the middle of a capture, or after
 one, closes the press, the countdown, the overlay (open or flashing), the bar and the toast
 (`ASwitchedOffCaptureClosesEveryWindowTests`), and a press that comes after it builds nothing
 (`AStoppedScreenshotsModelReachesNoWorkTests`, `TheStoppedModelMeetsTheOrdersNobodyPlannedTests`). The host's order is the model's `stop()`

@@ -10,7 +10,7 @@ import XCTest
 ///
 /// The freeze is the one long wait in a capture — some hundred milliseconds of
 /// ScreenCaptureKit on three displays — and the module's switch can be turned
-/// in it. The model's `stop()` then calls `CaptureController.teardown`, which cancels the press and
+/// in it. The model's `stop()` then calls `CaptureController.cancel`, which cancels the press and
 /// closes an overlay that does not exist yet, and the model lets the controller go;
 /// the task that was waiting on the freeze still holds the controller and
 /// resumes. On the area shortcut what it resumes into is `CaptureOverlay.present` — panels
@@ -70,7 +70,7 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
             let (controller, gate, disk, board) = try rig(target)
             controller.begin(.fullScreen)
             await gate.reached()
-            // What `teardown` does first; the model's `stop()` calls it when the switch is turned.
+            // What the model's `stop()` calls when the switch is turned.
             controller.cancel()
             await gate.open()
             await grace(0.5)

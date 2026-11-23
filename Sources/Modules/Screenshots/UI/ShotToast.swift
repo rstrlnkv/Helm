@@ -17,18 +17,23 @@ import Module_Screenshots_Engine
     /// in the row while it is unfolded. Asked by `advance`: under a hold that only the pointer keeps, to end it when
     /// the pointer is elsewhere; when the time is up, to hold when it is there; and of an unfolded row at every
     /// step, to fold it once the pointer has been away for `ShotShelf.foldDelay`.
-    private var pointerIsOver: () -> Bool = { false }
-    /// What the capsule's Edit, Copy and Copy All ask of whoever owns the session.
-    var onEdit: () -> Void = {}
-    var onCopy: () -> Void = {}
-    var onCopyAll: () -> Void = {}
+    private func pointerIsOver() -> Bool {
+        let mouse = NSEvent.mouseLocation
+        if model.unfolded, let panel, panel.frame.insetBy(dx: Self.shadowRoom, dy: Self.shadowRoom).contains(mouse) { return true }
+        guard let anchor = model.anchor, let window = anchor.window else { return false }
+        return window.convertToScreen(anchor.convert(anchor.bounds, to: nil)).contains(mouse)
+    }
     /// Makes the panel key when the row unfolds, and gives the keys back when it folds.
     ///
     /// Giving back is ordering the panel out and in again: AppKit has no call that only resigns key. That a key
     /// window that leaves the screen hands the keys to the next that can take them, and that the two orders in one
     /// turn of the run loop are not seen as a blink, are not measured.
-    private var takeKey: () -> Void = {}
-    private var yieldKey: () -> Void = {}
+    private func takeKey() { panel?.makeKey() }
+    private func yieldKey() {
+        guard let panel, panel.isKeyWindow else { return }
+        panel.orderOut(nil)
+        panel.orderFrontRegardless()
+    }
 
     /// What keeps the lifetime from running: the pointer over the picture or the pile, the Share sheet open, the
     /// editor open on a shot taken from a group. An unfolded row is not a hold: while it is unfolded the lifetime
@@ -60,25 +65,8 @@ import Module_Screenshots_Engine
     init(tick: @escaping (Duration) async throws -> Void = { try await Task.sleep(for: $0) }, windowed: Bool = true) {
         self.tick = tick
         self.windowed = windowed
-        let model = self.model
-        pointerIsOver = { [weak self, weak model] in
-            let mouse = NSEvent.mouseLocation
-            if model?.unfolded == true, let panel = self?.panel,
-               panel.frame.insetBy(dx: Self.shadowRoom, dy: Self.shadowRoom).contains(mouse) { return true }
-            guard let anchor = model?.anchor, let window = anchor.window else { return false }
-            return window.convertToScreen(anchor.convert(anchor.bounds, to: nil)).contains(mouse)
-        }
-        takeKey = { [weak self] in self?.panel?.makeKey() }
-        yieldKey = { [weak self] in
-            guard let panel = self?.panel, panel.isKeyWindow else { return }
-            panel.orderOut(nil)
-            panel.orderFrontRegardless()
-        }
         model.dismiss = { [weak self] in self?.close() }
         model.hoverChanged = { [weak self] over in self?.setHover(over) }
-        model.edit = { [weak self] in self?.onEdit() }
-        model.copy = { [weak self] in self?.onCopy() }
-        model.copyAll = { [weak self] in self?.onCopyAll() }
         model.unfold = { [weak self] in self?.unfold() }
         model.showOldest = { [weak self] in self?.showOldest() }
         model.scroll = { [weak self] delta, precise in self?.scroll(by: delta, precise: precise) }
@@ -369,13 +357,13 @@ import Module_Screenshots_Engine
         model.shown = true
         dismissal = Task { [weak self] in
             while true {
-                do { try await self?.tick(.milliseconds(Int(Self.step * 1000))) } catch { return }
+                do { try await self?.tick(.seconds(Self.step)) } catch { return }
                 guard !Task.isCancelled, let self else { return }
                 if self.advance() { break }
             }
             self?.model.shown = false
             // After the fade, not at the same moment.
-            try? await self?.tick(.milliseconds(Int(HelmMotion.interfaceDuration * 1000)))
+            try? await self?.tick(.seconds(HelmMotion.interfaceDuration))
             guard !Task.isCancelled else { return }
             self?.clear()
         }

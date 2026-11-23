@@ -51,11 +51,15 @@ struct ScreenshotsSettingsPage: View {
         _thumbnail = State(initialValue: settings.thumbnail)
         _shutterSound = State(initialValue: settings.shutterSound)
         _showCursor = State(initialValue: settings.showCursor)
-        _ink = State(initialValue: AnnotationColor(rawValue: store.string(ScreenshotsSettings.Key.editorColor, default: "")))
+        _ink = State(initialValue: Self.storedInk(store))
         _shownItems = State(initialValue: Set(PaletteItems.visible(store)))
         _areaKey = StateObject(wrappedValue: Self.recorder(.area, store))
         _screenKey = StateObject(wrappedValue: Self.recorder(.fullScreen, store))
         _panelKey = StateObject(wrappedValue: Self.recorder(.panel, store))
+    }
+
+    private static func storedInk(_ store: NamespacedStore) -> AnnotationColor? {
+        AnnotationColor(rawValue: store.string(ScreenshotsSettings.Key.editorColor, default: ""))
     }
 
     private static func recorder(_ hotkey: ScreenshotsHotkey, _ store: NamespacedStore) -> HelmHotkeyRecorder {
@@ -113,7 +117,7 @@ struct ScreenshotsSettingsPage: View {
         if thumbnail != settings.thumbnail { thumbnail = settings.thumbnail }
         if shutterSound != settings.shutterSound { shutterSound = settings.shutterSound }
         if showCursor != settings.showCursor { showCursor = settings.showCursor }
-        let picked = AnnotationColor(rawValue: store.string(ScreenshotsSettings.Key.editorColor, default: ""))
+        let picked = Self.storedInk(store)
         if ink != picked { ink = picked }
         let shown = Set(PaletteItems.visible(store))
         if shownItems != shown { shownItems = shown }
@@ -140,10 +144,7 @@ struct ScreenshotsSettingsPage: View {
     /// none — and about no other.
     private func judge() {
         guard [.desktop, .documents, .other].contains(target) else { judged = nil; return }
-        var settings = ScreenshotsSettings.defaults
-        settings.saveTarget = target
-        settings.otherFolder = otherFolder
-        judged = SaveLocation.folder(for: settings, macOS: nil, locations: .system)?.refused
+        judged = SaveLocation.folder(for: shownSettings, macOS: nil, locations: .system)?.refused
     }
 
     // MARK: - Shortcuts
@@ -207,7 +208,12 @@ struct ScreenshotsSettingsPage: View {
     private var drawnBoxes: [SystemBoxReading] {
         _ = shortcutsRevision
         return Self.drawnBoxes(model.state.boxes,
-                               against: ScreenshotsHotkey.allCases.compactMap { Self.combination(of: $0, in: store) })
+                               against: heldCombinations)
+    }
+
+    /// The combinations the three shortcuts hold now.
+    private var heldCombinations: [(keyCode: Int, modifiers: Int)] {
+        ScreenshotsHotkey.allCases.compactMap { Self.combination(of: $0, in: store) }
     }
 
     private var bothOff: Bool { Self.offersToUseSystemKeys(model.state.boxes) }
@@ -287,7 +293,7 @@ struct ScreenshotsSettingsPage: View {
     /// The box is held against the combination a shortcut here holds **now**.
     private func conflicts(_ reading: SystemBoxReading) -> Bool {
         _ = shortcutsRevision
-        return Self.conflicts(reading, with: ScreenshotsHotkey.allCases.compactMap { Self.combination(of: $0, in: store) })
+        return Self.conflicts(reading, with: heldCombinations)
     }
 
     /// **Warning ink is for a conflict and for nothing else.** A box that is on is
@@ -532,11 +538,16 @@ struct ScreenshotsSettingsPage: View {
     /// the clipboard, which has none. The disk's verdict is `judged`, and a body
     /// asks the disk nothing.
     private var shownFolder: SaveFolder? {
+        let macOS: Any? = model.state.folder.isEmpty ? nil : model.state.folder
+        return SaveLocation.shownFolder(for: shownSettings, macOS: macOS, locations: .system)
+    }
+
+    /// The defaults with the target and folder the page shows now: all the folder's judgement reads.
+    private var shownSettings: ScreenshotsSettings {
         var settings = ScreenshotsSettings.defaults
         settings.saveTarget = target
         settings.otherFolder = otherFolder
-        let macOS: Any? = model.state.folder.isEmpty ? nil : model.state.folder
-        return SaveLocation.shownFolder(for: settings, macOS: macOS, locations: .system)
+        return settings
     }
 
     @ViewBuilder private var folderSection: some View {

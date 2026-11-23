@@ -89,6 +89,11 @@ public struct Freeze: @unchecked Sendable {
     public var frames: [FrozenDisplay] {
         displays.compactMap { if case .image(let frame) = $0 { frame } else { nil } }
     }
+
+    /// The frame of `display`, nil when that display did not come back with a picture.
+    public func frame(of display: DisplayID) -> FrozenDisplay? {
+        frames.first { $0.id == display }
+    }
 }
 
 /// A finished picture laid over a fresh freeze, for the editor to open on: «Edit» on a shot that was already taken.
@@ -155,8 +160,7 @@ public struct PictureOnScreen: @unchecked Sendable {
     /// when the freeze has no frame or the bitmap could not be made. The composed frame carries no pointer and the
     /// freeze no windows: neither is asked of an edit.
     static func place(_ picture: CGImage, over freeze: Freeze, on display: DisplayID?) -> PictureOnScreen? {
-        let frames = freeze.frames
-        guard let frame = frames.first(where: { $0.id == display }) ?? frames.first,
+        guard let frame = display.flatMap(freeze.frame(of:)) ?? freeze.frames.first,
               let rect = Self.frame(pixels: CGSize(width: picture.width, height: picture.height),
                                     on: CGSize(width: frame.image.width, height: frame.image.height), scale: frame.scale, inset: Self.margin),
               let composed = compose(picture, over: frame.image, at: rect, scale: frame.scale)

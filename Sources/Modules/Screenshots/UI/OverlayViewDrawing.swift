@@ -59,16 +59,13 @@ extension OverlayView {
                 let host: NSView = colours ? coloursHost : popoverHost
                 host.frame = layerRect(popover)
                 host.isHidden = false
-                if colours, popoverMade { popoverHost.isHidden = true }
-                if !colours, coloursMade { coloursHost.isHidden = true }
+                hidePopoverHosts(except: host)
             } else {
-                if popoverMade { popoverHost.isHidden = true }
-                if coloursMade { coloursHost.isHidden = true }
+                hidePopoverHosts()
             }
         } else if paletteMade {
             paletteHost.isHidden = true
-            if popoverMade { popoverHost.isHidden = true }
-            if coloursMade { coloursHost.isHidden = true }
+            hidePopoverHosts()
         }
 
         // The loupe, only while a handle is held or the eyedropper is on over the area: the pixels of the frame without the pointer, round the pointer.
@@ -106,9 +103,10 @@ extension OverlayView {
             if let selection = scene.selection {
                 let pixels = Selection.pixelSize(of: selection, scale: frozen.scale)
                 let text = "\(pixels.width) × \(pixels.height)"
-                let at = LabelLayer.cornerPlace(of: LabelLayer.size(of: text), over: selection, within: bounds,
+                let plate = LabelLayer.size(of: text)
+                let at = LabelLayer.cornerPlace(of: plate, over: selection, within: bounds,
                                                 clearOf: scene.chrome.map { [$0.palette] } ?? [])
-                cornerLabel.show(text, near: CGPoint(x: at.x, y: bounds.height - at.y - LabelLayer.size(of: text).height),
+                cornerLabel.show(text, near: CGPoint(x: at.x, y: bounds.height - at.y - plate.height),
                                  within: bounds)
             } else {
                 cornerLabel.isHidden = true
@@ -188,8 +186,7 @@ extension OverlayView {
     /// goes, since it is not part of the shot, and the overlay is deaf until it closes.
     func flash(over rect: CGRect, window: Bool) {
         if paletteMade { paletteHost.isHidden = true }
-        if popoverMade { popoverHost.isHidden = true }
-        if coloursMade { coloursHost.isHidden = true }
+        hidePopoverHosts()
         let box = layerRect(rect)
         flashLayer.play(shape: window ? WindowShape.path(for: box) : CGPath(rect: box, transform: nil))
     }

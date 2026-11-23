@@ -87,7 +87,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
 
         let (controller, board, disk, overlay) = try await editedThroughTheController(.desktop)
         overlay.keyDown(key(kReturn, "\r"))
-        // What `teardown` does first; the model's `stop()` calls it when the switch is turned.
+        // What the model's `stop()` calls when the switch is turned.
         controller.cancel()
         await grace(0.5)
         XCTAssertEqual(disk.written, 0, "a module switched off right after Return still wrote the file")

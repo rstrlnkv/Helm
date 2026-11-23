@@ -10,7 +10,7 @@ final class TheModuleOffTakesTheBarAndForgetsTheOverlayTests: XCTestCase {
     private var boxes: [PanelRig.Rig] = []
 
     override func tearDown() {
-        boxes.forEach { $0.controller.teardown() }
+        boxes.forEach { $0.controller.cancel() }
         boxes = []
         super.tearDown()
     }
@@ -30,7 +30,7 @@ final class TheModuleOffTakesTheBarAndForgetsTheOverlayTests: XCTestCase {
         box.controller.begin(.panel)
         box.controller.bar.model.choose(.window)
         await waitUntil("the overlay opened") { box.held.overlay != nil }
-        box.controller.teardown()
+        box.controller.cancel()
         XCTAssertNil(standingBar())
         XCTAssertFalse(box.controller.bar.selecting)
         XCTAssertFalse(try XCTUnwrap(box.held.overlay).isOpen)

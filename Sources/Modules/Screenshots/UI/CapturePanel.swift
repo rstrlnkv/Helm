@@ -148,7 +148,7 @@ import Module_Screenshots_Engine
 
     /// `.statusBar`, the toast's, and one above `.screenSaver`, the overlay's, while selecting.
     fileprivate static func level(selecting: Bool) -> NSWindow.Level {
-        selecting ? NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1) : .statusBar
+        selecting ? BorderlessPanel.aboveOverlay : .statusBar
     }
 
     init(store: NamespacedStore) {
@@ -210,8 +210,7 @@ import Module_Screenshots_Engine
 
     /// The place by default moved by what is stored, on the screen the pointer is on and inside its `visibleFrame` as it is now.
     private func place(_ panel: NSPanel) {
-        let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
+        let screen = NSScreen.underPointer ?? NSScreen.main
         guard let visible = screen?.visibleFrame else { return }
         if let host = panel.contentView { panel.setContentSize(host.fittingSize) }
         placing = true
@@ -261,34 +260,18 @@ final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
-final class BarPanel: NSPanel {
-    var onCancel: () -> Void = {}
+final class BarPanel: BorderlessPanel {
     var onCapture: () -> Void = {}
 
-    init(contentRect: NSRect) {
-        super.init(contentRect: contentRect, styleMask: [.borderless, .nonactivatingPanel],
-                   backing: .buffered, defer: false)
+    override init(contentRect: NSRect) {
+        super.init(contentRect: contentRect)
         level = CapturePanel.level(selecting: false)
-        isOpaque = false
-        backgroundColor = .clear
-        hasShadow = false
-        hidesOnDeactivate = false
-        isReleasedWhenClosed = false
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
     }
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
-    /// Esc.
-    override func cancelOperation(_ sender: Any?) { onCancel() }
-
     override func keyDown(with event: NSEvent) {
-        switch event.keyCode {
-        case ShotKey.returnKey, ShotKey.enter: onCapture()
-        // Esc is also `cancelOperation`, but only when the responder chain gets that far.
-        case ShotKey.escape: onCancel()
-        default: super.keyDown(with: event)
-        }
+        if event.keyCode == ShotKey.returnKey || event.keyCode == ShotKey.enter { onCapture() } else { super.keyDown(with: event) }
     }
 }
