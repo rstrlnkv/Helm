@@ -2,7 +2,6 @@ import AppKit
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-@testable import Module_Launchpad_Engine
 @testable import Module_Launchpad_UI
 
 /// An arrival never evicts what the last redraw asked, so a long session of page flips must still come back under the bound: what was

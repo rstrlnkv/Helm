@@ -9,23 +9,9 @@ import XCTest
 /// reconciles against the catalog the person last saw. The launch's own fresh read stays (`ALaunchRunsOnlyWhatAFreshReadFindsTests`).
 @MainActor
 final class TheCatalogIsReadOnlyForWhatNobodyHasAlreadyReadTests: XCTestCase {
-    private final class OpeningLauncher: AppLauncherPort, @unchecked Sendable {
-        func open(_ url: URL) async -> Bool { true }
-    }
-
-    private final class Window: LaunchpadWindowHandle {
-        var onClose: (@MainActor () -> Void)?
-        func present() {}
-        func close() { onClose?() }
-        func bringForward() {}
-        func beginScrub(_ direction: PinchDirection) {}
-        func scrub(to progress: Double) {}
-        func endScrub(_ outcome: PinchOutcome) {}
-    }
-
     private func make(_ label: String) -> (catalog: RigCatalog, model: LaunchpadViewModel) {
         let catalog = RigCatalog(["a", "b"])
-        let engine = LaunchpadEngine(catalog: catalog, launcher: OpeningLauncher(), store: LayoutStore(directory: scratchDirectory(label)))
+        let engine = LaunchpadEngine(catalog: catalog, launcher: RigLauncher(answer: true), store: LayoutStore(directory: scratchDirectory(label)))
         return (catalog, LaunchpadViewModel(work: engine, store: NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore())))
     }
 
@@ -60,7 +46,7 @@ final class TheCatalogIsReadOnlyForWhatNobodyHasAlreadyReadTests: XCTestCase {
 
     func testALaunchThatClosesTheWindowReadsOnlyItsOwnCheck() async {
         let (catalog, model) = make("reads-launch")
-        model.present = { _ in Window() }
+        model.present = { _ in ALaunchpadWindowIsOneDoorTests.FakeWindow() }
         model.showLaunchpad()
         let watch = Task { await model.whileShown() }
         await waitUntil("the window's snapshot") { model.snapshot != nil }
@@ -72,12 +58,12 @@ final class TheCatalogIsReadOnlyForWhatNobodyHasAlreadyReadTests: XCTestCase {
 
     func testTheResetOfTheCountsReadsNoCatalogThatWasReadBefore() async {
         let catalog = RigCatalog(["a"])
-        let engine = LaunchpadEngine(catalog: catalog, launcher: OpeningLauncher(), store: LayoutStore(directory: scratchDirectory("reads-reset")))
+        let engine = LaunchpadEngine(catalog: catalog, launcher: RigLauncher(answer: true), store: LayoutStore(directory: scratchDirectory("reads-reset")))
         _ = engine.read(reason: .open)
         _ = engine.resetLaunchCounts()
         XCTAssertEqual(catalog.reads, [.open])
         let fresh = RigCatalog(["a"])
-        _ = LaunchpadEngine(catalog: fresh, launcher: OpeningLauncher(), store: LayoutStore(directory: scratchDirectory("reads-reset-2"))).resetLaunchCounts()
+        _ = LaunchpadEngine(catalog: fresh, launcher: RigLauncher(answer: true), store: LayoutStore(directory: scratchDirectory("reads-reset-2"))).resetLaunchCounts()
         XCTAssertEqual(fresh.reads, [.reset], "the control: with nothing read before, it reads, and says it was the reset")
     }
 }

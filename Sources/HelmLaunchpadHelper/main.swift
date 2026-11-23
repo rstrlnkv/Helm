@@ -14,10 +14,6 @@ import os
 /// Failures go to the unified log only; the person sees nothing, and there is nobody to ask.
 private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.helm.app.launchpad", category: "helper")
 
-private func finish(_ status: Int32) -> Never {
-    exit(status)
-}
-
 /// The Helm this helper is nested in (`Helm.app/Contents/Helpers/<this>.app`), accepted only when it carries the
 /// parent id the plist names; otherwise the one app LaunchServices knows by that id.
 private func parentApp(id: String) -> URL? {
@@ -32,21 +28,21 @@ private final class Delegate: NSObject, NSApplicationDelegate {
         guard let parentID = info?["HelmParentBundleID"] as? String,
               let link = (info?["HelmLaunchpadURL"] as? String).flatMap(URL.init(string:)) else {
             log.error("the plist names no parent or no link")
-            finish(1)
+            exit(1)
         }
         guard let parent = parentApp(id: parentID) else {
             log.error("no app with id \(parentID, privacy: .public) to open the link at")
-            finish(1)
+            exit(1)
         }
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false
         NSWorkspace.shared.open([link], withApplicationAt: parent, configuration: configuration) { _, error in
             if let error { log.error("the link was not delivered: \(error.localizedDescription, privacy: .public)") }
-            finish(error == nil ? 0 : 1)
+            exit(error == nil ? 0 : 1)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
             log.error("the link was not delivered within 10 s")
-            finish(1)
+            exit(1)
         }
     }
 }

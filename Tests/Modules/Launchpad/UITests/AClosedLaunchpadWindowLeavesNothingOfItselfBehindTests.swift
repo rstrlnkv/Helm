@@ -1,7 +1,6 @@
 import AppKit
 import HelmTestSupport
 import XCTest
-@testable import Module_Launchpad_Engine
 @testable import Module_Launchpad_UI
 
 /// An object that outlives its window is memory that grows with every open: the owner's `leaks` run found one window state with its icon
@@ -12,8 +11,6 @@ import XCTest
 @MainActor
 final class AClosedLaunchpadWindowLeavesNothingOfItselfBehindTests: XCTestCase {
     override func setUp() async throws { _ = NSApplication.shared }
-
-    private struct Gone { var state: Bool; var icons: Bool; var window: Bool }
 
     /// One open and close, then what is still alive; the strong references are all local, so they end with this call.
     private func session(_ rig: LaunchpadRig) async -> (weakState: WeakBox<LaunchpadScreenState>, weakIcons: WeakBox<LaunchpadIcons>, weakWindow: WeakBox<LaunchpadWindow>) {
