@@ -1,7 +1,5 @@
 import Foundation
-import HelmContract
 import HelmRuntime
-import HelmTestSupport
 @testable import Module_Layout_Engine
 
 // The Layout engine's port fakes, one file: typing, secure context, translation,
@@ -19,7 +17,7 @@ let layoutShortcut: UInt16 = 9
 /// recorded as the «fix» chord when `bound`.
 func layoutStore(bound: Bool = false) -> NamespacedStore {
     let store = NamespacedStore(namespace: LayoutEngine.moduleID, backing: InMemoryKeyValueStore())
-    if bound { store.set(Int(layoutShortcut), for: "\(LayoutHotkey.storePrefix)KeyCode") }
+    if bound { store.set(Int(layoutShortcut), for: HotkeyStoreKeys(prefix: LayoutHotkey.storePrefix).keyCode) }
     return store
 }
 

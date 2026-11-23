@@ -390,6 +390,13 @@ public struct SynthesisTyping: TypingPort {
 /// had grown its own copy of the list call, the layout filter and
 /// `string(_:_:)`, which is the drift this type exists to prevent.
 public enum InputSources {
+    /// The language tags the source declares, most specific first; empty when it names none.
+    public static func languages(of source: TISInputSource) -> [String] {
+        guard let pointer = TISGetInputSourceProperty(source, kTISPropertyInputSourceLanguages)
+        else { return [] }
+        return (Unmanaged<CFArray>.fromOpaque(pointer).takeUnretainedValue() as? [String]) ?? []
+    }
+
     public static func all() -> [TISInputSource] {
         (TISCreateInputSourceList(nil, false)?.takeRetainedValue() as? [TISInputSource]) ?? []
     }
@@ -602,11 +609,8 @@ public struct SystemSpell: SpellPort {
 
     /// "com.apple.keylayout.Russian" → "ru".
     private static func language(for sourceID: String) -> String? {
-        guard let source = InputSources.source(id: sourceID),
-              let pointer = TISGetInputSourceProperty(source, kTISPropertyInputSourceLanguages)
-        else { return nil }
-        let languages = Unmanaged<CFArray>.fromOpaque(pointer).takeUnretainedValue() as? [String]
-        return languages?.first
+        guard let source = InputSources.source(id: sourceID) else { return nil }
+        return InputSources.languages(of: source).first
     }
 }
 

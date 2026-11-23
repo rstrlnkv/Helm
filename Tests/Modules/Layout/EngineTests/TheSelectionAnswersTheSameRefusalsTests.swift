@@ -15,8 +15,8 @@ import XCTest
 /// - a translation that turns a letter into a mark, because somebody typing
 ///   letters meant letters.
 ///
-/// The selection door never reached `LayoutVerdict` at all. `convertSelection` built a
-/// `SelectionTransform` straight out of `TranslationPort` and wrote whatever
+/// The selection door never reached `LayoutVerdict` at all. `convertSelection` converted
+/// straight out of `TranslationPort` and wrote whatever
 /// came back. So the same key press, on the same word, honoured the list when
 /// nothing was selected and ignored it when the word was selected — which was the
 /// harder half to notice, because selecting the word first is what somebody

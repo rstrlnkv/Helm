@@ -25,7 +25,7 @@ enum ShortWords {
     /// The one-letter words, which are the ones this list exists for most.
     ///
     /// **Russian's commonest words are one letter long, and the module refused
-    /// every one of them.** `LayoutVerdict.minimumLength` was 2 under a comment
+    /// every one of them.** The minimum word length was 2 under a comment
     /// saying «one character is a keystroke, not a word» — true of English,
     /// where only `a` and `I` qualify, and false of Russian, where `в`, `и`,
     /// `с`, `к`, `о`, `у`, `а` and `я` are prepositions, conjunctions and a

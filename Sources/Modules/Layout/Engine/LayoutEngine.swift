@@ -460,9 +460,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// The one action that acts on whatever is selected rather than on what was
     /// typed.
     ///
-    /// It had three — transliteration and case-walking went with them, and
-    /// `SelectionTransform` records why. This comment said three long after they
-    /// were gone, which reads as two missing cases to find.
+    /// It had three actions. Transliteration went because it is not reversible
+    /// (`ь` maps to nothing, `й` and `и` both map to `i`, so `соль` came back
+    /// `сол`); case changing went because macOS already offers it in
+    /// Edit ▸ Transformations wherever text can be edited.
     ///
     /// A different mechanism from the word conversion and a stricter one. The
     /// word one only ever edits text it watched being typed, a keystroke ago;
@@ -495,27 +496,28 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         guard live, allowed, !secure.isSecure() else { return }
         let text = selected
 
-        let transform = SelectionTransform(convert: { [weak self] source in
-            guard let self,
-                  let current = self.sources.current(),
-                  // The same choice as a single word makes, judged on the first
-                  // word of the selection — a selection carries no record of the
-                  // layout it was typed with, so this is the only evidence there
-                  // is. `Fix` still forces a conversion when nothing fits.
-                  let firstWord = source.split(separator: " ").first.map(String.init),
-                  let other = self.target(for: firstWord, from: current)
-            else { return nil }
-            // Both ways round. A selection carries no record of the layout it
-            // was typed with, so the active one is not evidence — see
-            // `TwoWayConversion`.
-            return TwoWayConversion.result(
-                for: source,
-                forward: { self.translation.translate($0, from: current, to: other) },
-                backward: { self.translation.translate($0, from: other, to: current) })
-        })
+        // Whitespace alone is not a selection worth an edit.
+        let blank = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         lock.lock(); let list = exceptions.words; lock.unlock()
 
-        guard let replacement = transform.apply(to: text) else {
+        // `TwoWayConversion` returns nil rather than the text back, so an
+        // unchanged selection is never written.
+        guard !blank,
+              let current = sources.current(),
+              // The same choice as a single word makes, judged on the first
+              // word of the selection — a selection carries no record of the
+              // layout it was typed with, so this is the only evidence there
+              // is. `Fix` still forces a conversion when nothing fits.
+              let firstWord = text.split(separator: " ").first.map(String.init),
+              let other = target(for: firstWord, from: current),
+              // Both ways round. A selection carries no record of the layout it
+              // was typed with, so the active one is not evidence — see
+              // `TwoWayConversion`.
+              let replacement = TwoWayConversion.result(
+                  for: text,
+                  forward: { self.translation.translate($0, from: current, to: other) },
+                  backward: { self.translation.translate($0, from: other, to: current) })
+        else {
             // Silence was the whole problem with this path: the gesture fired,
             // the translation declined, and nothing on screen or in the log
             // said so. A count, not the text — the log carries no content.
