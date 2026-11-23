@@ -56,11 +56,6 @@ enum HeaderBarMenu {
     static func menu(hasTabs: Bool, hasSearch: Bool, in store: NamespacedStore = AppSettings.store) -> NSMenu {
         let menu = NSMenu(title: AppStr.pageBar)
         menu.autoenablesItems = false
-        for item in items(hasTabs: hasTabs, hasSearch: hasSearch, in: store) { menu.addItem(item) }
-        return menu
-    }
-
-    static func items(hasTabs: Bool, hasSearch: Bool, in store: NamespacedStore) -> [NSMenuItem] {
         var items = [NSMenuItem.sectionHeader(title: AppStr.pageBar)]
         let pageBar = AppSettings.pageBarStyle(in: store)
         items += [(PageBarStyle.moduleName, AppStr.pageBarWithIcon), (.windowTitle, AppStr.pageBarWithoutIcon)]
@@ -90,7 +85,8 @@ enum HeaderBarMenu {
                 AppSettings.setAlwaysCollapseSearch(!collapses, in: store)
             })
         }
-        return items
+        for item in items { menu.addItem(item) }
+        return menu
     }
 
     private static func tick(_ title: String, _ isOn: Bool, write: @escaping () -> Void) -> NSMenuItem {

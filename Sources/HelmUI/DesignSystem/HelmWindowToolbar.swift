@@ -2,7 +2,7 @@ import SwiftUI
 
 // **What a settings page may put in the header row of the card, said once here so
 // every module page says it the same way.** The row is drawn by `helmCardHeader`
-// (`HelmPageHeader.swift`) from `HelmPageToolbarKey`, a preference: the page and the row
+// (`HelmCardHeader.swift`) from `HelmPageToolbarKey`, a preference: the page and the row
 // live in one hosting view, so what a page declares travels up to the row and no object
 // in another target has to be reached.
 //
@@ -238,7 +238,7 @@ struct HelmPageToolbarKey: PreferenceKey {
 extension View {
     /// **The one way a page's toolbar content reaches the window.**
     ///
-    /// **Now a preference, read by the header row in the card** (`helmCardHeader`, `HelmPageHeader.swift`):
+    /// **Now a preference, read by the header row in the card** (`helmCardHeader`, `HelmCardHeader.swift`):
     /// the page sits in the same hosting view as the row, so what it declares travels up the tree and the row
     /// reads it with `overlayPreferenceValue`, which asks nothing of the value — a `perform` closure is never
     /// `Equatable`.

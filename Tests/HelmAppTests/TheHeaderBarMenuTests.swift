@@ -39,8 +39,8 @@ final class TheHeaderBarMenuTests: XCTestCase {
 
     func testTabLabelsArePresentOnlyWhereThePageHasTabs() {
         let app = AppSettings.store.over(InMemoryKeyValueStore())
-        let with = HeaderBarMenu.items(hasTabs: true, hasSearch: false, in: app)
-        let without = HeaderBarMenu.items(hasTabs: false, hasSearch: false, in: app)
+        let with = HeaderBarMenu.menu(hasTabs: true, hasSearch: false, in: app).items
+        let without = HeaderBarMenu.menu(hasTabs: false, hasSearch: false, in: app).items
         XCTAssertEqual(with.count, 12)
         XCTAssertEqual(without.count, 7)
         XCTAssertTrue(titles(with).contains(AppStr.tabLabels))
@@ -51,7 +51,7 @@ final class TheHeaderBarMenuTests: XCTestCase {
     func testTheTickIsTheStoredChoiceAndEachItemWritesItsSetting() {
         let app = AppSettings.store.over(InMemoryKeyValueStore())
         func item(_ title: String, tabs: Bool = true) -> NSMenuItem {
-            HeaderBarMenu.items(hasTabs: tabs, hasSearch: true, in: app).first { $0.title == title && $0.action != nil }!
+            HeaderBarMenu.menu(hasTabs: tabs, hasSearch: true, in: app).items.first { $0.title == title && $0.action != nil }!
         }
         func ticked(_ title: String) -> Bool { item(title).state == .on }
         XCTAssertTrue(ticked(AppStr.pageBarWithIcon))
@@ -82,8 +82,8 @@ final class TheHeaderBarMenuTests: XCTestCase {
     /// page has no search.
     func testAlwaysCollapseSearchIsOfferedOnlyWhereThePageHasASearch() {
         let app = AppSettings.store.over(InMemoryKeyValueStore())
-        let with = titles(HeaderBarMenu.items(hasTabs: false, hasSearch: true, in: app))
-        let without = titles(HeaderBarMenu.items(hasTabs: false, hasSearch: false, in: app))
+        let with = titles(HeaderBarMenu.menu(hasTabs: false, hasSearch: true, in: app).items)
+        let without = titles(HeaderBarMenu.menu(hasTabs: false, hasSearch: false, in: app).items)
         XCTAssertEqual(with.suffix(2), ["-", AppStr.alwaysCollapseSearch])
         XCTAssertFalse(without.contains(AppStr.alwaysCollapseSearch))
         XCTAssertEqual(with.count, without.count + 2)

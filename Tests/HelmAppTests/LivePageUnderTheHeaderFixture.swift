@@ -7,7 +7,7 @@ import HelmUI
 /// **A page mounted under the header row of the card** — the fixture of the families that type into the
 /// search field the row draws.
 ///
-/// The row is the one the settings window draws (`helmCardHeader`, `HelmPageHeader.swift`), with
+/// The row is the one the settings window draws (`helmCardHeader`, `HelmCardHeader.swift`), with
 /// `helmHeaderInCard` set the way `makeShell` sets it, so a page declares into the preference the row reads
 /// (`helmWindowToolbar`) and the row draws what it declared, in the mount's own hosting view. The families that use it
 /// live in `HelmAppTests` because the fixture needs the host's own types (`ShellPageIdentity`; ARCHITECTURE.md § Targets:
