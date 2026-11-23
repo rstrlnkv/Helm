@@ -370,9 +370,10 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// where the row heads a page on its own; the card's row passes the Kit's 14 and 10 (`CardHeader`).
     let leadingInset: CGFloat
     let trailingInset: CGFloat
-    /// How far the row's content stands above where its height centres it: the card's row under Glass raises it by
-    /// 4 so its centre (window y 26) is the toolbar item's, and the tabs' glass track is the control's own 36 pt
-    /// (`CardHeader.raise`). The row keeps its 52.
+    /// How far the row's content stands above where its height centres it: the settings window's card row raises it
+    /// by 4 under both looks so its centre (window y 26) is the toolbar's, where the tabs' track stands under Glass
+    /// (owner's decision, 2026-11-23; `CardHeader.raise`). The row keeps its 52 and the page its top inset; every other
+    /// row (`LogView`, `AboutPage`, the showcase) passes none.
     let raise: CGFloat
     let trailing: Trailing
     @Environment(\.helmHeaderChoices) private var choices

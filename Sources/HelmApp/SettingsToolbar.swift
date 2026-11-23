@@ -12,18 +12,29 @@ import HelmUI
 /// a leading spacer item is given the width that brings the strip's left edge to the placeholder's (`spacerWidth`),
 /// solved again whenever the placeholder, the window or the declaration moves.
 ///
-/// **Measured** (macOS 27.3, a window with these flags): the item's container must be exactly the control's width,
-/// because the item's viewer swallows every click over its frame, a wider one killed the search field under it;
-/// `isBordered` is required (it is the glass track); the item sits at window-top y 8...44 with the toolbar and the
-/// card's row at 4...56, so the row raises its content by 4 under Glass (`CardHeader.raise`); a taller container
-/// made a 44 pt glass track and took window drags; with the toolbar the window's three buttons stand 10 right and 10 down of where they stood
-/// (`ShellGeometry.toolbarShift`). A trailing ghost item killed the button at the right and is not used.
+/// **Measured** (macOS 27.3, a probe window with these flags: titled, full-size content view, transparent title bar,
+/// hidden title, `.unified`, icon-only): a unified toolbar is always 52 pt tall and centres every item at window y 26;
+/// a *bordered* item's glass track is drawn from the item view's alignment rect and is always centred there too (a
+/// 44 pt view or `alignmentRectInsets` only made a 44 pt track; a track the strip draws itself, in an unbordered item,
+/// was tried and withdrawn: it drew empty after Glass, Flat, Glass and the tabs went missing on a page switch). The
+/// item is therefore *bordered* and the control's own 36 pt, and the card's row stands at the toolbar's centre under
+/// both looks (`CardHeader.raise`, owner's decision 2026-11-23: its content 4 up from the centre 30 of the row's 52,
+/// `ShellGeometry.inset` 4 + 26, so it does not move when the look flips). The item's container must be exactly the
+/// control's width, because the item's viewer swallows every click over its frame, a wider one killed the search
+/// field under it, and a taller one took window drags. With the toolbar the window's three buttons stand 10 right and
+/// 10 down of where they stood (`ShellGeometry.toolbarShift`). A trailing ghost item killed the button at the right
+/// and is not used.
+///
+/// **The items are in the toolbar only while a page declares tabs**: an item whose `isHidden` goes false is zoomed in
+/// from small by the toolbar (measured on video, about 4 frames; no transaction, animation context, layout pass or
+/// layer change stops it), while an item inserted shows at full size in one frame. So no declaration leaves the toolbar
+/// without items, a declaration holds the spacer and the tabs, in that order.
 ///
 /// Installed only under `.liquidGlass`, at creation and again on `.helmBarAppearanceChanged`. Not customizable, not
 /// autosaved. Accessibility: one element per segment (radio button), not the control itself.
 @MainActor final class SettingsToolbar: NSObject, NSToolbarDelegate {
-    private static let tabsID = NSToolbarItem.Identifier("helm.tabs")
-    private static let leadID = NSToolbarItem.Identifier("helm.tabs.lead")
+    static let tabsID = NSToolbarItem.Identifier("helm.tabs")
+    static let leadID = NSToolbarItem.Identifier("helm.tabs.lead")
 
     /// The spacer's width that puts the strip's left edge at `wantedMinX`. `chrome` is what lies left of the strip
     /// besides the spacer: the toolbar's start after the traffic lights and the gap between items, in the window's x.
@@ -34,11 +45,11 @@ import HelmUI
         return width.isFinite ? max(width, 0) : 0
     }
 
-    private let toolbar = NSToolbar(identifier: "HelmSettingsToolbar")
+    /// One identifier per toolbar: toolbars of one identifier keep their items in step, so a second one alive (a test's,
+    /// a window not yet released) was handed the first's items and refused the insertion of its own ("already contains").
+    private let toolbar = NSToolbar(identifier: "HelmSettingsToolbar-\(UUID().uuidString)")
     private let strip = TabsStrip()
     private let lead = LeadSpacer()
-    private var leadItem: NSToolbarItem?
-    private var tabsItem: NSToolbarItem?
     private weak var window: NSWindow?
 
     private var owner: UUID?
@@ -57,6 +68,7 @@ import HelmUI
 
     deinit {
         for token in tokens { NotificationCenter.default.removeObserver(token) }
+        for watch in watching.values { NotificationCenter.default.removeObserver(watch.token) }
     }
 
     /// What the window puts in the environment of its detail pane.
@@ -87,7 +99,9 @@ import HelmUI
 
     /// What a test reads of the item: the members here and on `TabsStrip` named `ForTesting` have no other caller.
     var stripForTesting: TabsStrip { strip }
-    var tabsItemIsHiddenForTesting: Bool { tabsItem?.isHidden ?? true }
+    var itemIdentifiersForTesting: [NSToolbarItem.Identifier] { toolbar.items.map(\.itemIdentifier) }
+
+    var watchedCountForTesting: Int { watching.count }
 
     var isInstalledForTesting: Bool { window?.toolbar === toolbar }
 
@@ -146,14 +160,22 @@ import HelmUI
         apply(nil)
     }
 
-    /// Shows `declaration` in the strip; nil hides the items.
+    /// Shows `declaration` in the strip; nil takes the items out of the toolbar (never hides them, see the header).
     func apply(_ declaration: HelmTabsDeclaration?) {
         strip.apply(declaration)
-        let hidden = declaration == nil
-        tabsItem?.isHidden = hidden
-        leadItem?.isHidden = hidden
+        if declaration == nil {
+            for index in toolbar.items.indices.reversed() where Self.ids.contains(toolbar.items[index].itemIdentifier) {
+                toolbar.removeItem(at: index)
+            }
+        } else {
+            for id in Self.ids where !toolbar.items.contains(where: { $0.itemIdentifier == id }) {
+                toolbar.insertItem(withItemIdentifier: id, at: toolbar.items.count)
+            }
+        }
         solve()
     }
+
+    private static let ids = [leadID, tabsID]
 
     /// The control's own press: the page is told, then the selection is read again one turn later and the control
     /// put back on it, so a write the page refused snaps back.
@@ -192,25 +214,37 @@ import HelmUI
         DispatchQueue.main.async { [weak self] in self?.solve() }
     }
 
-    /// The toolbar's viewers are the views the items' views sit in; their frames change when the toolbar lays out.
-    private var watched: [NSView] = []
+    /// The toolbar's viewers are the views the items' views sit in; their frames change when the toolbar lays out. An
+    /// item put in again gets a new viewer, so the observers of viewers that are no longer the items' are removed
+    /// first: at most the strip's and the spacer's are held, and the viewers weakly.
+    private struct Watch {
+        weak var view: NSView?
+        let token: NSObjectProtocol
+    }
+    nonisolated(unsafe) private var watching: [ObjectIdentifier: Watch] = [:]
 
     private func watchViewers() {
-        for view in [strip.superview, lead.superview].compactMap({ $0 }) where !watched.contains(where: { $0 === view }) {
-            watched.append(view)
+        let current = [strip.superview, lead.superview].compactMap { $0 }
+        let keep = Set(current.map(ObjectIdentifier.init))
+        for (id, watch) in watching where !keep.contains(id) || watch.view == nil {
+            NotificationCenter.default.removeObserver(watch.token)
+            watching[id] = nil
+        }
+        for view in current where watching[ObjectIdentifier(view)] == nil {
             view.postsFrameChangedNotifications = true
-            tokens.append(NotificationCenter.default.addObserver(
+            let token = NotificationCenter.default.addObserver(
                 forName: NSView.frameDidChangeNotification, object: view, queue: .main
             ) { [weak self] _ in
                 MainActor.assumeIsolated { self?.solve() }
-            })
+            }
+            watching[ObjectIdentifier(view)] = Watch(view: view, token: token)
         }
     }
 
     // MARK: - NSToolbarDelegate
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.leadID, Self.tabsID]
+        declaration == nil ? [] : Self.ids
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -225,17 +259,14 @@ import HelmUI
             item.view = lead
             item.isBordered = false
             item.visibilityPriority = .user
-            leadItem = item
         case Self.tabsID:
             item.view = strip
             // The glass track of the look: an unbordered item loses it.
             item.isBordered = true
             item.visibilityPriority = .user
-            tabsItem = item
         default:
             return nil
         }
-        item.isHidden = declaration == nil
         return item
     }
 }

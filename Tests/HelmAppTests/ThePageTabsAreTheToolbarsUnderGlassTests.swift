@@ -27,11 +27,12 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
                  styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: true)
     }
 
-    func testTheWidthsAreEachWordsOwnAndSumToTheStrip() {
+    func testEachSegmentIsItsOwnWordWiderThanThePaddingAndIconsAreTheirSharedWidths() {
         let widths = HelmTabsMetrics.widths(tabs(["a", "b"]), .text)
         XCTAssertEqual(widths.count, 2)
         XCTAssertTrue(widths.allSatisfy { $0 > 24 })
-        XCTAssertEqual(HelmTabsMetrics.widths(tabs(["a", "b", "c"]), .icons), [38, 38, 38])
+        // Icons: a tab is 38; the first and the last give up the track's inset against the plate, a gap's half is shared.
+        XCTAssertEqual(HelmTabsMetrics.widths(tabs(["a", "b", "c"]), .icons), [35.5, 43, 35.5])
     }
 
     func testTheStripFollowsEachDeclarationInCountLabelsDotsAndHiding() {
@@ -51,8 +52,10 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         XCTAssertEqual((0..<2).map { strip.hasDotForTesting($0) }, [false, false])
         XCTAssertEqual(strip.selectedSegmentForTesting, 1)
 
+        XCTAssertEqual(toolbar.itemIdentifiersForTesting, [SettingsToolbar.leadID, SettingsToolbar.tabsID])
+
         toolbar.sink.declare(owner, nil)
-        XCTAssertTrue(toolbar.tabsItemIsHiddenForTesting)
+        XCTAssertEqual(toolbar.itemIdentifiersForTesting, [], "no declaration, no items: a hidden item zooms in when shown")
     }
 
     func testTheToolbarIsWornUnderGlassAndOffUnderFlat() {
@@ -84,11 +87,11 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         toolbar.sink.release(old)
         let strip = toolbar.stripForTesting
         XCTAssertEqual(strip.segmentCountForTesting, 2)
-        XCTAssertFalse(toolbar.tabsItemIsHiddenForTesting)
+        XCTAssertEqual(toolbar.itemIdentifiersForTesting, [SettingsToolbar.leadID, SettingsToolbar.tabsID])
         strip.onPick(1)
         XCTAssertEqual(pressed, ["b"])
         toolbar.sink.release(new)
-        XCTAssertTrue(toolbar.tabsItemIsHiddenForTesting)
+        XCTAssertEqual(toolbar.itemIdentifiersForTesting, [])
     }
 
     func testASegmentWithADotIsWiderByTheDotAndItsGapAndTheDotsDimWithTheControl() {
@@ -107,6 +110,27 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         XCTAssertLessThan(toolbar.stripForTesting.dotAlphaForTesting(1), 1)
     }
 
+    /// The owner's finding of 2026-11-23: the Glass strip was wider than the Flat one (Russian `.text` 252 against
+    /// 231). The Glass strip's total is `plate + tabs + gaps + plate` of `HelmTabNumbers` (the Flat strip's sum, to within each word's rounding), in every style, with and without a dot.
+    func testTheStripIsTheFlatSumOfHelmTabNumbersInEveryStyle() {
+        for style in [HeaderTabLabels.text, .icons, .iconsAndText] {
+            for attention in [nil, "c"] {
+                let list = tabs(["a", "b", "c"], attention: attention)
+                let tabWidths = HelmTabsMetrics.tabWidths(list, style)
+                let dots = attention == nil ? 0 : HelmTabsMetrics.dot + HelmTabsMetrics.dotGap
+                let body: CGFloat
+                switch style {
+                case .text: body = list.map { HelmTabsMetrics.word($0) + 18 }.reduce(0, +) + dots
+                case .icons: body = 3 * (20 + 18)
+                case .iconsAndText: body = list.map { HelmTabsMetrics.word($0) + 16 + 6 + 18 }.reduce(0, +) + dots
+                }
+                XCTAssertEqual(tabWidths.reduce(0, +), body, "\(style) \(String(describing: attention))")
+                XCTAssertEqual(HelmTabsMetrics.total(list, style), 4 + body + 2 * 5 + 4, "\(style) \(String(describing: attention))")
+            }
+        }
+        XCTAssertEqual(HelmTabsMetrics.height, 36)
+    }
+
     /// The owner's screenshot of 2026-11-23: segments summing to the item's width left the control, which keeps its
     /// own inset either side of them in a toolbar, wider than its item, so the first label sat on the track's edge
     /// and the last pill ran past it. (The inset itself shows only in a live toolbar, off screen the control reads
@@ -121,6 +145,8 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
             toolbar.sink.declare(UUID(), declaration)
             XCTAssertEqual(toolbar.stripForTesting.widthForTesting,
                            HelmTabsMetrics.widths(declaration.tabs, style).reduce(0, +) + 18, "\(style)")
+            XCTAssertEqual(toolbar.stripForTesting.widthForTesting,
+                           HelmTabsMetrics.total(declaration.tabs, style), "\(style)")
         }
     }
 
@@ -156,21 +182,21 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         let strip = toolbar.stripForTesting
 
         mount.settle()
-        XCTAssertFalse(toolbar.tabsItemIsHiddenForTesting, "precondition: under Glass the row's tabs reach the toolbar")
+        XCTAssertEqual(toolbar.itemIdentifiersForTesting, [SettingsToolbar.leadID, SettingsToolbar.tabsID], "precondition: under Glass the row's tabs reach the toolbar")
         XCTAssertEqual(strip.segmentCountForTesting, 2, "precondition: the page's two tabs are in the strip")
 
         look = .flat
         NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
         mount.settle()
         XCTAssertNil(window.toolbar, "precondition: Flat takes the toolbar off")
-        XCTAssertTrue(toolbar.tabsItemIsHiddenForTesting, "precondition: the relay's release hid the tabs under Flat")
+        XCTAssertEqual(toolbar.itemIdentifiersForTesting, [], "precondition: the relay's release took the tabs out under Flat")
 
         look = .liquidGlass
         NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
         mount.settle()
         XCTAssertTrue(toolbar.isInstalledForTesting)
-        XCTAssertFalse(toolbar.tabsItemIsHiddenForTesting,
-                       "DEFECT: Glass after Flat leaves the tabs hidden: the row's token was retired by the Flat release and the remounted relay is refused")
+        XCTAssertEqual(toolbar.itemIdentifiersForTesting, [SettingsToolbar.leadID, SettingsToolbar.tabsID],
+                       "DEFECT: Glass after Flat leaves the tabs out: the row's token was retired by the Flat release and the remounted relay is refused")
         XCTAssertEqual(strip.segmentCountForTesting, 2, "the page's tabs are back in the strip")
         // The strip can be lined up with the row's placeholder only if the slot is said by the owner that declares:
         // another owner's `place` is parked as an arrival and never reaches the spacer. (The strip's own x is not read:
@@ -198,5 +224,70 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
                            worn.offsetBy(dx: b!.offset.width, dy: b!.offset.height), "rail \(rail)")
             XCTAssertEqual(a?.capsule, b?.capsule)
         }
+    }
+
+    /// The owner's finding of 2026-11-23: Glass to Flat on an open window moved the three buttons 10 pt left and up
+    /// (and back at Flat to Glass). Inside `window.toolbar = nil` AppKit puts the buttons at the flat home and posts the
+    /// frame change while `window.toolbar` is still set, so the flat home was taken for a toolbar one and the toolbar's
+    /// shift subtracted from it. Driven through the real owner of the buttons on an offscreen window, as `ShellContentView`
+    /// holds it: the close button's origin after each flip, against where it stood before.
+    func testTheButtonsStandWhereTheyStoodAfterEveryFlipOfTheLook() throws {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 400),
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                              backing: .buffered, defer: false)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 900, height: 400))
+        window.contentView = content
+        let buttons = ShellWindowButtons()
+        content.addSubview(buttons.capsule)
+        buttons.attach(to: window)
+        var look = HelmBarAppearance.flat
+        let toolbar = SettingsToolbar()
+        toolbar.attach(to: window) { look }
+        let close = try XCTUnwrap(window.standardWindowButton(.closeButton))
+        func flip(to new: HelmBarAppearance) {
+            look = new
+            NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
+            buttons.place(rail: false)
+        }
+        buttons.place(rail: false)
+        let flat = close.frame.origin
+        flip(to: .liquidGlass)
+        let glass = close.frame.origin
+        flip(to: .flat)
+        XCTAssertEqual(close.frame.origin.x, flat.x, accuracy: 0.5, "Flat after Glass: x (Glass stood at \(glass))")
+        XCTAssertEqual(close.frame.origin.y, flat.y, accuracy: 0.5, "Flat after Glass: y (Glass stood at \(glass))")
+        flip(to: .liquidGlass)
+        XCTAssertEqual(close.frame.origin.x, glass.x, accuracy: 0.5, "Glass after Flat: x")
+        XCTAssertEqual(close.frame.origin.y, glass.y, accuracy: 0.5, "Glass after Flat: y")
+    }
+
+    /// A verifier's finding: every item put in again gets a new viewer, and the observers of the old ones were kept for
+    /// good. After declare and release cycles in a shown window only the current viewers (the strip's and the spacer's)
+    /// are watched.
+    func testTheWatchedViewersAreBoundedAcrossTheItemsComingAndGoing() {
+        let window = window()
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.orderFront(nil)
+        defer { window.orderOut(nil) }
+        let toolbar = SettingsToolbar()
+        toolbar.attach(to: window) { .liquidGlass }
+        let slot = CGRect(x: 300, y: 12, width: 200, height: 36)
+        for _ in 0..<6 {
+            let owner = UUID()
+            toolbar.sink.declare(owner, declaration(["a", "b", "c"]))
+            toolbar.sink.place(owner, slot)
+            for _ in 0..<10 {
+                RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+                window.layoutIfNeeded()
+            }
+            // The row says its place again once the strip is in the window, as the live page does.
+            toolbar.sink.place(owner, slot)
+            toolbar.sink.release(owner)
+        }
+        XCTAssertLessThanOrEqual(toolbar.watchedCountForTesting, 2)
+        XCTAssertGreaterThan(toolbar.watchedCountForTesting, 0, "precondition: the viewers were watched at all")
     }
 }

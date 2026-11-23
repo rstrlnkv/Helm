@@ -2,9 +2,14 @@ import SwiftUI
 
 /// **The numbers of a tab, which the Flat strip draws and the toolbar's strip is measured from** (`HelmTabsMetrics`):
 /// one name each, so the two cannot drift. The look's own: padding either side of a segment, the gap before a dot and
-/// between a glyph and its word, the type sizes, a glyph-only tab's width, the dot, and the dimming of a disabled strip.
+/// between a glyph and its word, the plate round the tabs and the gap between two, the type sizes, a glyph-only tab's
+/// width, the dot, and the dimming of a disabled strip.
 public enum HelmTabNumbers {
     static let segmentPadding = CGFloat(9)
+    /// The plate's padding round the tabs and the gap between two tabs (the Kit's Segmented tabs, Figma 8:91): the
+    /// Flat strip is `plate + tabs + gaps + plate` and the toolbar's strip is cut from the same sum.
+    public static let plate = CGFloat(4)
+    public static let gap = CGFloat(5)
     static let dotGap = CGFloat(5)
     static let glyphGap = CGFloat(6)
     public static let wordSize = CGFloat(13)
@@ -49,10 +54,9 @@ public struct HelmHeaderTabs: View {
         _shown = State(initialValue: selection.wrappedValue)
     }
 
-    /// The Kit's Segmented tabs (Figma 8:91): a 36 pt strip, 4 inside it a pill of 28 (radius 14, a
-    /// capsule), 9 pt either side of a word, 5 between two tabs. The same numbers under both looks.
-    private static let plate: CGFloat = 4
-    private static let pill = HelmHeaderActions.side - 2 * plate
+    /// The Kit's Segmented tabs (Figma 8:91): a 36 pt strip, `HelmTabNumbers.plate` inside it a pill of 28 (radius 14, a
+    /// capsule), 9 pt either side of a word, `HelmTabNumbers.gap` between two tabs. The same numbers under both looks.
+    private static let pill = HelmHeaderActions.side - 2 * HelmTabNumbers.plate
 
     public var body: some View {
         group
@@ -63,11 +67,11 @@ public struct HelmHeaderTabs: View {
     }
 
     private var group: some View {
-        strip.padding(Self.plate).helmBarCapsule(appearance, spacing: 0)
+        strip.padding(HelmTabNumbers.plate).helmBarCapsule(appearance, spacing: 0)
     }
 
     private var strip: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: HelmTabNumbers.gap) {
             ForEach(tabs, id: \.id) { tab in
                 Button { press(tab) } label: { label(tab) }
                     .buttonStyle(.plain)

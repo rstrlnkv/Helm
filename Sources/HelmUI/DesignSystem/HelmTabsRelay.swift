@@ -65,12 +65,7 @@ extension EnvironmentValues {
 /// The strip's measure: what the toolbar's control sets per segment and the placeholder takes in the row.
 public enum HelmTabsMetrics {
     private static var font: NSFont { .systemFont(ofSize: HelmTabNumbers.wordSize) }
-    /// Either side of a word or glyph, and the glyph's own width. With the glyph a segment is the `.flat` tab's
-    /// width (9 either side, 16 for the glyph) and the Glass strip, `total` with the track's inset, equals the whole
-    /// `.flat` strip for `.iconsAndText` (words + 138 under both looks), the style `SettingsWindow.minSize` is
-    /// measured with; `word()` rounds up, so Glass may exceed Flat by up to about 3 pt over three words. Without
-    /// the glyph 12 either side: `.text` is words + 90 under Glass against Flat's words + 72, so the equality does not hold there.
-    private static let pad = CGFloat(12)
+    /// The glyph's own width in a tab (the segment's padding is `HelmTabNumbers.segmentPadding`, as the `.flat` tab's).
     private static let glyph = CGFloat(16)
 
     public static let height = HelmHeaderActions.side
@@ -90,27 +85,46 @@ public enum HelmTabsMetrics {
     }
 
     /// What the control keeps free either side of its segments once it stands in a toolbar item: measured on
-    /// macOS 27.3, 2026-11-23 (Homebrew page, Russian, `.text`: a 316 pt run of segments gave a 334 pt `fittingSize`). Not readable off a control outside the
-    /// toolbar, which reads the plain sum, so no test of an offscreen control can hold it: the shots can.
+    /// macOS 27.3, 2026-11-23, with a bordered item (Homebrew page, Russian, `.text`: a 316 pt run of segments gave a
+    /// 334 pt `fittingSize`). Not readable off a control outside the toolbar, which reads the plain sum, so no test of
+    /// an offscreen control can hold it: the shots can.
     /// Without it a width of the segments alone left the first label on the track's edge and the last pill past the other end.
     public static let trackInset = CGFloat(9)
 
-    /// The whole strip's width: the segments and the track's inset either side. The one source of the control's,
-    /// the toolbar item's and the row's placeholder's width.
-    public static func total(_ tabs: [HelmHeaderTab], _ style: HeaderTabLabels) -> CGFloat {
-        widths(tabs, style).reduce(0, +) + 2 * trackInset
-    }
-
-    /// Every segment's width from its own label, so no word is cut and the dots stand where the segments are;
-    /// a segment with a dot beside its label is wider by the dot and its gap.
-    public static func widths(_ tabs: [HelmHeaderTab], _ style: HeaderTabLabels) -> [CGFloat] {
+    /// The `.flat` tab's width from its own label: padding either side of the word, the glyph, or both, and the room a
+    /// dot beside the label takes. `word()` rounds up, so a tab can exceed Flat's by under a point.
+    public static func tabWidths(_ tabs: [HelmHeaderTab], _ style: HeaderTabLabels) -> [CGFloat] {
         tabs.map { tab in
             let room = tab.needsAttention ? dot + dotGap : 0
+            let padding = 2 * HelmTabNumbers.segmentPadding
             switch style {
-            case .text: return word(tab) + 2 * pad + room
-            case .icons: return HelmTabNumbers.iconWidth + 2 * HelmTabNumbers.segmentPadding
-            case .iconsAndText: return glyph + HelmTabNumbers.glyphGap + word(tab) + 2 * HelmTabNumbers.segmentPadding + room
+            case .text: return word(tab) + padding + room
+            case .icons: return HelmTabNumbers.iconWidth + padding
+            case .iconsAndText: return glyph + HelmTabNumbers.glyphGap + word(tab) + padding + room
             }
+        }
+    }
+
+    /// The whole strip's width: the plate, the tabs with a gap between two, the plate, the `.flat` strip's sum to within
+    /// each word's rounding (under 1 pt per word). The plate and the gap are named once (`HelmTabNumbers`) and the width
+    /// is derived from them here; it is the one source of the control's, the toolbar item's and the row's placeholder's
+    /// width (Flat lays its own strip out).
+    public static func total(_ tabs: [HelmHeaderTab], _ style: HeaderTabLabels) -> CGFloat {
+        2 * HelmTabNumbers.plate + tabWidths(tabs, style).reduce(0, +) + HelmTabNumbers.gap * CGFloat(max(tabs.count - 1, 0))
+    }
+
+    /// Every segment's width, so no word is cut and the dots stand where the segments are. A segment owns its tab and
+    /// half of each gap beside it, the first and the last also the plate, less the `trackInset` the control keeps free
+    /// at its two ends: so a middle segment is centred on its `.flat` tab, and the first and the last
+    /// centres stand 3.75 pt further in than their tabs' (the segment starts `trackInset` in, the tab `plate` in),
+    /// as near as the control allows. The sum is
+    /// `total - 2 * trackInset`.
+    public static func widths(_ tabs: [HelmHeaderTab], _ style: HeaderTabLabels) -> [CGFloat] {
+        let last = tabs.count - 1
+        return tabWidths(tabs, style).enumerated().map { index, tab in
+            let before = index == 0 ? HelmTabNumbers.plate - trackInset : HelmTabNumbers.gap / 2
+            let after = index == last ? HelmTabNumbers.plate - trackInset : HelmTabNumbers.gap / 2
+            return before + tab + after
         }
     }
 }
