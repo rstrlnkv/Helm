@@ -32,23 +32,27 @@ struct StoredCornerSettings {
     /// Each write refuses a value equal to the one stored.
     mutating func setBuiltIn(_ value: Bool) {
         builtIn = value
-        if store.object("builtIn") as? Bool != value { store.set(value, for: "builtIn") }
+        write(value, for: "builtIn")
     }
 
     mutating func setExternal(_ value: Bool) {
         external = value
-        if store.object("external") as? Bool != value { store.set(value, for: "external") }
+        write(value, for: "external")
     }
 
     mutating func setRadiusPixels(_ value: Double) {
         radiusPixels = value
-        if store.object("radiusPixels") as? Double != value { store.set(value, for: "radiusPixels") }
+        write(value, for: "radiusPixels")
     }
 
     /// A scale that is not a number is not remembered.
     mutating func setBuiltInScale(_ value: CGFloat) {
         guard let bounded = Double(value).clampedIfFinite(to: Self.scaleBounds) else { return }
         builtInScale = CGFloat(bounded)
-        if store.object("builtInScale") as? Double != bounded { store.set(bounded, for: "builtInScale") }
+        write(bounded, for: "builtInScale")
+    }
+
+    private func write<Value: Equatable>(_ value: Value, for key: String) {
+        if store.object(key) as? Value != value { store.set(value, for: key) }
     }
 }
