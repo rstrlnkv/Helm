@@ -15,7 +15,7 @@ ticked — as `ScreenshotsState` (§ How Screenshots' model reaches its engine).
 
 Everything the session asks of the machine is a port with a fake
 (`Sources/Modules/Screenshots/Engine/Ports.swift`): the capture, the file write, the move of
-an edit's original to the Trash, the clipboard, the shutter, the Dock's bounds, the reading of text, and three preference reads of what macOS owns. All three are **read and
+an edit's original to the Trash, the clipboard, the shutter, the reading of text (the Dock's bounds are read through `SystemDockBounds` directly, with no fake, because no test needs one), and three preference reads of what macOS owns. All three are **read and
 never written** — com.apple.screencapture for the save folder, com.apple.symbolichotkeys
 for the boxes, and the global domain's user-interface-sound switch for the shutter — and `Sources/Modules/Screenshots/Engine/Logic/SaveLocation.swift` and
 `Sources/Modules/Screenshots/Engine/Logic/SystemShortcuts.swift` judge the first two:
@@ -33,7 +33,7 @@ non-activating key panel per display, so it reads the keyboard and the pointer i
 and needs no Accessibility. Its rules are functions of the pointer and the modifiers
 in `Sources/Modules/Screenshots/Engine/Logic/Selection.swift`. Of the three
 coordinate spaces a capture passes through — AppKit's, CoreGraphics' and a display's
-own — global, display-local and pixel conversions are in `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.swift`; a flip out of AppKit's space is spelled where it is needed: `DockStrip`, `SCKCapture`'s Dock placement and the overlay's own views (`OverlayView.local`, `CaptureOverlay.local(_:in:frame:)`) flip a point or a rectangle for themselves. Its translucent and accent inks are `Sources/Modules/Screenshots/UI/OverlayInk.swift`: ink on a picture and not the kit's tokens, with a stronger set under Increase Contrast; `pill` and `plate` go solid under Reduce Transparency. The window list in a freeze is a reading: a click asks the system
+own — global, display-local and pixel conversions are in `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.swift`; the y flip between AppKit's space and CG's is `ScreenSpace.flipped(_:primaryHeight:)`, which `DockStrip` and `SCKCapture`'s Dock placement call; the overlay's own views (`OverlayView.local`, `CaptureOverlay.local(_:in:frame:)`) flip a point or a rectangle for themselves. Its translucent and accent inks are `Sources/Modules/Screenshots/UI/OverlayInk.swift`: ink on a picture and not the kit's tokens, with a stronger set under Increase Contrast; `pill` and `plate` go solid under Reduce Transparency. The window list in a freeze is a reading: a click asks the system
 for the window again, and a window that has gone, or that could not be captured, is cut from the frozen frame.
 
 Selecting is drawn as macOS draws it. Nothing is dimmed until there is a selection — from the first point a drag
@@ -207,7 +207,7 @@ returns, one task in the model that `stop(_:)` cancels before the engine's `deac
 
 The session and the controller are built at the first press and not in the model's init: the one
 makes the capture ports, the other a panel and a toast, and a press may never come. `stop()` ends the controller
-with `CaptureController.teardown`, so a switch-off in the middle of a capture, or after
+with `CaptureController.cancel`, so a switch-off in the middle of a capture, or after
 one, closes the press, the countdown, the overlay (open or flashing), the bar and the toast
 (`ASwitchedOffCaptureClosesEveryWindowTests`), and a press that comes after it builds nothing
 (`AStoppedScreenshotsModelReachesNoWorkTests`, `TheStoppedModelMeetsTheOrdersNobodyPlannedTests`). The host's order is the model's `stop()`

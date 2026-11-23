@@ -87,16 +87,9 @@ public struct ShotReading: Sendable, Equatable {
     let modifiedNanoseconds: Int64
     /// False for a link, a folder and everything else that is not a plain file.
     let isRegularFile: Bool
+}
 
-    init(identity: PathCanonical.FileIdentity, size: Int64, modifiedSeconds: Int64,
-                modifiedNanoseconds: Int64, isRegularFile: Bool) {
-        self.identity = identity
-        self.size = size
-        self.modifiedSeconds = modifiedSeconds
-        self.modifiedNanoseconds = modifiedNanoseconds
-        self.isRegularFile = isRegularFile
-    }
-
+extension ShotReading {
     /// What `fstat` or `lstat` answered.
     init(_ info: stat) {
         self.init(identity: PathCanonical.FileIdentity(status: info),
@@ -179,11 +172,6 @@ enum PrivateKind: Sendable, Equatable {
 struct PrivateMatch: Sendable, Equatable {
     let kind: PrivateKind
     let box: CGRect
-
-    init(kind: PrivateKind, box: CGRect) {
-        self.kind = kind
-        self.box = box
-    }
 }
 
 /// One line of text as the system read it, with the matches found in it. `box` is normalised like a match's.
@@ -252,14 +240,4 @@ public protocol CapturePreferences: Sendable {
 /// is the session's decision (`CaptureSession.shutter`) and when is the caller's.
 protocol ShutterPlaying: Sendable {
     func play()
-}
-
-/// Where the Dock is, as the Dock itself says through Accessibility.
-///
-/// **Optional by design:** the module declares no Accessibility permission and never
-/// asks for it; a Mac that has granted it to Helm for another module gets the Dock's
-/// exact bounds, any other gets `.notTrusted` and the strip. Main thread only, because
-/// it is an AppKit-side system call. `pid` is the Dock's process, from the window list.
-protocol DockBounds: Sendable {
-    func read(dockPID pid: pid_t) -> DockBoundsReading
 }

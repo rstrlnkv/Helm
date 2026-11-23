@@ -12,9 +12,7 @@ final class TheTimerRemembersItsLengthWhileOffTests: XCTestCase {
     private typealias Key = ScreenshotsSettings.Key
 
     private func read(_ values: [String: Any] = [:]) -> ScreenshotsSettings {
-        let backing = InMemoryKeyValueStore()
-        for (key, value) in values { backing.set(value, forKey: "module.screenshots.\(key)") }
-        return ScreenshotsSettings.read(NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: backing))
+        ScreenshotsSettings.read(screenshotsStore(values))
     }
 
     func testANewStoreHasNoTimerAndAFiveSecondLength() {

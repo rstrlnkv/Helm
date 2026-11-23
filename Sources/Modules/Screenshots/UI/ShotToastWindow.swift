@@ -4,17 +4,10 @@ import Module_Screenshots_Engine
 
 extension ShotToast {
     func makePanel() -> ShotPanel {
-        let panel = ShotPanel(contentRect: NSRect(x: 0, y: 0, width: Self.width, height: 200),
-                              styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        let panel = ShotPanel(contentRect: NSRect(x: 0, y: 0, width: Self.width, height: 200))
         panel.level = .statusBar
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = false
-        panel.hidesOnDeactivate = false
-        panel.isReleasedWhenClosed = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         panel.isUnfolded = { [weak model] in model?.unfolded ?? false }
-        panel.onEscape = { [weak self] in self?.fold() }
+        panel.onCancel = { [weak self] in self?.fold() }
         // The shots stand against the panel's lower trailing corner whatever its size: a row that folds is drawn
         // inside the row's panel until the fold is over, and must not be centred in it meanwhile.
         let host = NSHostingView(rootView: ShotToastView(model: model).helmRoot())
@@ -35,8 +28,7 @@ extension ShotToast {
     /// Lower right of the screen the pointer is on, inside the visible frame; a picture stands `edgeInset` from the edges
     /// itself, the room round it that its shadow is drawn in not counted.
     func place(_ panel: NSPanel) {
-        let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
+        let screen = NSScreen.underPointer ?? NSScreen.main
         guard let visible = screen?.visibleFrame else { return }
         if let host { panel.setContentSize(host.fittingSize) }
         let size = panel.frame.size

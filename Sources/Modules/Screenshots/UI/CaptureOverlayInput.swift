@@ -41,7 +41,7 @@ extension CaptureOverlay {
         if sampling, let current = edit, drag == nil {
             sampling = false
             if display == current.display, current.rect.contains(local),
-               let frame = freeze.frames.first(where: { $0.id == display }),
+               let frame = freeze.frame(of: display),
                let loupe = PixelLoupe.around(local, in: frame) { perform(.color(AnnotationInk(loupe))) } else { render() }
             return
         }

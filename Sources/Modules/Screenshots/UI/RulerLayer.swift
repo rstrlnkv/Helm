@@ -26,10 +26,7 @@ final class RulerLayer: CALayer {
         mask = clip
         body.lineWidth = 0.8
         ticks.lineWidth = 0.8
-        label.font = Self.font
-        label.fontSize = Self.font.pointSize
-        label.foregroundColor = NSColor.white.cgColor
-        label.alignmentMode = .center
+        label.setUpPlateText(font: Self.font)
         for sublayer in [body, ticks, pill, label] as [CALayer] { strip.addSublayer(sublayer) }
         addSublayer(strip)
     }
@@ -78,13 +75,12 @@ final class RulerLayer: CALayer {
         if shownText != text {
             shownText = text
             label.string = text
-            let wide = max(28, ceil((text as NSString).size(withAttributes: [.font: Self.font]).width) + 14)
+            let wide = max(28, ceil(Self.font.measured(text).width) + 14)
             pill.path = CGPath(roundedRect: CGRect(x: (ruler.length - wide) / 2, y: (width - 14) / 2, width: wide, height: 14),
                                cornerWidth: 7, cornerHeight: 7, transform: nil)
             label.frame = CGRect(x: (ruler.length - wide) / 2, y: (width - 14) / 2 + 0.5, width: wide, height: 13)
         }
         for sublayer in [body, ticks, pill, label] as [CALayer] { sublayer.contentsScale = scale }
-        label.contentsScale = scale
         // The angle is clockwise on the screen, which in these coordinates, origin below, is the other way round.
         strip.position = CGPoint(x: ruler.center.x, y: height - ruler.center.y)
         strip.transform = CATransform3DMakeRotation(-ruler.angle * .pi / 180, 0, 0, 1)

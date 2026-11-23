@@ -77,7 +77,7 @@ extension ScreenshotsEngine: ScreenshotsWork {}
     func stop() {
         closed = true
         eventsTask?.cancel(); eventsTask = nil
-        capture?.teardown()
+        capture?.cancel()
         capture = nil
     }
 }

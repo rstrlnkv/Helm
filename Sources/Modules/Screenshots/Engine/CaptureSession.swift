@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import HelmRuntime
 import ImageIO
+import os
 
 /// Why a capture did not become a picture, or not all of one.
 public enum CaptureRefusal: Sendable, Equatable {
@@ -65,8 +66,6 @@ public struct Delivery: @unchecked Sendable {
     public var refusals: [CaptureRefusal] = []
     /// The first picture that was made, for the thumbnail.
     public var image: CGImage?
-
-    init() {}
 }
 
 /// Where a shot's full picture is, for a copy of several at once: in memory for a shot that was only copied, in its
@@ -93,11 +92,10 @@ public enum EditOpening: @unchecked Sendable {
 }
 
 /// Whether one pass of `CaptureSession.copyAll` is to go on: read between two pictures, set from any thread.
-private final class GroupPass: @unchecked Sendable {
-    private let lock = NSLock()
-    private var stopped = false
-    var isStopped: Bool { lock.lock(); defer { lock.unlock() }; return stopped }
-    func stop() { lock.lock(); stopped = true; lock.unlock() }
+private final class GroupPass: Sendable {
+    private let stopped = OSAllocatedUnfairLock(initialState: false)
+    var isStopped: Bool { stopped.withLock { $0 } }
+    func stop() { stopped.withLock { $0 = true } }
 }
 
 /// One capture, start to finish, from the ports and the logic.
@@ -238,7 +236,7 @@ public final class CaptureSession: @unchecked Sendable {
     /// The one place a selection becomes pixels of a frame: the frame, the whole pixels the selection covers on it
     /// and the cut of `shot` there, so the file and a reading of the text are cut from the same picture.
     private func part(of freeze: Freeze, display: DisplayID, local rect: CGRect) -> FramePart? {
-        guard let frame = freeze.frames.first(where: { $0.id == display }),
+        guard let frame = freeze.frame(of: display),
               let pixels = ScreenSpace.pixels(ofLocal: rect, scale: frame.scale,
                                               imageWidth: frame.image.width, imageHeight: frame.image.height),
               let cut = frame.shot.cropping(to: pixels)
@@ -295,7 +293,7 @@ public final class CaptureSession: @unchecked Sendable {
         }
         let displays = freeze.frames.map { (id: $0.id, frame: $0.frame) }
         guard let home = WindowPick.home(of: window.frame, among: displays),
-              let frame = freeze.frames.first(where: { $0.id == home.id }),
+              let frame = freeze.frame(of: home.id),
               let image = crop(freeze, display: frame.id,
                                local: ScreenSpace.local(home.part, in: frame.frame))
         else { return .refused(.windowGone) }

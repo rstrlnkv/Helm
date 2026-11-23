@@ -51,11 +51,6 @@ final class TheGroupCopyRunsOnePassAtATimeTests: XCTestCase {
         return (image, took)
     }
 
-    private func width(of png: Data) throws -> Int {
-        let source = try XCTUnwrap(CGImageSourceCreateWithData(png as CFData, nil))
-        return try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil)).width
-    }
-
     private func small(_ widths: [Int]) -> [ShotSource] { widths.map { .picture(makeImage(width: $0, height: 6)) } }
 
     private func rig(_ name: String) -> Rig { Rig(home: scratchDirectory(name)) }

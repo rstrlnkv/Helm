@@ -15,12 +15,6 @@ public struct ScreenshotsState: Equatable, Sendable {
     public var folderRefused: SaveFolderRefusal?
     public var boxes: [SystemBoxReading]
 
-    init(folder: String, folderRefused: SaveFolderRefusal?, boxes: [SystemBoxReading]) {
-        self.folder = folder
-        self.folderRefused = folderRefused
-        self.boxes = boxes
-    }
-
     /// Before the first reading: nothing known, which is `unknown` and not `on`.
     public static let unread = ScreenshotsState(
         folder: "", folderRefused: nil,

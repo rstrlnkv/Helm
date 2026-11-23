@@ -14,10 +14,9 @@ import XCTest
 final class TheScreenshotsStreamCarriesTheStateTests: XCTestCase {
 
     private final class Collected: @unchecked Sendable {
-        private let lock = NSLock()
-        private var states: [ScreenshotsState] = []
-        var all: [ScreenshotsState] { lock.withLock { states } }
-        func add(_ state: ScreenshotsState) { lock.withLock { states.append(state) } }
+        private let states = Locked<[ScreenshotsState]>([])
+        var all: [ScreenshotsState] { states.value }
+        func add(_ state: ScreenshotsState) { states.withLock { $0.append(state) } }
     }
 
     private func engine(_ name: String, _ preferences: FakePreferences) -> (ScreenshotsEngine, EngineNews<ScreenshotsState>) {

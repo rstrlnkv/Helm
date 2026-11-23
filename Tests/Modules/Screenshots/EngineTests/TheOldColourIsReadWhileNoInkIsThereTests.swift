@@ -15,9 +15,7 @@ final class TheOldColourIsReadWhileNoInkIsThereTests: XCTestCase {
 
     private func made(_ raw: [String: Any] = [:]) -> (NamespacedStore, InMemoryKeyValueStore) {
         let backing = InMemoryKeyValueStore()
-        let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: backing)
-        for (key, value) in raw { store.set(value, for: key) }
-        return (store, backing)
+        return (screenshotsStore(raw, backing: backing), backing)
     }
 
     func testTheOldNameIsReadWhileNoInkIsThere() {

@@ -44,7 +44,7 @@ import Module_Screenshots_Engine
     /// ⋯'s layout frame (its press zone) in the palette's own top-left points, which the overlay anchors the menu to;
     /// written by the palette's layout, not a state anything draws.
     var moreFrame = CGRect.zero
-    /// The colour wheel's cell, the same way; read as `wheelFrame` (`EditorColoursPopover.swift`).
+    /// The colour wheel's cell, the same way.
     var colourCell = CGRect.zero
     /// Where each row object's centre is along the palette, in its own points: what a second click on it opens the
     /// pop-over at. Written by the palette's layout.
@@ -52,8 +52,8 @@ import Module_Screenshots_Engine
 
     /// A value the palette already shows is not published again: the overlay renders on every pointer move.
     /// `picked` is the next object's style, which is `style` unless an object is selected.
-    func show(tool: AnnotationTool?, erasing: Bool = false, ruler: Bool = false, cropping: Bool = false, style: AnnotationStyle, picked: AnnotationStyle? = nil, memory: EditorMemory = EditorMemory(),
-              selectedTool: AnnotationTool? = nil, popoverOpen: Bool = false, coloursOpen: Bool = false, canUndo: Bool, canRedo: Bool, reading: Bool = false) {
+    func show(tool: AnnotationTool?, erasing: Bool, ruler: Bool, cropping: Bool, style: AnnotationStyle, picked: AnnotationStyle, memory: EditorMemory,
+              selectedTool: AnnotationTool?, popoverOpen: Bool, coloursOpen: Bool, canUndo: Bool, canRedo: Bool, reading: Bool) {
         if self.tool != tool { self.tool = tool }
         if self.erasing != erasing { self.erasing = erasing }
         if self.ruler != ruler { self.ruler = ruler }
@@ -61,7 +61,7 @@ import Module_Screenshots_Engine
         if self.selectedTool != selectedTool { self.selectedTool = selectedTool }
         if self.memory != memory { self.memory = memory }
         if self.style != style { self.style = style }
-        if self.picked != (picked ?? style) { self.picked = picked ?? style }
+        if self.picked != picked { self.picked = picked }
         if self.popoverOpen != popoverOpen { self.popoverOpen = popoverOpen }
         if self.coloursOpen != coloursOpen { self.coloursOpen = coloursOpen }
         if self.canUndo != canUndo { self.canUndo = canUndo }
@@ -329,17 +329,23 @@ struct EditorPalette: View {
     /// The colour wheel's cell, which opens the pop-over of all eight inks under it. While the colour is one the grid has
     /// no swatch for, its centre shows it, and the grid has no ring: the colour is seen in the one place that is lit.
     private var wheel: some View {
-        let apart = model.lit.swatch.map(Self.colours.contains) == true ? nil : model.lit
-        return Button { model.perform(.colours(anchorX: model.wheelFrame.midX)) } label: { Self.wheelFace(showing: apart) }
+        Self.wheelButton(model, among: Self.colours, perform: { .colours(anchorX: model.colourCell.midX) })
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { model.colourCell = $0 }
+    }
+
+    /// The wheel as a button, the palette's and the colours pop-over's: its face shows a colour that is none of `grid`'s
+    /// (the "apart" one), which VoiceOver is told as the value. `action` is asked at the press: the cell is laid out by then.
+    static func wheelButton(_ model: EditorBarModel, among grid: [AnnotationColor], perform action: @escaping () -> EditorAction) -> some View {
+        let apart = model.lit.swatch.map(grid.contains) == true ? nil : model.lit
+        return Button { model.perform(action()) } label: { wheelFace(showing: apart) }
             .buttonStyle(.plain)
             .help(ScStr.allColours)
             .accessibilityLabel(ScStr.allColours)
             .accessibilityValue(apart.map { $0.swatch.map(ScStr.ink) ?? HelmA11y.otherColour } ?? "")
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { model.colourCell = $0 }
     }
 
-    /// The wheel's face: the spectrum, and the custom colour at its centre when there is one. The colours pop-over draws it too.
-    static func wheelFace(showing apart: AnnotationInk?) -> some View {
+    /// The wheel's face: the spectrum, and the custom colour at its centre when there is one.
+    private static func wheelFace(showing apart: AnnotationInk?) -> some View {
         Circle()
             .fill(AngularGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red], center: .center))
             .frame(width: EditorSwatch.diameter, height: EditorSwatch.diameter)

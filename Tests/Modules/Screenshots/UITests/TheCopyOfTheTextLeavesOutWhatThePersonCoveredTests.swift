@@ -42,9 +42,7 @@ final class TheCopyOfTheTextLeavesOutWhatThePersonCoveredTests: XCTestCase {
         let (overlay, display, view) = built
         // "under" lies at y 160...190 of the display, "clear" at 340...370: the blur is drawn over the first only.
         overlay.perform(.tool(.blur))
-        overlay.mouseDown(on: display, at: CGPoint(x: 120, y: 150), flags: [])
-        overlay.mouseDragged(on: display, at: CGPoint(x: 400, y: 220), flags: [])
-        overlay.mouseUp(on: display)
+        OverlayRig.drag(overlay, on: display, from: CGPoint(x: 120, y: 150), to: CGPoint(x: 400, y: 220))
         XCTAssertEqual(overlay.editedLayers.map(\.tool), [.blur], "the subject: a blur is on the picture")
         overlay.perform(.copyText)
         await waitUntil("the copy was made") { tools.copied.count == 1 }

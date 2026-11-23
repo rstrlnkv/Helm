@@ -52,15 +52,6 @@ final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
 @MainActor
 final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
 
-    private func width(of png: Data) throws -> Int {
-        let source = try XCTUnwrap(CGImageSourceCreateWithData(png as CFData, nil), "a write that is no picture")
-        return try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil)).width
-    }
-
-    private func refusalBody(_ s: PileScene) -> String? {
-        if case .refusal(_, let body, _)? = s.toast.model.refusal { body } else { nil }
-    }
-
     // MARK: One write
 
     func testCopyAllIsOneWriteWhateverTheNumberOfShotsInTheListsOrderWithFilesAndHeldPicturesMixed() async throws {
@@ -80,7 +71,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
             await grace(0.1)
             XCTAssertEqual(s.board.lists.count, 1, "\(n) shots were \(s.board.lists.count) writes")
             XCTAssertEqual(s.board.singles, singles, "\(n): a shot went by the single write")
-            XCTAssertEqual(try XCTUnwrap(s.board.lists.first).map(width(of:)), expected, "\(n): not the list's order or not every shot")
+            XCTAssertEqual(try XCTUnwrap(s.board.lists.first).map(PileScene.width(of:)), expected, "\(n): not the list's order or not every shot")
             XCTAssertNil(s.toast.model.refusal, "\(n): a copy that was made was told as a refusal")
             XCTAssertEqual(s.toast.model.shots.count, n, "the copy changed the window")
         }
@@ -93,7 +84,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
         await waitUntil("the group was written") { s.board.lists.count >= 1 }
         await grace(0.1)
         XCTAssertEqual(s.board.lists.count, 1)
-        XCTAssertEqual(try XCTUnwrap(s.board.lists.first).map(width(of:)), Array(105..<125))
+        XCTAssertEqual(try XCTUnwrap(s.board.lists.first).map(PileScene.width(of:)), Array(105..<125))
     }
 
     func testAShotStillBeingWrittenIsNotInTheGroupAndAGroupOfNothingFinishedIsNotWrittenOrTold() async throws {
@@ -123,7 +114,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
         s.board.accepts = false
         s.toast.model.copyAll()
         await waitUntil("the person was told") { s.toast.model.refusal != nil }
-        XCTAssertEqual(refusalBody(s), ScStr.refusal(.pasteboard))
+        XCTAssertEqual(s.refusalBody, ScStr.refusal(.pasteboard))
         XCTAssertEqual(s.board.lists.count, 0)
         XCTAssertEqual(s.board.singles, 0, "a refused group fell back to a write a shot")
         s.toast.close()
@@ -140,7 +131,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
         s.toast.model.focus = s.toast.model.shot(1)?.id ?? -1
         s.toast.model.copyAll()
         await waitUntil("the group was written") { s.board.lists.count >= 1 }
-        XCTAssertEqual(try XCTUnwrap(s.board.lists.first).map(width(of:)), [210, 211, 212, 213])
+        XCTAssertEqual(try XCTUnwrap(s.board.lists.first).map(PileScene.width(of:)), [210, 211, 212, 213])
         XCTAssertTrue(s.toast.model.unfolded, "a copy folded the row")
     }
 

@@ -34,22 +34,6 @@ final class TheBlurLeavesNoSourcePixelInTheFileTests: XCTestCase {
                Case(scale: 1, rect: tall, step: .thin)]
     }()
 
-    /// Every pixel its own colour: the index through a multiplier that is odd, so it is a bijection on the 24 bits.
-    private func pattern(width: Int, height: Int) -> CGImage {
-        var bytes = [UInt8](repeating: 255, count: width * height * 4)
-        for index in 0..<(width * height) {
-            let colour = (UInt32(index) &* 2_654_435_761 &+ 12_345) & 0xFF_FFFF
-            bytes[index * 4] = UInt8(colour >> 16)
-            bytes[index * 4 + 1] = UInt8(colour >> 8 & 0xFF)
-            bytes[index * 4 + 2] = UInt8(colour & 0xFF)
-        }
-        let provider = CGDataProvider(data: Data(bytes) as CFData)!
-        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
-                       space: CGColorSpaceCreateDeviceRGB(),
-                       bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-                       provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
-    }
-
     /// The grid block of pixel `v` in a run `from..<to`: the display's grid, but an end strip narrower than half a block
     /// belongs to the block beside it (a run inside one grid block is that block).
     private func key(_ v: Int, from: Int, to: Int, side: Int) -> Int {
@@ -64,7 +48,7 @@ final class TheBlurLeavesNoSourcePixelInTheFileTests: XCTestCase {
     /// (`Pixelate.grown`), so the file is made (see `ABlurBoxOfOnePixelDoesNotCostTheWholeShotTests`) and the box's pixel
     /// is not in it; a box off the display, which hides nothing, does not stop the file.
     func testABoxOfOnePixelLeavesTheFileWithoutItsSourcePixelAndABoxOffTheDisplayDoesNot() async throws {
-        let source = pattern(width: 400, height: 240)
+        let source = hashedPattern(width: 400, height: 240, space: CGColorSpaceCreateDeviceRGB())
         let freeze = Freeze(displays: [.image(FrozenDisplay(id: DisplayID(1), frame: CGRect(x: 0, y: 0, width: 200, height: 120),
                                                             scale: 2, image: source))], windows: [])
         let rig = Rig(home: scratchDirectory("shots-blur-one-pixel"))
@@ -98,7 +82,7 @@ final class TheBlurLeavesNoSourcePixelInTheFileTests: XCTestCase {
     func testNoPixelOfTheBoxSurvivesAndEveryBlockIsOneColourItsOwnMean() async throws {
         for test in Self.cases {
             let width = Int(200 * test.scale), height = Int(120 * test.scale)
-            let source = pattern(width: width, height: height)
+            let source = hashedPattern(width: width, height: height, space: CGColorSpaceCreateDeviceRGB())
             let freeze = Freeze(displays: [.image(FrozenDisplay(id: DisplayID(1), frame: CGRect(x: 0, y: 0, width: 200, height: 120),
                                                                 scale: test.scale, image: source))], windows: [])
             let rig = Rig(home: scratchDirectory("shots-blur-\(Int(test.scale))-\(test.step.rawValue)-\(Int(test.rect.height))"))

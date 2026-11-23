@@ -33,12 +33,7 @@ struct EditorColoursPopover: View {
             // The third row, two cells with no text: the system's colour panel, and the eyedropper, which the overlay
             // answers by sampling the next click on the area.
             HStack(spacing: HelmSpace.s4) {
-                Button { model.perform(.allColours) } label: {
-                    EditorPalette.wheelFace(showing: model.lit.swatch.map(Self.inks.contains) == true ? nil : model.lit)
-                }
-                .buttonStyle(.plain)
-                .help(ScStr.allColours)
-                .accessibilityLabel(ScStr.allColours)
+                EditorPalette.wheelButton(model, among: Self.inks, perform: { .allColours })
                 GlassCell(symbol: "eyedropper", name: ScStr.eyedropper, ink: GlassCell<Image>.paletteInk) {
                     model.perform(.eyedropper)
                 }
@@ -48,9 +43,4 @@ struct EditorColoursPopover: View {
         .padding(.vertical, EditorPopover.inset)
         .popoverCard(height: height, open: model.coloursOpen)
     }
-}
-
-extension EditorBarModel {
-    /// The colour wheel's layout frame in the palette's own top-left points, like `moreFrame`.
-    var wheelFrame: CGRect { colourCell }
 }

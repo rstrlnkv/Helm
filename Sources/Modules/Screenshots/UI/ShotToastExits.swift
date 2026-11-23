@@ -16,7 +16,7 @@ extension ShotToast {
     func shareItems() -> [Any]? {
         guard model.refusal == nil, let shot = model.shots.last else { return nil }
         if let file = shot.file { return [file] }
-        return shot.full.map { [NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height))] }
+        return shot.full.map { [NSImage(cgImage: $0, size: .zero)] }
     }
 
     func attemptShare() {

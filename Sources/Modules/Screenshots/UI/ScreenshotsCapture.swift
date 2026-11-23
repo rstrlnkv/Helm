@@ -2,11 +2,6 @@ import AppKit
 import HelmRuntime
 import Module_Screenshots_Engine
 
-/// What the overlay produced, ready for whatever comes next.
-struct CapturedShot {
-    let image: CGImage
-}
-
 @MainActor final class CaptureController {
     private let store: NamespacedStore
     private let session: CaptureSession
@@ -66,9 +61,9 @@ struct CapturedShot {
         bar.model.capture = { [weak self] mode in self?.capture(from: mode) }
         bar.model.cancel = { [weak self] in self?.cancel() }
         bar.model.modeChosen = { [weak self] in self?.pick(in: $0) }
-        toast.onEdit = { [weak self] in self?.editFromThumbnail() }
-        toast.onCopy = { [weak self] in self?.copyFromThumbnail() }
-        toast.onCopyAll = { [weak self] in self?.copyAllFromPile() }
+        toast.model.edit = { [weak self] in self?.editFromThumbnail() }
+        toast.model.copy = { [weak self] in self?.copyFromThumbnail() }
+        toast.model.copyAll = { [weak self] in self?.copyAllFromPile() }
     }
 
     /// Whether a press is in progress at any stage. A test waits on it.
@@ -190,11 +185,6 @@ struct CapturedShot {
         busy = false
     }
 
-    /// The module is going: everything `cancel` ends.
-    func teardown() {
-        cancel()
-    }
-
     // MARK: - The full-screen shortcut
 
     private func fullScreen() async {
@@ -238,8 +228,7 @@ struct CapturedShot {
             let preselection = remembered && ScreenshotsSettings.read(store).rememberSelection
                 ? RememberedSelection.read(store)?.landing(in: freeze.frames) : nil
             let overlay = CaptureOverlay(freeze: freeze, mode: mode, preselection: preselection, store: store,
-                                    textTools: EditorTextTools(read: { [session] in await session.readText(freeze, display: $0, local: $1) },
-                                                               copy: { [session] in session.copyText($0) }),
+                                    textTools: textTools(over: freeze),
                                     selectionOnly: panel) { [weak self] result in
                 self?.overlayFinished(result, freeze: freeze, picked: panel)
             }
@@ -280,7 +269,7 @@ struct CapturedShot {
     }
 
     private func edit(_ shot: WrittenShot?, held: CGImage?, taking taken: ShotToastModel.Shot.ID) async {
-        let opened = await session.openEdit(of: shot, held: held, on: Self.displayUnderPointer())
+        let opened = await session.openEdit(of: shot, held: held, on: NSScreen.underPointer?.displayID)
         // The module went off while the file was read or the screen frozen: no overlay for a module that is off.
         guard !Task.isCancelled else { return }
         switch opened {
@@ -291,8 +280,7 @@ struct CapturedShot {
             let editing = ShotEdit(shown: shown, original: shot)
             let overlay = CaptureOverlay(freeze: shown.freeze, picture: (shown.display, shown.rect), store: store,
                                          // The freeze here has the picture in it, so the text read and the boxes blurred are the picture's.
-                                         textTools: EditorTextTools(read: { [session] in await session.readText(shown.freeze, display: $0, local: $1) },
-                                                                    copy: { [session] in session.copyText($0) })) { [weak self] result in
+                                         textTools: textTools(over: shown.freeze)) { [weak self] result in
                 self?.overlayFinished(result, freeze: shown.freeze, editing: editing)
             }
             self.overlay = overlay
@@ -304,12 +292,6 @@ struct CapturedShot {
                 busy = false
             }
         }
-    }
-
-    private static func displayUnderPointer() -> DisplayID? {
-        let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { $0.frame.contains(mouse) }
-        return (screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32).map { DisplayID($0) }
     }
 
     /// `picked`: the overlay was the panel's. With no timer the panel closes at the pick and the shot is delivered as the
@@ -371,7 +353,7 @@ struct CapturedShot {
                     // No `default:`: a new exit must say here what it does, or it would be a save.
                     switch exit {
                     case .confirm, .copy, .save, .share:
-                        await handOff(CapturedShot(image: image),
+                        await handOff(image,
                                       saves: exit != .copy, copies: exit != .save,
                                       fileEvenFromClipboard: exit == .save, thenShare: exit == .share, editing: editing)
                     }
@@ -379,25 +361,37 @@ struct CapturedShot {
                     failed("the edited shot could not be made (exit \(exit))")
                 }
             case .wholeDisplay(let display):
-                if let frame = freeze.frames.first(where: { $0.id == display }),
+                // Nothing selected: the whole display, which is what macOS does.
+                if let frame = freeze.frame(of: display),
                    let image = session.crop(freeze, display: display,
-                                            local: Selection.wholeDisplay(CGRect(origin: .zero, size: frame.frame.size))) {
-                    await handOff(CapturedShot(image: image))
+                                            local: CGRect(origin: .zero, size: frame.frame.size)) {
+                    await handOff(image)
                 } else {
                     failed("the whole-display shot could not be made")
                 }
             case .window(let id, let shadow):
-                let picked = await session.window(id, in: freeze, shadow: shadow)
-                guard !Task.isCancelled else { return }
-                switch picked {
-                case .image(let image): await handOff(CapturedShot(image: image))
-                case .refused(let reason): toast.showRefusal(reason)
-                }
+                await handOffWindow(id, in: freeze, shadow: shadow)
             }
             // A cancelled delivery leaves `busy` to `cancel`, which has already cleared it:
             // a press begun since is not this one's to release.
             if !Task.isCancelled { busy = false }
         }
+    }
+
+    /// The window asked for by its id, as at a click: handed off as taken, or the refusal the session gave.
+    private func handOffWindow(_ id: UInt32, in freeze: Freeze, shadow: Bool) async {
+        let picked = await session.window(id, in: freeze, shadow: shadow)
+        guard !Task.isCancelled else { return }
+        switch picked {
+        case .image(let image): await handOff(image)
+        case .refused(let reason): toast.showRefusal(reason)
+        }
+    }
+
+    /// The editor's text reading and copying over `freeze`, through the session.
+    private func textTools(over freeze: Freeze) -> EditorTextTools {
+        EditorTextTools(read: { [session] in await session.readText(freeze, display: $0, local: $1) },
+                        copy: { [session] in session.copyText($0) })
     }
 
     /// A shot the person asked for and the module could not make: a warning in the log and the toast's refusal, never silence.
@@ -417,16 +411,11 @@ struct CapturedShot {
         switch result {
         case .window(let id, let shadow):
             return { [self] in
-                let picked = await session.window(id, in: freeze, shadow: shadow)
-                guard !Task.isCancelled else { return }
-                switch picked {
-                case .image(let image): await handOff(CapturedShot(image: image))
-                case .refused(let reason): toast.showRefusal(reason)
-                }
+                await handOffWindow(id, in: freeze, shadow: shadow)
             }
         case .edited(let display, let local, _, _):
             remember(display: display, local: local, in: freeze)
-            let uuid = freeze.frames.first(where: { $0.id == display })?.uuid
+            let uuid = freeze.frame(of: display)?.uuid
             return { [self] in
                 let began = await session.begin()
                 guard !Task.isCancelled else { return }
@@ -436,7 +425,7 @@ struct CapturedShot {
                     let frame = fresh.frames.first { uuid != nil ? $0.uuid == uuid : $0.id == display }
                     if let frame, CGRect(origin: .zero, size: frame.frame.size).contains(local),
                        let image = session.crop(fresh, display: frame.id, local: local) {
-                        await handOff(CapturedShot(image: image))
+                        await handOff(image)
                     } else {
                         toast.showRefusal(.displayGone)
                     }
@@ -451,7 +440,7 @@ struct CapturedShot {
     /// came through; read only by the bar's Area mode.
     private func remember(display: DisplayID, local: CGRect, in freeze: Freeze) {
         guard ScreenshotsSettings.read(store).rememberSelection,
-              let uuid = freeze.frames.first(where: { $0.id == display })?.uuid,
+              let uuid = freeze.frame(of: display)?.uuid,
               let record = RememberedSelection(display: uuid, rect: local) else { return }
         record.write(to: store)
     }
@@ -471,15 +460,15 @@ struct CapturedShot {
     /// type's. No shutter, since no picture was taken, and the thumbnail comes back whatever the setting says,
     /// since it is where the edit was asked for. A shot that had no file replaces nothing: it is saved as a new one,
     /// or only copied under the clipboard target, as any shot is.
-    func handOff(_ shot: CapturedShot, saves: Bool = true, copies: Bool = true,
+    func handOff(_ image: CGImage, saves: Bool = true, copies: Bool = true,
                  fileEvenFromClipboard: Bool = false, thenShare: Bool = false, editing: ShotEdit? = nil) async {
         guard !Task.isCancelled else { return }
         let settings = ScreenshotsSettings.read(store)
         if editing == nil { session.shutter() }
         // A person who asked for the Share sheet needs the thumbnail it opens at, whatever the setting says.
         let shows = settings.thumbnail || thenShare || editing != nil
-        if shows { toast.showWorking(shot.image) }
-        let delivery = await session.deliver(shot.image, saves: saves, copies: copies,
+        if shows { toast.showWorking(image) }
+        let delivery = await session.deliver(image, saves: saves, copies: copies,
                                              fileEvenFromClipboard: fileEvenFromClipboard,
                                              replacing: editing?.original)
         if !Task.isCancelled { present(delivery, showing: shows, sharing: thenShare) }

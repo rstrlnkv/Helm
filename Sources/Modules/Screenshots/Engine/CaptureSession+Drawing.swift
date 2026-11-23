@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import ImageIO
+import UniformTypeIdentifiers
 
 extension CaptureSession {
     /// The pool is inside the call, as in `encode`: a 5K cut is one iteration of the caller's work.
@@ -11,17 +12,12 @@ extension CaptureSession {
                      display: CGImage) -> CGImage? {
         autoreleasepool {
             for space in Pixelate.spaces(for: cut) {
-                guard let context = CGContext(data: nil, width: cut.width, height: cut.height,
-                                              bitsPerComponent: 8, bytesPerRow: 0, space: space,
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-                else { continue }
+                guard let context = Pixelate.bitmap(width: cut.width, height: cut.height, space: space) else { continue }
                 context.draw(cut, in: CGRect(x: 0, y: 0, width: cut.width, height: cut.height))
                 context.setAllowsAntialiasing(true)
                 // The spotlights' one dim, under every other layer: a spotlight is no layer of its own here and draws nothing below.
                 context.saveGState()
-                context.translateBy(x: 0, y: CGFloat(cut.height))
-                context.scaleBy(x: scale, y: -scale)
-                context.translateBy(x: -origin.x / scale, y: -origin.y / scale)
+                context.mapDisplayPoints(toBitmapOfHeight: cut.height, scale: scale, origin: origin)
                 Spotlights.draw(layers, within: CGRect(x: origin.x / scale, y: origin.y / scale,
                                                        width: CGFloat(cut.width) / scale, height: CGFloat(cut.height) / scale),
                                 in: context)
@@ -52,14 +48,10 @@ extension CaptureSession {
                         let cutPixels = CGRect(origin: origin, size: CGSize(width: cut.width, height: cut.height))
                         guard let grain = PencilGrain.mask(for: layer.points, width: stroke.width, scale: scale, pixels: cutPixels)
                         else { context.restoreGState(); continue }
-                        context.clip(to: CGRect(x: grain.pixels.minX - origin.x,
-                                                y: CGFloat(cut.height) - (grain.pixels.maxY - origin.y),
-                                                width: grain.pixels.width, height: grain.pixels.height), mask: grain.grey)
+                        context.clip(to: inCut(grain.pixels, cutHeight: cut.height, origin: origin), mask: grain.grey)
                     }
                     // Display-local points, top-left, to this bitmap's pixels, bottom-left.
-                    context.translateBy(x: 0, y: CGFloat(cut.height))
-                    context.scaleBy(x: scale, y: -scale)
-                    context.translateBy(x: -origin.x / scale, y: -origin.y / scale)
+                    context.mapDisplayPoints(toBitmapOfHeight: cut.height, scale: scale, origin: origin)
                     if layer.tool == .text || layer.tool == .emoji {
                         AnnotationText.draw(layer, in: context)
                         context.restoreGState()
@@ -96,9 +88,13 @@ extension CaptureSession {
         context.saveGState()
         context.setShouldAntialias(false)
         context.interpolationQuality = .none
-        context.draw(tile.image, in: CGRect(x: tile.pixels.minX - origin.x, y: CGFloat(cutHeight) - (tile.pixels.maxY - origin.y),
-                                            width: tile.pixels.width, height: tile.pixels.height))
+        context.draw(tile.image, in: inCut(tile.pixels, cutHeight: cutHeight, origin: origin))
         context.restoreGState()
+    }
+
+    /// `pixels`, a rectangle in the display's pixels (top-left), in the bitmap of a cut `cutHeight` high that starts at `origin` (bottom-left).
+    private static func inCut(_ pixels: CGRect, cutHeight: Int, origin: CGPoint) -> CGRect {
+        CGRect(x: pixels.minX - origin.x, y: CGFloat(cutHeight) - (pixels.maxY - origin.y), width: pixels.width, height: pixels.height)
     }
 
     /// The picture as a PNG or a JPEG, or nil when ImageIO would not make one. The
@@ -121,7 +117,7 @@ extension CaptureSession {
                 source = flat
             }
             let data = NSMutableData()
-            let type = format == .png ? "public.png" : "public.jpeg"
+            let type = format == .png ? UTType.png.identifier : UTType.jpeg.identifier
             guard let destination = CGImageDestinationCreateWithData(data, type as CFString, 1, nil)
             else { return nil }
             let options: CFDictionary? = format == .jpeg
@@ -139,9 +135,7 @@ extension CaptureSession {
     /// of the same picture is fine, so the JPEG falls back rather than refuses.
     static func flattened(_ image: CGImage) -> CGImage? {
         for space in Pixelate.spaces(for: image) {
-            guard let context = CGContext(data: nil, width: image.width, height: image.height,
-                                          bitsPerComponent: 8, bytesPerRow: 0, space: space,
-                                          bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+            guard let context = Pixelate.bitmap(width: image.width, height: image.height, space: space, alpha: .noneSkipLast)
             else { continue }
             let rect = CGRect(x: 0, y: 0, width: image.width, height: image.height)
             context.setFillColor(jpegGround)

@@ -90,8 +90,7 @@ public struct SelectionDrag: Sendable {
             let dx = abs(pointer.x - anchor.x), dy = abs(pointer.y - anchor.y)
             return CGRect(x: anchor.x - dx, y: anchor.y - dy, width: 2 * dx, height: 2 * dy)
         }
-        return CGRect(x: min(anchor.x, pointer.x), y: min(anchor.y, pointer.y),
-                      width: abs(pointer.x - anchor.x), height: abs(pointer.y - anchor.y))
+        return CGRect(corner: anchor, opposite: pointer)
     }
 
     private static func clamp(_ point: CGPoint, to bounds: CGRect) -> CGPoint {
@@ -105,9 +104,6 @@ public struct SelectionDrag: Sendable {
 }
 
 public enum Selection {
-    /// Enter with nothing selected: the whole display, which is what macOS does.
-    public static func wholeDisplay(_ bounds: CGRect) -> CGRect { bounds }
-
     /// The size a person reads while dragging, in pixels — a point is one to
     /// three pixels and the picture is made of pixels.
     public static func pixelSize(of rect: CGRect, scale: CGFloat) -> (width: Int, height: Int) {

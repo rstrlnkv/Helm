@@ -17,9 +17,7 @@ import XCTest
 final class AToolAddedLaterTakesItsDefaultTests: XCTestCase {
 
     private func store(_ table: Any? = nil) -> NamespacedStore {
-        let backing = InMemoryKeyValueStore()
-        if let table { backing.set(table, forKey: "module.screenshots.\(ScreenshotsSettings.Key.paletteChoices)") }
-        return NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: backing)
+        screenshotsStore(table.map { [ScreenshotsSettings.Key.paletteChoices: $0] } ?? [:])
     }
 
     private func stored(_ store: NamespacedStore) -> [String: Bool] { store.boolTable(ScreenshotsSettings.Key.paletteChoices) }

@@ -11,21 +11,14 @@ import XCTest
 /// whether a folder is a folder is the disk's answer.
 final class TheSaveFolderIsMacOSsOrTheDesktopTests: XCTestCase {
 
-    private func fixture() -> (home: URL, desktop: URL) {
-        let home = scratchDirectory("shots-folder")
-        let desktop = home.appendingPathComponent("Desktop", isDirectory: true)
-        try? FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
-        return (home, desktop)
-    }
-
     func testAnAbsentLocationIsTheDesktopAndNotARefusal() {
-        let (home, desktop) = fixture()
+        let (home, desktop) = homeWithDesktop("shots-folder")
         let folder = SaveLocation.resolve(raw: nil, desktop: desktop, home: home)
         XCTAssertEqual(folder, SaveFolder(url: desktop, refused: nil))
     }
 
     func testAnExistingFolderIsUsed() throws {
-        let (home, desktop) = fixture()
+        let (home, desktop) = homeWithDesktop("shots-folder")
         let pictures = home.appendingPathComponent("Pictures/Shots", isDirectory: true)
         try FileManager.default.createDirectory(at: pictures, withIntermediateDirectories: true)
         let folder = SaveLocation.resolve(raw: pictures.path, desktop: desktop, home: home)
@@ -34,7 +27,7 @@ final class TheSaveFolderIsMacOSsOrTheDesktopTests: XCTestCase {
     }
 
     func testATildeIsTheHomeOfTheCallerAndNotOfTheProcess() throws {
-        let (home, desktop) = fixture()
+        let (home, desktop) = homeWithDesktop("shots-folder")
         try FileManager.default.createDirectory(at: home.appendingPathComponent("Shots"),
                                                 withIntermediateDirectories: true)
         let folder = SaveLocation.resolve(raw: "~/Shots", desktop: desktop, home: home)
@@ -46,7 +39,7 @@ final class TheSaveFolderIsMacOSsOrTheDesktopTests: XCTestCase {
     /// The five kinds of garbage a property list can hold, and the path that does
     /// not name a folder, each with the reason it is refused for.
     func testEveryKindOfGarbageIsRefusedByNameAndTakesTheDesktop() throws {
-        let (home, desktop) = fixture()
+        let (home, desktop) = homeWithDesktop("shots-folder")
         let file = try write("a-file.txt", in: home)
         let cases: [(String, Any, SaveFolderRefusal)] = [
             ("an integer", 5, .notAPath),
@@ -70,7 +63,7 @@ final class TheSaveFolderIsMacOSsOrTheDesktopTests: XCTestCase {
     /// directory left unreadable is otherwise swept before it is made readable
     /// again and the harness leaves it behind.
     func testAFolderNobodyMayWriteIsRefused() throws {
-        let (home, desktop) = fixture()
+        let (home, desktop) = homeWithDesktop("shots-folder")
         let locked = home.appendingPathComponent("locked", isDirectory: true)
         try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: true)
         try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)

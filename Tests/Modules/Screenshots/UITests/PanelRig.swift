@@ -53,8 +53,8 @@ enum PanelRig {
         let display: DisplayID
     }
 
-    /// Every real screen, 1000 x 800 points at scale 1, each with a UUID; the first holds a window at (100,100,300,200).
-    static func rig(timer: CaptureTimer = .none, presentBar: @escaping (CapturePanel) -> Void = { _ in },
+    /// A rig whose controller is cancelled when `test` ends. Every real screen, 1000 x 800 points at scale 1, each with a UUID; the first holds a window at (100,100,300,200).
+    static func rig(in test: XCTestCase, timer: CaptureTimer = .none, presentBar: @escaping (CapturePanel) -> Void = { _ in },
                     tick: @escaping @Sendable (Duration) async throws -> Void = { _ in }) throws -> Rig {
         let shown = try OverlayRig.frames(scale: 1)
         let base = shown.enumerated().map { index, frame in
@@ -75,13 +75,9 @@ enum PanelRig {
         let controller = CaptureController(store: store, session: session,
                                            presentOverlay: { overlay in held.overlays += 1; held.overlay = overlay; return overlay.build() },
                                            presentBar: { bar in held.bars += 1; presentBar(bar) }, tick: tick)
-        return Rig(controller: controller, screen: screen, disk: disk, held: held, display: try XCTUnwrap(base.first?.id))
-    }
-
-    static func drag(_ overlay: CaptureOverlay, on display: DisplayID, _ area: CGRect) {
-        overlay.mouseDown(on: display, at: area.origin, flags: [])
-        overlay.mouseDragged(on: display, at: CGPoint(x: area.maxX, y: area.maxY), flags: [])
-        overlay.mouseUp(on: display)
+        let rig = Rig(controller: controller, screen: screen, disk: disk, held: held, display: try XCTUnwrap(base.first?.id))
+        test.addTeardownBlock { @MainActor in rig.controller.cancel() }
+        return rig
     }
 
     static let area = CGRect(x: 50, y: 60, width: 400, height: 300)

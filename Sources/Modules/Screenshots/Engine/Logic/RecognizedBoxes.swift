@@ -21,11 +21,6 @@ public enum RecognizedBoxes {
         let pixels: CGRect
         /// Pixels to a point on that display.
         let scale: CGFloat
-
-        init(pixels: CGRect, scale: CGFloat) {
-            self.pixels = pixels
-            self.scale = scale
-        }
     }
 
     /// A box to blur: where, in points, and how coarse.

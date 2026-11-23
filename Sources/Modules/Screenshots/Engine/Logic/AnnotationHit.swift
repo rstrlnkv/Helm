@@ -19,7 +19,7 @@ enum AnnotationHit {
             || annotation.tool == .magnifier }
 
     /// Whether `point` is on `annotation`.
-    static func hits(_ annotation: Annotation, at point: CGPoint, tolerance: CGFloat = tolerance) -> Bool {
+    static func hits(_ annotation: Annotation, at point: CGPoint) -> Bool {
         guard point.x.isFinite, point.y.isFinite, annotation.isUsable else { return false }
         let stroke = annotation.stroke
         // The band the tolerance adds is on both sides of the line, so half of it each.

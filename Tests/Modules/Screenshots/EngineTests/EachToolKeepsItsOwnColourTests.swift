@@ -26,9 +26,6 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
     }
 
     private func backing() -> InMemoryKeyValueStore { InMemoryKeyValueStore() }
-    private func store(_ backing: InMemoryKeyValueStore) -> NamespacedStore {
-        NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: backing)
-    }
     private func colours(_ memory: EditorMemory) -> [AnnotationTool: AnnotationInk?] {
         Dictionary(uniqueKeysWithValues: AnnotationTool.allCases.map { ($0, memory.style(for: $0).color) })
     }
@@ -37,8 +34,8 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
 
     func testAPickWithOneToolLeavesEveryOtherToolsColourAlone() {
         let disk = backing()
-        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue)), for: .pen, in: store(disk))
-        let fresh = EditorMemory.read(store(disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue)), for: .pen, in: screenshotsStore(backing: disk))
+        let fresh = EditorMemory.read(screenshotsStore(backing: disk))
         XCTAssertEqual(fresh.style(for: .pen).color, AnnotationInk(AnnotationColor.blue))
         for tool in AnnotationTool.allCases where tool != .pen {
             XCTAssertNil(fresh.style(for: tool).color, "\(tool) took the Pen's pick: nobody picked for it, so it reads its own default")
@@ -48,9 +45,9 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
 
     func testTwoToolsKeepTwoColoursAndAFreshReadReturnsBoth() {
         let disk = backing()
-        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue)), for: .pen, in: store(disk))
-        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.green)), for: .highlighter, in: store(disk))
-        let fresh = EditorMemory.read(store(disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue)), for: .pen, in: screenshotsStore(backing: disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.green)), for: .highlighter, in: screenshotsStore(backing: disk))
+        let fresh = EditorMemory.read(screenshotsStore(backing: disk))
         XCTAssertEqual(fresh.style(for: .pen).color, AnnotationInk(AnnotationColor.blue), "the Marker's pick overwrote the Pen's colour")
         XCTAssertEqual(fresh.style(for: .highlighter).color, AnnotationInk(AnnotationColor.green))
         for tool in AnnotationTool.allCases where tool != .pen && tool != .highlighter {
@@ -67,9 +64,9 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
         XCTAssertEqual(noted.style(for: .highlighter).color, AnnotationInk(AnnotationColor.green))
         XCTAssertNil(noted.style(for: .arrow).color, "note: a tool nobody picked for took a pick")
         let disk = backing()
-        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue)), for: .pen, in: store(disk))
-        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.green)), for: .highlighter, in: store(disk))
-        XCTAssertEqual(colours(noted), colours(EditorMemory.read(store(disk))), "the overlay's memory and the store's read disagree")
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue)), for: .pen, in: screenshotsStore(backing: disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.green)), for: .highlighter, in: screenshotsStore(backing: disk))
+        XCTAssertEqual(colours(noted), colours(EditorMemory.read(screenshotsStore(backing: disk))), "the overlay's memory and the store's read disagree")
     }
 
     func testEveryToolRoundTripsAColourOfItsOwnThroughAFreshRead() {
@@ -78,9 +75,9 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
         for (index, tool) in AnnotationTool.allCases.enumerated() {
             let ink = AnnotationInk(red: Double(index) / 20, green: 0.25, blue: 1 - Double(index) / 20)!
             wanted[tool] = ink
-            EditorMemory.remember(style: AnnotationStyle(color: ink), for: tool, in: store(disk))
+            EditorMemory.remember(style: AnnotationStyle(color: ink), for: tool, in: screenshotsStore(backing: disk))
         }
-        let fresh = EditorMemory.read(store(disk))
+        let fresh = EditorMemory.read(screenshotsStore(backing: disk))
         for tool in AnnotationTool.allCases {
             XCTAssertEqual(fresh.style(for: tool).color, wanted[tool], "\(tool): its own colour did not come back")
         }
@@ -89,9 +86,9 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
 
     func testAPickOnOneToolKeepsThatToolsOtherPicksAndTheFillIsStillEverybodys() {
         let disk = backing()
-        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue), thickness: .thick, filled: true, opacity: 0.5), for: .pen, in: store(disk))
-        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.green), thickness: .thin, filled: true, opacity: 0.3), for: .highlighter, in: store(disk))
-        let fresh = EditorMemory.read(store(disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue), thickness: .thick, filled: true, opacity: 0.5), for: .pen, in: screenshotsStore(backing: disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.green), thickness: .thin, filled: true, opacity: 0.3), for: .highlighter, in: screenshotsStore(backing: disk))
+        let fresh = EditorMemory.read(screenshotsStore(backing: disk))
         XCTAssertEqual(fresh.style(for: .pen), AnnotationStyle(color: AnnotationInk(AnnotationColor.blue), thickness: .thick, filled: true, opacity: 0.5))
         XCTAssertEqual(fresh.style(for: .highlighter), AnnotationStyle(color: AnnotationInk(AnnotationColor.green), thickness: .thin, filled: true, opacity: 0.3))
         for tool in AnnotationTool.allCases { XCTAssertTrue(fresh.style(for: tool).filled, "\(tool): the fill is not shared") }
@@ -100,9 +97,9 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
     /// A pick with no colour in it (the tool has not one yet) writes no colour for the tool, and never somebody else's.
     func testAPickWithNoColourWritesNoColourForAnyone() {
         let disk = backing()
-        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue)), for: .pen, in: store(disk))
-        EditorMemory.remember(style: AnnotationStyle(color: nil, thickness: .thin), for: .highlighter, in: store(disk))
-        let fresh = EditorMemory.read(store(disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue)), for: .pen, in: screenshotsStore(backing: disk))
+        EditorMemory.remember(style: AnnotationStyle(color: nil, thickness: .thin), for: .highlighter, in: screenshotsStore(backing: disk))
+        let fresh = EditorMemory.read(screenshotsStore(backing: disk))
         XCTAssertEqual(fresh.style(for: .pen).color, AnnotationInk(AnnotationColor.blue))
         XCTAssertNil(fresh.style(for: .highlighter).color, "the Marker was given the Pen's colour by a pick that carried none")
     }
@@ -110,7 +107,7 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
     // MARK: migration
 
     func testAStoreWithOnlyTheSharedInkGivesEveryToolThatInk() {
-        let kept = store(backing())
+        let kept = screenshotsStore(backing: backing())
         kept.set([0.2, 0.4, 0.6], for: Key.editorInk)
         let read = EditorMemory.read(kept)
         for tool in AnnotationTool.allCases {
@@ -119,7 +116,7 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
     }
 
     func testAStoreWithOnlyTheOldSwatchNameGivesEveryToolThatSwatch() {
-        let kept = store(backing())
+        let kept = screenshotsStore(backing: backing())
         kept.set(AnnotationColor.green.rawValue, for: Key.editorColor)
         let read = EditorMemory.read(kept)
         for tool in AnnotationTool.allCases {
@@ -128,7 +125,7 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
     }
 
     func testAStoreWithNothingGivesEveryToolItsDefault() {
-        let read = EditorMemory.read(store(backing()))
+        let read = EditorMemory.read(screenshotsStore(backing: backing()))
         for tool in AnnotationTool.allCases { XCTAssertNil(read.style(for: tool).color, "\(tool)") }
     }
 
@@ -136,13 +133,13 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
     func testAPickAfterAMigrationChangesTheOneToolAndTheOthersKeepWhatTheyMigratedWithAndAfterAnotherRead() {
         for legacy in ["editorInk", "editorColor"] {
             let disk = backing()
-            let kept = store(disk)
+            let kept = screenshotsStore(backing: disk)
             if legacy == "editorInk" { kept.set([0, 0, 1], for: Key.editorInk) } else { kept.set(AnnotationColor.blue.rawValue, for: Key.editorColor) }
             let migrated = EditorMemory.read(kept).style(for: .pen).color
             XCTAssertNotNil(migrated, "\(legacy): control: the source was read")
             EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.orange)), for: .pen, in: kept)
             for _ in 0..<2 {
-                let fresh = EditorMemory.read(store(disk))
+                let fresh = EditorMemory.read(screenshotsStore(backing: disk))
                 XCTAssertEqual(fresh.style(for: .pen).color, AnnotationInk(AnnotationColor.orange), "\(legacy): the pick did not stay")
                 for tool in AnnotationTool.allCases where tool != .pen {
                     XCTAssertEqual(fresh.style(for: tool).color, migrated, "\(legacy): the Pen's pick reached \(tool)")
@@ -153,7 +150,7 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
 
     /// The per-tool record, once it exists, is the colour; the shared source is the start of a tool with no entry in it and nothing more.
     func testATableThatSaysNothingOfAToolLeavesItWithTheMigratedInkAndATablesEntryWins() {
-        let kept = store(backing())
+        let kept = screenshotsStore(backing: backing())
         kept.set([0, 0, 1], for: Key.editorInk)
         kept.set(["pen": [1.0, 0.5, 0.0]], for: perToolKey)
         let read = EditorMemory.read(kept)
@@ -165,10 +162,10 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
     /// a pick made, the row changed, the Marker (never picked for) starts with the row's colour and the Pen keeps its own.
     func testTheSettingsRowIsTheStartOfAToolWithNoColourOfItsOwn() {
         let disk = backing()
-        let kept = store(disk)
+        let kept = screenshotsStore(backing: disk)
         EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.orange)), for: .pen, in: kept)
         kept.set(AnnotationColor.blue.rawValue, for: Key.editorColor)
-        let read = EditorMemory.read(store(disk))
+        let read = EditorMemory.read(screenshotsStore(backing: disk))
         XCTAssertEqual(read.style(for: .pen).color, AnnotationInk(AnnotationColor.orange), "the row overwrote a colour the Pen has of its own")
         XCTAssertEqual(read.style(for: .highlighter).color, AnnotationInk(.blue), "the row's colour is ignored for a tool that has none of its own")
     }
@@ -177,14 +174,14 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
     /// and a tool's own entry were stored. The shared ink is gone, the tool with an entry keeps it, a tool with none reads the row's swatch.
     func testTheRowsWriteAfterASharedInkWasStoredHidesNothingAndKeepsAToolsOwnEntry() {
         let disk = backing()
-        let kept = store(disk)
+        let kept = screenshotsStore(backing: disk)
         kept.set([1.0, 0.0, 1.0], for: Key.editorInk)
         EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.orange)), for: .pen, in: kept)
         XCTAssertEqual(EditorMemory.read(kept).style(for: .highlighter).color, AnnotationInk(red: 1, green: 0, blue: 1), "control: the shared ink hides the row")
         kept.set(AnnotationColor.green.rawValue, for: Key.editorColor)
         kept.set(nil, for: Key.editorInk)
         XCTAssertNil(kept.object(Key.editorInk))
-        let read = EditorMemory.read(store(disk))
+        let read = EditorMemory.read(screenshotsStore(backing: disk))
         XCTAssertEqual(read.style(for: .pen).color, AnnotationInk(AnnotationColor.orange))
         XCTAssertEqual(read.style(for: .highlighter).color, AnnotationInk(.green))
         XCTAssertEqual(read.style(for: .arrow).color, AnnotationInk(.green))
@@ -214,11 +211,11 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
             ("a table with one good and one wrong entry", ["pen": [1.0, 0.0, 0.0], "highlighter": "blue"]),
         ]
         // Control, or every case below passes for a record nobody reads: a well-formed record is read.
-        let good = store(backing())
+        let good = screenshotsStore(backing: backing())
         good.set(["pen": [0.0, 0.0, 1.0]], for: perToolKey)
         XCTAssertEqual(EditorMemory.read(good).style(for: .pen).color, AnnotationInk(red: 0, green: 0, blue: 1), "control: a well-formed record is not read")
         for (name, value) in wrong {
-            let kept = store(backing())
+            let kept = screenshotsStore(backing: backing())
             kept.set(value, for: perToolKey)
             assertBounded(kept, name)
             let read = EditorMemory.read(kept)
@@ -235,7 +232,7 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
             ("strings", ["1", "0", "0"]), ("nested", [[1.0], [0.0], [0.0]]),
         ]
         for (name, entry) in bad {
-            let kept = store(backing())
+            let kept = screenshotsStore(backing: backing())
             kept.set(["pen": entry, "highlighter": [0.0, 1.0, 0.0]], for: perToolKey)
             assertBounded(kept, name)
             let read = EditorMemory.read(kept)
@@ -256,7 +253,7 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
             [2, 0, 0], [-1, 0, 0], [1e308, 0, 0], [0, 0, -1e308], [0, 0, .leastNonzeroMagnitude],
         ]
         for entry in hostile {
-            let kept = store(backing())
+            let kept = screenshotsStore(backing: backing())
             kept.set(["pen": entry, "highlighter": [0.0, 1.0, 0.0]], for: perToolKey)
             assertBounded(kept, "\(entry)")
             XCTAssertEqual(EditorMemory.read(kept).style(for: .highlighter).color, AnnotationInk(red: 0, green: 1, blue: 0),
@@ -270,7 +267,7 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
 
     func testAStrangersKeyInTheRecordIsNeverReadAsAToolAndIsDroppedByTheNextWrite() {
         let disk = backing()
-        let kept = store(disk)
+        let kept = screenshotsStore(backing: disk)
         let strangers = ["Pen", "PEN", "pen ", "", "__proto__", "step\u{0}", "../pen", "pen/../arrow", String(repeating: "x", count: 5_000), "\u{1F58A}"]
         var record: [String: Any] = ["pen": [0.0, 0.0, 1.0]]
         for stranger in strangers { record[stranger] = [1.0, 0.0, 0.0] }
@@ -287,7 +284,7 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
 
     func testAReadThatCannotBeUnderstoodWritesNothingBack() {
         let disk = backing()
-        let kept = store(disk)
+        let kept = screenshotsStore(backing: disk)
         kept.set("not a table", for: perToolKey)
         kept.set([0.1, 0.2], for: Key.editorInk)
         kept.set("blue", for: Key.editorColor)
@@ -300,7 +297,7 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
     /// Only a missing key signals migration: a damaged `editorInk` is no colour, and the old swatch is not asked then, for every tool.
     func testADamagedSharedInkIsNotMigratedAndTheOldSwatchIsNotAskedThen() {
         for damaged in [[0.1, 0.2], [Double.nan, 0, 0], "blue"] as [Any] {
-            let kept = store(backing())
+            let kept = screenshotsStore(backing: backing())
             kept.set(damaged, for: Key.editorInk)
             kept.set(AnnotationColor.green.rawValue, for: Key.editorColor)
             let read = EditorMemory.read(kept)
@@ -313,10 +310,10 @@ final class EachToolKeepsItsOwnColourTests: XCTestCase {
     /// A pick on top of a damaged record repairs it for that tool and does not turn the damage into a colour for the others.
     func testAPickOnADamagedRecordWritesThatToolAloneAndNoCrash() {
         let disk = backing()
-        let kept = store(disk)
+        let kept = screenshotsStore(backing: disk)
         kept.set("not a table", for: perToolKey)
         EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue)), for: .pen, in: kept)
-        let read = EditorMemory.read(store(disk))
+        let read = EditorMemory.read(screenshotsStore(backing: disk))
         XCTAssertEqual(read.style(for: .pen).color, AnnotationInk(AnnotationColor.blue))
         for tool in AnnotationTool.allCases where tool != .pen { XCTAssertNil(read.style(for: tool).color, "\(tool)") }
     }

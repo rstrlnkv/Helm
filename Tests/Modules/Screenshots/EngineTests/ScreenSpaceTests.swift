@@ -15,7 +15,7 @@ final class ScreenSpaceTests: XCTestCase {
     private let aboveLeftCG = CGRect(x: -1920, y: -1080, width: 1920, height: 1080)
 
     func testADisplayAboveThePrimaryIsAboveInAppKitToo() {
-        let appKit = ScreenSpace.appKitRect(fromCG: aboveLeftCG, primaryHeight: primaryHeight)
+        let appKit = ScreenSpace.flipped(aboveLeftCG, primaryHeight: primaryHeight)
         XCTAssertEqual(appKit, CGRect(x: -1920, y: 1080, width: 1920, height: 1080),
                        "the display above the primary was not placed above it: the y flip is missing")
     }

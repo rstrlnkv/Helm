@@ -214,9 +214,7 @@ struct EditorTextTools {
     func build() -> Bool {
         var screens: [DisplayID: NSScreen] = [:]
         for screen in NSScreen.screens {
-            if let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32 {
-                screens[DisplayID(number)] = screen
-            }
+            if let id = screen.displayID { screens[id] = screen }
         }
         for frame in freeze.frames {
             guard let screen = screens[frame.id] else { close(); return false }
