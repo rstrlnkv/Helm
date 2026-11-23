@@ -225,7 +225,7 @@ final class SCKCapture: ScreenCapturing, @unchecked Sendable {
         let height = screens.first?.frame.height ?? 0
         // AppKit frames to CG-global points: the display that holds the origin gives the flip.
         let displays = screens.map {
-            CGRect(x: $0.frame.minX, y: height - $0.frame.maxY, width: $0.frame.width, height: $0.frame.height)
+            ScreenSpace.flipped($0.frame, primaryHeight: height)
         }
         return DockStrip.placement(entries: entries, ports: ports, displays: displays, strip: strip) {
             HelmLog.shared.warn(ScreenshotsEngine.moduleID, "the Dock did not answer Accessibility in time; its strip is used")

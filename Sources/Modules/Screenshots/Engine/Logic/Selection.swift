@@ -90,8 +90,7 @@ public struct SelectionDrag: Sendable {
             let dx = abs(pointer.x - anchor.x), dy = abs(pointer.y - anchor.y)
             return CGRect(x: anchor.x - dx, y: anchor.y - dy, width: 2 * dx, height: 2 * dy)
         }
-        return CGRect(x: min(anchor.x, pointer.x), y: min(anchor.y, pointer.y),
-                      width: abs(pointer.x - anchor.x), height: abs(pointer.y - anchor.y))
+        return CGRect(corner: anchor, opposite: pointer)
     }
 
     private static func clamp(_ point: CGPoint, to bounds: CGRect) -> CGPoint {

@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import HelmRuntime
 import ImageIO
+import os
 
 /// Why a capture did not become a picture, or not all of one.
 public enum CaptureRefusal: Sendable, Equatable {
@@ -91,11 +92,10 @@ public enum EditOpening: @unchecked Sendable {
 }
 
 /// Whether one pass of `CaptureSession.copyAll` is to go on: read between two pictures, set from any thread.
-private final class GroupPass: @unchecked Sendable {
-    private let lock = NSLock()
-    private var stopped = false
-    var isStopped: Bool { lock.lock(); defer { lock.unlock() }; return stopped }
-    func stop() { lock.lock(); stopped = true; lock.unlock() }
+private final class GroupPass: Sendable {
+    private let stopped = OSAllocatedUnfairLock(initialState: false)
+    var isStopped: Bool { stopped.withLock { $0 } }
+    func stop() { stopped.withLock { $0 = true } }
 }
 
 /// One capture, start to finish, from the ports and the logic.

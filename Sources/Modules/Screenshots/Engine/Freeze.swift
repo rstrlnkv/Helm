@@ -172,10 +172,7 @@ public struct PictureOnScreen: @unchecked Sendable {
     private static func compose(_ picture: CGImage, over ground: CGImage, at rect: CGRect, scale: CGFloat) -> CGImage? {
         autoreleasepool {
             for space in Pixelate.spaces(for: ground) {
-                guard let context = CGContext(data: nil, width: ground.width, height: ground.height,
-                                              bitsPerComponent: 8, bytesPerRow: 0, space: space,
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-                else { continue }
+                guard let context = Pixelate.bitmap(width: ground.width, height: ground.height, space: space) else { continue }
                 context.draw(ground, in: CGRect(x: 0, y: 0, width: ground.width, height: ground.height))
                 context.interpolationQuality = .high
                 // Top-left points to this bitmap's pixels, bottom-left.

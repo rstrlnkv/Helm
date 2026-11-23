@@ -404,8 +404,7 @@ public struct Annotation: Sendable, Equatable {
             path.addLine(to: end)
             return path
         case .ellipse:
-            return CGPath(ellipseIn: CGRect(x: min(start.x, end.x), y: min(start.y, end.y),
-                                            width: abs(end.x - start.x), height: abs(end.y - start.y)),
+            return CGPath(ellipseIn: CGRect(corner: start, opposite: end),
                           transform: nil)
         case .pen, .pencil, .highlighter:
             let path = CGMutablePath()
@@ -421,8 +420,7 @@ public struct Annotation: Sendable, Equatable {
         case .step, .magnifier: return CGPath(ellipseIn: frame, transform: nil)
         case .spotlight: return Spotlights.outline(of: self)
         case .rectangle, .blur:
-            return CGPath(rect: CGRect(x: min(start.x, end.x), y: min(start.y, end.y),
-                                       width: abs(end.x - start.x), height: abs(end.y - start.y)),
+            return CGPath(rect: CGRect(corner: start, opposite: end),
                           transform: nil)
         case .arrow:
             let length = hypot(end.x - start.x, end.y - start.y)

@@ -31,7 +31,7 @@ enum DockStrip {
         } else {
             strip = CGRect(x: visible.maxX, y: frame.minY, width: right, height: frame.height)
         }
-        return CGRect(x: strip.minX, y: primaryHeight - strip.maxY, width: strip.width, height: strip.height)
+        return ScreenSpace.flipped(strip, primaryHeight: primaryHeight)
     }
 
     /// The strip of the first display, in the order given, that gives up room for

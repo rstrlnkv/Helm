@@ -57,7 +57,7 @@ public final class ScreenshotsEngine: ModuleEngine, @unchecked Sendable {
     public var subscriberCount: Int { news.subscriberCount }
 
     public func activate() {
-        lock.lock(); stopped = false; lock.unlock()
+        lock.withLock { stopped = false }
         refresh()
     }
 
@@ -66,11 +66,11 @@ public final class ScreenshotsEngine: ModuleEngine, @unchecked Sendable {
     /// that resolved its weak capture once holds the object for as long as it
     /// runs, so the cancel belongs here and not in `deinit`.
     public func deactivate() {
-        lock.lock()
-        stopped = true
-        let task = refreshing
-        refreshing = nil
-        lock.unlock()
+        let task = lock.withLock {
+            stopped = true
+            defer { refreshing = nil }
+            return refreshing
+        }
         task?.cancel()
     }
 
@@ -79,7 +79,7 @@ public final class ScreenshotsEngine: ModuleEngine, @unchecked Sendable {
     /// A synchronous property, because Swift
     /// refuses `NSLock.lock()` across a suspension, and the read is taken on
     /// both sides of one.
-    private var isStopped: Bool { lock.lock(); defer { lock.unlock() }; return stopped }
+    private var isStopped: Bool { lock.withLock { stopped } }
 
     /// Reads both domains off the cooperative pool — each is an exchange with
     /// `cfprefsd` — and publishes what they say.
@@ -91,7 +91,7 @@ public final class ScreenshotsEngine: ModuleEngine, @unchecked Sendable {
             guard !self.isStopped else { return }
             self.news.say(state)
         }
-        lock.lock(); refreshing?.cancel(); refreshing = task; lock.unlock()
+        lock.withLock { refreshing?.cancel(); refreshing = task }
     }
 
     func read() async -> ScreenshotsState {
