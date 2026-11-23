@@ -63,11 +63,18 @@ final class ShellWindowButtons {
 
     /// The placement for `home`, the union of the three buttons where AppKit puts them in the content's
     /// coordinates. Nil when `home` is nil, empty, null or not a finite place: nothing is moved or hidden.
-    nonisolated static func placed(home: CGRect?, rail: Bool) -> Placement? {
+    /// `toolbar`: AppKit put them there with the window's toolbar on, `ShellGeometry.toolbarShift` further right
+    /// and down than without it. The place Helm holds them is the same either way (the window's own state, not the
+    /// stored look, since a flip moves the buttons a turn later): the offset is the flat one from the home
+    /// less the shift, so it is absolute.
+    nonisolated static func placed(home: CGRect?, rail: Bool, toolbar: Bool = false) -> Placement? {
         guard let home, !home.isNull, !home.isInfinite, home.width > 0, home.height > 0,
               [home.minX, home.minY, home.width, home.height].allSatisfy(\.isFinite) else { return nil }
-        let offset = ShellGeometry.buttonsOffset(home: home, rail: rail)
-        let buttons = home.offsetBy(dx: offset.width, dy: offset.height)
+        let shift = toolbar ? ShellGeometry.toolbarShift : .zero
+        let flat = home.offsetBy(dx: -shift.width, dy: -shift.height)
+        let held = ShellGeometry.buttonsOffset(home: flat, rail: rail)
+        let offset = CGSize(width: held.width - shift.width, height: held.height - shift.height)
+        let buttons = flat.offsetBy(dx: held.width, dy: held.height)
         guard rail, home.minY >= 0 else { return Placement(offset: offset, capsule: nil) }
         return Placement(offset: offset,
                          capsule: Capsule(closed: ShellGeometry.capsuleClosedFrame(buttons: buttons),
@@ -89,6 +96,8 @@ final class ShellWindowButtons {
     nonisolated(unsafe) private var tokens: [NSObjectProtocol] = []
     /// Where AppKit puts each button, and where this object last put it, in the button's superview.
     private var homes: [ObjectIdentifier: CGPoint] = [:]
+    /// Whether the window wore its toolbar when a home was read: AppKit's place differs by it (`placed`).
+    private var homesUnderToolbar: [ObjectIdentifier: Bool] = [:]
     private var wanted: [ObjectIdentifier: CGPoint] = [:]
     private var isPlacing = false
     private var rail = false
@@ -161,6 +170,7 @@ final class ShellWindowButtons {
         }
         isPlacing = false
         homes = [:]
+        homesUnderToolbar = [:]
         wanted = [:]
         current = nil
         applied = nil
@@ -197,6 +207,7 @@ final class ShellWindowButtons {
         if let want = wanted[id], abs(want.x - button.frame.origin.x) < 0.5,
            abs(want.y - button.frame.origin.y) < 0.5 { return }
         homes[id] = button.frame.origin
+        homesUnderToolbar[id] = window?.toolbar != nil
         applied = nil
         place(rail: rail)
         view.superview?.needsLayout = true
@@ -217,11 +228,15 @@ final class ShellWindowButtons {
         var home = CGRect.null
         for button in buttons {
             let id = ObjectIdentifier(button)
-            if homes[id] == nil { homes[id] = button.frame.origin }
+            if homes[id] == nil {
+                homes[id] = button.frame.origin
+                homesUnderToolbar[id] = window.toolbar != nil
+            }
             guard let superview = button.superview, let origin = homes[id] else { return release() }
             home = home.union(content.convert(CGRect(origin: origin, size: button.frame.size), from: superview))
         }
-        guard let placement = Self.placed(home: home, rail: rail) else { return release() }
+        let underToolbar = buttons.first.flatMap { homesUnderToolbar[ObjectIdentifier($0)] } ?? false
+        guard let placement = Self.placed(home: home, rail: rail, toolbar: underToolbar) else { return release() }
         current = placement
 
         isPlacing = true

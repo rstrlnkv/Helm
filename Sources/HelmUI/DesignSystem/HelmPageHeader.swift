@@ -370,6 +370,10 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// where the row heads a page on its own; the card's row passes the Kit's 14 and 10 (`CardHeader`).
     let leadingInset: CGFloat
     let trailingInset: CGFloat
+    /// How far the row's content stands above where its height centres it: the card's row under Glass raises it by
+    /// 4 so its centre (window y 26) is the toolbar item's, and the tabs' glass track is the control's own 36 pt
+    /// (`CardHeader.raise`). The row keeps its 52.
+    let raise: CGFloat
     let trailing: Trailing
     @Environment(\.helmHeaderChoices) private var choices
 
@@ -389,7 +393,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     init(symbol: String, tint: Color, title: String, bleeds: Bool,
          overContent: Bool, scrolled: Bool, standsOnStillContent: Bool, status: HelmHeaderStatus? = nil,
          dimmed: Bool = false, leadingInset: CGFloat = HelmLayout.formInset,
-         trailingInset: CGFloat = HelmLayout.formInset,
+         trailingInset: CGFloat = HelmLayout.formInset, raise: CGFloat = 0,
          @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.symbol = symbol
         self.tint = tint
@@ -402,6 +406,7 @@ public struct HelmPageHeader<Trailing: View>: View {
         self.dimmed = dimmed
         self.leadingInset = leadingInset
         self.trailingInset = trailingInset
+        self.raise = raise
         self.trailing = trailing()
     }
 
@@ -463,7 +468,8 @@ public struct HelmPageHeader<Trailing: View>: View {
         // The row is **52**: the Kit's 36 pt controls with 8 above and below. `minHeight` holds the 36 on a page
         // whose row has no control (24 pt plate alone), so no page's row is shorter than another's.
         .frame(minHeight: HelmHeaderActions.side)
-        .padding(.vertical, HelmSpace.s4)
+        .padding(.top, HelmSpace.s4 - raise)
+        .padding(.bottom, HelmSpace.s4 + raise)
         // On the same column as the content below it. Which column that is
         // depends on the page: outside the card a grouped Form is capped at 744 pt
         // and centred, so its header is too — but a full-bleed page draws its toolbar
@@ -628,12 +634,23 @@ private struct CardHeader: ViewModifier {
     @State private var scrolled = false
     @State private var standsOnStillContent = false
     @Environment(\.helmWindowAppearsActive) private var windowAppearsActive
+    @Environment(\.helmTabsSink) private var tabsSink
+    @Environment(\.helmBarAppearance) private var look
+    @Environment(\.helmHeaderChoices) private var choices
+    @Environment(\.helmTraits) private var traits
+    /// This row's token for the tabs' sink (`HelmTabsSink`); a rebuilt pane root makes a new row and a new one.
+    @State private var owner = UUID()
 
     /// The Kit's 36 pt controls (`HelmHeaderActions.side`) with `HelmSpace.s4` above and below (`HelmPageHeader`).
     static let height = HelmSpace.s4 * 2 + HelmHeaderActions.side
     /// The Kit's `Toolbar` (Figma 309:216): the plate 14 from the card's left edge, the controls 10 from its right.
     static let leadingInset = CGFloat(14)
     static let trailingInset = CGFloat(10)
+    /// Where the toolbar centres an item (window y 26) against the row's centre (y 30: `ShellGeometry.inset` 4 + 26).
+    static let raise = CGFloat(4)
+
+    /// The sink the tabs go to: only under Glass, where the window has a toolbar to take them.
+    private var tabsInToolbar: HelmTabsSink? { look == .liquidGlass ? tabsSink : nil }
 
     func body(content: Content) -> some View {
         content
@@ -645,10 +662,17 @@ private struct CardHeader: ViewModifier {
                                overContent: true, scrolled: scrolled,
                                standsOnStillContent: standsOnStillContent, status: status,
                                dimmed: !windowAppearsActive, leadingInset: Self.leadingInset,
-                               trailingInset: Self.trailingInset) {
-                    HelmHeaderControls(content: controls, page: title)
+                               trailingInset: Self.trailingInset, raise: tabsInToolbar == nil ? 0 : Self.raise) {
+                    HelmHeaderControls(content: controls, page: title, tabs: tabsInToolbar.map { (owner, $0) },
+                                       style: choices.tabLabels)
                 }
                 .frame(height: Self.height)
+                .background {
+                    if let sink = tabsInToolbar {
+                        HelmTabsRelay(owner: owner, sink: sink, content: controls, style: choices.tabLabels,
+                                      increasedContrast: traits.increasedContrast)
+                    }
+                }
                 .background { Color.clear.contentShape(Rectangle()).gesture(WindowDragGesture()) }
             }
     }
@@ -660,12 +684,21 @@ private struct HelmHeaderControls: View {
     let content: HelmPageToolbarContent?
     /// The page's name: the search slot's identity, so what it holds open does not leak to the next page. Never the tabs'.
     let page: String
+    /// Set where the tabs are the window's toolbar item: the row keeps a placeholder for them (`HelmTabsSlot`).
+    let tabs: (owner: UUID, sink: HelmTabsSink)?
+    let style: ToolbarSwitcherStyle
 
     var body: some View {
         if let content {
             if !content.tabs.isEmpty, let selected = content.selectedTab {
-                HelmHeaderTabs(tabs: content.tabs, selection: selected, enabled: content.tabsEnabled)
-                    .layoutValue(key: HeaderRoleKey.self, value: .tabs)
+                Group {
+                    if let tabs {
+                        HelmTabsSlot(owner: tabs.owner, sink: tabs.sink, tabs: content.tabs, style: style)
+                    } else {
+                        HelmHeaderTabs(tabs: content.tabs, selection: selected, enabled: content.tabsEnabled)
+                    }
+                }
+                .layoutValue(key: HeaderRoleKey.self, value: .tabs)
             }
             if !content.actions.isEmpty || content.search != nil {
                 HStack(spacing: HelmHeaderActions.gap) {

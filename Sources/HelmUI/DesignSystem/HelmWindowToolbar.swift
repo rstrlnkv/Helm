@@ -15,7 +15,7 @@ import SwiftUI
 public struct HelmToolbarTab {
     /// Stable, and the value a segment's selection is compared against — not
     /// an index, which a tab list that ever reorders would silently mis-read.
-    let id: String
+    public let id: String
     /// Localised already: every string that reaches a person in this app is
     /// looked up once, at the page; `HelmHeaderTabs` draws `title` and speaks it to
     /// VoiceOver as it is given and looks nothing up.
@@ -26,9 +26,9 @@ public struct HelmToolbarTab {
     /// **A dot on the tab: this tab has something to say that the page below it does not shout.** False for every
     /// tab that has nothing, so the pages that never say it draw as before. The tabs draw the dot beside the word
     /// (`HelmHeaderTabs`). The page switches it by the same reading its own rows say the thing from, or the dot and the tab say different things.
-    let needsAttention: Bool
+    public let needsAttention: Bool
     /// What the dot says, localised already, for VoiceOver (the tab's accessibility value); nil is the dot alone.
-    let attentionNote: String?
+    public let attentionNote: String?
 
     public init(id: String, title: String, symbol: String, needsAttention: Bool = false,
                 attentionNote: String? = nil) {
