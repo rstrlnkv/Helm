@@ -72,8 +72,8 @@ extension UninstallerEngine: UninstallerWork {}
     /// helped while the list it produced lived on the page.
     @Published private(set) var apps: [InstalledApp] = []
     /// Which sizes have been measured, by path. **Absent means "not measured"**,
-    /// which `InstalledApp.sizeBytes == 0` cannot say: the list arrives with
-    /// zeros and a bundle that could not be read measures as zero too.
+    /// which a zero cannot say: the list arrives unsized and a bundle that could
+    /// not be read measures as zero too.
     @Published private(set) var measuredSizes: [String: Int] = [:]
     /// When Spotlight says each app was last opened; `nil` until it has been
     /// asked. An app missing from an answered table has no record.
@@ -106,17 +106,14 @@ extension UninstallerEngine: UninstallerWork {}
     /// Whether the list has ever been **answered**, which is not the same as
     /// having been asked for: before the page's first `.task` there is no list
     /// and no reason to say «0 apps».
-    private var loadedApps = false
-    /// Counts removals through the door, so a list read that began before one does not mark the list current after it.
-    private var doorRemovals = 0
-
-    /// Whether the list has been answered at all, for the page to read.
     ///
     /// One flag for the body (`AppsEmpty.reason(answered:apps:shown:)`) and the
     /// footer (`AppsEmpty.status(answered:loading:apps:)`) alike: two sources of
     /// "has anybody answered" would drift into a page whose count says
     /// «Counting apps…» over a body claiming the Mac holds no applications.
-    var listAnswered: Bool { loadedApps }
+    private(set) var listAnswered = false
+    /// Counts removals through the door, so a list read that began before one does not mark the list current after it.
+    private var doorRemovals = 0
 
     // MARK: - Where the person is, and what they chose
 
@@ -188,7 +185,7 @@ extension UninstallerEngine: UninstallerWork {}
     /// What the page asks for on appear: the first visit does the work, later
     /// visits show what is already here.
     func loadAppsIfNeeded() async {
-        guard !closed, !loadedApps else { return }
+        guard !closed, !listAnswered else { return }
         await reloadApps()
     }
 
@@ -210,7 +207,7 @@ extension UninstallerEngine: UninstallerWork {}
         measuredSizes = [:]
         lastOpened = nil
         lastOpenedUnread = []
-        loadedApps = removalsAtStart == doorRemovals
+        listAnswered = removalsAtStart == doorRemovals
         // Independent: the dates take milliseconds and must not wait behind sizes
         // that take seconds, nor the other way round.
         await withTaskGroup(of: Void.self) { group in
@@ -278,7 +275,7 @@ extension UninstallerEngine: UninstallerWork {}
     /// What the review would move, or `nil` while any app in it has not been
     /// measured — a sum with one term missing is a smaller number nobody
     /// measured. Read from `measuredSizes`, which keeps arriving after the review
-    /// opened; `groups` is a snapshot and carries the list's zero.
+    /// opened; `groups` is a snapshot and carries no size of its own.
     var reviewBytes: Int? {
         guard !groups.isEmpty,
               groups.allSatisfy({ measuredSizes[$0.app.path] != nil }) else { return nil }
@@ -492,7 +489,7 @@ extension UninstallerViewModel: AppRemovalService {
         let report = await work.removeApp(candidate, quittingIfRunning: quittingIfRunning)
         // The list the page holds is older than this removal: it is read again when the page next appears.
         if report.outcome == .moved || report.outcome == .movedWithFailures {
-            loadedApps = false
+            listAnswered = false
             doorRemovals += 1
             checked.remove(candidate.path)
         }

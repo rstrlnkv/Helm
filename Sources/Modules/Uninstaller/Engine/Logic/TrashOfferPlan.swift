@@ -18,15 +18,11 @@ public enum TrashOfferPlan {
     /// reason: a path under the app's *bundle id* is that app's, near enough to
     /// certain, and a path under its *display name* is a guess. Names collide —
     /// "Mail", "Notes", "Player" — and a guess arriving pre-ticked means somebody
-    /// has to notice it to keep their data.
+    /// has to notice it to keep their data. Two apps in the Trash can list one
+    /// path — a group container under a suite id both of them declare — and
+    /// `ownLeftovers` counts it once.
     public static func defaultSelection(_ groups: [TrashedAppLeftovers]) -> [String] {
-        var seen: Set<String> = []
-        return groups.flatMap(\.leftovers)
-            .filter { !$0.matchedByName }
-            .map(\.path)
-            // Two apps in the Trash can list one path — a group container under a
-            // suite id both of them declare.
-            .filter { seen.insert($0).inserted }
+        UninstallPlan.ownLeftovers(groups.flatMap(\.leftovers)).map(\.path)
     }
 
     /// What Move to Trash sends: the ticked paths, in the order they were drawn,
@@ -38,10 +34,15 @@ public enum TrashOfferPlan {
     /// does not touch the thing they already moved — and neither is a path the
     /// window never showed.
     public static func paths(_ groups: [TrashedAppLeftovers], selected: Set<String>) -> [String] {
+        selectedLeftovers(groups, selected).map(\.path)
+    }
+
+    /// The ticked leftovers, each path once, in the order drawn.
+    private static func selectedLeftovers(_ groups: [TrashedAppLeftovers],
+                                          _ selected: Set<String>) -> [Leftover] {
         var seen: Set<String> = []
         return groups.flatMap(\.leftovers)
-            .map(\.path)
-            .filter { selected.contains($0) && seen.insert($0).inserted }
+            .filter { selected.contains($0.path) && seen.insert($0.path).inserted }
     }
 
     /// What stays ticked when a second app lands in the Trash and the window
@@ -101,9 +102,6 @@ public enum TrashOfferPlan {
 
     /// The size under the list, counting what `paths` would send.
     public static func totalBytes(_ groups: [TrashedAppLeftovers], selected: Set<String>) -> Int {
-        var seen: Set<String> = []
-        return groups.flatMap(\.leftovers)
-            .filter { selected.contains($0.path) && seen.insert($0.path).inserted }
-            .reduce(0) { $0 + $1.sizeBytes }
+        selectedLeftovers(groups, selected).reduce(0) { $0 + $1.sizeBytes }
     }
 }

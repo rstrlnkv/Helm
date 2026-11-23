@@ -2,7 +2,7 @@ import XCTest
 @testable import Module_Uninstaller_Engine
 
 private let tool = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                path: "/Applications/Tool.app", sizeBytes: 900)
+                                path: "/Applications/Tool.app")
 
 private func leftover(_ path: String, _ bytes: Int) -> Leftover {
     Leftover(path: path, kind: .caches, sizeBytes: bytes, matchedByName: false)

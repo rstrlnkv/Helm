@@ -674,7 +674,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private func removalVerdict(_ candidate: AppRemovalCandidate) -> AppRemovalVerdict {
         let verdict = AppRemovability.verdict(candidate, home: home.path, ownApp: ownApp)
         guard verdict == .removable else { return verdict }
-        return bundleID(forAppAt: candidate.path) == candidate.bundleID ? .removable : .refused(.notOffered)
+        return WorkspaceAppLister.bundleID(forAppAt: candidate.path) == candidate.bundleID
+            ? .removable : .refused(.notOffered)
     }
 
     public func removalVerdicts(for candidates: [AppRemovalCandidate]) async -> [AppRemovalVerdict] {
@@ -777,7 +778,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// asks nothing of anybody.
     private func runningApps(among paths: [String]) -> [UninstallPlan.RunningApp] {
         paths.filter(Self.isAppBundle).compactMap { path in
-            guard let id = bundleID(forAppAt: path),
+            guard let id = WorkspaceAppLister.bundleID(forAppAt: path),
                   running.isRunning(bundleID: id) else { return nil }
             return UninstallPlan.RunningApp(path: path, bundleID: id)
         }
@@ -787,13 +788,6 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// running, and is it the host of a live system extension — asked the same
     /// way, because they are the same question about the path.
     private static func isAppBundle(_ path: String) -> Bool { path.hasSuffix(".app") }
-
-    /// Reads Info.plist for a bundle so failures can be tied to the app that
-    /// owns an active system extension.
-    private func bundleID(forAppAt path: String) -> String? {
-        let info = URL(fileURLWithPath: path).appendingPathComponent("Contents/Info.plist")
-        return (NSDictionary(contentsOf: info)?["CFBundleIdentifier"]) as? String
-    }
 
     /// Shared trashing core: `HelmTrash` runs the batch — the order, the sizing,
     /// the classification and the refusals — and this supplies the two things
@@ -830,7 +824,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 guard Self.isAppBundle(path) else { return false }
                 // Match the app's bundle id, not the path: /Applications/X.app
                 // never contains "com.vendor.x".
-                guard let id = self.bundleID(forAppAt: path) else { return false }
+                guard let id = WorkspaceAppLister.bundleID(forAppAt: path) else { return false }
                 guard let hosts = extensionHosts ?? self.extensions.activeExtensionHosts() else {
                     // The tool did not answer, so nothing here knows whether an
                     // extension is why macOS refused. It claims neither way and

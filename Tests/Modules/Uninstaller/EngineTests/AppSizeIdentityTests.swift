@@ -66,10 +66,9 @@ final class AppSizeIdentityTests: XCTestCase {
     /// Two groups, two paths, two totals — and neither total is the other's.
     func testThePlanTotalsEachCopyOnItsOwn() {
         let small = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                 path: "/Applications/Tool.app", sizeBytes: 40_000)
+                                 path: "/Applications/Tool.app")
         let large = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                 path: "/Users/x/Applications/Setapp/Tool.app",
-                                 sizeBytes: 900_000)
+                                 path: "/Users/x/Applications/Setapp/Tool.app")
         let groups = [UninstallGroup(app: small, leftovers: [], running: false),
                       UninstallGroup(app: large, leftovers: [], running: false)]
 

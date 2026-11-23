@@ -100,7 +100,7 @@ final class SiblingPrefixTests: XCTestCase {
                                     installed: ["com.acme.tool", "com.acme.toolPro"],
                                     entries: ["\(lib)/Containers/com.acme.tool": 1, theirs: 1])
         let app = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                               path: "/Applications/Tool.app", sizeBytes: 0)
+                               path: "/Applications/Tool.app")
         let group = UninstallGroup(app: app, leftovers: result.leftovers, running: false)
         XCTAssertFalse(UninstallPlan.defaultSelection([group]).contains(theirs),
                        "pre-ticked an installed app's container")

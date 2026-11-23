@@ -112,7 +112,7 @@ public enum UninstallPlan {
     }
 
     /// `appBytes` is the measured size of each bundle, keyed by its path: the app
-    /// in a group carries the list's zero.
+    /// in a group carries no size of its own.
     public static func totalBytes(_ groups: [UninstallGroup], appBytes: [String: Int],
                                   selectedLeftovers: Set<String>) -> Int {
         var seen: Set<String> = []

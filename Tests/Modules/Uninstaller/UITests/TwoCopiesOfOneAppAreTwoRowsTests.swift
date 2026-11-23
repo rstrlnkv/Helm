@@ -68,9 +68,9 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
     /// exactly that copy and sends only its bundle path to the Trash.
     func testTickingOneOfTwoCopiesReviewsAndRemovesOnlyThatCopy() async throws {
         let direct = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                  path: "/Applications/Tool.app", sizeBytes: 40_000)
+                                  path: "/Applications/Tool.app")
         let setapp = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                  path: "/Users/ann/Applications/Setapp/Tool.app", sizeBytes: 900_000)
+                                  path: "/Users/ann/Applications/Setapp/Tool.app")
         let work = AnsweringWork(apps: [direct, setapp],
                                  scans: ["com.acme.tool": ScanResult(leftovers: [], runningNow: false)],
                                  removal: UninstallResult(trashed: [setapp.path], freedBytes: 1))
@@ -93,9 +93,9 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
     /// cannot pass by identifying everything as itself.
     func testTwoDifferentAppsAreStillTwoRows() {
         let one = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                               path: "/Applications/Tool.app", sizeBytes: 1)
+                               path: "/Applications/Tool.app")
         let other = InstalledApp(name: "Other", bundleID: "com.acme.other",
-                                 path: "/Applications/Other.app", sizeBytes: 1)
+                                 path: "/Applications/Other.app")
         XCTAssertEqual(Set([one, other].map(\.id)).count, 2)
 
         let first = TrashedAppLeftovers(bundleID: "com.acme.tool", name: "Tool",
@@ -115,10 +115,9 @@ final class TheAppPickerGivesEachCopyItsOwnIdentityTests: XCTestCase {
     /// The picker. Two installed copies, one row.
     func testTheAppPickerGivesEachInstalledCopyItsOwnIdentity() {
         let direct = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                  path: "/Applications/Tool.app", sizeBytes: 40_000)
+                                  path: "/Applications/Tool.app")
         let setapp = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                  path: "/Users/ann/Applications/Setapp/Tool.app",
-                                  sizeBytes: 900_000)
+                                  path: "/Users/ann/Applications/Setapp/Tool.app")
 
         XCTAssertEqual(Set([direct, setapp].map(\.id)).count, 2, """
             two installed copies of one app carry one identity into the picker's ForEach, \

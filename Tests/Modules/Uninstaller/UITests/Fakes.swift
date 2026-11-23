@@ -111,8 +111,8 @@ final class AnsweringWork: UninstallerWork, @unchecked Sendable {
     private var scansHeld = false
     private var scansDone = 0
 
-    /// - Parameter sizes: what `appSizes` answers; the listed apps' own sizes
-    ///   when nil.
+    /// - Parameter sizes: what `appSizes` answers; a measured zero for each listed
+    ///   app when nil.
     init(apps: [InstalledApp] = [],
          scans: [String: ScanResult] = [:],
          removal: UninstallResult = UninstallResult(trashed: [], freedBytes: 0),
@@ -164,7 +164,7 @@ final class AnsweringWork: UninstallerWork, @unchecked Sendable {
     func appSizes(_ list: [InstalledApp]) async -> [String: Int] {
         note(.appSizes)
         while !lock.withLock({ sizesLanded }) { try? await Task.sleep(nanoseconds: 5_000_000) }
-        return sizes ?? Dictionary(uniqueKeysWithValues: apps.map { ($0.path, $0.sizeBytes) })
+        return sizes ?? Dictionary(uniqueKeysWithValues: apps.map { ($0.path, 0) })
     }
 
     func lastOpened(_ list: [InstalledApp], deadline: TimeInterval, ceiling: Int,

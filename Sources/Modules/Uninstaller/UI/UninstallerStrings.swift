@@ -158,9 +158,6 @@ enum UnStr {
         case .searchHidesAll: return L(.noApplicationsMatchThisSearch, language: language)
         }
     }
-    /// `HelmUI`'s, because Leftovers' extension row draws the same label over the
-    /// same call — it said «Manage…» there until the two were made one.
-    static var openExtensions: String { HelmControlName.openExtensions }
     /// The toolbar action's tooltip and VoiceOver name. Finder's own words for
     /// the same menu.
     static var sortBy: String { L(.sortBy) }

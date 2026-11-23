@@ -103,7 +103,7 @@ final class UninstallerBackgroundScanHonestyTests: XCTestCase {
 
     private func gated(_ fs: FileSystemPort, _ answer: PermissionState?) -> UninstallerEngine {
         UninstallerEngine(home: home, apps: FakeApps(apps: [InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                                      path: "/Applications/Tool.app", sizeBytes: 0)]), fs: fs,
+                                                      path: "/Applications/Tool.app")]), fs: fs,
                           trash: NoTrash(), running: NoRunning(),
                           fullDiskAccess: FakeAccess(answer: answer))
     }

@@ -45,7 +45,7 @@ final class TheFailedLineDoesNotNameTheSoftwareTests: XCTestCase {
     func testAFailedRemovalIsLoggedWithoutTheAppsName() async {
         let secret = "Secret Name \(UUID().uuidString.prefix(6))"
         let app = InstalledApp(name: secret, bundleID: "com.secret.vendor",
-                               path: "/Applications/\(secret).app", sizeBytes: 4_096)
+                               path: "/Applications/\(secret).app")
         let logged = await failedLine(app, failing: app.path, trashed: [])
 
         XCTAssertTrue(logged.contains { $0.hasPrefix("failed to trash:") },
@@ -58,7 +58,7 @@ final class TheFailedLineDoesNotNameTheSoftwareTests: XCTestCase {
         let secret = "SecretTool\(UUID().uuidString.prefix(6))"
         let id = "com.acme.\(secret)"
         let app = InstalledApp(name: "Plain App", bundleID: id,
-                               path: "/Applications/Plain App.app", sizeBytes: 4_096)
+                               path: "/Applications/Plain App.app")
         let logged = await failedLine(app, failing: NSHomeDirectory() + "/Library/Containers/\(id)",
                                       trashed: [app.path])
 

@@ -13,9 +13,9 @@ import XCTest
 final class SystemAppIsNotOfferedTests: XCTestCase {
 
     private let safari = InstalledApp(name: "Safari", bundleID: "com.apple.Safari",
-                                      path: "/Applications/Safari.app", sizeBytes: 0)
+                                      path: "/Applications/Safari.app")
     private let tool = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                    path: "/Applications/Tool.app", sizeBytes: 10)
+                                    path: "/Applications/Tool.app")
 
     private func viewModel() -> UninstallerViewModel {
         let engine = UninstallerEngine(

@@ -62,9 +62,9 @@ final class UninstallerDuplicateBundleIDTests: XCTestCase {
     /// list that drops or duplicates rows and puts a tick on the wrong one.
     func testTwoCopiesOfOneAppAreTwoIdentities() throws {
         let small = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                 path: "/Applications/Tool.app", sizeBytes: 40_000)
+                                 path: "/Applications/Tool.app")
         let large = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                 path: "/Applications/Setapp/Tool.app", sizeBytes: 900_000)
+                                 path: "/Applications/Setapp/Tool.app")
 
         let a = UninstallGroup(app: small, leftovers: [], running: false)
         let b = UninstallGroup(app: large, leftovers: [], running: false)

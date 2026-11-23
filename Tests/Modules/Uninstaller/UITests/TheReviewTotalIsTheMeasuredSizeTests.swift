@@ -5,13 +5,12 @@ import XCTest
 @testable import Module_Uninstaller_UI
 
 /// The review's footer total takes each bundle's size from `measuredSizes`, by
-/// path. The group's own `InstalledApp.sizeBytes` is the list's zero and must
-/// never be what is summed.
+/// path, and from nothing else.
 @MainActor
 final class TheReviewTotalIsTheMeasuredSizeTests: XCTestCase {
 
     private let tool = InstalledApp(name: "Vendor Player", bundleID: "com.vendor.player",
-                                    path: "/Applications/Vendor Player.app", sizeBytes: 0)
+                                    path: "/Applications/Vendor Player.app")
     private let leftover = Leftover(path: "/L/prefs", kind: .preferences, sizeBytes: 700,
                                     matchedByName: false)
 
@@ -29,7 +28,6 @@ final class TheReviewTotalIsTheMeasuredSizeTests: XCTestCase {
                                  sizes: [tool.path: 5_000])
         let model = await review(work)
         model.setSelected(leftover: leftover.path, true)
-        XCTAssertEqual(model.groups.first?.app.sizeBytes, 0, "precondition: the group carries the list's zero")
         XCTAssertEqual(model.reviewBytes, 5_700)
         model.setSelected(leftover: leftover.path, false)
         XCTAssertEqual(model.reviewBytes, 5_000)

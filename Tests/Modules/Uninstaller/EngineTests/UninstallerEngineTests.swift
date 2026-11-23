@@ -55,7 +55,7 @@ final class UninstallerOrphanScanTests: XCTestCase {
         ]
         let e = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
                                   apps: FakeApps(apps: [InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                                                     path: "/Applications/Tool.app", sizeBytes: 1)]),
+                                                                     path: "/Applications/Tool.app")]),
                                   fs: fs, trash: FakeTrash(), running: FakeRunning(running: []))
         let groups = await e.scanOrphans()
         XCTAssertEqual(groups.count, 1)

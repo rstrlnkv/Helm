@@ -110,7 +110,7 @@ struct UninstallerSettingsPage: View {
                 }),
                 HelmToolbarAction(id: "refresh", title: HelmWord.refreshList, symbol: "arrow.clockwise",
                                   isEnabled: !loading, isVisible: tab == .apps, isBusy: loading) {
-                    Task { await refreshApps() }
+                    Task { await uvm.reloadApps() }
                 },
             ],
             // No `onSubmit`: the term filters the Apps list live, on every keystroke.
@@ -190,8 +190,6 @@ struct UninstallerSettingsPage: View {
         guard !checked.isEmpty else { return UnStr.appsCount(count) }
         return UnStr.appsCountSelected(count, checked.count, sizeText)
     }
-
-    private func refreshApps() async { await uvm.reloadApps() }
 
     private var sizeText: String {
         let bytes: Int
@@ -315,8 +313,8 @@ struct UninstallerSettingsPage: View {
             .accessibilityElement(children: .combine)
             Spacer()
             VStack(alignment: .trailing, spacing: HelmSpace.s1) {
-                // Nothing until measured: `sizeBytes` is zero in a list that has
-                // not been measured, and «0 bytes» is a claim nobody made. A bundle
+                // Nothing until measured: the list arrives unsized,
+                // and «0 bytes» is a claim nobody made. A bundle
                 // measured as nothing reads as the dash the total already uses.
                 // The place is kept either way — the sizes land seconds after the
                 // list, and a line that appeared above the date slid every date on
@@ -532,7 +530,8 @@ struct UninstallerSettingsPage: View {
                     Button(HelmWord.openFullDiskAccess) { PermissionCheck.openFullDiskAccessSettings() }
                 }
                 if failures.contains(where: { $0.reason == .activeSystemExtension }) {
-                    Button(UnStr.openExtensions) { PermissionCheck.openExtensionSettings() }
+                    // The kit's word: Leftovers' extension row draws the same label over the same call.
+                    Button(HelmControlName.openExtensions) { PermissionCheck.openExtensionSettings() }
                 }
                 Spacer()
                 Button(HelmWord.done) { uvm.dismissFailures() }
@@ -543,8 +542,8 @@ struct UninstallerSettingsPage: View {
     }
 
     /// The size of an app in the review, read from the measurement as it stands
-    /// and not from the snapshot the review was built from: that carries the
-    /// list's zero for as long as the sizes have not landed, and «0 bytes» is a
+    /// and not from the snapshot the review was built from: that carries
+    /// no size for as long as the sizes have not landed, and «0 bytes» is a
     /// claim nobody made. Nothing is drawn until it is measured, and it appears
     /// when it lands.
     @ViewBuilder private func sizeFigure(of app: InstalledApp) -> some View {
