@@ -41,10 +41,9 @@ struct SidebarComposerSheet: View {
     init(host: ModuleHost) {
         self.host = host
         self.chrome = Self.chromeHeight
-        let layout = SidebarLayoutStore.read(from: AppSettings.store,
-                                             registry: SidebarLayoutStore.registry())
+        let layout = SidebarLayoutStore.current()
         _tableHeight = State(initialValue:
-            SidebarComposerList.estimatedHeight(of: layout, editing: true))
+            SidebarComposerList.estimatedHeight(of: layout))
     }
 
     @State private var renaming: SidebarLayout.Section?
@@ -130,8 +129,7 @@ struct SidebarComposerSheet: View {
 
     private var layout: SidebarLayout {
         _ = revision
-        return SidebarLayoutStore.read(from: AppSettings.store,
-                                       registry: SidebarLayoutStore.registry())
+        return SidebarLayoutStore.current()
     }
 
     private func apply(_ next: SidebarLayout) {
@@ -177,11 +175,10 @@ struct SidebarComposerSheet: View {
             Divider()
 
             ScrollView {
-                // Always editing. The block on the page had a resting state
-                // because it sat under things a person came for; a sheet is
-                // opened on purpose and by one button, so arriving in a mode
-                // that has to be switched on is a click that asks nothing.
-                SidebarComposerList(layout: layout, host: host, editing: true,
+                // The block on the page has a resting state because it sits
+                // under things a person came for; a sheet is opened on purpose
+                // and by one button, so the list here has none.
+                SidebarComposerList(layout: layout, host: host,
                                     height: $tableHeight, apply: apply,
                                     rename: { section in
                                         draftName = AppStr.sectionTitle(section)
@@ -263,8 +260,7 @@ struct SidebarComposerRow: View {
     /// when the sheet shows four is the point of having a summary at all.
     private var summary: String {
         _ = revision
-        let layout = SidebarLayoutStore.read(from: AppSettings.store,
-                                             registry: SidebarLayoutStore.registry())
+        let layout = SidebarLayoutStore.current()
         let ids = layout.sections.flatMap(\.modules)
         let on = ids.filter { id in
             ModuleRegistry.descriptor(id).map { host.isEnabled($0) } ?? false

@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// A display's masks are rounded while its windows rest, and shrink while a Space slides.
 /// The clock is injected, so the rule is tested without a timer. The live port is `UptimeClock`
@@ -34,6 +35,6 @@ enum SamplingRate {
 
     /// The ticks per second to sample at.
     static func next(unsettled: Bool, maxFPS: Int) -> Double {
-        unsettled ? Double(min(max(maxFPS, 60), 120)) : idleHz
+        unsettled ? Double(maxFPS.clamped(to: 60...120)) : idleHz
     }
 }

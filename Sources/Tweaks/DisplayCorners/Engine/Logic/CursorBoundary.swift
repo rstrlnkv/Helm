@@ -1,4 +1,5 @@
 import CoreGraphics
+import HelmRuntime
 
 /// The polyline a path flattens to, and the closest point on it: where the pointer is put when it
 /// strays into a mask. Ported unchanged from the standalone app.
@@ -22,7 +23,7 @@ struct CursorBoundary {
 
         func closestPoint(to point: CGPoint) -> CGPoint {
             let dot = (point.x - start.x) * dx + (point.y - start.y) * dy
-            let fraction = min(1, max(0, dot / lengthSquared))
+            let fraction = (dot / lengthSquared).clamped(to: 0...1, whenNotANumber: 0) // NaN is the segment's start, as `min(1, max(0, x))` made it
             return CGPoint(x: start.x + fraction * dx, y: start.y + fraction * dy)
         }
     }

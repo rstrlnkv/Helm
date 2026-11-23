@@ -99,7 +99,7 @@ struct EditChrome: ViewModifier {
             .overlay(alignment: .topLeading) {
                 if active, !lifted {
                     Button {
-                        withAnimation(HelmMotion.disclosure) { remove() }
+                        remove()
                     } label: {
                         Image(systemName: "minus")
                             .font(.system(size: 9, weight: .black))

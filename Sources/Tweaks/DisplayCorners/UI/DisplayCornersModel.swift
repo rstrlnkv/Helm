@@ -84,11 +84,10 @@ extension DisplayCornersEngine: CornerEngineSide {}
     func setCalibrating(_ on: Bool) {
         if on {
             engine.beginCalibration()
+            adopt()
         } else {
-            panel.close()
-            engine.endCalibration()
+            pageLeft()
         }
-        adopt()
     }
 
     /// Opens the colour panel; nothing while calibration is not running. It adopts nothing itself: the engine is
@@ -111,8 +110,8 @@ extension DisplayCornersEngine: CornerEngineSide {}
     /// The card's own appearing: the engine's state as it is now.
     func adopt() { adopt(engine.state) }
 
-    /// The Tweaks page has left the screen, or the settings window has: the panel is closed and calibration ends.
-    /// Idempotent.
+    /// Calibration ends: the colour panel is closed, the engine's preview ends, the state is adopted.
+    /// Called when the Tweaks page or the settings window has left the screen, when the switch goes off, and by `stop()`. Idempotent.
     func pageLeft() {
         panel.close()
         engine.endCalibration()
@@ -123,9 +122,7 @@ extension DisplayCornersEngine: CornerEngineSide {}
     func stop() {
         reading?.cancel()
         reading = nil
-        panel.close()
-        engine.endCalibration()
-        adopt()
+        pageLeft()
         masks.removeAll()
     }
 

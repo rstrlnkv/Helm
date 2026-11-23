@@ -14,9 +14,9 @@ import HelmAppStrings
     private let statusItem: NSStatusItem
     private var hostCancellable: AnyCancellable?
     private var moduleCancellables: Set<AnyCancellable> = []
-    private var styleObserver: NSObjectProtocol?
+    /// The icon's two reasons to be drawn again: the style and the order.
+    private var refreshObservers: [NSObjectProtocol] = []
     private var openSettingsObserver: NSObjectProtocol?
-    private var orderObserver: NSObjectProtocol?
 
     private lazy var panel = HelmPanel(host: host)
     private lazy var settingsWindow = SettingsWindow(host: host)
@@ -43,12 +43,8 @@ import HelmAppStrings
         hostCancellable = host.$live
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.resubscribeToModules() }
-        styleObserver = NotificationCenter.default.addObserver(
-            forName: .helmMenuBarStyleChanged, object: nil, queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in self.refreshIcon() }
-        }
+        // The style changing redraws the icon. The order changing is the second
+        // entry, and the reason is this:
         // `refreshIcon` hands `StatusPlan.choose` the modules in the user's
         // order, read at call time — so a reorder changes the answer while
         // nothing asks for it again. Latent today: `KeepAwakeDescriptor` is the
@@ -56,11 +52,13 @@ import HelmAppStrings
         // the first tinted module finds it whatever the order. It stops being
         // latent the day a second module tints the icon, and that is not the
         // day to remember this.
-        orderObserver = NotificationCenter.default.addObserver(
-            forName: .helmModuleOrderChanged, object: nil, queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in self.refreshIcon() }
+        refreshObservers = [.helmMenuBarStyleChanged, .helmModuleOrderChanged].map { name in
+            NotificationCenter.default.addObserver(
+                forName: name, object: nil, queue: .main
+            ) { [weak self] _ in
+                guard let self else { return }
+                Task { @MainActor in self.refreshIcon() }
+            }
         }
         openSettingsObserver = NotificationCenter.default.addObserver(
             forName: .helmOpenSettings, object: nil, queue: .main
@@ -169,12 +167,11 @@ import HelmAppStrings
 
         // Only what is actually running: opening a disabled module's page just
         // to be told it is disabled is a dead end. The panel already did this.
-        let live = Set(host.enabledModules.map { type(of: $0.descriptor).id.rawValue })
+        let live = Set(host.enabledModules.map { $0.descriptor.idRaw })
         // The person's own arrangement, not the category enum's: they compose
         // the sidebar, and a menu of the same modules that disagreed with it
         // would make the arrangement a setting that only half applies.
-        let layout = SidebarLayoutStore.read(from: AppSettings.store,
-                                             registry: SidebarLayoutStore.registry())
+        let layout = SidebarLayoutStore.current()
         let groups = layout.sections.map { section in
             StatusMenuBuilder.Group(entries: section.modules
                 .filter { live.contains($0) }
