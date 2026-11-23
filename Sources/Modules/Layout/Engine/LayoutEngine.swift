@@ -366,7 +366,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // same reason it no longer spends the undo's forgiveness: it may have
         // changed the text in front of the caret, and the remembered word is a
         // blind edit measured against text that was there before it.
-        if event.movedTheCaret || (isAChord(event) && !mightBeTheGesture) {
+        let isAChord = if case .chord = event { true } else { false } // a command, control or option key held
+        if event.movedTheCaret || (isAChord && !mightBeTheGesture) {
             lock.lock(); lastCompleted = nil; lock.unlock()
         } else {
             // An event that ends no word still ends the last one's usefulness:
@@ -934,12 +935,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         hotkeyCode = readHotkey
         lock.unlock()
         emitState()
-    }
-
-    /// Whether the event is a chord: a command, control or option key held.
-    private func isAChord(_ event: TypingBuffer.Event) -> Bool {
-        if case .chord = event { return true }
-        return false
     }
 
     /// **Forgets only what was actually typed.**

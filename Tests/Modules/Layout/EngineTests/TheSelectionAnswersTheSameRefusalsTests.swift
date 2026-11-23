@@ -62,21 +62,6 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         }
     }
 
-    /// The selection is the accessibility tree alone, as it is in the port. The
-    /// replace can be refused, which is the state an app that will not take
-    /// synthesised edits is permanently in.
-    private final class Selection: SelectionPort, @unchecked Sendable {
-        var treeText: String?
-        var accepts = true
-        var replaced: [String] = []
-        func selectedTextWithoutClipboard() -> String? { treeText }
-        func replaceSelection(with text: String) -> Bool {
-            guard accepts else { return false }
-            replaced.append(text)
-            return true
-        }
-    }
-
     // MARK: - The world
 
     /// `ras` is nonsense in English and `кфы` is nonsense in Russian, so nothing
@@ -91,7 +76,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
 
     private func engine(exceptions: [String],
                         typing: FakeTyping,
-                        selection: Selection,
+                        selection: FakeSelection,
                         sources: FakeSources) -> LayoutEngine {
         let engine = LayoutEngine(
             tap: FakeTap(), typing: typing, sources: sources,
@@ -113,8 +98,8 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     /// green in a world where no selection is ever replaced.
     func testASelectedWordIsConvertedWhenItIsOnNoList() async throws {
         let typing = FakeTyping()
-        let selection = Selection()
-        selection.treeText = "ghbdtn"
+        let selection = FakeSelection()
+        selection.text = "ghbdtn"
         let engine = engine(exceptions: [], typing: typing,
                             selection: selection,
                             sources: FakeSources())
@@ -132,8 +117,8 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     /// refusing to touch it — and press the same key. It is rewritten.
     func testANeverListedWordIsNotConvertedBecauseItWasSelected() async throws {
         let typing = FakeTyping()
-        let selection = Selection()
-        selection.treeText = "ghbdtn"
+        let selection = FakeSelection()
+        selection.text = "ghbdtn"
         let engine = engine(exceptions: ["ghbdtn"], typing: typing,
                             selection: selection,
                             sources: FakeSources())
@@ -152,8 +137,8 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     /// not the one they typed.
     func testTheConvertedFormOnTheListCountsForASelectionToo() async throws {
         let typing = FakeTyping()
-        let selection = Selection()
-        selection.treeText = "ghbdtn"
+        let selection = FakeSelection()
+        selection.text = "ghbdtn"
         let engine = engine(exceptions: ["привет"], typing: typing,
                             selection: selection,
                             sources: FakeSources())
@@ -178,8 +163,8 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     /// because a bracket where a letter was is not the word they asked for.
     func testASelectionIsNotConvertedIntoAWordWithAMarkWhereALetterWas() async throws {
         let typing = FakeTyping()
-        let selection = Selection()
-        selection.treeText = "дфых"
+        let selection = FakeSelection()
+        selection.text = "дфых"
         let engine = engine(exceptions: [], typing: typing,
                             selection: selection,
                             sources: FakeSources(current: "ru"))

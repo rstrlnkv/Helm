@@ -619,15 +619,13 @@ public struct SystemSpell: SpellPort {
 /// The system's own alert sound, not one of ours: it is already at the volume
 /// the user chose for such things, and it stops when they mute alerts.
 public struct SystemSound: SoundPort {
-    private let name: String
-
-    public init(name: String = "Tink") { self.name = name }
+    public init() {}
 
     /// On the main thread, wherever it is called from: AppKit is not a thing to
     /// touch from whichever queue a caller happens to be on.
     public func playSwitch() {
-        if Thread.isMainThread { NSSound(named: name)?.play(); return }
-        DispatchQueue.main.async { NSSound(named: self.name)?.play() }
+        if Thread.isMainThread { NSSound(named: "Tink")?.play(); return }
+        DispatchQueue.main.async { NSSound(named: "Tink")?.play() }
     }
 }
 

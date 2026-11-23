@@ -2,10 +2,10 @@ import Foundation
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-// The Layout engine's port fakes, one file: typing, secure context, translation,
-// spell, key tap, layout sources and app activation. A fake keeps the port's states
-// only, and every construction names the port it stands in for
-// (Architecture/TestsAndMeasurement.md § Fakes).
+// The Layout engine's port fakes, one file: typing, secure context, sound,
+// translation, spell, key tap, layout sources, selection and app activation. A
+// fake keeps the port's states only, and every construction names the port it
+// stands in for (Architecture/TestsAndMeasurement.md § Fakes).
 
 /// The chord bound as «fix» in the suites that need a recorded shortcut. Only the
 /// recorded one ends a word and leaves it remembered: every other chord may have
@@ -195,4 +195,23 @@ final class StuckSources: LayoutSourcePort, @unchecked Sendable {
     func installed() -> [String] { ["en", "ru"] }
     func current() -> String? { "en" }
     func select(_ sourceID: String) { selected.append(sourceID) }
+}
+
+/// The accessibility tree's selection and its replace, the port's states and nothing
+/// else: the text selected, or none, and whether the app takes the replacement. A
+/// refused replace records nothing, as the port changes nothing.
+final class FakeSelection: SelectionPort, @unchecked Sendable {
+    var text: String?
+    var accepts = true
+    private(set) var replaced: [String] = []
+
+    init(_ text: String? = nil) { self.text = text }
+
+    func selectedTextWithoutClipboard() -> String? { text }
+
+    func replaceSelection(with text: String) -> Bool {
+        guard accepts else { return false }
+        replaced.append(text)
+        return true
+    }
 }
