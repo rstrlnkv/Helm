@@ -1,7 +1,7 @@
 import SwiftUI
 
 // **How the page's tabs reach a window's toolbar.** Under Liquid Glass the settings window shows its page tabs as an
-// `NSToolbar` item (`SettingsToolbar`, HelmApp), so they wear the system's toolbar glass and press-and-hold lens. The
+// `NSToolbar` item (`SettingsToolbar`, HelmApp), so they get the toolbar's press-and-hold lens (the track is the strip's own glass). The
 // toolbar is an AppKit object and the declaration is closures cut from the page's state at its last body, so the
 // declaration is *relayed*: the card's header row (`CardHeader`) mounts `HelmTabsRelay`, which hands it to the
 // `HelmTabsSink` the window put in the environment; and a clear placeholder, `HelmTabsSlot`, stands in the row where

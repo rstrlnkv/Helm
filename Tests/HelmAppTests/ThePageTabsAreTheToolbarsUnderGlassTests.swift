@@ -6,7 +6,7 @@ import XCTest
 @testable import HelmApp
 
 /// **Under Liquid Glass the settings window's page tabs are a system toolbar item (`SettingsToolbar`); under Flat
-/// there is no toolbar; the window's three buttons stand at one place under both.** Driven on an offscreen window
+/// the toolbar is worn with no items; the window's three buttons stand at one place under both.** Driven on an offscreen window
 /// and the sink the pane gets, with no screen.
 @MainActor
 final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
@@ -37,7 +37,7 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
 
     func testTheStripFollowsEachDeclarationInCountLabelsDotsAndHiding() {
         let toolbar = SettingsToolbar()
-        toolbar.attach(to: window()) { .liquidGlass }
+        toolbar.attach(to: window())
         let owner = UUID()
         let strip = toolbar.stripForTesting
 
@@ -58,24 +58,62 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         XCTAssertEqual(toolbar.itemIdentifiersForTesting, [], "no declaration, no items: a hidden item zooms in when shown")
     }
 
-    func testTheToolbarIsWornUnderGlassAndOffUnderFlat() {
+    /// The toolbar stays installed under both looks, the same object across every flip, with no items under Flat: the
+    /// re-install on each flip was the root of the fragile own-glass track.
+    func testTheToolbarStaysInstalledAcrossEveryFlipAndHasNoItemsUnderFlat() {
         let window = window()
-        var look = HelmBarAppearance.flat
+        let before = AppSettings.barAppearance
+        defer { AppSettings.barAppearance = before }
         let toolbar = SettingsToolbar()
-        toolbar.attach(to: window) { look }
-        XCTAssertNil(window.toolbar)
-        look = .liquidGlass
-        NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
-        XCTAssertNotNil(window.toolbar)
+        toolbar.attach(to: window)
+        let installed = window.toolbar
+        XCTAssertNotNil(installed, "DEFECT: under Flat the toolbar is taken off the window")
         XCTAssertTrue(toolbar.isInstalledForTesting)
-        look = .flat
-        NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
-        XCTAssertNil(window.toolbar)
+        XCTAssertEqual(toolbar.itemIdentifiersForTesting, [])
+        for turn in 0..<4 {
+            AppSettings.barAppearance = .liquidGlass
+            XCTAssertTrue(window.toolbar === installed, "Glass, turn \(turn): the same toolbar")
+            AppSettings.barAppearance = .flat
+            XCTAssertNotNil(window.toolbar, "Flat, turn \(turn): still installed")
+            XCTAssertTrue(window.toolbar === installed, "Flat, turn \(turn): the same toolbar")
+            XCTAssertEqual(toolbar.itemIdentifiersForTesting, [], "Flat, turn \(turn): no items")
+        }
+    }
+
+    /// A reading of the strip taken before the toolbar laid it out (strip at 0, the spacer's viewer 493 wide at 92) gave
+    /// a chrome of -493 and a 1078 pt spacer that pushed the tabs out of the toolbar for good: such a reading is refused.
+    func testAStripNotYetRightOfTheSpacersViewerGivesNoChrome() {
+        XCTAssertNil(SettingsToolbar.chrome(stripMinX: 0, viewerMinX: 92, viewerWidth: 493))
+        XCTAssertEqual(SettingsToolbar.chrome(stripMinX: 585, viewerMinX: 92, viewerWidth: 489), 96)
+        XCTAssertNil(SettingsToolbar.chrome(stripMinX: .nan, viewerMinX: 92, viewerWidth: 489))
+        XCTAssertNil(SettingsToolbar.chrome(stripMinX: 585, viewerMinX: .infinity, viewerWidth: 489))
+        XCTAssertNil(SettingsToolbar.chrome(stripMinX: 585, viewerMinX: 92, viewerWidth: .nan))
+    }
+
+    /// Guards that the window's frame stays the same across look flips (in Helm Dev 1207x757 across 7 flips and 3
+    /// close/reopen cycles, no `NSWindow.didResize`): the frame after each of eight flips is the first one.
+    func testTheSettingsWindowKeepsItsFrameAcrossEightLookFlips() throws {
+        let before = AppSettings.barAppearance
+        let controller = SettingsWindow(host: .shared)
+        controller.show(page: .general)
+        defer {
+            AppSettings.barAppearance = before
+            NSApp.windows.filter { $0.frameAutosaveName == "HelmSettingsWindow.v4" }.forEach { $0.orderOut(nil) }
+        }
+        func spin() { for _ in 0..<5 { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) } }
+        spin()
+        let window = try XCTUnwrap(NSApp.windows.first { $0.frameAutosaveName == "HelmSettingsWindow.v4" })
+        let first = window.frame
+        for turn in 0..<8 {
+            AppSettings.barAppearance = turn % 2 == 0 ? .flat : .liquidGlass
+            spin()
+            XCTAssertEqual(window.frame, first, "flip \(turn) to \(AppSettings.barAppearance)")
+        }
     }
 
     func testALateCallOfAnOldRowTouchesNothingOfTheNewOne() {
         let toolbar = SettingsToolbar()
-        toolbar.attach(to: window()) { .liquidGlass }
+        toolbar.attach(to: window())
         let old = UUID(), new = UUID()
         var pressed: [String] = []
         toolbar.sink.declare(old, declaration(["a"]))
@@ -100,7 +138,7 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         XCTAssertEqual(dotted[0], plain[0])
         XCTAssertEqual(dotted[1] - plain[1], HelmTabsMetrics.dot + HelmTabsMetrics.dotGap)
         let toolbar = SettingsToolbar()
-        toolbar.attach(to: window()) { .liquidGlass }
+        toolbar.attach(to: window())
         let off = HelmTabsDeclaration(tabs: tabs(["a", "b"], attention: "b"), selected: "a", enabled: false,
                                       style: .text, increasedContrast: false, select: { _ in })
         toolbar.sink.declare(UUID(), off)
@@ -139,7 +177,7 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         XCTAssertEqual(HelmTabsMetrics.trackInset, 9)
         for style in [HeaderTabLabels.text, .icons, .iconsAndText] {
             let toolbar = SettingsToolbar()
-            toolbar.attach(to: window()) { .liquidGlass }
+            toolbar.attach(to: window())
             let declaration = HelmTabsDeclaration(tabs: tabs(["a", "b", "c"], attention: "c"), selected: "a", enabled: true,
                                                   style: style, increasedContrast: false, select: { _ in })
             toolbar.sink.declare(UUID(), declaration)
@@ -178,7 +216,7 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         let mount = MountedRender(page, width: 900, height: 400, appearance: .aqua)
         defer { mount.drop() }
         guard let window = mount.window else { return XCTFail("no window") }
-        toolbar.attach(to: window) { look }
+        toolbar.attach(to: window)
         let strip = toolbar.stripForTesting
 
         mount.settle()
@@ -188,7 +226,7 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         look = .flat
         NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
         mount.settle()
-        XCTAssertNil(window.toolbar, "precondition: Flat takes the toolbar off")
+        XCTAssertNotNil(window.toolbar, "precondition: Flat keeps the toolbar installed")
         XCTAssertEqual(toolbar.itemIdentifiersForTesting, [], "precondition: the relay's release took the tabs out under Flat")
 
         look = .liquidGlass
@@ -226,11 +264,10 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         }
     }
 
-    /// The owner's finding of 2026-11-23: Glass to Flat on an open window moved the three buttons 10 pt left and up
-    /// (and back at Flat to Glass). Inside `window.toolbar = nil` AppKit puts the buttons at the flat home and posts the
-    /// frame change while `window.toolbar` is still set, so the flat home was taken for a toolbar one and the toolbar's
-    /// shift subtracted from it. Driven through the real owner of the buttons on an offscreen window, as `ShellContentView`
-    /// holds it: the close button's origin after each flip, against where it stood before.
+    /// Guards that the three buttons stand at one place with the toolbar worn across look flips (the toolbar is no
+    /// longer taken off, so the old `window.toolbar = nil` race is gone). Driven through the real owner of the buttons
+    /// on an offscreen window, as `ShellContentView` holds it: the close button's origin after each flip, against where
+    /// it stood before.
     func testTheButtonsStandWhereTheyStoodAfterEveryFlipOfTheLook() throws {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 400),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -242,13 +279,13 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         let buttons = ShellWindowButtons()
         content.addSubview(buttons.capsule)
         buttons.attach(to: window)
-        var look = HelmBarAppearance.flat
+        let before = AppSettings.barAppearance
+        defer { AppSettings.barAppearance = before }
         let toolbar = SettingsToolbar()
-        toolbar.attach(to: window) { look }
+        toolbar.attach(to: window)
         let close = try XCTUnwrap(window.standardWindowButton(.closeButton))
         func flip(to new: HelmBarAppearance) {
-            look = new
-            NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
+            AppSettings.barAppearance = new
             buttons.place(rail: false)
         }
         buttons.place(rail: false)
@@ -273,7 +310,7 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         window.orderFront(nil)
         defer { window.orderOut(nil) }
         let toolbar = SettingsToolbar()
-        toolbar.attach(to: window) { .liquidGlass }
+        toolbar.attach(to: window)
         let slot = CGRect(x: 300, y: 12, width: 200, height: 36)
         for _ in 0..<6 {
             let owner = UUID()

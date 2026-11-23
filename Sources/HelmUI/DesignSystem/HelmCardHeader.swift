@@ -49,12 +49,8 @@ private struct CardHeader: ViewModifier {
     /// The Kit's `Toolbar` (Figma 309:216): the plate 14 from the card's left edge, the controls 10 from its right.
     static let leadingInset = CGFloat(14)
     static let trailingInset = CGFloat(10)
-    /// Where the toolbar centres an item (window y 26) against the row's centre (y 30: `ShellGeometry.inset` 4 + 26): the
-    /// row's content stands 4 higher under both looks, so the row does not move when the look flips (owner's decision,
-    /// 2026-11-23). Only this row passes it.
-    static let raise = CGFloat(4)
 
-    /// Where the tabs go: only under Glass, where the window has a toolbar to take them.
+    /// Where the tabs go: only under Glass; under Flat the row draws the tabs itself, the toolbar being worn with no items.
     private var tabsTarget: HelmTabsTarget? {
         look == .liquidGlass ? tabsSink.map { HelmTabsTarget(owner: owner, sink: $0) } : nil
     }
@@ -70,7 +66,7 @@ private struct CardHeader: ViewModifier {
                                overContent: true, scrolled: scrolled,
                                standsOnStillContent: standsOnStillContent, status: status,
                                dimmed: !windowAppearsActive, leadingInset: Self.leadingInset,
-                               trailingInset: Self.trailingInset, raise: Self.raise) {
+                               trailingInset: Self.trailingInset) {
                     HelmHeaderControls(content: controls, page: title, tabs: tabsTarget,
                                        style: choices.tabLabels)
                 }

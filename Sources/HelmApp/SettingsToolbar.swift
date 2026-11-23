@@ -1,37 +1,37 @@
 import AppKit
 import HelmUI
 
-/// **The settings window's `NSToolbar`, which carries one thing: the page's tabs, under Liquid Glass** (owner's
-/// decision, 2026-11-23). The tabs are the system's own `NSSegmentedControl` in a bordered toolbar item, so they get
-/// the toolbar's glass track and the press-and-hold lens that nothing outside a toolbar draws. The name, status,
-/// actions and search stay in the card's row (`helmCardHeader`); under Flat the window has no toolbar at all.
+/// **The settings window's `NSToolbar`, worn under both looks; it carries one thing: the page's tabs, under Liquid
+/// Glass** (owner's decision, 2026-11-23). The tabs are the system's own `NSSegmentedControl`, so they get the press-and-hold
+/// lens that nothing outside a toolbar draws. The name, status, actions and search stay in the card's row
+/// (`helmCardHeader`); under Flat the toolbar has no items and the row draws the tabs.
+///
+/// **Installed once and kept**: `attach(to:)` sets `window.toolbar` and never again. Taking the toolbar off and
+/// putting it back made a glass the strip drew itself come back empty.
 ///
 /// **How the page reaches it**: the page's declaration is relayed by `HelmTabsRelay` through `sink`, and a clear
 /// placeholder in the row (`HelmTabsSlot`) says where the card's row puts the strip; the row's layout keeps centring
 /// it on the card and giving way. The toolbar positions its items itself and a control cannot be placed by frame, so
 /// a leading spacer item is given the width that brings the strip's left edge to the placeholder's (`spacerWidth`),
-/// solved again whenever the placeholder, the window or the declaration moves.
+/// solved again whenever the placeholder, the window or the declaration moves. A reading taken before the toolbar has
+/// laid the strip out (the strip left of the spacer's end) is stale and writes nothing (`chrome`); the viewers'
+/// frame notifications ask again.
 ///
-/// **Measured** (macOS 27.3, a probe window with these flags: titled, full-size content view, transparent title bar,
-/// hidden title, `.unified`, icon-only): a unified toolbar is always 52 pt tall and centres every item at window y 26;
-/// a *bordered* item's glass track is drawn from the item view's alignment rect and is always centred there too (a
-/// 44 pt view or `alignmentRectInsets` only made a 44 pt track; a track the strip draws itself, in an unbordered item,
-/// was tried and withdrawn: it drew empty after Glass, Flat, Glass and the tabs went missing on a page switch). The
-/// item is therefore *bordered* and the control's own 36 pt, and the card's row stands at the toolbar's centre under
-/// both looks (`CardHeader.raise`, owner's decision 2026-11-23: its content 4 up from the centre 30 of the row's 52,
-/// `ShellGeometry.inset` 4 + 26, so it does not move when the look flips). The item's container must be exactly the
-/// control's width, because the item's viewer swallows every click over its frame, a wider one killed the search
-/// field under it, and a taller one took window drags. With the toolbar the window's three buttons stand 10 right and
-/// 10 down of where they stood (`ShellGeometry.toolbarShift`). A trailing ghost item killed the button at the right
-/// and is not used.
+/// **Measured** (macOS 27.3, unified, icon-only): the toolbar is 52 pt tall and centres every item at window y 26,
+/// while the card's row centres at y 30 (`ShellGeometry.inset` 4 + `CardHeader.height` 52 / 2). A *bordered* item's
+/// glass track follows the item view's alignment rect and stays centred at 26, so the item is *unbordered* and the
+/// strip draws its own track (`NSGlassEffectView`) at the control's place, 12 to 48. The item's view is 44 pt tall
+/// (`TabsStrip.lift` above the control) so the toolbar's centring leaves the control at the row's centre. The price:
+/// the item's viewer takes presses over its whole frame, so the 8 pt band above the tabs no longer drags the window.
+/// The viewer also swallows clicks, so the item's width is exactly the control's. A trailing ghost item killed the
+/// button at the right and is not used.
 ///
 /// **The items are in the toolbar only while a page declares tabs**: an item whose `isHidden` goes false is zoomed in
 /// from small by the toolbar (measured on video, about 4 frames; no transaction, animation context, layout pass or
 /// layer change stops it), while an item inserted shows at full size in one frame. So no declaration leaves the toolbar
 /// without items, a declaration holds the spacer and the tabs, in that order.
 ///
-/// Installed only under `.liquidGlass`, at creation and again on `.helmBarAppearanceChanged`. Not customizable, not
-/// autosaved. Accessibility: one element per segment (radio button), not the control itself.
+/// Not customizable, not autosaved. Accessibility: one element per segment (radio button), not the control itself.
 @MainActor final class SettingsToolbar: NSObject, NSToolbarDelegate {
     static let tabsID = NSToolbarItem.Identifier("helm.tabs")
     static let leadID = NSToolbarItem.Identifier("helm.tabs.lead")
@@ -81,15 +81,12 @@ import HelmUI
 
     // MARK: - the window
 
-    /// Wears the toolbar under `look` and takes it off otherwise; again on every change of the look.
-    func attach(to window: NSWindow, look: @escaping @MainActor () -> HelmBarAppearance) {
+    /// Wears the toolbar, once, under every look.
+    func attach(to window: NSWindow) {
         self.window = window
-        install(look())
-        tokens.append(NotificationCenter.default.addObserver(
-            forName: .helmBarAppearanceChanged, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.install(look()) }
-        })
+        window.toolbarStyle = .unified
+        window.toolbar = toolbar
+        window.titlebarSeparatorStyle = .none
         tokens.append(NotificationCenter.default.addObserver(
             forName: NSWindow.didResizeNotification, object: window, queue: .main
         ) { [weak self] _ in
@@ -104,20 +101,6 @@ import HelmUI
     var watchedCountForTesting: Int { watching.count }
 
     var isInstalledForTesting: Bool { window?.toolbar === toolbar }
-
-    private func install(_ look: HelmBarAppearance) {
-        guard let window else { return }
-        if look == .liquidGlass {
-            if window.toolbar !== toolbar {
-                window.toolbarStyle = .unified
-                window.toolbar = toolbar
-                window.titlebarSeparatorStyle = .none
-            }
-            solve()
-        } else if window.toolbar != nil {
-            window.toolbar = nil
-        }
-    }
 
     // MARK: - what the page says
 
@@ -196,12 +179,23 @@ import HelmUI
     /// edge is more than half a point off, so it settles; `settling` stops a run that does not.
     private var settling = 0
 
+    /// What lies left of the strip besides the spacer, in the window's x. Nil while the strip does not yet stand right
+    /// of the spacer's viewer (the toolbar has not laid out: a stale reading, which once gave a spacer of 1078 pt and
+    /// pushed the tabs out of the toolbar for good).
+    nonisolated static func chrome(stripMinX: CGFloat, viewerMinX: CGFloat, viewerWidth: CGFloat) -> CGFloat? {
+        guard stripMinX.isFinite, viewerMinX.isFinite, viewerWidth.isFinite,
+              stripMinX >= viewerMinX + viewerWidth - 0.5 else { return nil }
+        return stripMinX - viewerWidth
+    }
+
     private func solve() {
         guard let window, window.toolbar === toolbar, declaration != nil, let slot, strip.window === window else { return }
         watchViewers()
         guard let viewer = lead.superview, viewer.window === window else { return }
         let origin = window.contentView.map { $0.convert($0.bounds.origin, to: nil).x } ?? 0
-        let chrome = strip.convert(strip.bounds, to: nil).minX - viewer.frame.width
+        guard let chrome = Self.chrome(stripMinX: strip.convert(strip.bounds, to: nil).minX,
+                                       viewerMinX: viewer.convert(viewer.bounds, to: nil).minX,
+                                       viewerWidth: viewer.frame.width) else { return }
         let width = Self.spacerWidth(chrome: chrome, wantedMinX: origin + slot.minX)
         guard abs(width - lead.width) > 0.5 else { settling = 0; return }
         guard settling < 40 else { return }
@@ -261,8 +255,8 @@ import HelmUI
             item.visibilityPriority = .user
         case Self.tabsID:
             item.view = strip
-            // The glass track of the look: an unbordered item loses it.
-            item.isBordered = true
+            // Unbordered: the strip draws its own track (`TabsStrip`), the bordered one stays at y 26.
+            item.isBordered = false
             item.visibilityPriority = .user
         default:
             return nil

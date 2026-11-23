@@ -23,7 +23,7 @@ import HelmRuntime
 /// 3. a square corner, where nobody has stated a guess.
 ///
 /// **What the guess rests on.** macOS 26, 16 pt, for a window with no toolbar,
-/// which the settings window is now: stated on the web, measured by nobody. Any other
+/// which the settings window was when this was written: stated on the web, measured by nobody. Any other
 /// system: nobody has stated one, so there is no guess.
 ///
 /// That the window's `_cornerRadius` is answered by an `NSWindow` on macOS 26,

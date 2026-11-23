@@ -14,12 +14,12 @@ import HelmAppStrings
 /// drawn at the top of the detail pane by `SettingsDetail` (`helmCardHeader`): the page's name and status on the
 /// left, what the page declared through `helmHeaderContent` on the right. Under `.liquidGlass` the tabs of that
 /// declaration are shown by the window's `NSToolbar` (`SettingsToolbar`) and the row keeps a placeholder for them;
-/// under `.flat` the window has no toolbar and the row draws the tabs. The title bar is transparent over it and
+/// under `.flat` the toolbar is worn with no items and the row draws the tabs. The title bar is transparent over it and
 /// the pane takes no safe area from it, so the row starts at the card's top edge.
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private let model: SettingsModel
-    /// The page tabs' toolbar, worn under Liquid Glass only (`SettingsToolbar`).
+    /// The page tabs' toolbar, worn under both looks, with items under Liquid Glass only (`SettingsToolbar`).
     private let toolbar: SettingsToolbar
     /// One size for every page. Switching pages must never resize the window
     /// under the user's cursor; the size they pick is remembered instead.
@@ -88,7 +88,7 @@ import HelmAppStrings
         self.window = window
         super.init()
         window.delegate = self
-        toolbar.attach(to: window) { AppSettings.barAppearance }
+        toolbar.attach(to: window)
         // **The window's title is the page's name**, set here on the
         // `NSWindow` rather than through SwiftUI, so it is this class's to
         // set. The page says what it is called with `HelmPageTitleKey`; this is the
@@ -336,7 +336,7 @@ enum SettingsSelection: Hashable {
 /// the controller asks nothing of it.
 ///
 /// The controller assigns the window no toolbar itself: the header row is a view in the page's own hosting view,
-/// and only its tabs are handed to the window's toolbar under Glass (`SettingsToolbar`, through `tabs`).
+/// and only its tabs are handed to the window's toolbar under Glass (`SettingsToolbar`, through `tabs`); the toolbar itself is worn under both looks.
 @MainActor final class SettingsShellViewController: NSViewController {
     private let model: SettingsModel
     /// The window's own band decision, handed down rather than read again —
@@ -410,8 +410,8 @@ enum SettingsSelection: Hashable {
                 // `OffScreenIdle` in HelmUI has the measurements.
                 .helmIdlesOffScreen())
         sidebar.sizingOptions = []
-        // The toolbar grows the title bar's safe area, and the sidebar would start lower under Glass: it takes none
-        // from the title bar and holds the Flat title bar's own band instead, the same under both looks.
+        // The toolbar grows the title bar's safe area, and the sidebar would start lower: it takes none
+        // from the title bar and holds the title bar's own band instead, the same under both looks.
         sidebar.safeAreaRegions = []
 
         let detail = NSHostingController(
