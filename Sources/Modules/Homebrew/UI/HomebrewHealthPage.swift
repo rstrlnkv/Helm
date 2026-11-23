@@ -77,8 +77,8 @@ struct HomebrewHealthPage: View {
                     Text(HbStr.noMatches)
                         .foregroundStyle(HelmText.quiet)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                } else if !screen.findings.isEmpty {
-                    findingsCard(screen.findings)
+                } else if !screen.findings.isEmpty, case let .findings(total) = screen.verdict {
+                    findingsCard(screen.findings, total: total)
                 }
                 if !screen.configuration.isEmpty {
                     ConfigurationCard(hb: hb, groups: screen.configuration, open: configurationOpen) {
@@ -167,23 +167,21 @@ struct HomebrewHealthPage: View {
 
     // MARK: - The findings
 
-    private func findingsCard(_ findings: [DoctorIssue]) -> some View {
-        // The count that decides "the only finding" is the reading's own and
-        // not what the filter leaves: a word that narrows three findings to
-        // one must not make that one uncloseable.
-        let total = hb.issues.count
-        return VStack(alignment: .leading, spacing: 0) {
+    /// `total` is the verdict's own count of findings and not what the filter
+    /// leaves: a word that narrows three findings to one must not make that
+    /// one uncloseable.
+    private func findingsCard(_ findings: [DoctorIssue], total: Int) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(findings.enumerated()), id: \.element.id) { index, issue in
                 if index > 0 { Divider().padding(.leading, Self.bodyInset) }
+                // **The only finding is open, and stays open.** A card of one
+                // row that hides its one paragraph asks a click for nothing, so
+                // it is drawn open and given no control to close it.
                 FindingRow(hb: hb, issue: issue,
-                           open: HealthScreen.isOpen(issue, of: total, opened: openFindings),
-                           toggle: HealthScreen.canToggle(total: total) ? {
+                           open: total == 1 || openFindings.contains(issue.id),
+                           toggle: total > 1 ? {
                                withAnimation(HelmMotion.disclosure) {
-                                   if openFindings.contains(issue.id) {
-                                       openFindings.remove(issue.id)
-                                   } else {
-                                       openFindings.insert(issue.id)
-                                   }
+                                   openFindings.formSymmetricDifference([issue.id])
                                }
                            } : nil)
             }
@@ -193,6 +191,20 @@ struct HomebrewHealthPage: View {
 }
 
 // MARK: - One finding
+
+/// The disclosure chevron both cards draw: quiet, in the one `chevronSlot`, and
+/// hidden from VoiceOver. Where a row has a button, the button says the state
+/// (`HelmA11y.expanded`).
+private struct DisclosureChevron: View {
+    let open: Bool
+
+    var body: some View {
+        Image(systemName: open ? "chevron.down" : "chevron.right")
+            .helmQuietDetail()
+            .frame(width: HomebrewHealthPage.chevronSlot)
+            .accessibilityHidden(true)
+    }
+}
 
 /// A row of the findings card: the title, and under it — when open — brew's own
 /// words and the fix.
@@ -238,10 +250,9 @@ private struct FindingRow: View {
             }
             // The word, and only where there is one: a caution is what nearly
             // every finding is, and a badge on every row said the same word on
-            // all of them, so `severityWord` has none for it. `Problem` is
+            // all of them, so `severityBadge` has none for it. `Problem` is
             // `Error:` in brew's own text and is the one that should stand out.
-            if let word = HomebrewSettingsPage.severityWord(issue.severity),
-               let tint = HomebrewSettingsPage.severityTint(issue.severity, increased: traits.increasedContrast) {
+            if let (word, tint) = HomebrewSettingsPage.severityBadge(issue.severity, increased: traits.increasedContrast) {
                 HelmBadge(word, tint: tint)
             }
             // **The closed row's one button.** Open, it is in the body beside
@@ -254,12 +265,9 @@ private struct FindingRow: View {
 
     private var title: some View {
         HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s3) {
-            Image(systemName: open ? "chevron.down" : "chevron.right")
-                .helmQuietDetail()
-                .frame(width: HomebrewHealthPage.chevronSlot)
+            DisclosureChevron(open: open)
                 // Nothing to open: the slot stays, the mark does not.
                 .opacity(toggle == nil ? 0 : 1)
-                .accessibilityHidden(true)
             Text(issue.title)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -269,6 +277,12 @@ private struct FindingRow: View {
 }
 
 // MARK: - The fix
+
+/// The pasteboard write both Copy buttons make.
+private func copyToPasteboard(_ text: String) {
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(text, forType: .string)
+}
 
 /// The one Run button, in the closed row's header and in the open row's body —
 /// the same builder, so the two cannot disagree about what pressing it does.
@@ -332,10 +346,7 @@ private struct HealthFixBlock: View {
                     // control corner.
                     .background(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
                         .fill(HelmSurface.wellFill))
-                Button(HbStr.copyTheFix) {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(command, forType: .string)
-                }
+                Button(HbStr.copyTheFix) { copyToPasteboard(command) }
                 if fix.kind == .runnable {
                     // The step before it is `HelmSpace.s5` where the row's own
                     // is `s3`: a press meant for Copy that lands on this one is
@@ -416,10 +427,7 @@ private struct ConfigurationCard: View {
         HStack(alignment: .center, spacing: HelmSpace.s3) {
             Button(action: toggle) {
                 HStack(alignment: .center, spacing: HelmSpace.s3) {
-                    Image(systemName: open ? "chevron.down" : "chevron.right")
-                        .helmQuietDetail()
-                        .frame(width: HomebrewHealthPage.chevronSlot)
-                        .accessibilityHidden(true)
+                    DisclosureChevron(open: open)
                     VStack(alignment: .leading, spacing: HelmSpace.s1) {
                         Text(HbStr.headingConfiguration)
                         if let summary = ConfigSummary.of(hb.config?.lines ?? []) {
@@ -435,10 +443,7 @@ private struct ConfigurationCard: View {
             .buttonStyle(.plain)
             .accessibilityValue(HelmA11y.expanded(open))
             if let text = hb.config?.text {
-                Button(HbStr.copyForABugReport) {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(text, forType: .string)
-                }
+                Button(HbStr.copyForABugReport) { copyToPasteboard(text) }
             }
         }
     }

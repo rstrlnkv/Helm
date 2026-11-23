@@ -85,7 +85,28 @@ struct HomebrewPackageRow: View {
             }
             RowChevron(singleColumn: singleColumn)
         }
-        .helmListRow()
+        // **One row of either package list on this page: what does not divide it from
+        // the next one.**
+        //
+        // The height is the list's own, not the row's: both lists pass
+        // `HelmSpace.s8` as `helmStripedList(rowPitch:)`, which is the minimum height
+        // of every row in them and the step the stripe repeats at under the last one,
+        // so the two cannot be two numbers. A `frame(minHeight: HelmSpace.s7)` on the
+        // row would not do: a `List`'s own row insets take it to 36 pt for a single
+        // line of content; the step is 40, the ladder's nearest to that. 34 is off
+        // the ladder, and the insets take it to 42 — a step that long over one line
+        // of text reads as a settings form rather than as a list of things.
+        //
+        // **The separator is hidden.** macOS draws one per row across the whole
+        // column, which at this step is a rule every few lines in a 310 pt column of
+        // short names; the approved drawing has a hairline at a twentieth of that
+        // weight, which macOS's is not and cannot be made into. What separates one row
+        // from the next is the alternating fill `helmStripedList(rowPitch:)` turns on for
+        // both of them, and the `Section` headers over them, which carry the structure
+        // the rules would stand in for. Hiding the separator also puts this page with
+        // the app's other striped list screens: `OrphansView`, Uninstaller and Leftovers
+        // all hide theirs on the row.
+        .listRowSeparator(.hidden)
         .helmOpensAScreen(singleColumn)
     }
 
@@ -158,33 +179,6 @@ private struct RowChevron: View {
                 .foregroundStyle(HelmText.separator)
                 .accessibilityHidden(true)
         }
-    }
-}
-
-/// **One row of either package list on this page: what does not divide it from
-/// the next one.**
-///
-/// The height is the list's own, not the row's: both lists pass
-/// `HelmSpace.s8` as `helmStripedList(rowPitch:)`, which is the minimum height
-/// of every row in them and the step the stripe repeats at under the last one,
-/// so the two cannot be two numbers. A `frame(minHeight: HelmSpace.s7)` on the
-/// row would not do: a `List`'s own row insets take it to 36 pt for a single
-/// line of content; the step is 40, the ladder's nearest to that. 34 is off
-/// the ladder, and the insets take it to 42 — a step that long over one line
-/// of text reads as a settings form rather than as a list of things.
-///
-/// **The separator is hidden.** macOS draws one per row across the whole
-/// column, which at this step is a rule every few lines in a 310 pt column of
-/// short names; the approved drawing has a hairline at a twentieth of that
-/// weight, which macOS's is not and cannot be made into. What separates one row
-/// from the next is the alternating fill `helmStripedList(rowPitch:)` turns on for
-/// both of them, and the `Section` headers over them, which carry the structure
-/// the rules would stand in for. Hiding the separator also puts this page with
-/// the app's other striped list screens: `OrphansView`, Uninstaller and Leftovers
-/// all hide theirs on the row.
-extension View {
-    func helmListRow() -> some View {
-        listRowSeparator(.hidden)
     }
 }
 

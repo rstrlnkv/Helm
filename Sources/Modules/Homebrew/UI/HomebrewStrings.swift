@@ -397,7 +397,7 @@ enum HbStr {
     /// would call somebody's machine broken over a cask that still works. The
     /// other, a caution, is what nearly every finding is, and a badge saying so
     /// on each row said the same word on all of them — it has no word at all
-    /// (`HomebrewSettingsPage.severityWord`).
+    /// (`HomebrewSettingsPage.severityBadge`).
     static var severityDanger: String { L(.severityDanger) }
 
     /// While `brew doctor` is out. It is the slowest query in the module and
