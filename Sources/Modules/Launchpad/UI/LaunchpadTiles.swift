@@ -130,59 +130,20 @@ private struct TileStyle: ButtonStyle {
     }
 }
 
-/// What an app's menu and VoiceOver actions offer about its file: show it in Finder, copy its path. Made only by
+/// What an app's VoiceOver actions offer about its file: show it in Finder, copy its path. Made only by
 /// `LaunchpadScreenState.fileActions(for:)`, which is where a hidden app is kept out.
 struct LaunchpadFileActions {
     let reveal: () -> Void
     let copyPath: () -> Void
 }
 
-/// "Show in Finder" and "Copy Path", as menu rows.
+/// "Show in Finder" and "Copy Path", as VoiceOver actions (the menu has them as `LaunchpadMenu` rows).
 private struct LaunchpadFileButtons: View {
     let files: LaunchpadFileActions
 
     var body: some View {
         Button(HelmWord.showInFinder, action: files.reveal)
         Button(LpStr.copyPath, action: files.copyPath)
-    }
-}
-
-/// **The menu of an app, wherever it is drawn:** Hide, and "Move to category" with the app's own category as the undo on top
-/// (disabled while the app is not moved) and every category under it, the one the app is in now checked. "Others" is last.
-/// A VoiceOver custom action cannot be a submenu, and 29 of them would be noise: VoiceOver reaches Move through the
-/// context menu (VO-Shift-M), and Hide stays an action as well, on the grid's and the cards' tiles. A category block's large
-/// icons have neither for VoiceOver (the block tile has `hide: nil`, the menu is on the inner image): it reaches them through the card.
-struct LaunchpadAppMenu: View {
-    let app: CatalogApp
-    let moved: LaunchpadCategoryTarget?
-    let hide: () -> Void
-    let move: (LaunchpadCategoryTarget?) -> Void
-    /// Show in Finder and Copy Path under Move to category; nil where the app's file is not offered.
-    var files: LaunchpadFileActions?
-
-    /// Where the app is shown now: its move, else its own.
-    static func effective(moved: LaunchpadCategoryTarget?, raw: String?) -> LaunchpadCategoryTarget {
-        moved ?? LaunchpadCategoryTarget(raw: raw)
-    }
-
-    /// The undo row has something to undo only while the app is moved.
-    static func canReturn(moved: LaunchpadCategoryTarget?) -> Bool { moved != nil }
-
-    var body: some View {
-        let effective = Self.effective(moved: moved, raw: app.category)
-        Button(LpStr.hide, action: hide)
-        Menu(LpStr.moveToCategory) {
-            Button(LpStr.ownCategory) { move(nil) }.disabled(!Self.canReturn(moved: moved))
-            Divider()
-            ForEach(LaunchpadCategoryName.choices(), id: \.target) { choice in
-                Toggle(choice.title, isOn: Binding(get: { choice.target == effective },
-                                                   set: { _ in if choice.target != effective { move(choice.target) } }))
-            }
-        }
-        if let files {
-            Divider()
-            LaunchpadFileButtons(files: files)
-        }
     }
 }
 
@@ -234,7 +195,16 @@ private struct LaunchpadWiggle: ViewModifier {
     }
 }
 
-/// One tile: an icon over a name, pressed to open. Hiding is the context menu's and VoiceOver's action. White ink: it
+/// VoiceOver's "show menu" on a tile, where it has a menu.
+private struct LaunchpadShowMenu: ViewModifier {
+    let show: (() -> Void)?
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if let show { content.accessibilityAction(.showMenu, show) } else { content }
+    }
+}
+
+/// One tile: an icon over a name, pressed to open. Hiding is the menu's (`LaunchpadMenu`, popped by the panel) and VoiceOver's action. White ink: it
 /// is drawn on the window's blur, in the dark appearance.
 struct LaunchpadTile<Mark: View>: View {
     let name: String
@@ -248,15 +218,13 @@ struct LaunchpadTile<Mark: View>: View {
     /// The app opening: its icon swells, then the window goes.
     var popped = false
     var pressed = false
-    /// A folder's other size, offered beside hide: its menu item's title and what it does.
+    /// A folder's other size, offered beside hide: its title (VoiceOver's action) and what it does.
     var resize: (title: String, action: () -> Void)?
-    /// An app's menu (Hide and Move to category) in place of the bare Hide.
-    var menu: LaunchpadAppMenu?
-    /// The tile is in the Hidden card: its one action, from the menu and from VoiceOver, is Show (the `hide` closure), and it cannot be moved.
+    /// The tile is in the Hidden card: its one action, from VoiceOver (the panel's menu has its own Show row), is Show (the `hide` closure), and it cannot be moved.
     var inHidden = false
     /// The tile's place by VoiceOver: nil where no reorder is allowed (a search, the category view, the Hidden card).
     var reorder: LaunchpadTileMoves?
-    /// An app's Show in Finder and Copy Path, in the Hidden card's menu (which has no `menu`) and as VoiceOver actions.
+    /// An app's Show in Finder and Copy Path, as VoiceOver actions.
     var files: LaunchpadFileActions?
     /// An app's name is not drawn (`LaunchpadGeometry.names` off); `help` and the accessibility label keep it.
     var hidesName = false
@@ -268,8 +236,8 @@ struct LaunchpadTile<Mark: View>: View {
     var scale: CGFloat = 1
     /// The edit mode's wiggle and badges; nil outside the mode, and on the tile the lift carries.
     var editMode: LaunchpadTileEdit?
-    /// "Edit" in the tile's menu: nil where the mode cannot begin (or already is).
-    var beginEditing: (() -> Void)?
+    /// VoiceOver's "show menu" (VO-Shift-M): nil for a tile with no menu (a category block, the Hidden block).
+    var showMenu: (() -> Void)?
     @ViewBuilder let mark: Mark
     @State private var hovering = false
     /// The hover scroll's offset (0 or negative): moved by `.task(id: marqueeOn)`, which owns it.
@@ -367,15 +335,7 @@ struct LaunchpadTile<Mark: View>: View {
         .task(id: marqueeOn) { await scroll(by: marqueeDistance) }
         .overlay(alignment: .topLeading) { badges }
         .accessibilityLabel(accessibleName)
-        .contextMenu {
-            if let menu { menu } else {
-                if let hide { Button(inHidden ? HelmWord.show : LpStr.hide, action: hide) }
-                if let files { Divider(); LaunchpadFileButtons(files: files) }
-            }
-            if let resize { Button(resize.title, action: resize.action) }
-            if let beginEditing { Button(HelmWord.edit, action: beginEditing) }
-            if let remove = editMode?.remove { Button(LpStr.removeAction, action: remove) }
-        }
+        .modifier(LaunchpadShowMenu(show: showMenu))
         .accessibilityActions {
             if let remove = editMode?.remove { Button(LpStr.removeAction, action: remove) }
             if let hide { Button(inHidden ? HelmWord.show : LpStr.hide, action: hide) }
@@ -428,15 +388,14 @@ struct LaunchpadTile<Mark: View>: View {
 extension LaunchpadTile where Mark == Image {
     /// An application's tile; the icon is the caller's, from the window's own cache (nil until it is drawn: an empty slot of the same frame).
     init(app: CatalogApp, icon: NSImage?, iconSize: CGFloat, selected: Bool, glowSize: CGSize, popped: Bool, pressed: Bool = false, inHidden: Bool = false,
-         moved: LaunchpadCategoryTarget?, open: @escaping () -> Void, hide: @escaping () -> Void,
-         move: @escaping (LaunchpadCategoryTarget?) -> Void, reorder: LaunchpadTileMoves? = nil,
+         open: @escaping () -> Void, hide: @escaping () -> Void, reorder: LaunchpadTileMoves? = nil,
          files: LaunchpadFileActions? = nil, showName: Bool = true, oneLine: Bool = false, isNew: Bool = false, scale: CGFloat = 1,
-         editMode: LaunchpadTileEdit? = nil, beginEditing: (() -> Void)? = nil) {
+         editMode: LaunchpadTileEdit? = nil, showMenu: (() -> Void)? = nil) {
         self.init(name: app.name, accessibleName: isNew ? LpStr.appIsNew(app.name) : app.name, iconSize: iconSize, selected: selected, open: open, hide: hide,
                   glowSize: glowSize, popped: popped, pressed: pressed,
-                  menu: inHidden ? nil : LaunchpadAppMenu(app: app, moved: moved, hide: hide, move: move, files: files), inHidden: inHidden,
+                  inHidden: inHidden,
                   reorder: reorder, files: files, hidesName: !showName, oneLine: oneLine, isNew: isNew, scale: scale,
-                  editMode: editMode, beginEditing: beginEditing) {
+                  editMode: editMode, showMenu: showMenu) {
             Image(nsImage: icon ?? LaunchpadIcons.empty).resizable()
         }
     }
@@ -557,8 +516,6 @@ struct LaunchpadCategoryMark: View {
     /// The large icon (by quadrant) a press is on, which takes the wash instead of the tile, and the one whose app is opening, which swells.
     var pressed: Int?
     var popped: Int?
-    /// The menu of the large icon at this index (the icons are the block's apps, in order): a right-click on the icon is the app's.
-    var menu: ((Int) -> LaunchpadAppMenu)?
 
     /// The side of a quadrant: the same pad and gap as the folder mark's, two to a side.
     static func quadrant(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat {
@@ -592,7 +549,6 @@ struct LaunchpadCategoryMark: View {
                     .scaleEffect(popped == index && !HelmMotion.reduceMotion ? LaunchpadMetrics.popScale : 1)
                     .animation(HelmMotion.interface, value: popped)
                     .zIndex(popped == index ? 1 : 0)
-                    .contextMenu { if let menu { menu(index) } }
                     .offset(x: frame.minX, y: frame.minY)
             }
             if !cluster.isEmpty {

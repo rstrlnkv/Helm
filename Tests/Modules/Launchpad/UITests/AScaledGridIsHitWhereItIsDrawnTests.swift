@@ -51,7 +51,7 @@ import HelmUI
 
     private func tile(_ g: LaunchpadGeometry, size: CGFloat, image: NSImage) -> some View {
         LaunchpadTile(app: CatalogApp(id: "a", name: "Calculator", path: "/Applications/Calculator.app"), icon: image, iconSize: size, selected: false,
-                      glowSize: CGSize(width: g.cellWidth, height: g.cellHeight), popped: false, moved: nil, open: {}, hide: {}, move: { _ in },
+                      glowSize: CGSize(width: g.cellWidth, height: g.cellHeight), popped: false, open: {}, hide: {},
                       showName: g.names, scale: g.scale)
     }
 

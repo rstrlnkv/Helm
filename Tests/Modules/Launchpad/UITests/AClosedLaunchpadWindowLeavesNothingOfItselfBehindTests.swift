@@ -29,19 +29,17 @@ final class AClosedLaunchpadWindowLeavesNothingOfItselfBehindTests: XCTestCase {
         XCTAssertEqual(state.pages.first?.isEmpty, false, "the control: the tiles were drawn from a snapshot before the window closed")
         panel.contentView?.layoutSubtreeIfNeeded()
         panel.contentView?.displayIfNeeded()
-        // The tile's context menu is asked for as a right click asks (SwiftUI builds its responder and its menu then), without tracking it.
-        if let hosting = panel.contentView?.subviews.first {
-            var asked = 0
-            for y in stride(from: 100.0, to: hosting.bounds.height - 100, by: 40) {
-                for x in stride(from: 100.0, to: hosting.bounds.width - 100, by: 60) {
-                    let at = hosting.convert(CGPoint(x: x, y: y), to: nil)
-                    let click = NSEvent.mouseEvent(with: .rightMouseDown, location: at, modifierFlags: [], timestamp: 0, windowNumber: panel.windowNumber,
-                                                   context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
-                    if let menu = hosting.menu(for: click) { menu.update(); asked += 1 }
+        // The menus are asked for as the panel asks on a right click (the state's description, built as an `NSMenu`), without tracking one.
+        var asked = 0
+        for y in stride(from: 100.0, to: state.geometry.size.height - 100, by: 40) {
+            for x in stride(from: 100.0, to: state.geometry.size.width - 100, by: 60) {
+                if let menu = state.menu(at: CGPoint(x: x, y: y)) {
+                    _ = LaunchpadNSMenu.make(menu) { [weak state] in state?.perform($0) }
+                    asked += 1
                 }
             }
-            XCTAssertGreaterThan(asked, 0, "the control: a tile has a context menu to ask for")
         }
+        XCTAssertGreaterThan(asked, 0, "the control: a tile has a menu to ask for")
         try? await Task.sleep(for: .milliseconds(300))
         window.close()
         try? await Task.sleep(for: .milliseconds(600))

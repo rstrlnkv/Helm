@@ -27,7 +27,6 @@ struct LaunchpadScreen: View {
             Color.black.opacity(0.2)
                 .contentShape(Rectangle())
                 .onTapGesture { state.backgroundClicked() }
-                .contextMenu { if state.editAllowed, !state.editing { Button(HelmWord.edit) { [weak state] in state?.beginEditing() } } }
             // The content settles from a little larger as the window is revealed (a scrub or a settle, `state.reveal`); the scrim stays out of the zoom.
             ZStack(alignment: .topLeading) {
                 pages(g)
@@ -119,17 +118,16 @@ struct LaunchpadScreen: View {
     private func tile(_ entry: LaunchpadEntry, selected: Bool, size: CGSize, _ g: LaunchpadGeometry, carrying: Bool = false) -> some View {
         // The edit mode's wiggle and badges stay with the tiles in the page; the one the pointer carries is plain.
         let wearing = state.editing && !carrying
-        let canEdit = state.editAllowed && !state.editing
         return Group {
             switch entry {
             case .app(let app):
                 LaunchpadTile(app: app, icon: state.icons.image(for: app.path, side: g.icon), iconSize: g.icon, selected: selected,
                               glowSize: size, popped: state.launching == app.id,
                               pressed: state.pressedID == app.id || state.lift?.onto == app.id,
-                              moved: state.moved[app.id], open: { [weak state] in state?.openApp(app.id, app.name) }, hide: { [weak state] in state?.onHide?(app.id) },
-                              move: { [weak state] in state?.move(app.id, to: $0) }, reorder: state.moves(for: app.id),
+                              open: { [weak state] in state?.openApp(app.id, app.name) }, hide: { [weak state] in state?.onHide?(app.id) },
+                              reorder: state.moves(for: app.id),
                               files: state.fileActions(for: app), showName: g.names, isNew: isNew(app) && !state.editing, scale: g.scale,
-                              editMode: wearing ? appEdit(app) : nil, beginEditing: canEdit ? { [weak state] in state?.beginEditing() } : nil)
+                              editMode: wearing ? appEdit(app) : nil, showMenu: { [weak state] in state?.requestMenu(forTile: app.id) })
             case .folder(let id, let name, let apps, let large):
                 if state.categoriesShown, id == LaunchpadHiddenBlock.id {
                     // The locked block: a lock and a name, nothing of what it holds; a press or Return asks the system.
@@ -140,8 +138,8 @@ struct LaunchpadScreen: View {
                     }
                 } else if state.categoriesShown {
                     // A category block: three large icons that launch and a cluster of four small ones, or four large ones when it has no more
-                    // (`LaunchpadHit.categoryIcon`). Its menu has no Hide and no size: it is no folder of the person's. Each large icon has the
-                    // app's own menu (Hide and Move to category), by right-click.
+                    // (`LaunchpadHit.categoryIcon`). It has no menu of its own, and none for VoiceOver: it is no folder of the person's. A right-click on a
+                    // large icon pops the app's menu (the panel's, `LaunchpadScreenState.menu(at:)`); VoiceOver reaches those apps through the card.
                     let large = apps.prefix(apps.count > 4 ? 3 : 4)
                     let mine = state.pressedID == entry.id
                     LaunchpadTile(name: name, accessibleName: LpStr.category(name), iconSize: g.largeMark, selected: selected,
@@ -152,12 +150,7 @@ struct LaunchpadScreen: View {
                                               cluster: apps.dropFirst(3).prefix(apps.count > 4 ? 4 : 0).map { state.icons.image(for: $0.path, side: LaunchpadClusterCell.tiny(quadrant)) },
                                               size: g.largeMark, edge: g.largeEdge,
                                               pressed: mine ? large.firstIndex { $0.id == state.pressedIcon } : nil,
-                                              popped: state.popped(block: entry.id, among: large),
-                                              menu: { [weak state] at in
-                                                  let app = large[at]
-                                                  return LaunchpadAppMenu(app: app, moved: state?.moved[app.id], hide: { [weak state] in state?.onHide?(app.id) },
-                                                                          move: { [weak state] in state?.move(app.id, to: $0) }, files: state?.fileActions(for: app))
-                                              })
+                                              popped: state.popped(block: entry.id, among: large))
                     }
                 } else {
                     // A large folder shows the first eight apps and, past nine, four more in the ninth cell, or the first nine; the mark's icons are plain images, and a click on one is the state's (the panel takes the press).
@@ -169,7 +162,7 @@ struct LaunchpadScreen: View {
                                   resize: (large ? LpStr.shrinkFolder : LpStr.enlargeFolder, { [weak state] in state?.resize(id, large: !large) }),
                                   reorder: state.moves(for: entry.id), oneLine: !g.names, scale: g.scale,
                                   editMode: wearing ? LaunchpadTileEdit(seed: LaunchpadTileEdit.seed(of: entry.id)) : nil,
-                                  beginEditing: canEdit ? { [weak state] in state?.beginEditing() } : nil) {
+                                  showMenu: { [weak state] in state?.requestMenu(forTile: entry.id) }) {
                         LaunchpadFolderMark(icons: cells.shown.map { state.icons.image(for: $0.path, side: mini) }, size: large ? g.largeMark : g.icon, edge: large ? g.largeEdge : nil,
                                             overflow: cells.overflow.map { state.icons.image(for: $0.path, side: LaunchpadClusterCell.tiny(mini)) },
                                             pressed: large ? cells.shown.firstIndex { $0.id == state.pressedIcon } : nil,
@@ -347,11 +340,11 @@ struct LaunchpadScreen: View {
             LaunchpadTile(app: app, icon: state.icons.image(for: app.path, side: g.icon), iconSize: g.icon,
                           selected: state.selection == index, glowSize: glowSize(g),
                           popped: state.launching == app.id, pressed: state.pressedID == app.id,
-                          inHidden: inHidden, moved: state.moved[app.id], open: { [weak state] in state?.openApp(app.id, app.name) },
+                          inHidden: inHidden, open: { [weak state] in state?.openApp(app.id, app.name) },
                           hide: { [weak state] in inHidden ? state?.onUnhide?(app.id) : state?.onHide?(app.id) },
-                          move: { [weak state] in state?.move(app.id, to: $0) }, reorder: state.moves(for: app.id),
+                          reorder: state.moves(for: app.id),
                           files: state.fileActions(for: app), showName: inHidden || state.namesAsked, oneLine: !g.names, isNew: isNew(app) && !state.editing, scale: g.scale,
-                          editMode: state.editing && !inHidden ? appEdit(app) : nil, beginEditing: state.editAllowed && !state.editing ? { [weak state] in state?.beginEditing() } : nil)
+                          editMode: state.editing && !inHidden ? appEdit(app) : nil, showMenu: { [weak state] in state?.requestMenu(forTile: app.id) })
         } else {
             Color.clear
         }

@@ -116,10 +116,10 @@ import XCTest
     }
 
     func testTheMenuOffersTheUndoOnlyForAMovedAppAndChecksTheEffectiveCategory() {
-        XCTAssertFalse(LaunchpadAppMenu.canReturn(moved: nil))
-        XCTAssertTrue(LaunchpadAppMenu.canReturn(moved: .others))
-        XCTAssertEqual(LaunchpadAppMenu.effective(moved: nil, raw: "public.app-category.music"), .category(.music))
-        XCTAssertEqual(LaunchpadAppMenu.effective(moved: nil, raw: nil), .others)
-        XCTAssertEqual(LaunchpadAppMenu.effective(moved: .category(.games), raw: "public.app-category.music"), .category(.games))
+        XCTAssertFalse(LaunchpadMenu.canReturn(moved: nil))
+        XCTAssertTrue(LaunchpadMenu.canReturn(moved: .others))
+        XCTAssertEqual(LaunchpadMenu.effective(moved: nil, raw: "public.app-category.music"), .category(.music))
+        XCTAssertEqual(LaunchpadMenu.effective(moved: nil, raw: nil), .others)
+        XCTAssertEqual(LaunchpadMenu.effective(moved: .category(.games), raw: "public.app-category.music"), .category(.games))
     }
 }

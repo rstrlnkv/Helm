@@ -14,8 +14,13 @@ import Module_Launchpad_Engine
 /// Control or Option falls through. A trackpad swipe with fingers on it drags the page and settles it (`LaunchpadSwipe`), the wheel and a device with no phases turn pages through `LaunchpadScrollPager`; with a folder's
 /// card open they are the card's pages' (`LaunchpadScreenState.swipeWidth`, with a swipe of its own). The rest, the typing included, is the text field's.
 ///
+/// **The panel owns the menus.** A right-click, and a left click with Control held, pops an `NSMenu` built once from `LaunchpadScreenState.menu(at:)`
+/// (`LaunchpadNSMenu`); SwiftUI's own context menu is not used, as it rebuilds the open menu on every render of the hosting view. Where the state has no
+/// menu the press goes on to the view under it (the search field's text menu). While a menu tracks, `menuOpen` keeps the window from closing on the
+/// resign and the activation it may cause; once the menu is gone, a panel that is no longer key ends the window as a resign would have.
+///
 /// What was measured of menus and tooltips in a panel like this is `OverlayPanel`'s doc comment; this panel's own live
-/// readings (typing, the context menu, closing on resign) are the owner's, in Helm Dev.
+/// readings (typing, the menu, closing on resign) are the owner's, in Helm Dev.
 final class LaunchpadPanel: NSPanel {
     var state: LaunchpadScreenState?
     var onResignKey: (() -> Void)?
@@ -23,6 +28,9 @@ final class LaunchpadPanel: NSPanel {
     var isClosing = false
     /// Set while the system's Touch ID / password dialog is up: keys are the dialog's and the panel takes no mouse (`LaunchpadWindow.promptChanged`).
     var isPrompting = false
+    /// A menu is tracking (`track`).
+    private(set) var menuOpen = false
+    private weak var openMenu: NSMenu?
     private var pager = LaunchpadScrollPager()
     private var swipe = LaunchpadSwipe()
     /// The open card's swipe: its own, so a gesture's travel is not shared between the grid's pages and the card's.
@@ -44,6 +52,35 @@ final class LaunchpadPanel: NSPanel {
             }
         }
         if !handle(event) { super.sendEvent(event) }
+    }
+
+    /// Closes the menu that is tracking, if any (the window is going).
+    func dismissMenu() { openMenu?.cancelTracking() }
+
+    /// Pops the menu `state` has for the press; false where it has none and the press goes on. A press while the window fades or the system's dialog is up is swallowed.
+    private func pop(for event: NSEvent, _ state: LaunchpadScreenState) -> Bool {
+        guard !isClosing, !isPrompting, !menuOpen else { return true }
+        guard let menu = state.menu(at: point(of: event, state)), let view = contentView else { return false }
+        let built = LaunchpadNSMenu.make(menu) { [weak state] in state?.perform($0) }
+        track(built) { NSMenu.popUpContextMenu(built, with: event, for: view) }
+        return true
+    }
+
+    /// VoiceOver's menu, at `anchor` (from the window's top left).
+    func pop(_ menu: LaunchpadMenu, at anchor: CGPoint) {
+        guard !isClosing, !isPrompting, !menuOpen, let state, let view = contentView else { return }
+        let built = LaunchpadNSMenu.make(menu) { [weak state] in state?.perform($0) }
+        track(built) { built.popUp(positioning: nil, at: CGPoint(x: anchor.x, y: state.geometry.size.height - anchor.y), in: view) }
+    }
+
+    /// Runs the call that tracks `menu`, with `menuOpen` set; both `pop`s refuse while it is, since a nested track (VoiceOver's Task inside an open menu's loop) would clear `menuOpen` and `openMenu` under the outer one. After it, a panel that lost the key meanwhile ends the window.
+    private func track(_ menu: NSMenu, _ pop: () -> Void) {
+        menuOpen = true
+        openMenu = menu
+        pop()
+        menuOpen = false
+        openMenu = nil
+        if !isKeyWindow { onResignKey?() }
     }
 
     /// An arrow key's step: the choice and, past the page's edge, the page, on the interface curve.
@@ -101,6 +138,7 @@ final class LaunchpadPanel: NSPanel {
             }
             return true
         case .leftMouseDown:
+            if event.modifierFlags.contains(.control), pop(for: event, state) { return true }
             return state.pointerDown(point(of: event, state), time: event.timestamp)
         case .leftMouseDragged:
             guard state.pointerBusy else { return false }
@@ -111,7 +149,8 @@ final class LaunchpadPanel: NSPanel {
             state.pointerUp(point(of: event, state), time: event.timestamp)
             return true
         case .rightMouseDown:
-            return state.pointerBusy
+            if state.pointerBusy { return true }
+            return pop(for: event, state)
         case .scrollWheel:
             if state.pointerBusy { return true }
             if event.hasPreciseScrollingDeltas, !event.phase.isEmpty || !event.momentumPhase.isEmpty {
@@ -290,8 +329,9 @@ private final class LaunchpadWindowEnders {
         scaleToken = NotificationCenter.default.addObserver(forName: NSWindow.didChangeBackingPropertiesNotification, object: panel, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { if let self, let scale = self.panel.screen?.backingScaleFactor { self.state.rescale(scale) } }
         }
+        state.onPopMenu = { [weak self] menu, anchor in self?.panel.pop(menu, at: anchor) }
         panel.onResignKey = { [weak self] in
-            guard let self, !prompting else { return }
+            guard let self, !prompting, !panel.menuOpen else { return }
             close()
         }
     }
@@ -345,7 +385,7 @@ private final class LaunchpadWindowEnders {
         LaunchpadWindowEnders(willSleep: { [weak self] in
             guard let self, case .scrubbing(let direction, _) = phase else { return }
             if direction == .pinch { close() } else { endScrub(.revert) }
-        }, ignoringActivation: { [weak self] in self?.prompting == true }, { [weak self] in self?.close() })
+        }, ignoringActivation: { [weak self] in self?.prompting == true || self?.panel.menuOpen == true }, { [weak self] in self?.close() })
     }
 
     // MARK: - The fingers' scrub
@@ -478,6 +518,8 @@ private final class LaunchpadWindowEnders {
         if let scaleToken { NotificationCenter.default.removeObserver(scaleToken) }
         scaleToken = nil
         panel.onResignKey = nil
+        panel.dismissMenu()
+        state.onPopMenu = nil
         panel.state = nil
         snapshotArrived?.finish()
         snapshotArrived = nil
