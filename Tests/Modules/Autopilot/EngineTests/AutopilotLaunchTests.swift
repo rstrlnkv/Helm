@@ -121,11 +121,11 @@ final class TheLaunchNeverWaitsForTheKeyPortTests: XCTestCase {
     /// failing it. A regression has to be reported, not waited for.
     private func engineOffThread(_ keys: RuleKeyPort) throws -> AutopilotEngine {
         let built = expectation(description: "the engine was built")
-        let store = store()
+        let store = Shared(store())
         let home = self.home!
         let box = Box()
         DispatchQueue.global().async {
-            box.engine = AutopilotEngine(store: store, home: home.path, keys: keys, sequence: TestRuleSequence())
+            box.engine = AutopilotEngine(store: store.value, home: home.path, keys: keys, sequence: TestRuleSequence())
             built.fulfill()
         }
         wait(for: [built], timeout: 5)

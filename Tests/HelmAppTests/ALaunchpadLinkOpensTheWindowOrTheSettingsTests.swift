@@ -1,6 +1,7 @@
 import AppKit
 import HelmRuntime
 import HelmUI
+import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
@@ -14,12 +15,12 @@ final class ALaunchpadLinkOpensTheWindowOrTheSettingsTests: XCTestCase {
 
     /// What the link did and the module ids `.helmOpenSettings` was posted for.
     private func open(_ url: URL, at now: TimeInterval) -> (ModuleHost.LinkOutcome, [String?]) {
-        var asked: [String?] = []
-        let token = NotificationCenter.default.addObserver(forName: .helmOpenSettings, object: nil, queue: nil) {
-            asked.append($0.object as? String)
+        let asked = Locked<[String?]>([])
+        let token = NotificationCenter.default.addObserver(forName: .helmOpenSettings, object: nil, queue: nil) { note in
+            asked.withLock { $0.append(note.object as? String) }
         }
         defer { NotificationCenter.default.removeObserver(token) }
-        return (ModuleHost.shared.openLaunchpadFromLink(url, now: now), asked)
+        return (ModuleHost.shared.openLaunchpadFromLink(url, now: now), asked.value)
     }
 
     func testALinkWithTheModuleOffOpensItsSettingsPage() {

@@ -304,7 +304,7 @@ struct EditorTextTools {
     /// What `result` is a shot of, by display: an area's rectangle and a window's parts. Nil where there is no flash.
     private func flashShapes(of result: OverlayResult) -> (rects: [DisplayID: CGRect], window: Bool)? {
         switch result {
-        case .edited(let display, let local, _, let exit):
+        case .edited(let display, let local, _, _):
             return ([display: local], false)
         case .window(let id, _):
             guard let hovered, hovered.id == id else { return nil }

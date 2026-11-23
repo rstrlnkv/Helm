@@ -39,7 +39,7 @@ final class ThePageNamesEveryCopyItKeepsTests: XCTestCase {
         XCTAssertEqual(work.removals.last?.map(\.remove), [marked],
                        "precondition: one copy was asked for")
         let said = try XCTUnwrap(work.staying.last, "no removal reached the work at all")
-        XCTAssertEqual(Set(said ?? []), [survivor, unticked], """
+        XCTAssertEqual(Set(said), [survivor, unticked], """
             the removal named its survivor and nothing else, so the extra left unticked — which \
             is holding its family's blocks exactly as the survivor is — was invisible to the \
             arithmetic behind the banner
@@ -61,7 +61,7 @@ final class ThePageNamesEveryCopyItKeepsTests: XCTestCase {
         await dvm.emptyBasket()
 
         let said = try XCTUnwrap(work.staying.last, "no removal reached the work at all")
-        XCTAssertEqual(Set(said ?? []), [survivor, unticked, elsewhere,
+        XCTAssertEqual(Set(said), [survivor, unticked, elsewhere,
                                          "\(home)/Documents/note 2.txt"],
                        "a group nothing was ticked in still holds whatever its copies hold")
     }

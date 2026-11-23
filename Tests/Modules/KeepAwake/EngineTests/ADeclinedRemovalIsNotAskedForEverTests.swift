@@ -49,8 +49,8 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
     private var clamshell: FakeClamshell!
     private var engine: KeepAwakeEngine!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         settings = KeepAwakeSettings(store: store)
         clamshell = FakeClamshell()
@@ -62,12 +62,12 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         engine = fakeEngine(settings: settings, store: store, clamshell: clamshell)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         store = nil
         settings = nil
         clamshell = nil
         engine = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     /// The control: switching the option off takes the rule out once, which is

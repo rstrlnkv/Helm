@@ -147,10 +147,7 @@ public enum Redact {
     /// which is how eleven engine tests once rolled back the owner's Autopilot.
     private static let salt: [UInt8] = loadOrCreateSalt(
         at: HelmLog.directory.appendingPathComponent("salt"),
-        // `return` outright: a closure hands its one expression back with no
-        // word for it, which reads exactly like a dropped answer — see
-        // `ARefusalFromTheDiskIsNotASuccessTests`, which says so and means this.
-        writing: { data, url in return PrivateFile.writeMakingTheFolder(data, at: url) })
+        writing: { data, url in PrivateFile.writeMakingTheFolder(data, at: url) })
 
     /// The salt file sits beside the log, `0600`, and is created on first use.
     ///

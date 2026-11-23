@@ -24,9 +24,9 @@ final class BootstrapDoesNotOrphanEnginesTests: XCTestCase {
     /// Layout, a live keyboard tap spell-checking everything typed while the
     /// suite runs. `ShutdownLetsTheEnginesGoTests` is what proves this call
     /// actually lets them go.
-    override func tearDown() {
+    override func tearDown() async throws {
         ModuleHost.shared.shutdown()
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testASecondBootstrapKeepsTheEnginesTheFirstOneBuilt() {

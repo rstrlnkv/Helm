@@ -437,21 +437,21 @@ struct LaunchpadFolderMark: View {
     var popped: Int?
     /// The well's side: an app icon's visible body is about this much of its frame, and the well is drawn as big, centred in the frame.
     /// A large mark passes `edge` (`LaunchpadGeometry.largeEdge`), the small icon's inset, so its well meets the visible edges of the four icons it stands for.
-    static func well(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { size - 2 * inset(size, edge: edge) }
+    nonisolated static func well(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { size - 2 * inset(size, edge: edge) }
     /// From the frame's edge to the well's: `edge` where the caller says, else the share of the frame that makes the well `wellShare` of it. The one function every
     /// drawing and hit test reads.
-    static func inset(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { edge ?? size * (1 - LaunchpadMetrics.wellShare) / 2 }
-    static func pad(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { well(size, edge: edge) * 0.10 }
-    static func gap(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { well(size, edge: edge) * 0.05 }
+    nonisolated static func inset(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { edge ?? size * (1 - LaunchpadMetrics.wellShare) / 2 }
+    nonisolated static func pad(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { well(size, edge: edge) * 0.10 }
+    nonisolated static func gap(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { well(size, edge: edge) * 0.05 }
     /// The apps a folder's mark draws, by what the screen asks the cache for: the first nine (eight when a large folder holds more than
     /// nine), and for a large one the last cell's up to four tiny ones.
     static func cells(_ apps: [CatalogApp], large: Bool) -> (shown: ArraySlice<CatalogApp>, overflow: ArraySlice<CatalogApp>) {
         (apps.prefix(large && apps.count > 9 ? 8 : 9), large ? apps.dropFirst(8).prefix(apps.count > 9 ? 4 : 0) : [])
     }
-    static func mini(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { (well(size, edge: edge) - 2 * pad(size, edge: edge) - 2 * gap(size, edge: edge)) / 3 }
+    nonisolated static func mini(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat { (well(size, edge: edge) - 2 * pad(size, edge: edge) - 2 * gap(size, edge: edge)) / 3 }
 
     /// Where icon `index` (0 to 8, reading order) is drawn, from the mark's top left: the one place the drawing and a click on an icon read.
-    static func frame(ofIcon index: Int, size: CGFloat, edge: CGFloat? = nil) -> CGRect {
+    nonisolated static func frame(ofIcon index: Int, size: CGFloat, edge: CGFloat? = nil) -> CGRect {
         let step = mini(size, edge: edge) + gap(size, edge: edge)
         let origin = inset(size, edge: edge) + pad(size, edge: edge)
         return CGRect(x: origin + CGFloat(index % 3) * step, y: origin + CGFloat(index / 3) * step, width: mini(size, edge: edge), height: mini(size, edge: edge))
@@ -531,12 +531,12 @@ struct LaunchpadCategoryMark: View {
     var popped: Int?
 
     /// The side of a quadrant: the same pad and gap as the folder mark's, two to a side.
-    static func quadrant(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat {
+    nonisolated static func quadrant(_ size: CGFloat, edge: CGFloat? = nil) -> CGFloat {
         (LaunchpadFolderMark.well(size, edge: edge) - 2 * LaunchpadFolderMark.pad(size, edge: edge) - LaunchpadFolderMark.gap(size, edge: edge)) / 2
     }
 
     /// Where quadrant `index` (0 to 3, reading order) is drawn, from the mark's top left: the one place the drawing and a click read.
-    static func frame(ofQuadrant index: Int, size: CGFloat, edge: CGFloat? = nil) -> CGRect {
+    nonisolated static func frame(ofQuadrant index: Int, size: CGFloat, edge: CGFloat? = nil) -> CGRect {
         let side = quadrant(size, edge: edge), step = side + LaunchpadFolderMark.gap(size, edge: edge)
         let origin = LaunchpadFolderMark.inset(size, edge: edge) + LaunchpadFolderMark.pad(size, edge: edge)
         return CGRect(x: origin + CGFloat(index % 2) * step, y: origin + CGFloat(index / 2) * step, width: side, height: side)

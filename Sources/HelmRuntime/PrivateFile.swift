@@ -27,10 +27,9 @@ import Foundation
 /// for `pmset`, for `launchctl` and for a removal that got no answer; it had
 /// simply not reached the filesystem, because `write(x, to: y)` and
 /// `_ = write(x, to: y)` differ by four characters and nothing could tell a
-/// decision from an oversight. So the compiler objects now, and
-/// `ARefusalFromTheDiskIsNotASuccessTests` reads `Sources` for the rest: use the
-/// answer, or discard it with `_ =` and write beside it why the refusal does not
-/// matter there.
+/// decision from an oversight. So the compiler objects, and the package makes
+/// that warning an error: use the answer, or discard it with `_ =` and write
+/// beside it why the refusal does not matter there.
 public enum PrivateFile {
 
     /// Encode, and write it the way `write(_ data:to:)` below does: into a file

@@ -26,9 +26,9 @@ final class ShutdownLetsTheEnginesGoTests: XCTestCase {
 
     /// Belt and braces: if the assertion below ever fails, the suite should
     /// still not keep the engines that *did* deactivate.
-    override func tearDown() {
+    override func tearDown() async throws {
         ModuleHost.shared.shutdown()
-        super.tearDown()
+        try await super.tearDown()
     }
 
     private final class Grip {

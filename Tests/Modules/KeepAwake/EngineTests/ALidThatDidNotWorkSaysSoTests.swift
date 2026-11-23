@@ -26,8 +26,8 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
     private var clamshell: FakeClamshell!
     private var engine: KeepAwakeEngine!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         settings = KeepAwakeSettings(store: store)
         clamshell = FakeClamshell()

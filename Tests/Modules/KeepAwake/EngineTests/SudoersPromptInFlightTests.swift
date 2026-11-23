@@ -92,8 +92,8 @@ final class SudoersPromptInFlightTests: XCTestCase {
     private var clamshell: PromptClamshell!
     private var engine: KeepAwakeEngine!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         backing = InMemoryKeyValueStore()
         store = NamespacedStore(namespace: "keep-awake", backing: backing)
         settings = KeepAwakeSettings(store: store)

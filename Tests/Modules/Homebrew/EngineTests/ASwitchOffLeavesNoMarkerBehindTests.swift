@@ -264,8 +264,10 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
         a.upgradeAll()
         weak var dropped: HomebrewEngine?
         autoreleasepool {
-            dropped = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
-                                     user: "tester", marker: marker, gate: gate)
+            var held: HomebrewEngine? = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
+                                                        user: "tester", marker: marker, gate: gate)
+            dropped = held
+            held = nil
         }
         XCTAssertNil(dropped, "the engine was not freed, so deinit did not run")
 

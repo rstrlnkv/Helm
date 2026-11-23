@@ -67,11 +67,11 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     /// filler changing each time so every commit is really new.
     private func repoWithCommits(_ count: Int, label: String) throws -> URL {
         let dir = scratchDirectory(label)
-        try git(["init", "-q"], in: dir)
+        _ = try git(["init", "-q"], in: dir)
         for i in 1...count {
             try write("f.txt", in: dir, bytes: 4, filler: UInt8(i % 256))
-            try git(["add", "f.txt"], in: dir)
-            try git(["commit", "-q", "-m", "c\(i)"], in: dir)
+            _ = try git(["add", "f.txt"], in: dir)
+            _ = try git(["commit", "-q", "-m", "c\(i)"], in: dir)
         }
         return dir
     }
@@ -225,7 +225,7 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     func testAShallowCloneRefuses() throws {
         let source = try repoWithCommits(10, label: "gate-shallow-source")
         let clone = scratchDirectory("gate-shallow-clone")
-        try git(["clone", "-q", "--depth", "3", "file://\(source.path)", clone.path], in: source)
+        _ = try git(["clone", "-q", "--depth", "3", "file://\(source.path)", clone.path], in: source)
         let result = try run(in: clone)
         assertRefused(result, because: "a shallow clone counts only the commits it fetched")
     }
@@ -240,14 +240,14 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     func testAShallowCloneRefusesWithATraceRunning() throws {
         let source = try repoWithCommits(10, label: "gate-shallow-trace-source")
         let clone = scratchDirectory("gate-shallow-trace-clone")
-        try git(["clone", "-q", "--depth", "3", "file://\(source.path)", clone.path], in: source)
+        _ = try git(["clone", "-q", "--depth", "3", "file://\(source.path)", clone.path], in: source)
         let result = try run(in: clone, extraEnv: ["GIT_TRACE": "1"])
         assertRefused(result, because: "a shallow clone must refuse whether or not GIT_TRACE is set")
     }
 
     func testARepositoryWithNoCommitsRefuses() throws {
         let repo = scratchDirectory("gate-no-commits")
-        try git(["init", "-q"], in: repo)
+        _ = try git(["init", "-q"], in: repo)
         let result = try run(in: repo)
         assertRefused(result, because: "a fresh `git init` over sources has no HEAD to count")
         // Same as testATreeWithNoGitHistoryAtAllRefuses above: no guessed
@@ -275,7 +275,7 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
 
     func testAGraftedHistoryRefuses() throws {
         let repo = try repoWithCommits(10, label: "gate-graft")
-        try git(["replace", "--graft", "HEAD~5"], in: repo)
+        _ = try git(["replace", "--graft", "HEAD~5"], in: repo)
         let result = try run(in: repo)
         assertRefused(result, because: "a replacement ref can give a commit a shorter parent chain")
     }
@@ -476,7 +476,7 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     /// quoted text then contains an `elapsed:` line trace2 alone prints).
     func testANoCommitsRefusalWithTrace2ToStandardErrorCarriesNoTraceLine() throws {
         let repo = scratchDirectory("gate-trace2-config-nocommits")
-        try git(["init", "-q"], in: repo)
+        _ = try git(["init", "-q"], in: repo)
         let globalConfig = scratchDirectory("gate-trace2-config-nocommits-global").appendingPathComponent("gitconfig")
         try "[trace2]\n\tnormalTarget = /dev/stderr\n".write(to: globalConfig, atomically: true, encoding: .utf8)
         let result = try run(in: repo, extraEnv: ["GIT_CONFIG_GLOBAL": globalConfig.path])
@@ -525,11 +525,11 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     private func repoWithCommits(_ count: Int, namedExactly name: String, under label: String) throws -> URL {
         let dir = scratchDirectory(label).appendingPathComponent(name)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try git(["init", "-q"], in: dir)
+        _ = try git(["init", "-q"], in: dir)
         for i in 1...count {
             try write("f.txt", in: dir, bytes: 4, filler: UInt8(i % 256))
-            try git(["add", "f.txt"], in: dir)
-            try git(["commit", "-q", "-m", "c\(i)"], in: dir)
+            _ = try git(["add", "f.txt"], in: dir)
+            _ = try git(["commit", "-q", "-m", "c\(i)"], in: dir)
         }
         return dir
     }

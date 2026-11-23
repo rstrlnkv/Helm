@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import HelmRuntime
 
@@ -191,14 +192,14 @@ final class InMemoryKeyValueStoreBridgingTests: XCTestCase {
 final class NamespacedStoreChangeNotificationTests: XCTestCase {
     func testSetPostsChangeNotificationWithNamespacedKey() {
         let store = NamespacedStore(namespace: "demo", backing: InMemoryKeyValueStore())
-        var received: String?
+        let received = Locked<String?>(nil)
         let token = NotificationCenter.default.addObserver(
             forName: .helmStoreChanged, object: nil, queue: nil
-        ) { note in received = note.object as? String }
+        ) { note in received.value = note.object as? String }
         defer { NotificationCenter.default.removeObserver(token) }
 
         store.set(true, for: "flag")
 
-        XCTAssertEqual(received, "module.demo.flag")
+        XCTAssertEqual(received.value, "module.demo.flag")
     }
 }

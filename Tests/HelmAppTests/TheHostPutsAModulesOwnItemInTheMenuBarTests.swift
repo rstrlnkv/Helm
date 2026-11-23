@@ -51,10 +51,10 @@ final class TheHostPutsAModulesOwnItemInTheMenuBarTests: XCTestCase {
     /// The host's store is `UserDefaults.standard`, so the enabled flag this
     /// writes is a key in the shared domain: taken back out here rather than
     /// left for the 3028 that had accumulated once already.
-    override func tearDown() {
+    override func tearDown() async throws {
         ModuleHost.shared.shutdown()
         UserDefaults.standard.removeObject(forKey: "module.\(Self.moduleID).enabled")
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testEnablingAModuleAttachesItsMenuBarPresenceAndDisablingTakesItAway() {

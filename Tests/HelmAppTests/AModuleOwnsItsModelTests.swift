@@ -94,12 +94,12 @@ final class AModuleOwnsItsModelTests: XCTestCase {
     }
 
     /// The host's store is `UserDefaults.standard`: the keys written are taken back out.
-    override func tearDown() {
+    override func tearDown() async throws {
         ModuleHost.shared.shutdown()
         for id in Self.allIDs {
             UserDefaults.standard.removeObject(forKey: "module.\(id).enabled")
         }
-        super.tearDown()
+        try await super.tearDown()
     }
 
     private func enabledKey(_ id: String) -> Any? {

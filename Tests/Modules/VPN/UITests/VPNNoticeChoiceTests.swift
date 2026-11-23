@@ -35,7 +35,7 @@ final class VPNNoticeChoiceTests: XCTestCase {
 
     func testAQuietModeIsStoredWithoutAskingMacOSAnything() async {
         let port = FakeAutomationNotice()
-        let (vm, settings) = model(port)
+        let (vm, _) = model(port)
         await vm.choose(.menuBar)
         XCTAssertEqual(port.requests, 0, "macOS was asked for a permission nobody needed")
     }

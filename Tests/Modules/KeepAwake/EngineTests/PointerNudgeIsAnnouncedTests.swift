@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_KeepAwake_Engine
 
@@ -51,15 +52,15 @@ final class PointerNudgeIsAnnouncedTests: XCTestCase {
     }
 
     func testAJiggleAnnouncesItself() {
-        var heard = 0
+        let heard = LockedCount()
         let token = NotificationCenter.default.addObserver(
-            forName: .helmPointerNudged, object: nil, queue: nil) { _ in heard += 1 }
+            forName: .helmPointerNudged, object: nil, queue: nil) { _ in heard.bump() }
         defer { NotificationCenter.default.removeObserver(token) }
 
         jiggleOnce()
 
         XCTAssertEqual(pointer.moved.count, 1, "precondition: the pointer was actually moved")
-        XCTAssertEqual(heard, 1,
+        XCTAssertEqual(heard.value, 1,
                        "the pointer moved and nothing was told — every background scan in "
                        + "the app now sees a Mac that is never idle")
     }
@@ -69,28 +70,28 @@ final class PointerNudgeIsAnnouncedTests: XCTestCase {
     /// `ScanCoordinator` discount idleness that Helm never disturbed.
     func testNothingIsAnnouncedWhenThereIsNoMoveToMake() {
         pointer.bounds = nil          // no screen contains the pointer
-        var heard = 0
+        let heard = LockedCount()
         let token = NotificationCenter.default.addObserver(
-            forName: .helmPointerNudged, object: nil, queue: nil) { _ in heard += 1 }
+            forName: .helmPointerNudged, object: nil, queue: nil) { _ in heard.bump() }
         defer { NotificationCenter.default.removeObserver(token) }
 
         jiggleOnce()
 
         XCTAssertTrue(pointer.moved.isEmpty, "precondition: there was no move to make")
-        XCTAssertEqual(heard, 0, "a nudge was announced that never happened")
+        XCTAssertEqual(heard.value, 0, "a nudge was announced that never happened")
     }
 
     /// And it is not announced when the feature is off, which is its default.
     func testAJiggleThatIsSwitchedOffAnnouncesNothing() {
         store.set(false, for: "jiggleEnabled")
-        var heard = 0
+        let heard = LockedCount()
         let token = NotificationCenter.default.addObserver(
-            forName: .helmPointerNudged, object: nil, queue: nil) { _ in heard += 1 }
+            forName: .helmPointerNudged, object: nil, queue: nil) { _ in heard.bump() }
         defer { NotificationCenter.default.removeObserver(token) }
 
         jiggleOnce()
 
         XCTAssertTrue(pointer.moved.isEmpty)
-        XCTAssertEqual(heard, 0)
+        XCTAssertEqual(heard.value, 0)
     }
 }

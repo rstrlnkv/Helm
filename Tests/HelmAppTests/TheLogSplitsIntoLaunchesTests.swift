@@ -372,7 +372,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
     // MARK: - Words
 
-    func testTheFooterSaysHowManyAndWhereTheTailBeginsInEveryLanguage() {
+    @MainActor func testTheFooterSaysHowManyAndWhereTheTailBeginsInEveryLanguage() {
         let lines = tail()
         let page = build(lines)
         AppLanguage.each { language in
@@ -385,7 +385,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         }
     }
 
-    func testOlderLinesAreClaimedOnlyOfAFullTailWithAFileBehindIt() {
+    @MainActor func testOlderLinesAreClaimedOnlyOfAFullTailWithAFileBehindIt() {
         XCTAssertFalse(LogView.olderLinesExist(entryCount: HelmLog.tailLimit - 1, storedLog: true))
         XCTAssertFalse(LogView.olderLinesExist(entryCount: HelmLog.tailLimit, storedLog: false))
         XCTAssertTrue(LogView.olderLinesExist(entryCount: HelmLog.tailLimit, storedLog: true))
@@ -396,7 +396,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         }
     }
 
-    func testAnEmptyTailHasNoCounts() {
+    @MainActor func testAnEmptyTailHasNoCounts() {
         XCTAssertEqual(LogView.footerCounts(build([]), entries: [], storedLog: true), "")
     }
 
@@ -504,7 +504,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         XCTAssertEqual(LogSessions.split(lines).map(\.version), ["0.10.0"])
     }
 
-    func testTheTooltipNamesTheDayOnlyWhenTheRunCrossedIt() {
+    @MainActor func testTheTooltipNamesTheDayOnlyWhenTheRunCrossedIt() {
         let same = LogPresentation.Row(lines: [networkLine(0), networkLine(60)], heading: nil)
         let across = LogPresentation.Row(lines: [networkLine(35_000), networkLine(35_300)], heading: nil)
         XCTAssertFalse(utc.isDate(across.first.date, inSameDayAs: across.last.date))
@@ -1114,7 +1114,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
     /// Open fold, then the tail rolls over: the fold stays open while the start
     /// line is in the tail, because the card is its start line's id.
-    func testARollingTailKeepsAnOpenFoldOpenUntilItsStartLineLeaves() {
+    @MainActor func testARollingTailKeepsAnOpenFoldOpenUntilItsStartLineLeaves() {
         let head = (0..<5).map { networkLine(Double($0) - 100, .info, "memory", "sample \($0)") }
         let launch = [start(0, "0.11.1-dev.14")]
             + (1...6).map { networkLine(Double($0) * 0.1, .info, "host", "enable \($0)") }
@@ -1263,7 +1263,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// count is not the copy set, which carries each drawn card's start line:
     /// one launch with thirteen warnings would read «13 warnings» on its card
     /// and «14 of … lines» under it, and nothing on the page is the fourteenth.
-    func testUnderWarningsTheFooterCountsWhatTheBadgesCount() {
+    @MainActor func testUnderWarningsTheFooterCountsWhatTheBadgesCount() {
         var lines = [start(0, "0.11.1-dev.14"), networkLine(0.1, .info, "host", "enable vpn")]
         for index in 0..<12 {
             lines.append(networkLine(60 + Double(index), .warn, "layout",

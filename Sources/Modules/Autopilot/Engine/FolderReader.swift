@@ -146,7 +146,7 @@ struct FolderReader: Sendable {
         }
         defer { closedir(stream) }
         var names: [String] = []
-        while var entry = readdir(stream) {
+        while let entry = readdir(stream) {
             let name = withUnsafePointer(to: &entry.pointee.d_name) {
                 $0.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) { String(cString: $0) }
             }

@@ -28,7 +28,7 @@ final class UninstallerEngineTests: XCTestCase {
 
     func testScanFlagsRunning() async throws {
         let fs = FakeFS(existing: [:])
-        let r = try await engine(fs: fs, running: ["com.acme.tool"])
+        let r = await engine(fs: fs, running: ["com.acme.tool"])
             .scan(bundleID: "com.acme.tool", appName: "Tool")
         XCTAssertTrue(r.runningNow)
     }

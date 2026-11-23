@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_Homebrew_Engine
@@ -73,9 +74,10 @@ final class ACancelledPasswordIsNotAFailedPrefixTests: XCTestCase {
     /// end they asked for wins over the answer, so the page says «Stopped».
     func testAStopWhileTheDialogIsUpWinsOverACancel() async {
         let rig = rigWithTools(reply: .declined, holds: true)
+        let shared = Shared(rig)
         let returned = DispatchSemaphore(value: 0)
         DispatchQueue.global(qos: .userInitiated).async {
-            rig.engine.installBrew()
+            shared.value.engine.installBrew()
             returned.signal()
         }
         rig.privileged.waitUntilOnScreen()
