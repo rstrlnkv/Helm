@@ -13,7 +13,7 @@ import XCTest
 /// The third question is the one this codebase always asks of a query: brew
 /// refusing must not read as a clean machine. A refusal here means the dialog
 /// cannot promise that nothing breaks, and `nil` is how it says so.
-private final class UsesRunner: ProcessRunner, @unchecked Sendable {
+private final class UsesRunner: QueryOnlyRunner, @unchecked Sendable {
     private let lock = NSLock()
     private var _calls: [[String]] = []
     var calls: [[String]] { lock.lock(); defer { lock.unlock() }; return _calls }
@@ -26,31 +26,14 @@ private final class UsesRunner: ProcessRunner, @unchecked Sendable {
         return (status, stdout)
     }
 
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        onExit(0)
-        return NoProcess()
-    }
 }
 
 final class ACaskIsNeverAskedWhatUsesItTests: XCTestCase {
 
-    private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester",
-                       marker: InMemoryOpMarker())
-    }
-
     func testAFormulaIsAskedWithItsNameBehindADoubleDash() {
         let runner = UsesRunner()
         runner.stdout = "aria2\nnode\n"
-        let answer = engine(runner).dependents(name: "openssl@3", isCask: false)
+        let answer = brewEngine(runner).dependents(name: "openssl@3", isCask: false)
         XCTAssertEqual(answer, ["aria2", "node"])
         XCTAssertEqual(runner.calls.first, ["uses", "--installed", "--", "openssl@3"])
     }
@@ -59,12 +42,12 @@ final class ACaskIsNeverAskedWhatUsesItTests: XCTestCase {
     func testSurroundingWhitespaceIsNotPartOfAName() {
         let runner = UsesRunner()
         runner.stdout = "  aria2  \n\n   \n node \n"
-        XCTAssertEqual(engine(runner).dependents(name: "openssl@3", isCask: false), ["aria2", "node"])
+        XCTAssertEqual(brewEngine(runner).dependents(name: "openssl@3", isCask: false), ["aria2", "node"])
     }
 
     func testACaskCostsNoToolRun() {
         let runner = UsesRunner()
-        let answer = engine(runner).dependents(name: "firefox", isCask: true)
+        let answer = brewEngine(runner).dependents(name: "firefox", isCask: true)
         XCTAssertEqual(answer, [])
         XCTAssertTrue(runner.calls.isEmpty, "a cask was asked a question about formulae")
     }
@@ -72,7 +55,7 @@ final class ACaskIsNeverAskedWhatUsesItTests: XCTestCase {
     func testARefusalIsNotALeaf() {
         let runner = UsesRunner()
         runner.status = 1
-        XCTAssertNil(engine(runner).dependents(name: "openssl@3", isCask: false),
+        XCTAssertNil(brewEngine(runner).dependents(name: "openssl@3", isCask: false),
                      "brew refusing must not read as «nothing depends on it»")
     }
 

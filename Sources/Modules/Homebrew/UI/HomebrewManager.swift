@@ -25,13 +25,11 @@ struct HomebrewManager: View {
         // first time: `loadIfNeeded` deliberately never asks `brew outdated`,
         // so on first open the line said «Updates: 0» about a question with no
         // answer — for as long as nobody visited the Updates tab.
+        let casks = hb.installed.filter(\.isCask).count
         guard hb.loadedOutdated else {
-            return HbStr.packagesStatusNoUpdates(hb.installed.count,
-                                                 hb.installed.filter(\.isCask).count)
+            return HbStr.packagesStatusNoUpdates(hb.installed.count, casks)
         }
-        return HbStr.packagesStatus(hb.installed.count,
-                             hb.outdated.count,
-                             hb.installed.filter(\.isCask).count)
+        return HbStr.packagesStatus(hb.installed.count, hb.outdated.count, casks)
     }
 
     /// The height a bordered button gives the other list screens' bars, for the

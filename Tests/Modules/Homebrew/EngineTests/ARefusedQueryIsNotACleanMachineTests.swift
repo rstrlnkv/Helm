@@ -103,19 +103,11 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
         }
     }
 
-    private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
-        // Every port named, including the marker: a forgetful construction that
-        // took a real one would be an integration test against this Mac.
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester",
-                       news: EngineNews(), marker: InMemoryOpMarker())
-    }
-
     // MARK: - The installed list
 
     func testAListBrewRefusedIsNotAnEmptyMachine() {
         let runner = CannedBrew([BrewAnswer(["list"], 1, "")])
-        let answer = engine(runner).listInstalled()
+        let answer = brewEngine(runner).listInstalled()
         XCTAssertFalse(runner.calls.isEmpty, "precondition: brew was actually asked")
         XCTAssertNil(answer, """
             `brew list` exited 1 with nothing on stdout and the module answered \
@@ -130,7 +122,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     func testACaskListRefusedDoesNotSilentlyDropEveryCask() {
         let runner = CannedBrew([BrewAnswer(["list", "--formula"], 0, "wget 1.25.0\n"),
                                  BrewAnswer(["list", "--cask"], 1, "")])
-        let answer = engine(runner).listInstalled()
+        let answer = brewEngine(runner).listInstalled()
         XCTAssertEqual(runner.calls.count, 2, "precondition: both lists were asked for")
         XCTAssertNil(answer, """
             the cask half of the list was refused and the module answered with \
@@ -142,7 +134,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     /// The control that keeps the fix honest: a machine with nothing installed
     /// is `brew` exiting **0** with no output, and that is still an answer.
     func testAMachineWithNothingInstalledStillAnswers() {
-        let answer = engine(CannedBrew([BrewAnswer(["list"], 0, "")])).listInstalled()
+        let answer = brewEngine(CannedBrew([BrewAnswer(["list"], 0, "")])).listInstalled()
         XCTAssertNotNil(answer, "an honestly empty Cellar was reported as unreadable")
         XCTAssertEqual(answer?.count, 0)
     }
@@ -164,7 +156,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
 
     func testAnOutdatedCheckBrewRefusedIsNotAnUpToDateMachine() {
         let runner = CannedBrew([BrewAnswer(["outdated"], 1, "")])
-        let answer = engine(runner).outdated()
+        let answer = brewEngine(runner).outdated()
         XCTAssertFalse(runner.calls.isEmpty, "precondition: brew was actually asked")
         XCTAssertNil(answer, """
             `brew outdated` exited 1 and the module answered "nothing is \
@@ -185,7 +177,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
         {"outdated":{"formulae":[{"name":"deno","installed_versions":["2.9.3"],\
         "current_version":"2.9.4"}],"casks":[]}}
         """
-        let answer = engine(CannedBrew([BrewAnswer(["outdated"], 0, payload)])).outdated()
+        let answer = brewEngine(CannedBrew([BrewAnswer(["outdated"], 0, payload)])).outdated()
         XCTAssertNil(answer, """
             a JSON shape this decoder does not know was read as an up-to-date \
             machine: neither `formulae` nor `casks` was present and the answer \
@@ -198,7 +190,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     /// an empty list.
     func testATruncatedAnswerIsNotAnUpToDateMachine() {
         let payload = #"{"formulae":[{"name":"deno","installed_versions":["2.9.3"]"#
-        let answer = engine(CannedBrew([BrewAnswer(["outdated"], 0, payload)])).outdated()
+        let answer = brewEngine(CannedBrew([BrewAnswer(["outdated"], 0, payload)])).outdated()
         XCTAssertNil(answer, "a truncated JSON document was read as a machine with no updates")
     }
 
@@ -207,7 +199,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     /// answer rather than becoming a refusal.
     func testAnHonestlyCurrentMachineStillAnswers() {
         let payload = #"{"formulae":[],"casks":[]}"#
-        let answer = engine(CannedBrew([BrewAnswer(["outdated"], 0, payload)])).outdated()
+        let answer = brewEngine(CannedBrew([BrewAnswer(["outdated"], 0, payload)])).outdated()
         XCTAssertNotNil(answer, "a genuinely up-to-date machine was reported as unreadable")
         XCTAssertEqual(answer?.count, 0)
     }
@@ -225,7 +217,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     /// turn every search that finds nothing into a module that cannot answer.
     func testASearchThatFoundNothingIsStillAnAnswer() {
         let runner = CannedBrew([BrewAnswer(["search"], 1, "")])
-        let answer = engine(runner).search("zzqqxxnope")
+        let answer = brewEngine(runner).search("zzqqxxnope")
         XCTAssertNotNil(answer, """
             brew spells "no matches" as exit 1 for `search`; the module now \
             reports it as a failure and the page keeps the previous query's hits

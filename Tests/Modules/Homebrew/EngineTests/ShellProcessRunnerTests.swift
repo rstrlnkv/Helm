@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import Module_Homebrew_Engine
 
@@ -52,12 +53,12 @@ final class ShellProcessRunnerTests: XCTestCase {
         done
         printf 'ada-url 3.4.4\\n'
         """
-        let box = Box()
+        let box = Locked<(status: Int32, stdout: String)?>(nil)
         let finished = withinTimeout(15) {
-            box.result = ShellProcessRunner().run("/bin/sh", ["-c", script], env: [:])
+            box.value = ShellProcessRunner().run("/bin/sh", ["-c", script], env: [:])
         }
         XCTAssertTrue(finished, "run never returned at all")
-        let result = box.result
+        let result = box.value
         XCTAssertEqual(result?.status, 0,
                        "the child was killed by the watchdog (signal status \(result?.status ?? -1)) "
                        + "— it was blocked writing to an stderr pipe nobody reads")
@@ -76,26 +77,22 @@ final class ShellProcessRunnerTests: XCTestCase {
           i=$((i+1))
         done
         """
-        let box = Box()
+        let box = Locked<(status: Int32, stdout: String)?>(nil)
         let finished = withinTimeout(15) {
-            box.result = ShellProcessRunner().run("/bin/sh", ["-c", script], env: [:])
+            box.value = ShellProcessRunner().run("/bin/sh", ["-c", script], env: [:])
         }
         XCTAssertTrue(finished, "run never returned")
-        XCTAssertEqual(box.result?.status, 0)
-        XCTAssertEqual(box.result?.stdout.split(separator: "\n").count, 2000)
+        XCTAssertEqual(box.value?.status, 0)
+        XCTAssertEqual(box.value?.stdout.split(separator: "\n").count, 2000)
     }
 
     /// The status is the tool's own, and a failure has to be distinguishable
     /// from an empty answer — every caller here turns "" into an empty list.
     func testAFailedToolReportsItsStatus() {
-        let box = Box()
+        let box = Locked<(status: Int32, stdout: String)?>(nil)
         _ = withinTimeout(15) {
-            box.result = ShellProcessRunner().run("/bin/sh", ["-c", "exit 17"], env: [:])
+            box.value = ShellProcessRunner().run("/bin/sh", ["-c", "exit 17"], env: [:])
         }
-        XCTAssertEqual(box.result?.status, 17)
-    }
-
-    private final class Box: @unchecked Sendable {
-        var result: (status: Int32, stdout: String)?
+        XCTAssertEqual(box.value?.status, 17)
     }
 }

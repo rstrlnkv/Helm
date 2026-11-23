@@ -92,13 +92,6 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
 
     /// Every port named at construction, the marker included: a defaulted one
     /// would be this Mac's own (ARCHITECTURE.md § Fakes).
-    private func engine(_ runner: ProcessRunner,
-                        _ news: EngineNews<HomebrewNews> = EngineNews()) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester",
-                       news: news, marker: InMemoryOpMarker())
-    }
-
     /// Everything the engine put on the news, read back through the replay:
     /// with the fakes synchronous, whatever was emitted is already there.
     private func states(_ news: EngineNews<HomebrewNews>) async -> [OpState] { await replay(news).states }
@@ -116,7 +109,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     func testTheSamePressRunsAndThenRefusesWhenTheNameLeavesTheCellar() async {
         let runner = MovingCellar(installed: ["periphery", "wget"])
         let news = EngineNews<HomebrewNews>()
-        let engine = engine(runner, news)
+        let engine = brewEngine(runner, news: news)
         let argv = ["uninstall", "periphery"]
 
         engine.runDoctorFix(argv)
@@ -151,7 +144,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     func testACellarThatCouldNotBeReadRefusesTheRun() async {
         let runner = MovingCellar(installed: ["periphery"])
         let news = EngineNews<HomebrewNews>()
-        let engine = engine(runner, news)
+        let engine = brewEngine(runner, news: news)
 
         engine.runDoctorFix(["uninstall", "periphery"])
         XCTAssertEqual(runner.launched.count, 1, "precondition: a readable Cellar ran it")
@@ -174,7 +167,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// command whose verdict does not depend on what the list holds.
     func testACellarThatCouldNotBeReadRefusesEvenACommandWithNoOperand() {
         let runner = MovingCellar(installed: [])
-        let engine = engine(runner)
+        let engine = brewEngine(runner)
 
         engine.runDoctorFix(["cleanup"])
         XCTAssertEqual(runner.launched, [["cleanup"]], """
@@ -208,7 +201,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
         ]
         for argv in never {
             let runner = MovingCellar(installed: ["periphery", "wget"])
-            let engine = engine(runner)
+            let engine = brewEngine(runner)
             engine.runDoctorFix(argv)
             XCTAssertEqual(runner.launched, [],
                            "\(argv) reached a child: \(runner.launched)")
@@ -217,7 +210,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
         // judge does admit. Without this, deleting `runDoctorFix`'s body would
         // leave every case above green.
         let runner = MovingCellar(installed: ["periphery", "wget"])
-        engine(runner).runDoctorFix(["uninstall", "periphery"])
+        brewEngine(runner).runDoctorFix(["uninstall", "periphery"])
         XCTAssertEqual(runner.launched, [["uninstall", "--", "periphery"]],
                        "the fixture refuses everything, so the refusals above prove nothing")
     }
@@ -227,7 +220,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// after it is not a value.
     func testCleanupRunsWithNoSeparatorBecauseItHasNoOperand() {
         let runner = MovingCellar(installed: [])
-        engine(runner).runDoctorFix(["cleanup"])
+        brewEngine(runner).runDoctorFix(["cleanup"])
         XCTAssertEqual(runner.launched, [["cleanup"]],
                        "a command with no operand was given a separator: \(runner.launched)")
     }
@@ -236,7 +229,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// own prose, and `brew` reads a leading `-` as a flag wherever it finds one.
     func testTheOperandGoesBehindTheSeparator() {
         let runner = MovingCellar(installed: ["periphery"])
-        engine(runner).runDoctorFix(["uninstall", "periphery"])
+        brewEngine(runner).runDoctorFix(["uninstall", "periphery"])
         XCTAssertEqual(runner.launched.first, ["uninstall", "--", "periphery"],
                        "the name was passed where brew can read it as a flag")
     }

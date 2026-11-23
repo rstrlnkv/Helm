@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Helm
 
+import HelmTestSupport
 import XCTest
 import HelmContract
 import HelmRuntime
@@ -48,30 +49,7 @@ final class TheHomebrewStreamCarriesTheOperationTests: XCTestCase {
 
     private func engine(_ runner: ProcessRunner, _ news: EngineNews<HomebrewNews> = EngineNews())
         -> HomebrewEngine {
-        HomebrewEngine(locator: FixtureBrew(), runner: runner, privileged: NoPrivileges(),
-                       user: "tester", news: news, marker: InMemoryOpMarker(),
-                       popularity: NoPopularity(), weight: NoPackageWeight(),
-                       tools: ToolsAlreadyInstalled(), ticker: NoWaitTicker())
-    }
-
-    /// Everything the stream says up to and including the first item `last`
-    /// accepts. A watchdog cancels the read after ten seconds, so a stream that
-    /// never says it fails the assertion instead of hanging the run.
-    private func collect(_ news: AsyncStream<HomebrewNews>,
-                         through last: @escaping @Sendable (HomebrewNews) -> Bool) async
-        -> [HomebrewNews] {
-        let reader = Task { () -> [HomebrewNews] in
-            var got: [HomebrewNews] = []
-            for await item in news {
-                got.append(item)
-                if last(item) { break }
-            }
-            return got
-        }
-        let watchdog = Task { try? await Task.sleep(for: .seconds(10)); reader.cancel() }
-        let got = await reader.value
-        watchdog.cancel()
-        return got
+        brewEngine(runner, locator: FixtureBrew(), news: news)
     }
 
     private static func isEnding(_ news: HomebrewNews) -> Bool {
@@ -156,10 +134,7 @@ final class TheHomebrewStreamCarriesTheOperationTests: XCTestCase {
 
         reader.cancel()
         await reader.value
-        let deadline = Date().addingTimeInterval(5)
-        while news.subscriberCount != 0, Date() < deadline {
-            try? await Task.sleep(for: .milliseconds(10))
-        }
+        await waitUntilReached("the subscriber is given back", within: .seconds(5)) { news.subscriberCount == 0 }
         XCTAssertEqual(news.subscriberCount, 0,
                        "a subscriber outlived the iteration that took it")
     }

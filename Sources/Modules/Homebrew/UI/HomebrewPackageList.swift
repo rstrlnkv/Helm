@@ -49,8 +49,17 @@ struct HomebrewPackageList: View {
     private func noteRow(_ text: String, busy: Bool = false) -> some View {
         HelmBusyLabel(text, busy: busy)
             .foregroundStyle(HelmText.quiet)
-            .helmListRow()
-        .selectionDisabled()
+            // Separator hidden, as on the rows (`HomebrewPackageRow`).
+            .listRowSeparator(.hidden)
+            .selectionDisabled()
+    }
+
+    /// The description line a row carries in the single-column layout — a
+    /// space while `hb.description` has nothing for it yet, so the row has its
+    /// second line from the start (`HomebrewPackageRow`'s `desc`); nil in the
+    /// two-column layout, which passes none.
+    private func rowDescription(name: String, isCask: Bool) -> String? {
+        singleColumn ? hb.description(name: name, isCask: isCask) ?? " " : nil
     }
 
     /// **The "Available to install" section's own three sentences, and its
@@ -70,7 +79,7 @@ struct HomebrewPackageList: View {
             ForEach(hits) { hit in
                 HomebrewPackageRow(name: hit.name, detail: nil, isCask: hit.isCask, singleColumn: singleColumn,
                                   hasUpdate: marksUpdates ? false : nil,
-                                  desc: singleColumn ? hb.description(name: hit.name, isCask: hit.isCask) ?? " " : nil)
+                                  desc: rowDescription(name: hit.name, isCask: hit.isCask))
             }
         }
     }
@@ -86,7 +95,7 @@ struct HomebrewPackageList: View {
                     marksUpdates: true, section: hb.section, hits: hb.shownHits) { pkg in
             HomebrewPackageRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask, singleColumn: singleColumn,
                                hasUpdate: hasUpdate(pkg.id),
-                               desc: singleColumn ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
+                               desc: rowDescription(name: pkg.name, isCask: pkg.isCask))
         }
     }
 
@@ -112,9 +121,9 @@ struct HomebrewPackageList: View {
                 // though `brew pin` only ever sets one on a formula
                 // (`BrewOutdatedParser.swift`) — so both may be drawn without
                 // choosing between them.
-                HomebrewPackageRow(name: pkg.name, detail: "\(pkg.installed) → \(pkg.latest)", isCask: pkg.isCask,
+                HomebrewPackageRow(name: pkg.name, detail: pkg.versionStep, isCask: pkg.isCask,
                                    singleColumn: singleColumn, pinned: pkg.pinned,
-                                   desc: singleColumn ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
+                                   desc: rowDescription(name: pkg.name, isCask: pkg.isCask))
             }
         }
     }

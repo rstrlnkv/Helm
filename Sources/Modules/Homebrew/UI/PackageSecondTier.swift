@@ -47,7 +47,17 @@ struct PackageSecondTier: View {
             origin
             notes
             if !info.dependencies.isEmpty {
-                chips(HbStr.dependsOn, info.dependencies)
+                // A heading and a wrapping row of pills — the dependencies.
+                // `HelmWrappingRow`, not an `HStack`: an `HStack` places every
+                // child on one line by construction and compresses them when
+                // the line is too narrow, and `node` answers with eight names
+                // in a column that is 260 pt at its narrowest.
+                HelmSettingsSection(HbStr.dependsOn) {
+                    HelmWrappingRow(spacing: HelmSpace.s2, lineSpacing: HelmSpace.s2,
+                                    alignment: .leading) {
+                        ForEach(info.dependencies, id: \.self) { HelmBadge($0) }
+                    }
+                }
             }
             if let caveats = info.caveats {
                 caveatsBlock(caveats)
@@ -103,11 +113,21 @@ struct PackageSecondTier: View {
     /// text.
     @ViewBuilder
     private var origin: some View {
-        // Collapsed to nothing rather than drawn empty, the way `facts`
-        // above is: a `VStack`'s step is not paid around an absent child, and an
-        // `HStack` of nothing is a child. `PackageBlocks` is the one that
-        // decides.
-        if PackageBlocks.hasOrigin(info) {
+        // **A stack that resolves to zero height is not the same as no stack.**
+        // Collapsed to nothing rather than drawn empty, the way `facts` above
+        // is: a `VStack`'s spacing is not paid around an absent child, and an
+        // `HStack` of nothing is a child. `origin` and `notes` were
+        // unconditional stacks, so for the commonest package of all (an
+        // installed formula somebody asked for, no other version lines, not
+        // deprecated) the tier paid its 24 pt step around each of two empty
+        // blocks where the design's rhythm is 12. Decided here rather than by
+        // the layout, because the question is about the answer. Presence is all
+        // there is to ask: `BrewInfoParser` maps a blank value to nil at the one
+        // place the document is read, so a field that is there has something in
+        // it. Either half of the origin line is enough to draw it — a package
+        // with a homepage and no tap is an ordinary answer, and so is the
+        // reverse.
+        if info.homepage != nil || info.tap != nil {
             HStack(spacing: HelmSpace.s5) {
                 if let homepage = info.homepage {
                     if let url = URL(string: homepage), let scheme = url.scheme?.lowercased(),
@@ -142,10 +162,14 @@ struct PackageSecondTier: View {
     /// of them reading as the one that matters.
     @ViewBuilder
     private var notes: some View {
-        // And the same for this one: most packages are not deprecated, were
-        // asked for by name and have no other version lines, which is an empty
-        // `VStack` on the commonest screen in the module.
-        if PackageBlocks.hasNotes(info) {
+        // And the same for this one (see `origin`): most packages are not
+        // deprecated, were asked for by name and have no other version lines,
+        // which is an empty `VStack` on the commonest screen in the module.
+        // `installedOnRequest` is read as a *value* rather than for presence:
+        // nil is a cask, which records nobody, `true` is somebody asked for it,
+        // and only `false` is something to say.
+        if info.deprecationReason != nil || info.installedOnRequest == false
+            || !info.siblings.isEmpty {
             VStack(alignment: .leading, spacing: HelmSpace.s4) {
                 if let reason = info.deprecationReason {
                     // Three sentences, and the third only when Homebrew named a
@@ -179,21 +203,6 @@ struct PackageSecondTier: View {
             out.append(HbStr.otherVersionLines(info.siblings.joined(separator: ", ")))
         }
         return out
-    }
-
-    /// A heading and a wrapping row of pills — the dependencies.
-    ///
-    /// `HelmWrappingRow`, not an `HStack`: an `HStack` places every child on one
-    /// line by construction and compresses them when the line is too narrow, and
-    /// `node` answers with eight names in a column that is 260 pt at its
-    /// narrowest.
-    private func chips(_ heading: String, _ names: [String]) -> some View {
-        HelmSettingsSection(heading) {
-            HelmWrappingRow(spacing: HelmSpace.s2, lineSpacing: HelmSpace.s2,
-                            alignment: .leading) {
-                ForEach(names, id: \.self) { HelmBadge($0) }
-            }
-        }
     }
 
     /// What brew prints after an install: paths to edit, a service to start.

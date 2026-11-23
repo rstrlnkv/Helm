@@ -67,15 +67,9 @@ private final class SleepySpy: PopularityReading, @unchecked Sendable {
 /// milliseconds when cancellation works and time out when it does not.
 final class TheRefreshEndsWithTheEngineTests: XCTestCase {
 
-    private func engine(_ popularity: PopularityReading) -> HomebrewEngine {
-        HomebrewEngine(locator: NoBrew(), runner: IdleRunner(),
-                       privileged: NoPrivileges(), user: "tester",
-                       marker: InMemoryOpMarker(), popularity: popularity)
-    }
-
     func testDeactivationCancelsARefreshStillRunning() {
         let spy = SleepySpy()
-        let engine = self.engine(spy)
+        let engine = brewEngine(IdleRunner(), locator: NoBrew(), popularity: spy)
 
         engine.activate()
         XCTAssertEqual(XCTWaiter.wait(for: [spy.began], timeout: 5), .completed,
@@ -101,7 +95,7 @@ final class TheRefreshEndsWithTheEngineTests: XCTestCase {
     /// the fetch runs, and this case times out.
     func testDroppingTheEngineCancelsARefreshStillRunning() {
         let spy = SleepySpy()
-        var engine: HomebrewEngine? = self.engine(spy)
+        var engine: HomebrewEngine? = brewEngine(IdleRunner(), locator: NoBrew(), popularity: spy)
 
         engine?.activate()
         XCTAssertEqual(XCTWaiter.wait(for: [spy.began], timeout: 5), .completed,

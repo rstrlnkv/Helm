@@ -1173,6 +1173,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// window, a terminal.
     private func proceedOrRefuseTools(_ label: String) {
         if toolsPresent() { prepareAndRun(label); return }
+        failNoTools(label)
+    }
+
+    private func failNoTools(_ label: String) {
         HelmLog.shared.warn(Self.moduleID,
                             "\(label) failed: the Command Line Tools were not installed")
         concludeOp(code: nil, label: label, reason: .toolsNotInstalled)
@@ -1231,9 +1235,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             if toolsPresent() {
                 toolsArrived(label)
             } else {
-                HelmLog.shared.warn(Self.moduleID,
-                                    "\(label) failed: the Command Line Tools were not installed")
-                concludeOp(code: nil, label: label, reason: .toolsNotInstalled)
+                failNoTools(label)
             }
         }
     }
@@ -1255,9 +1257,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // wait: the person may have removed them since, and a password is not
         // spent on a `mkdir` for an installer that will stop at its `git` check.
         guard toolsPresent() else {
-            HelmLog.shared.warn(Self.moduleID,
-                                "\(label) failed: the Command Line Tools were not installed")
-            concludeOp(code: nil, label: label, reason: .toolsNotInstalled)
+            failNoTools(label)
             return
         }
         // The other read of the flag, after the reading and not before it: on a

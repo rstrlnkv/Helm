@@ -30,7 +30,7 @@ final class ASupersededSearchLaunchesNoMoreDescribeBatchesTests: XCTestCase {
     /// `brew search` answers `big-0…big-8741` to the word «big» and one name to
     /// «small»; `brew desc` describes every name it is given, and the first call
     /// that carries a «big-» name waits on `gate` after saying it is out.
-    private final class HeldBrew: ProcessRunner, @unchecked Sendable {
+    private final class HeldBrew: QueryOnlyRunner, @unchecked Sendable {
         private let lock = NSLock()
         private let gate = DispatchSemaphore(value: 0)
         private var held = false
@@ -67,30 +67,12 @@ final class ASupersededSearchLaunchesNoMoreDescribeBatchesTests: XCTestCase {
             return (0, names.map { "\($0): description of \($0)" }.joined(separator: "\n") + "\n")
         }
 
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            onExit(0)
-            return NoProcess()
-        }
-    }
-
-    private struct Locator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-
-    private struct NoAdmin: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
 
     func testASearchTypedOverStopsAskingForDescriptions() async {
         let runner = HeldBrew()
-        let engine = HomebrewEngine(locator: Locator(), runner: runner,
-                                    privileged: NoAdmin(), user: "tester",
+        let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
+                                    privileged: NoPrivileges(), user: "tester",
                                     marker: InMemoryOpMarker())
         let model = HomebrewViewModel(work: engine)
         model.searchPause = .seconds(3600)

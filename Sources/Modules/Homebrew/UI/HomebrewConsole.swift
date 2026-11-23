@@ -125,6 +125,17 @@ struct HomebrewConsole: View {
     /// The ten. Its own constant so the derivation above has something to name.
     static let consoleLinesShown = 10
 
+    /// An end that is not a success: its mark, and the sentence beside it when
+    /// there is one.
+    private func failureLine(_ mark: some View) -> some View {
+        HStack(spacing: HelmSpace.s3) {
+            mark
+            if let note = HomebrewSettingsPage.failureNote(hb.op) {
+                HelmSettingsNote(note)
+            }
+        }
+    }
+
     @ViewBuilder private var statusPill: some View {
         switch hb.op.phase {
         case .running:
@@ -138,22 +149,13 @@ struct HomebrewConsole: View {
         case .failed where hb.op.reason == .stopped:
             // The person asked for this end; a red octagon would call their own
             // press a defect.
-            Label(HelmWord.stopped, systemImage: "stop.circle.fill").foregroundStyle(HelmText.quiet).font(HelmText.rowDetail)
+            Label(HelmWord.stopped, systemImage: "stop.circle.fill").helmQuietDetail()
         case .failed where hb.op.reason == .authorizationDeclined:
             // A question answered no: neutral, with the sentence beside it.
-            HStack(spacing: HelmSpace.s3) {
-                Label(HbStr.cancelled, systemImage: "stop.circle.fill").foregroundStyle(HelmText.quiet).font(HelmText.rowDetail)
-                if let note = HomebrewSettingsPage.failureNote(hb.op) {
-                    HelmSettingsNote(note)
-                }
-            }
+            failureLine(Label(HbStr.cancelled, systemImage: "stop.circle.fill").helmQuietDetail())
         case .failed:
-            HStack(spacing: HelmSpace.s3) {
-                Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(HelmSignal.danger(increased: traits.increasedContrast)).font(HelmText.rowDetail)
-                if let note = HomebrewSettingsPage.failureNote(hb.op) {
-                    HelmSettingsNote(note)
-                }
-            }
+            failureLine(Label(HbStr.failed, systemImage: "xmark.octagon.fill")
+                .foregroundStyle(HelmSignal.danger(increased: traits.increasedContrast)).font(HelmText.rowDetail))
         case .idle:
             EmptyView()
         }

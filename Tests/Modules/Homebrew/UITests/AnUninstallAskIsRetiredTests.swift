@@ -13,7 +13,7 @@ private func pair(_ runner: ProcessRunner) -> (HomebrewEngine, HomebrewViewModel
 
 /// A `brew` that answers `uses` from a table and holds the query for one name
 /// until `release()`.
-private final class ParkedUsesRunner: ProcessRunner, @unchecked Sendable {
+private final class ParkedUsesRunner: QueryOnlyRunner, @unchecked Sendable {
     /// Fulfilled on the runner's own thread the moment the parked query is
     /// inside the tool, so the test knows it is in flight rather than hoping.
     let parked = XCTestExpectation(description: "the parked query reached brew")
@@ -44,17 +44,6 @@ private final class ParkedUsesRunner: ProcessRunner, @unchecked Sendable {
         return (0, answers[name] ?? "")
     }
 
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        onExit(0)
-        return NoProcess()
-    }
 }
 
 /// An answer that arrives after the press it belonged to is over says nothing.
@@ -308,7 +297,7 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
 }
 
 /// A `brew` that answers `uses` from a table.
-private final class UsesRunner: ProcessRunner, @unchecked Sendable {
+private final class UsesRunner: QueryOnlyRunner, @unchecked Sendable {
     private let lock = NSLock()
     var answers: [String: String] = [:]
 
@@ -319,17 +308,6 @@ private final class UsesRunner: ProcessRunner, @unchecked Sendable {
         return (0, answers[name] ?? "")
     }
 
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        onExit(0)
-        return NoProcess()
-    }
 }
 
 /// The reading is taken for the press it belongs to, and it does not outlive it.

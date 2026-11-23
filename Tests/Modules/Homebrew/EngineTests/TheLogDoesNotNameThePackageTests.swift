@@ -59,8 +59,7 @@ final class TheLogDoesNotNameThePackageTests: XCTestCase {
 
     private func engine(_ runner: ProcessRunner, marker: OpMarker = InMemoryOpMarker())
         -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(path: "/opt/homebrew/bin/brew"), runner: runner,
-                       privileged: NoPrivileges(), user: "tester", marker: marker)
+        brewEngine(runner, locator: FixedLocator(path: "/opt/homebrew/bin/brew"), marker: marker)
     }
 
     /// The subject lines: those written about an operation, a refusal or a walk.

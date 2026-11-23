@@ -53,7 +53,7 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
     /// the refusal is about the tool rather than about a name, and no fake
     /// simpler than this — one that fails a fixed number of times, say — could
     /// represent it.
-    private final class PartlyKnowingBrew: ProcessRunner, @unchecked Sendable {
+    private final class PartlyKnowingBrew: QueryOnlyRunner, @unchecked Sendable {
         let known: Set<String>
         private let lock = NSLock()
         private var _descCalls: [[String]] = []
@@ -71,23 +71,6 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
             return (0, names.map { "\($0): description of \($0)" }.joined(separator: "\n") + "\n")
         }
 
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            onExit(0)
-            return NoProcess()
-        }
-    }
-
-    private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: runner,
-                       privileged: NoPrivileges(), user: "tester",
-                       marker: InMemoryOpMarker())
     }
 
     private func names(_ count: Int) -> [String] {
@@ -100,7 +83,7 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
         let wanted = names(32)
         let runner = PartlyKnowingBrew(known: [])
 
-        _ = engine(runner).descriptions(names: wanted, isCask: true)
+        _ = brewEngine(runner).descriptions(names: wanted, isCask: true)
 
         XCTAssertLessThanOrEqual(runner.descCalls.count, wanted.count + 1, """
             \(wanted.count) names cost \(runner.descCalls.count) `brew desc` launches — more \
@@ -119,7 +102,7 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
         let wanted = names(32)
         let runner = PartlyKnowingBrew(known: Set(wanted.dropLast()))
 
-        let found = engine(runner).descriptions(names: wanted, isCask: false)
+        let found = brewEngine(runner).descriptions(names: wanted, isCask: false)
 
         XCTAssertEqual(found.count, 31, "the good names lost their descriptions to the bad one")
         XCTAssertLessThanOrEqual(runner.descCalls.count, 12,
@@ -133,7 +116,7 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
         let wanted = names(32)
         let runner = PartlyKnowingBrew(known: Set(wanted))
 
-        let found = engine(runner).descriptions(names: wanted, isCask: false)
+        let found = brewEngine(runner).descriptions(names: wanted, isCask: false)
 
         XCTAssertEqual(found.count, 32)
         XCTAssertEqual(runner.descCalls.count, 1)
