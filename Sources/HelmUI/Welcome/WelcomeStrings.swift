@@ -8,9 +8,9 @@ import Foundation
 /// that go stale on the first rename.
 ///
 /// The words are symbols of the kit's `Localizable.xcstrings`, same
-/// as everywhere else in the app; `back` and `done` share the app's own
-/// established "Back" and "Done" rather than carrying a second, slightly
-/// different translation of the same word.
+/// as everywhere else in the app; Back, Next, Done and "open at login" are
+/// `HelmWord`'s, the app's own established words, rather than a second,
+/// slightly different translation of the same word.
 public enum WelcomeStr {
     public static var windowTitle: String { L(.windowTitle) }
     static var introTitle: String { L(.introTitle) }
@@ -20,15 +20,9 @@ public enum WelcomeStr {
     /// a settings window and a sidebar. What is true of every surface is that
     /// Helm is made of modules, which is also what the tour goes on to show.
     static var introBody: String { L(.introBody) }
-    public static var back: String { L(.back) }
-    public static var next: String { L(.next) }
     static var skip: String { L(.skip) }
-    public static var done: String { L(.done) }
     static var useThisModule: String { L(.useThisModule) }
     static var switchHint: String { L(.switchHint) }
-    /// Shares the app's own key rather than a second table entry for the same
-    /// English — the intro is the one place outside Settings this is asked.
-    static var launchAtLogin: String { L(.openHelmAtLogin) }
 
     /// Read aloud in place of "3 of 10", which VoiceOver otherwise renders as
     /// two bare numbers with no idea what they count.

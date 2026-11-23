@@ -39,6 +39,13 @@ public struct HelmWidgetHeader: View {
         if compact { stacked } else { inARow }
     }
 
+    /// The panel's module tile. It is `HelmIconPlate` at panel size, so the
+    /// radius, the glyph proportion and the shadow are the app's, not this file's.
+    private var badge: some View {
+        HelmIconPlate(symbol: symbol, tint: tint, size: 26, active: active)
+            .accessibilityHidden(true)
+    }
+
     /// 1×1: the name goes **under** the plate, as it does in a small widget on
     /// iOS.
     ///
@@ -52,7 +59,7 @@ public struct HelmWidgetHeader: View {
     private var stacked: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                HelmIconBadge(symbol: symbol, color: tint, active: active)
+                badge
                 Spacer(minLength: 0)
                 if let trailing { trailing }
             }
@@ -69,7 +76,7 @@ public struct HelmWidgetHeader: View {
         // so a panel holding both had two sizes of the same plate one card
         // apart — the sort of difference nobody can name and everybody sees.
         HStack(spacing: 10) {
-            HelmIconBadge(symbol: symbol, color: tint, active: active)
+            badge
             VStack(alignment: .leading, spacing: 1) {
                 Text(name)
                     // `HelmText.sectionHeading`, not `.headline`: the same

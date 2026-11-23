@@ -1,25 +1,7 @@
 import SwiftUI
 
 /// Shared panel visual language so every module's tile reads as one system:
-/// a colored rounded-square icon badge + a subtle card.
-/// The panel's module tile, which `HelmWidget` draws. It
-/// is `HelmIconPlate` at panel size, so the radius, the glyph proportion and
-/// the shadow are the app's, not this file's.
-struct HelmIconBadge: View {
-    let symbol: String
-    let color: Color
-    var active: Bool
-
-    init(symbol: String, color: Color, active: Bool = true) {
-        self.symbol = symbol; self.color = color; self.active = active
-    }
-
-    var body: some View {
-        HelmIconPlate(symbol: symbol, tint: color, size: 26, active: active)
-            .accessibilityHidden(true)
-    }
-}
-
+/// a subtle card around the tile.
 extension View {
     /// Wrap a module tile in the shared panel card.
     public func helmPanelCard() -> some View {
