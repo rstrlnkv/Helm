@@ -8,7 +8,7 @@ import Foundation
 public enum UpdateVersion {
     /// "v1.2.3" / "1.2" → [1, 2, 3]; anything from a "-" suffix on is dropped.
     static func parse(_ s: String) -> [Int] {
-        let trimmed = s.hasPrefix("v") || s.hasPrefix("V") ? String(s.dropFirst()) : s
+        let trimmed = withoutV(s)
         // "", "v" and "-" split into nothing: an empty core, which is not newer than any version that has one.
         let core = trimmed.split(separator: "-", maxSplits: 1).first ?? ""
         return core.split(separator: ".").map { Int($0.prefix(while: \.isNumber)) ?? 0 }
@@ -28,12 +28,16 @@ public enum UpdateVersion {
     /// The tag form of versioning.md rule 6: the number after DEV / BETA is a
     /// build number, not a fifth version part, which `parse` would make it.
     public static func buildTag(_ s: String) -> (core: [Int], build: Int)? {
-        let parts = (s.hasPrefix("v") || s.hasPrefix("V") ? String(s.dropFirst()) : s)
+        let parts = withoutV(s)
             .split(separator: ".", omittingEmptySubsequences: false)
         guard parts.count == 5, ["DEV", "BETA"].contains(parts[3]), let build = unsigned(parts[4])
         else { return nil }
         let core = parts[0..<3].compactMap(unsigned)
         return core.count == 3 ? (core, build) : nil
+    }
+
+    private static func withoutV(_ s: String) -> String {
+        s.hasPrefix("v") || s.hasPrefix("V") ? String(s.dropFirst()) : s
     }
 
     private static func unsigned(_ s: Substring) -> Int? {

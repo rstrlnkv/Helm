@@ -64,33 +64,4 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
         case .screenRecording: PermissionCheck.openScreenRecordingSettings()
         }
     }
-
-    /// English, and the fallback rather than the source: the app maps each
-    /// case to its localized strings. Stated here so a permission cannot be
-    /// added without saying what it is and why Helm wants it — an unexplained
-    /// request is one people deny.
-    var title: String {
-        switch self {
-        case .fullDiskAccess: "Full Disk Access"
-        case .accessibility: "Accessibility"
-        case .screenRecording: "Screen & System Audio Recording"
-        }
-    }
-
-    var why: String {
-        switch self {
-        case .fullDiskAccess:
-            "Needed to remove app containers and to read every folder when scanning the disk."
-        case .accessibility:
-            // Both, not just the pointer: this grant is also what lets the
-            // Keyboard module read every keystroke in every application, and
-            // the sentence a person weighs must say the larger half.
-            "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer."
-        case .screenRecording:
-            // Said plainly, because the name is misleading: Helm records nothing.
-            // The grant is what lets it read the pixels of the screen at all, and
-            // macOS has one switch for reading and for recording.
-            "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording."
-        }
-    }
 }

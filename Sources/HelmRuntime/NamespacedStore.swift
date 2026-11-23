@@ -93,12 +93,8 @@ public final class NamespacedStore {
         // arrive on the main thread regardless of who wrote (e.g. the clamshell
         // sudoers callback writes from a background queue).
         let key = k(key)
-        if Thread.isMainThread {
+        runOnMain {
             NotificationCenter.default.post(name: .helmStoreChanged, object: key)
-        } else {
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .helmStoreChanged, object: key)
-            }
         }
     }
 

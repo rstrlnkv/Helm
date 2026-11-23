@@ -19,7 +19,6 @@ import Foundation
 /// twice. Two modules needing it is what moved it out of Disk.
 public enum FirmlinkMap {
     static let tablePath = "/usr/share/firmlinks"
-    static let dataMount = "/System/Volumes/Data"
 
     /// Data-side paths that duplicate something already reachable from `/`.
     /// Each table line is `<root path>\t<data-relative path>`.
@@ -45,9 +44,9 @@ public enum FirmlinkMap {
 
     /// The live set for a scan, read from the running system.
     public static func skipSet(scanRoot: String) -> Set<String> {
-        guard applies(scanRoot: scanRoot, dataMount: dataMount),
+        guard applies(scanRoot: scanRoot, dataMount: DataVolume.mount),
               let text = try? String(contentsOfFile: tablePath, encoding: .utf8)
         else { return [] }
-        return duplicatePaths(firmlinks: text, dataMount: dataMount)
+        return duplicatePaths(firmlinks: text, dataMount: DataVolume.mount)
     }
 }
