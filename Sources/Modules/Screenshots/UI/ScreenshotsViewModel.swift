@@ -1,5 +1,6 @@
 import SwiftUI
 import HelmRuntime
+import HelmUI
 import Module_Screenshots_Engine
 
 /// What the model asks of the engine: the state it last read, a fresh read, and the
@@ -31,7 +32,7 @@ extension ScreenshotsEngine: ScreenshotsWork {}
     /// The one way to the engine. A stopped model has none, so no call site can forget.
     private var door: (any ScreenshotsWork)? { closed ? nil : work }
     private var closed = false
-    private var eventsTask: Task<Void, Never>?
+    private var events: StreamFollower?
     private var capture: CaptureController?
     private let makeController: (NamespacedStore, CaptureSession) -> CaptureController
 
@@ -43,17 +44,8 @@ extension ScreenshotsEngine: ScreenshotsWork {}
         self.work = work
         self.store = store
         self.makeController = makeController
-        let news = work.stream()
-        eventsTask = Task { [weak self] in
-            for await state in news {
-                guard let self, !self.closed else { break }
-                self.state = state
-            }
-        }
+        events = StreamFollower(work.stream(), owner: self) { $0.state = $1 }
     }
-
-    /// Ends the event loop, which unregisters the engine's subscriber.
-    deinit { eventsTask?.cancel() }
 
     /// A shortcut's press, from the host. A press while a capture is already open or in
     /// flight is dropped by the controller: the overlay is one machine, and a second
@@ -76,7 +68,7 @@ extension ScreenshotsEngine: ScreenshotsWork {}
     /// owns, left up by a switch that came in the middle of a capture or after it.
     func stop() {
         closed = true
-        eventsTask?.cancel(); eventsTask = nil
+        events?.cancel()
         capture?.cancel()
         capture = nil
     }

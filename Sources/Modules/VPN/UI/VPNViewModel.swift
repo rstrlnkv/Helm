@@ -71,7 +71,7 @@ extension VPNEngine: VPNWork {}
     /// takes the whole run down from a process that is not a bundled app — so a
     /// view model built without a port simply never posts.
     private var notices: AutomationNoticePort?
-    private var eventsTask: Task<Void, Never>?
+    private var events: StreamFollower?
     private(set) var closed = false
     private var expiryTask: Task<Void, Never>?
     /// The announcement of the last firing, while it is still in flight.
@@ -247,22 +247,13 @@ extension VPNEngine: VPNWork {}
         }
     }
 
-    /// The stream is taken here, synchronously, before the first suspension:
-    /// `stream()` registers the subscriber and replays the latest state in one
-    /// step, so no state emitted from this line on is missed. Nothing is asked
-    /// of the engine; what the engine says from now on arrives on the stream.
+    /// Nothing is asked of the engine; what it says from now on arrives on the stream.
     init(work: any VPNWork, settings: VPNSettings,
          notices: AutomationNoticePort? = nil) {
         self.work = work
         self.settings = settings
         self.notices = notices
-        let states = work.stream()
-        eventsTask = Task { [weak self] in
-            for await state in states {
-                guard let self, !self.closed else { break }
-                self.apply(state)
-            }
-        }
+        events = StreamFollower(work.stream(), owner: self) { $0.apply($1) }
     }
 
     /// Ends the event loop, which unregisters the engine's subscriber, ends the
@@ -271,17 +262,14 @@ extension VPNEngine: VPNWork {}
     /// `deactivate()`.
     func stop() {
         closed = true
-        eventsTask?.cancel()
-        eventsTask = nil
+        events?.cancel()
         expiryTask?.cancel()
         expiryTask = nil
         announcement?.cancel()
         announcement = nil
     }
 
-    /// The backstop for a model dropped without `stop()`: the loop re-acquires
-    /// `self` per state, so it does not keep the model alive.
-    deinit { eventsTask?.cancel(); expiryTask?.cancel(); announcement?.cancel() }
+    deinit { expiryTask?.cancel(); announcement?.cancel() }
 
     /// Re-reads the system's answer when the page or the panel tile appears. The
     /// engine also re-reads on its own after every network change

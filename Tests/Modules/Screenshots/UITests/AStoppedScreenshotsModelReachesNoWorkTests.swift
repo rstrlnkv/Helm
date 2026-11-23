@@ -63,7 +63,7 @@ final class AStoppedScreenshotsModelReachesNoWorkTests: XCTestCase {
         XCTAssertEqual(stopped.work.count("refresh"), 0, "a page still on screen woke the engine of a module that is off")
     }
 
-    /// A `stop` that only leaves the event task running stays green here: the `closed` check in the loop keeps the late state out. The cancel is held by `testStopLetsTheStreamGo`.
+    /// The cancel in `stop()` keeps the late state out: `StreamFollower` reads cancellation before each element. `testStopLetsTheStreamGo` holds the subscriber's release.
     func testNewsAfterStopIsNotDrawn() async throws {
         let scene = try FakeScreenshotsScene.plain()
         scene.work.say(state("/before"))
