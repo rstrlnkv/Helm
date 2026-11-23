@@ -44,7 +44,7 @@ final class LeftoversRemovalTests: XCTestCase {
         engine = LeftoversEngine(home: home, files: LeftoversFakeFiles(),
                                  apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                  switcher: LeftoversFakeSwitcher(),
-                                 store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
+                                 store: freshLeftoversStore())
     }
 
     override func tearDownWithError() throws {

@@ -116,16 +116,12 @@ public enum LeftoverActions {
         return .needsAdministrator
     }
 
-    /// Clearing a leftover is tidying; deleting something the Mac is currently
-    /// loading is a decision, and the app may put it back on next launch.
-    ///
-    /// Asked of `askBeforeDeleting`, so the page cannot dim the ellipsis on one
-    /// rule and word the dialog from another.
-    public static func needsConfirmation(_ item: StaleItem) -> Bool {
-        askBeforeDeleting(item) != nil
-    }
-
     /// Why Helm asks before deleting this one — or nil, when it does not ask.
+    ///
+    /// Clearing a leftover is tidying; deleting something the Mac is currently
+    /// loading is a decision, and the app may put it back on next launch. The page
+    /// asks this one rule for both the ellipsis and the dialog, so it cannot dim
+    /// one on one rule and word the other from another.
     ///
     /// The shape `whyDeleteIsWithheld` already uses, and here for the same
     /// reason: there was one question, «It is loaded now, and the app that

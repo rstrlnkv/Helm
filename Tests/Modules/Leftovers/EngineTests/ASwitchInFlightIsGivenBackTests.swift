@@ -17,8 +17,7 @@ final class ASwitchInFlightIsGivenBackTests: XCTestCase {
         fake.plists[path] = PlistData(["Label": label])
         let gate = LeftoversGate()
         let switcher = LeftoversFakeSwitcher()
-        let store = NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)",
-                                    backing: InMemoryKeyValueStore())
+        let store = freshLeftoversStore()
         let e = LeftoversEngine(home: URL(fileURLWithPath: "/Users/x"),
                                 files: LeftoversGatedFiles(fake, gate: gate),
                                 apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
