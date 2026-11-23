@@ -266,13 +266,11 @@ final class LogReaderPlace {
     /// room is chosen too, which is a known defect, `log-tall-line` in the defect log.
     private func capture() {
         let top = metrics.top
-        var best: (id: LogEntry.ID, frame: CGRect)?
-        for (id, frame) in frames where frame.minY >= top - 0.5 {
-            if best == nil || frame.minY < best!.frame.minY { best = (id, frame) }
-        }
+        let best = frames.filter { $0.value.minY >= top - 0.5 }
+            .min { $0.value.minY < $1.value.minY }
         anchor = best.map { found in
-            let distance = found.frame.minY - top
-            let room = metrics.visibleHeight - found.frame.height
+            let distance = found.value.minY - top
+            let room = metrics.visibleHeight - found.value.height
             // With `room` of 1 or less there is no room to be a fraction of, so the
             // fraction is 0 and no division happens. Past that check a not-a-number
             // cannot arise (finite frames); if one did, it reads as the bottom of
@@ -280,7 +278,7 @@ final class LogReaderPlace {
             let fraction = room > 1
                 ? (distance / room).clamped(to: 0...1, whenNotANumber: 1)
                 : 0
-            return (found.id, distance, top, fraction)
+            return (found.key, distance, top, fraction)
         }
     }
 }

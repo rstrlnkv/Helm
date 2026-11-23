@@ -140,6 +140,9 @@ struct HelmPanelContent: View {
         var byID: [String: ModuleHost.Live] = [:]
         var order: [String] = []
         var utilities: [ModuleHost.Live] = []
+        /// Everything the drawer *could* hold, ticked or not — what the pencil
+        /// offers. Its rows are the same rows; the difference is that a hidden
+        /// module is in this list and not in the other.
         var choosable: [ModuleHost.Live] = []
     }
 
@@ -172,13 +175,7 @@ struct HelmPanelContent: View {
     /// Modules that offer a widget, and the ones whose UI lives in Settings.
     /// One pass — building a widget builds a view, so each module is asked once.
     private var candidates: Candidates {
-        var byID: [String: ModuleHost.Live] = [:]
-        var order: [String] = []
-        var utilities: [ModuleHost.Live] = []
-        /// Everything the drawer *could* hold, ticked or not — what the pencil
-        /// offers. Its rows are the same rows; the difference is that a hidden
-        /// module is in this list and not in the other.
-        var choosable: [ModuleHost.Live] = []
+        var found = Candidates()
         for live in host.enabledModules {
             guard let contribution = live.menuBar() else { continue }
             let id = live.descriptor.idRaw
@@ -187,16 +184,15 @@ struct HelmPanelContent: View {
             // «not here» are different answers, and one list saying both is
             // what made taking a widget off look like deleting the module.
             if contribution.isUtility || layout.isDismissed(id) {
-                choosable.append(live)
-                if !layout.isHidden(id) { utilities.append(live) }
-                if !contribution.isUtility { byID[id] = live }   // it can be promoted back
+                found.choosable.append(live)
+                if !layout.isHidden(id) { found.utilities.append(live) }
+                if !contribution.isUtility { found.byID[id] = live }   // it can be promoted back
                 continue
             }
-            byID[id] = live
-            order.append(id)
+            found.byID[id] = live
+            found.order.append(id)
         }
-        return Candidates(byID: byID, order: order,
-                          utilities: utilities, choosable: choosable)
+        return found
     }
 
     /// The stored arrangement decides what is drawn and in what order; the live

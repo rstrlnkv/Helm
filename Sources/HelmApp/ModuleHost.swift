@@ -39,7 +39,7 @@ import SwiftUI
     private init() {}
 
     private func store(for d: any ModuleDescriptor) -> NamespacedStore {
-        NamespacedStore(namespace: type(of: d).id.rawValue, backing: UserDefaults.standard)
+        NamespacedStore(namespace: d.idRaw, backing: UserDefaults.standard)
     }
 
     func isEnabled(_ d: any ModuleDescriptor) -> Bool {
@@ -67,7 +67,7 @@ import SwiftUI
     func bootstrap() {
         AppSettings.migrateAndPurge(in: UserDefaults.standard)
         for d in ModuleRegistry.all
-        where isEnabled(d) && live[type(of: d).id.rawValue] == nil { enable(d) }
+        where isEnabled(d) && live[d.idRaw] == nil { enable(d) }
     }
 
     /// A stand-in engine is live (`ModuleEngine.standsIn`): what is shown is not what
@@ -76,17 +76,17 @@ import SwiftUI
     var anyStandsIn: Bool { live.values.contains { $0.engine.standsIn } }
 
     func setEnabled(_ d: any ModuleDescriptor, _ on: Bool) {
-        if !on, standsInLive(type(of: d).id.rawValue) {
-            HelmLog.shared.warn("host", "refused: a stand-in engine is live, \(type(of: d).id.rawValue) stays on")
+        if !on, standsInLive(d.idRaw) {
+            HelmLog.shared.warn("host", "refused: a stand-in engine is live, \(d.idRaw) stays on")
             return
         }
         store(for: d).set(on, for: "enabled")
         if on {
-            if live[type(of: d).id.rawValue] == nil { enable(d) }
+            if live[d.idRaw] == nil { enable(d) }
             // Only from here, never from `bootstrap`: this is somebody switching
             // a module on, which is the moment a module may act unasked.
             NotificationCenter.default.post(name: .helmModuleEnabled,
-                                            object: type(of: d).id.rawValue)
+                                            object: d.idRaw)
         } else {
             disable(d)
         }
@@ -128,7 +128,7 @@ import SwiftUI
     /// ask. The pair is still the signal that matters: 3 MB on and nothing back off
     /// is the leak family of a model that outlives its module.
     private func enable(_ d: any ModuleDescriptor) {
-        let key = type(of: d).id.rawValue
+        let key = d.idRaw
         HelmLog.shared.info("host", "enable \(key)")
         let before = MemoryFootprint.current()
         let s = store(for: d)
@@ -176,7 +176,7 @@ import SwiftUI
     /// every module switch.
     func registerHotkeys() {
         for d in ModuleRegistry.all {
-            let id = type(of: d).id.rawValue
+            let id = d.idRaw
             for hotkey in type(of: d).hotkeys {
                 HotkeyManager.shared.register(
                     hotkey.slot, store: store(for: d), prefix: hotkey.prefix,
@@ -223,7 +223,7 @@ import SwiftUI
     }
 
     private func disable(_ d: any ModuleDescriptor) {
-        let key = type(of: d).id.rawValue
+        let key = d.idRaw
         HelmLog.shared.info("host", "disable \(key)")
         let before = MemoryFootprint.current()
         // Before the teardown: this is the person's own switch, so it is the
@@ -299,8 +299,7 @@ import SwiftUI
     /// `reconciled` runs on every read, so a module that arrived with this
     /// build is in the list without anything being rearranged first.
     var orderedModuleIDs: [String] {
-        SidebarLayoutStore.read(from: AppSettings.store,
-                                registry: SidebarLayoutStore.registry())
+        SidebarLayoutStore.current()
             .flattened.compactMap { row in
                 if case .module(let id, _) = row { return id }
                 return nil

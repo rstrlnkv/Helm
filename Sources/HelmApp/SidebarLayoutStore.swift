@@ -34,6 +34,11 @@ enum SidebarLayoutStore {
         return base.reconciled(with: registry)
     }
 
+    /// The person's layout as the app's own store and registry hold it.
+    static func current() -> SidebarLayout {
+        read(from: AppSettings.store, registry: registry())
+    }
+
     static func write(_ layout: SidebarLayout, to store: NamespacedStore) {
         guard let data = try? JSONEncoder().encode(layout) else { return }
         store.set(data, for: key)

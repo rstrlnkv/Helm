@@ -38,13 +38,6 @@ struct LogSession: Identifiable {
     /// it: the launch the tail happens to begin in the middle of.
     let isTailHead: Bool
 
-    init(lines: [LogEntry], opensWithLaunch: Bool, startupCount: Int, isTailHead: Bool = false) {
-        self.lines = lines
-        self.opensWithLaunch = opensWithLaunch
-        self.startupCount = startupCount
-        self.isTailHead = isTailHead
-    }
-
     /// **The identity is the start line's — and one fixed identity for the
     /// tail's head.** A full tail drops its oldest line every second, so the
     /// first line of the head launch is a different line every second, and a
@@ -342,8 +335,7 @@ struct LogPresentation {
     /// clock the row's time is drawn in. Nil for a line on the same day as the
     /// one above it in what is *shown*, never in what exists.
     static func dayHeading(for entry: LogEntry, after previous: LogEntry?,
-                           language: String = AppLanguage.current.rawValue,
-                           calendar: Calendar = .current) -> String? {
+                           language: String, calendar: Calendar) -> String? {
         if let previous, calendar.isDate(entry.date, inSameDayAs: previous.date) { return nil }
         return HelmDates.day(entry.date, language: language)
     }

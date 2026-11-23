@@ -286,11 +286,8 @@ struct AboutHelmView: View {
             statusLine(AppStr.checking)
         case .digestMismatch:
             VStack(alignment: .leading, spacing: HelmSpace.s5) {
-                HStack(spacing: HelmSpace.s5) {
-                    statusIcon("exclamationmark.triangle.fill", HelmSignal.danger)
-                    Text(AppStr.updateDigestMismatch).lineLimit(3)
-                    Spacer()
-                }
+                noticeRow("exclamationmark.triangle.fill", HelmSignal.danger,
+                          AppStr.updateDigestMismatch, lines: 3, wraps: false)
                 // No Retry: downloading the same file again would produce the
                 // same answer. The release page is where a person can see what
                 // was published and decide.
@@ -301,11 +298,8 @@ struct AboutHelmView: View {
             }
         case .failed:
             VStack(alignment: .leading, spacing: HelmSpace.s5) {
-                HStack(spacing: HelmSpace.s5) {
-                    statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
-                    Text(AppStr.updateFailed).lineLimit(2)
-                    Spacer()
-                }
+                noticeRow("exclamationmark.triangle.fill", HelmSignal.warning,
+                          AppStr.updateFailed, lines: 2, wraps: false)
                 if let rel = updater.available {
                     HStack(spacing: HelmSpace.s5) {
                         Button(AppStr.retry) { updater.downloadAndInstall() }

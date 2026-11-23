@@ -41,12 +41,6 @@ final class ScanCoordinator {
     /// has nothing to announce: nothing tells you that nothing happened.
     private static let pollInterval: TimeInterval = 60
 
-    /// Which modules have a background scan. `ScanRunner` owns the list and
-    /// `ListsAgreeWithTheTreeTests` holds *that* against the registry — this is
-    /// only the reading `considerAll` does, so it is private. It was internal,
-    /// with a comment saying a test read it through here; no test ever did.
-    private static var scannableModules: [String] { ScanRunner.scannableModules }
-
     init(host: ModuleHost,
          journal: ScanJournal = ScanJournal(),
          notices: AutomationNoticePort = SystemAutomationNotice(area: ScanCoordinator.logArea)) {
@@ -116,9 +110,9 @@ final class ScanCoordinator {
     /// the only thing here that cannot be handed a number. Everything the
     /// reading *means* is `ScanRunner`'s, where it is a test rather than an
     /// argument.
-    func effectiveIdleSeconds(now: Date = Date()) -> TimeInterval {
+    func effectiveIdleSeconds() -> TimeInterval {
         let next = ScanRunner.advance(idle, systemIdle: SystemIdle.seconds(),
-                                      lastOwnNudge: lastOwnNudge, now: now)
+                                      lastOwnNudge: lastOwnNudge, now: Date())
         idle = next
         return next.personSeconds
     }
@@ -160,8 +154,8 @@ final class ScanCoordinator {
     ///   keeps, so asking it three times a tick would be three folds of the same
     ///   minute — the shape of a getter with a side effect, which
     ///   is wrong, and cheaper to avoid than to serialise.
-    func conditions(idleSeconds: TimeInterval, now: Date = Date()) -> Conditions {
-        Conditions(now: now,
+    func conditions(idleSeconds: TimeInterval) -> Conditions {
+        Conditions(now: Date(),
                    idleSeconds: idleSeconds,
                    onMains: PowerSource.isOnMains,
                    onConsole: Self.ownsTheConsole,
@@ -213,7 +207,9 @@ final class ScanCoordinator {
         await AppSettings.scanGuard.warmKey()
         // One reading of the machine for the whole tick — see `Conditions`.
         var sampled = conditions(idleSeconds: effectiveIdleSeconds())
-        for id in Self.scannableModules {
+        // `ScanRunner` owns the list of modules with a background scan and
+        // `ListsAgreeWithTheTreeTests` holds it against the registry.
+        for id in ScanRunner.scannableModules {
             guard !inFlight.contains(id) else { continue }
             let verdict = verdict(for: id, in: sampled)
             // **A refusal says why.** Without this the log is empty whether the
@@ -358,7 +354,8 @@ final class ScanCoordinator {
     /// Yesterday's budget is not today's. Whether the day turned is
     /// `ScanRunner.dayRolledOver`, against the calendar rather than multiples of
     /// 86 400 seconds; what to write when it has is this line.
-    private func rollOverTheDayIfNeeded(now: Date = Date()) {
+    private func rollOverTheDayIfNeeded() {
+        let now = Date()
         guard ScanRunner.dayRolledOver(storedDay: AppSettings.scanBudgetDay, now: now)
         else { return }
         AppSettings.scanBudgetDay = Calendar.current.startOfDay(for: now)

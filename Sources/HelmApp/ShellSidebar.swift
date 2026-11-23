@@ -71,14 +71,6 @@ struct ShellSidebar: View {
     /// moment later starts afresh. Not measured against the system's.
     nonisolated static let typeSelectGap: TimeInterval = 1
 
-    /// The text a press adds to the type-select buffer, or nil when the press is not text for it.
-    /// **Only Shift and Caps Lock may be held**; ⌘, ⌃ and ⌥ are shortcuts and pass. `.function` and
-    /// `.numericPad` are refused too, as anything not listed (not tried against a running window).
-    nonisolated static func typed(_ press: KeyPress, buffer: String) -> String? {
-        guard acceptsModifiers(press.modifiers) else { return nil }
-        return typeSelectText(press.characters, buffer: buffer)
-    }
-
     nonisolated static func acceptsModifiers(_ modifiers: EventModifiers) -> Bool {
         modifiers.subtracting([.shift, .capsLock]).isEmpty
     }
@@ -156,7 +148,7 @@ struct ShellSidebar: View {
     private var rows: ShellSidebarRows {
         _ = model.orderRevision
         return ShellSidebarRows(
-            layout: SidebarLayoutStore.read(from: AppSettings.store, registry: SidebarLayoutStore.registry()),
+            layout: SidebarLayoutStore.current(),
             enabled: host.enabledModuleIDs)
     }
 
@@ -256,7 +248,11 @@ struct ShellSidebar: View {
         }
         let now = Date()
         let stale = now.timeIntervalSince(lastTyped) > Self.typeSelectGap
-        guard let text = Self.typed(press, buffer: stale ? "" : typedText) else { return .ignored }
+        // **Only Shift and Caps Lock may be held**; ⌘, ⌃ and ⌥ are shortcuts and pass. `.function` and
+        // `.numericPad` are refused too, as anything not listed (not tried against a running window).
+        guard Self.acceptsModifiers(press.modifiers),
+              let text = Self.typeSelectText(press.characters, buffer: stale ? "" : typedText)
+        else { return .ignored }
         typedText = (stale ? "" : typedText) + text
         lastTyped = now
         if let row = rows.row(typed: typedText, title: Self.title(of:)) { choose(row) }
