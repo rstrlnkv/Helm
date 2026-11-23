@@ -123,15 +123,12 @@ extension RuleCondition {
     /// same reason: a tenth condition must be a build error here, not a
     /// condition the switch silently calls finished.
     var isComplete: Bool {
-        func named(_ value: String) -> Bool {
-            !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
         switch self {
         case let .name(_, value), let .baseName(_, value),
              let .downloadedFrom(value), let .tag(value):
-            return named(value)
+            return isNamed(value)
         case let .fileExtension(list):
-            return list.contains(where: named)
+            return list.contains(where: isNamed)
         // A kind is picked from a popup, and every position of the popup names
         // one — there is no half-written state to refuse.
         case .kind:

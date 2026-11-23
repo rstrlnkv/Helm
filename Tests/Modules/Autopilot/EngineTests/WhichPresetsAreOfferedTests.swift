@@ -29,7 +29,8 @@ final class WhichPresetsAreOfferedTests: XCTestCase {
     func testAnOrdinaryMacIsOfferedEveryPreset() {
         let all = offered(FakePresetFolders(home: home))
         XCTAssertEqual(all.map(\.preset.kind), PresetKind.allCases)
-        XCTAssertTrue(all.allSatisfy(\.folderIsNew), "no folder is watched yet")
+        XCTAssertEqual(Set(all.map(\.folder.id)).count, Set(all.map(\.folder.path)).count,
+                       "one draft per folder: offers over one path share an id, offers over two paths do not")
     }
 
     // MARK: - Where the system says the folder is
@@ -184,7 +185,7 @@ final class WhichPresetsAreOfferedTests: XCTestCase {
         let downloads = try XCTUnwrap(all.first { $0.preset.folder == .downloads })
         XCTAssertEqual(downloads.folder.id, "deep")
         XCTAssertEqual(downloads.folder.depth, 8, "a preset reached into somebody's subfolders")
-        XCTAssertFalse(downloads.folderIsNew, "the folder is already watched")
+        XCTAssertEqual(downloads.folder.id, deep.id, "the folder is already watched")
     }
 
     /// **Two presets over one folder share one draft.** Separate `WatchedFolder`

@@ -26,7 +26,8 @@ final class TheEditorAsksAboutTheFolderTests: XCTestCase {
         PreviewRow(RulePlan(facts: FileFacts(name: file, path: "/tmp/watched/\(file)",
                                              kind: .document, bytes: 1,
                                              added: Date(), modified: Date()),
-                            rule: rule))
+                            rule: rule),
+                   counters: CounterBook())
     }
 
     // MARK: - What is asked

@@ -322,7 +322,7 @@ struct AutopilotSettingsPage: View {
             ruleRow(rule, in: folder)
         }
         Button(ApStr.newRule) {
-            editing = EditingRule(folder: folder, rule: rvm.addRule(to: folder))
+            editing = EditingRule(folder: folder, rule: rvm.newRule())
         }
         .controlSize(.small)
         ForEach(rvm.unapplied(in: folder), id: \.index) { unappliedRow($0) }

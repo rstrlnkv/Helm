@@ -111,7 +111,7 @@ final class ADryRunIsOfTheFolderNotOfOneRuleTests: XCTestCase {
                             action: .sortIntoSubfolder(.month))
         let list = folder([all, invoices])
 
-        let rows = engine.preview(list.previewing(invoices)).map(PreviewRow.init)
+        let rows = engine.preview(list.previewing(invoices)).map { PreviewRow($0, counters: CounterBook()) }
 
         XCTAssertEqual(rows.map(\.name).sorted(),
                        ["invoice-april.pdf", "invoice-march.pdf", "notes.pdf"])
@@ -134,7 +134,7 @@ final class ADryRunIsOfTheFolderNotOfOneRuleTests: XCTestCase {
                          conditions: [.fileExtension(["txt"])],
                          action: .sortIntoSubfolder(.kind))
 
-        let rows = engine.preview(folder([pdfs, notes]).previewing(notes)).map(PreviewRow.init)
+        let rows = engine.preview(folder([pdfs, notes]).previewing(notes)).map { PreviewRow($0, counters: CounterBook()) }
 
         XCTAssertEqual(Dictionary(uniqueKeysWithValues: rows.map { ($0.name, $0.ruleID) }),
                        ["invoice-march.pdf": "pdf", "notes.txt": "txt"])
@@ -153,7 +153,7 @@ final class ADryRunIsOfTheFolderNotOfOneRuleTests: XCTestCase {
                             action: .sortIntoSubfolder(.month))
 
         let rows = engine.preview(folder([all, invoices]).previewing(invoices))
-            .map(PreviewRow.init)
+            .map { PreviewRow($0, counters: CounterBook()) }
 
         XCTAssertEqual(rows.map(\.ruleID), ["inv"])
     }

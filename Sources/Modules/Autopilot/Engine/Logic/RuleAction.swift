@@ -22,6 +22,14 @@ public enum RuleAction: Codable, Equatable, Sendable {
     case trash
 }
 
+/// Whether a text field of a rule says anything: not empty and not only
+/// whitespace. `RuleAction.isComplete` and `RuleCondition.isComplete` both ask
+/// it, because a field the person has cleared or left blank must read as
+/// unfinished the same way in an action and in a condition.
+func isNamed(_ value: String) -> Bool {
+    !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+}
+
 extension RuleAction {
     /// Whether the action names everything it needs to be carried out.
     ///
@@ -38,13 +46,10 @@ extension RuleAction {
     /// believes is working. It does not reach it: `storable` switches such a
     /// rule off and the sweep is never offered it.
     var isComplete: Bool {
-        func named(_ value: String) -> Bool {
-            !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
         switch self {
-        case let .move(to: destination): return named(destination)
-        case let .rename(pattern): return named(pattern)
-        case let .addTag(tag): return named(tag)
+        case let .move(to: destination): return isNamed(destination)
+        case let .rename(pattern): return isNamed(pattern)
+        case let .addTag(tag): return isNamed(tag)
         // Neither has anything left to fill in.
         case .sortIntoSubfolder, .trash: return true
         }

@@ -571,9 +571,8 @@ extension AutopilotEngine: AutopilotWork {}
     /// «keep an Untitled rule». The editor's Done already goes through
     /// `save(_:in:)`, which appends a rule the folder has never seen — the
     /// same discipline as a preset's draft, whose folder is not even watched
-    /// yet. The folder is named so the call site reads as what it is; the
-    /// draft does not touch it until Done.
-    func addRule(to folder: WatchedFolder) -> Rule {
+    /// yet.
+    func newRule() -> Rule {
         Rule(name: ApStr.untitledRule, action: .sortIntoSubfolder(.kind))
     }
 

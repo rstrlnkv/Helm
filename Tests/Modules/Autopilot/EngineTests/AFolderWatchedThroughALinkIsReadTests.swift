@@ -43,7 +43,7 @@ final class AFolderWatchedThroughALinkIsReadTests: XCTestCase {
         let offer = try XCTUnwrap(PresetOffer.offered(
             watching: [stored], paths: FakePresetFolders(home: home.path), home: home.path)
             .first { $0.preset.kind == .downloadsByKind })
-        XCTAssertFalse(offer.folderIsNew, "precondition: the offer joins the stored folder")
+        XCTAssertEqual(offer.folder.id, stored.id, "precondition: the offer joins the stored folder")
 
         var folder = offer.folder
         folder.rules = [photos]

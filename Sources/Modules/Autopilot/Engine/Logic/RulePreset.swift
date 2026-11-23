@@ -144,20 +144,11 @@ public struct OfferedPreset: Equatable, Sendable, Identifiable {
     /// The folder as it would be watched: the one already in the list when Helm
     /// is watching it, and otherwise a new one that is not stored anywhere yet.
     public let folder: WatchedFolder
-    /// Whether Helm is not watching that folder yet.
-    ///
-    /// **The one condition under which a save is followed by a sweep.** Adding a
-    /// rule to a folder somebody already watches and then sweeping it would run
-    /// *their* other rules over everything in it, which is not what pressing
-    /// Done on a preset asked for.
-    let folderIsNew: Bool
-
     public var id: String { preset.id }
 
-    init(preset: RulePreset, folder: WatchedFolder, folderIsNew: Bool) {
+    init(preset: RulePreset, folder: WatchedFolder) {
         self.preset = preset
         self.folder = folder
-        self.folderIsNew = folderIsNew
     }
 }
 
@@ -201,11 +192,11 @@ public enum PresetOffer {
             // are all that folder, and calling it new would store it twice and
             // sweep it on Done — which runs the person's own rules over it.
             if let watched = folders.first(where: { WatchScope.sameFolder($0.path, path) }) {
-                return OfferedPreset(preset: preset, folder: watched, folderIsNew: false)
+                return OfferedPreset(preset: preset, folder: watched)
             }
             let draft = drafts[path] ?? WatchedFolder(path: path)
             drafts[path] = draft
-            return OfferedPreset(preset: preset, folder: draft, folderIsNew: true)
+            return OfferedPreset(preset: preset, folder: draft)
         }
     }
 }
