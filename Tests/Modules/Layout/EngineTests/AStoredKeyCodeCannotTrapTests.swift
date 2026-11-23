@@ -12,7 +12,7 @@ import HelmRuntime
 final class AStoredKeyCodeCannotTrapTests: XCTestCase {
     private func activatedEngine(storing code: Int, typing: FakeTyping, tap: FakeTap) -> LayoutEngine {
         let store = layoutStore()
-        store.set(code, for: "\(LayoutHotkey.storePrefix)KeyCode")
+        store.set(code, for: HotkeyStoreKeys(prefix: LayoutHotkey.storePrefix).keyCode)
         let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
                                   translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: CyrillicSpell(),
                                   secure: FakeSecure(), activation: FakeActivation(), settings: store)

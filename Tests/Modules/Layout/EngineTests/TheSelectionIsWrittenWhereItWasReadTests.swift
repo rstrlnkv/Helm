@@ -12,8 +12,8 @@ import XCTest
 /// bundle id the word was typed in and `UndoRecord` carries the one the
 /// conversion happened in, both for the same stated reason: a blind edit is
 /// only correct in the app it was measured in. The selection is the same kind
-/// of edit against a stranger's text — `SelectionTransform`'s own comment calls
-/// it «text Helm never saw», `convertSelection`'s «text Helm has never seen, in
+/// of edit against a stranger's text — `convertSelection`'s own comment calls
+/// it «text Helm has never seen, in
 /// an app it did not choose» — and it carried no app at all before `readIn`.
 ///
 /// **The gap was not theoretical.** Both routes read the selection and then act

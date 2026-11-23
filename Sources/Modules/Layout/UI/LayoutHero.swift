@@ -81,10 +81,6 @@ struct LayoutHero: View {
 
     private var figures: LedgerFigures { totals.figures(period) }
 
-    private var seconds: TimeInterval {
-        TimeSaved.seconds(words: figures.words, characters: figures.characters)
-    }
-
     /// Nothing put right is not «0»: a zero reads as a fault, so that state is drawn as a sentence.
     private var hasFigure: Bool { figures.words > 0 }
 
@@ -116,9 +112,8 @@ struct LayoutHero: View {
         case .counting: break
         }
         let counted = LyStr.wordsIn(period, count: figures.words)
-        let spelled = HelmDuration.string(seconds)
-        guard !spelled.isEmpty else { return counted }
-        return counted + " · ≈ " + spelled + " " + LyStr.notSpentTypingAgain()
+        guard let saved = LyStr.timeSaved(figures) else { return counted }
+        return counted + " · " + saved
     }
 
     // MARK: - The controls

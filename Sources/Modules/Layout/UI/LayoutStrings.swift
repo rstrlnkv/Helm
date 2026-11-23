@@ -66,6 +66,16 @@ enum LyStr {
         L(.notSpentTypingAgain, language: language)
     }
 
+    /// «≈ 3 min not spent typing again» for a period's figures; nil when nothing was put right or
+    /// the estimate spells to nothing — one string for the hero's caption and the tile.
+    static func timeSaved(_ figures: LedgerFigures) -> String? {
+        guard figures.words > 0 else { return nil }
+        let spelled = HelmDuration.string(TimeSaved.seconds(words: figures.words,
+                                                            characters: figures.characters))
+        guard !spelled.isEmpty else { return nil }
+        return "≈ " + spelled + " " + notSpentTypingAgain()
+    }
+
 
     /// Without the grant the *typing* half can do nothing at all, so the page
     /// says that instead of drawing every setting under a banner. Not «every

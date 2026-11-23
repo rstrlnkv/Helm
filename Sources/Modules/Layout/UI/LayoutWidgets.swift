@@ -236,12 +236,7 @@ private func figure(_ state: LayoutState, _ period: ConversionPeriod) -> String 
 /// Nil rather than «0 min» when nothing has been put right: an estimate of a saving
 /// never made makes every other number on the tile worth less.
 private func savedLabel(_ state: LayoutState, _ period: ConversionPeriod) -> String? {
-    let figures = state.totals.figures(period)
-    guard figures.words > 0 else { return nil }
-    let seconds = TimeSaved.seconds(words: figures.words, characters: figures.characters)
-    let spelled = HelmDuration.string(seconds)
-    guard !spelled.isEmpty else { return nil }
-    return "≈ " + spelled + " " + LyStr.notSpentTypingAgain()
+    LyStr.timeSaved(state.totals.figures(period))
 }
 
 /// «vtymit → меньше»: the word that was wrong, and the word that replaced it.

@@ -8,11 +8,6 @@ private struct DefaultsTranslation: TranslationPort {
     func translate(_ word: String, from: String, to: String) -> String? { "привет" }
 }
 
-private final class DefaultsSelection: SelectionPort, @unchecked Sendable {
-    func selectedTextWithoutClipboard() -> String? { "ghbdtn" }
-    func replaceSelection(with text: String) -> Bool { true }
-}
-
 /// Before anyone has chosen, each setting reads as it did when the defaults were
 /// spelled inline in the engine and the pages. Moving them into one table must
 /// not move a value: a changed default silently changes what every new install
@@ -99,7 +94,7 @@ final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
             let engine = LayoutEngine(tap: tap, typing: FakeTyping(), sources: StuckSources(),
                                       translation: DefaultsTranslation(), spell: CyrillicSpell(),
                                       secure: FakeSecure(), activation: FakeActivation(),
-                                      sound: sound, selection: DefaultsSelection(), settings: store)
+                                      sound: sound, selection: FakeSelection("ghbdtn"), settings: store)
             engine.activate()
             tap.type("ПРивет")
             tap.space()

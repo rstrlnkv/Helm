@@ -173,12 +173,6 @@ import Module_Layout_Engine
     /// in words where it can be acted on: an empty state for a missing grant, a
     /// note for the pause secure input causes. What that means for the badge is
     /// below — coarser than the page, never against it.
-    public func activity(_ model: LayoutViewModel) -> ModuleActivity? {
-        let state = model.state
-        return Self.activity(enabled: state.enabled, suspended: state.suspended)
-    }
-
-    /// The rule itself.
     ///
     /// **The header may be coarser than the page. It may not say the
     /// opposite.** `suspended` was left out here, and the tap stays live
@@ -186,8 +180,9 @@ import Module_Layout_Engine
     /// green «Active» pill 56 pt above the page's orange «Paused» one. Two
     /// marks about one module, in two signal colours, disagreeing on one
     /// screen. A pause reports as idle, and the page keeps the word for it.
-    static func activity(enabled: Bool, suspended: Bool) -> ModuleActivity {
-        enabled && !suspended ? .active : .idle
+    public func activity(_ model: LayoutViewModel) -> ModuleActivity? {
+        let state = model.state
+        return state.enabled && !state.suspended ? .active : .idle
     }
 
     /// Without this the header reads the badge once and never again: the tap

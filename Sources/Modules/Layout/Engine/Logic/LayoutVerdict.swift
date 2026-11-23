@@ -11,6 +11,13 @@ enum LayoutVerdict {
         case convert(String)
     }
 
+    /// At or below this length a spell checker's answer is not worth having —
+    /// almost every two-letter pair lands on something a checker will accept.
+    /// These are decided by `ShortWords` instead: convert only towards a word
+    /// people actually type. See that file for why permission is the wrong
+    /// question here and confidence is the right one.
+    static let shortWordLength = 3
+
     /// **One character used to be «a keystroke, not a word», and that was an
     /// English sentence about a Russian problem.** English has two one-letter
     /// words; Russian has eight, and they are `в`, `и`, `с`, `к`, `о`, `у`, `а`
@@ -20,23 +27,13 @@ enum LayoutVerdict {
     ///
     /// They are decided by `ShortWords.isCommon`, from an explicit list and
     /// never from a dictionary: a checker asked about one character answers
-    /// noise. Nothing below one, because there is nothing below one.
-    static let minimumLength = 1
-
-    /// At or below this length a spell checker's answer is not worth having —
-    /// almost every two-letter pair lands on something a checker will accept.
-    /// These are decided by `ShortWords` instead: convert only towards a word
-    /// people actually type. See that file for why permission is the wrong
-    /// question here and confidence is the right one.
-    static let shortWordLength = 3
-
+    /// noise. So there is no minimum length: one letter is a word.
     static func decide(word: String,
                        translated: String,
                        validAsTyped: Bool,
                        validTranslated: Bool,
                        exceptions: Set<String>) -> Decision {
         guard !translated.isEmpty, translated != word else { return .leave }
-        guard word.count >= minimumLength else { return .leave }
 
         if word.count <= shortWordLength {
             // Short words do not get to lean on the dictionary: it is too
