@@ -42,11 +42,10 @@ final class DiskScannerTests: XCTestCase {
     }
 
     func testProgressReportsArrive() throws {
-        final class Box: @unchecked Sendable { var last: ScanProgress? }
-        let box = Box()
-        let tree = try XCTUnwrap(DiskScanner(foldThreshold: 0).scan(root: fixture.path) { box.last = $0 })
-        let last = try XCTUnwrap(box.last)
-        XCTAssertEqual(last.filesSeen, 3)
+        let box = Locked<ScanTick?>(nil)
+        let tree = try XCTUnwrap(DiskScanner(foldThreshold: 0).scan(root: fixture.path) { box.value = $0 })
+        let last = try XCTUnwrap(box.value)
+        XCTAssertEqual(last.files, 3)
         XCTAssertGreaterThanOrEqual(tree.bytes, 210_000)
     }
 
