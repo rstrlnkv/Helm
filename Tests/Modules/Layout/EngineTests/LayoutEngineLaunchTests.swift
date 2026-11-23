@@ -22,7 +22,7 @@ final class LayoutEngineLaunchTests: XCTestCase {
     private var typing = FakeTyping()
     private var context = FakeSecure()
     private var tap = FakeTap()
-    private var sources = StuckSources()
+    private var sources = FakeSources(follows: false)
     private var sound = FakeSound()
 
     private func store(_ write: (NamespacedStore) -> Void = { _ in }) -> NamespacedStore {
@@ -40,9 +40,9 @@ final class LayoutEngineLaunchTests: XCTestCase {
                         automatic: Bool = true,
                         audible: Bool = false) -> LayoutEngine {
         typing = FakeTyping(); context = FakeSecure()
-        tap = FakeTap(); sources = StuckSources(); sound = FakeSound()
+        tap = FakeTap(); sources = FakeSources(follows: false); sound = FakeSound()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
-                                  translation: SameLengthTranslation(), spell: CyrillicSpell(latin: ["Hello"]),
+                                  translation: FakeTranslation(sameLength: true), spell: FakeSpell(valid: ["Hello"], cyrillic: true),
                                   secure: context, activation: FakeActivation(), sound: sound,
  fixCapitals: fixCapitals,
                                   rules: rules, exceptions: exceptions,

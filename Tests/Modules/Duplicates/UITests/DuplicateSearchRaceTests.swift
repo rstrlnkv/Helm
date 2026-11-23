@@ -26,7 +26,7 @@ final class DuplicateSearchRaceTests: XCTestCase {
         let work = HeldWork()
         let dvm = heldModel(work)
         dvm.search()
-        await untilParked(work, count: 1)
+        await waitUntil("1 search(es) parked on the work") { work.parkedCount >= 1 }
         XCTAssertEqual(dvm.phase, .searching)
 
         dvm.cancel()
@@ -45,10 +45,10 @@ final class DuplicateSearchRaceTests: XCTestCase {
         let work = HeldWork()
         let dvm = heldModel(work)
         dvm.search()
-        await untilParked(work, count: 1)
+        await waitUntil("1 search(es) parked on the work") { work.parkedCount >= 1 }
         dvm.cancel()
         dvm.search()
-        await untilParked(work, count: 2)
+        await waitUntil("2 search(es) parked on the work") { work.parkedCount >= 2 }
         XCTAssertEqual(work.parkedCount, 2, "both requests should be in flight")
 
         // The newer one answers first, then the older one arrives late.

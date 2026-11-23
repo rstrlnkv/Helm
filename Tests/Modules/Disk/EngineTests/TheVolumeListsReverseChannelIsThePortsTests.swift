@@ -31,25 +31,22 @@ final class TheVolumeListsReverseChannelIsThePortsTests: XCTestCase {
     }
 
     @MainActor
-    func testTheSystemPortCallsOnAMountUntilTheTokenIsDropped() {
+    func testTheSystemPortCallsOnAMountUntilTheTokenIsDropped() async {
         let calls = LockedCount()
         var token: AnyObject? = SystemVolumeCapacity().observeChanges { calls.bump() }
         let center = NSWorkspace.shared.notificationCenter
         center.post(name: NSWorkspace.didMountNotification, object: nil)
-        settle()
+        await waitUntil("a mount reaches a held token") { calls.value == 1 }
         XCTAssertEqual(calls.value, 1, "control: a mount did not reach a held token")
         center.post(name: NSWorkspace.didUnmountNotification, object: nil)
-        settle()
+        await waitUntil("an unmount reaches a held token") { calls.value == 2 }
         XCTAssertEqual(calls.value, 2, "an unmount did not reach a held token")
         token = nil
         center.post(name: NSWorkspace.didMountNotification, object: nil)
         center.post(name: NSWorkspace.didUnmountNotification, object: nil)
-        settle()
+        await grace()
         XCTAssertEqual(calls.value, 2, "a dropped token still heard a disk")
         _ = token
     }
-
-    /// The observers deliver on the main queue; let it run.
-    private func settle() { RunLoop.main.run(until: Date().addingTimeInterval(0.3)) }
 
 }

@@ -18,7 +18,7 @@ final class SiblingPrefixTests: XCTestCase {
     private func scan(_ id: String, installed: Set<String>, entries: [String: Int]) async throws -> ScanResult {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
                                        apps: FakeApps.installed(installed),
-                                       fs: GlobbingFS(entries: entries),
+                                       fs: FakeFS(existing: entries, globbing: true),
                                        trash: NoTrash(), running: NoRunning())
         return await engine.scan(bundleID: id, appName: "Tool")
     }

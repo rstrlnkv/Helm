@@ -14,40 +14,12 @@ import XCTest
 @MainActor
 enum PanelRig {
 
-    /// The screen: every call to `freeze` is numbered from 1 and may be held on a gate.
-    final class Screen: ScreenCapturing, @unchecked Sendable {
-        private let lock = NSLock()
-        private var freezeCount = 0
-        let base: [FrozenDisplay]
-        let windows: [FrozenWindow]
-        /// A held freeze: the n-th call waits for the gate, if one is set for it.
-        var hold: @Sendable (Int) -> PromptGate? = { _ in nil }
-
-        init(base: [FrozenDisplay], windows: [FrozenWindow]) {
-            self.base = base; self.windows = windows
-        }
-        var freezes: Int { lock.withLock { freezeCount } }
-        func access() -> CaptureAccess { .granted }
-        func requestAccess() {}
-        func freeze(cursor: Bool) async -> FreezeOutcome {
-            let n = lock.withLock { freezeCount += 1; return freezeCount }
-            if let gate = hold(n) { await gate.arrive() }
-            return .frozen(Freeze(displays: base.map { .image($0) }, windows: windows))
-        }
-        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
-    }
-
     typealias Disk = FakeWorkDisk
-    struct Board: ShotPasteboard {
-        func copy(png: Data) -> PasteOutcome { .accepted }
-        func copy(pngs: [Data]) -> PasteOutcome { .accepted }
-        func copy(text: String) -> PasteOutcome { .accepted }
-    }
     @MainActor final class Held { var overlay: CaptureOverlay?; var overlays = 0; var bars = 0 }
 
     struct Rig {
         let controller: CaptureController
-        let screen: Screen
+        let screen: FakeScreen
         let disk: Disk
         let held: Held
         let display: DisplayID
@@ -62,15 +34,15 @@ enum PanelRig {
         }
         let window = FrozenWindow(id: 7, frame: CGRect(x: 100, y: 100, width: 300, height: 200),
                                   layer: WindowPick.lowestLevel, ownerName: "Notes")
-        let screen = Screen(base: base, windows: [window])
+        let screen = FakeScreen(outcome: .frozen(Freeze(displays: base.map { .image($0) }, windows: [window])))
         let disk = Disk(), held = Held()
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         store.set(timer.seconds, for: ScreenshotsSettings.Key.timer)
-        let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: screen, writer: disk, trash: NoTrash(), pasteboard: Board(), preferences: NoPreferences(),
-                                     shutter: NoShutter(), textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
+        let home = test.scratchDirectory("shots-panel")
+        let session = CaptureSession(capture: screen, writer: disk, trash: AsideTrash.refusing(), pasteboard: CountingBoard(groups: true), preferences: NoPreferences(),
+                                     shutter: CountingShutter(), textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
                                      naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(store: store, session: session,
                                            presentOverlay: { overlay in held.overlays += 1; held.overlay = overlay; return overlay.build() },

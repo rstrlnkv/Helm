@@ -36,7 +36,7 @@ final class InstallBrewTests: XCTestCase {
     // MARK: - Plumbing
 
     private func makeEngine(user: String, privileged: RecordingPrivileged,
-                            runner: HangingRunner = HangingRunner(),
+                            runner: ScriptedRunner = ScriptedRunner(streams: .hold),
                             news: EngineNews<HomebrewNews> = EngineNews())
     -> (HomebrewEngine, EngineNews<HomebrewNews>) {
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
@@ -54,7 +54,7 @@ final class InstallBrewTests: XCTestCase {
     /// person to type their password into prompts they cannot judge.
     func testAnImplausibleAccountNameNeverReachesTheRootShell() async {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, news) = makeEngine(user: "$(whoami)", privileged: privileged, runner: runner)
 
         engine.installBrew()
@@ -99,7 +99,7 @@ final class InstallBrewTests: XCTestCase {
     /// the page must say so, and the next attempt must be admitted.
     func testADeclinedDialogDownloadsNothingAndReleasesTheGate() async {
         let privileged = RecordingPrivileged(answer: .declined)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, news) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
@@ -157,7 +157,7 @@ final class InstallBrewTests: XCTestCase {
     /// through `deactivate()`).
     func testTheInstallerIsDownloadedToAFileNeverEvaledFromTheNet() {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, _) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
@@ -187,7 +187,7 @@ final class InstallBrewTests: XCTestCase {
     /// app.
     func testTheDownloadedInstallerRunsAsTheUserNotThroughTheDialog() {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, _) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
@@ -211,7 +211,7 @@ final class InstallBrewTests: XCTestCase {
     /// prompt appear over it.
     func testInstallBrewHoldsTheGateAndIsRefusedBeforeASecondDialog() async {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, news) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
@@ -239,7 +239,7 @@ final class InstallBrewTests: XCTestCase {
     /// password dialog on the screen.
     func testARunningOperationRefusesInstallBrewBeforeTheDialog() {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, _) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.install(name: "wget", isCask: false)
@@ -256,7 +256,7 @@ final class InstallBrewTests: XCTestCase {
     /// opens again — the retry is the whole recovery story here.
     func testAFailedInstallerReportsItsExitCodeAndReleasesTheGate() async {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, news) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
@@ -281,7 +281,7 @@ final class InstallBrewTests: XCTestCase {
     /// had failed.
     func testABusyRefusalSaysSoWithoutForgingAFailedState() async {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, news) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.install(name: "wget", isCask: false)

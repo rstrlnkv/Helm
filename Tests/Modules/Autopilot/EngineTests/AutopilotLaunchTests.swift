@@ -38,7 +38,7 @@ final class AutopilotLaunchTests: XCTestCase {
     /// the queue is serial, so anything `activate` enqueued has finished by the
     /// time this returns. A barrier rather than a sleep — a sleep would be the
     /// race-satisfiable assertion this whole file exists to avoid.
-    private func settle(_ engine: AutopilotEngine) { engine.clearHistory() }
+    private func barrier(_ engine: AutopilotEngine) { engine.clearHistory() }
 
     // MARK: - Construction
 
@@ -71,7 +71,7 @@ final class AutopilotLaunchTests: XCTestCase {
         let helm = engine(TestRuleKey())
 
         helm.activate()
-        settle(helm)
+        barrier(helm)
         helm.deactivate()
 
         backing.raw["module.\(namespace!).folders"] = try JSONEncoder().encode(

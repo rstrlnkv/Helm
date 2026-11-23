@@ -4,21 +4,6 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-/// The two halves of the secure check are separate on purpose, and the gap
-/// between them is where this suite lives. `isSecureInput` is the cheap syscall
-/// asked on every key; it only knows about *system-wide* secure input.
-/// `isSecure` is the accessibility round trip that also recognises a password
-/// field by its role — an Electron login form, a web field the browser did not
-/// escalate for. A password typed into one of those reaches the buffer.
-private final class StaleContext: SecureContextPort, @unchecked Sendable {
-    var bundle = "com.apple.Notes"
-    var systemWideSecure = false
-    var passwordField = false
-    func isSecureInput() -> Bool { systemWideSecure }
-    func isSecure() -> Bool { systemWideSecure || passwordField }
-    func frontmostBundleID() -> String { bundle }
-}
-
 /// The third place a word lives.
 ///
 /// `buffer` is the word being typed and `undo` is the conversion that can still
@@ -39,9 +24,9 @@ private final class StaleContext: SecureContextPort, @unchecked Sendable {
 /// longer there.
 final class LayoutEngineStaleWordTests: XCTestCase {
     private var typing = FakeTyping()
-    private var context = StaleContext()
+    private var context = FakeSecure()
     private var tap = FakeTap()
-    private var sources = StuckSources()
+    private var sources = FakeSources(follows: false)
     private var selection = FakeSelection()
 
     /// A store with that binding in it, because these suites use a chord as the
@@ -60,10 +45,10 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     }
 
     private func engine(                        fixCapitals: Bool = false) -> LayoutEngine {
-        typing = FakeTyping(); context = StaleContext()
-        tap = FakeTap(); sources = StuckSources(); selection = FakeSelection()
+        typing = FakeTyping(); context = FakeSecure()
+        tap = FakeTap(); sources = FakeSources(follows: false); selection = FakeSelection()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
-                                  translation: SameLengthTranslation(), spell: CyrillicSpell(latin: ["Hello"]),
+                                  translation: FakeTranslation(sameLength: true), spell: FakeSpell(valid: ["Hello"], cyrillic: true),
                                   secure: context, activation: FakeActivation(), selection: selection,
  fixCapitals: fixCapitals,
                                   settings: Self.boundStore(fixCapitals: fixCapitals))

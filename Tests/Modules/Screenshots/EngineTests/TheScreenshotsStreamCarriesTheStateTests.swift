@@ -89,7 +89,7 @@ final class TheScreenshotsStreamCarriesTheStateTests: XCTestCase {
         XCTAssertEqual(news.subscriberCount, 1, "the subscriber is registered before stream() returns")
         await grace(0.1)
         task.cancel()
-        for _ in 0..<400 where news.subscriberCount != 0 { try? await Task.sleep(nanoseconds: 5_000_000) }
+        await waitUntil("the subscriber went with its consumer") { news.subscriberCount == 0 }
         XCTAssertEqual(news.subscriberCount, 0, "the consumer went and its subscriber stayed")
     }
 }

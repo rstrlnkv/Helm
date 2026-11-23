@@ -81,10 +81,7 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
             }
             emitAll()
         }
-        let deadline = Date().addingTimeInterval(2)
-        while seen.all.last != total - 1, Date() < deadline {
-            try? await Task.sleep(nanoseconds: 1_000_000)
-        }
+        await waitUntilReached("the last state read") { seen.all.last == total - 1 }
         reader.cancel()
         await reader.value
         return seen.all
@@ -107,11 +104,11 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
         }
         // Not before the emitter is under way, or every subscription lands ahead
         // of the first emit and the window is never entered.
-        // A yield and not `waitUntil`: the spin is the point. A sleep between reads
+        // A spin and not `waitUntil`: the spin is the point. A sleep between reads
         // lets the emitter finish before the first subscription, and the window is
         // never entered (measured: a 5 ms sleep left no subscription in the middle).
         let patience = Date().addingTimeInterval(2)
-        while emitted.value == 0, Date() < patience { await Task.yield() }
+        while emitted.value == 0, Date() < patience {}
         var seens: [Seen] = []
         var readers: [Task<Void, Never>] = []
         for _ in 0..<subscribers {
@@ -121,9 +118,8 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
             readers.append(Task.detached { for await p in stream { seen.record(Self.number(p)) } })
         }
         await emitter.value
-        let deadline = Date().addingTimeInterval(2)
-        while seens.contains(where: { $0.all.last != total - 1 }), Date() < deadline {
-            try? await Task.sleep(nanoseconds: 1_000_000)
+        await waitUntilReached("every subscriber read the last state") {
+            !seens.contains(where: { $0.all.last != total - 1 })
         }
         for r in readers { r.cancel() }
         for r in readers { await r.value }
@@ -198,10 +194,7 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
         shared.say(Self.state(1))
         task.cancel()
         await task.value
-        let deadline = Date().addingTimeInterval(2)
-        while shared.subscriberCount != before, Date() < deadline {
-            try? await Task.sleep(nanoseconds: 1_000_000)
-        }
+        await waitUntilReached("the cancelled stream is given back") { shared.subscriberCount == before }
         XCTAssertEqual(shared.subscriberCount, before, "a cancelled stream left its subscriber behind")
     }
 

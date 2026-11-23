@@ -8,14 +8,14 @@ final class LayoutEngineEdgeTests: XCTestCase {
     private var typing = FakeTyping()
     private var context = FakeSecure()
     private var tap = FakeTap()
-    private var sources = StuckSources()
+    private var sources = FakeSources(follows: false)
 
     private func engine(                        settings: NamespacedStore? = nil,
                         table: [String: String] = [:]) -> LayoutEngine {
-        typing = FakeTyping(); context = FakeSecure(); tap = FakeTap(); sources = StuckSources()
+        typing = FakeTyping(); context = FakeSecure(); tap = FakeTap(); sources = FakeSources(follows: false)
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
-                                  translation: SameLengthTranslation(table: table),
-                                  spell: CyrillicSpell(), secure: context, activation: FakeActivation(),
+                                  translation: FakeTranslation(table: table, sameLength: true),
+                                  spell: FakeSpell(cyrillic: true), secure: context, activation: FakeActivation(),
                                   settings: settings ?? layoutStore(bound: true))
         engine.activate()
         return engine
@@ -133,10 +133,10 @@ final class SettingsAtStartTests: XCTestCase {
 
     func testTheBoundKeyWorksOnAFreshLaunchWithNothingStored() {
         let tap = FakeTap()
-        let sources = StuckSources()
+        let sources = FakeSources(follows: false)
         let engine = LayoutEngine(tap: tap, typing: FakeTyping(), sources: sources,
-                                  translation: SameLengthTranslation(table: ["ghbdtn": "привет"]),
-                                  spell: CyrillicSpell(), secure: FakeSecure(), activation: FakeActivation(),
+                                  translation: FakeTranslation(table: ["ghbdtn": "привет"], sameLength: true),
+                                  spell: FakeSpell(cyrillic: true), secure: FakeSecure(), activation: FakeActivation(),
                                   settings: layoutStore())
         engine.activate()
         // No `settingsChanged`: this is the launch, not a visit to the page.

@@ -49,7 +49,7 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
             TrashedApp(bundleID: "com.acme.tool", name: "Tool", path: "/Users/ann/.Trash/Tool.app"),
             TrashedApp(bundleID: "com.acme.tool", name: "Tool", path: "/Users/ann/.Trash/Tool 2.app"),
         ])
-        let engine = UninstallerEngine(home: home, apps: lister, fs: EveryPathExists(size: 4_096),
+        let engine = UninstallerEngine(home: home, apps: lister, fs: FakeFS(everyPathExistsAt: 4_096),
                                        trash: NoTrash(), running: NoRunning(), store: store)
 
         let groups = await engine.trashedAppLeftovers()

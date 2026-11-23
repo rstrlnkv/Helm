@@ -74,13 +74,14 @@ final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
 
     private let status = scutilStatus(primary: true, extra: ["Status : 2"])
 
-    /// Waits until `tally` has not moved for `still`, or gives up at `deadline`.
+    /// Waits until `tally` has not moved for `still`, and fails at `deadline`.
     ///
     /// A single reading taken too early would be *low*, which is the direction
     /// that makes this test pass while the defect is there — so the count is
     /// held until it stops moving rather than read after a fixed sleep.
     private func settled(_ tally: LockedCount, still: TimeInterval = 0.4,
-                         deadline: TimeInterval = 8) -> Int {
+                         deadline: TimeInterval = 8,
+                         file: StaticString = #filePath, line: UInt = #line) -> Int {
         let started = Date()
         var last = tally.value
         var unchangedSince = Date()
@@ -94,6 +95,7 @@ final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
                 return now
             }
         }
+        XCTFail("the count of `--nc list` runs never held still for \(still) s within \(deadline) s", file: file, line: line)
         return tally.value
     }
 

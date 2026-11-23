@@ -11,36 +11,8 @@ import HelmTestSupport
 @MainActor
 final class TheStopButtonReachesTheChildTests: XCTestCase {
 
-    private final class Handle: RunningProcess, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _terminated = false
-        var terminated: Bool { lock.lock(); defer { lock.unlock() }; return _terminated }
-        func terminate() { lock.lock(); _terminated = true; lock.unlock() }
-    }
-
-    /// Hangs, or the stop would race a stream already over.
-    private final class HangingRunner: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _handles: [Handle] = []
-        var handles: [Handle] { lock.lock(); defer { lock.unlock() }; return _handles }
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            let handle = Handle()
-            lock.lock(); _handles.append(handle); lock.unlock()
-            return handle
-        }
-    }
-
     func testStopFromTheViewModelTerminatesTheChild() async {
-        let runner = HangingRunner()
+        let runner = FakeBrew(hangingStreams: true)
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",

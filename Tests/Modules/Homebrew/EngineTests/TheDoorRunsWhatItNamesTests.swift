@@ -18,52 +18,13 @@ import HelmContract
 /// the main actor if it was pressed there. An `async` requirement is satisfied by
 /// a sync method of the same name, so the last one compiles either way and is
 /// only visible from the thread the runner sees.
-private final class DoorRunner: ProcessRunner, @unchecked Sendable {
-    struct Seen: Equatable {
-        let kind: String
-        let args: [String]
-        let onMain: Bool
-        let queue: String
-    }
-    private let lock = NSLock()
-    private var recorded: [Seen] = []
-    var seen: [Seen] { lock.withLock { recorded } }
-    var streams: [[String]] { seen.filter { $0.kind == "stream" }.map(\.args) }
-    /// What `brew list --versions --formula` prints: the Cellar as the fix is judged.
-    var cellar = "wget 1.25.0\n"
-
-    private func note(_ kind: String, _ args: [String]) {
-        let seen = Seen(kind: kind, args: args, onMain: Thread.isMainThread,
-                        queue: String(cString: __dispatch_queue_get_label(nil)))
-        lock.withLock { recorded.append(seen) }
-    }
-
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) {
-        note("run", args)
-        if args.first == "list" { return (0, args.contains("--cask") ? "" : cellar) }
-        return (0, "")
-    }
-    func runData(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: Data) {
-        note("runData", args)
-        return (0, Data())
-    }
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                 env: [String: String]) -> (status: Int32, output: String) {
-        note("runCapturingDiagnostics", args)
-        return (0, "")
-    }
-    /// Never exits: an operation that is still out, as a real `brew install` is.
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        note("stream", args)
-        return NoProcess()
-    }
-}
-
 final class TheDoorRunsWhatItNamesTests: XCTestCase {
+
+    /// A brew whose operations never exit, as a real `brew install` does not, and whose
+    /// Cellar holds `wget` as the fix is judged (`brew list --versions --formula`).
+    private func doorRunner() -> ScriptedRunner {
+        ScriptedRunner(streams: .hold, answers: [BrewAnswer(["list", "--formula"], 0, "wget 1.25.0\n")])
+    }
 
     func testEachActStartsItsOwnCommand() async {
         let wget = PackageRef(name: "wget", isCask: false)
@@ -79,23 +40,23 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
             (.doctorFix(argv: ["uninstall", "wget"]), ["uninstall", "--", "wget"]),
         ]
         for (act, argv) in table {
-            let runner = DoorRunner()
+            let runner = doorRunner()
             let engine = brewEngine(runner)
             engine.perform(act)
-            await waitUntilReached("\(act) launches") { !runner.streams.isEmpty }
-            XCTAssertEqual(runner.streams, [argv], "\(act) started another command")
+            await waitUntilReached("\(act) launches") { !runner.streamed.isEmpty }
+            XCTAssertEqual(runner.streamed, [argv], "\(act) started another command")
         }
     }
 
     func testAFixThroughTheDoorIsStillJudged() async {
         // Control: a fix the Cellar admits launches through the door.
-        let admitted = DoorRunner()
+        let admitted = doorRunner()
         brewEngine(admitted).perform(.doctorFix(argv: ["uninstall", "wget"]))
-        await waitUntilReached("the admitted fix launches") { !admitted.streams.isEmpty }
-        XCTAssertEqual(admitted.streams, [["uninstall", "--", "wget"]])
+        await waitUntilReached("the admitted fix launches") { !admitted.streamed.isEmpty }
+        XCTAssertEqual(admitted.streamed, [["uninstall", "--", "wget"]])
 
         // A name the Cellar does not hold: refused with its reason, nothing launched.
-        let runner = DoorRunner()
+        let runner = doorRunner()
         let engine = brewEngine(runner)
         let news = engine.stream()
         engine.perform(.doctorFix(argv: ["uninstall", "not-installed"]))
@@ -104,26 +65,26 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
         XCTAssertEqual(refusal?.reason, .fixRefused,
                        "the door ran, or failed, a fix without judging it against the Cellar")
         XCTAssertEqual(refusal?.label, "uninstall not-installed")
-        XCTAssertTrue(runner.streams.isEmpty, "a fix the Cellar does not admit was launched")
+        XCTAssertTrue(runner.streamed.isEmpty, "a fix the Cellar does not admit was launched")
         // The judgement read the Cellar: the refusal is of this reading, not a default.
-        XCTAssertTrue(runner.seen.contains { $0.kind == "run" && $0.args.first == "list" })
+        XCTAssertTrue(runner.calls.contains { $0.kind == .run && $0.args.first == "list" })
     }
 
     @MainActor
     func testAPressAndAReadLeaveTheCallersThread() async {
         XCTAssertTrue(Thread.isMainThread, "control: the test itself runs on the main thread, where a press must not run")
 
-        let pressed = DoorRunner()
+        let pressed = doorRunner()
         let engine = brewEngine(pressed)
         engine.perform(.install(PackageRef(name: "wget", isCask: false)))
-        await waitUntilReached("the press launches") { !pressed.streams.isEmpty }
+        await waitUntilReached("the press launches") { !pressed.streamed.isEmpty }
 
-        let fixed = DoorRunner()
+        let fixed = doorRunner()
         let fixEngine = brewEngine(fixed)
         fixEngine.perform(.doctorFix(argv: ["cleanup"]))
-        await waitUntilReached("the fix launches") { !fixed.streams.isEmpty }
+        await waitUntilReached("the fix launches") { !fixed.streamed.isEmpty }
 
-        let read = DoorRunner()
+        let read = doorRunner()
         let readEngine = brewEngine(read)
         _ = await readEngine.readInstalled()
         _ = await readEngine.readOutdated()
@@ -132,8 +93,8 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
         _ = await readEngine.readDoctor()
         _ = await readEngine.readConfig()
 
-        let all = pressed.seen + fixed.seen + read.seen
-        XCTAssertTrue(all.contains { $0.kind == "stream" } && all.contains { $0.kind == "run" },
+        let all = pressed.calls + fixed.calls + read.calls
+        XCTAssertTrue(all.contains { $0.kind == .stream } && all.contains { $0.kind == .run },
                       "control: the runners saw no launch and no read")
         for seen in all {
             XCTAssertFalse(seen.onMain, "\(seen.kind) \(seen.args) ran on the main thread")

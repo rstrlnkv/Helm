@@ -895,10 +895,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// crashed and said nothing — two rules in the split, one shape each.
     func testALaunchWhoseLoggingWasSwitchedOnLaterIsNotFiledUnderAnotherVersion() throws {
         for ended in ["terminating", "crashed"] {
-            let folder = FileManager.default.temporaryDirectory
-                .appendingPathComponent("helm-T6-tester-\(UUID().uuidString)")
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            defer { try? FileManager.default.removeItem(at: folder) }
+            let folder = scratchDirectory("log-launches")
             let yesterday = Date().addingTimeInterval(-86_400)
             let file = folder.appendingPathComponent("helm.log")
             var earlier = [
@@ -971,10 +968,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
                      category: $0.category, message: $0.message, site: $0.site)
         }
 
-        let folder = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-T6-tester-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: folder) }
+        let folder = scratchDirectory("log-launches")
         let file = folder.appendingPathComponent("helm.log")
         try (LogLine.lines(earlier) + "\n").write(to: file, atomically: true, encoding: .utf8)
 
@@ -1552,10 +1546,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
                        ["logging enabled (0.11.0)", "never connected", "logging disabled"],
                        "the first launch did not write the shape this test is about")
 
-        let folder = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-T6-tester-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: folder) }
+        let folder = scratchDirectory("log-launches")
         let file = folder.appendingPathComponent("helm.log")
         try (LogLine.lines(yesterday) + "\n").write(to: file, atomically: true, encoding: .utf8)
 

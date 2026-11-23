@@ -26,69 +26,25 @@ import HelmContract
 /// engine pressed twice with nothing changed but the Cellar.
 final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
 
-    /// A brew whose Cellar can change between two calls, because that is the
-    /// whole subject: `installed` is read on every `brew list --versions` run,
-    /// so a test can uninstall something the way a terminal does.
+    /// What `brew list --versions` answers for a Cellar holding `installed`. The Cellar
+    /// can change between two calls, because that is the whole subject: the runner's
+    /// `answers` are read on every run, so a test can uninstall something the way a
+    /// terminal does by setting them again.
     ///
-    /// The child never exits on its own — `HangingRunner`'s reason in
-    /// `OneOperationAtATimeTests`: a fake that calls `onExit` synchronously
-    /// releases the busy gate before the call it gates has returned, and a test
-    /// built on one passes with the gate deleted. `finishAll` is how an
+    /// The runner holds its children (`streams: .hold`): a fake that calls `onExit`
+    /// synchronously releases the busy gate before the call it gates has returned, and
+    /// a test built on one passes with the gate deleted. `finishAll` is how an
     /// operation ends here.
-    private final class MovingCellar: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _installed: [String]
-        private var _launched: [[String]] = []
-        private var _exits: [@Sendable (Int32) -> Void] = []
-        /// Set to nil to make `brew list` refuse — a non-zero exit with nothing
-        /// on stdout, which is what a brew holding somebody else's lock does.
-        var installed: [String]? {
-            get { lock.lock(); defer { lock.unlock() }; return _refuses ? nil : _installed }
-            set {
-                lock.lock()
-                _refuses = newValue == nil
-                _installed = newValue ?? []
-                lock.unlock()
-            }
-        }
-        private var _refuses = false
-
-        var launched: [[String]] { lock.lock(); defer { lock.unlock() }; return _launched }
-
-        init(installed: [String]) { self._installed = installed }
-
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) {
-            lock.lock()
-            let refuses = _refuses
-            let names = _installed
-            lock.unlock()
-            guard args.first == "list" else { return (0, "") }
-            if refuses { return (1, "") }
-            // `brew list --versions` prints "<name> <version>"; the formula
-            // half answers with everything and the cask half with nothing, so
-            // the engine's two children both come back.
-            guard args.contains("--formula") else { return (0, "") }
-            return (0, names.map { "\($0) 1.0.0" }.joined(separator: "\n") + "\n")
-        }
-
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                     env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            lock.lock(); _launched.append(args); _exits.append(onExit); lock.unlock()
-            return NoProcess()
-        }
-
-        func finishAll(code: Int32 = 0) {
-            lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-            for exit in exits { exit(code) }
-        }
+    private func cellar(_ installed: [String]) -> [BrewAnswer] {
+        // `brew list --versions` prints "<name> <version>"; the formula half answers
+        // with everything and the cask half with nothing, so the engine's two
+        // children both come back.
+        [BrewAnswer(["list", "--formula"], 0, installed.map { "\($0) 1.0.0" }.joined(separator: "\n") + "\n")]
     }
+
+    /// `brew list` exits 1 with nothing to say, which is what a brew holding
+    /// somebody else's lock does.
+    private let refusingList = [BrewAnswer(["list"], 1, "")]
 
     /// Every port named at construction, the marker included: a defaulted one
     /// would be this Mac's own (ARCHITECTURE.md § Fakes).
@@ -107,27 +63,27 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// name is misspelled. With it, the only difference between a run and a
     /// refusal is the list `brew list` answered a line before the act.
     func testTheSamePressRunsAndThenRefusesWhenTheNameLeavesTheCellar() async {
-        let runner = MovingCellar(installed: ["periphery", "wget"])
+        let runner = ScriptedRunner(streams: .hold, answers: cellar(["periphery", "wget"]))
         let news = EngineNews<HomebrewNews>()
         let engine = brewEngine(runner, news: news)
         let argv = ["uninstall", "periphery"]
 
         engine.runDoctorFix(argv)
-        XCTAssertEqual(runner.launched, [["uninstall", "--", "periphery"]], """
+        XCTAssertEqual(runner.streamed, [["uninstall", "--", "periphery"]], """
             precondition: with `periphery` installed the very same argv must run, or the \
             refusal below proves nothing about the Cellar and everything about the fixture
             """)
         runner.finishAll()
 
         // A terminal beside this window, or Helm's own Installed tab.
-        runner.installed = ["wget"]
+        runner.answers = cellar(["wget"])
         engine.runDoctorFix(argv)
 
-        XCTAssertEqual(runner.launched.count, 1, """
+        XCTAssertEqual(runner.streamed.count, 1, """
             the page's own judgement was taken as the verdict: `brew uninstall periphery` was \
             run against a Cellar that no longer has periphery in it, because the argv had been \
             judged when the issue was drawn rather than when the button was pressed — \
-            \(runner.launched)
+            \(runner.streamed)
             """)
         let refusals = await states(news).filter { $0.reason == .fixRefused }
         XCTAssertEqual(refusals.count, 1, """
@@ -142,19 +98,19 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// answers nil for a refused `brew list`, and folding that to an empty list
     /// would refuse `uninstall` by luck while admitting `cleanup` by mistake.
     func testACellarThatCouldNotBeReadRefusesTheRun() async {
-        let runner = MovingCellar(installed: ["periphery"])
+        let runner = ScriptedRunner(streams: .hold, answers: cellar(["periphery"]))
         let news = EngineNews<HomebrewNews>()
         let engine = brewEngine(runner, news: news)
 
         engine.runDoctorFix(["uninstall", "periphery"])
-        XCTAssertEqual(runner.launched.count, 1, "precondition: a readable Cellar ran it")
+        XCTAssertEqual(runner.streamed.count, 1, "precondition: a readable Cellar ran it")
         runner.finishAll()
 
-        runner.installed = nil          // `brew list` exits 1 with nothing to say
+        runner.answers = refusingList          // `brew list` exits 1 with nothing to say
         engine.runDoctorFix(["uninstall", "periphery"])
-        XCTAssertEqual(runner.launched.count, 1, """
+        XCTAssertEqual(runner.streamed.count, 1, """
             `brew list` refused and the engine ran the uninstall anyway — a refusal was read as \
-            an answer about the machine: \(runner.launched)
+            an answer about the machine: \(runner.streamed)
             """)
         let refusals = await states(news).filter { $0.reason == .fixRefused }
         XCTAssertEqual(refusals.count, 1, "the refusal was silent")
@@ -166,22 +122,22 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// admitted by every list there is. So the rule has to be read with the one
     /// command whose verdict does not depend on what the list holds.
     func testACellarThatCouldNotBeReadRefusesEvenACommandWithNoOperand() {
-        let runner = MovingCellar(installed: [])
+        let runner = ScriptedRunner(streams: .hold, answers: cellar([]))
         let engine = brewEngine(runner)
 
         engine.runDoctorFix(["cleanup"])
-        XCTAssertEqual(runner.launched, [["cleanup"]], """
+        XCTAssertEqual(runner.streamed, [["cleanup"]], """
             precondition: against a Cellar that answered \u{2014} empty, but answered \u{2014} \
             `cleanup` runs, so the refusal below is about the reading and not about the command
             """)
         runner.finishAll()
 
-        runner.installed = nil          // `brew list` exits 1 with nothing to say
+        runner.answers = refusingList          // `brew list` exits 1 with nothing to say
         engine.runDoctorFix(["cleanup"])
-        XCTAssertEqual(runner.launched.count, 1, """
+        XCTAssertEqual(runner.streamed.count, 1, """
             a `brew list` that refused was folded to an empty list, and `cleanup` \u{2014} which \
             no list can refuse \u{2014} ran against a Cellar nothing managed to read: \
-            \(runner.launched)
+            \(runner.streamed)
             """)
     }
 
@@ -200,18 +156,18 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
             ["cleanup", "--prune=all"],            // a different act from `cleanup`
         ]
         for argv in never {
-            let runner = MovingCellar(installed: ["periphery", "wget"])
+            let runner = ScriptedRunner(streams: .hold, answers: cellar(["periphery", "wget"]))
             let engine = brewEngine(runner)
             engine.runDoctorFix(argv)
-            XCTAssertEqual(runner.launched, [],
-                           "\(argv) reached a child: \(runner.launched)")
+            XCTAssertEqual(runner.streamed, [],
+                           "\(argv) reached a child: \(runner.streamed)")
         }
         // The control for the whole sweep: the same fixture, the one argv the
         // judge does admit. Without this, deleting `runDoctorFix`'s body would
         // leave every case above green.
-        let runner = MovingCellar(installed: ["periphery", "wget"])
+        let runner = ScriptedRunner(streams: .hold, answers: cellar(["periphery", "wget"]))
         brewEngine(runner).runDoctorFix(["uninstall", "periphery"])
-        XCTAssertEqual(runner.launched, [["uninstall", "--", "periphery"]],
+        XCTAssertEqual(runner.streamed, [["uninstall", "--", "periphery"]],
                        "the fixture refuses everything, so the refusals above prove nothing")
     }
 
@@ -219,18 +175,18 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// one — that is the engine's own first sentence — and a `--` with nothing
     /// after it is not a value.
     func testCleanupRunsWithNoSeparatorBecauseItHasNoOperand() {
-        let runner = MovingCellar(installed: [])
+        let runner = ScriptedRunner(streams: .hold, answers: cellar([]))
         brewEngine(runner).runDoctorFix(["cleanup"])
-        XCTAssertEqual(runner.launched, [["cleanup"]],
-                       "a command with no operand was given a separator: \(runner.launched)")
+        XCTAssertEqual(runner.streamed, [["cleanup"]],
+                       "a command with no operand was given a separator: \(runner.streamed)")
     }
 
     /// The operand goes behind `--` because it is a word parsed out of brew's
     /// own prose, and `brew` reads a leading `-` as a flag wherever it finds one.
     func testTheOperandGoesBehindTheSeparator() {
-        let runner = MovingCellar(installed: ["periphery"])
+        let runner = ScriptedRunner(streams: .hold, answers: cellar(["periphery"]))
         brewEngine(runner).runDoctorFix(["uninstall", "periphery"])
-        XCTAssertEqual(runner.launched.first, ["uninstall", "--", "periphery"],
+        XCTAssertEqual(runner.streamed.first, ["uninstall", "--", "periphery"],
                        "the name was passed where brew can read it as a flag")
     }
 }

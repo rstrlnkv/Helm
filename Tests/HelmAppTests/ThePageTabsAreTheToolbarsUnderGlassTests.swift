@@ -266,7 +266,7 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
     /// A verifier's finding: every item put in again gets a new viewer, and the observers of the old ones were kept for
     /// good. After declare and release cycles in a shown window only the current viewers (the strip's and the spacer's)
     /// are watched.
-    func testTheWatchedViewersAreBoundedAcrossTheItemsComingAndGoing() {
+    func testTheWatchedViewersAreBoundedAcrossTheItemsComingAndGoing() async {
         let window = window()
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
@@ -279,8 +279,9 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
             let owner = UUID()
             toolbar.sink.declare(owner, declaration(["a", "b", "c"]))
             toolbar.sink.place(owner, slot)
+            // No condition says the strip is in the window; the precondition after the loop is the control.
             for _ in 0..<10 {
-                RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+                await grace(0.05)
                 window.layoutIfNeeded()
             }
             // The row says its place again once the strip is in the window, as the live page does.

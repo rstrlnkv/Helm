@@ -5,9 +5,8 @@ import XCTest
 @testable import Module_Leftovers_Engine
 
 /// The pools inside the scan's loops, measured against the allocator's books on a
-/// tree this test builds — so the guard runs in the suite rather than behind
-/// `HELM_BENCH=1`, and answers about a fixed number of files rather than about
-/// whatever is in the home directory of whoever ran it.
+/// tree this test builds, so it answers about a fixed number of files rather than
+/// about whatever is in the home directory of whoever ran it.
 ///
 /// It reads `malloc_zone_statistics`' `size_in_use`, which is what malloc
 /// has handed out and not been given back — the number an autoreleased `Data`

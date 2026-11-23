@@ -37,78 +37,15 @@ import HelmContract
 /// match>` exits **1** with empty stdout — a non-zero exit is how brew spells
 /// "nothing found" for that one subcommand, so nil-ing every non-zero exit
 /// would turn every fruitless search into "the module could not answer".
-/// One canned answer: the words an argument list must contain for this answer
-/// to be the one, and the `(status, stdout)` brew would have replied with.
-private struct BrewAnswer {
-    let match: [String]
-    let status: Int32
-    let stdout: String
-    init(_ match: [String], _ status: Int32, _ stdout: String) {
-        self.match = match; self.status = status; self.stdout = stdout
-    }
-}
-
 /// Kept: guards the defect fixed in 7006109b fix(homebrew): four refusals the module read as good news.
 final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
-
-    // MARK: - Fakes
-
-    /// A brew that answers a canned `(status, stdout)` per subcommand — and can
-    /// answer *differently per call*, because the real one does: `listInstalled`
-    /// runs `list --formula` and `list --cask` as two children, and a refusal
-    /// that lands on the second only is the half-applied state a fake keyed by
-    /// subcommand alone could not represent.
-    ///
-    /// Both `run` and `runData` are implemented rather than leaning on the
-    /// protocol's converting default: the real port has two independent bodies
-    /// (`ShellProcessRunner.run` and `.runData`), and `outdated` is the caller
-    /// that takes the second one.
-    private final class CannedBrew: ProcessRunner, @unchecked Sendable {
-        /// Keyed by a word the argument list has to contain, first match wins.
-        private let answers: [BrewAnswer]
-        private let lock = NSLock()
-        private var _calls: [[String]] = []
-        var calls: [[String]] { lock.lock(); defer { lock.unlock() }; return _calls }
-
-        init(_ answers: [BrewAnswer]) { self.answers = answers }
-
-        private func answer(_ args: [String]) -> (Int32, String) {
-            lock.lock(); _calls.append(args); lock.unlock()
-            for a in answers where a.match.allSatisfy(args.contains) {
-                return (a.status, a.stdout)
-            }
-            return (0, "")
-        }
-
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) {
-            answer(args)
-        }
-
-        func runData(_ launchPath: String, _ args: [String],
-                     env: [String: String]) -> (status: Int32, stdout: Data) {
-            let (status, out) = answer(args)
-            return (status, Data(out.utf8))
-        }
-
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            NoProcess()
-        }
-    }
 
     // MARK: - The installed list
 
     func testAListBrewRefusedIsNotAnEmptyMachine() {
-        let runner = CannedBrew([BrewAnswer(["list"], 1, "")])
+        let runner = ScriptedRunner(answers: [BrewAnswer(["list"], 1, "")])
         let answer = brewEngine(runner).listInstalled()
-        XCTAssertFalse(runner.calls.isEmpty, "precondition: brew was actually asked")
+        XCTAssertFalse(runner.queries.isEmpty, "precondition: brew was actually asked")
         XCTAssertNil(answer, """
             `brew list` exited 1 with nothing on stdout and the module answered \
             an empty list — the page says "No packages installed." about a \
@@ -120,10 +57,10 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     /// refuses. Today the formulae are kept and every cask silently disappears
     /// from the page — a worse answer than nothing, because it looks complete.
     func testACaskListRefusedDoesNotSilentlyDropEveryCask() {
-        let runner = CannedBrew([BrewAnswer(["list", "--formula"], 0, "wget 1.25.0\n"),
+        let runner = ScriptedRunner(answers: [BrewAnswer(["list", "--formula"], 0, "wget 1.25.0\n"),
                                  BrewAnswer(["list", "--cask"], 1, "")])
         let answer = brewEngine(runner).listInstalled()
-        XCTAssertEqual(runner.calls.count, 2, "precondition: both lists were asked for")
+        XCTAssertEqual(runner.queries.count, 2, "precondition: both lists were asked for")
         XCTAssertNil(answer, """
             the cask half of the list was refused and the module answered with \
             the formulae alone — every installed app vanished from the page and \
@@ -134,7 +71,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     /// The control that keeps the fix honest: a machine with nothing installed
     /// is `brew` exiting **0** with no output, and that is still an answer.
     func testAMachineWithNothingInstalledStillAnswers() {
-        let answer = brewEngine(CannedBrew([BrewAnswer(["list"], 0, "")])).listInstalled()
+        let answer = brewEngine(ScriptedRunner(answers: [BrewAnswer(["list"], 0, "")])).listInstalled()
         XCTAssertNotNil(answer, "an honestly empty Cellar was reported as unreadable")
         XCTAssertEqual(answer?.count, 0)
     }
@@ -142,22 +79,22 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     /// A brew that vanished between the locator and the ask is no machine with
     /// nothing on it: each reading says it could not answer.
     func testAMissingBrewIsNotACleanMachine() {
-        let runner = CannedBrew([])
+        let runner = ScriptedRunner(answers: [])
         let e = HomebrewEngine(locator: NoBrew(), runner: runner,
                                privileged: NoPrivileges(), user: "tester",
                                news: EngineNews(), marker: InMemoryOpMarker())
         XCTAssertNil(e.listInstalled(), "a missing brew answered \"No packages installed.\"")
         XCTAssertNil(e.outdated(), "a missing brew answered an up-to-date machine")
         XCTAssertNil(e.search("wget"), "a missing brew answered \"no results\"")
-        XCTAssertTrue(runner.calls.isEmpty, "brew was asked although it is missing")
+        XCTAssertTrue(runner.queries.isEmpty, "brew was asked although it is missing")
     }
 
     // MARK: - The outdated list
 
     func testAnOutdatedCheckBrewRefusedIsNotAnUpToDateMachine() {
-        let runner = CannedBrew([BrewAnswer(["outdated"], 1, "")])
+        let runner = ScriptedRunner(answers: [BrewAnswer(["outdated"], 1, "")])
         let answer = brewEngine(runner).outdated()
-        XCTAssertFalse(runner.calls.isEmpty, "precondition: brew was actually asked")
+        XCTAssertFalse(runner.queries.isEmpty, "precondition: brew was actually asked")
         XCTAssertNil(answer, """
             `brew outdated` exited 1 and the module answered "nothing is \
             outdated" — the status line then says «Updates: 0» about a question \
@@ -177,7 +114,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
         {"outdated":{"formulae":[{"name":"deno","installed_versions":["2.9.3"],\
         "current_version":"2.9.4"}],"casks":[]}}
         """
-        let answer = brewEngine(CannedBrew([BrewAnswer(["outdated"], 0, payload)])).outdated()
+        let answer = brewEngine(ScriptedRunner(answers: [BrewAnswer(["outdated"], 0, payload)])).outdated()
         XCTAssertNil(answer, """
             a JSON shape this decoder does not know was read as an up-to-date \
             machine: neither `formulae` nor `casks` was present and the answer \
@@ -190,7 +127,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     /// an empty list.
     func testATruncatedAnswerIsNotAnUpToDateMachine() {
         let payload = #"{"formulae":[{"name":"deno","installed_versions":["2.9.3"]"#
-        let answer = brewEngine(CannedBrew([BrewAnswer(["outdated"], 0, payload)])).outdated()
+        let answer = brewEngine(ScriptedRunner(answers: [BrewAnswer(["outdated"], 0, payload)])).outdated()
         XCTAssertNil(answer, "a truncated JSON document was read as a machine with no updates")
     }
 
@@ -199,7 +136,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     /// answer rather than becoming a refusal.
     func testAnHonestlyCurrentMachineStillAnswers() {
         let payload = #"{"formulae":[],"casks":[]}"#
-        let answer = brewEngine(CannedBrew([BrewAnswer(["outdated"], 0, payload)])).outdated()
+        let answer = brewEngine(ScriptedRunner(answers: [BrewAnswer(["outdated"], 0, payload)])).outdated()
         XCTAssertNotNil(answer, "a genuinely up-to-date machine was reported as unreadable")
         XCTAssertEqual(answer?.count, 0)
     }
@@ -216,7 +153,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     /// for the two above cannot be «nil on any non-zero status», which would
     /// turn every search that finds nothing into a module that cannot answer.
     func testASearchThatFoundNothingIsStillAnAnswer() {
-        let runner = CannedBrew([BrewAnswer(["search"], 1, "")])
+        let runner = ScriptedRunner(answers: [BrewAnswer(["search"], 1, "")])
         let answer = brewEngine(runner).search("zzqqxxnope")
         XCTAssertNotNil(answer, """
             brew spells "no matches" as exit 1 for `search`; the module now \

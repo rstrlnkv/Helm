@@ -24,11 +24,11 @@ final class TheCopyOfAShotWhoseFileIsGoneIsToldNotDrawnBlankTests: XCTestCase {
         let s = try PileScene(self, name: "copy-gone")
         let shot = try await s.take(width: 400)
         try FileManager.default.removeItem(at: try XCTUnwrap(shot.file))
-        let singles = s.board.singles
+        let singles = s.board.copies
         XCTAssertNil(s.toast.fullPicture())
         s.toast.model.copy()
         await waitUntil("the person was told") { s.toast.model.refusal != nil }
         XCTAssertEqual(s.refusalBody, ScStr.refusal(.fileGone))
-        XCTAssertEqual(s.board.singles, singles, "a gone file was copied")
+        XCTAssertEqual(s.board.copies, singles, "a gone file was copied")
     }
 }

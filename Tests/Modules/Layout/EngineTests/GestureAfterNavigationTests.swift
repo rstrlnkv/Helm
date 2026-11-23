@@ -42,8 +42,8 @@ final class GestureAfterNavigationTests: XCTestCase {
     private func engine() -> LayoutEngine {
         typing = FakeTyping(); context = FakeSecure(); tap = FakeTap()
         let store = layoutStore(bound: true)
-        let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
-                                  translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: CyrillicSpell(),
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: FakeSources(follows: false),
+                                  translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: FakeSpell(cyrillic: true),
                                   secure: context, activation: FakeActivation(), settings: store)
         engine.activate()
         return engine

@@ -1,6 +1,7 @@
 import XCTest
 import AppKit
 import Darwin.Mach
+import HelmTestSupport
 @testable import Module_Layout_Engine
 
 /// A tap that is let go stops watching the keyboard.
@@ -42,13 +43,6 @@ final class KeyTapOutlivesNobodyTests: XCTestCase {
     /// allowance for reuse, not for leaks.
     private let reuseAllowance = 15
 
-    /// Turns the run loop over so anything the teardown scheduled has run.
-    private func settle() {
-        for _ in 0..<5 {
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.005))
-        }
-    }
-
     /// Whether this task still holds `name` as a receive right — which is what
     /// a live `CFMachPort` is, and what invalidation gives back.
     private func isReceiveRight(_ name: mach_port_name_t) -> Bool {
@@ -67,7 +61,8 @@ final class KeyTapOutlivesNobodyTests: XCTestCase {
     }
 
     /// The defect exactly: dropped without anyone calling `stop()`.
-    func testATapDroppedWithoutStopHandsItsPortBack() throws {
+    @MainActor
+    func testATapDroppedWithoutStopHandsItsPortBack() async throws {
         try skipWithoutTheGrant()
 
         var names: [mach_port_name_t] = []
@@ -85,7 +80,8 @@ final class KeyTapOutlivesNobodyTests: XCTestCase {
             // No `stop()`. `tap` goes out of scope here, which is the whole
             // subject: `ModuleHost.bootstrap()` drops engines exactly this way.
         }
-        settle()
+        // The main run loop turns while this waits, so what the teardown scheduled has run.
+        await grace(0.025)
         // Unique, because a freed name is eagerly reused by the next cycle's
         // tap: with teardown working this set is small and none of it is still
         // a receive right; with teardown broken nothing is freed, every cycle
@@ -100,7 +96,8 @@ final class KeyTapOutlivesNobodyTests: XCTestCase {
     /// And the ordinary route gives the port back too. Without
     /// `CFMachPortInvalidate` the port and the run loop source it caches retain
     /// each other, so `stop()` alone left one behind per start.
-    func testStopHandsThePortBack() throws {
+    @MainActor
+    func testStopHandsThePortBack() async throws {
         try skipWithoutTheGrant()
 
         var names: [mach_port_name_t] = []
@@ -113,7 +110,8 @@ final class KeyTapOutlivesNobodyTests: XCTestCase {
             names.append(name)
             tap.stop()
         }
-        settle()
+        // The main run loop turns while this waits, so what the teardown scheduled has run.
+        await grace(0.025)
         let held = Set(names).filter(isReceiveRight)
         XCTAssertLessThanOrEqual(held.count, reuseAllowance,
                                  "\(cycles) taps were stopped and \(held.count) of their mach "

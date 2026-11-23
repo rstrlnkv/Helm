@@ -14,7 +14,7 @@ import HelmContract
 final class ARunningOperationCanBeStoppedTests: XCTestCase {
 
     func testStopTerminatesTheChildAndNamesTheOutcome() async {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
@@ -41,7 +41,7 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
     /// An exit the person did not ask for keeps its own name: signal 15 from
     /// outside (a brew killed in a terminal) is a failure, not a stop.
     func testAnUnrequestedSignalDeathIsNotAStop() async {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
@@ -57,7 +57,7 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
 
     /// Stopping nothing is a no-op, not a crash and not a stray event.
     func testStopWithNothingRunningIsHarmless() async {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
@@ -72,7 +72,7 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
     /// A *later* stop must not reach back: the flag is cleared when the next
     /// operation starts, or one stop would rename every failure after it.
     func testTheStopFlagDoesNotOutliveItsOperation() async {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",

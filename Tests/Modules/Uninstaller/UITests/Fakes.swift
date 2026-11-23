@@ -1,28 +1,21 @@
 import Foundation
 import XCTest
 import HelmRuntime
+import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-// The same two placeholders the engine's tests share, and they are here rather
-// than shared with that target because a test target cannot depend on another
-// one. The duplication that is left is this file against
-// `EngineTests/Fakes.swift`; the duplication that was here was five copies
-// under two names across three files.
+// The engine's `FileSystemPort` fake, copied here rather than shared with that
+// target because a test target cannot depend on another one. The duplication that
+// is left is this file against `EngineTests/Fakes.swift`.
 
-/// A Mac with none of the files a test asks about, and one where every path exists
-/// at `size` bytes: the two answers the view-model tests give the engine's
-/// `FileSystemPort`.
-struct NoFiles: FileSystemPort {
-    func exists(_ url: URL) -> Bool { false }
-    func size(_ url: URL) -> Int { 0 }
-    func glob(_ pattern: URL) -> [URL] { [] }
-    func children(of url: URL) -> [URL] { [] }
-}
-struct EveryPathExists: FileSystemPort {
-    var size = 0
-    func exists(_ url: URL) -> Bool { true }
-    func size(_ url: URL) -> Int { size }
+/// A Mac with none of the files a test asks about (`FakeFS()`), or one where every
+/// path exists at `everyPathExistsAt` bytes: the two answers the view-model tests give
+/// the engine's `FileSystemPort`. No glob and no listing finds a thing.
+struct FakeFS: FileSystemPort {
+    var everyPathExistsAt: Int?
+    func exists(_ url: URL) -> Bool { everyPathExistsAt != nil }
+    func size(_ url: URL) -> Int { everyPathExistsAt ?? 0 }
     func glob(_ pattern: URL) -> [URL] { [] }
     func children(of url: URL) -> [URL] { [] }
 }
@@ -163,7 +156,7 @@ final class AnsweringWork: UninstallerWork, @unchecked Sendable {
 
     func appSizes(_ list: [InstalledApp]) async -> [String: Int] {
         note(.appSizes)
-        while !lock.withLock({ sizesLanded }) { try? await Task.sleep(nanoseconds: 5_000_000) }
+        await waitUntilReached("the sizes are let land", within: .seconds(5)) { lock.withLock { sizesLanded } }
         return sizes ?? Dictionary(uniqueKeysWithValues: apps.map { ($0.path, 0) })
     }
 
@@ -186,7 +179,7 @@ final class AnsweringWork: UninstallerWork, @unchecked Sendable {
         note(.scan(bundleID: bundleID))
         let found = scans[bundleID] ?? ScanResult(leftovers: [], runningNow: false)
         lock.withLock { scansDone += 1 }
-        while lock.withLock({ scansHeld }) { try? await Task.sleep(nanoseconds: 5_000_000) }
+        await waitUntilReached("the scans are let go", within: .seconds(5)) { !lock.withLock { scansHeld } }
         return found
     }
 

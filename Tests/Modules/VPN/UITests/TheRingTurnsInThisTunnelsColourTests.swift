@@ -28,7 +28,7 @@ import HelmTestSupport
 final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
 
     private func model(_ connections: [(String, String)],
-                       book: (VPNSettings) -> Void = { _ in }) -> VPNViewModel {
+                       book: (VPNSettings) -> Void = { _ in }) async -> VPNViewModel {
         let work = FakeVPNWork()
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
         let settings = VPNSettings(store: store)
@@ -43,9 +43,7 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
             },
             autoConnected: [], lastAutomation: nil)
         work.say(payload)
-        for _ in 0..<80 where vm.connections.isEmpty {
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-        }
+        await waitUntil("the payload handled") { !vm.connections.isEmpty }
         XCTAssertEqual(vm.connections.count, connections.count,
                        "the stream did not deliver: nothing below measures anything")
         return vm
@@ -53,8 +51,8 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
 
     // MARK: - The join
 
-    func testTheFiringsNameFindsTheConfigurationItHappenedOn() {
-        let vm = model([("id-A", "Office"), ("id-B", "Home")])
+    func testTheFiringsNameFindsTheConfigurationItHappenedOn() async {
+        let vm = await model([("id-A", "Office"), ("id-B", "Home")])
         XCTAssertEqual(vm.connectionID(named: "Office"), "id-A")
         XCTAssertEqual(vm.connectionID(named: "Home"), "id-B")
         XCTAssertNil(vm.connectionID(named: "Nowhere"),
@@ -65,8 +63,8 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
     /// `_cameUp` was re-keyed for. A per-connection setting applied to a firing
     /// that might be the namesake's is a setting applied to the wrong tunnel, so
     /// the join refuses and the module-wide value answers.
-    func testTwoConfigurationsOfOneNameResolveToNeither() {
-        let vm = model([("id-A", "Office"), ("id-B", "Office")],
+    func testTwoConfigurationsOfOneNameResolveToNeither() async {
+        let vm = await model([("id-A", "Office"), ("id-B", "Office")],
                        book: { settings in
             settings.setNoticeBook(VPNNoticeBook().setting("id-A", notice: .silent))
         })
@@ -77,8 +75,8 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
 
     // MARK: - What a firing reads
 
-    func testASilencedTunnelIsSilentAndItsNeighbourIsNot() {
-        let vm = model([("id-A", "Office"), ("id-B", "Home")], book: { settings in
+    func testASilencedTunnelIsSilentAndItsNeighbourIsNot() async {
+        let vm = await model([("id-A", "Office"), ("id-B", "Home")], book: { settings in
             settings.setNoticeBook(VPNNoticeBook().setting("id-A", notice: .silent))
         })
         XCTAssertEqual(vm.notice(for: .connected, on: "Office"), .silent)
@@ -86,8 +84,8 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
                        "the neighbour inherits, and inherits the app's own setting")
     }
 
-    func testTheRingObeysTheCardsSwitch() {
-        let vm = model([("id-A", "Office"), ("id-B", "Home")], book: { settings in
+    func testTheRingObeysTheCardsSwitch() async {
+        let vm = await model([("id-A", "Office"), ("id-B", "Home")], book: { settings in
             settings.setNoticeBook(VPNNoticeBook().setting("id-A", spin: false))
         })
         XCTAssertFalse(vm.automationSpin(on: "Office"),
@@ -98,8 +96,8 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
     /// The colours, per configuration and per direction. Two fields for three
     /// kinds: a teardown Helm performed and a tunnel that fell over are both
     /// «down», which is the same arithmetic the store's two keys do.
-    func testEachTunnelTurnsTheRingInItsOwnColour() {
-        let vm = model([("id-A", "Office"), ("id-B", "Home")], book: { settings in
+    func testEachTunnelTurnsTheRingInItsOwnColour() async {
+        let vm = await model([("id-A", "Office"), ("id-B", "Home")], book: { settings in
             settings.setNoticeBook(VPNNoticeBook()
                 .setting("id-A", tint: "purple", for: .connected)
                 .setting("id-A", tint: "red", for: .dropped))
@@ -116,16 +114,16 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
     /// A configuration that has said nothing about colour still follows the
     /// module-wide colour, so the fallback is the store's value and not a
     /// constant spelled twice.
-    func testAnUntouchedTunnelFollowsTheModuleWideColour() {
-        let vm = model([("id-A", "Office")], book: { settings in
+    func testAnUntouchedTunnelFollowsTheModuleWideColour() async {
+        let vm = await model([("id-A", "Office")], book: { settings in
             settings.store.set("blue", for: VPNSettings.spinTintKey(.connected))
         })
         XCTAssertEqual(vm.spinTint(for: .connected, on: "Office"), "blue")
     }
 
     /// A name this Mac does not have answers with the module-wide values.
-    func testAFiringOnAnUnknownNameFollowsTheModuleWideValues() {
-        let vm = model([("id-A", "Office")], book: { settings in
+    func testAFiringOnAnUnknownNameFollowsTheModuleWideValues() async {
+        let vm = await model([("id-A", "Office")], book: { settings in
             settings.store.set("blue", for: VPNSettings.spinTintKey(.connected))
             settings.store.set(false, for: VPNSettings.automationSpinKey)
         })

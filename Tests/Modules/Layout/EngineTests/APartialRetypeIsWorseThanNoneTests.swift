@@ -177,13 +177,14 @@ final class APartialRetypeIsWorseThanNoneTests: XCTestCase {
 /// which is the only question these four tests have.
 private final class World {
     let field = Field()
-    let typing: FieldTyping
-    let tap: FieldTap
-    let sources = FieldSources()
+    let typing = FakeTyping()
+    let tap = FakeTap()
+    let sources = FakeSources(follows: false)
 
     init() {
-        typing = FieldTyping(field: field)
-        tap = FieldTap(field: field)
+        let field = field
+        typing.apply = { field.apply($0) }
+        tap.received = { field.receive($0) }
     }
 
     func engine() -> LayoutEngine {
@@ -191,7 +192,7 @@ private final class World {
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FieldContext(), activation: FakeActivation())
+            secure: FakeSecure(), activation: FakeActivation())
         engine.activate()
         return engine
     }
@@ -218,62 +219,3 @@ private final class Field: @unchecked Sendable {
     }
 }
 
-private final class FieldTyping: TypingPort, @unchecked Sendable {
-    private let field: Field
-    var performed: [SwitchPlan] = []
-    /// One flag, because this suite's subject is the *believed* contract: the
-    /// port either did the whole plan or none of it, and `false` means none.
-    /// The half-applied state the real port can reach is the first test's
-    /// subject and is deliberately not representable here — a fake that could
-    /// half-apply would make tests two to four assert something the engine has
-    /// no way to know.
-    var succeeds = true
-
-    init(field: Field) { self.field = field }
-
-    func perform(_ plan: SwitchPlan) -> Bool {
-        performed.append(plan)
-        guard succeeds else { return false }
-        field.apply(plan)
-        return true
-    }
-}
-
-/// The keystroke reaches the app and then the tap reports it, which is the
-/// order `SwitchPlan` is written for — the ending is «the space, the return, the
-/// full stop, when the app has already received it».
-private final class FieldTap: KeyTapPort, @unchecked Sendable {
-    private let field: Field
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-
-    init(field: Field) { self.field = field }
-
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        handler = onEvent
-        return true
-    }
-    func stop() { handler = nil }
-
-    func type(_ text: String) {
-        for character in text {
-            field.receive(character)
-            handler?(.character(character))
-        }
-    }
-    func space() { field.receive(" "); handler?(.space) }
-}
-
-private final class FieldContext: SecureContextPort, @unchecked Sendable {
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { "com.apple.Notes" }
-}
-
-private final class FieldSources: LayoutSourcePort, @unchecked Sendable {
-    var selected: [String] = []
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) { selected.append(sourceID) }
-}

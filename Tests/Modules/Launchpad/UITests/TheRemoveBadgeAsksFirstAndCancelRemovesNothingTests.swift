@@ -1,4 +1,5 @@
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Launchpad_Engine
 @testable import Module_Launchpad_UI
@@ -35,8 +36,6 @@ import XCTest
         await waitUntil("the card") { if case .asking? = r.state.removalAsk { true } else { false } }
     }
 
-    private func settle() async { for _ in 0..<20 { await Task.yield() } }
-
     func testEveryWayOutOfTheCardRemovesNothing() async {
         let ways: [(String, (LiftRig) -> Void)] = [
             ("the Cancel button, the scrim", { $0.state.cancelRemoval() }),
@@ -51,7 +50,7 @@ import XCTest
             let r = await rig(door)
             await card(r)
             act(r)
-            await settle()
+            await grace()
             XCTAssertNil(r.state.removalAsk, way)
             XCTAssertEqual(door.removed.count, 0, way)
             if r.state.editing { r.state.askToRemove("a"); XCTAssertNotNil(r.state.removalAsk, "\(way): the control, the × still asks") }
@@ -73,7 +72,7 @@ import XCTest
         r.state.askToRemove("a")
         if case .counting? = r.state.removalAsk {} else { XCTFail("counting first") }
         r.state.cancelRemoval()
-        await settle()
+        await grace()
         XCTAssertNil(r.state.removalAsk, "the late answer does not raise the card")
     }
 
@@ -85,7 +84,7 @@ import XCTest
         XCTAssertNotNil(r.state.removalAsk, "a snapshot that holds the app as it was counted keeps the card")
         r.pastTheDwell(); r.state.confirmRemoval()
         await waitUntil("the removal") { door.removed.count == 1 }
-        await settle()
+        await waitUntil("the card closed") { r.state.removalAsk == nil }
         XCTAssertEqual(door.removed.count, 1)
         XCTAssertEqual(door.removed[0].candidate.path, "/Applications/a.app")
         XCTAssertEqual(door.removed[0].candidate.bundleID, "a")
@@ -112,7 +111,7 @@ import XCTest
         r.state.askToRemove("a")
         XCTAssertNil(r.state.removalAsk, "not in the mode")
         r.pastTheDwell(); r.state.confirmRemoval()
-        await settle()
+        await grace()
         XCTAssertEqual(door.removed.count, 0, "a confirm with no card asks nothing")
     }
 
@@ -123,7 +122,7 @@ import XCTest
         rig.model.removal = { door }
         let shown = Task { await rig.model.whileShown() }
         defer { shown.cancel() }
-        for _ in 0..<500 where rig.model.snapshot == nil { try? await Task.sleep(for: .milliseconds(10)) }
+        await waitUntil("the window's snapshot") { rig.model.snapshot != nil }
         let counted = await rig.model.previewRemoval(AppRemovalCandidate(bundleID: "a", path: "/Applications/a.app", name: "A"))
         XCTAssertNil(counted)
         XCTAssertEqual(rig.model.notice, .removeRefused("A"))

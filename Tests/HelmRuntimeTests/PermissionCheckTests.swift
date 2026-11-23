@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import HelmRuntime
 
@@ -139,7 +140,7 @@ final class PermissionCheckTests: XCTestCase {
     /// A folder is no signed bundle, so it is not "ad-hoc signed"; an Apple app
     /// carries no team id yet is signed, so it is.
     func testAdHocIsAnAnswerAboutASignatureNotAboutAFolder() {
-        XCTAssertFalse(PermissionCheck.isAdHocSigned(bundleURL: URL(fileURLWithPath: NSTemporaryDirectory())))
+        XCTAssertFalse(PermissionCheck.isAdHocSigned(bundleURL: scratchDirectory("adhoc-folder")))
         XCTAssertTrue(PermissionCheck.isAdHocSigned(bundleURL: URL(fileURLWithPath: "/System/Applications/Calculator.app")))
     }
 }

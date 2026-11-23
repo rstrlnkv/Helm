@@ -38,7 +38,7 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
 
     // MARK: - The stream reaches the model
 
-    func testTheModelPublishesWhatTheEngineCouldNotRead() {
+    func testTheModelPublishesWhatTheEngineCouldNotRead() async {
         let work = FakeVPNWork()
         let vm = VPNViewModel(work: work, settings: seededVPNSettings())
         var payload = VPNEngine.StatePayload(
@@ -47,7 +47,7 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
             autoConnected: [], lastAutomation: nil)
         payload.secretsBehindAPrompt = ["Office"]
         work.say(payload)
-        pump { !vm.connections.isEmpty }
+        await waitUntil("the payload handled") { !vm.connections.isEmpty }
 
         XCTAssertEqual(vm.secretsBehindAPrompt, ["Office"],
                        "the engine published it and the page could not see it")
@@ -62,10 +62,12 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
     /// AppKit frames rather than pixels, so «the page grew a card» is a number and
     /// not an inference from colour, and the quiet page is the control: a page that
     /// had stopped drawing the sentence fails here.
-    func testALockedConfigurationPutsANewsCardOnThePage() {
-        XCTAssertEqual(sectionCards(mount(page([]))).count, 0,
+    func testALockedConfigurationPutsANewsCardOnThePage() async {
+        let quiet = await page([])
+        let locked = await page(["One"])
+        XCTAssertEqual(sectionCards(mount(quiet)).count, 0,
                        "with nothing to say the page draws no section card")
-        XCTAssertEqual(sectionCards(mount(page(["One"]))).count, 1,
+        XCTAssertEqual(sectionCards(mount(locked)).count, 1,
                        "a locked configuration drew no news card")
     }
 
@@ -74,10 +76,10 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
     /// covered, on the strength of a row 230 pt below — a row that is inside a
     /// popover now. Both fixtures have a rule; one points at the locked
     /// configuration and one somewhere else, and the sentence has to survive both.
-    func testTheRuleBehindTheDoorDoesNotSilenceThePage() {
+    func testTheRuleBehindTheDoorDoesNotSilenceThePage() async {
         for pointedAt in ["One", "Other"] {
-            let quiet = newsCardHeight(locked: [], ruleFor: pointedAt)
-            let stuck = newsCardHeight(locked: ["One"], ruleFor: pointedAt)
+            let quiet = await newsCardHeight(locked: [], ruleFor: pointedAt)
+            let stuck = await newsCardHeight(locked: ["One"], ruleFor: pointedAt)
             XCTAssertGreaterThan(stuck, quiet,
                                  "with the rule pointing at «\(pointedAt)» the page grew "
                                  + "\(stuck) against \(quiet): the sentence is nowhere")
@@ -92,9 +94,9 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
     /// its own sentence in the same card — measured at 107 pt against 54 while this
     /// test was being written, and read for a moment as the page saying the locked
     /// one twice.
-    func testEachLockedConfigurationIsNamedOnce() {
-        let one = newsCardHeight(locked: ["One"], ruleFor: "One")
-        let two = newsCardHeight(locked: ["One", "Two"], ruleFor: "One")
+    func testEachLockedConfigurationIsNamedOnce() async {
+        let one = await newsCardHeight(locked: ["One"], ruleFor: "One")
+        let two = await newsCardHeight(locked: ["One", "Two"], ruleFor: "One")
         XCTAssertLessThan(one, 80,
                           "one locked configuration drew \(one) pt, which is two rows: the same "
                           + "sentence twice")
@@ -105,7 +107,7 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
 
     // MARK: - The page, and its instrument
 
-    private func page(_ locked: [String], ruleFor vpn: String = "One") -> VPNSettingsPage {
+    private func page(_ locked: [String], ruleFor vpn: String = "One") async -> VPNSettingsPage {
         let work = FakeVPNWork()
         // In memory, never `UserDefaults.standard`: this page writes its settings
         // through on every change.
@@ -124,21 +126,11 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
             autoConnected: [], lastAutomation: nil)
         payload.secretsBehindAPrompt = locked
         work.say(payload)
-        pump { !vm.connections.isEmpty }
+        await waitUntil("the payload handled") { !vm.connections.isEmpty }
         XCTAssertEqual(vm.connections.count, 1,
                        "the stream did not deliver: nothing below measures anything")
         XCTAssertEqual(vm.secretsBehindAPrompt, locked, "…nor the state under test")
         return VPNSettingsPage(vm: vm, store: store)
-    }
-
-    /// Turns of the main run loop until `done`, or 80 of them — and therefore a
-    /// **synchronous** test: driven from an `async` body this pumps nothing, and
-    /// every reading comes back as the zero-connection empty state, which passes an
-    /// assertion about a banner by having no page.
-    private func pump(_ done: () -> Bool) {
-        for _ in 0..<80 where !done() {
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-        }
     }
 
     private static let width: CGFloat = 845
@@ -161,7 +153,7 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
     /// the news is the page's only section, so a page with nothing to say draws no
     /// card — which is what makes «it grew» a reading rather than a comparison of
     /// two heights that might both be of the wrong card.
-    private func newsCardHeight(locked: [String], ruleFor vpn: String) -> CGFloat {
-        sectionCards(mount(page(locked, ruleFor: vpn))).first?.height ?? 0
+    private func newsCardHeight(locked: [String], ruleFor vpn: String) async -> CGFloat {
+        sectionCards(mount(await page(locked, ruleFor: vpn))).first?.height ?? 0
     }
 }

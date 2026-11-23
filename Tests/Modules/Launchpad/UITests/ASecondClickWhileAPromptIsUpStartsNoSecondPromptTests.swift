@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import Module_Launchpad_Engine
 @testable import Module_Launchpad_UI
@@ -14,7 +15,7 @@ import XCTest
         rig.state.activate()
         rig.state.open(folder: LaunchpadHiddenBlock.id)
         await rig.fake.waitForAsks()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await grace()
         XCTAssertEqual(rig.fake.evaluations, 1)
         rig.fake.release(.success)
         await rig.gate.settled()

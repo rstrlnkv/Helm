@@ -77,7 +77,7 @@ final class BrewArgumentsTests: XCTestCase {
             ("info, cask: \(isCask)", "-n", 1, { _ = $0.info(name: "-n", isCask: isCask) }),
         ] }
         for row in rows {
-            let runner = EnvironmentRecorder()
+            let runner = ScriptedRunner()
             row.act(brewEngine(runner))
             let calls = runner.calls.map(\.args)
             if let count = row.count {
@@ -92,7 +92,7 @@ final class BrewArgumentsTests: XCTestCase {
     /// `upgradeAll` has no subject, so it must not grow a stray terminator —
     /// the guard above is about values, and there is no value here.
     func testUpgradeAllTakesNoSubjectAndNoTerminator() {
-        let runner = EnvironmentRecorder()
+        let runner = ScriptedRunner()
         brewEngine(runner).upgradeAll()
         XCTAssertEqual(runner.calls.map(\.args), [["upgrade"]])
     }
@@ -100,7 +100,7 @@ final class BrewArgumentsTests: XCTestCase {
     /// The flags the module chooses itself stay flags: a terminator that landed
     /// ahead of `--cask` would turn it into a package name.
     func testTheModulesOwnFlagsStayAheadOfTheTerminator() {
-        let runner = EnvironmentRecorder()
+        let runner = ScriptedRunner()
         brewEngine(runner).install(name: "wget", isCask: true)
         let call = runner.calls[0].args
         let terminator = call.firstIndex(of: "--")

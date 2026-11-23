@@ -1,3 +1,4 @@
+import HelmTestSupport
 import HelmRuntime
 import XCTest
 @testable import Module_Autopilot_Engine
@@ -126,9 +127,7 @@ final class ARefusedRuleSetIsNotAnEmptyPageTests: XCTestCase {
         let openModel = self.model(on: open)
         await openModel.load()
         openModel.setEnabled(false, folder: watched)
-        let deadline = Date().addingTimeInterval(5)
-        while open.saved.isEmpty, Date() < deadline { try? await Task.sleep(nanoseconds: 10_000_000) }
-        XCTAssertFalse(open.saved.isEmpty, "precondition: a page that may save sent its list")
+        await waitUntil("a page that may save sent its list") { !open.saved.isEmpty }
 
         XCTAssertEqual(work.saved, [], "a refused page wrote a folder list over the refused rules")
     }

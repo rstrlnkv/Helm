@@ -18,6 +18,8 @@ final class Run: @unchecked Sendable {
     var lines: [String] { lock.lock(); defer { lock.unlock() }; return _lines }
     func line(_ l: String) { lock.lock(); _lines.append(l); lock.unlock() }
     func exit(_ s: Int32) { lock.lock(); _status = s; _exits += 1; lock.unlock(); done.signal() }
+    /// `done.wait` for a body that is `async`, where the semaphore's own `wait` is unavailable.
+    func finished(within seconds: TimeInterval) -> DispatchTimeoutResult { done.wait(timeout: .now() + seconds) }
 }
 
 extension XCTestCase {
@@ -27,7 +29,7 @@ extension XCTestCase {
         let rig = WaitRig()
         rig.tools.gitExecutable = true
         rig.engine.installBrew()
-        let args = try XCTUnwrap(rig.runner.calls.first, "the engine launched nothing")
+        let args = try XCTUnwrap(rig.runner.streamed.first, "the engine launched nothing")
         XCTAssertEqual(args.first, "-c", "the installer stopped being a `bash -c` string")
         return try XCTUnwrap(args.last)
     }
@@ -51,8 +53,8 @@ extension XCTestCase {
         return (handle, run)
     }
 
-    /// Waits on the wall clock for `condition`; a condition polled is the only
-    /// honest wait for a process this test does not own the end of.
+    /// Waits on the wall clock for `condition`. Only `TheInstallerWrapperPassesItsCodeAndOutputThroughTests`
+    /// (optional) still calls it; every other test waits with `waitUntilReached`.
     func eventually(_ seconds: TimeInterval, _ condition: () -> Bool) -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {

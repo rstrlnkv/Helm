@@ -30,12 +30,8 @@ final class ScanStoreTests: XCTestCase {
         let saved = result(root: "/", bytes: 1000)
         let date = Date(timeIntervalSince1970: 1_800_000_000)
         store.saveDetached(saved, at: date)
-        var loaded = store.load()
-        for _ in 0..<200 where loaded == nil {
-            try await Task.sleep(nanoseconds: 25_000_000)
-            loaded = store.load()
-        }
-        let cached = try XCTUnwrap(loaded)
+        await waitUntilReached("the detached save landed", within: .seconds(5)) { store.load() != nil }
+        let cached = try XCTUnwrap(store.load())
         XCTAssertEqual(cached.result, saved)
         XCTAssertEqual(cached.savedAt, date)
     }

@@ -1,4 +1,5 @@
 import HelmContract
+import HelmTestSupport
 import HelmRuntime
 import HelmUI
 import SwiftUI
@@ -35,18 +36,13 @@ final class TheHostPutsAModulesOwnItemInTheMenuBarTests: XCTestCase {
         var detached = 0
 
         func makeModule(store: NamespacedStore) -> ModuleParts<PageModel> {
-            ModuleParts(engine: Stub(), model: PageModel())
+            ModuleParts(engine: FakeEngine(), model: PageModel())
         }
         func attachMenuBarPresence() { attached += 1 }
         func detachMenuBarPresence() { detached += 1 }
     }
 
     private final class PageModel {}
-
-    private final class Stub: ModuleEngine {
-        func activate() {}
-        func deactivate() {}
-    }
 
     /// The host's store is `UserDefaults.standard`, so the enabled flag this
     /// writes is a key in the shared domain: taken back out here rather than

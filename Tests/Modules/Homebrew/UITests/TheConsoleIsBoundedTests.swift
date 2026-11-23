@@ -38,13 +38,19 @@ final class TheConsoleIsBoundedTests: XCTestCase {
     /// harness dropping events. So the count is read on the clock, a sleep
     /// between reads, until it has held still for fifty of them.
     private func log(_ count: Int, into work: FakeHomebrewWork,
-                     model: HomebrewViewModel) async {
+                     model: HomebrewViewModel,
+                     file: StaticString = #filePath, line: UInt = #line) async {
         for index in 0..<count {
             work.say(.line("line \(index)"))
         }
         var settled = 0
         var last = -1
+        let deadline = Date().addingTimeInterval(10)
         while settled < 50 {
+            if Date() > deadline {
+                XCTFail("the console count never held still for fifty reads (last \(last))", file: file, line: line)
+                return
+            }
             try? await Task.sleep(for: .milliseconds(2))
             if model.consoleLines.count == last { settled += 1 } else { settled = 0 }
             last = model.consoleLines.count

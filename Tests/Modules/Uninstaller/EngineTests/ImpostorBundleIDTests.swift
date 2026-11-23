@@ -55,7 +55,7 @@ final class ImpostorBundleIDTests: XCTestCase {
 
     private func scan(_ apps: AppLister, entries: [String: Int]) async throws -> ScanResult {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                       apps: apps, fs: GlobbingFS(entries: entries),
+                                       apps: apps, fs: FakeFS(existing: entries, globbing: true),
                                        trash: NoTrash(), running: NoRunning())
         return await engine.scan(bundleID: id, appName: "Sketchy")
     }

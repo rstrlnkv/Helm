@@ -53,24 +53,19 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
     /// the refusal is about the tool rather than about a name, and no fake
     /// simpler than this — one that fails a fixed number of times, say — could
     /// represent it.
-    private final class PartlyKnowingBrew: QueryOnlyRunner, @unchecked Sendable {
-        let known: Set<String>
-        private let lock = NSLock()
-        private var _descCalls: [[String]] = []
-        var descCalls: [[String]] { lock.lock(); defer { lock.unlock() }; return _descCalls }
-
-        init(known: Set<String>) { self.known = known }
-
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) {
-            guard args.first == "desc" else { return (0, "") }
-            lock.lock(); _descCalls.append(args); lock.unlock()
+    private func partlyKnowingBrew(known: Set<String>) -> ScriptedRunner {
+        ScriptedRunner(reply: { args in
+            guard args.first == "desc" else { return nil }
             guard let terminator = args.firstIndex(of: "--") else { return (1, "") }
             let names = Array(args[args.index(after: terminator)...])
             guard names.allSatisfy(known.contains) else { return (1, "") }
             return (0, names.map { "\($0): description of \($0)" }.joined(separator: "\n") + "\n")
-        }
+        })
+    }
 
+    /// The `brew desc` calls the runner saw.
+    private func descCalls(_ runner: ScriptedRunner) -> [[String]] {
+        runner.queries.filter { $0.first == "desc" }
     }
 
     private func names(_ count: Int) -> [String] {
@@ -81,12 +76,12 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
     /// for every interior node on the way.
     func testABatchRefusedWholesaleCostsNoMoreCallsThanNames() {
         let wanted = names(32)
-        let runner = PartlyKnowingBrew(known: [])
+        let runner = partlyKnowingBrew(known: [])
 
         _ = brewEngine(runner).descriptions(names: wanted, isCask: true)
 
-        XCTAssertLessThanOrEqual(runner.descCalls.count, wanted.count + 1, """
-            \(wanted.count) names cost \(runner.descCalls.count) `brew desc` launches — more \
+        XCTAssertLessThanOrEqual(descCalls(runner).count, wanted.count + 1, """
+            \(wanted.count) names cost \(descCalls(runner).count) `brew desc` launches — more \
             than one batch plus a call per name, which is the worst case the split \
             exists to beat. Each one takes a slot out of the eight the whole app has.
             """)
@@ -100,13 +95,13 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
     /// own doc comment promises; that promise is worth keeping.
     func testOneUnresolvableNameStillCostsAboutADozenCalls() {
         let wanted = names(32)
-        let runner = PartlyKnowingBrew(known: Set(wanted.dropLast()))
+        let runner = partlyKnowingBrew(known: Set(wanted.dropLast()))
 
         let found = brewEngine(runner).descriptions(names: wanted, isCask: false)
 
         XCTAssertEqual(found.count, 31, "the good names lost their descriptions to the bad one")
-        XCTAssertLessThanOrEqual(runner.descCalls.count, 12,
-                                 "the split stopped paying for itself: \(runner.descCalls.count) "
+        XCTAssertLessThanOrEqual(descCalls(runner).count, 12,
+                                 "the split stopped paying for itself: \(descCalls(runner).count) "
                                  + "calls for one bad name in \(wanted.count)")
     }
 
@@ -114,12 +109,12 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
     /// bound above holds on an engine that asks for nothing at all.
     func testABatchBrewAnswersIsStillOneCall() {
         let wanted = names(32)
-        let runner = PartlyKnowingBrew(known: Set(wanted))
+        let runner = partlyKnowingBrew(known: Set(wanted))
 
         let found = brewEngine(runner).descriptions(names: wanted, isCask: false)
 
         XCTAssertEqual(found.count, 32)
-        XCTAssertEqual(runner.descCalls.count, 1)
+        XCTAssertEqual(descCalls(runner).count, 1)
     }
 
     // MARK: - The arithmetic under the bound

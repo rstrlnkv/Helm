@@ -35,7 +35,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let board: Board
         let trash: AsideTrash
         let shutter: Shutter
-        let capture: PileFrames
+        let capture: FakeScreen
         let box: PileScene.Box
         let store: NamespacedStore
         let desktop: URL

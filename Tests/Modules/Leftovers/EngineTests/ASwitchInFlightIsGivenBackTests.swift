@@ -12,14 +12,15 @@ final class ASwitchInFlightIsGivenBackTests: XCTestCase {
     func testAPressHeldInTheFolderReadIsRefusedOnceTheModuleIsSwitchedOff() async {
         let label = "com.vendor.updater"
         let path = "/Users/x/Library/LaunchAgents/\(label).plist"
+        let gate = LeftoversGate()
         var fake = LeftoversFakeFiles()
+        fake.gate = gate
         fake.listing["/Users/x/Library/LaunchAgents"] = ["\(label).plist"]
         fake.plists[path] = PlistData(["Label": label])
-        let gate = LeftoversGate()
         let switcher = LeftoversFakeSwitcher()
         let store = freshLeftoversStore()
         let e = LeftoversEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                files: LeftoversGatedFiles(fake, gate: gate),
+                                files: fake,
                                 apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                 switcher: switcher, store: store)
 

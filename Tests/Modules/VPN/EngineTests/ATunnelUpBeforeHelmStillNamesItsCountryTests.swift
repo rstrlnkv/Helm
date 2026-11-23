@@ -238,10 +238,9 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
         exit.release()
         // Waited for rather than raced: the assertion is that something did
         // *not* happen, and it holds trivially while the held run is still on
-        // its way back. The condition is the fake's own count reaching two
-        // completions — there is no count of completions, so the wait is a
-        // plain one and generous.
-        try? await Task.sleep(nanoseconds: 400_000_000)
+        // its way back. The control is the second request's answer above, which
+        // proves the path speaks; there is no count of completions to wait on.
+        await grace(0.4)
         let drawn = await lastState(on: news)?.tunnels.first?.exit
         XCTAssertEqual(drawn, .throughTunnel(countryCode: "DE"), """
         a superseded answer was written over a newer one. Cancelling a URL load         does not silence its completion, so the run that comes back last wins         unless something tells the two apart.

@@ -28,9 +28,7 @@ final class ACardsNoticeIsNotTheModulesTests: XCTestCase {
                 VPNConnection(id: $0.0, name: $0.1, status: .disconnected, kind: "IKEv2")
             },
             autoConnected: [], lastAutomation: nil))
-        for _ in 0..<500 where vm.connections.isEmpty {
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
+        await waitUntil("the payload handled") { !vm.connections.isEmpty }
         XCTAssertEqual(vm.connections.count, 2, "the stream did not deliver")
         return (vm, settings, port)
     }

@@ -9,47 +9,8 @@ import XCTest
 // One side of the boundary the Screenshots view model stands on: the engine, as `ScreenshotsWork` names it.
 // It carries what that port can do and nothing more: a stream that replays the last state and then every later
 // one, a refresh that answers on the stream, and a factory that hands out a session once asked. Every session it
-// builds stands on `FakeScreen`, which constructs no `SCKCapture` and reaches no real screen; a session never
+// builds stands on `FakeScreen` (`Fakes.swift`), which constructs no `SCKCapture` and reaches no real screen; a session never
 // asked for is a call this fake never saw, which is what `calls` is for.
-
-/// The screen of a fake session: counts its freezes, and may hold each one at a gate.
-final class FakeScreen: ScreenCapturing, @unchecked Sendable {
-    private let lock = NSLock()
-    private var count = 0
-    private let outcome: FreezeOutcome
-    /// Held freezes wait here; nil answers at once.
-    let gate: PromptGate?
-
-    init(outcome: FreezeOutcome, gate: PromptGate? = nil) {
-        self.outcome = outcome
-        self.gate = gate
-    }
-
-    var freezes: Int { lock.withLock { count } }
-    func access() -> CaptureAccess { .granted }
-    func requestAccess() {}
-    func freeze(cursor: Bool) async -> FreezeOutcome {
-        lock.withLock { count += 1 }
-        if let gate { await gate.arrive() }
-        return outcome
-    }
-    func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
-
-    /// A frozen picture of every real screen (built into panels that are never ordered in) or, when `real` is
-    /// false, of a display id no screen carries, which nothing can reach.
-    @MainActor
-    static func frozen(real: Bool) throws -> FreezeOutcome {
-        if real { return .frozen(Freeze(displays: try OverlayRig.frames().map { .image($0) }, windows: [])) }
-        let context = try XCTUnwrap(CGContext(data: nil, width: 20, height: 10, bitsPerComponent: 8, bytesPerRow: 0,
-                                              space: CGColorSpaceCreateDeviceRGB(),
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        let image = try XCTUnwrap(context.makeImage())
-        return .frozen(Freeze(displays: [.image(FrozenDisplay(id: DisplayID(0xDEAD_BEEF),
-                                                              frame: CGRect(x: 0, y: 0, width: 10, height: 5),
-                                                              scale: 2, image: image))],
-                              windows: []))
-    }
-}
 
 /// A disk that counts its writes and keeps no file.
 final class FakeWorkDisk: ShotWriting, @unchecked Sendable {
@@ -74,8 +35,10 @@ final class FakeScreenshotsWork: ScreenshotsWork, @unchecked Sendable {
     let screen: FakeScreen
     let disk = FakeWorkDisk()
     let board = CountingBoard()
+    /// Where its sessions think home is; the test's scratch directory, which its disk never writes into.
+    let home: URL
 
-    init(screen: FakeScreen) { self.screen = screen }
+    init(screen: FakeScreen, home: URL) { self.screen = screen; self.home = home }
 
     /// Every call the model made, in order: "stream", "refresh", "session".
     var calls: [String] { lock.withLock { _calls } }
@@ -108,9 +71,8 @@ final class FakeScreenshotsWork: ScreenshotsWork, @unchecked Sendable {
 
     func session(store: NamespacedStore, naming: @escaping () -> ShotNaming) -> CaptureSession {
         lock.withLock { _calls.append("session") }
-        let home = FileManager.default.temporaryDirectory
-        return CaptureSession(capture: screen, writer: disk, trash: NoTrash(), pasteboard: board,
-                              preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
+        return CaptureSession(capture: screen, writer: disk, trash: AsideTrash.refusing(), pasteboard: board,
+                              preferences: NoPreferences(), shutter: CountingShutter(), textReader: NoTextReader(),
                               settings: { ScreenshotsSettings.read(store) }, naming: naming,
                               locations: ScreenshotsLocations(home: home, desktop: home))
     }
@@ -144,8 +106,8 @@ final class FakeScreenshotsScene {
 
     /// `buildOverlay`: the overlay is built (panels on the real screens, never ordered in) and so is `isOpen`;
     /// false declines it, which counts the presentation and builds nothing.
-    init(screen: FakeScreen, target: SaveTarget = .clipboard, buildOverlay: Bool = false) {
-        work = FakeScreenshotsWork(screen: screen)
+    init(screen: FakeScreen, home: URL, target: SaveTarget = .clipboard, buildOverlay: Bool = false) {
+        work = FakeScreenshotsWork(screen: screen, home: home)
         store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
@@ -171,16 +133,16 @@ final class FakeScreenshotsScene {
     private final class Holder { weak var scene: FakeScreenshotsScene? }
 
     /// A scene over a screen that freezes one blank frame per real screen at once, no overlay built.
-    static func plain() throws -> FakeScreenshotsScene {
-        FakeScreenshotsScene(screen: FakeScreen(outcome: try FakeScreen.frozen(real: false)))
+    static func plain(in test: XCTestCase) throws -> FakeScreenshotsScene {
+        FakeScreenshotsScene(screen: FakeScreen(outcome: try FakeScreen.frozen(real: false)), home: test.scratchDirectory("shots-scene"))
     }
 
     /// A scene whose screen's freeze waits on the returned gate (`held`), over frames of the real screens when the
     /// overlay is built.
-    static func withGate(held: Bool = true, buildOverlay: Bool = false) throws -> (FakeScreenshotsScene, PromptGate) {
+    static func withGate(in test: XCTestCase, held: Bool = true, buildOverlay: Bool = false) throws -> (FakeScreenshotsScene, PromptGate) {
         let gate = PromptGate()
         let screen = FakeScreen(outcome: try FakeScreen.frozen(real: buildOverlay), gate: held ? gate : nil)
-        return (FakeScreenshotsScene(screen: screen, buildOverlay: buildOverlay), gate)
+        return (FakeScreenshotsScene(screen: screen, home: test.scratchDirectory("shots-scene"), buildOverlay: buildOverlay), gate)
     }
 
     /// Brings the area press to an open overlay and returns it.

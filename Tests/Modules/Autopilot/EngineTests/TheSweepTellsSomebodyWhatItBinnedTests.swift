@@ -104,13 +104,6 @@ final class TheSweepTellsSomebodyWhatItBinnedTests: SweepNoticeRig {
 final class WhichTriggerSpeaksAfterASweepTests: SweepNoticeRig {
 
 
-    /// The banner is posted from a task of its own — nothing in the engine waits
-    /// for macOS — so a read taken straight afterwards would pass an absence for
-    /// free.
-    private func waitForPosts(_ wanted: Int) async {
-        await waitUntilReached("\(wanted) banner(s)") { notices.posted.count >= wanted }
-    }
-
     // MARK: - The timer's sweep
 
     func testAnHourlySweepThatTrashedSomethingSaysSoOnce() async throws {
@@ -119,7 +112,7 @@ final class WhichTriggerSpeaksAfterASweepTests: SweepNoticeRig {
         watch(.trash)
 
         engine.sweepAll()
-        await waitForPosts(1)
+        await waitUntilReached("a banner") { notices.posted.count >= 1 } // posted from a task of its own: a read straight afterwards would pass an absence for free
 
         XCTAssertEqual(notices.posted.count, 1)
         XCTAssertEqual(notices.posted.first?.body, "trashed 1 refused 0 failed 0")
@@ -144,7 +137,7 @@ final class WhichTriggerSpeaksAfterASweepTests: SweepNoticeRig {
         try trashable("gone.pdf")
         watch(.trash)
         engine.sweepAll()
-        await waitForPosts(1)
+        await waitUntilReached("a banner") { notices.posted.count >= 1 } // posted from a task of its own: a read straight afterwards would pass an absence for free
         XCTAssertEqual(notices.posted.count, 1,
                        "the control: with something binned the same path still speaks")
     }
@@ -180,7 +173,7 @@ final class WhichTriggerSpeaksAfterASweepTests: SweepNoticeRig {
         // The control: the same engine, the same folder, the timer's trigger.
         try trashable("also-gone.pdf")
         engine.sweepAll()
-        await waitForPosts(1)
+        await waitUntilReached("a banner") { notices.posted.count >= 1 } // posted from a task of its own: a read straight afterwards would pass an absence for free
         XCTAssertEqual(notices.posted.count, 1)
     }
 
@@ -195,7 +188,7 @@ final class WhichTriggerSpeaksAfterASweepTests: SweepNoticeRig {
         watch(.trash)
 
         engine.handle([root.appendingPathComponent(leaf).path])
-        await waitForPosts(1)
+        await waitUntilReached("a banner") { notices.posted.count >= 1 } // posted from a task of its own: a read straight afterwards would pass an absence for free
 
         XCTAssertEqual(notices.posted.first?.body, "trashed 1 refused 0 failed 0")
     }

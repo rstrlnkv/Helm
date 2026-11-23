@@ -22,51 +22,28 @@ import XCTest
 @MainActor
 final class TheCountdownEndsWithTheModuleTests: XCTestCase {
 
-    private final class Freezes: ScreenCapturing, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        private let image: CGImage
-        /// Called inside each freeze, so a test can read what the countdown had reached.
-        var onFreeze: () -> Void = {}
-        init(_ image: CGImage) { self.image = image }
-        var freezes: Int { lock.withLock { count } }
-        func access() -> CaptureAccess { .granted }
-        func requestAccess() {}
-        func freeze(cursor: Bool) async -> FreezeOutcome {
-            lock.withLock { count += 1 }
-            onFreeze()
-            // A display no screen carries: nothing here can reach a real screen.
-            return .frozen(Freeze(displays: [.image(FrozenDisplay(id: DisplayID(0xDEAD_BEEF),
-                                                                  frame: CGRect(x: 0, y: 0, width: 10, height: 5),
-                                                                  scale: 2, image: image))], windows: []))
-        }
-        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
-    }
-
     private typealias Disk = FakeWorkDisk
 
     private typealias Board = CountingBoard
 
     private struct Rig {
         let controller: CaptureController
-        let capture: Freezes
+        let capture: FakeScreen
         let disk: Disk
         let ticks: LockedCount
         let shown: LockedCount
     }
 
     private func rig(timer: CaptureTimer, tick: @escaping (LockedCount) -> (Duration) async throws -> Void) throws -> Rig {
-        let context = try XCTUnwrap(CGContext(data: nil, width: 20, height: 10, bitsPerComponent: 8, bytesPerRow: 0,
-                                              space: CGColorSpaceCreateDeviceRGB(),
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        let capture = Freezes(try XCTUnwrap(context.makeImage())), disk = Disk(), ticks = LockedCount(), shown = LockedCount()
+        // A display no screen carries: nothing here can reach a real screen.
+        let capture = FakeScreen(outcome: try FakeScreen.frozen(real: false)), disk = Disk(), ticks = LockedCount(), shown = LockedCount()
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         store.set(timer.seconds, for: ScreenshotsSettings.Key.timer)
-        let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: capture, writer: disk, trash: NoTrash(), pasteboard: Board(), preferences: NoPreferences(),
-                                     shutter: NoShutter(), textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
+        let home = scratchDirectory("shots-countdown")
+        let session = CaptureSession(capture: capture, writer: disk, trash: AsideTrash.refusing(), pasteboard: Board(), preferences: NoPreferences(),
+                                     shutter: CountingShutter(), textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
                                      naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(store: store,
                                            session: session, presentOverlay: { _ in false },

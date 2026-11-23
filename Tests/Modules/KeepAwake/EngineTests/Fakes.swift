@@ -119,34 +119,127 @@ final class FakePointer: PointerPort {
     func displayBounds(containing p: CGPoint) -> CGRect? { bounds }
 }
 
-final class FakeClamshell: ClamshellPort {
-    var sudoersInstalled = false
+final class FakeClamshell: ClamshellPort, @unchecked Sendable {
+    /// **Behind one lock, because the port is asked from whichever thread the
+    /// caller is on** (the coordinator's queue, the drawing thread) while the test
+    /// reads from its own. It covers the recorded state (the call lists, the
+    /// counters, `sudoersInstalled`, `installCompletion`, the pending prompts) and
+    /// the one-shot holds (`holdNextLook`). The answers a test sets before it
+    /// starts the work (`pmset`, `removalSucceeds`, `withdrawalIsGranted`, …) are
+    /// plain properties. Nothing is called with the lock held: a completion
+    /// re-enters this fake, and a lock held across that is a deadlock waiting for
+    /// the first port that answers on the same thread.
+    private let lock = NSLock()
+    private func locked<T>(_ body: () -> T) -> T { lock.lock(); defer { lock.unlock() }; return body() }
+
+    private var _sudoersInstalled = false
+    var sudoersInstalled: Bool {
+        get { locked { _sudoersInstalled } }
+        set { locked { _sudoersInstalled = newValue } }
+    }
     var pmset: String? = ""
-    var disableSleepCalls: [Bool] = []
-    var installCompletion: ((Bool) -> Void)?
-    var installCalls = 0
+    private var _disableSleepCalls: [Bool] = []
+    var disableSleepCalls: [Bool] {
+        get { locked { _disableSleepCalls } }
+        set { locked { _disableSleepCalls = newValue } }
+    }
+    private var _installCompletion: ((Bool) -> Void)?
+    var installCompletion: ((Bool) -> Void)? {
+        get { locked { _installCompletion } }
+        set { locked { _installCompletion = newValue } }
+    }
+    private var _installCalls = 0
+    var installCalls: Int { locked { _installCalls } }
+    /// Every install prompt still up, oldest first: the real one takes minutes and
+    /// the app carries on underneath, so a second ask is a second entry here and
+    /// not an overwrite. `installCompletion` is the latest of them.
+    private var pendingInstalls: [(Bool) -> Void] = []
+    private var pendingRemovals: [(Bool) -> Void] = []
+
+    /// **The port's answers come back on a thread of their own**, as `osascript`'s
+    /// do (`installSudoers` and `removeSudoers` hand theirs back on a global queue).
+    /// Set at construction; the rule on disk is left as it was.
+    let answersOffTheCallersThread: Bool
+    /// The removal prompt goes up and stays up, file still on disk, until
+    /// `answerRemovalPrompts` — the state the real dialog is in for minutes.
+    let holdsRemovals: Bool
+
+    init(answersOffTheCallersThread: Bool = false, holdsRemovals: Bool = false) {
+        self.answersOffTheCallersThread = answersOffTheCallersThread
+        self.holdsRemovals = holdsRemovals
+    }
+
+    /// Which thread each call came on. **A port that is asked the instant a test
+    /// looks cannot tell a caller on the drawing thread from one that is not**, so
+    /// «which thread asked» is recorded here, as a fact about the caller.
+    private var _asked: [(method: String, onMain: Bool)] = []
+    private var _onAsked: [String: XCTestExpectation] = [:]
+    var asked: [(method: String, onMain: Bool)] { locked { _asked } }
+    func wasAskedOnMain(_ method: String) -> Bool { asked.contains { $0.method == method && $0.onMain } }
+    func wasAsked(_ method: String) -> Bool { asked.contains { $0.method == method } }
+    /// Fulfilled the first time the named method is asked, so a case can wait for
+    /// the work to have happened before judging where it happened.
+    func fulfil(_ expectation: XCTestExpectation, whenAsked method: String) {
+        locked { _onAsked[method] = expectation }
+    }
+    /// A child process that has not finished yet. **A port that answers the
+    /// instant it is asked cannot tell a caller that waits from one that does
+    /// not**; with `blockUntilReleased` every call parks on `stillRunning` (a
+    /// turnstile: a gate that let one through would leave the others parked for
+    /// the rest of the run) until the test signals it.
+    let stillRunning = DispatchSemaphore(value: 0)
+    var blockUntilReleased = false
+    private func record(_ method: String) {
+        let waiting: XCTestExpectation? = locked {
+            _asked.append((method, Thread.isMainThread))
+            return _onAsked[method]
+        }
+        waiting?.fulfill()
+        if blockUntilReleased { stillRunning.wait(); stillRunning.signal() }
+    }
     /// How many times the file was looked for. An absence — «the launch put
     /// nothing back» — has to be read *after* the launch looked, or it is green
     /// because nothing has run yet.
-    private(set) var installedChecks = 0
+    private var _installedChecks = 0
+    var installedChecks: Int { locked { _installedChecks } }
     /// Set to hold the next look at the file until the test signals it, which
     /// is what a look still out looks like to a setting changed meanwhile;
     /// `lookBegan` is fulfilled when the look has read the file and is parked.
-    var holdNextLook: DispatchSemaphore?
+    private var _holdNextLook: DispatchSemaphore?
+    var holdNextLook: DispatchSemaphore? {
+        get { locked { _holdNextLook } }
+        set { locked { _holdNextLook = newValue } }
+    }
     var lookBegan: XCTestExpectation?
     func isSudoersInstalled() -> Bool {
-        installedChecks += 1
+        record("isSudoersInstalled")
+        locked { _installedChecks += 1 }
         let answer = sudoersInstalled
-        if let gate = holdNextLook {
-            holdNextLook = nil
+        let held: DispatchSemaphore? = locked { defer { _holdNextLook = nil }; return _holdNextLook }
+        if let gate = held {
             lookBegan?.fulfill()
             gate.wait()
         }
         return answer
     }
     func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
-        installCalls += 1
+        record("installSudoers")
+        locked { _installCalls += 1 }
+        if answersOffTheCallersThread { DispatchQueue.global().async { done(true) }; return }
         installCompletion = done
+        locked { pendingInstalls.append(done) }
+    }
+    /// The person typed their password, for every prompt that is up. The file
+    /// exists from this moment on, before any completion runs.
+    func answerAllPrompts(granted: Bool) {
+        let waiting: [(Bool) -> Void] = locked {
+            let held = pendingInstalls
+            pendingInstalls = []
+            if granted { _sudoersInstalled = true }
+            return held
+        }
+        installCompletion = nil
+        for done in waiting { done(granted) }
     }
     /// Answer the prompt that is on screen. **The real one takes seconds to
     /// minutes and can be declined**, and a fake that only ever completed
@@ -157,10 +250,12 @@ final class FakeClamshell: ClamshellPort {
     func finishInstall(granted: Bool) {
         let done = installCompletion
         installCompletion = nil
+        locked { pendingInstalls.removeAll() }
         if granted { sudoersInstalled = true }
         done?(granted)
     }
-    var removeCalls = 0
+    private var _removeCalls = 0
+    var removeCalls: Int { locked { _removeCalls } }
     /// Whether the removal goes through. **A fake that always succeeded made «the
     /// administrator dialog was declined» an unrepresentable state**, so no test
     /// of it could exist whatever anybody wrote — and what a declined removal
@@ -170,9 +265,23 @@ final class FakeClamshell: ClamshellPort {
     /// does when somebody presses Cancel.
     var removalSucceeds = true
     func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
-        removeCalls += 1
+        record("removeSudoers")
+        locked { _removeCalls += 1 }
+        if answersOffTheCallersThread { DispatchQueue.global().async { done(true) }; return }
+        if holdsRemovals { locked { pendingRemovals.append(done) }; return }
         if removalSucceeds { sudoersInstalled = false }
         done(removalSucceeds)
+    }
+    /// The person typed their password (or clicked Cancel). Only now does the file
+    /// go, and only if they said yes.
+    func answerRemovalPrompts(granted: Bool) {
+        let waiting: [(Bool) -> Void] = locked {
+            let held = pendingRemovals
+            pendingRemovals = []
+            if granted { _sudoersInstalled = false }
+            return held
+        }
+        for done in waiting { done(granted) }
     }
     /// Whether the rule on disk permits its own withdrawal. **False is a real
     /// state, not a failure mode**: a rule installed by a version of Helm from
@@ -184,9 +293,11 @@ final class FakeClamshell: ClamshellPort {
     var withdrawalIsGranted = true
     /// How many times the free route was tried. «No dialog was raised» has to be
     /// read beside this or it is green because nothing was attempted at all.
-    private(set) var passwordlessRemovals = 0
+    private var _passwordlessRemovals = 0
+    var passwordlessRemovals: Int { locked { _passwordlessRemovals } }
     func removeSudoersWithoutPassword() -> Bool {
-        passwordlessRemovals += 1
+        record("removeSudoersWithoutPassword")
+        locked { _passwordlessRemovals += 1 }
         // Read here rather than remembered: `sudoersInstalled` is a `var` a test
         // may move between two of these, which is what an administrator tidying
         // `/etc/sudoers.d` under the app looks like.
@@ -210,19 +321,22 @@ final class FakeClamshell: ClamshellPort {
     /// which it now asks on a queue of its own. «No dialog was raised» has to be
     /// read *after* the question was answered, or it is green because nobody has
     /// asked yet, which is the vacuous absence (ARCHITECTURE.md § What makes a check) warns about.
-    private(set) var grantChecks = 0
+    private var _grantChecks = 0
+    var grantChecks: Int { locked { _grantChecks } }
     /// Set to hold the next probe on the lid's queue until the test signals it,
     /// which is what a probe still out looks like to the next edit.
     var holdNextProbe: DispatchSemaphore?
     func canDisableSleepWithoutPassword() -> Bool {
-        grantChecks += 1
+        record("canDisableSleepWithoutPassword")
+        locked { _grantChecks += 1 }
         let gate = holdNextProbe
         holdNextProbe = nil
         gate?.wait()
         return passwordlessGrantExists ?? sudoersInstalled
     }
     func setDisableSleep(_ on: Bool) -> Bool {
-        disableSleepCalls.append(on)
+        record("setDisableSleep")
+        locked { _disableSleepCalls.append(on) }
         // **The call needs the grant.** `PmsetClamshellPort` runs
         // `sudo -n pmset disablesleep …`, and `-n` fails outright when no
         // passwordless rule covers it. Answering yes without one made «the rule
@@ -235,12 +349,14 @@ final class FakeClamshell: ClamshellPort {
     /// How many times the report was read, because «did this launch shell out to
     /// `pmset` at all» is a question about every launch on every Mac: the
     /// recovery's anchors exist to keep that read off the ordinary path.
-    private(set) var pmsetReads = 0
+    private var _pmsetReads = 0
+    var pmsetReads: Int { locked { _pmsetReads } }
     /// Signalled on entry: the next call the launch look makes on `shell` after
     /// the file read and the verdict's hop, so a test can know both have happened.
     var pmsetEntered: DispatchSemaphore?
     func pmsetReport() -> String? {
-        pmsetReads += 1
+        record("pmsetReport")
+        locked { _pmsetReads += 1 }
         pmsetEntered?.signal()
         return pmset
     }
@@ -294,7 +410,6 @@ extension XCTestCase {
     /// is an ordering fact rather than a sleep.
     @MainActor
     func drainMainActor() async {
-        await Task.yield()
         let drained = expectation(description: "main actor drained")
         Task { @MainActor in drained.fulfill() }
         await fulfillment(of: [drained], timeout: 5)

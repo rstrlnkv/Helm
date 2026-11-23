@@ -46,7 +46,7 @@ import XCTest
         let edits = r.placed.count
         await waitUntil("the lift ended") { !r.state.pointerBusy }
         if r.placed.count > edits || r.state.pages.joined().contains(where: { $0.id == id }) == false { await waitUntil("the edit was written") { r.placed.count > edits } }
-        try? await Task.sleep(for: .milliseconds(120))
+        await waitUntil("the tile is on a page") { place(r, id) != nil }
         let landed = place(r, id)
         XCTAssertNotNil(landed, "subject: the tile is on a page")
         XCTAssertEqual(landed?.page, gap?.page, "\(id) onto \(target): the page")

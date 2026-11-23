@@ -4,6 +4,7 @@
 import Foundation
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
@@ -83,10 +84,16 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
     private func waitForState(_ news: EngineNews<VPNEngine.StatePayload>, _ what: String,
                               until matches: @escaping @Sendable (VPNEngine.StatePayload) -> Bool,
                               during act: () async -> Void) async {
-        let arrived = XCTestExpectation(description: what)
-        let watcher = watchState(news, until: matches, then: arrived)
+        let arrived = LockedCount()
+        let events = news.stream()
+        let watcher = Task {
+            for await payload in events where !isSentinel(payload) && matches(payload) {
+                arrived.bump()
+                return
+            }
+        }
         await act()
-        await fulfillment(of: [arrived], timeout: 10)
+        await waitUntilReached(what, within: .seconds(10)) { arrived.value > 0 }
         watcher.cancel()
     }
 

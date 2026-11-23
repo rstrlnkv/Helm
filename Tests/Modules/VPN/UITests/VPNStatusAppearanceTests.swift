@@ -152,9 +152,7 @@ final class VPNStatusAppearanceTests: XCTestCase {
         model.setForTesting(automation: firing(secondsAgo: VPNAutomation.nameDuration - 0.15))
         XCTAssertNotNil(model.lastAutomation, "still inside its window, so this proves nothing yet")
 
-        for _ in 0..<400 where model.lastAutomation != nil {
-            try? await Task.sleep(nanoseconds: 5_000_000)
-        }
+        await waitUntil("the name window closed", within: .seconds(2)) { model.lastAutomation == nil }
 
         XCTAssertNil(model.lastAutomation,
                      "the firing outlived its own name window with nothing to redraw it away")

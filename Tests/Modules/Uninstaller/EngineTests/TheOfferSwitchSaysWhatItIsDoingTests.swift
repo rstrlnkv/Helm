@@ -60,7 +60,7 @@ final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
     }
 
     private func engine(_ apps: AppLister) -> UninstallerEngine {
-        UninstallerEngine(home: home, apps: apps, fs: NoFiles(),
+        UninstallerEngine(home: home, apps: apps, fs: FakeFS(),
                           trash: NoTrash(), running: NoRunning())
     }
 

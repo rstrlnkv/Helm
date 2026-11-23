@@ -66,8 +66,7 @@ final class ReleaseDigestTests: XCTestCase {
     }
 
     func testAMissingFileNeverMatches() {
-        let gone = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("does-not-exist-\(UUID().uuidString)")
+        let gone = scratchDirectory("digest-missing").appendingPathComponent("does-not-exist")
         XCTAssertFalse(ReleaseDigest.matches(fileAt: gone, expected: good))
     }
 

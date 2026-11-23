@@ -77,12 +77,13 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
 
     /// **The guard.** Nothing about the field the header row draws carries a
     /// history.
-    func testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents() throws {
+    func testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents() async throws {
         let page = Page()
         let fixture = LivePageUnderTheHeaderFixture(Pane(page: page), selection: .module("test.searchHistory"),
                                                   width: 1060, height: 400)
         defer { fixture.drop() }
-        fixture.settle(20)
+        await waitUntil("the header row draws its search field") { fixture.searchField != nil }
+        await grace(0.4)                            // the declaration reaches the row after the field is there
 
         // The subject, before any absence is read off it. A walk that found no
         // control would satisfy every assertion below by never running, and an
@@ -174,12 +175,13 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     /// on macOS 27. So the defect is put back here, on the field the header row
     /// draws, and the cost of it is measured: the typed word in the settings
     /// domain, under the planted key.
-    func testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile() throws {
+    func testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile() async throws {
         let page = Page()
         let fixture = LivePageUnderTheHeaderFixture(Pane(page: page), selection: .module("test.searchHistoryCanary"),
                                                   width: 1060, height: 400)
         defer { fixture.drop() }
-        fixture.settle(20)
+        await waitUntil("the header row draws its search field") { fixture.searchField != nil }
+        await grace(0.4)                            // the declaration reaches the row after the field is there
         let field = try XCTUnwrap(fixture.searchField, """
             no search field in the header row, so the guard beside this one has no subject either
             """)
@@ -210,7 +212,7 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
         // typed and committed a second time for a fact this file already
         // established.
         field.recentSearches = [Self.word]
-        fixture.settle(10)
+        await grace(0.2)
 
         XCTAssertEqual(field.recentSearches, [Self.word], """
             the field did not keep the recent it was handed, so `recentSearches` is not a live \

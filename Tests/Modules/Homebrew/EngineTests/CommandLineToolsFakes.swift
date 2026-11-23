@@ -210,7 +210,7 @@ final class WaitRig {
     let tools: FakeCommandLineTools
     let ticker = FakeWaitTicker()
     let privileged: ScriptedPrivileged
-    let runner = HangingRunner()
+    let runner = ScriptedRunner(streams: .hold)
     let news = EngineNews<HomebrewNews>()
     let engine: HomebrewEngine
 

@@ -7,9 +7,9 @@ import HelmRuntime
 /// The clamshell port with the removal half told the way the install half
 /// already is: a password prompt that is **up**.
 ///
-/// Both shared fakes answer `removeSudoers` inline — `FakeClamshell` and the
-/// `PromptClamshell` in `SudoersPromptInFlightTests` each call `done(true)` and
-/// set `sudoersInstalled = false` in the same breath. `PmsetClamshellPort` does
+/// `FakeClamshell` answers `removeSudoers` inline unless it is built with
+/// `holdsRemovals`, calling `done(true)` and setting `sudoersInstalled = false`
+/// in the same breath. `PmsetClamshellPort` does
 /// neither: it hops to a global queue and runs
 /// `osascript … with administrator privileges`, which blocks for as long as the
 /// person takes to find their password, and `/etc/sudoers.d` still holds the
@@ -17,72 +17,9 @@ import HelmRuntime
 /// a gate vacuous the same way a fake that answers synchronously does — the
 /// second call finds the world already tidied and never meets the gate at all.
 ///
-/// So this one holds the completion, and `isSudoersInstalled()` goes on
+/// So this one is built to hold the completion, and `isSudoersInstalled()` goes on
 /// answering yes until the prompt is answered. That is the state the real port
 /// is in for minutes at a time.
-/// **Every field here is written on one thread and read on another.** The ask
-/// runs inside `shell.async` on the coordinator's own queue; the test reads the
-/// counts on the main actor. One lock and the fields behind it, the shape
-/// `Locked` carries for the same reason — the barrier below orders the two,
-/// and the lock is what makes the read of a plain `Int` legal rather than merely
-/// lucky.
-private final class RemovalPromptClamshell: ClamshellPort, @unchecked Sendable {
-    private let lock = NSLock()
-    private var installed = true
-    private var removes = 0
-    private var installs = 0
-    private var report = ""
-    private var pendingRemovals: [(Bool) -> Void] = []
-
-    private func locked<T>(_ body: () -> T) -> T {
-        lock.lock(); defer { lock.unlock() }; return body()
-    }
-
-    var sudoersInstalled: Bool {
-        get { locked { installed } }
-        set { locked { installed = newValue } }
-    }
-    var removeCount: Int { locked { removes } }
-    var installCount: Int { locked { installs } }
-
-    func canDisableSleepWithoutPassword() -> Bool { locked { installed } }
-    func isSudoersInstalled() -> Bool { locked { installed } }
-
-    func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
-        locked { installs += 1; installed = true }
-        done(true)
-    }
-
-    /// A rule that cannot take itself out — the case the dialog still exists
-    /// for, and therefore the only one in which this file's subject is reached
-    /// at all. Answering `true` here would withdraw the rule for free and the
-    /// gate below would never be met, which is the vacuum this fake was written
-    /// to avoid on the other side.
-    func removeSudoersWithoutPassword() -> Bool { false }
-
-    /// The prompt goes up and stays up. The file is still there.
-    func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
-        locked { removes += 1; pendingRemovals.append(done) }
-    }
-
-    /// The person typed their password (or clicked Cancel). Only now does the
-    /// file go — and only if they said yes.
-    func answerRemovalPrompts(granted: Bool) {
-        // The completions are called outside the lock: each one re-enters this
-        // fake through `finishedRemoving`, and a lock held across that is a
-        // deadlock waiting for the first port that answers on the same thread.
-        let waiting: [(Bool) -> Void] = locked {
-            let held = pendingRemovals
-            pendingRemovals = []
-            if granted { installed = false }
-            return held
-        }
-        for done in waiting { done(granted) }
-    }
-
-    func setDisableSleep(_ on: Bool) -> Bool { true }
-    func pmsetReport() -> String? { locked { report } }
-}
 
 /// Switching «stay awake with the lid closed» off takes the passwordless-sudo
 /// rule back out — and asks for a password to do it.
@@ -116,13 +53,18 @@ private final class RemovalPromptClamshell: ClamshellPort, @unchecked Sendable {
 final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
 
     private var store: NamespacedStore!
-    private var clamshell: RemovalPromptClamshell!
+    private var clamshell: FakeClamshell!
     private var engine: KeepAwakeEngine!
 
     override func setUp() {
         super.setUp()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
-        clamshell = RemovalPromptClamshell()
+        clamshell = FakeClamshell(holdsRemovals: true)
+        clamshell.sudoersInstalled = true
+        // A rule that cannot take itself out — the case the dialog still exists
+        // for, and therefore the only one in which this file's subject is reached
+        // at all. Letting it withdraw itself would never meet the gate below.
+        clamshell.withdrawalIsGranted = false
         // The option is on and its rule is installed, which is where somebody
         // who has used the feature starts — and it is what makes switching it
         // off below an *edge* rather than a value that was always false.
@@ -163,7 +105,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     func testTurningTheOptionOffAsksToRemoveTheRule() async {
         await switchTheOption(false)
 
-        XCTAssertEqual(clamshell.removeCount, 1,
+        XCTAssertEqual(clamshell.removeCalls, 1,
                        "a NOPASSWD line for a feature that is off is a grant nobody is holding")
     }
 
@@ -172,11 +114,11 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// swatch, the jiggle interval. Every one of those is a `settingsChanged`.
     func testAChangeMadeWhileTheRemovalPromptIsUpDoesNotAskAgain() async {
         await switchTheOption(false)
-        XCTAssertEqual(clamshell.removeCount, 1, "precondition: one prompt is up")
+        XCTAssertEqual(clamshell.removeCalls, 1, "precondition: one prompt is up")
 
         await settingsChanged()
 
-        XCTAssertEqual(clamshell.removeCount, 1,
+        XCTAssertEqual(clamshell.removeCalls, 1,
                        "a second administrator password dialog was stacked on the one already "
                        + "up, for the decision the person already made — the install side keeps "
                        + "`installInFlight` for precisely this")
@@ -187,7 +129,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         await switchTheOption(false)
         for _ in 0..<4 { await settingsChanged() }
 
-        XCTAssertEqual(clamshell.removeCount, 1,
+        XCTAssertEqual(clamshell.removeCalls, 1,
                        "five ordinary edits on the settings page, five password dialogs")
     }
 
@@ -200,12 +142,12 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// no test can fail is a flag the next reader deletes.
     func testFlickingTheSwitchWhileThePromptIsUpDoesNotStackPrompts() async {
         await switchTheOption(false)
-        XCTAssertEqual(clamshell.removeCount, 1, "precondition: one prompt is up")
+        XCTAssertEqual(clamshell.removeCalls, 1, "precondition: one prompt is up")
 
         await switchTheOption(true)
         await switchTheOption(false)
 
-        XCTAssertEqual(clamshell.removeCount, 1,
+        XCTAssertEqual(clamshell.removeCalls, 1,
                        "a second administrator dialog was stacked on the one already up, for a "
                        + "rule that is still on disk because nobody has answered the first")
         // Answered, so nothing is left waiting on a completion this test owns.
@@ -227,7 +169,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         await switchTheOption(true)
         await switchTheOption(false)
 
-        XCTAssertEqual(clamshell.removeCount, 1)
+        XCTAssertEqual(clamshell.removeCalls, 1)
     }
 
     /// A prompt that was **declined** is a different state from one that is up:
@@ -248,7 +190,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         await switchTheOption(true)
         await switchTheOption(false)
 
-        XCTAssertEqual(clamshell.removeCount, 2,
+        XCTAssertEqual(clamshell.removeCalls, 2,
                        "the person clicked Cancel once and the rule can never be removed again")
     }
 
@@ -264,7 +206,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// turn of the lid switch may raise the dialog for it, never a Start press.
     func testARuleRemovedWhileTheOptionWentBackOnIsAskedForAgainByTheSwitchNotByStart() async {
         await switchTheOption(false)
-        XCTAssertEqual(clamshell.removeCount, 1, "precondition: a removal is in flight")
+        XCTAssertEqual(clamshell.removeCalls, 1, "precondition: a removal is in flight")
 
         await switchTheOption(true)
         // …and only now does the person answer the dialog that is still up.
@@ -276,7 +218,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         await drainMainQueue()
 
         XCTAssertTrue(engine.isActive, "precondition: the press started a session")
-        XCTAssertEqual(clamshell.installCount, 0,
+        XCTAssertEqual(clamshell.installCalls, 0,
                        "a Start press raised the administrator dialog for the vanished rule")
         XCTAssertFalse(engine.clamshellActive, "the session holds the Mac without the lid rule")
 
@@ -285,7 +227,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         await engine.drainClamshellForTests()
         await drainMainQueue()
 
-        XCTAssertEqual(clamshell.installCount, 1,
+        XCTAssertEqual(clamshell.installCalls, 1,
                        "the person turned the lid switch on over a rule that is no longer "
                        + "there, and nothing went to ask for it")
     }

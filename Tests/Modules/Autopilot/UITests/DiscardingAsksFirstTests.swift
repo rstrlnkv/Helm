@@ -38,7 +38,7 @@ final class DiscardingAsksFirstTests: XCTestCase {
             let work = FakeAutopilotWork()
             let model = model(work)
             model.ask(gesture)
-            try? await Task.sleep(nanoseconds: 50_000_000)
+            await grace(0.05)
             XCTAssertEqual(work.count(drop), 0, "\(gesture) dropped on the press")
             XCTAssertEqual(model.pendingDiscard, gesture)
         }

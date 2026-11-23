@@ -50,8 +50,8 @@ final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = scratchDirectory("silent-shot")
         let session = CaptureSession(capture: FakeScreen(outcome: .frozen(Freeze(displays: frames.map { .image($0) }, windows: []))),
-                                     writer: disk, trash: NoTrash(), pasteboard: board, preferences: NoPreferences(),
-                                     shutter: NoShutter(), textReader: NoTextReader(),
+                                     writer: disk, trash: AsideTrash.refusing(), pasteboard: board, preferences: NoPreferences(),
+                                     shutter: CountingShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let toast = ShotToastRig.toast(clock)

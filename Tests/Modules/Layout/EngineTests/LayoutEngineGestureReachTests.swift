@@ -21,8 +21,8 @@ final class LayoutEngineGestureReachTests: XCTestCase {
 
     private func engine() -> LayoutEngine {
         typing = FakeTyping(); context = FakeSecure(); tap = FakeTap()
-        let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
-                                  translation: SameLengthTranslation(), spell: CyrillicSpell(),
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: FakeSources(follows: false),
+                                  translation: FakeTranslation(sameLength: true), spell: FakeSpell(cyrillic: true),
                                   secure: context, activation: FakeActivation())
         engine.activate()
         return engine

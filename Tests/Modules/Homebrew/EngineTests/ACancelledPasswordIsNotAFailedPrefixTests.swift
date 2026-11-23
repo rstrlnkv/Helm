@@ -22,7 +22,7 @@ final class ACancelledPasswordIsNotAFailedPrefixTests: XCTestCase {
         XCTAssertEqual(state?.phase, .failed)
         XCTAssertEqual(state?.reason, .authorizationDeclined)
         XCTAssertNil(state?.exitCode, "a cancelled dialog was given an exit code")
-        XCTAssertTrue(rig.runner.calls.isEmpty, "the installer ran after the person said no")
+        XCTAssertTrue(rig.runner.streamed.isEmpty, "the installer ran after the person said no")
     }
 
     /// Root was asked and the script failed: the other named outcome, with the
@@ -35,7 +35,7 @@ final class ACancelledPasswordIsNotAFailedPrefixTests: XCTestCase {
         let (state, _) = await rig.replayed()
         XCTAssertEqual(state?.reason, .prefixNotPrepared)
         XCTAssertEqual(state?.exitCode, 1)
-        XCTAssertTrue(rig.runner.calls.isEmpty)
+        XCTAssertTrue(rig.runner.streamed.isEmpty)
     }
 
     func testAnAcceptedDialogStartsTheInstallerWithTheDeclaredEnvironment() {
@@ -43,7 +43,7 @@ final class ACancelledPasswordIsNotAFailedPrefixTests: XCTestCase {
 
         rig.engine.installBrew()
 
-        XCTAssertEqual(rig.runner.calls.count, 1)
+        XCTAssertEqual(rig.runner.streamed.count, 1)
         XCTAssertEqual(rig.runner.streamCalls.first?.env, HomebrewEngine.installerEnvironment)
     }
 

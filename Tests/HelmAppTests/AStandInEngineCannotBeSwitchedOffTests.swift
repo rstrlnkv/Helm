@@ -33,20 +33,10 @@ final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
 
     private final class PageModel {}
 
-    private final class Probe: ModuleEngine {
-        let standsIn: Bool
-        var willDisableCalls = 0
-        var deactivateCalls = 0
-        init(standsIn: Bool) { self.standsIn = standsIn }
-        func activate() {}
-        func willDisable() { willDisableCalls += 1 }
-        func deactivate() { deactivateCalls += 1 }
-    }
-
     private class Base: StandInDescriptor {
         class var id: ModuleID { fatalError() }
-        let engine: Probe
-        init(standsIn: Bool) { engine = Probe(standsIn: standsIn) }
+        let engine: FakeEngine
+        init(standsIn: Bool) { engine = FakeEngine(standsIn: standsIn) }
         func makeModule(store: NamespacedStore) -> ModuleParts<PageModel> {
             ModuleParts(engine: engine, model: PageModel())
         }
@@ -84,8 +74,8 @@ final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
             switching a stand-in off wrote "off" into the real store: the next ordinary launch \
             finds the module off, with whatever the real engine had taken left and no engine to recover it.
             """)
-        XCTAssertEqual(d.engine.willDisableCalls, 0, "the stand-in was asked to give back what it never took")
-        XCTAssertEqual(d.engine.deactivateCalls, 0, "the stand-in was torn down by a refused switch")
+        XCTAssertEqual(d.engine.willDisables, 0, "the stand-in was asked to give back what it never took")
+        XCTAssertEqual(d.engine.deactivations, 0, "the stand-in was torn down by a refused switch")
         XCTAssertNotNil(host.liveModule(Self.standInID), "the refused switch still dropped the engine")
         XCTAssertTrue(host.anyStandsIn, "the host does not say a stand-in is live, so the reset cannot refuse")
     }
@@ -101,8 +91,8 @@ final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
         host.setEnabled(d, false)
 
         XCTAssertEqual(enabledKey(Self.ordinaryID) as? Bool, false, "the person's off was not recorded")
-        XCTAssertEqual(d.engine.willDisableCalls, 1)
-        XCTAssertEqual(d.engine.deactivateCalls, 1)
+        XCTAssertEqual(d.engine.willDisables, 1)
+        XCTAssertEqual(d.engine.deactivations, 1)
         XCTAssertNil(host.liveModule(Self.ordinaryID))
     }
 

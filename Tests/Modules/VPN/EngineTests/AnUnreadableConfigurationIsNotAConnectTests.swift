@@ -30,17 +30,16 @@ final class AnUnreadableConfigurationIsNotAConnectTests: XCTestCase {
 
     // MARK: - The port: KeychainCredentials
 
-    private final class ShowRunner: VPNRunnerPort, @unchecked Sendable {
-        let answer: HelmProcess.Result
-        init(_ answer: HelmProcess.Result) { self.answer = answer }
-        func run(_ args: [String]) -> HelmProcess.Result { answer }
-        func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result { answer }
-        func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer { .started }
+    private func runner(answering answer: HelmProcess.Result) -> FakeRunner {
+        let runner = FakeRunner()
+        runner.exitStatus = answer.status
+        runner.reply = answer.output
+        return runner
     }
 
     private func read(_ answer: HelmProcess.Result) -> VPNCredentialRead {
         // `purge: {}`: no test may run the real keychain purge.
-        KeychainCredentials(purge: {}, runner: ShowRunner(answer),
+        KeychainCredentials(purge: {}, runner: runner(answering: answer),
                             keychainDeadline: KeychainCredentials.systemKeychainDeadline)
             .credentials(for: "Office", promptingAllowed: false)
     }

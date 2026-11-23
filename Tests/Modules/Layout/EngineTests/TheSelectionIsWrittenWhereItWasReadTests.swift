@@ -39,93 +39,14 @@ import XCTest
 @MainActor
 final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
 
-    /// The two halves of the secure check stay separate, as they are on the
-    /// real port: `isSecureInput` is the cheap system-wide syscall, `isSecure`
-    /// also recognises a password field by its accessibility role. Folding them
-    /// into one flag makes «the field that took focus is a password field» a
-    /// state no test in the file could write down.
-    private final class DriftContext: SecureContextPort, @unchecked Sendable {
-        private let lock = NSLock()
-        private var storedBundle = "com.apple.Notes"
-        private var storedMainReads = 0
-        /// Written from the read's own thread and read from the one that types,
-        /// which is the whole point of the suite — so it is locked rather than
-        /// merely `@unchecked`.
-        var bundle: String {
-            get { lock.lock(); defer { lock.unlock() }; return storedBundle }
-            set { lock.lock(); storedBundle = newValue; lock.unlock() }
-        }
-        /// How many times the engine has asked who is in front **from the main
-        /// queue**.
-        ///
-        /// The thread is the whole point of the marker. `convertSelection` asks this
-        /// question and calls `replaceSelection` inside one main-queue block, and
-        /// a `@MainActor` test polling with `Task.yield()` is itself a main-queue
-        /// item — so it cannot observe the count move until that block has run to
-        /// its end. Once this is above zero, the write has either happened or
-        /// never will, and there is no window left for it to happen in.
-        ///
-        /// A repair that refuses on the background queue before the hop would
-        /// never move this, and `waitUntil` says «never reached» rather than
-        /// passing quietly. That is the right failure: it means the wait needs a
-        /// new marker, not that the absence below was proved.
-        var mainReads: Int { lock.lock(); defer { lock.unlock() }; return storedMainReads }
-        var systemWideSecure = false
-        var passwordField = false
-        func isSecureInput() -> Bool { systemWideSecure }
-        func isSecure() -> Bool { systemWideSecure || passwordField }
-        func frontmostBundleID() -> String {
-            let onMain = Thread.isMainThread
-            lock.lock()
-            if onMain { storedMainReads += 1 }
-            let front = storedBundle
-            lock.unlock()
-            return front
-        }
-    }
-
-    private final class DriftSelection: SelectionPort, @unchecked Sendable {
-        private let lock = NSLock()
-        private var storedText: String?
-        private var storedReplaced: [String] = []
-        private var storedReads = 0
-        /// Run *inside* the read, which is where the real port spends its time:
-        /// an accessibility round trip. Whatever the person does to their Mac in that window
-        /// happens here.
-        var whileReading: (@Sendable () -> Void)?
-
-        var text: String? {
-            get { lock.lock(); defer { lock.unlock() }; return storedText }
-            set { lock.lock(); storedText = newValue; lock.unlock() }
-        }
-        var replaced: [String] { lock.lock(); defer { lock.unlock() }; return storedReplaced }
-        var reads: Int { lock.lock(); defer { lock.unlock() }; return storedReads }
-
-        private func read() -> String? {
-            lock.lock(); storedReads += 1; let text = storedText; lock.unlock()
-            whileReading?()
-            return text
-        }
-        func selectedTextWithoutClipboard() -> String? { read() }
-        func replaceSelection(with text: String) -> Bool {
-            lock.lock(); storedReplaced.append(text); lock.unlock()
-            return true
-        }
-    }
-
-    private struct DriftTranslation: TranslationPort {
-        func translate(_ word: String, from: String, to: String) -> String? {
-            from == "en" ? ["ghbdtn": "привет"][word] : nil
-        }
-    }
-
-    private var context = DriftContext()
-    private var selection = DriftSelection()
+    private var context = FakeSecure()
+    private var selection = FakeSelection()
 
     private func engine() -> LayoutEngine {
-        context = DriftContext(); selection = DriftSelection()
+        context = FakeSecure(); selection = FakeSelection()
         let engine = LayoutEngine(tap: FakeTap(), typing: FakeTyping(),
-                                  sources: StuckSources(), translation: DriftTranslation(),
+                                  sources: FakeSources(follows: false), translation: FakeTranslation(otherwise: { word, from, _ in
+                                      from == "en" ? ["ghbdtn": "привет"][word] : nil }),
                                   spell: FakeSpell(valid: ["привет"]), secure: context, activation: FakeActivation(), selection: selection)
         engine.activate()
         return engine

@@ -35,7 +35,7 @@ final class ExtensionHostBlameTests: XCTestCase {
     }
 
     private func engine(hosts: Set<String>) -> UninstallerEngine {
-        UninstallerEngine(home: root, apps: FakeApps(), fs: EveryPathExists(),
+        UninstallerEngine(home: root, apps: FakeApps(), fs: FakeFS(everyPathExistsAt: 0),
                           trash: RefusesEverything(), running: NoRunning(),
                           extensions: HostsExtension(hosts: hosts))
     }

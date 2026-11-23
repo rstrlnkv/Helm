@@ -17,29 +17,29 @@ import HelmContract
 /// **The runner has to be one that does not answer.** With a fake that calls
 /// `onExit` synchronously, the flag is released before the first call returns
 /// and a second one is admitted correctly — so a test built on such a fake
-/// passes whether the guard exists or not. `HangingRunner` never exits, which
+/// passes whether the guard exists or not. `ScriptedRunner` never exits, which
 /// is what a real `brew install` looks like for the seconds that matter.
 final class OneOperationAtATimeTests: XCTestCase {
 
     func testASecondOperationIsRefusedWhileTheFirstIsStillRunning() {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let engine = brewEngine(runner)
 
         engine.install(name: "wget", isCask: false)
-        XCTAssertEqual(runner.calls.count, 1, "precondition: the first operation started")
+        XCTAssertEqual(runner.streamed.count, 1, "precondition: the first operation started")
 
         engine.uninstall(name: "jq", isCask: false)
 
-        XCTAssertEqual(runner.calls.count, 1,
+        XCTAssertEqual(runner.streamed.count, 1,
                        "a second brew ran against the same prefix while the first was "
-                       + "still going: \(runner.calls)")
+                       + "still going: \(runner.streamed)")
     }
 
     /// Every verb goes through the same gate, so none of them may be the one
     /// that slips past a running operation.
     func testEveryLongOperationRespectsTheGate() {
         for second in ["install", "uninstall", "upgrade", "upgradeAll"] {
-            let runner = HangingRunner()
+            let runner = ScriptedRunner(streams: .hold)
             let engine = brewEngine(runner)
             engine.install(name: "wget", isCask: false)
 
@@ -50,48 +50,48 @@ final class OneOperationAtATimeTests: XCTestCase {
             default: engine.upgradeAll()
             }
 
-            XCTAssertEqual(runner.calls.count, 1, "\(second) ran beside a live operation")
+            XCTAssertEqual(runner.streamed.count, 1, "\(second) ran beside a live operation")
         }
     }
 
     /// The other half: the flag is *released*. A guard that never lets go is a
     /// module that works once per launch, and it would pass the test above.
     func testTheNextOperationIsAdmittedOnceTheFirstHasFinished() {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let engine = brewEngine(runner)
 
         engine.install(name: "wget", isCask: false)
         runner.finishAll()
         engine.uninstall(name: "jq", isCask: false)
 
-        XCTAssertEqual(runner.calls.count, 2,
-                       "the operation ended and the gate stayed shut: \(runner.calls)")
+        XCTAssertEqual(runner.streamed.count, 2,
+                       "the operation ended and the gate stayed shut: \(runner.streamed)")
     }
 
     /// And a failure releases it too. `endBusy` runs before the exit code is
     /// looked at, so a `brew` that exits non-zero must not wedge the module.
     func testAFailedOperationAlsoReleasesTheGate() {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let engine = brewEngine(runner)
 
         engine.install(name: "wget", isCask: false)
         runner.finishAll(code: 1)
         engine.upgradeAll()
 
-        XCTAssertEqual(runner.calls.count, 2, "a failed operation left the gate shut")
+        XCTAssertEqual(runner.streamed.count, 2, "a failed operation left the gate shut")
     }
 
     /// A second confirmed fix that is refused (its name left the Cellar) must
     /// not write `.failed` over the first fix's `.running`: Stop would go and
     /// the gate would look open while the child runs.
     func testARefusedSecondFixNeverOverwritesTheRunningOne() async {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester", news: news)
 
         engine.runDoctorFix(["cleanup"])
-        XCTAssertEqual(runner.calls.count, 1, "precondition: the first fix started")
+        XCTAssertEqual(runner.streamed.count, 1, "precondition: the first fix started")
         let first = await lastOpState(news)
         XCTAssertEqual(first?.phase, .running, "precondition: the first fix reached .running")
 
@@ -104,7 +104,7 @@ final class OneOperationAtATimeTests: XCTestCase {
         XCTAssertEqual(after?.phase, .running, "the refused press overwrote the running fix: \(String(describing: after))")
         XCTAssertEqual(after?.label, "cleanup")
         engine.install(name: "wget", isCask: false)
-        XCTAssertEqual(runner.calls.count, 1, "the gate was open while the first fix ran")
+        XCTAssertEqual(runner.streamed.count, 1, "the gate was open while the first fix ran")
     }
 
     private final class SwitchableLocator: BrewLocator, @unchecked Sendable {
@@ -121,7 +121,7 @@ final class OneOperationAtATimeTests: XCTestCase {
     /// A press with brew gone is refused inside the gate: it must not
     /// overwrite a running operation, and it must hand the gate back.
     func testABrewMissingRefusalKeepsTheGateAndReleasesIt() async {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let locator = SwitchableLocator("/opt/homebrew/bin/brew")
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: locator, runner: runner,
@@ -148,6 +148,6 @@ final class OneOperationAtATimeTests: XCTestCase {
 
         locator.path = "/opt/homebrew/bin/brew"
         engine.install(name: "jq", isCask: false)
-        XCTAssertEqual(runner.calls.count, 2, "a refused press left the gate shut")
+        XCTAssertEqual(runner.streamed.count, 2, "a refused press left the gate shut")
     }
 }

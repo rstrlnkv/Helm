@@ -43,13 +43,15 @@ final class TheShutterHonoursBothSwitchesTests: XCTestCase {
         let rig = Rig(home: scratchDirectory("shots-shutter-press"))
         rig.capture.outcome = .frozen(Freeze(
             displays: [Rig.display(1), Rig.display(2, origin: CGPoint(x: 100, y: 0))], windows: []))
-        let atPlay = Probe(rig.writer)
+        // How many files existed each time it was asked to sound.
+        let writer = rig.writer, seen = Locked<[Int]>([])
+        let atPlay = FakeShutter(onPlay: { let count = writer.written.count; seen.withLock { $0.append(count) } })
         let session = CaptureSession(capture: rig.capture, writer: rig.writer, trash: rig.trash, pasteboard: rig.pasteboard,
                                      preferences: rig.preferences, shutter: atPlay, textReader: rig.reader,
                                      settings: { .defaults }, naming: { .english },
                                      locations: ScreenshotsLocations(home: rig.home, desktop: rig.desktop))
         _ = await session.captureScreens()
-        XCTAssertEqual(atPlay.written, [0], "the shutter did not sound exactly once, before the first file")
+        XCTAssertEqual(seen.value, [0], "the shutter did not sound exactly once, before the first file")
         XCTAssertEqual(rig.writer.written.count, 2)
     }
 
@@ -62,14 +64,5 @@ final class TheShutterHonoursBothSwitchesTests: XCTestCase {
             _ = await rig.session.captureScreens()
             XCTAssertEqual(rig.shutter.plays, 0, what)
         }
-    }
-
-    /// Records how many files existed when it was asked to sound.
-    private final class Probe: ShutterPlaying, @unchecked Sendable {
-        private let writer: FakeWriter
-        private let seen = Locked<[Int]>([])
-        init(_ writer: FakeWriter) { self.writer = writer }
-        var written: [Int] { seen.value }
-        func play() { let count = writer.written.count; seen.withLock { $0.append(count) } }
     }
 }

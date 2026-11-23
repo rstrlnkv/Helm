@@ -4,10 +4,6 @@ import HelmContract
 import HelmRuntime
 import HelmTestSupport
 
-private struct DefaultsTranslation: TranslationPort {
-    func translate(_ word: String, from: String, to: String) -> String? { "привет" }
-}
-
 /// Before anyone has chosen, each setting reads as it did when the defaults were
 /// spelled inline in the engine and the pages. Moving them into one table must
 /// not move a value: a changed default silently changes what every new install
@@ -53,8 +49,8 @@ final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
             let store = store()
             if let audible { store.set(audible, for: LayoutKey.audible) }
             let tap = FakeTap(), sound = FakeSound()
-            let engine = LayoutEngine(tap: tap, typing: FakeTyping(), sources: StuckSources(),
-                                      translation: DefaultsTranslation(), spell: CyrillicSpell(),
+            let engine = LayoutEngine(tap: tap, typing: FakeTyping(), sources: FakeSources(follows: false),
+                                      translation: FakeTranslation(otherwise: { _, _, _ in "привет" }), spell: FakeSpell(cyrillic: true),
                                       secure: FakeSecure(), activation: FakeActivation(),
                                       sound: sound, settings: store)
             engine.activate()
@@ -72,8 +68,8 @@ final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
     /// writes `true` into the store first.
     func testAFreshStoreCorrectsASlippedCapital() {
         let tap = FakeTap(), typing = FakeTyping()
-        let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
-                                  translation: DefaultsTranslation(), spell: CyrillicSpell(),
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: FakeSources(follows: false),
+                                  translation: FakeTranslation(otherwise: { _, _, _ in "привет" }), spell: FakeSpell(cyrillic: true),
                                   secure: FakeSecure(), activation: FakeActivation(),
                                   sound: FakeSound(), settings: store())
         engine.activate()
@@ -91,8 +87,8 @@ final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
             let store = store()
             store.set(audible, for: LayoutKey.audible)
             let tap = FakeTap(), sound = FakeSound()
-            let engine = LayoutEngine(tap: tap, typing: FakeTyping(), sources: StuckSources(),
-                                      translation: DefaultsTranslation(), spell: CyrillicSpell(),
+            let engine = LayoutEngine(tap: tap, typing: FakeTyping(), sources: FakeSources(follows: false),
+                                      translation: FakeTranslation(otherwise: { _, _, _ in "привет" }), spell: FakeSpell(cyrillic: true),
                                       secure: FakeSecure(), activation: FakeActivation(),
                                       sound: sound, selection: FakeSelection("ghbdtn"), settings: store)
             engine.activate()

@@ -52,52 +52,11 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
     /// deadline a `scutil` read could sensibly carry, far below the suite.
     private let bound: TimeInterval = 3
 
-    private enum Step { case answer(HelmProcess.Result), hang }
-
-    /// A tool scripted per command, that can be made to never answer.
-    private final class Runner: VPNRunnerPort, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _issued: [[String]] = []
-        private let release = DispatchSemaphore(value: 0)
-        var handler: (@Sendable (_ args: [String], _ nth: Int) -> Step)?
-
-        var issued: [[String]] { lock.lock(); defer { lock.unlock() }; return _issued }
-        func count(of args: [String]) -> Int { issued.filter { $0 == args }.count }
-
-        /// A command: unbounded, so a scripted hang really parks the caller.
-        func run(_ args: [String]) -> HelmProcess.Result { answer(args, bounded: false) }
-
-        /// A query: bounded, like `ScutilRunner.read`. A scripted hang comes back
-        /// at once with what the real runner answers once its deadline has
-        /// passed — `timedOutStatus` and no output — so the engine is tested on
-        /// what it does with that answer, and a test never waits out a clock.
-        func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result {
-            answer(args, bounded: true)
-        }
-
-        private func answer(_ args: [String], bounded: Bool) -> HelmProcess.Result {
-            lock.lock()
-            let nth = _issued.filter { $0 == args }.count
-            _issued.append(args)
-            lock.unlock()
-            switch handler?(args, nth) ?? .answer(.init(status: 0, output: "")) {
-            case .answer(let result): return result
-            case .hang:
-                if bounded { return .init(status: HelmProcess.timedOutStatus, output: "") }
-                _ = release.wait(timeout: .now() + 120)
-                return .init(status: -1, output: "")
-            }
-        }
-        func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer { .started }
-        /// Lets every parked call go, so no thread outlives its test.
-        func releaseAll() { for _ in 0..<16 { release.signal() } }
-    }
-
-    private var runner: Runner!
+    private var runner: FakeRunner!
 
     override func setUp() {
         super.setUp()
-        runner = Runner()
+        runner = FakeRunner()
         tailTheLog()
     }
 
