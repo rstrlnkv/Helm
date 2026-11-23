@@ -17,9 +17,7 @@ final class HelmTrashSealedTests: XCTestCase {
     }
 
     private func file(_ base: String, bytes: Int = 300_000) throws -> String {
-        let url = root.appendingPathComponent(unownableLeaf(base))
-        try Data(repeating: 0x41, count: bytes).write(to: url)
-        return url.path
+        try write(unownableLeaf(base), in: root, bytes: bytes).path
     }
 
     func testAMoveThatReturnsAndLeavesTheFileIsRefusedAndNotCounted() throws {

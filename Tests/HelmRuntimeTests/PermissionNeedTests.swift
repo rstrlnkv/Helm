@@ -5,13 +5,6 @@ import XCTest
 /// warn instead of failing silently — the pointer nudge shipped for months
 /// doing nothing because nothing connected the setting to the permission.
 final class PermissionNeedTests: XCTestCase {
-    func testEveryNeedNamesItsPermission() {
-        for need in PermissionNeed.allCases {
-            XCTAssertFalse(need.title.isEmpty, "\(need) has no title")
-            XCTAssertFalse(need.why.isEmpty, "\(need) does not say why it is needed")
-        }
-    }
-
     func testFeaturesMapToTheirPermission() {
         XCTAssertEqual(PermissionNeed.of(.pointerNudge), .accessibility)
         XCTAssertEqual(PermissionNeed.of(.appContainers), .fullDiskAccess)

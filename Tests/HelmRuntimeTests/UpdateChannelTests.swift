@@ -3,11 +3,8 @@ import XCTest
 
 final class UpdateChannelSelectionTests: XCTestCase {
     private func releaseJSON(tag: String, prerelease: Bool, draft: Bool = false) -> String {
-        """
-        {"tag_name":"\(tag)","html_url":"https://x/\(tag)","body":"notes",
-         "prerelease":\(prerelease),"draft":\(draft),
-         "assets":[{"name":"Helm-\(tag).zip","browser_download_url":"https://x/\(tag).zip"}]}
-        """
+        ReleaseJSON.release(tag: tag, page: "https://x/\(tag)", body: "notes", prerelease: prerelease, draft: draft,
+                            assets: [("Helm-\(tag).zip", "https://x/\(tag).zip")])
     }
 
     /// The dev channel reads the releases LIST and must pick the newest entry

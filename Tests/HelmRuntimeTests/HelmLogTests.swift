@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// Guards the dev build that an «off» saved by the beta silenced (fix 4ce355a9).
@@ -71,11 +72,6 @@ final class TheLogFileIsAsPrivateAsItsFolderTests: XCTestCase {
         HelmLog.shared.setEnabled(false)
         HelmLog.shared.clearTail()
         super.tearDown()
-    }
-
-    private func mode(of url: URL) throws -> Int {
-        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
-        return try XCTUnwrap(attributes[.posixPermissions] as? Int)
     }
 
     /// A file this app writes itself. The destination is the test folder — the

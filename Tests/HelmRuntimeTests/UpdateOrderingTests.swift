@@ -91,11 +91,8 @@ struct SeededGenerator: RandomNumberGenerator {
 /// class above).
 final class UpdateListOrderTests: XCTestCase {
     private func release(_ tag: String, prerelease: Bool = true) -> String {
-        """
-        {"tag_name":"\(tag)","html_url":"https://x/\(tag)","body":"n",
-         "prerelease":\(prerelease),"draft":false,
-         "assets":[{"name":"Helm.zip","browser_download_url":"https://x/\(tag).zip"}]}
-        """
+        ReleaseJSON.release(tag: tag, page: "https://x/\(tag)", body: "n", prerelease: prerelease, draft: false,
+                            assets: [("Helm.zip", "https://x/\(tag).zip")])
     }
 
     /// The same three releases in all six orders must give the same answer.

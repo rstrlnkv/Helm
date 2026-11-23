@@ -64,11 +64,7 @@ public final class FolderWatcher: @unchecked Sendable {
             guard let info, let paths = paths.assumingMemoryBound(to: UnsafePointer<CChar>?.self)
                 as UnsafeMutablePointer<UnsafePointer<CChar>?>? else { return }
             let watcher = Unmanaged<FolderWatcher>.fromOpaque(info).takeUnretainedValue()
-            var changed: [String] = []
-            for index in 0..<count {
-                if let raw = paths[index] { changed.append(String(cString: raw)) }
-            }
-            watcher.onChange(changed)
+            watcher.onChange((0..<count).compactMap { index in paths[index].map { String(cString: $0) } })
         }
 
         // A second of latency: a download in progress writes many times, and

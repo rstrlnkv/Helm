@@ -8,25 +8,7 @@ import HelmTestSupport
 ///
 /// `ScanJournalTests` covers the happy rotation. These cover the states the
 /// rotation can be *found* in, which is a different list.
-final class ScanJournalInterruptedTests: XCTestCase {
-
-    private var directory: URL!
-    private var journal: ScanJournal!
-
-    override func setUp() {
-        super.setUp()
-        directory = scratchDirectory("scan-journal-broken")
-        journal = ScanJournal(directory: directory)
-    }
-
-    private func entry(_ bytes: Int, at seconds: TimeInterval = 0) -> ScanEntry {
-        ScanEntry(at: Date(timeIntervalSince1970: 1_785_600_000 + seconds),
-                  bytes: bytes, count: 1, seconds: 1.5)
-    }
-
-    private func item(_ path: String, _ bytes: Int) -> ScanItem {
-        ScanItem(path: path, bytes: bytes)
-    }
+final class ScanJournalInterruptedTests: ScanJournalRig {
 
     // MARK: - A rotation interrupted between the move and the write
 
@@ -44,8 +26,8 @@ final class ScanJournalInterruptedTests: XCTestCase {
     /// on the strength of a file that was never written.
     func testAnInterruptedRotationDoesNotReportTheWholeListAsFreed() {
         let found = [item("/a", 10), item("/b", 20)]
-        journal.record(entry(30, at: 0), items: found, module: "disk")
-        journal.record(entry(30, at: 60), items: found, module: "disk")
+        journal.record(entry(30, 1, at: 0), items: found, module: "disk")
+        journal.record(entry(30, 1, at: 60), items: found, module: "disk")
 
         // The crash: `current` was moved onto `previous`, the new one never landed.
         try? FileManager.default.removeItem(at: journal.listURL(module: "disk", .current))
@@ -62,8 +44,8 @@ final class ScanJournalInterruptedTests: XCTestCase {
     /// answers nil for a decode failure exactly as it does for a missing file,
     /// and `change` turns both into an empty scan.
     func testACorruptCurrentListIsNotAScanThatFoundNothing() throws {
-        journal.record(entry(30, at: 0), items: [item("/a", 10)], module: "disk")
-        journal.record(entry(30, at: 60), items: [item("/a", 10)], module: "disk")
+        journal.record(entry(30, 1, at: 0), items: [item("/a", 10)], module: "disk")
+        journal.record(entry(30, 1, at: 60), items: [item("/a", 10)], module: "disk")
         try Data([0x7b, 0x00, 0xff]).write(to: journal.listURL(module: "disk", .current))
 
         let change = journal.change(module: "disk")
@@ -84,10 +66,10 @@ final class ScanJournalInterruptedTests: XCTestCase {
     /// called to store.
     func testTheEntryJustRecordedIsNeverTheOneDropped() {
         for i in 0..<ScanJournal.limit {
-            journal.record(entry(i, at: 86_400 + TimeInterval(i) * 60), items: [],
+            journal.record(entry(i, 1, at: 86_400 + TimeInterval(i) * 60), items: [],
                            module: "disk")
         }
-        let afterTheClockWasFixed = entry(999, at: 0)
+        let afterTheClockWasFixed = entry(999, 1, at: 0)
         journal.record(afterTheClockWasFixed, items: [item("/a", 1)], module: "disk")
 
         XCTAssertNotNil(journal.list(module: "disk", .current),
@@ -107,9 +89,9 @@ final class ScanJournalInterruptedTests: XCTestCase {
     /// this code however far apart they really ran.
     func testAnEntryIsNotDroppedForTyingOnItsTimestamp() {
         for i in 0..<ScanJournal.limit {
-            journal.record(entry(i, at: 0), items: [], module: "disk")
+            journal.record(entry(i, 1, at: 0), items: [], module: "disk")
         }
-        let newest = entry(4242, at: 0)
+        let newest = entry(4242, 1, at: 0)
         journal.record(newest, items: [], module: "disk")
         XCTAssertTrue(journal.entries(module: "disk").contains(newest),
                       "the newest of a set of tied timestamps was the one dropped")

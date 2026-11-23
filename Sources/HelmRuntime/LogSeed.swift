@@ -25,6 +25,9 @@ import Foundation
 /// were written at rather than the instant. The alternative is discarding them.
 public enum LogSeed {
 
+    /// How many characters a stamp is: whatever `LogLine.stampFormat` spells.
+    fileprivate static let stampLength = LogLine.stampFormat.count
+
     /// What one line of the file turned back into.
     enum Line: Equatable {
         case entry(LogEntry)
@@ -64,7 +67,7 @@ public enum LogSeed {
         /// Exactly `yyyy-MM-dd HH:mm:ss.SSS`, or nothing: a stamp of another
         /// width is a line this app did not write, and the caller keeps it whole.
         func date(from stamp: Substring) -> Date? {
-            guard stamp.count == 23,
+            guard stamp.count == LogSeed.stampLength,
                   let seconds = Int(stamp.dropFirst(17).prefix(2)),
                   let millis = Int(stamp.suffix(3))
             else { return nil }
@@ -242,16 +245,20 @@ extension LogSeed {
         return versionOfGluedStart(entry)
     }
 
+    private static func isAppLine(_ entry: LogEntry, _ message: String) -> Bool {
+        entry.category == LogLine.appCategory && entry.message == message
+    }
+
     public static func isTerminating(_ entry: LogEntry) -> Bool {
-        entry.category == LogLine.appCategory && entry.message == LogLine.terminating
+        isAppLine(entry, LogLine.terminating)
     }
 
     public static func isLoggingDisabled(_ entry: LogEntry) -> Bool {
-        entry.category == LogLine.appCategory && entry.message == LogLine.loggingDisabled
+        isAppLine(entry, LogLine.loggingDisabled)
     }
 
     public static func isBareLoggingEnabled(_ entry: LogEntry) -> Bool {
-        entry.category == LogLine.appCategory && entry.message == LogLine.loggingEnabledWord
+        isAppLine(entry, LogLine.loggingEnabledWord)
     }
 
     /// `.some(nil)` for a bare «logging enabled» (older builds wrote no version),
@@ -287,8 +294,8 @@ extension LogSeed {
         let text = entry.category.isEmpty ? entry.message : entry.category + "] " + entry.message
         let marker = " [info] [\(LogLine.appCategory)] \(LogLine.startedPrefix)"
         guard let found = text.range(of: marker, options: .backwards),
-              text.distance(from: text.startIndex, to: found.lowerBound) >= 23,
-              isStamp(text[text.index(found.lowerBound, offsetBy: -23)..<found.lowerBound])
+              text.distance(from: text.startIndex, to: found.lowerBound) >= stampLength,
+              isStamp(text[text.index(found.lowerBound, offsetBy: -stampLength)..<found.lowerBound])
         else { return nil }
         return version(inMessage: String(text[text.index(found.upperBound, offsetBy: -LogLine.startedPrefix.count)...]))
     }
@@ -300,10 +307,10 @@ extension LogSeed {
         return String(message.dropFirst(LogLine.startedPrefix.count).dropLast(LogLine.startedSuffix.count))
     }
 
-    /// Exactly the 23 characters `LogLine.stampFormat` spells.
+    /// Exactly the `stampLength` characters `LogLine.stampFormat` spells.
     fileprivate static func isStamp(_ text: Substring) -> Bool {
         let stamp = Array(text)
-        guard stamp.count == 23 else { return false }
+        guard stamp.count == stampLength else { return false }
         return stamp.indices.allSatisfy { index in
             switch index {
             case 4, 7: return stamp[index] == "-"

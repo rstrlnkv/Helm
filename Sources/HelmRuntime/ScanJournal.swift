@@ -166,7 +166,7 @@ public final class ScanJournal: @unchecked Sendable {
             // `&& landed` on the right, so the write always runs: the entries
             // below are worth writing whether or not the list arrived, and
             // `&&` would skip them.
-            landed = write(items, to: current) && landed
+            landed = PrivateFile.write(items, to: current) && landed
 
             // **The entry just recorded always survives the trim.** Sorting
             // everything by date and cutting the tail loses it in two ordinary
@@ -183,8 +183,8 @@ public final class ScanJournal: @unchecked Sendable {
             let older = entries(module: module)
                 .filter { $0 != entry }
                 .sorted { $0.at > $1.at }
-            landed = write(Array(([entry] + older).prefix(Self.limit)),
-                           to: entriesURL(module: module)) && landed
+            landed = PrivateFile.write(Array(([entry] + older).prefix(Self.limit)),
+                                       to: entriesURL(module: module)) && landed
 
             guard !landed else { return }
             // The module id, never a path: this file names every file the scan
@@ -193,11 +193,5 @@ public final class ScanJournal: @unchecked Sendable {
                                 + "not in the history, and nothing new will be announced until "
                                 + "one lands")
         }
-    }
-
-    /// These files name every path a scan found; `PrivateFile` is why the mode
-    /// is set on every write rather than once at creation.
-    private func write<T: Encodable>(_ value: T, to url: URL) -> Bool {
-        return PrivateFile.write(value, to: url)
     }
 }

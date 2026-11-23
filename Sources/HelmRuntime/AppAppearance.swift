@@ -11,8 +11,7 @@ public enum AppAppearance: String, CaseIterable, Sendable {
     /// Anything unrecognised is the system's choice — the answer that is never
     /// wrong, and what a fresh install gets.
     public static func from(_ raw: String?) -> AppAppearance {
-        guard let raw, let value = AppAppearance(rawValue: raw) else { return .system }
-        return value
+        raw.flatMap(AppAppearance.init(rawValue:)) ?? .system
     }
 
     /// The `NSAppearance` name to force, or nil to follow the system.

@@ -198,7 +198,7 @@ public enum HelmFailure {
         // it, and no path either — it says the file is somewhere it is not.
         let home = NSHomeDirectory()
         if !home.isEmpty {
-            for spelling in [Redact.FirmlinkTwin.dataMount + home, home] {
+            for spelling in [DataVolume.mount + home, home] {
                 flat = replacingHome(spelling, in: flat)
             }
         }

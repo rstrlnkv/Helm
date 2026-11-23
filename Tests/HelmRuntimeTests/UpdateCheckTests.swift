@@ -3,11 +3,7 @@ import XCTest
 
 final class UpdateCheckTests: XCTestCase {
     private func release(tag: String, assets: [(String, String)] = []) -> Data {
-        let assetsJSON = assets.map {
-            #"{"name":"\#($0.0)","browser_download_url":"\#($0.1)"}"#
-        }.joined(separator: ",")
-        return #"{"tag_name":"\#(tag)","html_url":"https://example.com/r","body":"notes","assets":[\#(assetsJSON)]}"#
-            .data(using: .utf8)!
+        ReleaseJSON.releaseData(tag: tag, body: "notes", assets: assets)
     }
 
     func testNoReleasesReadsAsUpToDate() {

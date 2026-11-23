@@ -36,7 +36,7 @@ public enum HelmActivity {
 
     private static let lock = NSLock()
     nonisolated(unsafe) private static var live: [String: Running] = [:]
-    private static let signposts = OSLog(subsystem: "com.helm.app", category: .pointsOfInterest)
+    private static let signposts = OSLog(subsystem: AppBuild.releaseIdentifier, category: .pointsOfInterest)
 
     /// Runs `body` as a named phase. The `defer` closes the interval on every way
     /// out — return, throw, cancellation — which is the whole reason this is a
@@ -44,12 +44,8 @@ public enum HelmActivity {
     @discardableResult
     public static func phase<T>(_ label: String, _ body: () throws -> T) rethrows -> T {
         let id = OSSignpostID(log: signposts)
-        begin(label)
-        os_signpost(.begin, log: signposts, name: "phase", signpostID: id, "%{public}s", label)
-        defer {
-            os_signpost(.end, log: signposts, name: "phase", signpostID: id, "%{public}s", label)
-            end(label)
-        }
+        open(label, id)
+        defer { close(label, id) }
         return try body()
     }
 
@@ -58,13 +54,19 @@ public enum HelmActivity {
     @discardableResult
     public static func phase<T>(_ label: String, _ body: () async throws -> T) async rethrows -> T {
         let id = OSSignpostID(log: signposts)
+        open(label, id)
+        defer { close(label, id) }
+        return try await body()
+    }
+
+    private static func open(_ label: String, _ id: OSSignpostID) {
         begin(label)
         os_signpost(.begin, log: signposts, name: "phase", signpostID: id, "%{public}s", label)
-        defer {
-            os_signpost(.end, log: signposts, name: "phase", signpostID: id, "%{public}s", label)
-            end(label)
-        }
-        return try await body()
+    }
+
+    private static func close(_ label: String, _ id: OSSignpostID) {
+        os_signpost(.end, log: signposts, name: "phase", signpostID: id, "%{public}s", label)
+        end(label)
     }
 
     public static func begin(_ label: String) {

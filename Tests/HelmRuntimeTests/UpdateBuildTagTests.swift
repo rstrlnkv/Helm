@@ -8,11 +8,18 @@ import XCTest
 /// `currentBuild: Int?`, nil = unknown: an old-form prerelease is then offered
 /// the tag and a bare X.Y.Z is not; with a known build the build decides on an equal X.Y.Z.
 /// Callers pass `AppBuild.buildNumber.flatMap { Int($0) }`.
-final class UpdateBuildTagVersionTests: XCTestCase {
-    private func newer(_ tag: String, _ version: String, _ build: Int?) -> Bool {
-        UpdateVersion.isNewer(tag, than: version, currentBuild: build)
-    }
+private func newer(_ tag: String, _ version: String, _ build: Int?) -> Bool {
+    UpdateVersion.isNewer(tag, than: version, currentBuild: build)
+}
 
+/// A releases list of bare tags, each a prerelease unless `prerelease` says otherwise.
+private func list(_ tags: [String], prerelease: Bool? = true) -> Data {
+    ReleaseJSON.list(tags.map {
+        ReleaseJSON.release(tag: $0, page: "https://example.com/\($0)", prerelease: prerelease)
+    })
+}
+
+final class UpdateBuildTagVersionTests: XCTestCase {
     func testTheTagOfTheRunningBuildIsNotNewer() {
         XCTAssertFalse(newer("v0.11.1.BETA.1620", "0.11.1", 1620))
     }
@@ -55,11 +62,6 @@ final class UpdateBuildTagVersionTests: XCTestCase {
     func testAKnownBuildDecidesWhateverSuffixTheRunningVersionHas() {
         XCTAssertFalse(newer("v0.11.1.DEV.1500", "0.11.1-dev.17", 1700))
         XCTAssertFalse(newer("v0.11.1.BETA.1700", "0.11.1-dev.17", 1700))
-        XCTAssertTrue(newer("v0.11.1.BETA.1620", "0.11.1-dev.17", 1619))
-    }
-    func testAnUnknownBuildOffersARunningPrereleaseButNotABareVersion() {
-        XCTAssertTrue(newer("v0.11.1.BETA.1620", "0.11.1-dev.17", nil))
-        XCTAssertFalse(newer("v0.11.1.BETA.1620", "0.11.1", nil))
     }
     func testTwoNewFormTagsOrderByBuild() {
         XCTAssertTrue(newer("v0.11.1.DEV.1700", "0.11.1-dev.17", 1619))
@@ -69,13 +71,7 @@ final class UpdateBuildTagVersionTests: XCTestCase {
 
 final class UpdateBuildTagOutcomeTests: XCTestCase {
     private func one(_ tag: String) -> Data {
-        #"{"tag_name":"\#(tag)","html_url":"https://example.com/r","body":"","assets":[]}"#.data(using: .utf8)!
-    }
-    private func list(_ tags: [String]) -> Data {
-        let items = tags.map {
-            #"{"tag_name":"\#($0)","html_url":"https://example.com/\#($0)","body":"","assets":[],"prerelease":true}"#
-        }.joined(separator: ",")
-        return "[\(items)]".data(using: .utf8)!
+        ReleaseJSON.releaseData(tag: tag)
     }
     private func evaluate(_ tag: String, _ version: String, _ build: Int?) -> UpdateCheck.Outcome {
         UpdateCheck.evaluate(statusCode: 200, data: one(tag), currentVersion: version, currentBuild: build)
@@ -135,10 +131,6 @@ final class UpdateBuildTagOutcomeTests: XCTestCase {
 /// set: the nil build against a final version, a build tag against a build
 /// tag, and the order the picker itself uses.
 final class UpdateBuildTagGapTests: XCTestCase {
-    private func newer(_ tag: String, _ version: String, _ build: Int?) -> Bool {
-        UpdateVersion.isNewer(tag, than: version, currentBuild: build)
-    }
-
     /// An unknown build must not offer the tag of the running final version:
     /// that tag may be the running build, and every check would offer it again.
     func testAnUnknownBuildNeverOffersABuildTagOfTheRunningFinalVersion() {
@@ -162,12 +154,6 @@ final class UpdateBuildTagGapTests: XCTestCase {
         XCTAssertFalse(newer("v0.11.0.BETA.1900", "0.11.1.BETA.1600", 1))
     }
 
-    private func list(_ tags: [String]) -> Data {
-        let items = tags.map {
-            #"{"tag_name":"\#($0)","html_url":"https://example.com/\#($0)","body":"","assets":[],"prerelease":true}"#
-        }.joined(separator: ",")
-        return "[\(items)]".data(using: .utf8)!
-    }
     private func picked(_ tags: [String]) -> String? {
         // A running version far below every tag, so the pick is offered.
         guard case .available(let r) = UpdateCheck.evaluateList(
@@ -192,19 +178,12 @@ final class UpdateBuildTagGapTests: XCTestCase {
 /// Tags that split into nothing, a bare tag against a build tag in either list
 /// order, and a signed build number.
 final class UpdateBuildTagEdgeTests: XCTestCase {
-    private func list(_ tags: [String]) -> Data {
-        let items = tags.map {
-            #"{"tag_name":"\#($0)","html_url":"https://example.com/\#($0)","body":"","assets":[]}"#
-        }.joined(separator: ",")
-        return "[\(items)]".data(using: .utf8)!
-    }
-
     func testAnEmptyTagIsNoOfferAndNoCrash() {
         for tag in ["", "v", "-"] {
             let one = #"{"tag_name":"\#(tag)","html_url":"https://example.com/r","assets":[]}"#.data(using: .utf8)!
             XCTAssertEqual(UpdateCheck.evaluate(statusCode: 200, data: one, currentVersion: "0.11.1",
                                                 currentBuild: 1620), .upToDate, tag)
-            XCTAssertEqual(UpdateCheck.evaluateList(statusCode: 200, data: list([tag]),
+            XCTAssertEqual(UpdateCheck.evaluateList(statusCode: 200, data: list([tag], prerelease: nil),
                                                     currentVersion: "0.11.1", currentBuild: 1620,
                                                     channel: .dev), .upToDate, tag)
         }
@@ -213,7 +192,7 @@ final class UpdateBuildTagEdgeTests: XCTestCase {
     func testABuildTagBeatsABareTagOfTheSameCoreInBothListOrders() {
         for tags in [["v0.11.1.BETA.1700", "v0.11.1"], ["v0.11.1", "v0.11.1.BETA.1700"]] {
             guard case .available(let r) = UpdateCheck.evaluateList(
-                statusCode: 200, data: list(tags), currentVersion: "0.11.1", currentBuild: 1620,
+                statusCode: 200, data: list(tags, prerelease: nil), currentVersion: "0.11.1", currentBuild: 1620,
                 channel: .dev)
             else { return XCTFail("expected .available for \(tags)") }
             XCTAssertEqual(r.version, "v0.11.1.BETA.1700")

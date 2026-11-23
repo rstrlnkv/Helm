@@ -88,14 +88,9 @@ public final class RunningApps: @unchecked Sendable {
     /// Refreshes on the main thread, then runs the block there. For an
     /// observer that may or may not already be on it.
     public func refreshOnMain(then done: @escaping @Sendable () -> Void) {
-        if Thread.isMainThread {
+        runOnMain { [self] in
             refresh()
             done()
-        } else {
-            DispatchQueue.main.async { [self] in
-                refresh()
-                done()
-            }
         }
     }
 
