@@ -203,22 +203,19 @@ public struct HelmPageToolbarContent {
     }
 }
 
-/// **Whether the page on screen declared tabs in the header row**, nil where it declared nothing: the same
-/// declaration the row draws, for what outside the row must agree with it (the window's right-click menu).
-public struct HelmPageHasTabsKey: PreferenceKey {
-    public static let defaultValue: Bool? = nil
-
-    public static func reduce(value: inout Bool?, nextValue: () -> Bool?) {
-        value = nextValue() ?? value
-    }
+/// **What the page on screen declared for the header row, as facts**: the same declaration the row draws, for what
+/// outside the row must agree with it (the window's right-click menu: Tab labels only with tabs, Always Collapse
+/// Search only with a search).
+public struct HelmPageHeaderFacts: Equatable, Sendable {
+    public let hasTabs: Bool
+    public let hasSearch: Bool
 }
 
-/// **Whether the page on screen declared a search in the header row**, nil where it declared nothing: the same
-/// reading as `HelmPageHasTabsKey`, for the window's right-click menu's fourth part.
-public struct HelmPageHasSearchKey: PreferenceKey {
-    public static let defaultValue: Bool? = nil
+/// The page's `HelmPageHeaderFacts`, nil where it declared nothing; the last declaration in tree order wins.
+public struct HelmPageHeaderFactsKey: PreferenceKey {
+    public static let defaultValue: HelmPageHeaderFacts? = nil
 
-    public static func reduce(value: inout Bool?, nextValue: () -> Bool?) {
+    public static func reduce(value: inout HelmPageHeaderFacts?, nextValue: () -> HelmPageHeaderFacts?) {
         value = nextValue() ?? value
     }
 }
@@ -244,8 +241,8 @@ extension View {
     /// `Equatable`.
     public func helmWindowToolbar(_ content: HelmPageToolbarContent?) -> some View {
         preference(key: HelmPageToolbarKey.self, value: content)
-            .preference(key: HelmPageHasTabsKey.self, value: content.map { !$0.tabs.isEmpty })
-            .preference(key: HelmPageHasSearchKey.self, value: content.map { $0.search != nil })
+            .preference(key: HelmPageHeaderFactsKey.self,
+                        value: content.map { HelmPageHeaderFacts(hasTabs: !$0.tabs.isEmpty, hasSearch: $0.search != nil) })
     }
 }
 

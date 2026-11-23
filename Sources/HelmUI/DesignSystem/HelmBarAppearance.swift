@@ -64,6 +64,23 @@ extension View {
     }
 }
 
+extension View {
+    /// **The capsule a header group stands on** (`HelmHeaderTabs`, `HelmHeaderSearch`): under `.flat` a
+    /// `HelmSurface.barPlate` behind it; under `.liquidGlass` a glass capsule of `glass` in a
+    /// `GlassEffectContainer` of its own, `spacing` apart from another.
+    @ViewBuilder
+    func helmBarCapsule(_ look: HelmBarAppearance, glass: Glass = .regular, spacing: CGFloat? = nil) -> some View {
+        switch look {
+        case .flat:
+            background(HelmSurface.barPlate, in: Capsule())
+        case .liquidGlass:
+            GlassEffectContainer(spacing: spacing) {
+                glassEffect(glass, in: Capsule())
+            }
+        }
+    }
+}
+
 private struct HelmBarAppearanceTracker: ViewModifier {
     let current: () -> HelmBarAppearance
     @State private var look: HelmBarAppearance?

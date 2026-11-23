@@ -52,8 +52,10 @@ private struct CardHeader: ViewModifier {
     /// Where the toolbar centres an item (window y 26) against the row's centre (y 30: `ShellGeometry.inset` 4 + 26).
     static let raise = CGFloat(4)
 
-    /// The sink the tabs go to: only under Glass, where the window has a toolbar to take them.
-    private var tabsInToolbar: HelmTabsSink? { look == .liquidGlass ? tabsSink : nil }
+    /// Where the tabs go: only under Glass, where the window has a toolbar to take them.
+    private var tabsTarget: HelmTabsTarget? {
+        look == .liquidGlass ? tabsSink.map { HelmTabsTarget(owner: owner, sink: $0) } : nil
+    }
 
     func body(content: Content) -> some View {
         content
@@ -66,14 +68,14 @@ private struct CardHeader: ViewModifier {
                                overContent: true, scrolled: scrolled,
                                standsOnStillContent: standsOnStillContent, status: status,
                                dimmed: !windowAppearsActive, leadingInset: Self.leadingInset,
-                               trailingInset: Self.trailingInset, raise: tabsInToolbar == nil ? 0 : Self.raise) {
-                    HelmHeaderControls(content: controls, page: title, tabs: tabsInToolbar.map { (owner, $0) },
+                               trailingInset: Self.trailingInset, raise: tabsTarget == nil ? 0 : Self.raise) {
+                    HelmHeaderControls(content: controls, page: title, tabs: tabsTarget,
                                        style: choices.tabLabels)
                 }
                 .frame(height: Self.height)
                 .background {
-                    if let sink = tabsInToolbar {
-                        HelmTabsRelay(owner: owner, sink: sink, content: controls, style: choices.tabLabels,
+                    if let target = tabsTarget {
+                        HelmTabsRelay(target: target, content: controls, style: choices.tabLabels,
                                       increasedContrast: traits.increasedContrast)
                     }
                 }
@@ -83,13 +85,14 @@ private struct CardHeader: ViewModifier {
 }
 
 /// Tabs, then actions and search, in that order; each only where the page declared it. The tabs are the row's
-/// own part (`HeaderRole.tabs`, centred by `HeaderRowLayout`), the actions and search one run on the right.
+/// own part (`HeaderRole.tabs`, centred by `HeaderRowLayout`), the actions and the search two runs on the right, which the
+/// layout packs `HelmHeaderActions.gap` apart.
 private struct HelmHeaderControls: View {
     let content: HelmPageToolbarContent?
     /// The page's name: the search slot's identity, so what it holds open does not leak to the next page. Never the tabs'.
     let page: String
     /// Set where the tabs are the window's toolbar item: the row keeps a placeholder for them (`HelmTabsSlot`).
-    let tabs: (owner: UUID, sink: HelmTabsSink)?
+    let tabs: HelmTabsTarget?
     let style: ToolbarSwitcherStyle
 
     var body: some View {
@@ -97,38 +100,34 @@ private struct HelmHeaderControls: View {
             if !content.tabs.isEmpty, let selected = content.selectedTab {
                 Group {
                     if let tabs {
-                        HelmTabsSlot(owner: tabs.owner, sink: tabs.sink, tabs: content.tabs, style: style)
+                        HelmTabsSlot(target: tabs, tabs: content.tabs, style: style)
                     } else {
                         HelmHeaderTabs(tabs: content.tabs, selection: selected, enabled: content.tabsEnabled)
                     }
                 }
                 .layoutValue(key: HeaderRoleKey.self, value: .tabs)
             }
-            if !content.actions.isEmpty || content.search != nil {
-                HStack(spacing: HelmHeaderActions.gap) {
-                    if !content.actions.isEmpty {
-                        HelmHeaderActions(actions: content.actions)
-                    }
-                    if let search = content.search {
-                        HelmHeaderSearch(search: search).id(page)
-                    }
-                }
+            if !content.actions.isEmpty {
+                HelmHeaderActions(actions: content.actions)
+            }
+            if let search = content.search {
+                HelmHeaderSearch(search: search).id(page)
             }
         }
     }
 }
 
-/// What a part of the header row is, for `HeaderRowLayout`. A part that says nothing is the run on the right.
+/// What a part of the header row is, for `HeaderRowLayout`. A part that says nothing is a run on the right.
 enum HeaderRole { case name, tabs, run }
 
 struct HeaderRoleKey: LayoutValueKey {
     static let defaultValue = HeaderRole.run
 }
 
-/// **The row's three parts: the name's side, the tab strip, and the run (actions, search) — the strip centred on
+/// **The row's parts: the name's side, the tab strip, and the runs (the actions, then the search) — the strip centred on
 /// the card's row, giving way to either neighbour.** `shift` is how far the card's centre lies right of this
 /// layout's own (the row's insets are not equal, `CardHeader`), so the strip's centre is the card's, not the padded
-/// area's. It never overlaps: it keeps `nameGap` after the name's side and `HelmHeaderActions.gap` before the run.
+/// area's. It never overlaps: it keeps `nameGap` after the name's side and `HelmHeaderActions.gap` before the runs.
 /// **The run's width is the room of every declared action, hidden or not** (`HelmHeaderActions`), so on Homebrew
 /// the strip sits ~40 pt left of centre where an action is hidden on that tab; ignoring the hidden slot would make
 /// the strip jump between that page's tabs.

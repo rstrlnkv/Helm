@@ -31,8 +31,9 @@ public struct HelmTabsDeclaration {
 }
 
 /// **The window's ear for the tabs.** Every call names its `owner`, one per mounted header row: the pane's root is
-/// rebuilt on a change of language (`RebuiltOnLanguageChange`), and the old row's late `release` must not clear
-/// what the new one declared.
+/// rebuilt on a change of language (`RebuiltOnLanguageChange`), and the row mints a new owner each time the look
+/// leaves Glass, since the relay's dismantle retires the old one for good. The old row's late call, `release`
+/// included, must not clear what the new one declared.
 public struct HelmTabsSink {
     public let declare: @MainActor (_ owner: UUID, _ declaration: HelmTabsDeclaration?) -> Void
     /// The placeholder's rectangle in the window's top-left coordinates, nil when it is gone.
@@ -48,6 +49,14 @@ public struct HelmTabsSink {
     }
 }
 
+/// **Where one row's tabs go**: the window's sink and the row's owner token, which the relay and the placeholder of
+/// the same row share. The owner changes with the row: on a rebuild of the pane for a language, and on each leaving
+/// of Glass (the relay's dismantle retires a token for good).
+struct HelmTabsTarget {
+    let owner: UUID
+    let sink: HelmTabsSink
+}
+
 extension EnvironmentValues {
     /// Nil: the row draws the tabs itself.
     @Entry public var helmTabsSink: HelmTabsSink?
@@ -55,7 +64,7 @@ extension EnvironmentValues {
 
 /// The strip's measure: what the toolbar's control sets per segment and the placeholder takes in the row.
 public enum HelmTabsMetrics {
-    private static var font: NSFont { .systemFont(ofSize: 13) }
+    private static var font: NSFont { .systemFont(ofSize: HelmTabNumbers.wordSize) }
     /// Either side of a word or glyph, and the glyph's own width. With the glyph a segment is the `.flat` tab's
     /// width (9 either side, 16 for the glyph) and the Glass strip, `total` with the track's inset, equals the whole
     /// `.flat` strip for `.iconsAndText` (words + 138 under both looks), the style `SettingsWindow.minSize` is
@@ -67,17 +76,17 @@ public enum HelmTabsMetrics {
     public static let height = HelmHeaderActions.side
 
     /// The dot beside a word, and the gap before it: the room a segment with a dot gains, as `.flat`'s tab does.
-    public static let dot = CGFloat(6)
-    public static let dotGap = CGFloat(5)
+    public static let dot = HelmTabNumbers.dot
+    public static let dotGap = HelmTabNumbers.dotGap
 
     public static func word(_ tab: HelmToolbarTab) -> CGFloat {
         ceil((tab.title as NSString).size(withAttributes: [.font: font]).width)
     }
 
     /// Where a segment's label ends from the segment's centre: the label is centred by the control, so the dot
-    /// stands `dotGap` after it. Text: the word; with the glyph: glyph, 6 and the word.
+    /// stands `dotGap` after it. Text: the word; with the glyph: glyph, `glyphGap` and the word.
     public static func labelHalf(_ tab: HelmToolbarTab, _ style: ToolbarSwitcherStyle) -> CGFloat {
-        style == .iconsAndText ? (glyph + 6 + word(tab)) / 2 : word(tab) / 2
+        style == .iconsAndText ? (glyph + HelmTabNumbers.glyphGap + word(tab)) / 2 : word(tab) / 2
     }
 
     /// What the control keeps free either side of its segments once it stands in a toolbar item: measured on
@@ -99,8 +108,8 @@ public enum HelmTabsMetrics {
             let room = tab.needsAttention ? dot + dotGap : 0
             switch style {
             case .text: return word(tab) + 2 * pad + room
-            case .icons: return 38
-            case .iconsAndText: return glyph + 6 + word(tab) + 18 + room
+            case .icons: return HelmTabNumbers.iconWidth + 2 * HelmTabNumbers.segmentPadding
+            case .iconsAndText: return glyph + HelmTabNumbers.glyphGap + word(tab) + 2 * HelmTabNumbers.segmentPadding + room
             }
         }
     }
@@ -108,8 +117,7 @@ public enum HelmTabsMetrics {
 
 /// Hands the page's declaration to the sink, every update; nil when the page declares no tabs. Zero size.
 struct HelmTabsRelay: NSViewRepresentable {
-    let owner: UUID
-    let sink: HelmTabsSink
+    let target: HelmTabsTarget
     let content: HelmPageToolbarContent?
     let style: ToolbarSwitcherStyle
     let increasedContrast: Bool
@@ -122,10 +130,10 @@ struct HelmTabsRelay: NSViewRepresentable {
 
     func updateNSView(_ view: NSView, context: Context) {
         guard let content, !content.tabs.isEmpty, let binding = content.selectedTab else {
-            sink.declare(owner, nil)
+            target.sink.declare(target.owner, nil)
             return
         }
-        sink.declare(owner, HelmTabsDeclaration(
+        target.sink.declare(target.owner, HelmTabsDeclaration(
             tabs: content.tabs, selected: binding.wrappedValue, enabled: content.tabsEnabled, style: style,
             increasedContrast: increasedContrast,
             select: { id in
@@ -133,20 +141,18 @@ struct HelmTabsRelay: NSViewRepresentable {
                 transaction.disablesAnimations = true
                 withTransaction(transaction) { binding.wrappedValue = id }
             }))
-        context.coordinator.owner = owner
-        context.coordinator.sink = sink
+        context.coordinator.target = target
     }
 
     static func dismantleNSView(_ view: NSView, coordinator: Coordinator) {
-        if let owner = coordinator.owner, let sink = coordinator.sink {
-            MainActor.assumeIsolated { sink.release(owner) }
+        if let target = coordinator.target {
+            MainActor.assumeIsolated { target.sink.release(target.owner) }
         }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
     final class Coordinator {
-        var owner: UUID?
-        var sink: HelmTabsSink?
+        var target: HelmTabsTarget?
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSView, context: Context) -> CGSize? { .zero }
@@ -155,16 +161,15 @@ struct HelmTabsRelay: NSViewRepresentable {
 /// **The strip's place in the row under the toolbar**: clear, the strip's width by its height, in the tabs' part of
 /// the row's layout; it reports its rectangle in the window to the sink.
 struct HelmTabsSlot: View {
-    let owner: UUID
-    let sink: HelmTabsSink
+    let target: HelmTabsTarget
     let tabs: [HelmToolbarTab]
     let style: ToolbarSwitcherStyle
 
     var body: some View {
         Color.clear
             .frame(width: HelmTabsMetrics.total(tabs, style), height: HelmTabsMetrics.height)
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { sink.place(owner, $0) }
-            .onDisappear { sink.place(owner, nil) }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { target.sink.place(target.owner, $0) }
+            .onDisappear { target.sink.place(target.owner, nil) }
             .accessibilityHidden(true)
     }
 }

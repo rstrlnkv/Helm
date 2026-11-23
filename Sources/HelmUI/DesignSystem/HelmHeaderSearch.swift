@@ -36,14 +36,7 @@ struct HelmHeaderSearch: View {
     var body: some View {
         let rests = Self.rests(alwaysCollapse: choices.collapseSearch, isOpen: isOpen,
                                hasQuery: !search.text.wrappedValue.isEmpty)
-        switch appearance {
-        case .flat:
-            slot(rests: rests).background(HelmSurface.barPlate, in: Capsule())
-        case .liquidGlass:
-            GlassEffectContainer {
-                slot(rests: rests).glassEffect(.regular.interactive(), in: Capsule())
-            }
-        }
+        slot(rests: rests).helmBarCapsule(appearance, glass: .regular.interactive())
     }
 
     private func slot(rests: Bool) -> some View {

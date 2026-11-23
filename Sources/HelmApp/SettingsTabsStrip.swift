@@ -57,7 +57,7 @@ import SwiftUI
         for (index, tab) in tabs.enumerated() {
             control.setWidth(widths[index], forSegment: index)
             control.setLabel(style == .icons ? "" : tab.title, forSegment: index)
-            let size: CGFloat = style == .icons ? 15 : 13
+            let size: CGFloat = style == .icons ? HelmTabNumbers.iconSize : HelmTabNumbers.wordSize
             control.setImage(style == .text ? nil : NSImage(systemSymbolName: tab.symbol, accessibilityDescription: nil)?
                 .withSymbolConfiguration(.init(pointSize: size, weight: .regular)), forSegment: index)
             control.setToolTip(style == .icons ? tab.title : nil, forSegment: index)
@@ -94,7 +94,7 @@ import SwiftUI
                                    y: (HelmTabsMetrics.height - size) / 2, width: size, height: size)
             }
             // Dimmed with the control, as `.flat`'s group is.
-            dot.alphaValue = declaration.enabled ? 1 : 0.4
+            dot.alphaValue = declaration.enabled ? 1 : HelmTabNumbers.dimmed
             x += widths[index]
         }
         recolourDots()

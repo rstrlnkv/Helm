@@ -289,10 +289,10 @@ enum SettingsSelection: Hashable {
     private var liveWatch: AnyCancellable?
 
     /// Whether the page on screen declared tabs in its header row, mirrored from what the row draws
-    /// (`HelmPageHasTabsKey`, through `mirrorsHeaderFacts`): a module's page declares its own (Homebrew's three,
+    /// (`HelmPageHeaderFactsKey`, through `mirrorsHeaderFacts`): a module's page declares its own (Homebrew's three,
     /// Leftovers' two only while its list is not empty), General, Log and About the settings tabs.
     @Published var pageHasTabs = false
-    /// Whether it declared a search (`HelmPageHasSearchKey`): the menu's Always Collapse Search is offered only then.
+    /// Whether it declared a search (`HelmPageHeaderFactsKey`): the menu's Always Collapse Search is offered only then.
     @Published var pageHasSearch = false
 
     init(host: ModuleHost) {
@@ -635,11 +635,9 @@ private struct RebuiltOnLanguageChange: ViewModifier {
 extension View {
     /// Keeps `model.pageHasTabs` and `model.pageHasSearch` equal to what the page on screen declared for the row.
     func mirrorsHeaderFacts(into model: SettingsModel) -> some View {
-        onPreferenceChange(HelmPageHasTabsKey.self) { [model] hasTabs in
-            model.pageHasTabs = hasTabs ?? false
-        }
-        .onPreferenceChange(HelmPageHasSearchKey.self) { [model] hasSearch in
-            model.pageHasSearch = hasSearch ?? false
+        onPreferenceChange(HelmPageHeaderFactsKey.self) { [model] facts in
+            model.pageHasTabs = facts?.hasTabs ?? false
+            model.pageHasSearch = facts?.hasSearch ?? false
         }
     }
 }
