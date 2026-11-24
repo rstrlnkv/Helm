@@ -17,8 +17,7 @@ import XCTest
 /// Total failure of the subject prints: no layer at all (the control, which fails first), or a layer whose frame is not the
 /// engine's placement of the find.
 ///
-/// Synchronous on purpose: the answer arrives on a task of the overlay's, awaited by spinning the run loop to a deadline, so every
-/// assertion runs in one frame of the test and none after a suspension.
+/// The answer arrives on a task of the overlay's, so the test waits for the first layer (`waitUntil`) before it reads any.
 /// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/AnnotationEditing.swift`: `let layer = Annotation(tool: .blur, start: CGPoint(x: rect.minX, y: rect.minY),` -> `let layer = Annotation(tool: .blur, start: CGPoint(x: rect.minX + 1, y: rect.minY),`.
 @MainActor
 final class TheBlurByReadingLandsWhereTheTextIsTests: XCTestCase {
@@ -49,21 +48,16 @@ final class TheBlurByReadingLandsWhereTheTextIsTests: XCTestCase {
         }, copy: { _ in .copied })
     }
 
-    private func awaitLayers(_ overlay: CaptureOverlay) {
-        let deadline = Date().addingTimeInterval(10)
-        while overlay.editedLayers.isEmpty && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.01)) }
-    }
-
     private func expected(in source: RecognizedBoxes.Source) throws -> CGRect {
         try XCTUnwrap(RecognizedBoxes.place(line.matches[0].box, in: source), "the engine placed nothing").rect
     }
 
-    func testTheBoxLandsWhereTheEngineSaysOnAnAreaOfTheScreen() throws {
+    func testTheBoxLandsWhereTheEngineSaysOnAnAreaOfTheScreen() async throws {
         var source: RecognizedBoxes.Source?
         let rig = try OverlayRig.overlay(scale: 1, area: CGRect(x: 100, y: 100, width: 400, height: 300), textTools: tools { source = $0 }) { _ in }
         defer { rig.overlay.close() }
         rig.overlay.perform(.blurPersonalText)
-        awaitLayers(rig.overlay)
+        await waitUntil("the reading made a layer", within: .seconds(10)) { !rig.overlay.editedLayers.isEmpty }
         let layers = rig.overlay.editedLayers
         XCTAssertEqual(layers.count, 1, "the control: the reading made one blur")
         let seen = try XCTUnwrap(source, "the reader was never asked")
@@ -73,7 +67,7 @@ final class TheBlurByReadingLandsWhereTheTextIsTests: XCTestCase {
         XCTAssertEqual(layers.first?.frame.height ?? .nan, try expected(in: seen).height, accuracy: 0.5)
     }
 
-    func testTheBoxLandsWhereTheEngineSaysOnThePictureBeingEdited() throws {
+    func testTheBoxLandsWhereTheEngineSaysOnThePictureBeingEdited() async throws {
         let frames = try OverlayRig.frames(scale: 1)
         let shown = try XCTUnwrap(PictureOnScreen.place(try ShotToastRig.picture(width: 400, height: 300),
                                                         over: Freeze(displays: frames.map { .image($0) }, windows: []),
@@ -85,7 +79,7 @@ final class TheBlurByReadingLandsWhereTheTextIsTests: XCTestCase {
         XCTAssertTrue(overlay.build())
         defer { overlay.close() }
         overlay.perform(.blurPersonalText)
-        awaitLayers(overlay)
+        await waitUntil("the reading made a layer", within: .seconds(10)) { !overlay.editedLayers.isEmpty }
         let layers = overlay.editedLayers
         XCTAssertEqual(layers.count, 1, "the control: the reading made one blur")
         let seen = try XCTUnwrap(source, "the reader was never asked")

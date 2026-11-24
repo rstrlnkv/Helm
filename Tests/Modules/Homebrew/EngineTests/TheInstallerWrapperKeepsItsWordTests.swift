@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
@@ -24,7 +25,7 @@ final class TheInstallerWrapperKeepsItsWordTests: XCTestCase {
     /// A Stop that lands while the script is still being downloaded ends the
     /// download, runs nothing and leaves nothing. The download is held open by
     /// the test: the source is a pipe the test writes half a script into.
-    func testAStopDuringTheDownloadEndsItAndLeavesNothing() throws {
+    func testAStopDuringTheDownloadEndsItAndLeavesNothing() async throws {
         let g = try ground("wrapper-stop-download")
         let fifo = g.root.appendingPathComponent("install.fifo")
         XCTAssertEqual(mkfifo(fifo.path, 0o600), 0)
@@ -32,26 +33,24 @@ final class TheInstallerWrapperKeepsItsWordTests: XCTestCase {
         let (handle, run) = start(try rehosted(try composedInstaller(), source: fifo, temporaries: g.temporaries))
 
         // Opening for writing returns once curl has opened it for reading.
-        let opened = DispatchSemaphore(value: 0)
         let box = Run()
         DispatchQueue.global().async {
             let fd = Darwin.open(fifo.path, O_WRONLY)
             box.exit(fd)
-            opened.signal()
         }
-        XCTAssertEqual(opened.wait(timeout: .now() + 10), .success, "precondition: the download never started")
+        await waitUntilReached("precondition: the download started", within: .seconds(10)) { box.status != nil }
         let fd = try XCTUnwrap(box.status)
         defer { Darwin.close(fd) }
         let half = "#!/bin/bash\n/usr/bin/touch \(ran.path)\n# more to come"
         _ = half.withCString { Darwin.write(fd, $0, strlen($0)) }
-        Thread.sleep(forTimeInterval: 0.2)                  // curl has read it and waits for the rest
+        try await Task.sleep(for: .milliseconds(200))      // curl has read it and waits for the rest
 
         handle.terminate()
 
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success,
+        XCTAssertEqual(run.finished(within: 10), .success,
                        "the stream never ended: the download still holds the pipe")
         XCTAssertEqual(run.status, 143, "a Stop in the download is not read as the person's Stop")
-        Thread.sleep(forTimeInterval: 0.2)
+        await grace(0.2)
         XCTAssertFalse(FileManager.default.fileExists(atPath: ran.path), "the half-downloaded script was run")
         XCTAssertEqual(g.leftovers, [], "a Stop in the download left the script in the temporary folder")
     }
@@ -60,25 +59,26 @@ final class TheInstallerWrapperKeepsItsWordTests: XCTestCase {
     /// installer runs: one exit, 143, everything the installer started gone,
     /// and the EXIT trap's `rm` run exactly once (counted off the shell's own
     /// trace of the engine's command).
-    func testASecondStopEndsItOnceAndRemovesTheScriptOnce() throws {
+    func testASecondStopEndsItOnceAndRemovesTheScriptOnce() async throws {
         let g = try ground("wrapper-stop-twice")
         let installer = try g.installer("/bin/sleep 60 &\necho $! >> \(g.pids.path)\necho started\nwait")
         let (handle, run) = start(try rehosted(try composedInstaller(), source: installer,
                                                temporaries: g.temporaries), trace: true)
-        XCTAssertTrue(eventually(10) { run.lines.contains("started") && g.recordedPIDs.count == 2 },
-                      "precondition: the installer and its child never started")
+        await waitUntilReached("precondition: the installer and its child started", within: .seconds(10)) {
+            run.lines.contains("started") && g.recordedPIDs.count == 2
+        }
 
         handle.terminate()
         handle.terminate()
 
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success,
+        XCTAssertEqual(run.finished(within: 10), .success,
                        "the stream never ended: something the wrapper started still holds its pipe")
         XCTAssertEqual(run.status, 143)
-        XCTAssertTrue(eventually(5) { g.alive().isEmpty }, "still running after two Stops: \(g.alive())")
+        await waitUntilReached("nothing still running after two Stops", within: .seconds(5)) { g.alive().isEmpty }
         XCTAssertEqual(g.leftovers, [])
         let removals = run.lines.filter { $0.range(of: #"^\++ /bin/rm -f "#, options: .regularExpression) != nil }
         XCTAssertEqual(removals.count, 1, "the EXIT trap ran \(removals.count) times: \(run.lines)")
-        Thread.sleep(forTimeInterval: 0.2)
+        await grace(0.2)
         XCTAssertEqual(run.exits, 1, "the stream ended \(run.exits) times")
     }
 

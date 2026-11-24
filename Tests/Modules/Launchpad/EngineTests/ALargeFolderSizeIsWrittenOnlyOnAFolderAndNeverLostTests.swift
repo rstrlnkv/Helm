@@ -11,13 +11,15 @@ final class ALargeFolderSizeIsWrittenOnlyOnAFolderAndNeverLostTests: XCTestCase 
         LaunchpadEngine(catalog: FakeAppCatalog(ids ?? apps), launcher: FakeAppLauncher(), store: LayoutStore(directory: dir))
     }
 
+    private struct NoFolder: Error {}
+
     /// A folder "F" of a and b, made large; its id.
     private func largeFolder(_ e: LaunchpadEngine) throws -> UUID {
         _ = e.read(reason: .refresh)
         let made = try XCTUnwrap(e.apply(.makeFolder(drop: "b", onto: "a", name: "F")))
-        guard case .folder(let f) = try XCTUnwrap(made.layout.items.first) else { throw XCTSkip("no folder") }
+        guard case .folder(let f) = try XCTUnwrap(made.layout.items.first) else { XCTFail("the fixture made no folder"); throw NoFolder() }
         let sized = try XCTUnwrap(e.apply(.resize(f.id, large: true)))
-        guard case .folder(let big) = try XCTUnwrap(sized.layout.items.first) else { throw XCTSkip("no folder") }
+        guard case .folder(let big) = try XCTUnwrap(sized.layout.items.first) else { XCTFail("the fixture made no folder"); throw NoFolder() }
         XCTAssertTrue(big.large, "subject: the folder is large")
         return f.id
     }

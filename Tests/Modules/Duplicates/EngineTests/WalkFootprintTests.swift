@@ -7,13 +7,10 @@ import XCTest
 /// What the *walk* costs, as opposed to the hashing — and the rule it pins:
 /// the cost follows the files kept, never the tree walked.
 ///
-/// **Against a tree this file builds, not against the owner's home directory,
-/// and not behind an environment variable.** This test used to be both — skipped
-/// unless `HELM_BENCH=1`, walking a real home — and so could not fail on the
-/// thing it names: a guard behind a flag catches nothing, and a threshold loose
-/// enough to survive two different Macs is loose enough to survive the bug.
-/// The reading has to be a difference between two runs of the same code over
-/// the same tree.
+/// **Against a tree this file builds, not against the owner's home directory:**
+/// a threshold loose enough to survive two different Macs is loose enough to
+/// survive the bug. The reading has to be a difference between two runs of the
+/// same code over the same tree.
 ///
 /// The original home-directory measurement stays on record, because it is what
 /// answered the suspicion this file began as: 365 615 entries, 12 667 kept,

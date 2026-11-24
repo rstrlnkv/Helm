@@ -101,7 +101,7 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
             let uvm = modelOver(work)
             await uvm.setSortOrder(order)
             let load = Task { await uvm.loadAppsIfNeeded() }
-            await until("\(order): the list and the dates are in") {
+            await waitUntil("\(order): the list and the dates are in") {
                 uvm.apps.count == Self.apps.count && uvm.lastOpened != nil
             }
             XCTAssertTrue(uvm.measuredSizes.isEmpty, "\(order): precondition — the sizes are still being measured")
@@ -114,7 +114,7 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
 
             work.holdScans()
             let review = Task { await uvm.prepareReview() }
-            await until("\(order): the review asked for both scans") { work.scansAsked == 2 }
+            await waitUntil("\(order): the review asked for both scans") { work.scansAsked == 2 }
             work.land()
             await load.value
             XCTAssertEqual(uvm.measuredSizes.count, Self.apps.count, "\(order): precondition — the sizes landed mid-review")
@@ -136,14 +136,5 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
             XCTAssertEqual(batch.paths.sorted(), picked.map(\.path).sorted(),
                            "\(order): the batch sent to the Trash is not the ticked apps")
         }
-    }
-
-    /// A wait on the clock, bounded — the thing waited for happens on another
-    /// task, and a yield buys a turn rather than time.
-    private func until(_ what: String, file: StaticString = #filePath, line: UInt = #line,
-                       _ condition: () -> Bool) async {
-        let limit = Date().addingTimeInterval(5)
-        while !condition(), Date() < limit { await HelmTestSupport.grace(0.01) }
-        XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
     }
 }

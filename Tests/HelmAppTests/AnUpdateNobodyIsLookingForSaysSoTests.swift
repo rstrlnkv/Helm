@@ -34,30 +34,19 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
                                 channelBacking: InMemoryKeyValueStore())
     }
 
-    /// The banner is posted from a task of its own — the check does not wait for
-    /// macOS — so a read taken straight afterwards would pass an absence for
-    /// free. Every `grace()` below is paired with a control that proves the same
-    /// path still speaks.
-    ///
-    /// **Posted is not finished, and counting one against the other is counting
-    /// a moving subject.** The stamp that makes the next check quiet is written
-    /// after `NoticeChannel.tell` returns, so between «the fake holds a banner»
-    /// and «the service has recorded it» there is a window a second call fits
-    /// through — which is exactly what made this file fail once in a full run
-    /// while passing alone. Waiting on the record rather than on the banner
-    /// closes it, and asserts the stronger fact besides.
-    private func waitForPosts(_ wanted: Int, recorded version: String) async {
-        await waitUntil("\(wanted) banner(s)") { self.notices.posted.count >= wanted }
-        await waitUntil("the announcement recorded") {
-            self.store.object(UpdateService.lastAnnouncedKey) as? String == version
-        }
-    }
+    // The banner is posted from a task of its own — the check does not wait for macOS — so a read taken
+    // straight afterwards would pass an absence for free; every `grace()` below is paired with a control that
+    // proves the same path still speaks. **Posted is not finished:** the stamp that makes the next check quiet is
+    // written after `NoticeChannel.tell` returns, so each wait below is on the record as well as on the banner,
+    // or a second call fits through the window between them.
 
     func testAReleaseFoundWithNobodyWatchingIsAnnounced() async throws {
         build()
 
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
-        await waitForPosts(1, recorded: "v0.12.0")
+        await waitUntil("1 banner(s) and the announcement recorded") {
+            notices.posted.count >= 1 && store.object(UpdateService.lastAnnouncedKey) as? String == "v0.12.0"
+        }
 
         let said = try XCTUnwrap(notices.posted.first)
         // The card's own words, not a second spelling of them.
@@ -73,7 +62,9 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         build()
 
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
-        await waitForPosts(1, recorded: "v0.12.0")
+        await waitUntil("1 banner(s) and the announcement recorded") {
+            notices.posted.count >= 1 && store.object(UpdateService.lastAnnouncedKey) as? String == "v0.12.0"
+        }
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
         await grace()
 
@@ -82,7 +73,9 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         // The control: silence above is a decision about that version, not a
         // channel that has stopped working.
         service.tellSomebodyAboutIt("v0.12.1", startedByHand: false)
-        await waitForPosts(2, recorded: "v0.12.1")
+        await waitUntil("2 banner(s) and the announcement recorded") {
+            notices.posted.count >= 2 && store.object(UpdateService.lastAnnouncedKey) as? String == "v0.12.1"
+        }
         XCTAssertEqual(notices.posted.count, 2)
     }
 
@@ -102,7 +95,9 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         // The control, and the second thing this holds: pressing the button did
         // not spend the announcement either.
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
-        await waitForPosts(1, recorded: "v0.12.0")
+        await waitUntil("1 banner(s) and the announcement recorded") {
+            notices.posted.count >= 1 && store.object(UpdateService.lastAnnouncedKey) as? String == "v0.12.0"
+        }
         XCTAssertEqual(notices.posted.count, 1)
     }
 
@@ -119,7 +114,9 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         // System Settings, the only way this ever changes.
         notices.state = .authorized
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
-        await waitForPosts(1, recorded: "v0.12.0")
+        await waitUntil("1 banner(s) and the announcement recorded") {
+            notices.posted.count >= 1 && store.object(UpdateService.lastAnnouncedKey) as? String == "v0.12.0"
+        }
 
         XCTAssertEqual(notices.posted.count, 1)
     }

@@ -297,7 +297,8 @@ final class PowerObserverTeardownTests: XCTestCase {
 /// `NotificationCenter` observers needed no such thing.
 final class DisplayObserverStackingTests: XCTestCase {
 
-    func testStartingTwiceLeavesOneObserver() {
+    @MainActor
+    func testStartingTwiceLeavesOneObserver() async {
         let observer = ScreenParamsObserver()
         let calls = LockedCount()
         observer.startObserving { calls.bump() }
@@ -306,7 +307,7 @@ final class DisplayObserverStackingTests: XCTestCase {
         NotificationCenter.default.post(
             name: NSApplication.didChangeScreenParametersNotification, object: nil)
         // The block runs on the main queue; drain it.
-        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        await drainMainQueue()
 
         XCTAssertEqual(calls.value, 1, "each enable of the module left another observer behind")
     }

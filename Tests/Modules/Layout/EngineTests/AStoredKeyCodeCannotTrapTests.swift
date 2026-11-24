@@ -13,8 +13,8 @@ final class AStoredKeyCodeCannotTrapTests: XCTestCase {
     private func activatedEngine(storing code: Int, typing: FakeTyping, tap: FakeTap) -> LayoutEngine {
         let store = layoutStore()
         store.set(code, for: HotkeyStoreKeys(prefix: LayoutHotkey.storePrefix).keyCode)
-        let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
-                                  translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: CyrillicSpell(),
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: FakeSources(follows: false),
+                                  translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: FakeSpell(cyrillic: true),
                                   secure: FakeSecure(), activation: FakeActivation(), settings: store)
         engine.activate()
         return engine

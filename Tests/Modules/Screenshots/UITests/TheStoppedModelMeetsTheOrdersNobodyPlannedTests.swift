@@ -17,7 +17,7 @@ final class TheStoppedModelMeetsTheOrdersNobodyPlannedTests: XCTestCase {
 
     /// A second `stop` after a stop that found a capture open closes nothing twice and builds nothing.
     func testAStopTwiceWithACaptureOpenIsOneStop() async throws {
-        let (scene, gate) = try FakeScreenshotsScene.withGate(buildOverlay: true)
+        let (scene, gate) = try FakeScreenshotsScene.withGate(in: self, buildOverlay: true)
         let overlay = try await scene.openOverlay(gate, in: self)
         scene.model.stop()
         XCTAssertFalse(overlay.isOpen, "the first stop left the overlay up")
@@ -29,7 +29,7 @@ final class TheStoppedModelMeetsTheOrdersNobodyPlannedTests: XCTestCase {
 
     /// A press at a model that was stopped with a capture open reaches nothing: the controller it had is not pressed.
     func testAPressAfterAStopThatFoundACaptureOpenReachesNothing() async throws {
-        let (scene, gate) = try FakeScreenshotsScene.withGate(buildOverlay: true)
+        let (scene, gate) = try FakeScreenshotsScene.withGate(in: self, buildOverlay: true)
         _ = try await scene.openOverlay(gate, in: self)
         scene.model.stop()
         let freezes = scene.work.screen.freezes
@@ -45,9 +45,9 @@ final class TheStoppedModelMeetsTheOrdersNobodyPlannedTests: XCTestCase {
     /// Two models at once, an order the host never builds: stopping one closes its own windows and not the
     /// other's, and the other captures on its own session.
     func testAFreshModelBesideAStoppedOneKeepsItsOwnCapture() async throws {
-        let (old, oldGate) = try FakeScreenshotsScene.withGate(buildOverlay: true)
+        let (old, oldGate) = try FakeScreenshotsScene.withGate(in: self, buildOverlay: true)
         let oldOverlay = try await old.openOverlay(oldGate, in: self)
-        let (fresh, freshGate) = try FakeScreenshotsScene.withGate(buildOverlay: true)
+        let (fresh, freshGate) = try FakeScreenshotsScene.withGate(in: self, buildOverlay: true)
         let freshOverlay = try await fresh.openOverlay(freshGate, in: self)
         XCTAssertFalse(old.controller === fresh.controller, "the two models share a controller")
 

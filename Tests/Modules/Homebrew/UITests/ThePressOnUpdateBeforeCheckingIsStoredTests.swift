@@ -12,7 +12,7 @@ final class ThePressOnUpdateBeforeCheckingIsStoredTests: XCTestCase {
 
     private func model(_ backing: InMemoryKeyValueStore) -> HomebrewViewModel {
         let setting = UpdateBeforeChecking(store: NamespacedStore(namespace: HomebrewEngine.moduleID, backing: backing))
-        let engine = HomebrewEngine(locator: FixedLocator(), runner: IdleRunner(), privileged: NoPrivileges(),
+        let engine = HomebrewEngine(locator: FixedLocator(), runner: FakeBrew(), privileged: NoPrivileges(),
                                     user: "tester", marker: InMemoryOpMarker(), updateBeforeChecking: setting)
         return HomebrewViewModel(work: engine, updateBeforeChecking: setting)
     }
@@ -48,7 +48,7 @@ final class ThePressOnUpdateBeforeCheckingIsStoredTests: XCTestCase {
     /// The engine the host makes reads the same setting the toggle writes: after a press OFF,
     /// the next `outdated` runs with brew's own refresh switched off.
     func testThePressReachesTheEngineTheHostMakes() throws {
-        let runner = RecordingRunner()
+        let runner = FakeBrew()
         let parts = HomebrewDescriptor().makeModule(
             store: NamespacedStore(namespace: HomebrewEngine.moduleID, backing: InMemoryKeyValueStore()),
             locator: FixedLocator(), runner: runner)
@@ -59,15 +59,5 @@ final class ThePressOnUpdateBeforeCheckingIsStoredTests: XCTestCase {
         let call = runner.calls.first { $0.args.first == "outdated" }
         XCTAssertNotNil(call, "outdated never ran")
         XCTAssertEqual(call?.env["HOMEBREW_NO_AUTO_UPDATE"], "1")
-    }
-
-    private final class RecordingRunner: QueryOnlyRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _calls: [(args: [String], env: [String: String])] = []
-        var calls: [(args: [String], env: [String: String])] { lock.withLock { _calls } }
-        func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String) {
-            lock.withLock { _calls.append((args, env)) }
-            return (0, "")
-        }
     }
 }

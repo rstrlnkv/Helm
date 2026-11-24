@@ -63,10 +63,7 @@ final class APlantedScanOpensThroughTheRestoreTests: XCTestCase {
         let work = AnsweringWork(volumes: [])
         let dvm = DiskViewModel(work: work, store: store)
         await dvm.appear()
-        let start = Date()
-        while !dvm.restored, Date().timeIntervalSince(start) < 10 {
-            try await Task.sleep(nanoseconds: 20_000_000)
-        }
+        await waitUntil("the planted file is restored", within: .seconds(10)) { dvm.restored }
         await waitUntil("the restored tree is drawn") { dvm.result != nil }
 
         // The subject happened: the file was restored, whole, and drawn.

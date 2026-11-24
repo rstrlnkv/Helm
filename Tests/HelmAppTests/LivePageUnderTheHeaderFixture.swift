@@ -13,9 +13,8 @@ import HelmUI
 /// live in `HelmAppTests` because the fixture needs the host's own types (`ShellPageIdentity`; ARCHITECTURE.md § Targets:
 /// app-layer checks in `Tests/HelmAppTests`).
 ///
-/// `selection` is what the row's name and status are read from (`ShellPageIdentity`); a caller settles
-/// (`settle(_:)`) before it reads what the page declared, since the declaration reaches the row a turn
-/// after the page mounts.
+/// `selection` is what the row's name and status are read from (`ShellPageIdentity`); the declaration reaches the
+/// row a turn after the page mounts, so a caller waits for what it reads (`waitUntil`) before it reads it.
 @MainActor
 struct LivePageUnderTheHeaderFixture {
     let mount: MountedRender

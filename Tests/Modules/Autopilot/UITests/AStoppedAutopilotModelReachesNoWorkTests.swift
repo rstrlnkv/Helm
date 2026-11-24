@@ -49,16 +49,12 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
         AutopilotDescriptor.historyChannel()
     }
 
-    private func settle() async {
-        await grace()
-    }
-
     /// Total failure of the subject prints `["readFolders", "readStatus", "readHistory"]`
     /// where `[]` is expected: the model read the engine at launch.
     func testBuildingTheModelAsksTheEngineNothing() async {
         let work = FakeAutopilotWork(folders: [folder])
         let rvm = model(on: work)
-        await settle()
+        await grace()
         XCTAssertEqual(work.calls, [],
                        "building the model reached the engine: every launch would read the rule store")
         XCTAssertTrue(rvm.folders.isEmpty, "the model held folders before any page was opened")
@@ -102,7 +98,7 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
         }
 
         rvm.stop()
-        await settle()
+        await grace()
         let calls = work.calls, banner = rvm.banner, preview = rvm.preview
         rvm.addFolder(at: home + "/Music")
         rvm.remove(rule(), from: held)
@@ -114,7 +110,7 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
         await rvm.confirmDiscard(.rules)
         await rvm.loadHistory()
         await rvm.load()
-        await settle()
+        await grace()
         XCTAssertEqual(work.calls, calls, "a stopped model reached the engine: \(work.calls.dropFirst(calls.count))")
         XCTAssertEqual(rvm.banner, banner, "a stopped model drew a new banner")
         XCTAssertEqual(rvm.preview, preview, "a stopped model drew a new dry run")
@@ -133,11 +129,11 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
         await waitUntil("a ping while the model lives is read") { work.count("readHistory") > before }
 
         rvm.stop()
-        await settle()
+        await grace()
         let after = work.count("readHistory")
         work.holdsHistory([record("a"), record("b")])
         changed.yield()
-        await settle()
+        await grace()
         XCTAssertEqual(work.count("readHistory"), after, "a stopped model read the history on an announcement")
         XCTAssertEqual(rvm.history.count, 1, "a stopped model drew a history it had not been told to read")
     }

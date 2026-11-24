@@ -16,53 +16,15 @@ import HelmContract
 /// drop the environment that keeps the others from doing so, or make a return
 /// visit pay for a list that has not changed. Never the real `brew`: the runner
 /// answers from a table and the locator names a path that does not exist.
-private final class RecordingBrew: ProcessRunner, @unchecked Sendable {
-    struct Call: Equatable {
-        let kind: String
-        let launchPath: String
-        let args: [String]
-        let env: [String: String]
-    }
-    private let lock = NSLock()
-    private var recorded: [Call] = []
-    var calls: [Call] { lock.withLock { recorded } }
-
-    private func note(_ kind: String, _ path: String, _ args: [String], _ env: [String: String]) {
-        lock.withLock { recorded.append(Call(kind: kind, launchPath: path, args: args, env: env)) }
-    }
-
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) {
-        note("run", launchPath, args, env)
-        switch args.first {
-        case "list":
-            return (0, args.contains("--cask") ? "iterm2 3.5.0\n" : "wget 1.25.0\njq 1.8.1\n")
-        case "desc":
-            return (0, args.contains("--cask") ? "iterm2: Terminal emulator\n"
-                                               : "wget: Internet file retriever\njq: JSON processor\n")
-        default:
-            return (0, "")
-        }
-    }
-
-    func runData(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: Data) {
-        note("runData", launchPath, args, env)
-        return (0, Data())
-    }
-
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                 env: [String: String]) -> (status: Int32, output: String) {
-        note("runCapturingDiagnostics", launchPath, args, env)
-        return (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        note("stream", launchPath, args, env)
-        onExit(0)
-        return NoProcess()
+private func brewTable(_ args: [String]) -> String {
+    switch args.first {
+    case "list":
+        return args.contains("--cask") ? "iterm2 3.5.0\n" : "wget 1.25.0\njq 1.8.1\n"
+    case "desc":
+        return args.contains("--cask") ? "iterm2: Terminal emulator\n"
+                                       : "wget: Internet file retriever\njq: JSON processor\n"
+    default:
+        return ""
     }
 }
 
@@ -74,7 +36,7 @@ private struct FixtureBrew: BrewLocator {
 @MainActor
 final class OpeningThePageAsksWhatItAlwaysAskedTests: XCTestCase {
 
-    private func pair(_ runner: RecordingBrew) -> (HomebrewEngine, HomebrewViewModel) {
+    private func pair(_ runner: FakeBrew) -> (HomebrewEngine, HomebrewViewModel) {
         let engine = HomebrewEngine(locator: FixtureBrew(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
                                     news: EngineNews(), marker: InMemoryOpMarker(),
@@ -84,7 +46,7 @@ final class OpeningThePageAsksWhatItAlwaysAskedTests: XCTestCase {
     }
 
     func testTheFirstOpenRunsTheTwoListsAndTheDescriptions() async {
-        let runner = RecordingBrew()
+        let runner = FakeBrew(answer: brewTable)
         let (engine, model) = pair(runner)
         XCTAssertTrue(runner.calls.isEmpty, "building the model ran a tool")
 
@@ -117,7 +79,7 @@ final class OpeningThePageAsksWhatItAlwaysAskedTests: XCTestCase {
     }
 
     func testAReturnVisitRunsNothing() async {
-        let runner = RecordingBrew()
+        let runner = FakeBrew(answer: brewTable)
         let (engine, model) = pair(runner)
         await model.loadIfNeeded()
         let first = runner.calls.count

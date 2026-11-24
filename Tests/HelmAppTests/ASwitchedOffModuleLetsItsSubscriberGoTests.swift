@@ -72,13 +72,13 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
         let parts = descriptor.makeModule(store: NamespacedStore(
             namespace: "test.\(D.id.rawValue).subscriber", backing: InMemoryKeyValueStore()))
         let live = parts.engine
-        await settle(live, until: 1)
+        await waitUntil("1 subscriber(s)", within: .seconds(2)) { live.subscriberCount == 1 }
         XCTAssertEqual(live.subscriberCount, 1,
                        "the model never subscribed, so the count below would pass on nothing", file: file, line: line)
         await letTheLoopStart()
 
         descriptor.stop(parts.model)
-        await settle(live, until: 0)
+        await waitUntil("0 subscriber(s)", within: .seconds(2)) { live.subscriberCount == 0 }
 
         XCTAssertEqual(live.subscriberCount, 0,
                        "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled",
@@ -106,13 +106,5 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
     /// and yielding from the main actor hands the turn to main-actor work.
     private func letTheLoopStart() async {
         await grace()
-    }
-
-    /// Waits for the count, on the clock; the drop closure is registered on
-    /// `OperationQueue.main`, so the notification is delivered by the main queue
-    /// rather than by the concurrency pool, and a sleep between reads is what
-    /// gives that queue its turn.
-    private func settle(_ engine: any ModuleEngine, until count: Int) async {
-        await waitUntil("\(count) subscriber(s)", within: .seconds(2)) { engine.subscriberCount == count }
     }
 }

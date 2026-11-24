@@ -17,7 +17,7 @@ import HelmRuntime
 @MainActor
 final class TheGridShowsWhatMattersFirstTests: XCTestCase {
 
-    private func page(_ connections: [VPNConnection]) -> VPNSettingsPage {
+    private func page(_ connections: [VPNConnection]) async -> VPNSettingsPage {
         let work = FakeVPNWork()
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
         let settings = VPNSettings(store: store)
@@ -25,9 +25,7 @@ final class TheGridShowsWhatMattersFirstTests: XCTestCase {
         let payload = VPNEngine.StatePayload(connections: connections, autoConnected: [],
                                              lastAutomation: nil)
         work.say(payload)
-        for _ in 0..<50 where vm.connections.count != connections.count {
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-        }
+        await waitUntil("the payload handled") { vm.connections.count == connections.count }
         return VPNSettingsPage(vm: vm, store: store)
     }
 
@@ -35,20 +33,22 @@ final class TheGridShowsWhatMattersFirstTests: XCTestCase {
         VPNConnection(id: name, name: name, status: status, kind: "IKEv2")
     }
 
-    func testTheNinthConnectionIsOnScreenWhenItIsTheOneThatIsUp() {
+    func testTheNinthConnectionIsOnScreenWhenItIsTheOneThatIsUp() async {
         let list = (1...9).map { conn("VPN \($0)", $0 == 9 ? .connected : .disconnected) }
-        let shown = page(list).shownConnections
+        let shown = await page(list).shownConnections
         XCTAssertEqual(shown.count, VPNGridLayout.collapsedLimit)
         XCTAssertEqual(shown.first?.name, "VPN 9")
     }
 
-    func testTheNinthConnectionIsOnScreenWhenItIsStillConnecting() {
+    func testTheNinthConnectionIsOnScreenWhenItIsStillConnecting() async {
         let list = (1...9).map { conn("VPN \($0)", $0 == 9 ? .connecting : .disconnected) }
-        XCTAssertEqual(page(list).shownConnections.first?.name, "VPN 9")
+        let shown = await page(list).shownConnections
+        XCTAssertEqual(shown.first?.name, "VPN 9")
     }
 
-    func testNothingIsHiddenWhenThereIsNothingToHide() {
+    func testNothingIsHiddenWhenThereIsNothingToHide() async {
         let list = (1...VPNGridLayout.collapsedLimit).map { conn("VPN \($0)", .disconnected) }
-        XCTAssertEqual(page(list).shownConnections.count, list.count)
+        let shown = await page(list).shownConnections
+        XCTAssertEqual(shown.count, list.count)
     }
 }

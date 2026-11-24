@@ -39,14 +39,6 @@ final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
         ScanItem(path: path, bytes: bytes)
     }
 
-    /// The banner is posted from a task of its own — the coordinator does not
-    /// wait for macOS — so a read taken straight afterwards would pass an
-    /// absence for free. `waitUntil` and `grace` are the harness's; the second
-    /// is always paired with a control that proves the same path still speaks.
-    private func waitForPosts(_ wanted: Int) async {
-        await waitUntil("\(wanted) banner(s)") { self.notices.posted.count >= wanted }
-    }
-
     /// A module that has scanned once has nothing to compare against, and the
     /// journal refuses to invent a previous list. Without this the first
     /// unattended scan of a full disk arrives as news about the whole disk.
@@ -83,7 +75,7 @@ final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
         record([item("/a", 90_000_000_000), item("/new", 4_000_000_000)])
 
         coordinator.tellSomebodyWhatAppeared(in: "duplicates")
-        await waitForPosts(1)
+        await waitUntil("1 banner(s)") { notices.posted.count >= 1 }
 
         XCTAssertEqual(notices.posted.count, 1)
         let said = try XCTUnwrap(notices.posted.first)
@@ -107,7 +99,7 @@ final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
         record([item("/a", 90_000_000_000), item("/small", 4_000_000),
                 item("/big", 8_000_000_000)])
         coordinator.tellSomebodyWhatAppeared(in: "duplicates")
-        await waitForPosts(1)
+        await waitUntil("1 banner(s)") { notices.posted.count >= 1 }
         XCTAssertEqual(notices.posted.count, 1,
                        "the control: with something large the same path still speaks")
     }
@@ -125,7 +117,7 @@ final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
                        "one module's finding was announced under another's name")
 
         coordinator.tellSomebodyWhatAppeared(in: "disk")
-        await waitForPosts(1)
+        await waitUntil("1 banner(s)") { notices.posted.count >= 1 }
         XCTAssertEqual(notices.posted.first?.title,
                        ModuleRegistry.descriptor("disk")?.moduleMetadata.name)
     }

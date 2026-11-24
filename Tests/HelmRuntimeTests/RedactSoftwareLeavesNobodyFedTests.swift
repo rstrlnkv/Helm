@@ -17,12 +17,13 @@ final class RedactSoftwareLeavesNobodyFedTests: XCTestCase {
     /// answer for this one.
     private let module = "redact-leaves-\(UUID().uuidString.prefix(8))"
 
-    /// A parent nobody creates: the trashing closure throws before anything is
-    /// touched, and the ancestry read is stubbed, so the paths need not exist.
-    private let parent = NSTemporaryDirectory() + "helm-redact-leaves-\(UUID().uuidString)"
+    /// A parent nobody creates, inside a scratch directory: the trashing closure throws before
+    /// anything is touched, and the ancestry read is stubbed, so the paths need not exist.
+    private var parent = ""
 
     override func setUp() {
         super.setUp()
+        parent = scratchDirectory("redact-leaves").appendingPathComponent("parent").path
         tailTheLog()
     }
 

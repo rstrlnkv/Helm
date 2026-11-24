@@ -32,28 +32,13 @@ import XCTest
 /// The fake answers as brew does: coloured unless the environment it is handed
 /// says `HOMEBREW_NO_COLOR` — so either repair (asking brew for no colour, or
 /// refusing to read exit 1 with nothing parsed as clean) turns this green.
-private final class ColouringDoctor: ProcessRunner, @unchecked Sendable {
-    var status: Int32 = 1
-    var coloured = ""
-    var plain = ""
-
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                 env: [String: String]) -> (status: Int32, output: String) {
+private func colouringDoctor(status: Int32, plain: String, coloured: String) -> ScriptedRunner {
+    ScriptedRunner(diagnostics: { env in
         // `brew.env` says HOMEBREW_COLOR=1; only HOMEBREW_NO_COLOR (or NO_COLOR,
         // its documented default) in what Helm hands over switches it off.
         let noColour = !(env["HOMEBREW_NO_COLOR"] ?? "").isEmpty || !(env["NO_COLOR"] ?? "").isEmpty
         return (status, noColour ? plain : coloured)
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        onExit(0)
-        return NoProcess()
-    }
+    })
 }
 
 /// Kept: guards the defect fixed in 4b5e0df9 feat(settings): … a Health page of its own.
@@ -108,10 +93,7 @@ final class ADoctorThatNamedNothingReadableIsNotACleanMacTests: XCTestCase {
     /// in colour. The reading must be the two findings, or no reading — never
     /// an examined, empty one, which the page draws as «Nothing to fix.».
     func testAColouredDoctorIsNotReadAsNothingToFix() {
-        let runner = ColouringDoctor()
-        runner.status = 1
-        runner.plain = Self.plain
-        runner.coloured = Self.coloured
+        let runner = colouringDoctor(status: 1, plain: Self.plain, coloured: Self.coloured)
         let answer = brewEngine(runner).doctor()
         XCTAssertNotEqual(answer, [],
                           "brew doctor exited 1 with two warnings in colour and Helm read it as a clean Mac")
@@ -123,10 +105,7 @@ final class ADoctorThatNamedNothingReadableIsNotACleanMacTests: XCTestCase {
     /// is lost (the measurement `ProcessRunner.runCapturingDiagnostics` cites)
     /// is exactly this. Exit 1 is brew saying it found something.
     func testExitOneWithNoFindingLineIsNotReadAsNothingToFix() {
-        let runner = ColouringDoctor()
-        runner.status = 1
-        runner.plain = "\n"
-        runner.coloured = "\n"
+        let runner = colouringDoctor(status: 1, plain: "\n", coloured: "\n")
         XCTAssertNotEqual(brewEngine(runner).doctor(), [],
                           "brew doctor exited 1 and printed no finding; Helm read it as a clean Mac")
     }
@@ -135,10 +114,7 @@ final class ADoctorThatNamedNothingReadableIsNotACleanMacTests: XCTestCase {
     /// that is an examined, empty Mac — so the two above cannot pass by the
     /// engine refusing every empty answer.
     func testExitZeroWithTheReadySentenceIsAClean() {
-        let runner = ColouringDoctor()
-        runner.status = 0
-        runner.plain = "Your system is ready to brew.\n"
-        runner.coloured = "Your system is ready to brew.\n"
+        let runner = colouringDoctor(status: 0, plain: "Your system is ready to brew.\n", coloured: "Your system is ready to brew.\n")
         XCTAssertEqual(brewEngine(runner).doctor(), [])
     }
 }

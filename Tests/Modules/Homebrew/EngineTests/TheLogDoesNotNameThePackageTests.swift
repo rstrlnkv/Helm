@@ -38,23 +38,9 @@ final class TheLogDoesNotNameThePackageTests: XCTestCase {
 
     /// Lists one other package, and ends every child at once with `code`: the
     /// conclude path has run by the time the call returns.
-    private struct Runner: ProcessRunner {
-        var code: Int32 = 0
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) {
-            guard args.first == "list", args.contains("--formula") else { return (0, "") }
-            return (0, "other-formula 1.0.0\n")
-        }
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                     env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            onExit(code)
-            return NoProcess()
-        }
+    private func runner(code: Int32 = 0) -> ScriptedRunner {
+        ScriptedRunner(streams: .finish(code),
+                       answers: [BrewAnswer(["list", "--formula"], 0, "other-formula 1.0.0\n")])
     }
 
     private func engine(_ runner: ProcessRunner, marker: OpMarker = InMemoryOpMarker())
@@ -77,7 +63,7 @@ final class TheLogDoesNotNameThePackageTests: XCTestCase {
     }
 
     func testAnOperationsStartAndEndDoNotNameThePackage() {
-        engine(Runner(code: 0)).install(name: package, isCask: false)
+        engine(runner(code: 0)).install(name: package, isCask: false)
         let done = lines
         XCTAssertTrue(done.contains { $0.hasSuffix("started") } && done.contains { $0.hasSuffix("done") },
                       "the start and the end were not both written: \(done)")
@@ -85,14 +71,14 @@ final class TheLogDoesNotNameThePackageTests: XCTestCase {
     }
 
     func testAFailedOperationDoesNotNameThePackage() {
-        engine(Runner(code: 1)).install(name: package, isCask: false)
+        engine(runner(code: 1)).install(name: package, isCask: false)
         XCTAssertTrue(lines.contains { $0.contains("failed, exit 1") },
                       "the failure was not written: \(lines)")
         assertWrittenWithoutTheName(2, "install, exit 1")
     }
 
     func testTheDoctorFixRefusalDoesNotNameThePackage() {
-        engine(Runner()).runDoctorFix(["uninstall", package])
+        engine(runner()).runDoctorFix(["uninstall", package])
         XCTAssertTrue(lines.contains { $0.hasPrefix("doctor fix refused:") },
                       "the refusal was not written: \(lines)")
         assertWrittenWithoutTheName(1, "doctor fix refusal")
@@ -101,7 +87,7 @@ final class TheLogDoesNotNameThePackageTests: XCTestCase {
     func testTheInterruptedAtQuitWarningDoesNotNameThePackage() {
         let marker = InMemoryOpMarker()
         marker.write("upgrade \(package)")
-        XCTAssertEqual(engine(Runner(), marker: marker).status().interruptedOp, "upgrade \(package)")
+        XCTAssertEqual(engine(runner(), marker: marker).status().interruptedOp, "upgrade \(package)")
         XCTAssertTrue(lines.contains { $0.contains("was still running when Helm last quit") },
                       "the warning was not written: \(lines)")
         assertWrittenWithoutTheName(1, "interrupted at quit")

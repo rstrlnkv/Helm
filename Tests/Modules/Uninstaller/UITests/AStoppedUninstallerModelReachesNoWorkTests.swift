@@ -48,13 +48,11 @@ final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
     /// which answers nil, and the coordinator then logs «no answer» every tick.
     func testTheDescriptorPassesTheScanOn() async {
         let work = StoppedWork(apps: [app])
-        let parts = ModuleParts(engine: NoEngine(), model: model(work))
+        let parts = ModuleParts(engine: FakeEngine(), model: model(work))
         let report = await UninstallerDescriptor().backgroundScan(parts)
         XCTAssertNotNil(report, "the descriptor fell to the default: «no answer» every tick")
         XCTAssertEqual(work.count("backgroundScan"), 1)
     }
-
-    private final class NoEngine: ModuleEngine { func activate() {}; func deactivate() {} }
 
     func testAPressAfterStopReachesNoWork() async {
         let work = StoppedWork(apps: [app])

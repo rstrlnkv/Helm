@@ -126,7 +126,7 @@ final class AnEmptyFolderIsNotAnUnreadableOneTests: XCTestCase {
     /// **The channel `FolderWatcher.watch` grew two commits before this module
     /// was audited, and this engine threw it away.** A stream that never started
     /// left the switch saying «on» over a folder nothing was looking at.
-    func testWhetherAnythingIsWatchingIsAskedOfTheWatcher() throws {
+    func testWhetherAnythingIsWatchingIsAskedOfTheWatcher() async throws {
         let watched = try directory("watched")
         let engine = engine()
         engine.folders = [folder(at: watched.path)]
@@ -136,10 +136,7 @@ final class AnEmptyFolderIsNotAnUnreadableOneTests: XCTestCase {
         engine.activate()
         addTeardownBlock { engine.deactivate() }
 
-        let deadline = Date().addingTimeInterval(5)
-        while engine.status.watching == nil, Date() < deadline {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
-        }
+        await waitUntilReached("the watcher answered") { engine.status.watching != nil }
         XCTAssertEqual(engine.status.watching, true,
                        "nothing is watching a folder the page says is being watched")
     }

@@ -316,17 +316,6 @@ func heldModel(_ work: HeldWork) -> DuplicatesViewModel {
     duplicatesModel(over: work, folder: "/some/folder")
 }
 
-/// Waits for the search tasks to actually reach the work. Yielding a fixed
-/// number of times is a guess about scheduling; this is the condition the test
-/// depends on. Fails, naming the count, when the searches never get there.
-@MainActor
-func untilParked(_ work: HeldWork, count: Int, file: StaticString = #filePath,
-                 line: UInt = #line) async {
-    await waitUntilWithin("\(count) search(es) parked on the work", .seconds(5), file: file, line: line) {
-        work.parkedCount >= count
-    }
-}
-
 /// A removal of `path` held open by a parked trash, which is the only way to be
 /// inside the window at all: a work that answers on the spot is over before
 /// anything can be pressed, and a test written against one would pass with the

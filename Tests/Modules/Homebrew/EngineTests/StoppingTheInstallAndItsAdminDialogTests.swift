@@ -58,7 +58,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
 
     func testAStopPressedAtTheDialogDoesNotThenRunTheInstaller() {
         let privileged = ScriptedPrivileged(reply: .done, holds: true)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
                                     news: EngineNews(),
@@ -82,7 +82,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
 
     func testAStopPressedAtTheDialogEndsTheOperation() async {
         let privileged = ScriptedPrivileged(reply: .done, holds: true)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
@@ -108,11 +108,11 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
 
     /// Once the child exists the press does reach it — so the failures above
     /// are about the window before `adopt`, not about `stop` in general. The
-    /// Handle-counting `HangingRunner` is what makes the installer's own
+    /// Handle-counting `ScriptedRunner` is what makes the installer's own
     /// termination visible.
     func testOnceTheInstallerIsRunningStopReachesIt() {
         let privileged = ScriptedPrivileged(reply: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
                                     news: EngineNews(),
@@ -130,7 +130,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
     /// must not become "installBrew never runs the installer".
     func testAnUnstoppedDialogStillRunsTheInstaller() {
         let privileged = ScriptedPrivileged(reply: .done, holds: true)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
                                     news: EngineNews(),
@@ -168,39 +168,13 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
 /// carefully it was written.
 final class AStopDuringTheLaunchItselfIsNotLostTests: XCTestCase {
 
-    /// A runner that lets the test act *while the launch is happening*.
-    private final class RunnerThatIsInterrupted: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _handles: [HangingRunner.Handle] = []
-        var handles: [HangingRunner.Handle] { lock.lock(); defer { lock.unlock() }; return _handles }
-        /// Called after the child exists and before the handle is handed back.
-        var duringLaunch: (@Sendable () -> Void)?
-
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            let handle = HangingRunner.Handle()
-            lock.lock(); _handles.append(handle); lock.unlock()
-            duringLaunch?()
-            return handle
-        }
-    }
-
     func testAStopPressedWhileTheChildIsBeingLaunchedStillReachesIt() {
-        let runner = RunnerThatIsInterrupted()
+        let runner = ScriptedRunner(streams: .hold)
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
                                     news: EngineNews(),
                                     marker: InMemoryOpMarker())
-        runner.duringLaunch = { [weak engine] in engine?.stop() }
+        runner.onStream = { [weak engine] in engine?.stop() }
 
         engine.install(name: "wget", isCask: false)
 
@@ -215,7 +189,7 @@ final class AStopDuringTheLaunchItselfIsNotLostTests: XCTestCase {
     /// The control: a launch nobody interrupted keeps its child. Without it the
     /// assertion above holds on an engine that terminates everything it starts.
     func testAnUninterruptedLaunchKeepsItsChild() {
-        let runner = RunnerThatIsInterrupted()
+        let runner = ScriptedRunner(streams: .hold)
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
                                     news: EngineNews(),
@@ -257,7 +231,7 @@ final class AStopReachesTheInstallerItselfTests: XCTestCase {
 
     private func isAlive(_ pid: pid_t) -> Bool { kill(pid, 0) == 0 }
 
-    func testStopKillsTheInstallerAndWhatItStartedAndRemovesTheScript() throws {
+    func testStopKillsTheInstallerAndWhatItStartedAndRemovesTheScript() async throws {
         let root = scratchDirectory("brew-installer-stop")
         let temporaries = root.appendingPathComponent("tmp")
         try FileManager.default.createDirectory(at: temporaries, withIntermediateDirectories: true)
@@ -284,8 +258,9 @@ final class AStopReachesTheInstallerItselfTests: XCTestCase {
         let command = try rehosted(composedInstaller(), source: installer, temporaries: temporaries)
         let (handle, run) = start(command)
 
-        XCTAssertTrue(eventually(10) { pid(in: innerPID) != nil && pid(in: grandchildPID) != nil },
-                      "precondition: the stand-in installer never started")
+        await waitUntilReached("precondition: the stand-in installer started", within: .seconds(10)) {
+            pid(in: innerPID) != nil && pid(in: grandchildPID) != nil
+        }
         let inner = try XCTUnwrap(pid(in: innerPID))
         let grandchild = try XCTUnwrap(pid(in: grandchildPID))
         XCTAssertTrue(isAlive(inner) && isAlive(grandchild), "precondition: both are running")
@@ -294,12 +269,10 @@ final class AStopReachesTheInstallerItselfTests: XCTestCase {
 
         handle.terminate()                                   // what Stop does
 
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success,
+        XCTAssertEqual(run.finished(within: 10), .success,
                        "the stream never ended: something the wrapper started still holds its pipe")
-        XCTAssertTrue(eventually(5) { !isAlive(inner) },
-                      "the installer kept running after Stop")
-        XCTAssertTrue(eventually(5) { !isAlive(grandchild) },
-                      "a process the installer started kept running after Stop")
+        await waitUntilReached("the installer stopped running after Stop", within: .seconds(5)) { !isAlive(inner) }
+        await waitUntilReached("a process the installer started stopped running after Stop", within: .seconds(5)) { !isAlive(grandchild) }
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: temporaries.path), [],
                        "the downloaded installer was left in the temporary folder after Stop")
     }
@@ -326,7 +299,7 @@ final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
         let tools: FakeCommandLineTools
         let ticker = FakeWaitTicker()
         let privileged: ScriptedPrivileged
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let news = EngineNews<HomebrewNews>()
         let engine: HomebrewEngine
         /// Subscribed before anything is pressed, so it holds every state the
@@ -429,7 +402,7 @@ final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
 
                 XCTAssertEqual(hit.value, 1, "\(what): precondition — the ending never landed")
                 XCTAssertTrue(rig.privileged.scripts.isEmpty, "\(what): the administrator dialog rose")
-                XCTAssertTrue(rig.runner.calls.isEmpty, "\(what): the installer was launched")
+                XCTAssertTrue(rig.runner.streamed.isEmpty, "\(what): the installer was launched")
                 XCTAssertEqual(rig.ticker.live, 0, "\(what): a wait is still armed")
                 let expectedRequests = [.request, .closedWindowReReading].contains(point) ? 1 : 0
                 XCTAssertEqual(rig.tools.requestCount, expectedRequests,
@@ -531,7 +504,7 @@ final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
         rig.privileged.answer()
         await fulfillment(of: [pressed], timeout: 5)
 
-        XCTAssertTrue(rig.runner.calls.isEmpty, "install.sh ran for a module switched off during the dialog")
+        XCTAssertTrue(rig.runner.streamed.isEmpty, "install.sh ran for a module switched off during the dialog")
         let terminal = await rig.states().filter { $0.phase != .running }
         XCTAssertEqual(terminal.count, 1, "ended \(terminal.count) times: \(terminal)")
         XCTAssertEqual(terminal.first?.reason, .stopped)
@@ -565,7 +538,7 @@ final class InstallWaitsForApplesToolsTests: XCTestCase {
         XCTAssertEqual(rig.tools.requestCount, 0, "Apple's installer was asked for a Mac that has the tools")
         XCTAssertEqual(rig.tools.selectedAsked, 0, "a process was started to find what a stat already said")
         XCTAssertEqual(rig.ticker.scheduled, 0, "a wait was armed for a Mac that has nothing to wait for")
-        XCTAssertEqual(rig.runner.calls.count, 1)
+        XCTAssertEqual(rig.runner.streamed.count, 1)
     }
 
     /// The tools Xcode brings count too: `xcode-select -p` is asked only when
@@ -594,7 +567,7 @@ final class InstallWaitsForApplesToolsTests: XCTestCase {
         XCTAssertEqual(rig.tools.requestCount, 1)
         XCTAssertTrue(rig.privileged.scripts.isEmpty,
                       "the password was asked for while Apple's window was still to come")
-        XCTAssertTrue(rig.runner.calls.isEmpty)
+        XCTAssertTrue(rig.runner.streamed.isEmpty)
         XCTAssertEqual(rig.ticker.live, 1, "nothing is looking for the tools")
         let (state, _) = await rig.replayed()
         XCTAssertEqual(state?.phase, .running)
@@ -664,7 +637,7 @@ final class InstallWaitsForApplesToolsTests: XCTestCase {
         let entries = rig.journal.value
         XCTAssertEqual(Array(entries.suffix(2)), ["read", "admin"],
                        "the dialog was not directly preceded by a reading of the tools: \(entries)")
-        XCTAssertEqual(rig.runner.calls.count, 1)
+        XCTAssertEqual(rig.runner.streamed.count, 1)
         XCTAssertEqual(rig.runner.streamCalls.first?.env, HomebrewEngine.installerEnvironment)
         XCTAssertEqual(rig.ticker.live, 0, "a tick is still armed after the wait ended")
         let (state, _) = await rig.replayed()
@@ -815,7 +788,7 @@ final class StoppingTheWaitRaisesNoDialogTests: XCTestCase {
         rig.ticker.fireInFlight(0)              // the tick that was already on its way
         XCTAssertTrue(rig.privileged.scripts.isEmpty,
                       "the password dialog rose after the person stopped waiting")
-        XCTAssertTrue(rig.runner.calls.isEmpty)
+        XCTAssertTrue(rig.runner.streamed.isEmpty)
 
         rig.engine.installBrew()
         XCTAssertEqual(rig.privileged.scripts.count, 1,
@@ -871,7 +844,7 @@ final class StoppingTheWaitRaisesNoDialogTests: XCTestCase {
         let privileged = ScriptedPrivileged(reply: .done)
         weak var weakEngine: HomebrewEngine?
         autoreleasepool {
-            let engine = HomebrewEngine(locator: FixedLocator(), runner: HangingRunner(),
+            let engine = HomebrewEngine(locator: FixedLocator(), runner: ScriptedRunner(streams: .hold),
                                         privileged: privileged, user: "tester",
                                         news: EngineNews(), marker: InMemoryOpMarker(),
                                         tools: tools, ticker: ticker)
@@ -1003,7 +976,7 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(reads.next(), 3, "precondition: the fresh reading was taken")
         XCTAssertTrue(rig.privileged.scripts.isEmpty,
                       "the administrator dialog rose after the module was switched off")
-        XCTAssertTrue(rig.runner.calls.isEmpty, "the installer ran for a module that is off")
+        XCTAssertTrue(rig.runner.streamed.isEmpty, "the installer ran for a module that is off")
     }
 
     /// The same moment on the host's own route: `ModuleHost.disable` calls
@@ -1015,7 +988,7 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
         let ticker = FakeWaitTicker()
         let privileged = ScriptedPrivileged(reply: .done)
         let host = Host()
-        host.engine = HomebrewEngine(locator: FixedLocator(), runner: HangingRunner(),
+        host.engine = HomebrewEngine(locator: FixedLocator(), runner: ScriptedRunner(streams: .hold),
                                      privileged: privileged, user: "tester",
                                      news: EngineNews(), marker: InMemoryOpMarker(),
                                      tools: tools, ticker: ticker)
@@ -1052,7 +1025,7 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
         let host = Host()
         weak var gone: HomebrewEngine?
         autoreleasepool {
-            host.engine = HomebrewEngine(locator: FixedLocator(), runner: HangingRunner(),
+            host.engine = HomebrewEngine(locator: FixedLocator(), runner: ScriptedRunner(streams: .hold),
                                          privileged: privileged, user: "tester",
                                          news: EngineNews(), marker: InMemoryOpMarker(),
                                          tools: tools, ticker: ticker)
@@ -1155,7 +1128,7 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(reads.next(), 3, "precondition: the fresh reading was taken")
         XCTAssertTrue(rig.privileged.scripts.isEmpty,
                       "the administrator dialog rose after the person pressed Stop")
-        XCTAssertTrue(rig.runner.calls.isEmpty)
+        XCTAssertTrue(rig.runner.streamed.isEmpty)
         let (state, _) = await rig.replayed()
         XCTAssertEqual(state?.reason, .stopped)
     }
@@ -1245,7 +1218,7 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
         let probe = LockProbe()
         let fake = FakeCommandLineTools()
         let ticker = FakeWaitTicker()
-        let engine = HomebrewEngine(locator: FixedLocator(), runner: HangingRunner(),
+        let engine = HomebrewEngine(locator: FixedLocator(), runner: ScriptedRunner(streams: .hold),
                                     privileged: ProbedPrivileged(probe), user: "tester",
                                     news: EngineNews(), marker: InMemoryOpMarker(),
                                     tools: ProbedTools(fake, probe), ticker: ticker)
@@ -1289,48 +1262,12 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
 
     // MARK: - The reach the engine names
 
-    /// Records the reach of every launch. Implements both `stream` forms: the
-    /// one without `reach:` records `nil`, because a launch that names no reach
-    /// is itself the thing this case is looking for.
-    private final class ReachRecordingRunner: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _reaches: [(args: [String], reach: StopReach?)] = []
-        private var _exits: [@Sendable (Int32) -> Void] = []
-        var reaches: [(args: [String], reach: StopReach?)] { lock.lock(); defer { lock.unlock() }; return _reaches }
-
-        func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) { (0, "") }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            record(args, nil, onExit)
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String], reach: StopReach,
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            record(args, reach, onExit)
-        }
-
-        private func record(_ args: [String], _ reach: StopReach?,
-                            _ onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            lock.lock(); _reaches.append((args, reach)); _exits.append(onExit); lock.unlock()
-            return NoProcess()
-        }
-
-        func finishAll() {
-            lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-            for exit in exits { exit(0) }
-        }
-    }
-
     /// Every brew operation's Stop reaches its own process and nothing else —
     /// brew's handler winds down what brew started — and the installer's Stop
     /// reaches the wrapper's whole group. Each operation is finished before
     /// the next is pressed, so the gate never refuses one.
     func testEveryOperationNamesItsReachAndOnlyTheInstallerNamesTheGroup() {
-        let runner = ReachRecordingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let tools = FakeCommandLineTools()
         tools.gitExecutable = true
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
@@ -1348,9 +1285,9 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
             ("install Homebrew", .wholeGroup, { engine.installBrew() }),
         ]
         for (what, expected, press) in presses {
-            let before = runner.reaches.count
+            let before = runner.streamCalls.count
             press()
-            let launched = runner.reaches.dropFirst(before)
+            let launched = runner.streamCalls.dropFirst(before)
             XCTAssertEqual(launched.count, 1, "\(what): precondition — the press launched \(launched.count) children")
             if let reach = launched.first?.reach {
                 XCTAssertEqual(reach, expected, "\(what): a Stop would reach \(reach), not \(expected)")
@@ -1375,9 +1312,9 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
     /// though its process group is still alive, held by a member the child left
     /// behind. That group id is the only thing a late signal could still
     /// address, and it is not this handle's to signal any more.
-    func testAStopAfterTheLeaderIsGoneSignalsNothing() {
+    func testAStopAfterTheLeaderIsGoneSignalsNothing() async {
         let (handle, run) = start("/bin/sleep 30 >/dev/null 2>&1 & echo member=$!; exit 0", reach: .wholeGroup)
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success, "precondition: the shell never exited")
+        XCTAssertEqual(run.finished(within: 10), .success, "precondition: the shell never exited")
         let member = pid(after: "member=", in: run)
         addTeardownBlock { Self.reap([member]) }
         guard let leftover = member else { return XCTFail("precondition: the shell named no member") }
@@ -1388,7 +1325,7 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
 
         handle.terminate()
         handle.terminate()
-        Thread.sleep(forTimeInterval: 0.6)           // past both repeats
+        await grace(0.6)                             // past both repeats
         XCTAssertEqual(kill(leftover, 0), 0,
                        "a Stop pressed after the child had gone signalled the group it left behind")
     }
@@ -1402,7 +1339,7 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
     /// member** — `Process.terminate()` signals the child's whole group on this
     /// Mac (a member moved into a group of its own is not reached), so
     /// `.process` and `.wholeGroup` differ by the repeats alone.
-    func testTheGroupIsSignalledAgainOnlyWhileItsLeaderLives() throws {
+    func testTheGroupIsSignalledAgainOnlyWhileItsLeaderLives() async throws {
         let root = scratchDirectory("stop-repeats")
         var counts: [String: Int] = [:]
         let rows: [(what: String, reach: StopReach, leaderTrap: String)] = [
@@ -1422,18 +1359,19 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
             while :; do /bin/sleep 0.01; done
             """
             let (handle, run) = start(script, reach: reach)
-            XCTAssertTrue(eventually(10) { run.lines.contains { $0.hasPrefix("member=") } },
-                          "\(what): precondition — the member never started")
+            await waitUntilReached("\(what): precondition — the member started", within: .seconds(10)) {
+                run.lines.contains { $0.hasPrefix("member=") }
+            }
             let leader = pid(after: "leader=", in: run)
             let memberPID = pid(after: "member=", in: run)
             addTeardownBlock { Self.reap([leader, memberPID]) }
-            Thread.sleep(forTimeInterval: 0.05)      // the member's trap is set before it prints
+            try await Task.sleep(for: .milliseconds(50))  // the member's trap is set before it prints
             handle.terminate()
-            Thread.sleep(forTimeInterval: 0.9)       // both repeats, and the member's trap after each
+            await grace(0.9)                         // both repeats, and the member's trap after each
             counts[what] = ((try? String(contentsOf: count, encoding: .utf8)) ?? "")
                 .split(whereSeparator: \.isNewline).count
             Self.reap([leader, memberPID])
-            _ = run.done.wait(timeout: .now() + 5)
+            _ = run.finished(within: 5)
         }
         XCTAssertEqual(counts, ["process, leader lives": 1, "group, leader lives": 3, "group, leader gone": 1],
                        "TERMs a member of the group received per Stop")
@@ -1457,7 +1395,7 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
     /// signal, sent 0.1 s after the first to the same group, lands on the
     /// trap's own `rm`. Swept across the wind-down times around the repeat:
     /// every Stop must still leave the temporary folder empty.
-    func testTheRepeatedSignalDoesNotLandOnTheWrappersOwnCleanup() throws {
+    func testTheRepeatedSignalDoesNotLandOnTheWrappersOwnCleanup() async throws {
         let root = scratchDirectory("stop-cleanup-repeat")
         let temporaries = root.appendingPathComponent("tmp")
         try FileManager.default.createDirectory(at: temporaries, withIntermediateDirectories: true)
@@ -1475,14 +1413,15 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
             exec /usr/bin/perl -e '$SIG{TERM} = sub { $SIG{TERM} = "IGNORE"; select(undef, undef, undef, \(windDown)); exit 1 }; sleep 60'
             """.write(to: installer, atomically: true, encoding: .utf8)
             let (handle, run) = start(try rehosted(command, source: installer, temporaries: temporaries))
-            guard eventually(10, { run.lines.contains("installer-running") }) else {
-                XCTFail("precondition: the installer never started"); handle.terminate(); continue
+            await waitUntilReached("precondition: the installer started", within: .seconds(10)) {
+                run.lines.contains("installer-running")
             }
-            Thread.sleep(forTimeInterval: 0.05)      // perl has set its handler
+            guard run.lines.contains("installer-running") else { handle.terminate(); continue }
+            try await Task.sleep(for: .milliseconds(50))  // perl has set its handler
             stoppedInTheInstaller += 1
             handle.terminate()
-            XCTAssertEqual(run.done.wait(timeout: .now() + 5), .success, "the stream never ended")
-            Thread.sleep(forTimeInterval: 0.5)       // past the second repeat
+            XCTAssertEqual(run.finished(within: 5), .success, "the stream never ended")
+            await grace(0.5)                         // past the second repeat
             let left = leftovers(temporaries)
             if !left.isEmpty {
                 outcomes.append(String(format: "wind-down %.1f ms: exit=%@ left=%@",

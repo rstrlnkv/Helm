@@ -58,8 +58,13 @@ struct LeftoversFakeFiles: LeftoversFilePort {
     /// `ADirectoryThatIsNotTheOneItNamesTests` is the case that had nowhere to go.
     var redirects: [String: String] = [:]
 
+    /// The first read of a directory is held at the gate: a press is then inside
+    /// `LaunchClaims.onDisk`, past the page's guard and before the switch.
+    var gate: LeftoversGate?
+
     func isWritableDirectory(_ url: URL) -> Bool { !unwritable.contains(url.path) }
     func contents(of url: URL) -> DirectoryListing.Contents {
+        gate?.passThrough()
         let real = resolve(url.path)
         guard !unopenable.contains(real) else { return .refused }
         // The child keeps the spelling it was asked for, exactly as
@@ -185,20 +190,6 @@ final class LeftoversGate: @unchecked Sendable {
     }
     func waitUntilEntered() -> Bool { entered.wait(timeout: .now() + 5) == .success }
     func release() { released.signal() }
-}
-
-/// The folders, with the first read of a directory held at the gate: the press is
-/// then inside `LaunchClaims.onDisk`, past the page's guard and before the switch.
-final class LeftoversGatedFiles: LeftoversFilePort, @unchecked Sendable {
-    let inner: LeftoversFakeFiles
-    let gate: LeftoversGate
-    init(_ inner: LeftoversFakeFiles, gate: LeftoversGate) { self.inner = inner; self.gate = gate }
-    func isWritableDirectory(_ url: URL) -> Bool { inner.isWritableDirectory(url) }
-    func contents(of url: URL) -> DirectoryListing.Contents { gate.passThrough(); return inner.contents(of: url) }
-    func exists(_ path: String) -> Bool? { inner.exists(path) }
-    func size(_ url: URL) -> Int { inner.size(url) }
-    func readPlist(_ url: URL) -> PlistData? { inner.readPlist(url) }
-    func resolvingSymlinks(_ url: URL) -> URL { inner.resolvingSymlinks(url) }
 }
 
 /// The launch agent a scan over `files` lists, unwrapped with the precondition every

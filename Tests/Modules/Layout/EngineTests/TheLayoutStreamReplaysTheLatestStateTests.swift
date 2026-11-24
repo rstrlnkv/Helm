@@ -98,12 +98,12 @@ final class TheLayoutStreamReplaysTheLatestStateTests: XCTestCase {
         await waitUntil("the replay") { !reader.states.isEmpty }
         // Settle: one re-read waited for, so whatever it says is in before the count.
         await withCheckedContinuation { c in engine.settingsChanged(then: { c.resume() }) }
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await grace(0.1)
         let before = reader.states.count
         for _ in 0..<2 {
             await withCheckedContinuation { c in engine.settingsChanged(then: { c.resume() }) }
         }
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await grace(0.1)
         XCTAssertEqual(reader.states.count, before,
                        "an unchanged state was said again: \(reader.states.count - before) extra")
         reader.task?.cancel()

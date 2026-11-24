@@ -32,7 +32,7 @@ final class ActivationIsWhatStartsTheRefreshTests: XCTestCase {
         let spy = RefreshSpy()
         // Held for the length of the wait: `deinit` cancels the refresh, so an
         // engine let go of here would be racing its own task.
-        let engine = brewEngine(IdleRunner(), locator: NoBrew(), popularity: spy)
+        let engine = brewEngine(ScriptedRunner(), locator: NoBrew(), popularity: spy)
 
         engine.activate()
 
@@ -49,7 +49,7 @@ final class ActivationIsWhatStartsTheRefreshTests: XCTestCase {
     func testAnEngineThatIsNeverActivatedNeverAsks() {
         let spy = RefreshSpy()
         spy.asked.isInverted = true
-        let engine = brewEngine(IdleRunner(), locator: NoBrew(), popularity: spy)
+        let engine = brewEngine(ScriptedRunner(), locator: NoBrew(), popularity: spy)
 
         XCTAssertEqual(XCTWaiter.wait(for: [spy.asked], timeout: 1), .completed,
                        "an engine nobody activated asked the store to refresh, so a module "

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Helm
 
+import HelmTestSupport
 import Security
 import XCTest
 @testable import Module_VPN_Engine
@@ -57,9 +58,7 @@ final class TheVPNCacheKeepsItsKeychainServiceTests: XCTestCase {
     /// real build sends exactly class generic password plus the deployed service
     /// and no account; Helm Dev sends nothing.
     func testThePurgeSendsTheExactQueryAndHelmDevSendsNothing() throws {
-        let folder = FileManager.default.temporaryDirectory
-            .appendingPathComponent("vpn-purge-\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: folder) }
+        let folder = scratchDirectory("vpn-purge")
 
         var sent: [[String: Any]] = []
         func purge(_ id: String?, marker: String) {

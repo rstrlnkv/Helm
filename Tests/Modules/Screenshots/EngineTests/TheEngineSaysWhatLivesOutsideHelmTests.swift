@@ -34,6 +34,15 @@ private func firstState(of engine: ScreenshotsEngine, within seconds: Double = 5
 /// Mutant, red here: `refresh` emits after `stopped`.
 final class TheEngineSaysWhatLivesOutsideHelmTests: XCTestCase {
 
+    /// The control of both absences below: the same engine, never switched off, does say its first reading.
+    private func assertAnEngineSpeaks(_ name: String) async {
+        let control = makeEngine(home: scratchDirectory(name), preferences: FakePreferences())
+        control.activate()
+        let said = await firstState(of: control)
+        XCTAssertNotNil(said, "the control: an engine that stays on said nothing, so the silences below prove nothing")
+        control.deactivate()
+    }
+
     /// The flag and not only the cancel: a read *started* after the module was
     /// switched off has no task to cancel by then, and is stopped by the flag.
     func testAReadStartedAfterDeactivationDoesNotPublish() async throws {
@@ -41,7 +50,8 @@ final class TheEngineSaysWhatLivesOutsideHelmTests: XCTestCase {
         engine.activate()
         engine.deactivate()
         engine.refresh()
-        try await Task.sleep(nanoseconds: 300_000_000)
+        await grace(0.3)
+        await assertAnEngineSpeaks("shots-engine-late-control")
         let published = await firstState(of: engine, within: 0.5)
         XCTAssertNil(published, "a read started after deactivation was published")
     }
@@ -50,7 +60,8 @@ final class TheEngineSaysWhatLivesOutsideHelmTests: XCTestCase {
         let engine = makeEngine(home: scratchDirectory("shots-engine-off"), preferences: FakePreferences())
         engine.activate()
         engine.deactivate()
-        try await Task.sleep(nanoseconds: 300_000_000)
+        await grace(0.3)
+        await assertAnEngineSpeaks("shots-engine-off-control")
         let published = await firstState(of: engine, within: 0.5)
         XCTAssertNil(published, "an engine that was deactivated published after it")
     }
@@ -66,8 +77,9 @@ final class TheEngineTellsThePageWhatItReadTests: XCTestCase {
         preferences.hotkeys = .read(["28": ["enabled": false]])
         let engine = makeEngine(home: scratchDirectory("shots-engine"), preferences: preferences)
         engine.activate()
-        // Give the read a moment to land; the news replays it to whoever comes next.
-        try await Task.sleep(nanoseconds: 300_000_000)
+        // Hear the read land; the news replays it to whoever comes next, and this next one is the late subscriber.
+        let heard = await firstState(of: engine)
+        XCTAssertNotNil(heard, "the engine published nothing")
 
         let found = await firstState(of: engine)
         let state = try XCTUnwrap(found, "the engine published nothing")

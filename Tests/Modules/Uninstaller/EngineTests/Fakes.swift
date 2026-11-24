@@ -13,15 +13,77 @@ import XCTest
 // than the port it stands for, and a state the real port can be in would stop
 // being writable down.
 
-struct FakeFS: FileSystemPort {
-    let existing: [String: Int]
-    /// Directory listings for the orphan scan, keyed by parent path.
-    var listings: [String: [String]] = [:]
-    func exists(_ url: URL) -> Bool { existing[url.path] != nil }
-    func size(_ url: URL) -> Int { existing[url.path] ?? 0 }
-    func glob(_ pattern: URL) -> [URL] { [] }
+/// The one `FileSystemPort` fake: a Mac with none of the files a test asks about
+/// (`FakeFS()`: nothing exists, nothing weighs anything, no glob and no listing finds
+/// a thing), or the files the test names, each reading counted.
+///
+/// - `existing`: path → size, what exists.
+/// - `listings`: directory listings for the orphan scan, keyed by parent path.
+/// - `everyPathExistsAt`: every path exists at that many bytes, and nothing is listed.
+/// - `globbing`: a glob resolves against the siblings in `existing` and a folder lists
+///   its children from it, the way the system port does; a fake that answers `[]` for
+///   a glob cannot see a defect in which names one reaches.
+/// - `onDisk`: what is not scripted here is the real disk's answer.
+/// - `slowSizes`: a path whose walk takes that long, as on a Mac that is busy.
+/// - `reads`: every question put to it, so "no read" is a number.
+final class FakeFS: FileSystemPort, @unchecked Sendable {
+    var existing: [String: Int]
+    var listings: [String: [String]]
+    var everyPathExistsAt: Int?
+    var globbing: Bool
+    var onDisk: Bool
+    var slowSizes: [String: TimeInterval]
+    private let lock = NSLock()
+    private var asked = 0
+    var reads: Int { lock.withLock { asked } }
+
+    init(existing: [String: Int] = [:], listings: [String: [String]] = [:],
+         everyPathExistsAt: Int? = nil, globbing: Bool = false, onDisk: Bool = false,
+         slowSizes: [String: TimeInterval] = [:]) {
+        self.existing = existing
+        self.listings = listings
+        self.everyPathExistsAt = everyPathExistsAt
+        self.globbing = globbing
+        self.onDisk = onDisk
+        self.slowSizes = slowSizes
+    }
+
+    private func count() { lock.withLock { asked += 1 } }
+
+    func exists(_ url: URL) -> Bool {
+        count()
+        if everyPathExistsAt != nil { return true }
+        if onDisk { return FMFileSystem().exists(url) }
+        return existing[url.path] != nil
+    }
+    func size(_ url: URL) -> Int {
+        count()
+        if let delay = slowSizes[url.path] { Thread.sleep(forTimeInterval: delay); return 1 }
+        if let size = everyPathExistsAt { return size }
+        if onDisk { return FMFileSystem().size(url) }
+        return existing[url.path] ?? 0
+    }
+    func glob(_ pattern: URL) -> [URL] {
+        count()
+        if onDisk { return FMFileSystem().glob(pattern) }
+        guard globbing else { return [] }
+        let dir = pattern.deletingLastPathComponent().path
+        let name = pattern.lastPathComponent
+        return existing.keys
+            .filter { ($0 as NSString).deletingLastPathComponent == dir }
+            .filter { GlobMatch.matches(($0 as NSString).lastPathComponent, pattern: name) }
+            .sorted()
+            .map { URL(fileURLWithPath: $0) }
+    }
     func children(of url: URL) -> [URL] {
-        (listings[url.path] ?? []).map { url.appendingPathComponent($0) }
+        count()
+        if let names = listings[url.path] { return names.map { url.appendingPathComponent($0) } }
+        if onDisk { return FMFileSystem().children(of: url) }
+        guard globbing else { return [] }
+        return existing.keys
+            .filter { ($0 as NSString).deletingLastPathComponent == url.path }
+            .sorted()
+            .map { URL(fileURLWithPath: $0) }
     }
 }
 struct FakeApps: AppLister {
@@ -55,45 +117,8 @@ struct FakeApps: AppLister {
         })
     }
 }
-/// A Mac with none of the files a test asks about: nothing exists, nothing weighs
-/// anything, no glob and no listing finds a thing.
-struct NoFiles: FileSystemPort {
-    func exists(_ url: URL) -> Bool { false }
-    func size(_ url: URL) -> Int { 0 }
-    func glob(_ pattern: URL) -> [URL] { [] }
-    func children(of url: URL) -> [URL] { [] }
-}
-/// The opposite: every path exists, at `size` bytes, and nothing is listed.
-struct EveryPathExists: FileSystemPort {
-    var size = 0
-    func exists(_ url: URL) -> Bool { true }
-    func size(_ url: URL) -> Int { size }
-    func glob(_ pattern: URL) -> [URL] { [] }
-    func children(of url: URL) -> [URL] { [] }
-}
-/// Resolves a glob against its siblings and lists a folder's children the way the
-/// system port does, over the paths in `entries` (path → size). A fake that
-/// answers `[]` for a glob cannot see a defect in which names one reaches.
-struct GlobbingFS: FileSystemPort {
-    let entries: [String: Int]
-    func exists(_ url: URL) -> Bool { entries[url.path] != nil }
-    func size(_ url: URL) -> Int { entries[url.path] ?? 0 }
-    func glob(_ pattern: URL) -> [URL] {
-        let dir = pattern.deletingLastPathComponent().path
-        let name = pattern.lastPathComponent
-        return entries.keys
-            .filter { ($0 as NSString).deletingLastPathComponent == dir }
-            .filter { GlobMatch.matches(($0 as NSString).lastPathComponent, pattern: name) }
-            .sorted()
-            .map { URL(fileURLWithPath: $0) }
-    }
-    func children(of url: URL) -> [URL] {
-        entries.keys
-            .filter { ($0 as NSString).deletingLastPathComponent == url.path }
-            .sorted()
-            .map { URL(fileURLWithPath: $0) }
-    }
-}
+/// Read by a test about to be deleted; `FakeFS()` is the same Mac.
+typealias NoFiles = FakeFS
 final class FakeTrash: TrashPort, @unchecked Sendable {
     var trashed: [String] = []
     let failing: Set<String>

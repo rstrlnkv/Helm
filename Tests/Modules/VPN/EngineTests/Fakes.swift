@@ -6,8 +6,28 @@ import HelmRuntime
 import XCTest
 @testable import Module_VPN_Engine
 
-final class FakeRunner: VPNRunnerPort {
-    var issued: [[String]] = []
+/// One scripted answer of `FakeRunner.handler`: a result, or a tool that never answers.
+enum RunnerStep { case answer(HelmProcess.Result), hang }
+
+final class FakeRunner: VPNRunnerPort, @unchecked Sendable {
+    private let issuedLock = NSLock()
+    private var _issued: [[String]] = []
+    /// Every command, in order. Behind a lock: the engine asks from its own queue,
+    /// the test reads from its own thread.
+    var issued: [[String]] { issuedLock.withLock { _issued } }
+    func count(of args: [String]) -> Int { issued.filter { $0 == args }.count }
+
+    /// A tool scripted per command, **and one that can be made to never answer**
+    /// (`.hang`), which the port really can be: a command parks its caller until
+    /// `releaseAll()`, a query comes back at once with `HelmProcess.timedOutStatus`
+    /// and no output, as the real runner does once its deadline has passed, so a
+    /// test never waits out a clock. `nth` is how many times this exact command
+    /// was issued before. Takes precedence over every other answer here.
+    var handler: (@Sendable (_ args: [String], _ nth: Int) -> RunnerStep)?
+    private let release = DispatchSemaphore(value: 0)
+    /// Lets every parked call go, so no thread outlives its test.
+    func releaseAll() { for _ in 0..<16 { release.signal() } }
+
     var listOutput: String = ""
 
     init(list: String = "") { listOutput = list }
@@ -99,14 +119,29 @@ final class FakeRunner: VPNRunnerPort {
     }
 
     /// A query answers as a command does: this fake never runs out of time.
-    /// A read that does is scripted in `AHungScutilDoesNotParkTheModuleTests`.
+    /// A read that does is scripted with `handler`.
     func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result {
-        run(args)
+        perform(args, bounded: true)
     }
 
-    func run(_ args: [String]) -> HelmProcess.Result {
+    func run(_ args: [String]) -> HelmProcess.Result { perform(args, bounded: false) }
+
+    private func perform(_ args: [String], bounded: Bool) -> HelmProcess.Result {
         onRun?(args)
-        issued.append(args)
+        let nth = issuedLock.withLock {
+            let n = _issued.filter { $0 == args }.count
+            _issued.append(args)
+            return n
+        }
+        if let step = handler?(args, nth) {
+            switch step {
+            case .answer(let result): return result
+            case .hang:
+                if bounded { return .init(status: HelmProcess.timedOutStatus, output: "") }
+                _ = release.wait(timeout: .now() + 120)
+                return .init(status: -1, output: "")
+            }
+        }
         if args == ["--nc", "list"] {
             defer { listReads += 1 }
             if listReads < failingListReads { return HelmProcess.Result(status: 1, output: "") }

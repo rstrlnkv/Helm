@@ -53,7 +53,7 @@ final class TheBlockingReadsStayOffThePoolTests: XCTestCase {
 
     func testEveryPollOfTheWaitIsAskedOffThePool() async {
         let rec = Recording(up: true)
-        let engine = engine(rec, home: URL(fileURLWithPath: NSTemporaryDirectory()))
+        let engine = engine(rec, home: scratchDirectory("offpool-wait"))
 
         await Task.detached {
             await engine.waitUntilGone(bundleID: "com.acme.editor", deadline: 5, poll: 0.01)

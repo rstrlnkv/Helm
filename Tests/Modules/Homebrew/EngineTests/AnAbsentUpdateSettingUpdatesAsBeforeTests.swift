@@ -12,7 +12,7 @@ final class AnAbsentUpdateSettingUpdatesAsBeforeTests: XCTestCase {
         -> (env: [String: String]?, backing: InMemoryKeyValueStore) {
         let backing = InMemoryKeyValueStore()
         if let stored { backing.raw = [key: stored] }
-        let runner = EnvironmentRecorder()
+        let runner = ScriptedRunner()
         let engine = HomebrewEngine(
             locator: FixedLocator(), runner: runner, privileged: NoPrivileges(), user: "tester",
             marker: InMemoryOpMarker(),

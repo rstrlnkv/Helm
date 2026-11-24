@@ -15,12 +15,6 @@ final class TweakHostUnfedInputsTests: XCTestCase {
 
     private final class Calls { var log: [String] = [] }
     private final class FakeModel {}
-    private final class FakeEngine: ModuleEngine {
-        let calls: Calls
-        init(_ calls: Calls) { self.calls = calls }
-        func activate() { calls.log.append("activate") }
-        func deactivate() { calls.log.append("deactivate") }
-    }
     private final class Fake: TweakDescriptor {
         static var id: ModuleID { ModuleID("fake") }
         static var name: String { "fake" }
@@ -30,7 +24,7 @@ final class TweakHostUnfedInputsTests: XCTestCase {
         init(_ calls: Calls) { self.calls = calls }
         func makeTweak(store: NamespacedStore) -> ModuleParts<FakeModel> {
             calls.log.append("make")
-            return ModuleParts(engine: FakeEngine(calls), model: FakeModel())
+            return ModuleParts(engine: FakeEngine(record: { [calls] in calls.log.append($0) }), model: FakeModel())
         }
         func rows(_ model: FakeModel) -> [AnyView] { [] }
         func stop(_ model: FakeModel) { calls.log.append("stop") }

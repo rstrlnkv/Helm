@@ -4,37 +4,11 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-private final class ConcurrentTyping: TypingPort, @unchecked Sendable {
-    private let lock = NSLock()
-    private var plans: [SwitchPlan] = []
-    var performed: [SwitchPlan] { lock.lock(); defer { lock.unlock() }; return plans }
-    func perform(_ plan: SwitchPlan) -> Bool {
-        lock.lock(); plans.append(plan); lock.unlock(); return true
-    }
-}
-
-private final class ConcurrentTap: KeyTapPort, @unchecked Sendable {
-    private let lock = NSLock()
-    private var starts = 0
-    var startCount: Int { lock.lock(); defer { lock.unlock() }; return starts }
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        lock.lock(); starts += 1; lock.unlock()
-        handler = onEvent
-        modifiers = onModifier
-        return true
-    }
-    func stop() { handler = nil; modifiers = nil }
-}
-
 private func concurrentEngine(_ settings: NamespacedStore,
-                             tap: ConcurrentTap,
-                             typing: ConcurrentTyping) -> LayoutEngine {
-    LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
-                 translation: SameLengthTranslation(), spell: CyrillicSpell(),
+                             tap: FakeTap,
+                             typing: FakeTyping) -> LayoutEngine {
+    LayoutEngine(tap: tap, typing: typing, sources: FakeSources(follows: false),
+                 translation: FakeTranslation(sameLength: true), spell: FakeSpell(cyrillic: true),
                  secure: FakeSecure(), activation: FakeActivation(), settings: settings)
 }
 
@@ -45,26 +19,26 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
     /// run loop, doubling every keystroke. The claim in the source is that the
     /// start is claimed inside the lock rather than merely checked.
     func testStartingTwiceBuildsOneTap() {
-        let tap = ConcurrentTap()
+        let tap = FakeTap()
         let store = layoutStore()
-        let engine = concurrentEngine(store, tap: tap, typing: ConcurrentTyping())
+        let engine = concurrentEngine(store, tap: tap, typing: FakeTyping())
         engine.activate()
         engine.activate()
         engine.activate()
-        XCTAssertEqual(tap.startCount, 1)
+        XCTAssertEqual(tap.starts, 1)
     }
 
     /// …and after it has been switched off, starting it again builds exactly
     /// one more. An engine that could not be restarted would be a tap that
     /// stays dead until relaunch.
     func testItStartsAgainAfterBeingSwitchedOff() {
-        let tap = ConcurrentTap()
+        let tap = FakeTap()
         let store = layoutStore()
-        let engine = concurrentEngine(store, tap: tap, typing: ConcurrentTyping())
+        let engine = concurrentEngine(store, tap: tap, typing: FakeTyping())
         engine.activate()
         engine.deactivate()
         engine.activate()
-        XCTAssertEqual(tap.startCount, 2)
+        XCTAssertEqual(tap.starts, 2)
     }
 
     /// The storm, then a question with one right answer.
@@ -81,8 +55,8 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
     /// is a bare dictionary, and racing the fixture would drown the signal it
     /// is here to carry.
     func testTheEngineSettlesOnTheStoredKeyAfterConcurrentTraffic() async throws {
-        let tap = ConcurrentTap()
-        let typing = ConcurrentTyping()
+        let tap = FakeTap()
+        let typing = FakeTyping()
         let store = layoutStore()
         let engine = concurrentEngine(store, tap: tap, typing: typing)
         let codes: [Int64] = TapKey.allCases.compactMap(\.keyCode)
@@ -110,7 +84,7 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
             XCTAssertEqual(engine.boundTapKey, key,
                            "the engine did not settle on the key the store holds")
         }
-        XCTAssertEqual(tap.startCount, 1, "the storm built a second tap")
+        XCTAssertEqual(tap.starts, 1, "the storm built a second tap")
         // The storm contains real taps of the bound key, so conversions are
         // expected. What is not expected is a *shape* of plan the logic cannot
         // produce: a plan that deletes nothing types the replacement on top of

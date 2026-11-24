@@ -26,13 +26,17 @@ final class TheGestureIsAToggleNotAOneWayTripTests: XCTestCase {
     private var typing = FakeTyping()
     private var tap = FakeTap()
     private var context = FakeSecure()
-    private var sources = StuckSources()
+    private var sources = FakeSources(follows: false)
 
     private func engine() -> LayoutEngine {
         typing = FakeTyping(); tap = FakeTap()
-        context = FakeSecure(); sources = StuckSources()
+        context = FakeSecure(); sources = FakeSources(follows: false)
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
-                                  translation: ToggleTranslation(), spell: ToggleSpell(),
+                                  translation: FakeTranslation(otherwise: { word, _, _ in
+                                      let table: [Character: Character] = ["d": "в", "в": "d"]
+                                      let out = String(word.map { table[$0] ?? $0 })
+                                      return out == word ? nil : out }),
+                                  spell: FakeSpell(valid: ["в"]),
                                   secure: context, activation: FakeActivation())
         engine.activate()
         return engine
@@ -82,18 +86,4 @@ final class TheGestureIsAToggleNotAOneWayTripTests: XCTestCase {
         XCTAssertEqual(typing.performed.count, 2,
                        "the restored word was converted in an app it was never typed in")
     }
-}
-
-// MARK: - Ports
-
-private struct ToggleTranslation: TranslationPort {
-    func translate(_ word: String, from: String, to: String) -> String? {
-        let table: [Character: Character] = ["d": "в", "в": "d"]
-        let out = String(word.map { table[$0] ?? $0 })
-        return out == word ? nil : out
-    }
-}
-
-private struct ToggleSpell: SpellPort {
-    func isWord(_ word: String, sourceID: String) -> Bool? { word == "в" }
 }

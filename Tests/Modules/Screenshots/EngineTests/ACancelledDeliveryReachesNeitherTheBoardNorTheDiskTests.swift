@@ -13,20 +13,6 @@ import XCTest
 /// Mutant, red here: `deliver` drops the `Task.isCancelled` check before the clipboard.
 final class ACancelledDeliveryReachesNeitherTheBoardNorTheDiskTests: XCTestCase {
 
-    /// A clipboard that takes the picture and then cancels the task that is
-    /// delivering it: the cancellation lands after the copy and before the file.
-    private final class CancellingBoard: ShotPasteboard, @unchecked Sendable {
-        private let count = LockedCount()
-        var copies: Int { count.value }
-        func copy(pngs: [Data]) -> PasteOutcome { XCTFail("this test's board was never taught a group"); return .refused }
-        func copy(png: Data) -> PasteOutcome {
-            count.bump()
-            withUnsafeCurrentTask { $0?.cancel() }
-            return .accepted
-        }
-        func copy(text: String) -> PasteOutcome { .accepted }
-    }
-
     /// Cancelled before the delivery began: nothing is copied and nothing is written.
     /// The control is the same delivery, not cancelled, which does both.
     func testADeliveryCancelledBeforeItBeganCopiesAndWritesNothing() async throws {
@@ -51,7 +37,10 @@ final class ACancelledDeliveryReachesNeitherTheBoardNorTheDiskTests: XCTestCase 
         let home = scratchDirectory("shots-cancel-after-copy")
         let desktop = home.appendingPathComponent("Desktop", isDirectory: true)
         try FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
-        let board = CancellingBoard(), writer = FakeWriter()
+        // A clipboard that takes the picture and then cancels the task that is delivering it: the cancellation lands after
+        // the copy and before the file.
+        let board = FakePasteboard(), writer = FakeWriter()
+        board.afterCopy = { _ in withUnsafeCurrentTask { $0?.cancel() } }
         let session = CaptureSession(
             capture: FakeCapture(), writer: writer, trash: FakeTrash(folder: FakeWriter()), pasteboard: board, preferences: FakePreferences(),
             shutter: FakeShutter(), textReader: FakeTextReader(), settings: { .defaults }, naming: { .english },
@@ -60,7 +49,7 @@ final class ACancelledDeliveryReachesNeitherTheBoardNorTheDiskTests: XCTestCase 
         _ = await Task {
             await session.deliver(makeImage(width: 8, height: 8), saves: true, copies: true)
         }.value
-        XCTAssertEqual(board.copies, 1, "the copy did not happen, so the cancellation never landed where this case says")
+        XCTAssertEqual(board.copies.count, 1, "the copy did not happen, so the cancellation never landed where this case says")
         XCTAssertTrue(writer.written.isEmpty, "a delivery cancelled after the copy still wrote the file")
     }
 }

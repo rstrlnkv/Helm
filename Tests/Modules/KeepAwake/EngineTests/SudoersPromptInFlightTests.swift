@@ -5,70 +5,6 @@ import HelmContract
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
-/// The clamshell port with the one thing the shared fake cannot express: a
-/// password prompt that is *up*.
-///
-/// `installSudoers` shells out to `osascript … with administrator privileges`,
-/// which blocks for as long as the person takes to find their password — that is
-/// seconds to minutes, and the app carries on running underneath it. The shared
-/// `FakeClamshell` keeps a single `installCompletion` and overwrites it, so a
-/// second request is indistinguishable from the first. This one counts them and
-/// holds them all.
-///
-/// It also models what the real command does on success: the rule is on disk
-/// *before* `done(true)` is called, because the shell has already run `mv` into
-/// `/etc/sudoers.d`.
-private final class PromptClamshell: ClamshellPort {
-    var sudoersInstalled = false
-    var pmset = ""
-    var disableSleepCalls: [Bool] = []
-    private(set) var installCount = 0
-    private(set) var removeCount = 0
-    private var pending: [(Bool) -> Void] = []
-
-    /// How many times the coordinator asked whether it may disable sleep
-    /// without a password. It asks that on a queue of its own now, so «the
-    /// dialog was not raised a second time» has to be read *after* the second
-    /// question was answered — otherwise it is green because nobody has asked
-    /// yet.
-    private(set) var grantChecks = 0
-    func canDisableSleepWithoutPassword() -> Bool {
-        grantChecks += 1
-        return sudoersInstalled
-    }
-    func isSudoersInstalled() -> Bool { sudoersInstalled }
-
-    func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
-        installCount += 1
-        pending.append(done)
-    }
-
-    /// The person typed their password. The file exists from this moment on.
-    func answerAllPrompts(granted: Bool) {
-        let waiting = pending
-        pending = []
-        if granted { sudoersInstalled = true }
-        for done in waiting { done(granted) }
-    }
-
-    /// The rule this fake stands for is one Helm has just written, so it can
-    /// withdraw itself — and the count below is of removals, not of dialogs.
-    func removeSudoersWithoutPassword() -> Bool {
-        removeCount += 1
-        sudoersInstalled = false
-        return true
-    }
-
-    func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
-        removeCount += 1
-        sudoersInstalled = false
-        done(true)
-    }
-
-    func setDisableSleep(_ on: Bool) -> Bool { disableSleepCalls.append(on); return true }
-    func pmsetReport() -> String? { pmset }
-}
-
 /// What happens to the sudoers rule while the password prompt is on screen.
 ///
 /// `ClamshellCoordinator.engage` asks the system and, on no, starts an admin
@@ -89,7 +25,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
     private var backing: InMemoryKeyValueStore!
     private var store: NamespacedStore!
     private var settings: KeepAwakeSettings!
-    private var clamshell: PromptClamshell!
+    private var clamshell: FakeClamshell!
     private var engine: KeepAwakeEngine!
 
     override func setUp() async throws {
@@ -97,7 +33,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
         backing = InMemoryKeyValueStore()
         store = NamespacedStore(namespace: "keep-awake", backing: backing)
         settings = KeepAwakeSettings(store: store)
-        clamshell = PromptClamshell()
+        clamshell = FakeClamshell()
         engine = fakeEngine(settings: settings, store: store, clamshell: clamshell)
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
     }
@@ -113,8 +49,8 @@ final class SudoersPromptInFlightTests: XCTestCase {
         engine.lidSwitchTurned(true)
         // The question that decides whether to prompt is `sudo -n`, asked off
         // the drawing thread — see `waitForTheLid`.
-        await waitUntil("the lid asked for the rule") { clamshell.installCount == 1 }
-        XCTAssertEqual(clamshell.installCount, 1, "precondition: one password prompt is up")
+        await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
+        XCTAssertEqual(clamshell.installCalls, 1, "precondition: one password prompt is up")
         XCTAssertTrue(clamshell.disableSleepCalls.isEmpty,
                       "precondition: nothing has been granted yet")
     }
@@ -140,7 +76,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
         // The person changes their mind while the prompt is up.
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
         engine.settingsChanged()
-        XCTAssertEqual(clamshell.removeCount, 0,
+        XCTAssertEqual((clamshell.removeCalls + clamshell.passwordlessRemovals), 0,
                        "precondition: there was nothing on disk to remove yet")
 
         // …and then the password is typed. The rule is installed now.
@@ -189,7 +125,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
         // second request has not been made yet.
         await engine.drainClamshellForTests()
         await drainMainQueue()
-        XCTAssertEqual(clamshell.installCount, 1,
+        XCTAssertEqual(clamshell.installCalls, 1,
                        "a second admin password prompt was stacked on the one already up")
     }
 
@@ -207,7 +143,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
         XCTAssertTrue(clamshell.sudoersInstalled)
         XCTAssertEqual(clamshell.disableSleepCalls, [true])
         XCTAssertTrue(engine.clamshellActive)
-        XCTAssertEqual(clamshell.removeCount, 0)
+        XCTAssertEqual((clamshell.removeCalls + clamshell.passwordlessRemovals), 0)
     }
 
     /// And a refused prompt asks again on the next session, because a person who
@@ -225,8 +161,8 @@ final class SudoersPromptInFlightTests: XCTestCase {
         engine.lidSwitchTurned(false)
         engine.lidSwitchTurned(true)
 
-        await waitUntil("the lid asked for the rule a second time") { clamshell.installCount == 2 }
-        XCTAssertEqual(clamshell.installCount, 2,
+        await waitUntil("the lid asked for the rule a second time") { clamshell.installCalls == 2 }
+        XCTAssertEqual(clamshell.installCalls, 2,
                        "the person declined once and can no longer turn the feature on")
     }
 }

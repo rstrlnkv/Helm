@@ -34,10 +34,6 @@ final class AResetGoesThroughTheEnginesTests: XCTestCase {
     /// Helm answers this without writing a line — and the reset can ask all of
     /// them without knowing which is which.
     func testAnEngineThatHoldsNothingOutsideHelmAnswersAnyway() {
-        final class Bare: ModuleEngine {
-            func activate() {}
-            func deactivate() {}
-        }
-        Bare().willDisable()
+        FakeEngine().willDisable()
     }
 }

@@ -62,7 +62,7 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
     /// which answers nil, and the coordinator then logs «no answer» every tick.
     func testTheDescriptorPassesTheScanOn() async {
         let work = CountingWork()
-        let parts = ModuleParts(engine: NoEngine(), model: DiskViewModel(work: work, store: ScanStore(directory: scratchDirectory("disk-descriptor"))))
+        let parts = ModuleParts(engine: FakeEngine(), model: DiskViewModel(work: work, store: ScanStore(directory: scratchDirectory("disk-descriptor"))))
         let report = await DiskDescriptor().backgroundScan(parts)
         XCTAssertNotNil(report, "the descriptor fell to the default: «no answer» every tick")
         XCTAssertEqual(work.background, 1)
@@ -87,8 +87,6 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
         await grace()
         XCTAssertEqual(work.volumes, after, "a mount after stop() reached the volume read")
     }
-
-    private final class NoEngine: ModuleEngine { func activate() {}; func deactivate() {} }
 
     func testAPressAfterStopReachesNoWork() async {
         let work = CountingWork()

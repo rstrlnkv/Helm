@@ -39,7 +39,7 @@ final class NestedSiblingTests: XCTestCase {
                       entries: [String: Int]) async throws -> ScanResult {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
                                        apps: FakeApps.installed(topLevel, nested: nested),
-                                       fs: GlobbingFS(entries: entries),
+                                       fs: FakeFS(existing: entries, globbing: true),
                                        trash: NoTrash(), running: NoRunning())
         return await engine.scan(bundleID: id, appName: "Acrobat")
     }

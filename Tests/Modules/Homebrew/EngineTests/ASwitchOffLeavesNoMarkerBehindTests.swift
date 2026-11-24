@@ -28,10 +28,8 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
     }
 
     /// The Cellar a doctor fix is judged against.
-    private func cellarRunner() -> HangingRunner {
-        let runner = HangingRunner()
-        runner.listing = "wget 1.25.0\n"
-        return runner
+    private func cellarRunner() -> ScriptedRunner {
+        ScriptedRunner(streams: .hold, answers: [BrewAnswer(["list", "--formula"], 0, "wget 1.25.0\n")])
     }
 
     /// Reports what is written *now*, without taking it the way `status()` does.
@@ -172,9 +170,8 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
     func testASwitchOffDuringTheFixsCellarReadLaunchesNothing() {
         let runner = cellarRunner()
         let marker = SpyMarker()
-        let hook = HookedRunner(runner)
-        let off = engine(hook, marker)
-        hook.onList = { [weak off] in off?.deactivate() }
+        let off = engine(runner, marker)
+        runner.onRun = { [weak off] args in if args.first == "list" { off?.deactivate() } }
 
         off.runDoctorFix(["uninstall", "wget"])
 
@@ -308,24 +305,5 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
         b.upgradeAll()
         XCTAssertEqual(runner.handles.count, 1, "the dropped engine's gate stayed shut")
         runner.finishAll(code: 0)
-    }
-
-    private final class HookedRunner: ProcessRunner, @unchecked Sendable {
-        let inner: HangingRunner
-        var onList: (@Sendable () -> Void)?
-        init(_ inner: HangingRunner) { self.inner = inner }
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) {
-            let answer = inner.run(launchPath, args, env: env)
-            if args.first == "list" { onList?() }
-            return answer
-        }
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                     env: [String: String]) -> (status: Int32, output: String) { (0, "") }
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            inner.stream(launchPath, args, env: env, onLine: onLine, onExit: onExit)
-        }
     }
 }

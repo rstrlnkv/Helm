@@ -1,4 +1,5 @@
 import HelmContract
+import HelmTestSupport
 import HelmRuntime
 import HelmUI
 import SwiftUI
@@ -31,23 +32,13 @@ final class AModuleOwnsItsModelTests: XCTestCase {
         var calls: [String] = []
     }
 
-    private final class FakeEngine: ModuleEngine {
-        let journal: Journal
-        let standsIn: Bool
-        init(journal: Journal, standsIn: Bool = false) {
-            self.journal = journal
-            self.standsIn = standsIn
-        }
-        func activate() {}
-        func willDisable() { journal.calls.append("willDisable") }
-        func deactivate() { journal.calls.append("deactivate") }
-    }
-
     /// The module's own model type.
     private final class OwnModel {}
 
     private class Base {
         let journal = Journal()
+        /// The journal reads what leaves the module, not what starts it.
+        var journaled: (String) -> Void { { [journal] in if $0 != "activate" { journal.calls.append($0) } } }
     }
 
     private final class Converted: Base, StandInDescriptor {
@@ -66,7 +57,7 @@ final class AModuleOwnsItsModelTests: XCTestCase {
             makeModuleCalls += 1
             let model = OwnModel()
             built = model
-            let engine = FakeEngine(journal: journal, standsIn: standsIn)
+            let engine = FakeEngine(standsIn: standsIn, record: journaled)
             builtEngine = engine
             return ModuleParts(engine: engine, model: model)
         }
@@ -88,7 +79,7 @@ final class AModuleOwnsItsModelTests: XCTestCase {
     private final class Second: Base, StandInDescriptor {
         static let id = ModuleID(AModuleOwnsItsModelTests.secondID)
         func makeModule(store: NamespacedStore) -> ModuleParts<OwnModel> {
-            ModuleParts(engine: FakeEngine(journal: journal), model: OwnModel())
+            ModuleParts(engine: FakeEngine(record: journaled), model: OwnModel())
         }
         func backgroundScan(_ parts: ModuleParts<OwnModel>) async -> ScanReport? { nil }
     }

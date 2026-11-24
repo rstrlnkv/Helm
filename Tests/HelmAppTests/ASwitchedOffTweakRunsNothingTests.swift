@@ -1,4 +1,5 @@
 import HelmContract
+import HelmTestSupport
 import HelmRuntime
 import HelmUI
 import SwiftUI
@@ -26,14 +27,6 @@ final class ASwitchedOffTweakRunsNothingTests: XCTestCase {
 
     private final class FakeModel {}
 
-    private final class FakeEngine: ModuleEngine {
-        let name: String
-        let calls: Calls
-        init(_ name: String, _ calls: Calls) { self.name = name; self.calls = calls }
-        func activate() { calls.log.append("activate \(name)") }
-        func deactivate() { calls.log.append("deactivate \(name)") }
-    }
-
     private class FakeTweak: TweakDescriptor {
         class var key: String { "" }
         static var id: ModuleID { ModuleID(key) }
@@ -44,7 +37,7 @@ final class ASwitchedOffTweakRunsNothingTests: XCTestCase {
         init(_ calls: Calls) { self.calls = calls }
         func makeTweak(store: NamespacedStore) -> ModuleParts<FakeModel> {
             calls.log.append("make \(Self.key)")
-            return ModuleParts(engine: FakeEngine(Self.key, calls), model: FakeModel())
+            return ModuleParts(engine: FakeEngine(record: { [key = Self.key, calls] in calls.log.append("\($0) \(key)") }), model: FakeModel())
         }
         func rows(_ model: FakeModel) -> [AnyView] { [] }
         func stop(_ model: FakeModel) { calls.log.append("stop \(Self.key)") }

@@ -28,40 +28,6 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
 
     // MARK: - Ports
 
-    /// Both halves of the secure check, kept apart the way the port keeps them:
-    /// `isSecureInput` is the system-wide syscall, `isSecure` also recognises an
-    /// app's own password field. Neither is on in this suite — they are here so
-    /// the fake cannot answer one question for the other.
-    private final class Context: SecureContextPort, @unchecked Sendable {
-        var bundle = "com.apple.Notes"
-        var systemWideSecure = false
-        var passwordField = false
-        func isSecureInput() -> Bool { systemWideSecure }
-        func isSecure() -> Bool { systemWideSecure || passwordField }
-        func frontmostBundleID() -> String { bundle }
-    }
-
-    /// Keyed by direction, because the selection path asks both ways round
-    /// (`TwoWayConversion`) and a table that ignores the pair cannot tell the
-    /// two apart — the real `UCTranslation` reads two different layouts and can
-    /// answer nil for one of them.
-    private struct Translation: TranslationPort {
-        let table: [String: [String: String]]
-        func translate(_ word: String, from: String, to: String) -> String? {
-            table["\(from)>\(to)"]?[word]
-        }
-    }
-
-    /// Nil is «no dictionary for this language», which the port's contract says
-    /// must never be read as «not a word» — so the fake can answer it.
-    private struct Spell: SpellPort {
-        let valid: Set<String>
-        let noDictionary: Set<String>
-        func isWord(_ word: String, sourceID: String) -> Bool? {
-            noDictionary.contains(sourceID) ? nil : valid.contains(word)
-        }
-    }
-
     // MARK: - The world
 
     /// `ras` is nonsense in English and `кфы` is nonsense in Russian, so nothing
@@ -80,9 +46,9 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
                         sources: FakeSources) -> LayoutEngine {
         let engine = LayoutEngine(
             tap: FakeTap(), typing: typing, sources: sources,
-            translation: Translation(table: table),
-            spell: Spell(valid: ["привет", "las["], noDictionary: []),
-            secure: Context(), activation: FakeActivation(),
+            translation: FakeTranslation(byDirection: table),
+            spell: FakeSpell(valid: ["привет", "las["]),
+            secure: FakeSecure(), activation: FakeActivation(),
             selection: selection,
             ledger: LedgerStore(),
             exceptions: exceptions,

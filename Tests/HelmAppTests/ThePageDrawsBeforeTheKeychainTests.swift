@@ -124,12 +124,12 @@ final class ThePageDrawsBeforeTheKeychainTests: DisabledScansTestCase {
     /// The reason none of the above is satisfied by deleting the setting: once
     /// the keychain answers, the page does read the off-list. An absence that is
     /// permanent is a section that never appears.
-    func testThePageReadsTheOffListOnceTheKeychainAnswers() {
+    func testThePageReadsTheOffListOnceTheKeychainAnswers() async {
         let keychain = freshMac(cached: true)
         let drawn = drawThePage()
-        for _ in 0..<200 where keychain.reads == 0 {
+        await waitUntil("the page reads the off-list") {
             drawn.host.layoutSubtreeIfNeeded()
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+            return keychain.reads > 0
         }
         XCTAssertGreaterThan(keychain.reads, 0,
                              "the page never reads the off-list at all, so the switches it "

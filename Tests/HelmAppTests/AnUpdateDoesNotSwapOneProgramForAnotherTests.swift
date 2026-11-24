@@ -32,8 +32,7 @@ final class AnUpdateDoesNotSwapOneProgramForAnotherTests: XCTestCase {
     }
 
     func testABundleWithNoPlistReadsAsNothing() throws {
-        let empty = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-none-\(UUID().uuidString).app")
+        let empty = scratchDirectory("update-none").appendingPathComponent("none.app")
         XCTAssertNil(Installer.identifier(ofBundleAt: empty),
                      "a missing plist is not an identifier that happens to match")
     }

@@ -1,5 +1,6 @@
 import XCTest
 import HelmRuntime
+import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
 /// Asking an app to quit and moving its bundle are two steps, and the second
@@ -24,7 +25,7 @@ final class TheQuitIsWaitedForTests: XCTestCase {
                         quitAfter: TimeInterval = 0) -> (UninstallerEngine, FakeRunning) {
         let apps = FakeRunning(running: running, stubborn: stubborn, quitAfter: quitAfter)
         let engine = UninstallerEngine(
-            home: URL(fileURLWithPath: NSTemporaryDirectory()),
+            home: scratchDirectory("quit"),
             apps: FakeApps(), fs: FakeFS(existing: [:]),
             trash: FakeTrash(), running: apps)
         return (engine, apps)

@@ -27,65 +27,6 @@ import XCTest
 /// Mutant, red here: `CaptureSession.replace` trashes the original without the `ShotReplacement.verdict` check.
 final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
 
-    // MARK: The ports of the test: a real folder that keeps a journal, and a Trash that is a folder
-
-    /// The real writer, with every move journalled and a moment after each write for a test to change the disk in.
-    final class JournalledFolder: ShotWriting, @unchecked Sendable {
-        let moves: ShotMoves
-        private let lock = NSLock()
-        private let _afterWrite = Locked<((URL) -> Void)?>(nil)
-        private var _written: [WrittenShot] = []
-        init(moves: ShotMoves) { self.moves = moves }
-
-        var afterWrite: ((URL) -> Void)? { get { _afterWrite.value } set { _afterWrite.value = newValue } }
-        var written: [WrittenShot] { lock.withLock { _written } }
-
-        func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
-            let outcome = FileShotWriter().write(data, into: folder, base: base, pathExtension: pathExtension)
-            if case .written(let shot) = outcome {
-                lock.withLock { _written.append(shot) }
-                moves.note(.wrote(shot.url))
-                afterWrite?(shot.url)
-            }
-            return outcome
-        }
-        func reading(of url: URL) -> ShotReading? { FileShotWriter().reading(of: url) }
-        func claim(_ written: URL, as name: URL) -> Bool {
-            let claimed = FileShotWriter().claim(written, as: name)
-            if claimed { moves.note(.claimed(written, as: name)); afterClaim?(name) }
-            return claimed
-        }
-        /// Run with the name right after a successful claim, before the session goes on.
-        var afterClaim: ((URL) -> Void)? { get { _afterClaim.value } set { _afterClaim.value = newValue } }
-        private let _afterClaim = Locked<((URL) -> Void)?>(nil)
-    }
-
-    /// The Trash as a folder: the file is really moved into it under a name of its own, or the move throws.
-    final class AsideTrash: ShotTrashing, @unchecked Sendable {
-        let folder: URL
-        let moves: ShotMoves
-        private let lock = NSLock()
-        private let _failure = Locked<NSError?>(nil)
-        private var _asked: [URL] = []
-        private let _before = Locked<((URL) -> Void)?>(nil)
-        private let _after = Locked<((URL) -> Void)?>(nil)
-        init(folder: URL, moves: ShotMoves) { self.folder = folder; self.moves = moves }
-
-        var failure: NSError? { get { _failure.value } set { _failure.value = newValue } }
-        var before: ((URL) -> Void)? { get { _before.value } set { _before.value = newValue } }
-        var after: ((URL) -> Void)? { get { _after.value } set { _after.value = newValue } }
-        var asked: [URL] { lock.withLock { _asked } }
-
-        func trash(_ url: URL) throws {
-            lock.withLock { _asked.append(url) }
-            before?(url)
-            if let failure { throw failure }
-            try FileManager.default.moveItem(at: url, to: folder.appendingPathComponent(UUID().uuidString))
-            moves.note(.trashed(url))
-            after?(url)
-        }
-    }
-
     // MARK: The scene
 
     static let name = "Screenshot 2026-10-02 at 18.00.00"
@@ -96,8 +37,8 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
 
     struct Scene {
         let session: CaptureSession
-        let disk: JournalledFolder
-        let trash: AsideTrash
+        let disk: FakeWriter
+        let trash: FakeTrash
         let capture: FakeCapture
         let pasteboard: FakePasteboard
         let folder: URL
@@ -115,8 +56,10 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
         let folder = scratchDirectory(label)
         let aside = scratchDirectory(label + "-trash")
         let moves = ShotMoves()
-        let disk = JournalledFolder(moves: moves)
-        let trash = AsideTrash(folder: aside, moves: moves)
+        // The real folder, with every move journalled and a moment after each write for a test to change the disk in.
+        let disk = FakeWriter(moves: moves, disk: FileShotWriter())
+        // The Trash as a folder: the file is really moved into it under a name of its own, or the move throws.
+        let trash = FakeTrash(aside: aside, moves: moves)
         let capture = FakeCapture()
         capture.outcome = .frozen(Freeze(displays: [Rig.display(1)], windows: []))
         let pasteboard = FakePasteboard()
@@ -209,7 +152,7 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
                                          .claimed(s.sibling(beside), as: s.path)], "the three steps, in this order")
         XCTAssertEqual(delivery.files, [s.path])
         // The file under the name is the one that was written beside, moved and not copied.
-        let edit = try XCTUnwrap(s.disk.written.last)
+        let edit = try XCTUnwrap(s.disk.shots.last)
         XCTAssertEqual(delivery.written.first?.reading.identity, edit.reading.identity)
         XCTAssertNotEqual(delivery.written.first?.reading.identity, s.original.reading.identity)
         XCTAssertEqual(delivery.written.first?.reading, FileShotWriter().reading(of: s.path), "the reading is of the file as it is now")
@@ -521,11 +464,14 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
     /// the delivery says nothing, because whoever cancelled it is not there to be told (a module that was switched off).
     func testACancelAfterTheEditWasWrittenMovesNothingAndLeavesTheEditBeside() async throws {
         let s = try scene("edit-cancelled")
-        let box = Locked<Task<Delivery, Never>?>(nil)
         let url = s.path
-        s.disk.afterWrite = { written in if written != url { while box.value == nil { usleep(1000) }; box.value?.cancel() } }
+        // The write is on the writer's own thread, not in the delivery's task, so the edit's write waits (a signal, not a
+        // poll) for the test to hold the task and then cancels it.
+        let box = Locked<Task<Delivery, Never>?>(nil), held = DispatchSemaphore(value: 0)
+        s.disk.afterWrite = { written in if written != url { held.wait(); box.value?.cancel() } }
         let session = s.session, shot = s.original, picture = blue
         box.value = Task { await session.deliver(picture, saves: true, copies: false, replacing: shot) }
+        held.signal()
         let running = try XCTUnwrap(box.value)
         let delivery = await running.value
         XCTAssertFalse(delivery.replaced)
@@ -540,7 +486,7 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
         let s = try scene("edit-cancelled-early")
         let session = s.session, shot = s.original, picture = blue
         let task = Task { () -> Delivery in
-            while !Task.isCancelled { await Task.yield() }
+            await waitUntilReached("the test cancelled this task") { Task.isCancelled }
             return await session.deliver(picture, saves: true, copies: false, replacing: shot)
         }
         task.cancel()
@@ -874,7 +820,7 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
         assertTold(first, [], replaced: true)
         XCTAssertEqual(try Data(contentsOf: url), strangerBytes, "the control: the stranger stands under the name")
         let edited = try XCTUnwrap(first.written.first)
-        XCTAssertEqual(edited.reading, try XCTUnwrap(s.disk.written.last).reading, "the reading is the edit's own")
+        XCTAssertEqual(edited.reading, try XCTUnwrap(s.disk.shots.last).reading, "the reading is the edit's own")
         XCTAssertNotEqual(edited.reading.identity, FileShotWriter().reading(of: url)?.identity, "the reading is the name's")
 
         let trashedBefore = s.trash.asked

@@ -30,7 +30,7 @@ final class AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests: XCTestCase {
             var shots: [ShotToastModel.Shot] = []
             for width in widths { shots.append(try await s.take(width: width)) }
             let file = try XCTUnwrap(shots[gone].file)
-            let singles = s.board.singles
+            let singles = s.board.copies
             if move {
                 try FileManager.default.moveItem(at: file, to: file.deletingLastPathComponent().appendingPathComponent("elsewhere.png"))
             } else {
@@ -40,7 +40,7 @@ final class AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests: XCTestCase {
             await waitUntil("\(gone)/\(move): the others were written") { s.board.lists.count >= 1 }
             await grace(0.1)
             XCTAssertEqual(s.board.lists.count, 1, "\(gone)/\(move): the found shots were \(s.board.lists.count) writes")
-            XCTAssertEqual(s.board.singles, singles, "\(gone)/\(move): a shot went by the single write")
+            XCTAssertEqual(s.board.copies, singles, "\(gone)/\(move): a shot went by the single write")
             XCTAssertEqual(try XCTUnwrap(s.board.lists.first).map(PileScene.width(of:)),
                            widths.enumerated().filter { $0.offset != gone }.map(\.element),
                            "\(gone)/\(move): not every shot that is found, in the list's order")
@@ -60,12 +60,12 @@ final class AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests: XCTestCase {
         let s = try PileScene(self, name: "copy-all-gone")
         var shots: [ShotToastModel.Shot] = []
         for width in [400, 420] { shots.append(try await s.take(width: width)) }
-        let singles = s.board.singles
+        let singles = s.board.copies
         for shot in shots { try FileManager.default.removeItem(at: try XCTUnwrap(shot.file)) }
         s.toast.model.copyAll()
         await waitUntil("the person was told") { s.toast.model.refusal != nil }
         XCTAssertEqual(s.board.lists.count, 0)
-        XCTAssertEqual(s.board.singles, singles)
+        XCTAssertEqual(s.board.copies, singles)
         XCTAssertEqual(s.refusalBody, ScStr.refusal(.filesGone([0, 1])))
     }
 }

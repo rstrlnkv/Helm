@@ -10,16 +10,9 @@ import HelmRuntime
 /// path, and the tap must have seen the word (the dictionary knows `Hello`), so a refusal is the secure answer's.
 final class ASlipIsNotFixedInAPasswordFieldTests: XCTestCase {
 
-    private final class FieldOnly: SecureContextPort, @unchecked Sendable {
-        var field = false
-        func isSecureInput() -> Bool { false }
-        func isSecure() -> Bool { field }
-        func frontmostBundleID() -> String { "com.apple.Notes" }
-    }
-
     private func rig(secureField: Bool) -> (LayoutEngine, FakeTyping, FakeTap) {
-        let typing = FakeTyping(), tap = FakeTap(), secure = FieldOnly()
-        secure.field = secureField
+        let typing = FakeTyping(), tap = FakeTap(), secure = FakeSecure()
+        secure.passwordField = secureField
         let store = layoutStore()
         store.set(true, for: LayoutKey.fixCapitals)
         let engine = LayoutEngine(

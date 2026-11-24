@@ -69,7 +69,7 @@ final class TheRefreshEndsWithTheEngineTests: XCTestCase {
 
     func testDeactivationCancelsARefreshStillRunning() {
         let spy = SleepySpy()
-        let engine = brewEngine(IdleRunner(), locator: NoBrew(), popularity: spy)
+        let engine = brewEngine(ScriptedRunner(), locator: NoBrew(), popularity: spy)
 
         engine.activate()
         XCTAssertEqual(XCTWaiter.wait(for: [spy.began], timeout: 5), .completed,
@@ -95,7 +95,7 @@ final class TheRefreshEndsWithTheEngineTests: XCTestCase {
     /// the fetch runs, and this case times out.
     func testDroppingTheEngineCancelsARefreshStillRunning() {
         let spy = SleepySpy()
-        var engine: HomebrewEngine? = brewEngine(IdleRunner(), locator: NoBrew(), popularity: spy)
+        var engine: HomebrewEngine? = brewEngine(ScriptedRunner(), locator: NoBrew(), popularity: spy)
 
         engine?.activate()
         XCTAssertEqual(XCTWaiter.wait(for: [spy.began], timeout: 5), .completed,

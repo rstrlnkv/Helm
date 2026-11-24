@@ -93,13 +93,12 @@ final class ThePinchIsWatchedOnlyWhileSwitchedOnAndLiveTests: XCTestCase {
         XCTAssertEqual(events.completed, [.pinch])
     }
 
-    func testAPortThatStandsDownEndsTheWatchAndSaysWhy() {
+    func testAPortThatStandsDownEndsTheWatchAndSaysWhy() async {
         let port = FakeTouchPort()
         let engine = engine(port, on: true)
         engine.activate()
         port.standDown()
-        let deadline = Date().addingTimeInterval(2)
-        while engine.pinchWatch != .layoutRefused || port.running, Date() < deadline { Thread.sleep(forTimeInterval: 0.01) }
+        await waitUntilReached("the pad stood down and the port stopped") { engine.pinchWatch == .layoutRefused && !port.running }
         XCTAssertEqual(engine.pinchWatch, .layoutRefused)
         XCTAssertFalse(port.running)
     }

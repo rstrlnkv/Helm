@@ -23,7 +23,7 @@ final class AStoppedScreenshotsModelReachesNoWorkTests: XCTestCase {
     /// Fails against a model whose init also refreshes or builds a session (`calls` is longer): a launch would
     /// then read preferences and raise the capture ports before any page or press asked.
     func testBuildingTheModelAsksTheEngineNothing() async throws {
-        let scene = try FakeScreenshotsScene.plain()
+        let scene = try FakeScreenshotsScene.plain(in: self)
         XCTAssertEqual(scene.work.calls, ["stream"], "the init asked the engine for more than its stream")
         XCTAssertEqual(scene.controllersBuilt, 0, "the init built the capture controller: a panel, a toast and ports at every launch")
         // The control: what the engine says on the stream is what the model draws.
@@ -36,12 +36,12 @@ final class AStoppedScreenshotsModelReachesNoWorkTests: XCTestCase {
 
     /// Fails against a model that reads `work` and not the door after `stop()`: the stopped model builds one.
     func testAPressAfterStopBuildsNoSession() async throws {
-        let running = try FakeScreenshotsScene.plain()
+        let running = try FakeScreenshotsScene.plain(in: self)
         running.model.press(.fullScreen)
         XCTAssertEqual(running.work.count("session"), 1, "the control: a press on a running model builds its session")
         XCTAssertEqual(running.controllersBuilt, 1)
 
-        let stopped = try FakeScreenshotsScene.plain()
+        let stopped = try FakeScreenshotsScene.plain(in: self)
         stopped.model.stop()
         for hotkey in ScreenshotsHotkey.allCases { stopped.model.press(hotkey) }
         await grace(0.3)
@@ -52,11 +52,11 @@ final class AStoppedScreenshotsModelReachesNoWorkTests: XCTestCase {
     }
 
     func testARefreshAfterStopReachesNoWork() async throws {
-        let running = try FakeScreenshotsScene.plain()
+        let running = try FakeScreenshotsScene.plain(in: self)
         running.model.refresh()
         XCTAssertEqual(running.work.count("refresh"), 1, "the control: a refresh on a running model reaches the engine")
 
-        let stopped = try FakeScreenshotsScene.plain()
+        let stopped = try FakeScreenshotsScene.plain(in: self)
         stopped.model.stop()
         stopped.model.refresh()
         stopped.model.refresh()
@@ -65,7 +65,7 @@ final class AStoppedScreenshotsModelReachesNoWorkTests: XCTestCase {
 
     /// The cancel in `stop()` keeps the late state out: `StreamFollower` reads cancellation before each element. `testStopLetsTheStreamGo` holds the subscriber's release.
     func testNewsAfterStopIsNotDrawn() async throws {
-        let scene = try FakeScreenshotsScene.plain()
+        let scene = try FakeScreenshotsScene.plain(in: self)
         scene.work.say(state("/before"))
         await waitUntil("the control: news before stop is drawn") { scene.model.state.folder == "/before" }
         scene.model.stop()
@@ -79,7 +79,7 @@ final class AStoppedScreenshotsModelReachesNoWorkTests: XCTestCase {
     /// Fails against a `stop` that does not end the event task, because the engine's stream stays open and the
     /// news keeps its subscriber.
     func testStopLetsTheStreamGo() async throws {
-        let scene = try FakeScreenshotsScene.plain()
+        let scene = try FakeScreenshotsScene.plain(in: self)
         await grace(0.1)
         XCTAssertEqual(scene.work.streamsOpened, 1)
         XCTAssertEqual(scene.work.openStreams, 1, "the control: a running model holds its stream")

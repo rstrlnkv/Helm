@@ -61,7 +61,7 @@ final class ASilentToolIsNotNoExtensionsTests: XCTestCase {
     }
 
     private func engine(_ tool: ToolThatMaySayNothing) -> UninstallerEngine {
-        UninstallerEngine(home: root, apps: FakeApps(), fs: EveryPathExists(),
+        UninstallerEngine(home: root, apps: FakeApps(), fs: FakeFS(everyPathExistsAt: 0),
                           trash: RefusesEverything(), running: NoRunning(), extensions: tool)
     }
 

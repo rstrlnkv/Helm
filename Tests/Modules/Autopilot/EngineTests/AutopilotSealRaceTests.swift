@@ -106,7 +106,7 @@ final class AutopilotSealRaceTests: XCTestCase {
     /// A barrier on the engine's queue: `clearHistory` is `queue.sync` and the
     /// queue is serial, so the watch refresh the setter dispatched has finished.
     /// Without it the read this test holds might be that one.
-    private func settle(_ engine: AutopilotEngine) { engine.clearHistory() }
+    private func barrier(_ engine: AutopilotEngine) { engine.clearHistory() }
 
     /// Sets up an engine with one sealed, harmless rule set saved through Helm,
     /// and a read of it held mid-decision.
@@ -114,7 +114,7 @@ final class AutopilotSealRaceTests: XCTestCase {
         let helm = engine()
         helm.folders = [WatchedFolder(id: "kept", path: root.path, enabled: true,
                                       rules: [], depth: 1)]
-        settle(helm)
+        barrier(helm)
         backing.holdTheNextRead(of: payloadKey, for: window)
         return helm
     }

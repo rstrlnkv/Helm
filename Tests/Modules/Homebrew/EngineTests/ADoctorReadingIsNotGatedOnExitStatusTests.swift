@@ -23,44 +23,16 @@ import HelmRuntime
 /// reaches for the diagnostics stream rather than `run`, and that a non-zero
 /// exit from `brew doctor` (its ordinary shape, per the plan's measurement)
 /// does not get read as a refusal.
-private final class DoctorRunner: ProcessRunner, @unchecked Sendable {
-    private let lock = NSLock()
-    private var _diagnosticsCalls: [[String]] = []
-    var diagnosticsCalls: [[String]] { lock.lock(); defer { lock.unlock() }; return _diagnosticsCalls }
-    private var _runCalls = 0
-    var runCalls: Int { lock.lock(); defer { lock.unlock() }; return _runCalls }
-
-    /// What `runCapturingDiagnostics` answers — this is the only stream the
-    /// real `brew doctor` writes anything useful to.
-    var status: Int32 = 1
-    var output = ""
-
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) {
-        // The real `run` sends stderr to the null device, and `brew doctor`
-        // prints nothing else — so a query that mistakenly used this method
-        // would see exactly what is returned here: one empty byte, nothing
-        // the parser can read as an issue.
-        lock.lock(); _runCalls += 1; lock.unlock()
-        return (0, "")
-    }
-
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                 env: [String: String]) -> (status: Int32, output: String) {
-        lock.lock(); _diagnosticsCalls.append(args); lock.unlock()
-        return (status, output)
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        onExit(0)
-        return NoProcess()
-    }
-}
-
 /// Guards: 551243cf (the doctor query); with the issues read only when the exit status is 0 the class goes red.
 final class ADoctorReadingIsNotGatedOnExitStatusTests: XCTestCase {
+
+    /// What `runCapturingDiagnostics` answers — the only stream the real `brew doctor`
+    /// writes anything useful to. `run` answers one empty byte and nothing the parser
+    /// can read as an issue, as the real one does (it sends stderr to the null device),
+    /// so a query that mistakenly used it would see exactly that.
+    private func doctorRunner(status: Int32, output: String) -> ScriptedRunner {
+        ScriptedRunner(diagnostics: { _ in (status, output) })
+    }
 
     /// Captured independently of `DoctorParserTests`' copy — see the file's
     /// doc comment. Byte-for-byte what `/tmp/doc.err` held on this machine.
@@ -91,9 +63,7 @@ final class ADoctorReadingIsNotGatedOnExitStatusTests: XCTestCase {
     /// output answers two issues — the ordinary path, exit status matching
     /// what the plan measured (1).
     func testRealCapturedOutputAnswersTwoIssues() {
-        let runner = DoctorRunner()
-        runner.status = 1
-        runner.output = Self.capturedOutput
+        let runner = doctorRunner(status: 1, output: Self.capturedOutput)
         let issues = brewEngine(runner).doctor()
         XCTAssertEqual(issues?.count, 2,
                        "real captured doctor output must parse into its two distinct issues")
@@ -105,9 +75,7 @@ final class ADoctorReadingIsNotGatedOnExitStatusTests: XCTestCase {
     /// query) as a clean machine. This is `DoctorParser.parse`'s own
     /// empty-input case, reached through the query.
     func testNoDiagnosticsAtAllAnswersNil() {
-        let runner = DoctorRunner()
-        runner.status = 1
-        runner.output = ""
+        let runner = doctorRunner(status: 1, output: "")
         XCTAssertNil(brewEngine(runner).doctor(),
                      "empty diagnostics must not read as «doctor ran and found nothing»")
     }
@@ -120,9 +88,7 @@ final class ADoctorReadingIsNotGatedOnExitStatusTests: XCTestCase {
     /// regression that starts gating on `result.status != 0` fails here even
     /// if it left case 1 alone.
     func testANonZeroExitWithRealOutputStillAnswersTwoIssues() {
-        let runner = DoctorRunner()
-        runner.status = 1
-        runner.output = Self.capturedOutput
+        let runner = doctorRunner(status: 1, output: Self.capturedOutput)
         let issues = brewEngine(runner).doctor()
         XCTAssertEqual(issues?.count, 2,
                        "exit 1 is brew doctor's ordinary shape when it has something to say — "
@@ -137,13 +103,11 @@ final class ADoctorReadingIsNotGatedOnExitStatusTests: XCTestCase {
     /// used `run` by mistake would still build, still run, and would simply
     /// go on answering nil forever with no error anywhere in the page.
     func testTheQueryUsesTheDiagnosticsCapturingRunnerAndNotPlainRun() {
-        let runner = DoctorRunner()
-        runner.status = 1
-        runner.output = Self.capturedOutput
+        let runner = doctorRunner(status: 1, output: Self.capturedOutput)
         _ = brewEngine(runner).doctor()
         XCTAssertEqual(runner.diagnosticsCalls.count, 1,
                        "the query must call runCapturingDiagnostics exactly once")
-        XCTAssertEqual(runner.runCalls, 0,
+        XCTAssertEqual(runner.queries.count, 0,
                        "the query must never call plain run — brew doctor's whole answer "
                        + "is on the stream run does not carry")
     }

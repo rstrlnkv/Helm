@@ -33,85 +33,17 @@ import HelmRuntime
 /// Guards: bf6c973b (the drawing thread waited on pmset).
 final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
 
-    /// A clamshell port that answers like `FakeClamshell` and also records the
-    /// thread each answer was given on. The real one can be called from any
-    /// thread — `installSudoers` and `removeSudoers` already hand their answer
-    /// back on a global queue — so «which thread asked» is a fact about the
-    /// caller and not about the port.
-    private final class RecordingClamshell: ClamshellPort, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _asked: [(method: String, onMain: Bool)] = []
-        /// Fulfilled the first time the named method is asked, so a case can
-        /// wait for the work to have happened before judging where it happened.
-        /// Behind the lock like everything else here: what this port is *for*
-        /// is being asked from a thread other than the one that set it up.
-        private var _onAsked: [String: XCTestExpectation] = [:]
-        func fulfil(_ expectation: XCTestExpectation, whenAsked method: String) {
-            lock.withLock { _onAsked[method] = expectation }
-        }
-
-        var pmset = "SleepDisabled 1"
-        var grantExists = true
-        /// A child process that has not finished yet. **A port that answers the
-        /// instant it is asked cannot tell a caller that waits from one that
-        /// does not** — the same reason a busy-gate test needs a runner that
-        /// never exits. `HelmProcess.run` has no deadline and takes one of eight
-        /// slots shared with `brew`, so «still running» is the ordinary state,
-        /// not a contrived one.
-        let stillRunning = DispatchSemaphore(value: 0)
-        var blockUntilReleased = false
-
-        var asked: [(method: String, onMain: Bool)] { lock.withLock { _asked } }
-        func wasAskedOnMain(_ method: String) -> Bool {
-            asked.contains { $0.method == method && $0.onMain }
-        }
-        func wasAsked(_ method: String) -> Bool { asked.contains { $0.method == method } }
-
-        private func record(_ method: String) {
-            let waiting: XCTestExpectation? = lock.withLock {
-                _asked.append((method, Thread.isMainThread))
-                return _onAsked[method]
-            }
-            waiting?.fulfill()
-            // A turnstile rather than a single pass: one launch asks this port
-            // three times, and a gate that let one through would leave the
-            // others parked on a semaphore for the rest of the run.
-            if blockUntilReleased { stillRunning.wait(); stillRunning.signal() }
-        }
-
-        func isSudoersInstalled() -> Bool { record("isSudoersInstalled"); return grantExists }
-        func canDisableSleepWithoutPassword() -> Bool {
-            record("canDisableSleepWithoutPassword")
-            return grantExists
-        }
-        func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
-            record("installSudoers")
-            DispatchQueue.global().async { done(true) }
-        }
-        func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
-            record("removeSudoers")
-            DispatchQueue.global().async { done(true) }
-        }
-        /// The free withdrawal — a child process like the rest, so it belongs on
-        /// this list for the same reason.
-        func removeSudoersWithoutPassword() -> Bool {
-            record("removeSudoersWithoutPassword")
-            grantExists = false
-            return true
-        }
-        func setDisableSleep(_ on: Bool) -> Bool { record("setDisableSleep"); return grantExists }
-        func pmsetReport() -> String? { record("pmsetReport"); return pmset }
-    }
-
     private var backing: InMemoryKeyValueStore!
     private var store: NamespacedStore!
-    private var clamshell: RecordingClamshell!
+    private var clamshell: FakeClamshell!
 
     override func setUp() {
         super.setUp()
         backing = InMemoryKeyValueStore()
         store = NamespacedStore(namespace: "keep-awake", backing: backing)
-        clamshell = RecordingClamshell()
+        clamshell = FakeClamshell(answersOffTheCallersThread: true)
+        clamshell.sudoersInstalled = true
+        clamshell.pmset = "SleepDisabled 1"
     }
 
     override func tearDown() {
@@ -133,7 +65,7 @@ final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
     /// below about a Mac that has used the lid option rather than about every
     /// Mac.
     func testALaunchWithNoAnchorShellsOutForNothing() {
-        clamshell.grantExists = false
+        clamshell.sudoersInstalled = false
         engine().activate()
 
         XCTAssertFalse(clamshell.wasAsked("pmsetReport"),

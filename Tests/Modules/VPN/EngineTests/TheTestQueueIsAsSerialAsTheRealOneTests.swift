@@ -3,6 +3,7 @@
 
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
@@ -71,7 +72,7 @@ final class TheTestQueueIsAsSerialAsTheRealOneTests: XCTestCase {
     /// offered only once the first has signalled that it is in, so «they
     /// overlapped» is a fact about the queue and never about how long anything
     /// took.
-    private func peakOccupancy(of queue: VPNWorkQueue) -> Occupancy {
+    private func peakOccupancy(of queue: VPNWorkQueue) async -> Occupancy {
         let occupancy = Occupancy()
         let firstIsIn = DispatchSemaphore(value: 0)
         let letTheFirstGo = DispatchSemaphore(value: 0)
@@ -105,7 +106,7 @@ final class TheTestQueueIsAsSerialAsTheRealOneTests: XCTestCase {
         // Long enough for a queue that does not serialise to have finished the
         // second block; a queue that does serialise is still holding it, and the
         // release below is what lets it through.
-        Thread.sleep(forTimeInterval: 0.2)
+        await grace(0.2)
         letTheFirstGo.signal()
         XCTAssertEqual(bothDone.wait(timeout: .now() + 5), .success,
                        "precondition: a block never came back, so the reading is incomplete")
@@ -115,16 +116,16 @@ final class TheTestQueueIsAsSerialAsTheRealOneTests: XCTestCase {
     /// The queue the app runs on. This is the behaviour `.inline` stands in for,
     /// asserted here so the expectation below is the real one's and not this
     /// test's opinion.
-    func testTheQueueTheAppUsesAdmitsOneBlockAtATime() {
-        let occupancy = peakOccupancy(of: .background)
+    func testTheQueueTheAppUsesAdmitsOneBlockAtATime() async {
+        let occupancy = await peakOccupancy(of: .background)
         XCTAssertEqual(occupancy.entries, 2, "precondition: both blocks did not run")
         XCTAssertEqual(occupancy.peak, 1,
                        "the module's own queue is documented serial and let two blocks in at once")
     }
 
     /// **The finding.** The queue every test in this module runs on lets two in.
-    func testTheQueueEveryTestUsesAdmitsOneBlockAtATime() {
-        let occupancy = peakOccupancy(of: .inline)
+    func testTheQueueEveryTestUsesAdmitsOneBlockAtATime() async {
+        let occupancy = await peakOccupancy(of: .inline)
         XCTAssertEqual(occupancy.entries, 2, "precondition: both blocks did not run")
         XCTAssertEqual(occupancy.peak, 1, """
             `VPNWorkQueue.inline` ran a second block while the first was still \

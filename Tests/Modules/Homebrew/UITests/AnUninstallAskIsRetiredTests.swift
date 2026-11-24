@@ -11,41 +11,6 @@ private func pair(_ runner: ProcessRunner) -> (HomebrewEngine, HomebrewViewModel
     return (engine, HomebrewViewModel(work: engine))
 }
 
-/// A `brew` that answers `uses` from a table and holds the query for one name
-/// until `release()`.
-private final class ParkedUsesRunner: QueryOnlyRunner, @unchecked Sendable {
-    /// Fulfilled on the runner's own thread the moment the parked query is
-    /// inside the tool, so the test knows it is in flight rather than hoping.
-    let parked = XCTestExpectation(description: "the parked query reached brew")
-    private let held = DispatchSemaphore(value: 0)
-    private let park: String
-    /// Written once before any run and read-only afterwards, which is what
-    /// makes concurrent runs safe here without a lock.
-    private let answers: [String: String]
-
-    init(park: String, answers: [String: String]) {
-        self.park = park
-        self.answers = answers
-    }
-
-    /// Lets the parked query answer at last. A real semaphore and not a
-    /// cooperative yield: a yield buys a turn on the pool and no wall-clock
-    /// time, so it cannot hold one query open across a second press, a
-    /// departure or a gesture.
-    func release() { held.signal() }
-
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) {
-        guard args.first == "uses", let name = args.last else { return (0, "") }
-        if name == park {
-            parked.fulfill()
-            held.wait()
-        }
-        return (0, answers[name] ?? "")
-    }
-
-}
-
 /// An answer that arrives after the press it belonged to is over says nothing.
 ///
 /// The press is asynchronous and nothing on the page is disabled while the query
@@ -70,8 +35,7 @@ final class ALateReadingCannotRaiseADialogTests: XCTestCase {
     /// the dialog on screen belongs to the second press, and the first press's
     /// names must not land in it.
     func testALateAnswerDoesNotOverwriteTheDialogOnScreen() async {
-        let runner = ParkedUsesRunner(park: "openssl@3",
-                                      answers: ["openssl@3": "aria2\nnode\n"])
+        let runner = FakeBrew(uses: ["openssl@3": "aria2\nnode\n"], park: "openssl@3")
         let (engine, vm) = pair(runner)
         let first = Task { await vm.askToUninstall(parked) }
         await fulfillment(of: [runner.parked], timeout: 5)
@@ -91,8 +55,7 @@ final class ALateReadingCannotRaiseADialogTests: XCTestCase {
     /// irreversible deletion that opens by itself is the worst shape this can
     /// take.
     func testALateAnswerDoesNotReopenAClosedDialog() async {
-        let runner = ParkedUsesRunner(park: "openssl@3",
-                                      answers: ["openssl@3": "aria2\nnode\n"])
+        let runner = FakeBrew(uses: ["openssl@3": "aria2\nnode\n"], park: "openssl@3")
         let (engine, vm) = pair(runner)
         let first = Task { await vm.askToUninstall(parked) }
         await fulfillment(of: [runner.parked], timeout: 5)
@@ -142,8 +105,7 @@ final class LeavingThePageRetiresAnUninstallAskTests: XCTestCase {
     /// answer comes back to a view model that outlives the page and must find
     /// its request retired.
     func testAnAnswerArrivingAfterTheDepartureRaisesNothing() async {
-        let runner = ParkedUsesRunner(park: "openssl@3",
-                                      answers: ["openssl@3": "aria2\nnode\n"])
+        let runner = FakeBrew(uses: ["openssl@3": "aria2\nnode\n"], park: "openssl@3")
         let (engine, vm) = pair(runner)
         let pressed = BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false)
         let ask = Task { await vm.askToUninstall(pressed) }
@@ -207,7 +169,7 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
     /// query is inside the tool. The caller then makes its gesture and calls
     /// `release`.
     private func askInFlight(_ vm: HomebrewViewModel,
-                             _ runner: ParkedUsesRunner) async -> Task<Void, Never> {
+                             _ runner: FakeBrew) async -> Task<Void, Never> {
         vm.select(pressed.id)
         let ask = Task { await vm.askToUninstall(pressed) }
         await fulfillment(of: [runner.parked], timeout: 5)
@@ -215,8 +177,8 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
         return ask
     }
 
-    private func runner() -> ParkedUsesRunner {
-        ParkedUsesRunner(park: "openssl@3", answers: ["openssl@3": "aria2\nnode\n"])
+    private func runner() -> FakeBrew {
+        FakeBrew(uses: ["openssl@3": "aria2\nnode\n"], park: "openssl@3")
     }
 
     // MARK: - The ask does land when nothing moves
@@ -295,20 +257,6 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
     }
 }
 
-/// A `brew` that answers `uses` from a table.
-private final class UsesRunner: QueryOnlyRunner, @unchecked Sendable {
-    private let lock = NSLock()
-    var answers: [String: String] = [:]
-
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) {
-        lock.lock(); defer { lock.unlock() }
-        guard args.first == "uses", let name = args.last else { return (0, "") }
-        return (0, answers[name] ?? "")
-    }
-
-}
-
 /// The reading is taken for the press it belongs to, and it does not outlive it.
 ///
 /// Two packages, asked one after the other: the second dialog must never carry
@@ -320,8 +268,7 @@ private final class UsesRunner: QueryOnlyRunner, @unchecked Sendable {
 final class UninstallNamesWhatStillNeedsItTests: XCTestCase {
 
     func testTheDialogCarriesWhatTheEngineAnswered() async {
-        let runner = UsesRunner()
-        runner.answers["openssl@3"] = "aria2\nnode\n"
+        let runner = FakeBrew(uses: ["openssl@3": "aria2\nnode\n"])
         let (engine, vm) = pair(runner)
         await vm.askToUninstall(BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false))
         XCTAssertEqual(vm.pendingUninstall?.name, "openssl@3")
@@ -332,8 +279,7 @@ final class UninstallNamesWhatStillNeedsItTests: XCTestCase {
     }
 
     func testTheNextPackageDoesNotInheritTheLastOnesDependents() async {
-        let runner = UsesRunner()
-        runner.answers["openssl@3"] = "aria2\nnode\n"
+        let runner = FakeBrew(uses: ["openssl@3": "aria2\nnode\n"])
         let (engine, vm) = pair(runner)
         await vm.askToUninstall(BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false))
         vm.cancelUninstall()
@@ -345,8 +291,7 @@ final class UninstallNamesWhatStillNeedsItTests: XCTestCase {
     }
 
     func testCancellingClearsTheReading() async {
-        let runner = UsesRunner()
-        runner.answers["openssl@3"] = "aria2\n"
+        let runner = FakeBrew(uses: ["openssl@3": "aria2\n"])
         let (engine, vm) = pair(runner)
         await vm.askToUninstall(BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false))
         vm.cancelUninstall()

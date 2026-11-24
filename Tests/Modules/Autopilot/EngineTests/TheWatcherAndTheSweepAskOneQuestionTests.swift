@@ -149,7 +149,9 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
 
         engine.handle([path("plain.pdf")])
 
-        await waitForTheWatcherToFinish()
+        // `handle` hands its work to the engine's own queue and answers nothing. The history is written after the whole
+        // batch, so a record for the control file is the batch having finished.
+        await waitUntilReached("the watcher finished its batch") { engine.history.contains(where: { $0.file == "plain.pdf" }) }
         XCTAssertFalse(exists("plain.pdf"), "the watcher did nothing at all")
         XCTAssertTrue(exists("Documents/plain.pdf"), tree(under: root).description)
     }
@@ -159,7 +161,9 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
 
         engine.handle([path("Reader.app/Contents/Resources/manual.pdf"), path("plain.pdf")])
 
-        await waitForTheWatcherToFinish()
+        // `handle` hands its work to the engine's own queue and answers nothing. The history is written after the whole
+        // batch, so a record for the control file is the batch having finished.
+        await waitUntilReached("the watcher finished its batch") { engine.history.contains(where: { $0.file == "plain.pdf" }) }
         XCTAssertTrue(exists("Reader.app/Contents/Resources/manual.pdf"),
                       "a rule took a resource out of an application bundle: \(tree(under: root))")
         XCTAssertFalse(exists("Reader.app/Contents/Resources/Documents/manual.pdf"))
@@ -170,18 +174,10 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
 
         engine.handle([path(".quiet.pdf"), path("plain.pdf")])
 
-        await waitForTheWatcherToFinish()
+        // `handle` hands its work to the engine's own queue and answers nothing. The history is written after the whole
+        // batch, so a record for the control file is the batch having finished.
+        await waitUntilReached("the watcher finished its batch") { engine.history.contains(where: { $0.file == "plain.pdf" }) }
         XCTAssertTrue(exists(".quiet.pdf"),
                       "a rule acted on a file the sweep can never see: \(tree(under: root))")
-    }
-
-    /// `handle` hands its work to the engine's own queue and answers nothing.
-    /// The history is written after the whole batch, so a record for the control
-    /// file is the batch having finished — not a sleep, which would be a guess
-    /// about a machine.
-    private func waitForTheWatcherToFinish() async {
-        await waitUntilReached("the watcher finished its batch", within: .seconds(5)) {
-            engine.history.contains(where: { $0.file == "plain.pdf" })
-        }
     }
 }

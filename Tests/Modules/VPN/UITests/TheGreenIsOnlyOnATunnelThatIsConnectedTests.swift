@@ -28,7 +28,7 @@ final class TheGreenIsOnlyOnATunnelThatIsConnectedTests: XCTestCase {
 
     /// A view model holding one connection in the given state, fed the way the app
     /// feeds it: an engine payload on its stream.
-    private func model(_ status: VPNStatus) -> VPNViewModel {
+    private func model(_ status: VPNStatus) async -> VPNViewModel {
         let work = FakeVPNWork()
         // In memory, never `UserDefaults.standard`.
         let settings = VPNSettings.inMemory()
@@ -36,21 +36,19 @@ final class TheGreenIsOnlyOnATunnelThatIsConnectedTests: XCTestCase {
         work.say(VPNEngine.StatePayload(
             connections: [VPNConnection(id: "1", name: "One", status: status, kind: "IKEv2")],
             autoConnected: [], lastAutomation: nil))
-        for _ in 0..<80 where vm.connections.isEmpty {
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-        }
+        await waitUntil("the payload handled") { !vm.connections.isEmpty }
         XCTAssertEqual(vm.connections.count, 1,
                        "the stream did not deliver: the reading below would be of an empty list")
         return vm
     }
 
-    func testEverySurfaceIsGreenExactlyWhenTheStatusIsConnected() {
+    func testEverySurfaceIsGreenExactlyWhenTheStatusIsConnected() async {
         // The five statuses are listed by hand: `VPNStatus` is not `CaseIterable`,
         // so a case added to the enum must be added here too; this line only
         // catches a duplicate in the list.
         XCTAssertEqual(Set(Self.everyStatus.map(\.rawValue)).count, 5)
         for status in Self.everyStatus {
-            let vm = model(status)
+            let vm = await model(status)
             let c = vm.connections[0]
             let want = status == .connected
             XCTAssertEqual(VPNConnectionCard.lit(c), want, "the card, \(status)")

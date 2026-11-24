@@ -35,10 +35,6 @@ final class AnAnnouncedPassReachesTheModelWithNoPageTests: XCTestCase {
         AutopilotDescriptor.historyChannel()
     }
 
-    private func settle() async {
-        await grace()
-    }
-
     /// Total failure (a loop that reads nothing) prints `history.count 0` against 1.
     func testAPassAnnouncedAfterThePageOpenedOnceIsReadIn() async {
         let (changes, changed) = slot()
@@ -62,7 +58,7 @@ final class AnAnnouncedPassReachesTheModelWithNoPageTests: XCTestCase {
         let rvm = model(work, changes)
 
         changed.yield()
-        await settle()
+        await grace()
         XCTAssertEqual(work.calls, [], "a ping before any page opened read the engine")
         XCTAssertTrue(rvm.history.isEmpty)
 
@@ -92,7 +88,7 @@ final class AnAnnouncedPassReachesTheModelWithNoPageTests: XCTestCase {
         changed.yield()
         changed.yield()
         await waitUntil("a ping is read") { work.count("readHistory") > reads }
-        await settle()
+        await grace()
         let extra = work.count("readHistory") - reads
         XCTAssertGreaterThanOrEqual(extra, 1, "the pings were never read")
         XCTAssertLessThanOrEqual(extra, 2,

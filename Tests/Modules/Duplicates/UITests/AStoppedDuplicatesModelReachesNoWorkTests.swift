@@ -29,15 +29,13 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
     /// which answers nil, and the coordinator then logs «no answer» every tick.
     func testTheDescriptorPassesTheScanOn() async {
         let work = AnsweringWork(groups: [])
-        let parts = ModuleParts(engine: NoEngine(), model: DuplicatesViewModel(work: work, store: duplicatesStore(folder: "\(home)/Downloads"),
+        let parts = ModuleParts(engine: FakeEngine(), model: DuplicatesViewModel(work: work, store: duplicatesStore(folder: "\(home)/Downloads"),
                                                                                settings: SettingGuard(keys: SealKeyCache(SealKeyProbe())),
                                                                                chooseFolder: { nil }))
         let report = await DuplicatesDescriptor().backgroundScan(parts)
         XCTAssertNotNil(report, "the descriptor fell to the default: «no answer» every tick")
         XCTAssertEqual(count(.backgroundScan, in: work), 1)
     }
-
-    private final class NoEngine: ModuleEngine { func activate() {}; func deactivate() {} }
 
     func testAPressAfterStopReachesNoWork() async {
         let work = AnsweringWork(groups: [keepAndExtra()])

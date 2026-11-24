@@ -41,57 +41,10 @@ import XCTest
 /// on main.
 final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
 
-    /// Both halves apart, as the port keeps them: `isSecureInput` is the
-    /// system-wide syscall and cannot see an app's own password field, which is
-    /// the case this suite is about. `onExpensiveCheck` fires when the
-    /// accessibility round trip is made, which is the one point in the gesture
-    /// both the old order and the repaired one pass through — **once**,
-    /// because `emitState` asks the same question and an expectation fulfilled
-    /// twice is a failure of its own.
-    private final class Context: SecureContextPort, @unchecked Sendable {
-        private let lock = NSLock()
-        var bundle = "com.apple.Safari"
-        var systemWideSecure = false
-        var passwordField = false
-        var onExpensiveCheck: (@Sendable () -> Void)?
-        func isSecureInput() -> Bool { lock.lock(); defer { lock.unlock() }; return systemWideSecure }
-        func isSecure() -> Bool {
-            lock.lock()
-            let answer = systemWideSecure || passwordField
-            let announce = onExpensiveCheck
-            onExpensiveCheck = nil
-            lock.unlock()
-            announce?()
-            return answer
-        }
-        func frontmostBundleID() -> String { lock.lock(); defer { lock.unlock() }; return bundle }
-    }
-
-    /// Counts the readings: `selectedTextWithoutClipboard` is the tree alone.
-    private final class Selection: SelectionPort, @unchecked Sendable {
-        private let lock = NSLock()
-        var treeText: String?
-        private var treeReads = 0
-        private var written: [String] = []
-        var onReplace: (@Sendable () -> Void)?
-        func selectedTextWithoutClipboard() -> String? {
-            lock.lock(); treeReads += 1; let tree = treeText; lock.unlock()
-            return tree
-        }
-        func replaceSelection(with text: String) -> Bool {
-            lock.lock(); written.append(text); let announce = onReplace; onReplace = nil
-            lock.unlock()
-            announce?()
-            return true
-        }
-        var readings: Int { lock.lock(); defer { lock.unlock() }; return treeReads }
-        var replaced: [String] { lock.lock(); defer { lock.unlock() }; return written }
-    }
-
-    private func engine(_ context: Context, _ selection: Selection) -> LayoutEngine {
+    private func engine(_ context: FakeSecure, _ selection: FakeSelection) -> LayoutEngine {
         let engine = LayoutEngine(
             tap: FakeTap(), typing: FakeTyping(), sources: FakeSources(current: "en"),
-            translation: SameLengthTranslation(), spell: CyrillicSpell(),
+            translation: FakeTranslation(sameLength: true), spell: FakeSpell(cyrillic: true),
             secure: context, activation: FakeActivation(), selection: selection,
             ledger: LedgerStore(),
             settings: layoutStore())
@@ -103,9 +56,9 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
     /// read the selection and does replace it. Without this, «the tree was not
     /// read» would be green in a world where the gesture never reads anything.
     func testAnOrdinaryFieldIsReadAndReplaced() async {
-        let context = Context()
-        let selection = Selection()
-        selection.treeText = "ghbdtn"
+        let context = FakeSecure(bundle: "com.apple.Safari")
+        let selection = FakeSelection()
+        selection.text = "ghbdtn"
         let engine = engine(context, selection)
 
         // Synchronised on the write itself rather than on the check, so this
@@ -116,7 +69,7 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
         engine.fix()
         await fulfillment(of: [acted], timeout: 5)
 
-        XCTAssertGreaterThan(selection.readings, 0,
+        XCTAssertGreaterThan(selection.reads, 0,
                              "precondition: the gesture reads the selection at all")
         XCTAssertEqual(selection.replaced, ["пппппп"],
                        "precondition: and writes the conversion back")
@@ -127,10 +80,10 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
     /// secure input is off — the case `isSecureInput()` cannot see, and the
     /// only reason the expensive check exists.
     func testASecureFieldIsNotReadBeforeItIsRefused() async {
-        let context = Context()
+        let context = FakeSecure(bundle: "com.apple.Safari")
         context.passwordField = true
-        let selection = Selection()
-        selection.treeText = "hunter2"
+        let selection = FakeSelection()
+        selection.text = "hunter2"
         let engine = engine(context, selection)
 
         // The expensive check is the one point both the old order and the
@@ -141,7 +94,7 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
         engine.fix()
         await fulfillment(of: [asked], timeout: 5)
 
-        XCTAssertEqual(selection.readings, 0, """
+        XCTAssertEqual(selection.reads, 0, """
             the password was pulled out of the accessibility tree before anybody \
             asked whether the field was a password. The role check and the \
             selection read go to the same focused element one round trip apart, \

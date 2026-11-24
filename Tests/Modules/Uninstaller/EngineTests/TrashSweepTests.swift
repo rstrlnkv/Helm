@@ -19,7 +19,7 @@ final class TrashSweepTests: XCTestCase {
         let store = store ?? NamespacedStore(namespace: "uninstaller",
                                              backing: InMemoryKeyValueStore())
         store.set(watching, for: "watchTrash")
-        return UninstallerEngine(home: home, apps: lister, fs: EveryPathExists(size: 4096),
+        return UninstallerEngine(home: home, apps: lister, fs: FakeFS(everyPathExistsAt: 4096),
                                  trash: NoTrash(), running: NoRunning(),
                                  store: store)
     }
@@ -86,7 +86,7 @@ final class TrashSweepTests: XCTestCase {
     func testAnAppWithNoLeftoversIsNotAGroup() async {
         let uninstaller = UninstallerEngine(home: home,
                                   apps: FakeApps(trashed: [trashed("com.example.clean", "Clean")]),
-                                  fs: NoFiles(), trash: NoTrash(), running: NoRunning())
+                                  fs: FakeFS(), trash: NoTrash(), running: NoRunning())
 
         let groups = await uninstaller.trashedAppLeftovers()
         XCTAssertTrue(groups.isEmpty)

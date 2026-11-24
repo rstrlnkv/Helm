@@ -1,6 +1,7 @@
 import XCTest
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 @testable import HelmApp
 
 /// `shutdown()` is what stands between "a test called `bootstrap()`" and "the
@@ -36,7 +37,7 @@ final class ShutdownLetsTheEnginesGoTests: XCTestCase {
         init(_ engine: any ModuleEngine) { self.engine = engine }
     }
 
-    func testShutdownFreesEveryEngineBootstrapBuilt() {
+    func testShutdownFreesEveryEngineBootstrapBuilt() async {
         let host = ModuleHost.shared
         host.bootstrap()
         // The subject has to have happened first, or "no engine survived"
@@ -66,10 +67,7 @@ final class ShutdownLetsTheEnginesGoTests: XCTestCase {
                       "shutdown left \(host.live.keys.sorted().joined(separator: ", ")) live")
         // An engine's own tasks release it when they see the cancellation
         // `deactivate()` sent, which takes a turn of the run loop, not zero.
-        for _ in 0..<200 {
-            if grips.allSatisfy({ $0.grip.engine == nil }) { break }
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-        }
+        await waitUntil("every engine released") { grips.allSatisfy { $0.grip.engine == nil } }
         let survivors = grips.filter { $0.grip.engine != nil }.map(\.key).sorted()
         XCTAssertTrue(survivors.isEmpty,
                       "shutdown deactivated and dropped every engine, and "

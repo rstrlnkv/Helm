@@ -3,13 +3,13 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
-// The Homebrew engine's `ProcessRunner` and `PrivilegedRunner` fakes that more than
-// one test file needed, in one place. A fake keeps its port's states only, and the port it
-// stands in for is named at the construction (`brewEngine`'s own parameters, or
-// `runner:`, `privileged:`) (Architecture/TestsAndMeasurement.md § Fakes). Fakes that script one test's
-// scenario (canned answers, handles, interruptions) stay beside that test.
-// `NoPrivileges` and `IdleRunner` answer with fixed stand-in values (declined, status 0,
-// empty output) that no test asserts: no test reads them, so they are inert.
+// The Homebrew engine's fakes, in one place. A fake keeps its port's states only, and the
+// port it stands in for is named at the construction (`brewEngine`'s own parameters, or
+// `runner:`, `privileged:`) (Architecture/TestsAndMeasurement.md § Fakes). In the tests that run by
+// default there is one `ProcessRunner` fake, `ScriptedRunner`: a test keeps its scenario in what it
+// passes at construction (answers, the diagnostics stream, what a streamed child does, hooks
+// for acting mid-call), not in a private class beside it.
+// `NoPrivileges` answers with a fixed stand-in value (declined) that no test asserts.
 
 /// The password dialog answered no: nothing ran.
 struct NoPrivileges: PrivilegedRunner {
@@ -42,14 +42,9 @@ func brewEngine(_ runner: ProcessRunner,
                    tools: ToolsAlreadyInstalled(), ticker: NoWaitTicker())
 }
 
-/// A fake that answers questions only: the two stubs it would otherwise repeat,
-/// given once, **and only to a fake that asks for them by conforming**. The port
-/// gives `runCapturingDiagnostics` no default on purpose (`Ports.swift`: a silent
-/// fallback would make the one query that needs the other stream untestable), so
-/// a fake about `doctor` or about streaming conforms to `ProcessRunner` and writes
-/// its own. This one answers `runCapturingDiagnostics` with status 0 and nothing
-/// (not `doctor`: no fake here needs to answer on the diagnostics stream) and ends
-/// every streamed child at once.
+/// Kept only for the optional files that still conform to it (`ACaskIsNeverAskedWhatUsesItTests`,
+/// `AnInfoQueryIsAboutOnePackageTests`, `ABatchThatAskedEveryNameDidNotGiveUpTests`,
+/// `ASearchThatMatchesEverythingStillGetsItsDescriptionsTests`). New fakes use `ScriptedRunner`.
 protocol QueryOnlyRunner: ProcessRunner {}
 
 extension QueryOnlyRunner {
@@ -66,53 +61,60 @@ extension QueryOnlyRunner {
     }
 }
 
-/// Answers every query with status 0 and nothing on standard output, and ends
-/// every streamed child at once.
-struct IdleRunner: QueryOnlyRunner, @unchecked Sendable {
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-}
+/// The name `ASizeIsMeasuredNotGuessedTests` (optional) is written against.
+typealias IdleRunner = ScriptedRunner
 
-/// Records `(args, env)` of every query and every stream, and ends each streamed
-/// child at once.
-final class EnvironmentRecorder: ProcessRunner, @unchecked Sendable {
-    private let lock = NSLock()
-    private var _calls: [(args: [String], env: [String: String])] = []
-    var calls: [(args: [String], env: [String: String])] { lock.withLock { _calls } }
-
-    func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String) {
-        lock.withLock { _calls.append((args, env)) }
-        return (0, "")
-    }
-
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        lock.withLock { _calls.append((args, env)) }
-        onExit(0)
-        return NoProcess()
+/// One canned answer: the words an argument list must contain for this answer to
+/// be the one, and the `(status, stdout)` brew would have replied with.
+struct BrewAnswer {
+    let match: [String]
+    let status: Int32
+    let stdout: String
+    init(_ match: [String], _ status: Int32, _ stdout: String) {
+        self.match = match; self.status = status; self.stdout = stdout
     }
 }
 
-/// One recorded `stream` invocation: what would have been launched, with what.
-struct StreamCall {
-    let launch: String
-    let args: [String]
-    let env: [String: String]
-}
+/// The one `ProcessRunner` fake of this target. Records every call (what, with which
+/// arguments and environment, on which thread) and answers as it is configured:
+///
+/// - **queries** (`run`, `runData`): `reply` first (nil passes), then the first of
+///   `answers` whose words the arguments all contain, then status 0 and nothing. `runData`
+///   answers from the same table, so a query that takes either path reads the same brew.
+/// - **the diagnostics stream** (`runCapturingDiagnostics`): `diagnostics`, which is handed
+///   the environment so a fake can answer as brew does for what it was asked. The port gives
+///   it no default on purpose (`Ports.swift`).
+/// - **a streamed child** (`stream`): `.finish(code)` ends it before the call returns, with a
+///   `NoProcess`; `.hold` does not finish it until the test says so (`finishAll`, `exit`), and
+///   hands back a `Handle` that counts the TERMs it receives. A runner that answered
+///   synchronously would release the busy gate before the first call returned, and every gate
+///   assertion would pass with the gate deleted.
+///
+/// `onRun` and `onStream` let a test act while a call is happening: the only way to be
+/// exactly there (a press landing during the spawn, an engine switched off during a read).
+final class ScriptedRunner: ProcessRunner, @unchecked Sendable {
 
-/// Records what it was asked to stream and does not finish it until the test
-/// says so. A runner that answered synchronously would release the busy gate
-/// before the first call returned, and every gate assertion would pass with the
-/// gate deleted. Each streamed child gets a `Handle` that counts the TERMs it
-/// receives, which a `NoProcess` could not: "the installer was terminated" is
-/// unrepresentable against a fake simpler than the port.
-final class HangingRunner: ProcessRunner, @unchecked Sendable {
+    enum Streams {
+        /// The child exits at once with this code.
+        case finish(Int32)
+        /// The child runs until the test finishes it.
+        case hold
+    }
+
+    enum Kind { case run, runData, diagnostics, stream }
+
+    struct Call {
+        let kind: Kind
+        let launch: String
+        let args: [String]
+        let env: [String: String]
+        /// Only a `stream` that named one; `nil` for the form without `reach:`, which
+        /// is itself what a test of the reach looks for.
+        let reach: StopReach?
+        let onMain: Bool
+        let queue: String
+    }
+
     /// A handle the way the real one is: terminating it does not finish the
     /// stream by itself — the child dies, *then* EOF and the exit arrive.
     final class Handle: RunningProcess, @unchecked Sendable {
@@ -123,48 +125,129 @@ final class HangingRunner: ProcessRunner, @unchecked Sendable {
         func terminate() { lock.lock(); n += 1; lock.unlock() }
     }
 
+    let streams: Streams
+    let reply: (@Sendable (_ args: [String]) -> (status: Int32, stdout: String)?)?
+    let diagnostics: @Sendable (_ env: [String: String]) -> (status: Int32, output: String)
+    /// Called after a `run` or `runData` has been answered, with its arguments.
+    var onRun: (@Sendable (_ args: [String]) -> Void)?
+    /// Called after the child exists and before the handle is handed back.
+    var onStream: (@Sendable () -> Void)?
+
     private let lock = NSLock()
-    private var _streamCalls: [StreamCall] = []
+    private var _answers: [BrewAnswer]
+    private var _calls: [Call] = []
     private var _handles: [Handle] = []
     private var _exits: [@Sendable (Int32) -> Void] = []
-    /// What `brew list` answers on standard output (formulae only; `--cask` is empty).
-    var listing = ""
+    private var _lineSink: (@Sendable (String) -> Void)?
 
-    var streamCalls: [StreamCall] { lock.lock(); defer { lock.unlock() }; return _streamCalls }
-    var handles: [Handle] { lock.lock(); defer { lock.unlock() }; return _handles }
+    init(streams: Streams = .finish(0),
+         answers: [BrewAnswer] = [],
+         reply: (@Sendable (_ args: [String]) -> (status: Int32, stdout: String)?)? = nil,
+         diagnostics: @escaping @Sendable (_ env: [String: String]) -> (status: Int32, output: String) = { _ in (0, "") }) {
+        self.streams = streams
+        self._answers = answers
+        self.reply = reply
+        self.diagnostics = diagnostics
+    }
+
+    /// What queries answer; a test can change it between two calls (the Cellar a
+    /// terminal changed, a brew that now holds somebody else's lock).
+    var answers: [BrewAnswer] {
+        get { lock.withLock { _answers } }
+        set { lock.withLock { _answers = newValue } }
+    }
+
+    /// Every call of every kind, in order.
+    var calls: [Call] { lock.withLock { _calls } }
+    /// The arguments of the `run` and `runData` calls.
+    var queries: [[String]] { calls.filter { $0.kind == .run || $0.kind == .runData }.map(\.args) }
+    /// The arguments of the `runCapturingDiagnostics` calls.
+    var diagnosticsCalls: [[String]] { calls.filter { $0.kind == .diagnostics }.map(\.args) }
+    var streamCalls: [Call] { calls.filter { $0.kind == .stream } }
     /// The arguments of each streamed call, in order.
-    var calls: [[String]] { streamCalls.map(\.args) }
+    var streamed: [[String]] { streamCalls.map(\.args) }
+    var handles: [Handle] { lock.withLock { _handles } }
 
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) {
-        if args.first == "list", !args.contains("--cask") { return (0, listing) }
+    private func note(_ kind: Kind, _ launch: String, _ args: [String], _ env: [String: String],
+                      reach: StopReach? = nil) {
+        let call = Call(kind: kind, launch: launch, args: args, env: env, reach: reach,
+                        onMain: Thread.isMainThread,
+                        queue: String(cString: __dispatch_queue_get_label(nil)))
+        lock.withLock { _calls.append(call) }
+    }
+
+    private func answer(_ args: [String]) -> (status: Int32, stdout: String) {
+        if let given = reply?(args) { return given }
+        for a in answers where a.match.allSatisfy(args.contains) { return (a.status, a.stdout) }
         return (0, "")
     }
 
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
+    func run(_ launchPath: String, _ args: [String],
+             env: [String: String]) -> (status: Int32, stdout: String) {
+        note(.run, launchPath, args, env)
+        let given = answer(args)
+        onRun?(args)
+        return given
+    }
+
+    func runData(_ launchPath: String, _ args: [String],
+                 env: [String: String]) -> (status: Int32, stdout: Data) {
+        note(.runData, launchPath, args, env)
+        let given = answer(args)
+        onRun?(args)
+        return (given.status, Data(given.stdout.utf8))
+    }
+
+    func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
+                                 env: [String: String]) -> (status: Int32, output: String) {
+        note(.diagnostics, launchPath, args, env)
+        return diagnostics(env)
     }
 
     func stream(_ launchPath: String, _ args: [String], env: [String: String],
                 onLine: @escaping @Sendable (String) -> Void,
                 onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        let handle = Handle()
-        lock.lock()
-        _streamCalls.append(StreamCall(launch: launchPath, args: args, env: env))
-        _handles.append(handle)
-        _exits.append(onExit)
-        lock.unlock()
-        return handle
+        launch(launchPath, args, env, nil, onLine, onExit)
+    }
+
+    func stream(_ launchPath: String, _ args: [String], env: [String: String], reach: StopReach,
+                onLine: @escaping @Sendable (String) -> Void,
+                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
+        launch(launchPath, args, env, reach, onLine, onExit)
+    }
+
+    private func launch(_ launchPath: String, _ args: [String], _ env: [String: String], _ reach: StopReach?,
+                        _ onLine: @escaping @Sendable (String) -> Void,
+                        _ onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
+        note(.stream, launchPath, args, env, reach: reach)
+        switch streams {
+        case .finish(let code):
+            onStream?()
+            onExit(code)
+            return NoProcess()
+        case .hold:
+            let handle = Handle()
+            lock.withLock { _handles.append(handle); _exits.append(onExit); _lineSink = onLine }
+            onStream?()
+            return handle
+        }
     }
 
     /// The child is gone; the pipe closes; the exit lands. SIGTERM deaths
     /// report the signal number, which is what the engine must not read as
     /// a build failure once it asked for the stop itself.
     func finishAll(code: Int32 = 0) {
-        lock.lock(); let exits = _exits; _exits = []; lock.unlock()
+        let exits = lock.withLock { () -> [@Sendable (Int32) -> Void] in
+            let taken = _exits; _exits = []; return taken
+        }
         for exit in exits { exit(code) }
     }
+
+    /// A line the most recent held child prints, fed by hand so the order is the test's.
+    func line(_ text: String) { lock.withLock { _lineSink }?(text) }
+    /// The most recent held child exits (after `finishAll` it is no longer listed, so a
+    /// test that feeds by hand does not also `finishAll`).
+    func exit(_ code: Int32) { lock.withLock { _exits.last }?(code) }
 }
 
 /// What the news says now, read through its replay. A sentinel emitted before

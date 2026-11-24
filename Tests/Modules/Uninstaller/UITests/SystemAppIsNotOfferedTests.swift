@@ -23,7 +23,7 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
             apps: FakeApps(apps: [
                 safari, tool,
             ]),
-            fs: NoFiles(), trash: NoTrash(), running: NoRunning())
+            fs: FakeFS(), trash: NoTrash(), running: NoRunning())
         return modelOver(engine)
     }
 

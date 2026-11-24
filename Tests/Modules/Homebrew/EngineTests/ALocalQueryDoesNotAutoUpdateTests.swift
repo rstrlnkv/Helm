@@ -28,7 +28,7 @@ import XCTest
 final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
 
     func testListAndDescribeRefuseTheAutoUpdate() {
-        let runner = EnvironmentRecorder()
+        let runner = ScriptedRunner()
         _ = brewEngine(runner).listInstalled()
         XCTAssertFalse(runner.calls.isEmpty, "the query never ran")
         for call in runner.calls {
@@ -38,7 +38,7 @@ final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
     }
 
     func testDescriptionsRefuseTheAutoUpdate() {
-        let runner = EnvironmentRecorder()
+        let runner = ScriptedRunner()
         _ = brewEngine(runner).descriptions(names: ["wget"], isCask: false)
         XCTAssertEqual(runner.calls.first?.env["HOMEBREW_NO_AUTO_UPDATE"], "1")
     }
@@ -47,7 +47,7 @@ final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
     /// refreshes makes both of them answer confidently about a world that has
     /// moved. Without this half, "set it everywhere" passes the test above.
     func testOutdatedAndSearchStillRefreshTheCatalogue() {
-        let runner = EnvironmentRecorder()
+        let runner = ScriptedRunner()
         let e = brewEngine(runner)
         _ = e.outdated()
         _ = e.search("wget")
@@ -62,7 +62,7 @@ final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
     /// several lines of advice about shells that have nothing to do with the
     /// install a person is watching.
     func testAnOperationSilencesTheEnvironmentHints() {
-        let runner = EnvironmentRecorder()
+        let runner = ScriptedRunner()
         brewEngine(runner).install(name: "wget", isCask: false)
         XCTAssertEqual(runner.calls.first?.env["HOMEBREW_NO_ENV_HINTS"], "1")
     }

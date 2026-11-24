@@ -14,7 +14,7 @@ import XCTest
 /// never indexes, so the same synthesised answer is reproducible here without
 /// a disk image or `mdutil`.
 ///
-/// Not behind `HELM_BENCH`: nothing here reads this Mac's own applications.
+/// Nothing here reads this Mac's own applications.
 /// The precondition asserts that the API really did make the date up, so the
 /// case cannot pass on a machine where the subject never happened.
 /// Past defect: fix commit 4ce355a9.
