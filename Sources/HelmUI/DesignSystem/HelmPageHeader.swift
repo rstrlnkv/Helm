@@ -370,11 +370,6 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// where the row heads a page on its own; the card's row passes the Kit's 14 and 10 (`CardHeader`).
     let leadingInset: CGFloat
     let trailingInset: CGFloat
-    /// How far the row's content stands above where its height centres it: the settings window's card row raises it
-    /// by 4 under both looks so its centre (window y 26) is the toolbar's, where the tabs' track stands under Glass
-    /// (owner's decision, 2026-11-23; `CardHeader.raise`). The row keeps its 52 and the page its top inset; every other
-    /// row (`LogView`, `AboutPage`, the showcase) passes none.
-    let raise: CGFloat
     let trailing: Trailing
     @Environment(\.helmHeaderChoices) private var choices
 
@@ -394,7 +389,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     init(symbol: String, tint: Color, title: String, bleeds: Bool,
          overContent: Bool, scrolled: Bool, standsOnStillContent: Bool, status: HelmHeaderStatus? = nil,
          dimmed: Bool = false, leadingInset: CGFloat = HelmLayout.formInset,
-         trailingInset: CGFloat = HelmLayout.formInset, raise: CGFloat = 0,
+         trailingInset: CGFloat = HelmLayout.formInset,
          @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.symbol = symbol
         self.tint = tint
@@ -407,7 +402,6 @@ public struct HelmPageHeader<Trailing: View>: View {
         self.dimmed = dimmed
         self.leadingInset = leadingInset
         self.trailingInset = trailingInset
-        self.raise = raise
         self.trailing = trailing()
     }
 
@@ -469,8 +463,8 @@ public struct HelmPageHeader<Trailing: View>: View {
         // The row is **52**: the Kit's 36 pt controls with 8 above and below. `minHeight` holds the 36 on a page
         // whose row has no control (24 pt plate alone), so no page's row is shorter than another's.
         .frame(minHeight: HelmHeaderActions.side)
-        .padding(.top, HelmSpace.s4 - raise)
-        .padding(.bottom, HelmSpace.s4 + raise)
+        .padding(.top, HelmSpace.s4)
+        .padding(.bottom, HelmSpace.s4)
         // On the same column as the content below it. Which column that is
         // depends on the page: outside the card a grouped Form is capped at 744 pt
         // and centred, so its header is too — but a full-bleed page draws its toolbar
