@@ -95,7 +95,7 @@ Kept tests, one per guarantee:
 | the door asks again after the quit, and holds | `TheAppIsAskedAgainAtLaunchpadRemovalTests` |
 | the door moves only what the id owns, and lists every refusal | `ALaunchpadRemovalMovesOnlyWhatTheIdOwnsAndListsEveryRefusalTests` |
 | the door never removes Helm's own family, and asks again after a quit | `TheDoorNeverRemovesHelmAndAsksAgainAfterAQuitTests` |
-| the door takes one removal at a time, with the page | `ADoorRemovalMeetsTheRestOfThePageTests`, `TheDoorTakesOneRemovalAtATimeTests`, `OneRemovalAtATimeEverywhereTests` |
+| the door takes one removal at a time, with the page | `ADoorRemovalMeetsTheRestOfThePageTests`, `TheDoorTakesOneRemovalAtATimeTests` |
 | the door's log does not name the app or its id | `TheLogDoesNotNameTheAppAtLaunchpadRemovalTests` |
 | the quit is waited for, and its deadline ends the wait | `TheQuitIsWaitedForTests` |
 | a refusal is not a decline at the Trash window's close | `ARefusalIsNotADeclineAtTheCloseTests` |

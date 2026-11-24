@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Helm
 
 import HelmRuntime
-import HelmTestSupport
 import XCTest
 
 /// The reset plan says the login item is given back, in the order that makes it
@@ -16,8 +15,8 @@ import XCTest
 ///
 /// **Why it asserts about the plan and not about the system.** Registering a
 /// login item in a test would register *the test runner*. The plan is where the
-/// promise lives, and `ResetEverything`'s exhaustive switch is what turns a step
-/// in the plan into work that happens.
+/// promise lives, and `ResetEverything`'s exhaustive switch (the compiler's) is what
+/// turns a step in the plan into work that happens.
 final class AResetTakesBackTheLoginItemTests: XCTestCase {
 
     func testThePlanGivesBackTheLoginItem() {
@@ -34,14 +33,5 @@ final class AResetTakesBackTheLoginItemTests: XCTestCase {
                           "the engines are asked while the person is still there to answer")
         XCTAssertLessThan(login, forget,
                           "unregistering reads Bundle.main, which is still whole before the domain goes")
-    }
-
-    func testEveryStepOfThePlanIsCarriedOut() throws {
-        let source = try RepoSource.text(of: "Sources/HelmApp/ResetEverything.swift")
-        let body = try XCTUnwrap(SwiftSource.body(of: "run", in: source))
-        for step in ResetPlan.Step.allCases {
-            XCTAssertTrue(body.contains(".\(step)"),
-                          "\(step) is in the plan and not in the switch that carries it out")
-        }
     }
 }

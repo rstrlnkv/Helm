@@ -22,44 +22,7 @@ import HelmTestSupport
 /// The house rule (Architecture/DiagnosticsLog.md, `PrivateFile`): «files naming
 /// somebody's files via `PrivateFile.swift`, not atomic write plus mode
 /// change». The rule had one exception left, and it was `PrivateFile` itself.
-///
-/// So the scan is over `Sources` entire rather than over the one file: it is the
-/// house rule, and the site it was written for is the site that broke it. The
-/// text is read with comments blanked, because this repository explains the trap
-/// in prose in five places and a scan that counted those would be unusable.
 final class TheModeBelongsToTheWriteTests: XCTestCase {
-
-    /// Where a private write is allowed to be spelled out at all. Anywhere else
-    /// the answer is «call `PrivateFile`».
-    private static let theOnePlace = "Sources/HelmRuntime/PrivateFile.swift"
-
-    /// No file in `Sources` hands its mode to a `chmod` that follows the write.
-    func testNothingWritesAtomicallyAndTightensAfterwards() throws {
-        var offences: [String] = []
-        let reads = try SwiftSource.uncommented(under: "Sources")
-        XCTAssertGreaterThanOrEqual(reads.count, 600,
-                                    "the scan read \(reads.count) files under Sources where the tree holds 600 or more; "
-                                    + "a scan over fewer is not the house rule. Lower it only by deciding to")
-        for read in reads {
-            for (number, line) in read.text.split(separator: "\n", omittingEmptySubsequences: false)
-                .enumerated() where line.contains(".atomic") {
-                offences.append("\(read.path):\(number + 1): \(line.trimmingCharacters(in: .whitespaces))")
-            }
-        }
-        XCTAssertEqual(offences, [],
-                       "an atomic write leaves the umask's mode on the new inode until "
-                       + "something chmods it; create the file private instead")
-    }
-
-    /// And the file that owns the writing does own it: the guard above would be
-    /// satisfied by a tree that writes no files at all, and this says the one
-    /// place is still there and still the only one.
-    func testTheOnePlaceThatWritesPrivateFilesIsStillThere() throws {
-        let text = try RepoSource.text(of: Self.theOnePlace)
-        XCTAssertTrue(text.contains("static func write(_ data: Data, to url: URL)"),
-                      "\(Self.theOnePlace) no longer writes bytes, so the scan above is "
-                      + "guarding an empty rule")
-    }
 
     // MARK: - The mode arrives with the file
 

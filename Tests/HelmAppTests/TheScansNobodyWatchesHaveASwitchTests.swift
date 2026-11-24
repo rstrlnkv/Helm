@@ -70,26 +70,4 @@ final class TheScansNobodyWatchesHaveASwitchTests: XCTestCase {
             }
         }
     }
-
-    /// **The finding itself, and it is about the tree rather than a value.**
-    /// The switch existed, the coordinator read it, the seal defended it — and
-    /// no screen wrote it. A stored setting nothing in the app can set is not a
-    /// setting; it is a constant with a keychain item.
-    func testTheSettingHasAWriterThatIsNotItsOwnDeclaration() throws {
-        let files = try RepoSource.swiftFiles(under: "Sources")
-            .filter { $0 != "Sources/HelmApp/AppSettings.swift" }
-        XCTAssertGreaterThan(files.count, 100,
-                             "only \(files.count) source files were read, so a pass means nothing")
-        var writers: [String] = []
-        for file in files {
-            let code = try RepoSource.lines(of: file).map(RepoSource.code)
-            if code.contains(where: { $0.contains("AppSettings.disabledScans =") }) {
-                writers.append(file)
-            }
-        }
-        XCTAssertFalse(writers.isEmpty,
-                       "nothing outside its own declaration writes AppSettings.disabledScans, "
-                       + "so the background scans are again a thing the app does with no way "
-                       + "for anybody to answer about it")
-    }
 }

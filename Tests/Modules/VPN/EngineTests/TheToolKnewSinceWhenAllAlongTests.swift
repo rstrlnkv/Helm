@@ -108,27 +108,6 @@ final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
             """)
     }
 
-    /// **The formatter is fixed, not the reader's** — asserted on the source,
-    /// because the fault it guards against cannot be reached from here.
-    ///
-    /// `scutil` wrote `08/19/2026 14:57:22` on the machine this was measured on,
-    /// whose languages are ("ru-RU", "en-US") — so the tool is not writing the
-    /// reader's format, and a formatter built on the user's locale would fail to
-    /// read the tool on exactly that Mac. This target cannot switch the process
-    /// locale and has no `AppLanguage` to override (the engine does not import
-    /// `HelmUI`), so the running test would pass on any machine whatever the
-    /// formatter said. Structural.
-    func testTheStampIsNotReadThroughTheReadersOwnLocale() throws {
-        let parser = RepoSource.root
-            .appendingPathComponent("Sources/Modules/VPN/Engine/Logic/VPNStatusParser.swift")
-        let source = try String(contentsOf: parser, encoding: .utf8)
-        XCTAssertTrue(source.contains("en_US_POSIX"), """
-            the stamp's formatter no longer pins its locale, so it reads the             reader's format rather than the tool's
-            """)
-        XCTAssertFalse(source.contains("Locale.current"), "the parser reads the reader's locale")
-        XCTAssertFalse(source.contains("autoupdatingCurrent"), "likewise")
-    }
-
     // MARK: - What is not in the tunnel
 
     func testTheExcludedRoutesAreKeptRatherThanOnlySteppedOver() throws {

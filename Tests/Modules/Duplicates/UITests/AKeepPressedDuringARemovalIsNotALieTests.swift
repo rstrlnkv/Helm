@@ -78,6 +78,21 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
         await releaseRemoval(dvm, work)
     }
 
+    /// The press itself, twice: the second «Remove» while the first is held sends
+    /// nothing to the engine.
+    func testASecondRemovePressWhileOneRunsSendsNothing() async throws {
+        let (dvm, work) = try await removalInFlight()
+
+        // Started, not awaited: with no guard the second press parks on the held
+        // fake too, and awaiting it would hang instead of failing.
+        let second = Task { await dvm.emptyBasket() }
+        await grace()
+
+        XCTAssertEqual(work.removals.count, 1, "a second removal reached the engine")
+        await releaseRemoval(dvm, work)
+        await second.value
+    }
+
     /// A group where the two policies disagree, so one of them would put the
     /// in-flight extra first: the filed copy is the newer, the drop-zone copy the
     /// older. The batch holds the one the *other* policy would keep.

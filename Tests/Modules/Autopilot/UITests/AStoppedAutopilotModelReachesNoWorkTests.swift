@@ -92,8 +92,10 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
         await rvm.runNow(held)
         await rvm.undo(one)
         await rvm.undoRun(pass)
-        await rvm.clearHistory()
-        await rvm.discardRefusedRules()
+        rvm.ask(.history)
+        await rvm.confirmDiscard()
+        rvm.ask(.rules)
+        await rvm.confirmDiscard()
         await waitUntil("the control presses reach the work") {
             ["save", "dryRun", "sweepNow", "putBack(record:)", "putBack(run:)",
              "dropHistory", "dropRefusedRules"].allSatisfy { work.calls.contains($0) }
@@ -108,8 +110,8 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
         await rvm.runNow(held)
         await rvm.undo(one)
         await rvm.undoRun(pass)
-        await rvm.clearHistory()
-        await rvm.discardRefusedRules()
+        await rvm.confirmDiscard(.history)
+        await rvm.confirmDiscard(.rules)
         await rvm.loadHistory()
         await rvm.load()
         await settle()

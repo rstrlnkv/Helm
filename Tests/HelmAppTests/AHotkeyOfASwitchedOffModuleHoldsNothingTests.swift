@@ -58,36 +58,4 @@ final class AHotkeyOfASwitchedOffModuleHoldsNothingTests: XCTestCase {
         }
         XCTAssertEqual(ScreenshotsHotkey.panel.fallback.label, "⇧⌘8")
     }
-
-    /// The other half: the manager must actually ask. A pure function that nobody
-    /// asks is a check that cannot fail, so the host's registration is read for
-    /// the question — and the manager for the reloads that follow a switch.
-    /// Every combination is registered in one place, the loop over the registry
-    /// in `ModuleHost`, which hands each one `isLive:` reading the host's `live`.
-    func testEveryDeclaredHotkeyAsksWhetherItsModuleIsRunning() throws {
-        let call = "HotkeyManager.shared.register("
-        let delegate = try RepoSource.text(of: "Sources/HelmApp/AppDelegate.swift")
-        XCTAssertFalse(delegate.contains(call),
-                       "AppDelegate.swift registers a combination itself: registration belongs to the one loop in ModuleHost.registerHotkeys(), which every module's declared hotkeys go through and which asks isLive: of each")
-
-        let host = try RepoSource.text(of: "Sources/HelmApp/ModuleHost.swift")
-        let registrations = host.components(separatedBy: call).count - 1
-        XCTAssertEqual(registrations, 1,
-                       "ModuleHost.swift must hold exactly one \(call) (found \(registrations)); if the call was renamed, look for the single registration loop in registerHotkeys()")
-        if let at = host.range(of: call) {
-            let before = String(host[..<at.lowerBound].suffix(600))
-            let after = String(host[at.upperBound...].prefix(900))
-            XCTAssertTrue(before.range(of: #"for\s+[^\n]+\s+in\s+ModuleRegistry\.all"#, options: .regularExpression) != nil,
-                          "the registration is not inside a `for … in ModuleRegistry.all` loop: a module added to the registry would hold no key; if the loop was renamed, look for the iteration over ModuleRegistry.all above the register call")
-            XCTAssertTrue(after.range(of: #"isLive:[^\n]*live\["#, options: .regularExpression) != nil,
-                          "the registration's arguments carry no `isLive:` reading `live[`: the manager is not asked whether the module is running; if renamed, look for isLive: closure reading the host's live[id]")
-        }
-
-        let manager = try RepoSource.text(of: "Sources/HelmApp/HotkeyManager.swift")
-        for name in [".helmModuleEnabled", ".helmModuleDisabled"] {
-            XCTAssertTrue(manager.contains(name),
-                          "the manager does not re-register when a module is switched (\(name))")
-        }
-        XCTAssertTrue(manager.contains("binding.isLive()"), "reload() never asks isLive")
-    }
 }

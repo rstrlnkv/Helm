@@ -87,7 +87,7 @@ publishes is declared there a second time; the doc comment of
 one line per engine; the descriptor forwards the id upward.
 `StoreNamespacesAreModuleIdsTests` (`Tests/HelmAppTests/`) records the
 registered ids and fails on a rename, since a rename orphans everything anybody
-has configured; its `testNoModuleSpellsItsOwnIdAsALiteral` reads `Sources/Tweaks` as it reads `Sources/Modules`.
+has configured; `TheRulesTheCompilerCannotHoldTests` refuses a literal id inside `Sources/Modules` and `Sources/Tweaks`.
 
 **A module may own windows over the displays.** Screenshots' overlay and toast are panels its UI target builds itself; a window a module needs and the host owns is the other shape, `Architecture/AWindowAModuleNeedsAndTheHostOwns.md`.
 

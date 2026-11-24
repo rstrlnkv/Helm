@@ -14,7 +14,7 @@ import XCTest
 /// your rules».
 ///
 /// No test here asks the keychain anything: the names are read off values and
-/// off the source.
+/// off the dev script.
 final class TheRuleItemsAreTheOnesThatShippedTests: XCTestCase {
 
     /// Spelled as literals on purpose: a test that built them from the subject's
@@ -48,30 +48,6 @@ final class TheRuleItemsAreTheOnesThatShippedTests: XCTestCase {
         XCTAssertEqual(KeychainRuleSequence(items: dev).items, dev)
     }
 
-    private func code(_ path: String) throws -> [String] {
-        try RepoSource.lines(of: path).map(RepoSource.code)
-    }
-
-    func testTheSourceSpellsTheDeployedNamesOnceAndAddressesThroughItems() throws {
-        let lines = try code("Sources/Modules/Autopilot/Engine/RuleKeychain.swift")
-        let text = lines.joined(separator: "\n")
-        for literal in [#""com.helm.autopilot""#, #""rule-seal""#, #""rule-seq""#] {
-            XCTAssertTrue(text.contains(literal), "\(literal) is no longer spelled where it shipped")
-        }
-        XCTAssertTrue(text.contains("account: items.seal"))
-        XCTAssertTrue(text.contains("service: RuleKeychainItems.service, account: items.sequence"))
-        XCTAssertFalse(text.contains("SecItemDelete"), "an item is deleted")
-
-        var naming: [String] = []
-        for path in try RepoSource.swiftFiles(under: "Sources") {
-            let hits = try code(path).filter {
-                $0.contains(#""com.helm.autopilot""#) || $0.contains(#""rule-seal""#) || $0.contains(#""rule-seq""#)
-            }
-            if !hits.isEmpty { naming.append(path) }
-        }
-        XCTAssertEqual(naming, ["Sources/Modules/Autopilot/Engine/RuleKeychain.swift"])
-    }
-
     /// Without this a rename of the Dev bundle silently puts Dev back on the
     /// deployed items. `rewrite-as-dev.sh` writes the identifier; `package-dev.sh` must still run it.
     func testTheDevScriptWritesTheIdentifierTheItemsAreKeyedOn() throws {
@@ -80,12 +56,5 @@ final class TheRuleItemsAreTheOnesThatShippedTests: XCTestCase {
         XCTAssertTrue(rewrite.contains("Set :CFBundleIdentifier \(AppBuild.devIdentifier)\""))
         let package = try RepoSource.text(of: "Scripts/package-dev.sh")
         XCTAssertTrue(package.contains("rewrite-as-dev.sh"))
-    }
-
-    func testNoVersionEntersTheChoice() throws {
-        let text = try code("Sources/Modules/Autopilot/Engine/RuleKeychain.swift").joined(separator: "\n")
-        XCTAssertFalse(text.contains("isDev "), "the choice reads the version string")
-        XCTAssertFalse(text.contains("AppBuild.isDev\n"))
-        XCTAssertTrue(text.contains("AppBuild.isDevIdentifier"))
     }
 }

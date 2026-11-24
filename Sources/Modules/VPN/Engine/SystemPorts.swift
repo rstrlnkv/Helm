@@ -256,7 +256,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
     private let keychainTool: String
     private let keychainDeadline: TimeInterval
 
-    convenience init() { self.init(purge: Self.purgeItemsWithTheOldAccessList) }
+    convenience init() { self.init(purge: { Self.purgeItemsWithTheOldAccessList() }) }
 
     /// The purge as an action, so a test can watch when it runs without ever
     /// reaching a keychain.
@@ -303,14 +303,16 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// **Who may run this, and the record that it has, are `CredentialCachePurge`'s
     /// to answer** — this deletes somebody's stored secrets, and it used to do so
     /// on every `swift test` run with a latch that could not remember it had.
-    private static func purgeItemsWithTheOldAccessList() {
+    /// Internal, with the keychain call a parameter, so a test in the suite can
+    /// watch that nothing is sent.
+    static func purgeItemsWithTheOldAccessList(delete: (CFDictionary) -> OSStatus = SecItemDelete) {
         let marker = CredentialCachePurge.markerURL
         // The bundle question first, so a test runner reaches neither the disk nor
         // the keychain.
         guard CredentialCachePurge.shouldRun(bundledApp: AppBuild.isBundledApp,
                                              recorded: FileManager.default.fileExists(atPath: marker.path))
         else { return }
-        purgeTheCache(bundleIdentifier: Bundle.main.bundleIdentifier, marker: marker)
+        purgeTheCache(bundleIdentifier: Bundle.main.bundleIdentifier, marker: marker, delete: delete)
     }
 
     /// The deleting and the recording, with the keychain call and the marker as
@@ -500,7 +502,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// — the same Developer ID already blocking the seal on
     /// `clamshellEnabled` and notarization. It would also be a change to the
     /// credential path that cannot be tested without writing to somebody's real
-    /// keychain. `ASecretsProtectionIsNotClaimedTwiceTests` holds the pair
+    /// keychain. `TheRulesTheCompilerCannotHoldTests` holds the pair
     /// together: the attribute may come back only with the flag beside it.
     private func helmCacheWrite(_ account: String, _ value: String) {
         var attributes = query(account)

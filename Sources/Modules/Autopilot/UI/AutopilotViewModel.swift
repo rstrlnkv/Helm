@@ -218,7 +218,7 @@ extension AutopilotEngine: AutopilotWork {}
     /// The only gesture a refused page may make. Everything else it could send
     /// is a save, and while the rules are refused a save is refused with them —
     /// so without this the page never takes another edit.
-    func discardRefusedRules() async {
+    private func discardRefusedRules() async {
         guard !closed else { return }
         await work.dropRefusedRules()
         await load()
@@ -271,7 +271,7 @@ extension AutopilotEngine: AutopilotWork {}
         !runs.isEmpty || historyEmpty != nil || historyRefused
     }
 
-    func clearHistory() async {
+    private func clearHistory() async {
         guard !closed else { return }
         await work.dropHistory()
         await load()

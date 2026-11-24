@@ -24,9 +24,8 @@ import XCTest
 /// That alone does not prove anything actually calls `liveTransfer` — the
 /// convenience init could bind the unguarded `overTheNetwork` straight past it,
 /// invisibly, since every store the module's own tests build names its transfer
-/// explicitly. So the second check reads `FilePopularityStore`'s own
-/// convenience init as text — nothing at runtime can see this wiring
-/// question from inside a test.
+/// explicitly. So the second check builds a store the ordinary way and calls
+/// the transfer it holds.
 final class ASuiteRunAsksHomebrewNothingTests: XCTestCase {
 
     func testALiveStoreRefusesTheWireUnderATestRunner() async {
@@ -41,25 +40,16 @@ final class ASuiteRunAsksHomebrewNothingTests: XCTestCase {
         }
     }
 
-    func testTheConvenienceInitBindsTheGuardedTransfer() throws {
-        let path = "Sources/Modules/Homebrew/Engine/SystemPorts.swift"
-        let text = SwiftSource.code(try RepoSource.text(of: path))
-        // The subject first: a store renamed or restructured would otherwise
-        // leave this passing over a type it no longer reads.
-        guard let store = SwiftSource.typeBodies(in: text).first(where: {
-            $0.name == "FilePopularityStore"
-        }) else {
-            return XCTFail("\(path) has no FilePopularityStore — this scan is reading the wrong thing")
+    func testAStoreBuiltTheOrdinaryWayRefusesTheWireToo() async {
+        let store = FilePopularityStore(directory: scratchDirectory("homebrew-ordinary"))
+        do {
+            _ = try await store.transfer(URLRequest(url: FilePopularityStore.formulae.url))
+            XCTFail("a store built by the convenience init reached the network under a test runner")
+        } catch is FilePopularityStore.NoWireUnderTest {
+            // The convenience init bound the guarded transfer.
+        } catch {
+            XCTFail("the store's own transfer threw \(error), not NoWireUnderTest")
         }
-        let storeBody = String(Array(text)[(store.open + 1)..<store.close])
-        guard let convenienceInit = SwiftSource.body(of: "init", in: storeBody) else {
-            return XCTFail("FilePopularityStore has no init — this scan is reading the wrong thing")
-        }
-        XCTAssertTrue(convenienceInit.contains("liveTransfer"),
-                      "FilePopularityStore's convenience init does not bind `liveTransfer` — a "
-                      + "store built the ordinary way would reach `overTheNetwork` unguarded, and "
-                      + "every `swift test` run would fetch Homebrew's two analytics documents "
-                      + "again, silently")
     }
 
     /// The guard must be the *live* path's, not something the store does to

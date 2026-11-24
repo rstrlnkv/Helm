@@ -29,7 +29,7 @@ cancels before the engine's `deactivate()` (`TheLayoutStreamReplaysTheLatestStat
 `ASwitchedOffModuleLetsItsSubscriberGoTests`). The model lives as long as the module is
 switched on, so the panel tile keeps counting with Settings closed.
 
-`emitState` says a state only when it differs from the last one said: the comparison, the record and the `say` sit under `emitLock`, apart from the tap's state lock (`testAReReadThatChangesNothingSaysNothing`). The order of two racing emissions has no deterministic test. `LanguageIndicator`'s `deinit` removes the distributed observers and the `FrontmostApp` watcher of an indicator dropped without `detach()` (`testADroppedIndicatorLetsGoOfBothObservers`, a scan of the source: building one puts a status item in the menu bar).
+`emitState` says a state only when it differs from the last one said: the comparison, the record and the `say` sit under `emitLock`, apart from the tap's state lock (`testAReReadThatChangesNothingSaysNothing`). The order of two racing emissions has no deterministic test. `LanguageIndicator`'s `deinit` removes the distributed observers and the `FrontmostApp` watcher of an indicator dropped without `detach()`.
 
 Words: `Sources/Modules/Layout/UI/Localizable.xcstrings`; shared words through `HelmWord` from the kit.
 

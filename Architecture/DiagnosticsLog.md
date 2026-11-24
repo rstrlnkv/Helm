@@ -87,8 +87,6 @@ budget carries its ceiling as a file rather than as a paragraph, per entry or pe
 `Tests/Modules/Duplicates/EngineTests/WalkFootprintTests.swift`; the streamed digest of
 an update carries a process ceiling over one large file instead, run only with
 `HELM_BENCH=1` (`Tests/HelmRuntimeTests/ReleaseDigestFootprintTests.swift`).
-`Tests/HelmRuntimeTests/MemoryTrailCoverageTests.swift` holds the list of phases
-obliged to carry a reading at all.
 
 A call is judged by the requests it made and never
 by a high-water sampled from those books, which are the whole process's. A memory peak is never attributed to a neighbouring log line; the

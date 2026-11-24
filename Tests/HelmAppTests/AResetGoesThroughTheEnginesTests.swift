@@ -3,64 +3,31 @@
 
 import XCTest
 import HelmContract
-import HelmTestSupport
+@testable import HelmApp
+import HelmRuntime
 
 /// The other half of `AResetAsksBeforeItDeletesTests`: the order is a value, and
 /// this is what carries it out.
 ///
-/// **Read off the source, and the reason is the subject itself.** Driving
-/// `ResetEverything.run()` moves this Mac's own `~/Library/Application
-/// Support/Helm` and `~/Library/Logs/Helm` to the Trash, forgets the
-/// preferences domain of whatever bundle is running the suite, and relaunches —
-/// and the step under test would put an administrator password dialog on the
-/// screen of whoever is running it. What the host does when it is asked is
-/// driven for real one target over, against a fake that can decline —
-/// `FakeClamshell.removalSucceeds`, and `ALidThatDidNotWorkSaysSoTests` covers
-/// both the ask (`testSwitchingTheModuleOffAsksForTheGrantBack`) and the answer
-/// that is no (`testADeclinedRemovalIsPublishedRatherThanDiscarded`). What the
-/// *reset* asks for is pinned here.
+/// **Driven through the seam, not through the real steps.** The real steps move
+/// this Mac's own `~/Library/Application Support/Helm` and `~/Library/Logs/Helm`
+/// to the Trash, forget the preferences domain of whatever bundle is running the
+/// suite, and relaunch — and the step under test would put an administrator
+/// password dialog on the screen of whoever is running it. So
+/// `run(standInIsLive:perform:)` is given a recorder. That the switch carrying a
+/// step out has an arm for every step, and no `default:`, is the compiler's.
+/// What the host does when it is asked is driven for real one target over,
+/// against a fake that can decline — `ALidThatDidNotWorkSaysSoTests`.
 @MainActor
 final class AResetGoesThroughTheEnginesTests: XCTestCase {
 
-    private func source(_ path: String) throws -> String {
-        let text = try RepoSource.text(of: path)
-        XCTAssertGreaterThan(text.count, 500, "\(path) was not read at all")
-        return text
-    }
-
-    func testTheResetRunsThePlanRatherThanAnOrderOfItsOwn() throws {
-        let reset = try source("Sources/HelmApp/ResetEverything.swift")
-        XCTAssertTrue(reset.contains("for step in ResetPlan.order"),
-                      "the reset carries its own order again — the list of what a reset "
-                      + "does is then two lists, and the one that is tested is not the one "
-                      + "that runs")
-        XCTAssertFalse(reset.contains("default:"),
-                       "a `default:` in the switch over the plan's steps turns a step "
-                       + "added and never carried out into a silent no-op, which is the "
-                       + "shape of the finding this file exists for")
-    }
-
-    func testTheResetAsksTheEnginesForWhatIsOutsideHelmsOwnFolders() throws {
-        let reset = try source("Sources/HelmApp/ResetEverything.swift")
-        XCTAssertTrue(reset.contains("handBackSystemState()"),
-                      "«Reset all settings» never asks the engines for anything, so the "
-                      + "passwordless pmset rule Keep Awake installed in /etc/sudoers.d "
-                      + "outlives a reset that promises the machine is as it was just "
-                      + "after installing")
-    }
-
-    func testTheResetWritesTheLogPurgeLatchAgain() throws {
-        let reset = try source("Sources/HelmApp/ResetEverything.swift")
-        XCTAssertTrue(reset.contains("case .relatchTheLogPurge: HelmLog.shared.rewritePurgeLatch()"),
-                      "the reset trashes the log folder and the latch with it, and does not "
-                      + "write it again: the next launch purges the log holding the reset's line")
-    }
-
-    func testTheResetStopsEveryModuleItself() throws {
-        let reset = try source("Sources/HelmApp/ResetEverything.swift")
-        XCTAssertTrue(reset.contains("case .stopEveryModule: ModuleHost.shared.shutdown()"),
-                      "the order test pins the step's place, not what the step does: an "
-                      + "emptied arm leaves the modules running while the reset deletes")
+    func testTheResetPerformsExactlyThePlanInItsOrder() {
+        var performed: [ResetPlan.Step] = []
+        ResetEverything.run(standInIsLive: false) { performed.append($0) }
+        XCTAssertEqual(performed, ResetPlan.order,
+                       "the reset carries its own order, or skips a step: the list of what a "
+                       + "reset does is then two lists, and the one that is tested is not the "
+                       + "one that runs")
     }
 
     /// The contract carries the default, so a module that holds nothing outside

@@ -29,7 +29,7 @@ public enum HelmSupport {
     /// The folder this process should write in.
     ///
     /// A temporary directory of this process's own under a test runner — the rule
-    /// `TestProcess` exists for, and `StoresOfTheirsAskIfThisIsATestTests` holds
+    /// `TestProcess` exists for, and `TheRulesTheCompilerCannotHoldTests` holds
     /// for every site that resolves a folder of the person's. In the app,
     /// `FileManager`'s own lookup, because a sandboxed or relocated home answers
     /// differently from string arithmetic; the spelled-out path is the fallback for

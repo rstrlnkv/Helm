@@ -49,6 +49,14 @@ final class ATestRunMustNotDeleteCredentialsTests: XCTestCase {
                                                       recorded: false))
     }
 
+    /// The act itself, asked of this very process: the purge is called here with a
+    /// recording stand-in for the keychain call, and a suite run sends nothing.
+    func testThePurgeCalledInTheSuiteSendsNothingToTheKeychain() {
+        var sent = 0
+        KeychainCredentials.purgeItemsWithTheOldAccessList { _ in sent += 1; return errSecSuccess }
+        XCTAssertEqual(sent, 0, "a suite run sent a delete to the keychain")
+    }
+
     /// And the latch is not a preference: a file, so that "once" is a fact about
     /// the installation rather than about whoever asked. Asserted on the path
     /// rather than on the file's existence — whether the app has already purged on

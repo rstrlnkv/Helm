@@ -8,9 +8,8 @@ import XCTest
 /// standing beside the request.**
 ///
 /// «The model refuses; the page dims. Both, or neither is reliable» —
-/// Architecture/Removal.md § One removal at a time. `OneRemovalAtATimeEverywhereTests`
-/// (HelmAppTests) enforces it for every module by reading the files that send a
-/// removal; this is the behavioural half for `OrphansModel`, which holds what
+/// Architecture/Removal.md § One removal at a time. Each model that sends a
+/// removal has its own test of it; this is the one for `OrphansModel`, which holds what
 /// the eight of the tab's `@State`s that moved into it held, and so can be driven.
 ///
 /// What a second press costs is not a second deletion — the files are already in

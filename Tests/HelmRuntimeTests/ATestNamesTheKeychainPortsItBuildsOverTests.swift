@@ -36,7 +36,7 @@ import XCTest
 /// **Why the source and not the behaviour.** The behaviour is "the suite left
 /// nothing in the keychain", and the only way to ask it is to read the keychain
 /// — which is the boundary this test defends.
-/// `StoresOfTheirsAskIfThisIsATestTests` is the family sibling and gives the same
+/// `TheRulesTheCompilerCannotHoldTests` is the family sibling and gives the same
 /// reason for the same shape.
 ///
 /// **What it deliberately does not cover.** A type whose port has *no* default —

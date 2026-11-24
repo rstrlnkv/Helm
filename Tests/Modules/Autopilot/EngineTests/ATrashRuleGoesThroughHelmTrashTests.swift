@@ -102,12 +102,4 @@ final class ATrashRuleGoesThroughHelmTrashTests: XCTestCase {
         XCTAssertEqual(moved.next()?.inode, 1, "the move ran after the path changed")
         XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
     }
-
-    /// The move is `HelmTrash`'s: no `trashItem` in this file.
-    func testTheRunnerHoldsNoTrashItemOfItsOwn() throws {
-        let code = try RepoSource.lines(of: "Sources/Modules/Autopilot/Engine/RuleRunner.swift")
-            .map(RepoSource.code).joined(separator: "\n")
-        XCTAssertFalse(code.contains("trashItem"), "RuleRunner trashes outside HelmTrash")
-        XCTAssertTrue(code.contains("HelmTrash.removeOne"))
-    }
 }

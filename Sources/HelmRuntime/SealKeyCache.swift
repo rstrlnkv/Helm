@@ -62,7 +62,7 @@ import Foundation
 /// the rule a handler field once broke by taking the lock on one of
 /// them.
 public final class SealKeyCache: SealKeyPort, @unchecked Sendable {
-    private let source: SealKeyPort
+    let source: SealKeyPort
     /// Serialises the round trip: one dialog for two callers arriving together.
     private let fetching = NSLock()
     /// Guards `material`, and is held for a field access and nothing else.

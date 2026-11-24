@@ -9,7 +9,8 @@ import XCTest
 /// `confirmDiscard()` is the one door to `dropRefusedRules` and `dropHistory`.
 ///
 /// Held for the class a wrong build puts in front of somebody's data: a button
-/// that calls the drop directly deletes a record on a stray click.
+/// that calls the drop directly deletes a record on a stray click. The two drops
+/// are `private` to the view model, so a view cannot reach them: the compiler holds it.
 @MainActor
 final class DiscardingAsksFirstTests: XCTestCase {
 
@@ -93,34 +94,6 @@ final class DiscardingAsksFirstTests: XCTestCase {
         let all: [AutopilotViewModel.Discard] = [.rules, .history, .refusedHistory]
         AppLanguage.each { language in
             XCTAssertEqual(Set(all.map { ApStr.discardQuestion($0) }).count, 3, "\(language)")
-        }
-    }
-
-    /// The three buttons are views, which a model test cannot press, so the
-    /// wiring is read from the source: each press says `ask`, and the only
-    /// call to a drop in the views is the dialog's `confirmDiscard`.
-    func testTheButtonsOnlyAsk() throws {
-        let ui = RepoSource.root.appendingPathComponent("Sources/Modules/Autopilot/UI")
-        func source(_ name: String) throws -> String {
-            try String(contentsOf: ui.appendingPathComponent(name), encoding: .utf8)
-        }
-        let page = try source("AutopilotSettingsPage.swift")
-        let history = try source("HistorySection.swift")
-        XCTAssertTrue(page.contains("Button(ApStr.discardRules, role: .destructive) {\n                        rvm.ask(.rules)"),
-                      "the banner button no longer only asks")
-        XCTAssertTrue(history.contains("Button(HelmWord.clear) { clear(.history) }"))
-        XCTAssertTrue(history.contains("Button(ApStr.discardHistory) { clear(.refusedHistory) }"))
-        XCTAssertTrue(page.contains("clear: { rvm.ask($0) }"), "the history section's clear no longer only asks")
-        // The confirm button hands over what the dialog showed, read before the dialog clears it.
-        // The capture is in the synchronous closure, before the Task that awaits the drop.
-        XCTAssertTrue(page.contains("let asked = rvm.pendingDiscard\n                Task { await rvm.confirmDiscard(asked) }"),
-                      "the confirm button no longer captures what was asked before the Task, or no longer passes it")
-        XCTAssertFalse(page.contains("confirmDiscard()"), "the confirm button reads pendingDiscard after the dialog cleared it")
-        for name in ["AutopilotSettingsPage.swift", "HistorySection.swift"] {
-            let text = try source(name)
-            for drop in ["discardRefusedRules", "clearHistory", "dropHistory"] {
-                XCTAssertFalse(text.contains(drop), "\(name) calls \(drop) without asking")
-            }
         }
     }
 }

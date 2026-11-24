@@ -48,8 +48,8 @@ items stay until the cache itself replaces them; the real Helm's `com.helm.vpn` 
 
 That the reset's ask reaches every live engine, and tears nothing down and writes no enabled flag, is
 driven for real: `AModuleOwnsItsModelTests.testHandingBackSystemStateAsksEveryLiveEngineAndTearsNothingDown` enables two
-fakes and calls `ModuleHost.handBackSystemState()`. `AResetGoesThroughTheEnginesTests` still reads the source for the
-rest, because running `ResetEverything.run()` would move this Mac's own folders.
+fakes and calls `ModuleHost.handBackSystemState()`. `AResetGoesThroughTheEnginesTests` drives `run(standInIsLive:perform:)` with a recorder for the
+rest, because running `ResetEverything.run()` itself would move this Mac's own folders.
 
 The steps are `ResetPlan.Step` — `handBackWhatIsOutsideHelm`, `giveBackTheLoginItem`,
 `stopEveryModule`, `trashHelmsOwnFolders`, `relatchTheLogPurge`, `forgetPreferences`, `relaunch` — and `ResetPlan.order` is that
