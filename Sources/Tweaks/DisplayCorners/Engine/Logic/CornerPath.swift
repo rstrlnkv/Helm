@@ -6,7 +6,7 @@ import CoreGraphics
 /// cannot import (review finding 16). This draws the same kind of corner with CoreGraphics: three cubic
 /// Béziers whose edge span is `edgeSpan` × radius, the proportions of the continuous corner.
 /// **Measured, not assumed:** measured once outside the repo, it deviates from SwiftUI's `.continuous` by
-/// at most 0.00005 pt at radii 5, 14, 28 and 64; `CornerLogicTests` pins it within 0.01 pt at radius 100.
+/// at most 0.00005 pt at radii 5, 14, 28 and 64.
 ///
 /// Coordinates are the mask view's: origin bottom-left, y up, the square `size` × `size`.
 public enum CornerPath {

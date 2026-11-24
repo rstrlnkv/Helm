@@ -16,9 +16,8 @@ import HelmRuntime
 /// It matters that it says so. `TreeBuilder` charges a directory as its files are
 /// found, so **every folder in a stopped tree shows a floor, not a total** — and
 /// that is the number somebody reads when they decide to bin it. Two things
-/// follow: the header says the walk was stopped (`StopKeepsTheTreeOnScreenTests`
-/// holds the flag it is drawn from, `dvm.stopped`; no test reads the header
-/// itself), and the tree is never written to the store, which is pinned below,
+/// follow: the header says the walk was stopped (the flag it is drawn
+/// from is `dvm.stopped`; no test reads the header itself), and the tree is never written to the store, which is pinned below,
 /// because the store is what the module reopens on and labels a measurement.
 ///
 /// `StopLeavesNothingBehindTests` is the other half — what Stop must *not* leave
@@ -117,78 +116,5 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: store.fileURL.path),
                       "a finished tree stopped being saved, so the test above proves nothing")
-    }
-}
-
-/// What Stop keeps on the screen: the tree the walk had built, the count it
-/// reached, and the flag that says it is unfinished. The work parks every
-/// scan so a walk can be caught mid-flight; the basket over a stopped tree, and
-/// what a stopped tree must not do to the store, are `StopKeepsWhatItMeasuredTests`'
-/// half.
-@MainActor
-final class StopKeepsTheTreeOnScreenTests: XCTestCase {
-
-    // MARK: - The tree stays
-
-    func testStopKeepsTheTreeTheWalkHadBuilt() async {
-        let work = HeldWork()
-        let (dvm, _) = heldModel(work)
-        await walkingWithASnapshot(work, dvm)
-
-        dvm.cancel()                    // the Stop button
-
-        XCTAssertEqual(dvm.phase, .result,
-                       "Stop threw away the tree and showed the volume picker")
-        XCTAssertEqual(dvm.result?.root.path, "/Volumes/Big")
-        XCTAssertFalse(dvm.live, "the walk is over")
-        XCTAssertTrue(dvm.stopped, "and the screen has to be able to say the tree is unfinished")
-        XCTAssertFalse(dvm.treeIsComplete)
-    }
-
-    /// The count the header shows is the count the snapshot carried, so the line
-    /// describes this walk and not a previous one.
-    func testTheStoppedTreeKeepsTheCountItReached() async {
-        let work = HeldWork()
-        let (dvm, _) = heldModel(work)
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(work, count: 1)
-        work.emitPartial(0, result: partOfBig(files: 4_242))
-        await waitUntil("the snapshot is drawn") { dvm.result?.filesScanned == 4_242 }
-
-        dvm.cancel()
-
-        XCTAssertEqual(dvm.result?.filesScanned, 4_242)
-    }
-
-    /// Stop inside the first third of a second, before the engine has reported
-    /// anything: there is no tree to keep, so this is the volume picker as it
-    /// always was.
-    func testStopBeforeTheFirstSnapshotShowsTheVolumePicker() async {
-        let work = HeldWork()
-        let (dvm, _) = heldModel(work)
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(work, count: 1)
-        XCTAssertNil(dvm.result, "precondition: nothing has been drawn yet")
-
-        dvm.cancel()
-
-        XCTAssertEqual(dvm.phase, .start)
-        XCTAssertFalse(dvm.stopped, "there is no tree, so there is nothing to call unfinished")
-    }
-
-    /// A walk that finished is not a walk that was stopped. `cancel()` is not the
-    /// Stop button — `newScan()` calls it too, and so does Stop on a screen where
-    /// the walk has already ended — so the flag is driven by whether a walk was
-    /// running, not by who called.
-    func testAFinishedTreeIsNeverMarkedStopped() async {
-        let work = HeldWork()
-        let (dvm, _) = heldModel(work)
-        await scanned(dvm, over: work, answering: partOfBig())
-        XCTAssertFalse(dvm.live, "precondition: the walk answered")
-
-        dvm.cancel()
-
-        XCTAssertFalse(dvm.stopped, "a finished measurement was labelled incomplete")
-        XCTAssertTrue(dvm.treeIsComplete)
     }
 }

@@ -28,8 +28,8 @@ public enum ScreenshotsHotkey: String, CaseIterable, Sendable {
     public var storePrefix: String { "\(rawValue)Hotkey" }
 
     /// ⌘⇧1 for the whole screen, ⌘⇧2 for an area and ⌘⇧8 for the panel. None is
-    /// macOS's own (those are ⌘⇧3, ⌘⇧4 and ⌘⇧5, and ⌘⇧6 and ⌘⇧7 are taken too —
-    /// `TheSystemDefaultsAreMacOSsOwnTests` reads the table), so the module works the
+    /// macOS's own (those are ⌘⇧3, ⌘⇧4 and ⌘⇧5, and ⌘⇧6 and ⌘⇧7 are taken too),
+    /// so the module works the
     /// moment it is switched on, without asking anybody to untick anything
     /// first; ⌘⇧5 goes to the panel only through the page's button, and only
     /// once macOS's own box for it is read as off. The label is spelled the way

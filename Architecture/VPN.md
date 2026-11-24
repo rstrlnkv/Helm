@@ -94,7 +94,7 @@ the model reaches the engine): the latest state first, the subscriber registered
 one hold of `EngineNews`'s lock that replays it (`EngineNews.stream`), one task in the model. The stream adds
 no dedup of its own, so the forced re-emission of a refused measurement (`emitState(force:)`,
 which moves no field of the payload and is the only answer that run gives) reaches the
-model's stream (`TheVPNStreamReplaysTheLatestStateTests`), and the model clears its spinner on it.
+model's stream, and the model clears its spinner on it.
 
 After the descriptor's `stop(_:)`, which the host calls before the engine's
 `deactivate()`, the model reaches none of them, draws no state the engine still

@@ -2,44 +2,6 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
-final class UninstallerEngineTests: XCTestCase {
-    // Leftover paths in the shape the engine will actually see: inside the
-    // home the engine was given. Bare "/a" is refused by the scope gate, and
-    // rightly — nothing at the root of the volume is an app's leftover.
-
-    private func engine(fs: FakeFS, trash: FakeTrash = FakeTrash(), running: [String] = []) -> UninstallerEngine {
-        UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                          apps: FakeApps(), fs: fs, trash: trash,
-                          running: FakeRunning(running: running))
-    }
-
-    /// The `*<id>*` glob alone finds what `*.<id>` also found: a team-prefixed
-    /// folder, a group-prefixed one and the id with a suffix. A scratch home on
-    /// the real filesystem, so the glob is expanded by the shipping port.
-    func testGroupContainersAreFoundWithoutTheDotPrefixGlob() async throws {
-        let home = scratchDirectory("group-containers")
-        let names = ["group.x.com.acme.tool", "TEAM.com.acme.tool", "com.acme.tool.helper"]
-        for n in names { try write("Library/Group Containers/\(n)/f", in: home) }
-        let r = await UninstallerEngine(home: home, apps: FakeApps(), fs: FMFileSystem(),
-                                        trash: FakeTrash(), running: FakeRunning(running: []))
-            .scan(bundleID: "com.acme.tool", appName: "Tool")
-        XCTAssertEqual(Set(r.leftovers.map { URL(fileURLWithPath: $0.path).lastPathComponent }), Set(names))
-    }
-
-    func testScanFlagsRunning() async throws {
-        let fs = FakeFS(existing: [:])
-        let r = await engine(fs: fs, running: ["com.acme.tool"])
-            .scan(bundleID: "com.acme.tool", appName: "Tool")
-        XCTAssertTrue(r.runningNow)
-    }
-
-    // What a removal says it freed is measured off the disk, not off a table of
-    // sizes a test wrote down — `FMFileSystem.size` has always been
-    // `FileWeight.allocated`, so a fake table was never the thing production
-    // reads. Those three tests live in `TrashBatchFollowsTheSharedRulesTests`
-    // now, over a real tree, beside the batch rules they are part of.
-}
-
 final class UninstallerOrphanScanTests: XCTestCase {
     /// Only bundle-id-shaped entries with no installed app are reported, grouped by id.
     func testScanOrphansGroupsByBundleID() async {

@@ -194,9 +194,7 @@ and only a manual check clears the spinner, and only while it is the newest manu
 bundled — nothing in `Scripts/package-app.sh` or `Package.swift` names it.
 `Sources/HelmAppStrings/ChangelogData.swift` is the same list inside the app; the two have
 drifted about which versions exist before, and `TheChangelogAndTheAppsListAgreeTests`
-now holds them to the same releases and dates; the class is on
-`Tests/optional-tests.txt`, so it runs under `HELM_FULL_SUITE=1` or by `--filter`, not in
-a default run. A version heading in
+now holds them to the same releases and dates. A version heading in
 the file is `## X.Y.Z — YYYY-MM-DD`, one line per change with `**NEW**` / `**UPD**` /
 `**FIX**` first, newest version first. `command grep -c '^### ' CHANGELOG.md` prints zero:
 the file carries no sub-headings at all.

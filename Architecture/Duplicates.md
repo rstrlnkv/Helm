@@ -102,7 +102,7 @@ The page id is the module id, `duplicates`, and a state is shot with its file `d
       --name <state>-<light|dark>[-<fr|de|ru>] --out <dir>
 
 A scratch tree of planted duplicates is enough for every state that shows a result. Nothing is removed to reach a state:
-`confirm`, `removing` and `removal-report` are not shot; `removing` is held by `AStopDuringARemovalReachesTheEngineTests` and `ATickReachesOnlyItsOwnBarTests` (optional), Stop removal's disappearance for the Trash phase by `AStopIsNotOfferedOnceTheTrashHasTheBatchTests` and the engine's `.moving` tick by `ARemovalCanBeWatchedAndStoppedTests`, the question is held by no test; the copies the press then names as staying, by `ThePageNamesEveryCopyItKeepsTests`, and the figure the outcome banner counts as freed — a clone of the copy that stays is not counted — by `TheBannerCountsWhatTheDiskGivesBackTests` (engine).
+`confirm`, `removing` and `removal-report` are not shot; `removing` is held by `AStopDuringARemovalReachesTheEngineTests`, Stop removal's disappearance for the Trash phase by `AStopIsNotOfferedOnceTheTrashHasTheBatchTests` and the engine's `.moving` tick by `ARemovalCanBeWatchedAndStoppedTests`, the question is held by no test; the copies the press then names as staying, by `ThePageNamesEveryCopyItKeepsTests`, and the figure the outcome banner counts as freed — a clone of the copy that stays is not counted — by `TheBannerCountsWhatTheDiskGivesBackTests` (engine).
 
 | state | the page shows | reached by |
 |---|---|---|

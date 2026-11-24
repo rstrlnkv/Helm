@@ -54,8 +54,8 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
         runner.statusOutput["beside"] = scutilStatus("utun9", primary: false, extra: ["Status : 2"])
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun4"
-        // **A quiet tunnel, which is the case the dedup bites on.** `carriesPerRead`
-        // is 0, so the counters answer the same pair at every reading — a Mac
+        // **A quiet tunnel, which is the case the dedup bites on.** The fake's
+        // counters never move, so they answer the same pair at every reading — a Mac
         // where nothing is moving through either tunnel while the button is
         // pressed. With traffic on the link the counters cross a kilobyte, the
         // payload differs and the refusal reaches the page *by accident*, which

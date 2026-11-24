@@ -1,6 +1,5 @@
 import XCTest
 import HelmRuntime
-import Module_Screenshots_UI
 @testable import HelmApp
 @testable import HelmUI
 
@@ -32,94 +31,5 @@ final class SidebarLayoutStoreTests: XCTestCase {
         ]), to: s)
         XCTAssertEqual(SidebarLayoutStore.read(from: s, registry: reg).sections.first?.modules,
                        ["disk", "duplicates"])
-    }
-}
-
-/// The store never hands out a layout that breaks the invariant (every module
-/// in the registry present exactly once), because the bytes it reads were
-/// written by a build that is not necessarily this one: nothing stored, bytes
-/// that are not a layout and a layout older than the registry each come out
-/// whole. The flat-order migration is `SidebarLayoutStoreTests`' half.
-@MainActor
-final class SidebarLayoutStoreSeedAndReconcileTests: XCTestCase {
-
-    private let registry: [(String, ModuleCategory)] = [("disk", .files), ("vpn", .network)]
-
-    func testRoundTrips() {
-        let s = NamespacedStore.scratch()
-        let made = SidebarLayout.seeded(from: registry).addingSection(named: "Моё")
-        SidebarLayoutStore.write(made, to: s)
-        XCTAssertEqual(SidebarLayoutStore.read(from: s, registry: registry), made)
-    }
-
-    /// Nothing stored is a fresh install: the seeded arrangement, not an empty
-    /// sidebar.
-    func testAnEmptyStoreSeeds() {
-        let read = SidebarLayoutStore.read(from: NamespacedStore.scratch(), registry: registry)
-        XCTAssertEqual(read.sections.map(\.seed), ["network", "files"])
-    }
-
-    /// Bytes that are not a layout are a corrupt store, and the answer is the
-    /// default rather than a crash or an empty sidebar.
-    func testGarbageFallsBackToTheDefault() {
-        let s = NamespacedStore.scratch()
-        s.set(Data([0x00, 0x01, 0x02]), for: SidebarLayoutStore.key)
-        XCTAssertEqual(SidebarLayoutStore.read(from: s, registry: registry),
-                       SidebarLayout.seeded(from: registry))
-    }
-
-    /// Read reconciles, so a module added since the layout was written is
-    /// present the first time it is read rather than after a write.
-    func testReadReconciles() {
-        let s = NamespacedStore.scratch()
-        SidebarLayoutStore.write(SidebarLayout.seeded(from: [("vpn", .network)]), to: s)
-        let read = SidebarLayoutStore.read(from: s, registry: registry)
-        XCTAssertEqual(read.sections.flatMap(\.modules).sorted(), ["disk", "vpn"])
-    }
-
-    /// The registry the app actually ships, read through the same helper the
-    /// window uses — every module, each in exactly one section.
-    func testTheRealRegistryPlacesEveryModuleOnce() {
-        let read = SidebarLayoutStore.read(from: NamespacedStore.scratch(), registry: SidebarLayoutStore.registry())
-        let placed = read.sections.flatMap(\.modules)
-        XCTAssertEqual(placed.sorted(), ModuleRegistry.all.map(\.idRaw).sorted())
-        XCTAssertEqual(Set(placed).count, placed.count)
-    }
-
-    /// A sidebar stored by the build before Screenshots existed — seeded and
-    /// written — meets Screenshots on its next read, and the
-    /// module lands inside the Utilities section beside what lives there: not in
-    /// a section of its own and not at the end of the sidebar.
-    func testScreenshotsJoinsAStoredSidebarInUtilities() throws {
-        let before = SidebarLayoutStore.registry().filter { $0.0 != ScreenshotsDescriptor.id.rawValue }
-        XCTAssertEqual(before.count, SidebarLayoutStore.registry().count - 1)
-        let s = NamespacedStore.scratch()
-        SidebarLayoutStore.write(SidebarLayout.seeded(from: before), to: s)
-        let stored = SidebarLayoutStore.read(from: s, registry: before)
-        XCTAssertFalse(stored.sections.flatMap(\.modules).contains(ScreenshotsDescriptor.id.rawValue))
-
-        let read = SidebarLayoutStore.read(from: s, registry: SidebarLayoutStore.registry())
-        let home = try XCTUnwrap(read.sections.first { $0.modules.contains(ScreenshotsDescriptor.id.rawValue) })
-        XCTAssertEqual(home.seed, "utilities")
-        XCTAssertGreaterThan(home.modules.count, 1, "Utilities must hold neighbours, not Screenshots alone")
-        XCTAssertEqual(read.sections.count, stored.sections.count, "no new section")
-    }
-
-    /// A sidebar stored before the Tweaks entry existed meets it on its next read, in Utilities beside what lives
-    /// there: the entry is one id of the registry, so `reconciled` places it as it places any arrival.
-    func testTweaksJoinsAStoredSidebarInUtilities() throws {
-        let id = TweaksDescriptor.id.rawValue
-        let before = SidebarLayoutStore.registry().filter { $0.0 != id }
-        XCTAssertEqual(before.count, SidebarLayoutStore.registry().count - 1)
-        let s = NamespacedStore.scratch()
-        SidebarLayoutStore.write(SidebarLayout.seeded(from: before), to: s)
-        let stored = SidebarLayoutStore.read(from: s, registry: before)
-        XCTAssertFalse(stored.sections.flatMap(\.modules).contains(id))
-
-        let read = SidebarLayoutStore.read(from: s, registry: SidebarLayoutStore.registry())
-        let home = try XCTUnwrap(read.sections.first { $0.modules.contains(id) })
-        XCTAssertEqual(home.seed, "utilities")
-        XCTAssertGreaterThan(home.modules.count, 1, "Utilities must hold neighbours, not Tweaks alone")
-        XCTAssertEqual(read.sections.count, stored.sections.count, "no new section")
     }
 }

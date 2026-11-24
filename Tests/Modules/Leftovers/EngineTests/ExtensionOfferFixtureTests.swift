@@ -13,7 +13,7 @@ import HelmRuntime
 /// the assertion is about a list with no rows in it, and it would hold just the
 /// same if every extension on the machine were offered for deletion in a batch.
 ///
-/// This is the `LaunchctlDisabledTests` shape: a parameter varied between
+/// This is a known shape: a parameter varied between
 /// fixtures that the code under test never reads.
 ///
 /// Past defect: fixed in `51247cad`.

@@ -65,14 +65,13 @@ final class BrewArgumentsTests: XCTestCase {
             ("search", "-n", nil, { _ = $0.search("-n") }),
             ("descriptions", "--version", nil, { _ = $0.descriptions(names: ["--version"], isCask: false) }),
             // A cask is answered without a tool run, so there is nothing to assert
-            // about its arguments — `ACaskIsNeverAskedWhatUsesItTests` owns that half.
+            // about its arguments.
             ("dependents", "-n", 1, { _ = $0.dependents(name: "-n", isCask: false) }),
             ("upgrade", "-n", 1, { $0.upgrade(name: "-n") }),
         ] + [false, true].flatMap { isCask -> [Row] in [
             ("install, cask: \(isCask)", "-n", 1, { $0.install(name: "-n", isCask: isCask) }),
             ("uninstall, cask: \(isCask)", "-n", 1, { $0.uninstall(name: "-n", isCask: isCask) }),
-            // `info` runs through `runData`, not `run` — `AnInfoQueryIsAboutOnePackageTests`
-            // owns that query's own behaviour; this asserts only the hazard this file
+            // `info` runs through `runData`, not `run`; this asserts only the hazard this file
             // exists for.
             ("info, cask: \(isCask)", "-n", 1, { _ = $0.info(name: "-n", isCask: isCask) }),
         ] }

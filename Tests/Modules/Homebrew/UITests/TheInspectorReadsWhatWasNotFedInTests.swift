@@ -139,7 +139,7 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
         XCTAssertEqual(state(.installed, node.id, installed: []), .nothingToSelect)
         XCTAssertEqual(state(.updates, nodeOutdated.id, outdated: []), .nothingToSelect)
         // Состояние has no inspector, so an id it once could have held is
-        // nothing there either (`InspectorStateDecisionsTests.testTheHealthSegmentHasNoInspector`).
+        // nothing there either.
         XCTAssertEqual(state(.health, "f:helm", hits: []), .nothingToSelect)
     }
 

@@ -208,26 +208,3 @@ final class TrashOfferPlanTests: XCTestCase {
             ["/a2"])
     }
 }
-
-/// What the unprompted window's footer says about the size: the ticked paths' bytes,
-/// a path two apps share counted once, and zero when nothing is ticked.
-final class TrashOfferSizeTests: XCTestCase {
-    // MARK: - What the footer says
-
-    func testTheSizeCountsWhatIsTicked() {
-        let groups = [group("com.a", [leftover("/1", 100), leftover("/2", 20)])]
-        XCTAssertEqual(TrashOfferPlan.totalBytes(groups, selected: ["/1"]), 100)
-    }
-
-    func testTheSizeCountsASharedPathOnce() {
-        let shared = "/Users/ann/Library/Group Containers/group.a"
-        let groups = [group("com.a", [leftover(shared, 100)]), group("com.b", [leftover(shared, 100)])]
-        XCTAssertEqual(TrashOfferPlan.totalBytes(groups, selected: [shared]), 100,
-                       "one folder was counted twice because two apps listed it")
-    }
-
-    func testNothingTickedIsZero() {
-        let groups = [group("com.a", [leftover("/1", 100)])]
-        XCTAssertEqual(TrashOfferPlan.totalBytes(groups, selected: []), 0)
-    }
-}

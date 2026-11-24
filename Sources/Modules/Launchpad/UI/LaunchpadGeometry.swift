@@ -8,8 +8,7 @@ import HelmRuntime
 /// Nothing in the window measures: no `GeometryReader`, no preference, no size read back from a view. A layout that
 /// asks the views how big they are and answers by changing them is a loop, and pass 3's page was one: the log showed the
 /// system switching the keyboard tap off and memory up 559 MB. Here the size comes from the screen, the answer is a pure value, and
-/// `TheLaunchpadWindowMeasuresNothingTests` fails when anything measures again; it is an optional test, run on request
-/// (`bash Scripts/test.sh --filter TheLaunchpadWindowMeasuresNothingTests`).
+/// a change that makes the window measure again brings the loop back.
 struct LaunchpadGeometry: Equatable {
     /// The screen's size as used (the fallback when the real one was not a size): the window's root is exactly this.
     let size: CGSize

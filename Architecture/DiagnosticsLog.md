@@ -83,7 +83,6 @@ no threshold (`ScopeCost`).
 `MemoryFootprint.current()` is the *process* cost. A **per-object** cost is read from
 the allocator's own books — `malloc_zone_statistics`' `size_in_use`. Every walk with a
 budget carries its ceiling as a file rather than as a paragraph, per entry or per item:
-`Tests/Modules/Disk/EngineTests/ScanFootprintTests.swift`,
 `Tests/Modules/Leftovers/EngineTests/AScanKeepsWhatItFoundTests.swift`,
 `Tests/Modules/Duplicates/EngineTests/WalkFootprintTests.swift`; the streamed digest of
 an update carries a process ceiling over one large file instead, run only with

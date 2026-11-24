@@ -69,7 +69,7 @@ Each guard faces a direction the others are blind to; each file's header, or the
 - `Tests/HelmUITests/StringsCoverageTests.swift` — a catalog symbol missing a language or not marked
   `translated`, a placeholder a translation lost, a `%` rule judged on each value alone (a bare `%` beside a placeholder, `%%` beside none; a lost `%%` is not compared with the English), an inline table at a call site, an English value posing as a translation.
 - `Tests/HelmUITests/NoOrphanTranslationsTests.swift` — a catalog symbol nothing asks for, a word asked
-  by its English spelling. This and `OneEntryPerKeyTests` are optional (`Tests/optional-tests.txt`): after touching
+  by its English spelling. After touching
   any `Localizable.xcstrings`, the catalog filter in `CLAUDE.local.md` runs them with the other two.
 - `Tests/HelmUITests/OneEntryPerKeyTests.swift` — a key written twice in one catalog, which the build
   passes (measured, exit 0), and one English text written under two symbols across the catalogs (the meaning checks live here).

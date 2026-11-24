@@ -42,7 +42,6 @@ public final class FakeAutomationNotice: AutomationNoticePort, @unchecked Sendab
     private let _whileAsking: (@Sendable () async -> Void)?
     private var _reads = 0
     private var _requests = 0
-    private var _attempts = 0
     private var _posted: [NoticeText] = []
 
     /// - Parameters:
@@ -77,8 +76,6 @@ public final class FakeAutomationNotice: AutomationNoticePort, @unchecked Sendab
     /// How many times the person was actually prompted. macOS shows that prompt
     /// once ever, so a second one is a defect rather than a nuisance.
     public var requests: Int { lock.withLock { _requests } }
-    /// How many banners were handed to macOS, shown or not.
-    public var attempts: Int { lock.withLock { _attempts } }
     /// What the person was actually shown.
     public var posted: [NoticeText] { lock.withLock { _posted } }
 
@@ -112,7 +109,6 @@ public final class FakeAutomationNotice: AutomationNoticePort, @unchecked Sendab
 
     public func post(title: String, body: String) async {
         lock.withLock {
-            _attempts += 1
             guard _state == .authorized, !_postFails else { return }
             _posted.append(NoticeText(title: title, body: body))
         }

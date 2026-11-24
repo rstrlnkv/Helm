@@ -8,7 +8,7 @@ import Module_Launchpad_Engine
 enum LaunchpadMetrics {
     /// An app's icon in the window.
     static let windowIcon: CGFloat = 80
-    /// How far a name with no place to break shrinks before it is cut: 0.78. The square cell leaves a name that long ("Festplattendienstprogramm" without its soft hyphens) cut only on the smaller screens (1024 x 768 and 1280 x 800 at x1; whole from 1440 x 900), and the hover scrolls the rest (`LaunchpadLabel`, `AutomaticIsTheSameGridOnEveryScreenTests`).
+    /// How far a name with no place to break shrinks before it is cut: 0.78. The square cell leaves a name that long ("Festplattendienstprogramm" without its soft hyphens) cut only on the smaller screens (1024 x 768 and 1280 x 800 at x1; whole from 1440 x 900), and the hover scrolls the rest (`LaunchpadLabel`).
     static let unbreakableShrink: CGFloat = 0.78
     /// An icon beside a name in the settings page's list of hidden apps.
     static let hiddenIcon: CGFloat = 28
@@ -65,10 +65,9 @@ enum LaunchpadMetrics {
     /// What the switch ("Apps", "Categories") is given at the left of the search field: the strip is 196 pt in the widest pair of the
     /// eight languages (Russian, "Приложения" and "Категории"), plus a gap of 20 pt that keeps it from the field. Measured by `fittingSize`
     /// on 2026-11-21 in the text style, which is what the window always draws (it sets no `helmHeaderChoices`).
-    /// `TheSwitchFitsItsRoomInEveryLanguageTests` measures it again.
     static let switchRoom: CGFloat = 216
     /// What "Done" is given at the right of the search field, as `switchRoom` is at the left: its button in the widest of the eight languages plus the same gap of 20 pt
-    /// (85 pt in Portuguese, the widest, measured by `fittingSize` on 2026-11-23; `TheDoneButtonFitsItsRoomInEveryLanguageTests` measures it again). A window with less room has the button above the page dots.
+    /// (85 pt in Portuguese, the widest, measured by `fittingSize` on 2026-11-23). A window with less room has the button above the page dots.
     static let doneRoom: CGFloat = 105
     /// The removal card's width, and what its buttons are given inside its padding (the 324 pt the German and Russian "Quit and Move to Trash" overflowed side by side).
     static let removalCardWidth: CGFloat = 360

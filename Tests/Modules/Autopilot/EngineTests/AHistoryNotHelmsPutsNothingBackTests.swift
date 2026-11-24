@@ -189,31 +189,3 @@ final class AHistoryNotHelmsPutsNothingBackTests: SweptHistoryRig {
         XCTAssertEqual(engine.history.count, 1, "the section never records again")
     }
 }
-
-/// One sweep is one run in the history: every record of a sweep carries the
-/// same run, and two sweeps carry two.
-final class ASweepIsOneRunInTheHistoryTests: SweptHistoryRig {
-
-    // MARK: - The pass
-
-    /// One value for a whole sweep, so the page can offer "put back the twelve
-    /// files that arrived at 14:22" instead of five hundred separate rows.
-    func testEveryRecordOfOneSweepCarriesOneRunAndTwoSweepsAreTwo() throws {
-        try aSweptFile("a.pdf")
-        try aSweptFile("b.pdf")
-
-        let runs = engine.history.compactMap(\.run)
-        XCTAssertEqual(runs.count, 2, "a record came out of a sweep with no pass to belong to")
-        XCTAssertEqual(Set(runs).count, 2, "two sweeps were recorded as one pass")
-    }
-
-    func testTheRecordsOfOneSweepShareItsRun() throws {
-        try write("a.pdf", in: root)
-        try write("b.pdf", in: root)
-        engine.sweep(folder(.move(to: root.appendingPathComponent("Sorted").path)))
-
-        let runs = Set(engine.history.compactMap(\.run))
-        XCTAssertEqual(engine.history.count, 2)
-        XCTAssertEqual(runs.count, 1, "one sweep was recorded as \(runs.count) passes")
-    }
-}

@@ -24,7 +24,6 @@ final class FakeInterfaces: VPNInterfacePort, @unchecked Sendable {
     private let lock = NSLock()
     private var _primary: String?
     private var _counters: [String: (in: UInt64, out: UInt64)] = [:]
-    private var _carriesPerRead: UInt64 = 0
 
     /// Nil is a Mac with no default route at all.
     var primary: String? {
@@ -37,17 +36,6 @@ final class FakeInterfaces: VPNInterfacePort, @unchecked Sendable {
         get { lock.lock(); defer { lock.unlock() }; return _counters }
         set { lock.lock(); _counters = newValue; lock.unlock() }
     }
-    /// What every reading adds to those counters.
-    ///
-    /// A link that answers the same pair however often it is asked is a link
-    /// with nothing on it, and the engine re-reads up to 26 times behind one
-    /// connect — so «the tunnel carried a packet between two readings», which is
-    /// what every live tunnel does, would be a state no test could write down.
-    var carriesPerRead: UInt64 {
-        get { lock.lock(); defer { lock.unlock() }; return _carriesPerRead }
-        set { lock.lock(); _carriesPerRead = newValue; lock.unlock() }
-    }
-
     /// How often the engine asked, and — when set — the answers it gets in turn
     /// (the last repeats); otherwise `primary` answers every time.
     var primaryCalls: Int { lock.lock(); defer { lock.unlock() }; return _primaryCalls }
@@ -66,10 +54,7 @@ final class FakeInterfaces: VPNInterfacePort, @unchecked Sendable {
     }
     func bytes(on interface: String) -> (in: UInt64, out: UInt64)? {
         lock.lock(); defer { lock.unlock() }
-        guard let carried = _counters[interface] else { return nil }
-        _counters[interface] = (in: carried.in + _carriesPerRead,
-                                out: carried.out + _carriesPerRead)
-        return carried
+        return _counters[interface]
     }
 }
 

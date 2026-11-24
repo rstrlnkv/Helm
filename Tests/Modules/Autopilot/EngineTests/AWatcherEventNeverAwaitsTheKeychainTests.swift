@@ -17,8 +17,7 @@ import XCTest
 /// and the engine's own rule — the rule set is read on the engine's queue — is
 /// broken on the one leg that fires with nobody at the desk.
 ///
-/// The blocking is a timing property, so the assertion is structural, the way
-/// `TheLaunchNeverWaitsForTheKeyPortTests` asserts it: the call returns while
+/// The blocking is a timing property, so the assertion is structural: the call returns while
 /// the port has not answered at all. A port that never answers cannot be
 /// beaten by a race — and the test can lose, because moving the read back onto
 /// the caller's thread leaves `returned` unfulfilled whatever the machine.

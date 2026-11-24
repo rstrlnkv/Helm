@@ -83,12 +83,10 @@ import HelmRuntime
 @MainActor final class FakeTicker: TickerPort {
     private(set) var isRunning = false
     private(set) var starts = 0
-    private(set) var hz: Double?
     private var onTick: (@MainActor () -> Void)?
     func start(hz: Double, _ onTick: @escaping @MainActor () -> Void) {
         starts += 1
         isRunning = true
-        self.hz = hz
         self.onTick = onTick
     }
     func stop() {

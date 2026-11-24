@@ -99,7 +99,7 @@ public enum PermissionCheck {
     /// pool that has one thread per core — where a blocking read is exactly the
     /// thing `offTheCooperativePool` exists to keep out.
     ///
-    /// `probing` is a seam, not a feature: it is how `FullDiskAccessProbeTests`
+    /// `probing` is a seam, not a feature: it is how a test
     /// can see which thread the probe ran on.
     public static func fullDiskAccess(
         probing probe: @escaping @Sendable () -> PermissionState = { currentFullDiskAccess() }

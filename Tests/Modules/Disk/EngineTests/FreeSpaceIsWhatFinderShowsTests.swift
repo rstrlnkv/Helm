@@ -56,3 +56,6 @@ final class FreeSpaceIsWhatFinderShowsTests: XCTestCase {
         XCTAssertTrue(DiskEngine(capacity: FakeCapacity(volumes: [readout]), trashing: neverTrashes).volumes().isEmpty)
     }
 }
+
+/// The move of a volume-only test: it must never be reached.
+let neverTrashes: @Sendable (URL) throws -> Void = { _ in XCTFail("a volume test reached the move") }

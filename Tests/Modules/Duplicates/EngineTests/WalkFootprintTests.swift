@@ -12,9 +12,8 @@ import XCTest
 /// unless `HELM_BENCH=1`, walking a real home — and so could not fail on the
 /// thing it names: a guard behind a flag catches nothing, and a threshold loose
 /// enough to survive two different Macs is loose enough to survive the bug.
-/// Disk's `ScanFootprintTests` made the same move first and says why the
-/// reading has to be a difference between two runs of the same code over the
-/// same tree.
+/// The reading has to be a difference between two runs of the same code over
+/// the same tree.
 ///
 /// The original home-directory measurement stays on record, because it is what
 /// answered the suspicion this file began as: 365 615 entries, 12 667 kept,
@@ -55,7 +54,7 @@ final class WalkFootprintTests: XCTestCase {
 
         // The first walk pays for whatever Foundation warms up once — the
         // allocator keeps its tools out — so the reading that answers the
-        // question is the second. The same order as `ScanFootprintTests`.
+        // question is the second.
         _ = DuplicateScanner().walk(root.path, onProgress: nil)
 
         // The allocator's books, not `phys_footprint`: a walk of this size
@@ -93,8 +92,7 @@ final class WalkFootprintTests: XCTestCase {
             the walk is scaling with what it looked at rather than with the files it \
             kept — every entry is carrying something out of the loop. The loop is \
             `BulkWalk.walk`'s now; look at what the scanner's size floor lets past it \
-            and at this file's own filter. The pools in `BulkWalk.walk` are held by \
-            `ScanFootprintTests`, not here.
+            and at this file's own filter.
             """)
     }
 

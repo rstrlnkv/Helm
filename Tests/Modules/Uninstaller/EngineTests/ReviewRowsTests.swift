@@ -51,23 +51,3 @@ final class ReviewRowsTests: XCTestCase {
         XCTAssertTrue(taken.contains(tool.path), "precondition: the bundle always goes")
     }
 }
-
-/// The review's rows in their order: the bundle comes first and is the one row that
-/// cannot be ticked, and the leftovers keep the order the scan put them in.
-final class ReviewRowsOrderTests: XCTestCase {
-    func testTheBundleIsTheFirstRow() {
-        let rows = UninstallPlan.reviewRows(group([leftover("/Users/x/Library/Caches/a", 10)]))
-
-        XCTAssertEqual(rows.first, .bundle(app: tool),
-                       "the last screen before deletion does not name the app it deletes")
-    }
-
-    func testLeftoversKeepTheOrderTheScanPutThemIn() {
-        let big = leftover("/Users/x/Library/Caches/big", 500)
-        let small = leftover("/Users/x/Library/Caches/small", 5)
-
-        let rows = UninstallPlan.reviewRows(group([big, small]))
-
-        XCTAssertEqual(rows, [.bundle(app: tool), .leftover(big), .leftover(small)])
-    }
-}

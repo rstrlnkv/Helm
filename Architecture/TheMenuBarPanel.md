@@ -33,8 +33,7 @@ What the panel stores keeps its reasons on its own doc comments: the `init(from:
 decoders of `PanelLayout` and its nested types, its `dismissed` and `hidden` lists,
 and `PanelLayoutStore.key`.
 
-The bars carry no lifetime of their own;
-`Tests/HelmAppTests/PanelBarsCarryNoLifetimeTests.swift` is the guard. A `@State` in
+The bars carry no lifetime of their own. A `@State` in
 one of them would be a second owner of a lifetime the panel steers by, and its
 failure would look like a tile left hanging under the pointer rather than like
 anything thrown or logged.
