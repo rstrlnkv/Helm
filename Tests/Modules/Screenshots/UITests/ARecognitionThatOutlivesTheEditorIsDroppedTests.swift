@@ -70,11 +70,11 @@ class RecognitionRig: XCTestCase {
         AppLanguage.override = .en
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         rigged?.overlay.close()
         rigged = nil
         AppLanguage.override = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     fileprivate func build() throws -> (overlay: CaptureOverlay, display: DisplayID, view: OverlayView) {

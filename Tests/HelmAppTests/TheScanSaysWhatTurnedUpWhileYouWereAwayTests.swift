@@ -203,23 +203,23 @@ extension TheScanSaysWhatTurnedUpWhileYouWereAwayTests {
     func testTheScanIntervalIsClosedBeforeTheCompletionIsRecorded() async {
         build()
         let label = "scan.disk"
-        var walked = false
-        var openAfterTheWalk: [Bool] = []
+        let walked = Locked(false)
+        let openAfterTheWalk = Locked<[Bool]>([])
         let token = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification, object: nil, queue: nil) { _ in
-            guard walked else { return }
-            openAfterTheWalk.append(HelmActivity.running.contains { $0.label == label })
+            guard walked.value else { return }
+            openAfterTheWalk.withLock { $0.append(HelmActivity.running.contains { $0.label == label }) }
         }
         defer { NotificationCenter.default.removeObserver(token) }
 
         await coordinator.run("disk") {
-            walked = true
+            walked.value = true
             return ScanReport(bytes: 1, count: 1, items: [])
         }
 
-        XCTAssertFalse(openAfterTheWalk.isEmpty,
+        XCTAssertFalse(openAfterTheWalk.value.isEmpty,
                        "nothing was written after the walk, so the check below is vacuous")
-        XCTAssertFalse(openAfterTheWalk.contains(true),
+        XCTAssertFalse(openAfterTheWalk.value.contains(true),
                        "the interval was still open when the completion was recorded")
     }
 }

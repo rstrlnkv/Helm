@@ -17,16 +17,18 @@ final class ScanResetTests: XCTestCase {
     private var root: URL!
     private var storeDirectory: URL!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
+        try await super.setUp()
         root = scratchDirectory("reset")
         try FileManager.default.createDirectory(at: root.appendingPathComponent("a"),
                                                 withIntermediateDirectories: true)
         storeDirectory = scratchDirectory("reset-store")
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         try? FileManager.default.removeItem(at: root)
         try? FileManager.default.removeItem(at: storeDirectory)
+        try await super.tearDown()
     }
 
     func testStartingOverForgetsTheScanOnDiskAsWellAsOnScreen() async throws {

@@ -117,10 +117,10 @@ final class TweakHostUnfedInputsTests: XCTestCase {
         func stop(_ model: TweakHost) {}
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         ModuleHost.shared.shutdown()
         UserDefaults.standard.removeObject(forKey: "module.\(Self.entryID).enabled")
-        super.tearDown()
+        try await super.tearDown()
     }
 
     /// The entry off and on again: the tweak that was on comes back once, and one that was switched off while

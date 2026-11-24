@@ -1,5 +1,6 @@
 import HelmRuntime
 import HelmUI
+import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
@@ -41,18 +42,18 @@ final class TheHeaderChoicesAreSettingsAgainTests: XCTestCase {
     func testAWriteEqualToTheStoredValueIsRefused() {
         let store = InMemoryKeyValueStore()
         let app = AppSettings.store.over(store)
-        var posted = 0
+        let posted = LockedCount()
         let token = NotificationCenter.default.addObserver(forName: .helmHeaderChoicesChanged, object: nil,
-                                                           queue: nil) { _ in posted += 1 }
+                                                           queue: nil) { _ in posted.bump() }
         defer { NotificationCenter.default.removeObserver(token) }
         AppSettings.setPageBarStyle(.moduleName, in: app)
         AppSettings.setTabLabels(.text, in: app)
         AppSettings.setAlwaysCollapseSearch(false, in: app)
-        XCTAssertEqual(posted, 0, "writing the value already read posted a change")
+        XCTAssertEqual(posted.value, 0, "writing the value already read posted a change")
         AppSettings.setPageBarStyle(.windowTitle, in: app)
         AppSettings.setTabLabels(.iconsAndText, in: app)
         AppSettings.setAlwaysCollapseSearch(true, in: app)
-        XCTAssertEqual(posted, 3)
+        XCTAssertEqual(posted.value, 3)
         XCTAssertTrue(AppSettings.headerChoices.collapseSearch == AppSettings.alwaysCollapseSearch)
         XCTAssertEqual(AppSettings.pageBarStyle(in: app), .windowTitle)
     }

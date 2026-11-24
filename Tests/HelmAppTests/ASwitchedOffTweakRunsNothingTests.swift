@@ -128,10 +128,10 @@ final class ASwitchedOffTweakRunsNothingTests: XCTestCase {
         func stop(_ model: TweakHost) {}
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         ModuleHost.shared.shutdown()
         UserDefaults.standard.removeObject(forKey: "module.\(Self.entryID).enabled")
-        super.tearDown()
+        try await super.tearDown()
     }
 
     /// The entry's switch is the one that matters most: every tweak stops with it, and with `shutdown`.

@@ -35,11 +35,11 @@ final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
         tailTheLog()
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         for controller in controllers { controller.cancel() }
         controllers = []
         clock.finish()
-        super.tearDown()
+        try await super.tearDown()
     }
 
     private func scene() throws -> Scene {

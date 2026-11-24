@@ -28,8 +28,9 @@ final class TheDisabledScansHarnessTests: DisabledScansTestCase {
         let gate = DispatchSemaphore(value: 0)
         let keychain = freshMac(gate: gate)
         let done = expectation(description: "the write returned")
+        let sealing = AppSettings.scanGuard
         DispatchQueue.global().async {
-            AppSettings.disabledScans = ["disk"]
+            _ = sealing.seal(Data("disk".utf8))
             done.fulfill()
         }
         XCTAssertTrue(keychain.waitUntilAsked(), "nobody reached the keychain, so nothing was held")

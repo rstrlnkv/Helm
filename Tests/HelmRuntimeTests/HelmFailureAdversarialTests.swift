@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import HelmRuntime
 
@@ -276,19 +277,18 @@ final class HelmFailureAdversarialTests: XCTestCase {
     /// come back complete and correctly attributed.
     func testFormattingFromManyThreadsKeepsEveryLineWhole() {
         let count = 500
-        let lines = UnsafeMutablePointer<String>.allocate(capacity: count)
-        lines.initialize(repeating: "", count: count)
-        defer { lines.deinitialize(count: count); lines.deallocate() }
+        let lines = Locked([String](repeating: "", count: count))
 
         DispatchQueue.concurrentPerform(iterations: count) { i in
-            lines[i] = LogLine.line(
+            let line = LogLine.line(
                 LogEntry(date: Date(timeIntervalSince1970: 0), level: .error, category: "c\(i)",
                          message: "message \(i)",
                          site: LogSite(file: "F\(i).swift", line: i, function: "f\(i)()")),
                 timeZone: TimeZone(identifier: "UTC")!)
+            lines.withLock { $0[i] = line }
         }
         for i in 0..<count {
-            XCTAssertEqual(lines[i],
+            XCTAssertEqual(lines.value[i],
                            "1970-01-01 00:00:00.000 [error] [c\(i)] message \(i)"
                            + "  (F\(i).swift:\(i) f\(i)())")
         }

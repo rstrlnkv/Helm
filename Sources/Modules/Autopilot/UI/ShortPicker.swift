@@ -7,7 +7,7 @@ struct ShortPicker<Value: Hashable>: View {
     let name: String
     let selected: Value
     let options: [(value: Value, label: String)]
-    let set: (Value) -> Void
+    let set: @MainActor (Value) -> Void
 
     var body: some View {
         Picker(name, selection: Binding(get: { selected }, set: set)) {

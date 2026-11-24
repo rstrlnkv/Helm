@@ -60,15 +60,15 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
 
     func testTheToolbarIsWornUnderGlassAndOffUnderFlat() {
         let window = window()
-        var look = HelmBarAppearance.flat
+        let look = Locked(HelmBarAppearance.flat)
         let toolbar = SettingsToolbar()
-        toolbar.attach(to: window) { look }
+        toolbar.attach(to: window) { look.value }
         XCTAssertNil(window.toolbar)
-        look = .liquidGlass
+        look.value = .liquidGlass
         NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
         XCTAssertNotNil(window.toolbar)
         XCTAssertTrue(toolbar.isInstalledForTesting)
-        look = .flat
+        look.value = .flat
         NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
         XCTAssertNil(window.toolbar)
     }
@@ -156,7 +156,7 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
     /// way the pane reads it (`helmTracksBarAppearance`): the relay is dismantled under Flat and releases the row's
     /// token, and the same row mounts it again under Glass.
     func testTheTabsComeBackWhenTheLookGoesGlassFlatGlassOnTheSameOpenWindow() {
-        var look = HelmBarAppearance.liquidGlass
+        let look = Locked(HelmBarAppearance.liquidGlass)
         let toolbar = SettingsToolbar()
         // The toolbar's own sink behind a recorder: which token each call came under, and where the slot was said to be.
         var declared: [UUID] = []
@@ -174,24 +174,24 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
             .helmCardHeader(symbol: "gearshape", tint: .blue, title: "Page", status: nil)
             .environment(\.helmHeaderInCard, true)
             .environment(\.helmTabsSink, spy)
-            .helmTracksBarAppearance { look }
+            .helmTracksBarAppearance { look.value }
         let mount = MountedRender(page, width: 900, height: 400, appearance: .aqua)
         defer { mount.drop() }
         guard let window = mount.window else { return XCTFail("no window") }
-        toolbar.attach(to: window) { look }
+        toolbar.attach(to: window) { look.value }
         let strip = toolbar.stripForTesting
 
         mount.settle()
         XCTAssertEqual(toolbar.itemIdentifiersForTesting, [SettingsToolbar.leadID, SettingsToolbar.tabsID], "precondition: under Glass the row's tabs reach the toolbar")
         XCTAssertEqual(strip.segmentCountForTesting, 2, "precondition: the page's two tabs are in the strip")
 
-        look = .flat
+        look.value = .flat
         NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
         mount.settle()
         XCTAssertNil(window.toolbar, "precondition: Flat takes the toolbar off")
         XCTAssertEqual(toolbar.itemIdentifiersForTesting, [], "precondition: the relay's release took the tabs out under Flat")
 
-        look = .liquidGlass
+        look.value = .liquidGlass
         NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
         mount.settle()
         XCTAssertTrue(toolbar.isInstalledForTesting)

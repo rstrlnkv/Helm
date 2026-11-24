@@ -15,13 +15,13 @@ final class RunningAppsTests: XCTestCase {
         apps.seed(["com.apple.Safari", "com.helm.app"])
 
         let read = expectation(description: "read off the main thread")
-        var seen: Set<String> = []
+        let seen = Locked<Set<String>>([])
         DispatchQueue.global().async {
-            seen = apps.bundleIDs()
+            seen.value = apps.bundleIDs()
             read.fulfill()
         }
         wait(for: [read], timeout: 2)
-        XCTAssertEqual(seen, ["com.apple.Safari", "com.helm.app"])
+        XCTAssertEqual(seen.value, ["com.apple.Safari", "com.helm.app"])
     }
 
     func testManyBackgroundReadersAgainstAWriterDoNotTear() {
@@ -59,13 +59,13 @@ final class RunningAppsTests: XCTestCase {
         // Read off the main thread: on it, `bundleIDs()` refreshes from AppKit
         // and would answer with every process on this Mac.
         let read = expectation(description: "read off the main thread")
-        var seen: Set<String> = ["not read"]
+        let seen = Locked<Set<String>>(["not read"])
         DispatchQueue.global().async {
-            seen = apps.bundleIDs()
+            seen.value = apps.bundleIDs()
             read.fulfill()
         }
         wait(for: [read], timeout: 2)
-        XCTAssertEqual(seen, [])
+        XCTAssertEqual(seen.value, [])
     }
 
     /// The main thread reads the live list, so a main-thread read is allowed to

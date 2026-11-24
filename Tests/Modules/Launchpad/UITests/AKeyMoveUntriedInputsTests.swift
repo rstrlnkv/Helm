@@ -33,7 +33,7 @@ import XCTest
         let before = r.placedApps.sorted()
         r.state.go(to: 1)
         r.state.open(folder: f)
-        let capacity = LaunchpadSurface.Card(geometry: r.state.geometry, count: members.count, page: 0).capacity
+        _ = LaunchpadSurface.Card(geometry: r.state.geometry, count: members.count, page: 0).capacity
         r.state.move(dx: 1, dy: 0)
         var guardN = 0
         while r.state.cardPage < 1, guardN < 200 { r.state.move(dx: 1, dy: 0); guardN += 1 }

@@ -34,8 +34,8 @@ final class TheAssertionNeverOutlivesTheSessionTests: XCTestCase {
 
     private let render = "com.example.render"
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         settings = KeepAwakeSettings(store: store)
         settings.setAppTriggers([AppTrigger(bundleID: render)])

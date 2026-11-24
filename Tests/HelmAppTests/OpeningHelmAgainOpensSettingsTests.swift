@@ -1,5 +1,6 @@
 import AppKit
 import HelmUI
+import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
@@ -25,12 +26,12 @@ final class OpeningHelmAgainOpensSettingsTests: XCTestCase {
 
     private func reopen(hasVisibleWindows: Bool) -> (answer: Bool?, openRequests: Int) {
         let delegate: NSApplicationDelegate = AppDelegate()
-        var requests = 0
+        let requests = LockedCount()
         let token = NotificationCenter.default.addObserver(
-            forName: .helmOpenSettings, object: nil, queue: nil) { _ in requests += 1 }
+            forName: .helmOpenSettings, object: nil, queue: nil) { _ in requests.bump() }
         defer { NotificationCenter.default.removeObserver(token) }
         let answer = delegate.applicationShouldHandleReopen?(NSApplication.shared, hasVisibleWindows: hasVisibleWindows)
-        return (answer, requests)
+        return (answer, requests.value)
     }
 
     func testReopeningWithNoWindowOpensSettingsOnceAndLeavesTheRestToUs() {

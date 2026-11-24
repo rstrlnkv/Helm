@@ -30,10 +30,10 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
 
     private var renders: [MountedRender] = []
 
-    override func tearDown() {
+    override func tearDown() async throws {
         renders.forEach { $0.drop() }
         renders = []
-        super.tearDown()
+        try await super.tearDown()
     }
 
     // MARK: - The stream reaches the model

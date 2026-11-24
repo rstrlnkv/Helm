@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 import PackageDescription
 
 /// **A module is two source targets and the test targets it keeps, and the manifest says so once.**
@@ -256,3 +256,9 @@ let package = Package(
         + modules.flatMap(\.testTargets)
         + tweaks.flatMap(\.testTargets)
 )
+
+/// A warning the compiler gives is a defect in the line it names, so the build stops on it: every target of the package, tests and
+/// the harness included, and any settings a target already has are kept.
+for target in package.targets {
+    target.swiftSettings = (target.swiftSettings ?? []) + [.treatAllWarnings(as: .error)]
+}

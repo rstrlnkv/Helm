@@ -39,7 +39,7 @@ final class AnUnfinishedUpdateSaysSoTests: XCTestCase {
     }
 
     func testTheNoteOutlivesTheProcessThatWroteIt() {
-        UpdateHandoff.note(version: "0.9.9")
+        _ = UpdateHandoff.note(version: "0.9.9")
         XCTAssertEqual(UpdateHandoff.take(), "0.9.9",
                        "the note an update was in flight did not survive being written")
     }
@@ -47,7 +47,7 @@ final class AnUnfinishedUpdateSaysSoTests: XCTestCase {
     /// Read once. A note left in place would tell every launch from now on about
     /// one update that failed a month ago.
     func testTakingItTakesItAway() {
-        UpdateHandoff.note(version: "0.9.9")
+        _ = UpdateHandoff.note(version: "0.9.9")
         XCTAssertNotNil(UpdateHandoff.take(), "precondition: there was a note to take")
         XCTAssertNil(UpdateHandoff.take(),
                      "the note survives being read, so every launch from now on reports "
@@ -62,7 +62,7 @@ final class AnUnfinishedUpdateSaysSoTests: XCTestCase {
     /// the next launch says out loud.
     func testTheLaunchAfterAFailedSwapPutsItInTheLog() {
         let log = listeningLog()
-        UpdateHandoff.note(version: "0.9.9")
+        _ = UpdateHandoff.note(version: "0.9.9")
 
         UpdateHandoff.reportAtLaunch()
 
@@ -118,7 +118,7 @@ final class AnUnfinishedUpdateSaysSoTests: XCTestCase {
         // The subject has to be able to happen: the same call, with a note,
         // writes a line — otherwise "nothing was said" is an absence of
         // everything.
-        UpdateHandoff.note(version: "0.9.9")
+        _ = UpdateHandoff.note(version: "0.9.9")
         log.clearTail()
         UpdateHandoff.reportAtLaunch()
         XCTAssertFalse(log.recentEntries().isEmpty,

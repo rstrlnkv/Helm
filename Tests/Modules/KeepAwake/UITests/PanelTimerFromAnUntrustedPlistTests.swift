@@ -25,8 +25,8 @@ final class PanelTimerFromAnUntrustedPlistTests: XCTestCase {
     private var store: NamespacedStore!
     private var settings: KeepAwakeSettings!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         backing = InMemoryKeyValueStore()
         store = NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue, backing: backing)
         settings = KeepAwakeSettings(store: store)

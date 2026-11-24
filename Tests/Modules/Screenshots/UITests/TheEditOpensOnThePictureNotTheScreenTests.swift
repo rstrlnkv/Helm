@@ -49,10 +49,10 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
 
     private let clock = StepClock()
 
-    override func tearDown() {
+    override func tearDown() async throws {
         AppLanguage.override = nil
         clock.finish()
-        super.tearDown()
+        try await super.tearDown()
     }
 
     private func scene(target: SaveTarget = .desktop, thumbnail: Bool = true) throws -> Scene {

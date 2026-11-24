@@ -20,17 +20,17 @@ final class RemovalOutcomeTests: XCTestCase {
     ///
     /// Nothing happened, so the honest line is no line. That needs no new
     /// wording — the existing sentences are all about something that did.
-    func testNothingRemovedAndNothingRefusedSaysNothing() {
+    @MainActor func testNothingRemovedAndNothingRefusedSaysNothing() {
         XCTAssertEqual(HelmRemovalOutcome.verdict(removed: 0, failed: 0), .silent)
     }
 
-    func testSomethingRemovedWithNoRefusalsIsTheSuccessSentence() {
+    @MainActor func testSomethingRemovedWithNoRefusalsIsTheSuccessSentence() {
         XCTAssertEqual(HelmRemovalOutcome.verdict(removed: 3, failed: 0), .succeeded)
     }
 
     /// A refusal is always worth saying, whether or not anything else worked —
     /// that is the whole reason this component exists.
-    func testAnyRefusalIsReported() {
+    @MainActor func testAnyRefusalIsReported() {
         XCTAssertEqual(HelmRemovalOutcome.verdict(removed: 0, failed: 1), .failed)
         XCTAssertEqual(HelmRemovalOutcome.verdict(removed: 3, failed: 1), .failed)
     }

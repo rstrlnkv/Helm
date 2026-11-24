@@ -119,8 +119,8 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     private var clamshell: RemovalPromptClamshell!
     private var engine: KeepAwakeEngine!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         clamshell = RemovalPromptClamshell()
         // The option is on and its rule is installed, which is where somebody

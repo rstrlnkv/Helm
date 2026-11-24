@@ -57,7 +57,7 @@ final class RuleNumberBoundsTests: XCTestCase {
                         conditions: [condition].compactMap { $0 }, action: .trash)
 
         XCTAssertFalse(RuleMatcher.matches(file, rule),
-                       "a one-byte file matched \"larger than \(condition)\": the stored "
+                       "a one-byte file matched \"larger than \(String(describing: condition))\": the stored "
                        + "condition is one the editor would not let anybody write")
         XCTAssertNil(condition, "an unusable number is dropped, not brought up to zero")
     }
