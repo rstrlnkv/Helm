@@ -4,28 +4,13 @@ import XCTest
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-/// **The record `TrashOfferPlan.answered` refuses to write is written anyway,
-/// one click later, by the close.**
+/// The close does not write the record `TrashOfferPlan.answered` refuses to
+/// write. `trashOfferDismissed` is final while the app sits in the Trash, and
+/// a refusal from macOS is not a decision; the close declines every group on
+/// screen, and after a refusal its only button is «Done».
 ///
-/// One promise stands behind the unprompted Trash window, about a permanent
-/// record — `trashOfferDismissed`, final for as long as the app sits in the
-/// Trash, over files that are on no other screen Helm has:
-///
-/// - `TrashOfferPlan.answered`: «Not the ones whose files macOS refused. A
-///   refusal is not a decision — the person can grant Full Disk Access, unlock
-///   the file, quit whatever was holding it.»
-///
-/// It is undone by the way out. `TrashedLeftoversView.onDisappear` runs
-/// `Task { await model.answered() }` with no argument, which declines **every
-/// group on screen** — and after a refusal the only thing left in the footer is
-/// «Done», so the person's next click writes exactly the record the rule above
-/// spent its care refusing. The window standing open is the whole of what it
-/// buys.
-///
-/// The subject here is the close, so the tests drive what the close drives:
-/// `removeSelection()`, then `answered()`.
+/// The tests drive what the close drives: `removeSelection()`, then `answered()`.
 @MainActor
-/// Past defect: fix commit f07a4c13.
 final class ARefusalIsNotADeclineAtTheCloseTests: XCTestCase {
 
     private func offer(_ id: String, matchedByName: Bool = false) -> TrashedAppLeftovers {
@@ -47,9 +32,8 @@ final class ARefusalIsNotADeclineAtTheCloseTests: XCTestCase {
 
     // MARK: -
 
-    /// **The finding.** One app's files moved, the other's were refused by macOS.
-    /// The window keeps itself up to say so — and then the click that takes it
-    /// down files the refused app as the person's own "no".
+    /// One app's files moved, the other's were refused by macOS; closing the
+    /// report does not file the refused app as the person's own "no".
     func testAnAppMacOSRefusedIsNotDeclinedByClosingTheReport() async throws {
         let moved = offer("com.vendor.moved")
         let refused = offer("com.vendor.refused")
@@ -85,11 +69,8 @@ final class ARefusalIsNotADeclineAtTheCloseTests: XCTestCase {
             """)
     }
 
-    /// **The half that must keep working**, and the reason the assertions above
-    /// cannot simply be "record nothing at the close": a window closed without an
-    /// answer *is* a "no", and one that is not recorded comes back at the next
-    /// launch. Cancel, Escape and the red button all reach this with no removal
-    /// before them.
+    /// The half that must keep working: a window closed without a removal is a
+    /// "no", and one not recorded comes back at the next launch.
     func testClosingWithoutARemovalStillDeclinesEveryAppOnScreen() async throws {
         let first = offer("com.vendor.one")
         let second = offer("com.vendor.two")

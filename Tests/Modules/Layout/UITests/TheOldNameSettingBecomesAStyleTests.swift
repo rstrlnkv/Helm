@@ -4,13 +4,9 @@ import XCTest
 import HelmRuntime
 import HelmTestSupport
 
-/// «Show Input Source Name» was a stored key of its own, flipped from the status
-/// item's menu. It is `BadgeStyle.sourceName` now.
-///
-/// **Deleting a key is taking somebody's choice away unless something carries
-/// it.** Their menu bar would go back to a badge on the next launch with nothing
-/// said — the same failure the three trigger switches would have had if the
-/// engine had gone on reading keys no control could change.
+/// The older «Show Input Source Name» key is carried over to
+/// `BadgeStyle.sourceName`: deleting a key without carrying it takes somebody's
+/// choice away, and their menu bar would go back to a badge with nothing said.
 ///
 /// The carry-over writes once and erases the old key in the same breath, so it
 /// cannot argue with a style the person picks afterwards. Both halves are

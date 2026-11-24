@@ -18,53 +18,36 @@ import HelmUI
 /// changes (`rowMoved`), and when it is that line that moved while the view did
 /// not, moves the view by the difference (`holdLine`). Where the rows above are
 /// measured the line stays where it was on screen, with one exception: a line
-/// taller than the room below it is moved by the hold itself (`log-tall-line` in
-/// the defect log).
+/// taller than the room below it is moved by the hold itself (a known defect,
+/// kept in the defect log).
 ///
 /// **What it can hold, and what it cannot.** A row's place is a reading only
-/// where the rows above it are measured. A card's rows are plain up to
-/// `LogView.lazyAbove` of them, and every height in the page is then a
-/// measurement; above that they are lazy, and the height of what the view has
-/// scrolled past is an estimate, re-made whenever rows are drawn or dropped — a
-/// reader inside such a card is held no better than the estimate allows. The
-/// choice is `LogView`'s, and its doc says what each side costs. A launch the page
-/// has not drawn is not in the content at all, takes no height and is no estimate,
-/// so the sentence above is true of every row that is drawn.
+/// where the rows above it are measured: a reader inside a card larger than
+/// `LogView.lazyAbove` is held no better than the lazy estimate allows. A
+/// launch the page has not drawn takes no height and is no estimate.
 ///
 /// **Only a layout at rest is believed for remembering.** While a change is laid
 /// out the rows report places one after another, so the line is remembered when
-/// every report has been quiet for `quiet` — and a person's scroll is what the
-/// remembering is for, so the line being held is the one remembered after the
-/// last of them.
+/// every report has been quiet for `quiet`, after a person's last scroll.
 ///
 /// **Who holds what.** Follow lit and the view at the end: the scroll view's own
-/// bottom anchor is asked to keep the end, and when the page comes to rest short
-/// of it with nobody having scrolled, the end is asked for again; this holds no
-/// line, because it would keep the top line and leave the end. A change of what is
-/// shown — a level, a module, a search — holds no line either (`forget`): it is a
-/// different page, not the same one moved. Follow lit
-/// and the view not at the end (the person scrolled up; Follow does not go out
-/// when they do), or Follow off: this holds the line. And while Follow *wants* the
-/// end and has not got it (`seeking`: a filter changed, Follow was pressed, the
-/// page has just opened) this holds nothing and asks for the end again after each
-/// quiet period, up to `attempts` times — the first landing is on an estimate when
-/// rows are lazy, and the rows it realised are measured after.
+/// bottom anchor keeps the end, and the end is asked for again when the page
+/// rests short of it with nobody having scrolled; no line is held, or the top
+/// line would be kept and the end left. A change of what is shown holds no line
+/// either (`forget`): it is a different page. Follow lit and the view not at the
+/// end (Follow stays lit when the person scrolls up), or Follow off: this holds
+/// the line. While Follow wants the end and has not got it (`seeking`) this
+/// holds nothing and asks for the end again after each quiet period, up to
+/// `attempts` times, since a landing on lazy rows is an estimate.
 ///
-/// **Earlier launches.** The page draws the newest launches and the earlier ones
-/// when the reader comes to rest near the top of what is drawn (`drawEarlier`,
-/// `LogView.drawnAtOpen`). It is asked from the rest that follows a layout or a
-/// scroll, never from `scrolled` itself, and only when something holds the view
-/// as the launches enter above it: a line remembered (they shift every drawn row,
-/// the line's row reports the place it moved to, and `holdLine` moves the view by
-/// the difference, as when a row above changes height), or Follow lit with the
-/// view at the end, where the scroll view's own bottom anchor keeps the end. Not
-/// while the end is being sought, and not when the view is further than a view's
-/// height from the top of what is drawn. What the ask gives is the page's
-/// (`LogView.earlierAfterAsk`): at least one launch more, and nothing written once
-/// every launch is drawn.
+/// **Earlier launches** are asked for from rest, never from `scrolled`, and only
+/// when something holds the view as they enter above it: a line remembered
+/// (`holdLine` moves the view by the shift), or Follow lit at the end, where
+/// the scroll view's bottom anchor keeps the end (`askForEarlierLaunches`;
+/// Architecture/DiagnosticsLog.md § The log pane).
 ///
-/// A plain reference type, held by the page and never read by a body — in its
-/// `@State`: what it remembers changes on every scroll, and a body that read it
+/// A plain reference type, held in the page's `@State` and never read by a
+/// body: what it remembers changes on every scroll, and a body that read it
 /// would be redrawn by the thing it is trying to keep still.
 @MainActor
 final class LogReaderPlace {
@@ -250,7 +233,7 @@ final class LogReaderPlace {
 
     /// The first drawn row whose top is in the view, and how far that top is from
     /// the view's top. Only the top is tested: a row taller than the view's remaining
-    /// room is chosen too, which is a known defect, `log-tall-line` in the defect log.
+    /// room is chosen too, which is a known defect, kept in the defect log.
     private func capture() {
         let top = metrics.top
         let best = frames.filter { $0.value.minY >= top - 0.5 }

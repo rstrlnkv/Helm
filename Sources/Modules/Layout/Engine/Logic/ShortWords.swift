@@ -2,13 +2,10 @@ import Foundation
 
 /// The two- and three-letter words people actually type.
 ///
-/// Short words used to be refused outright, and the reasoning was sound: a
-/// spell checker's yes/no is nearly worthless at this length. Ask one whether
-/// `yt` is a word and it may well say yes — checkers carry abbreviations,
-/// proper nouns and stray entries, and at two letters almost every keystroke
-/// pair lands on something. A verdict built on "is this a word" therefore
-/// converts noise, and the cost is a rewritten word in the middle of somebody
-/// else's sentence.
+/// A spell checker's yes/no is nearly worthless at this length: checkers carry
+/// abbreviations, proper nouns and stray entries, and at two letters almost
+/// every keystroke pair lands on something. A verdict built on "is this a
+/// word" would convert noise in the middle of somebody's sentence.
 ///
 /// So short words are not decided by permission but by confidence. This list
 /// is what the decision rests on: convert only when the *translated* form is
@@ -24,13 +21,8 @@ enum ShortWords {
 
     /// The one-letter words, which are the ones this list exists for most.
     ///
-    /// **Russian's commonest words are one letter long, and the module refused
-    /// every one of them.** The minimum word length was 2 under a comment
-    /// saying «one character is a keystroke, not a word» — true of English,
-    /// where only `a` and `I` qualify, and false of Russian, where `в`, `и`,
-    /// `с`, `к`, `о`, `у`, `а` and `я` are prepositions, conjunctions and a
-    /// pronoun that appear in almost every sentence. Type `d ` on a latin
-    /// layout and it stayed `d`.
+    /// Russian's commonest words are one letter long: `в`, `и`, `с`, `к`, `о`,
+    /// `у`, `а` and `я` appear in almost every sentence.
     ///
     /// By list rather than by dictionary, and more strictly than at two
     /// letters: a checker asked about a single character is worthless, and the
@@ -42,8 +34,7 @@ enum ShortWords {
     static let russianSingles: Set<String> = ["а", "в", "и", "к", "о", "с", "у", "я"]
 
     /// English's are exactly two, and `i` is here lowercased because the rule
-    /// lowercases before it asks — `I` typed on a Russian layout is `Ш`, which
-    /// is the case that started this.
+    /// lowercases before it asks — `I` typed on a Russian layout is `Ш`.
     static let englishSingles: Set<String> = ["a", "i"]
 
     /// Common Russian words of two and three letters.

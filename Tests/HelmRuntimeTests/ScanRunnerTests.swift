@@ -1,13 +1,8 @@
 import XCTest
 @testable import HelmRuntime
 
-/// The arithmetic a background scan runs on, out of `HelmApp` where nothing
-/// could test it.
-///
-/// Every case here was unreachable while these lines lived in
-/// `ScanCoordinator`, and four defects found on 2026-08-03 could only be argued
-/// about. Not because `HelmApp` cannot be tested — `HelmAppTests` exists — but
-/// because the clock and the call into the engine were in the way of the arithmetic.
+/// The arithmetic a background scan runs on, apart from the clock and the
+/// call into the engine, which would otherwise stand in the way of testing it.
 final class ScanRunnerTests: XCTestCase {
 
     private let t0 = Date(timeIntervalSinceReferenceDate: 800_000_000)
@@ -28,12 +23,10 @@ final class ScanRunnerTests: XCTestCase {
         XCTAssertEqual(idle.personSeconds, 120)
     }
 
-    /// **The defect this unit exists for.** Keep Awake jiggles the pointer, the
-    /// counter drops to nothing, and the person has not moved. The old code
-    /// returned `sinceNudge + system` — and the branch fired exactly when those
-    /// two were equal, so it answered roughly **double**: with the nudge at its
-    /// default five minutes, a scan whose threshold is 300 s could start after
-    /// 150 seconds of real stillness.
+    /// Keep Awake jiggles the pointer, the counter drops to nothing, and the
+    /// person has not moved. Adding the counter to the time since the nudge
+    /// would roughly double the answer, and a 300 s threshold could fire after
+    /// 150 s of real stillness.
     func testOurOwnNudgeNeitherResetsNorDoublesTheAnswer() {
         // Ten minutes of stillness, then our nudge, then a minute more.
         var idle = ScanRunner.advance(nil, systemIdle: 600, lastOwnNudge: nil, now: t0)

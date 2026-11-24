@@ -1,19 +1,14 @@
 import XCTest
 @testable import Module_Layout_Engine
 
-/// **The one typing habit Helm corrects on its own, and it had no test at all.**
+/// The one typing habit Helm corrects on its own, `TypingHabits.corrected`.
 ///
-/// `TypingHabits.corrected` shipped behind a switch, changed words people had
-/// typed, and `grep -rn "TypingHabits.corrected" Tests/` returned nothing. It
-/// also had a boundary its caption did not describe: three letters, no digit,
-/// upper-upper-lower. That is a slipped Shift *and* it is `CDs`, `IDs`, `PCs`,
-/// `TVs`, `OKs` — a two-letter abbreviation with a lowercase suffix, which is
-/// the commonest shape the rule cannot tell from a mistake.
+/// Three letters, upper-upper-lower, is a slipped Shift and it is `CDs`, `IDs`,
+/// `PCs`, `TVs`, `OKs` — a two-letter abbreviation with a lowercase suffix, the
+/// commonest shape the rule cannot tell from a mistake.
 ///
 /// The fourth letter is what separates them: a slip carries a word behind it,
 /// an abbreviation-plus-suffix does not.
-///
-/// Guards a past defect: CDs, IDs, PCs read as a slipped Shift (fix commit `af50f192`).
 final class ASlipIsNotAnAbbreviationTests: XCTestCase {
 
     func testASlippedShiftIsCorrected() {
@@ -22,7 +17,7 @@ final class ASlipIsNotAnAbbreviationTests: XCTestCase {
         XCTAssertEqual(TypingHabits.corrected("WOrld"), "World")
     }
 
-    /// The defect this file was written for.
+    /// A two-letter abbreviation with a lowercase suffix.
     func testATwoLetterAbbreviationWithASuffixIsLeftAlone() {
         for word in ["CDs", "IDs", "PCs", "TVs", "OKs"] {
             XCTAssertNil(TypingHabits.corrected(word),
@@ -60,11 +55,9 @@ final class ASlipIsNotAnAbbreviationTests: XCTestCase {
         XCTAssertEqual(differing.count, 1)
     }
 
-    /// **What it still gets wrong, recorded rather than claimed away.** A
-    /// three-letter abbreviation is out, but a longer one with a lowercase tail
-    /// is not: `OSes`, `ТВшник`, `IPhone` all read as slips to this rule and
-    /// always did. That is why the switch's note names the
-    /// boundary it has instead of promising one it does not.
+    /// What shape alone gets wrong: a longer abbreviation with a lowercase tail
+    /// (`OSes`, `ТВшник`, `IPhone`) reads as a slip to this rule, which is why
+    /// the engine also asks the dictionary (`ASlipHasAWordBehindItTests`).
     func testTheBoundaryThisRuleCannotDraw() {
         XCTAssertEqual(TypingHabits.corrected("OSes"), "Oses")
         XCTAssertEqual(TypingHabits.corrected("ТВшник"), "Твшник")

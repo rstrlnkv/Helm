@@ -4,10 +4,9 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// **A refused trash of an application is logged, and the log must not carry the
-/// application's name.** The last component of an app bundle is what the person
-/// called it, and of a leftover a bundle id; the shared removal loop writes a line
-/// for every refusal and has to be told which kind of leaf it is holding.
+/// A refused trash of an application is logged without the application's name.
+/// The leaf of an app bundle is what the person called it, and the shared
+/// removal loop has to be told which kind of leaf it holds.
 final class TheLogDoesNotNameTheAppTests: XCTestCase {
 
     private let secret = "Secret Name \(UUID().uuidString.prefix(6))"

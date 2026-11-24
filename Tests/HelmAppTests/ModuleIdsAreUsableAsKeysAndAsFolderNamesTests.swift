@@ -2,7 +2,7 @@ import XCTest
 @testable import HelmApp
 import HelmContract
 
-/// What a module id has to survive being used as, now that the descriptor
+/// What a module id has to survive being used as, given that the descriptor
 /// forwards it up from the engine.
 ///
 /// `ListsAgreeWithTheTreeTests` proves the ids are unique and
@@ -10,16 +10,15 @@ import HelmContract
 /// moved. Neither says anything about the two *other* things every id is: a
 /// key in the dictionaries the host builds, and a component of a path.
 ///
-/// The forwarding — `static let id = ModuleID(DiskEngine.moduleID)` — makes
-/// four of the ids come from a constant one target away, which is the point;
-/// it also means the string a host looks a module up by is no longer written
-/// beside the descriptor that answers to it.
+/// The forwarding (`static let id = ModuleID(DiskEngine.moduleID)`) means the
+/// string a host looks a module up by is not written beside the descriptor
+/// that answers to it.
 @MainActor
 final class ModuleIdsAreUsableAsKeysAndAsFolderNamesTests: XCTestCase {
 
-    /// The host looks modules up two ways — `first { $0.idRaw == id }` on a
-    /// `String` at seventeen call sites, and `ModuleID` where the contract
-    /// carries it. Those two have to be the same lookup.
+    /// The host looks modules up two ways: `first { $0.idRaw == id }` on a
+    /// `String`, and `ModuleID` where the contract carries it. Those two have
+    /// to be the same lookup.
     ///
     /// `idRaw` is `type(of: self).id.rawValue`, read off the metatype of an
     /// *instance*, while the canon test reads it off the type. A dictionary
@@ -51,9 +50,9 @@ final class ModuleIdsAreUsableAsKeysAndAsFolderNamesTests: XCTestCase {
     ///
     /// So a separator in one would be a path joined onto a path — the id would
     /// name a folder somewhere else entirely, or, with `..` in it, somewhere
-    /// above. Nothing in the build says an id may not contain one, and since
-    /// the id now travels up from an engine constant, the descriptor's own file
-    /// no longer shows the string being registered.
+    /// above. Nothing in the build says an id may not contain one, and the id
+    /// travels up from an engine constant, so the descriptor's own file does
+    /// not show the string being registered.
     ///
     /// Asserted per module with the id in the message: every one of these is a
     /// property of the whole set, and a failure has to name which.

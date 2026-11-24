@@ -7,9 +7,8 @@ import Module_Leftovers_Engine
 /// macOS loads, so each one is a deliberate choice.
 struct LeftoversSettingsPage: View {
     /// Observed, never owned: Settings tears this page down on every sidebar
-    /// visit, and a `@StateObject` here took the scan and every checkbox with
-    /// it. Nothing in this list is pre-ticked — each tick is a decision about a
-    /// file macOS loads, and one sidebar click asked for all of them again.
+    /// visit, and a `@StateObject` here would take the scan and every tick with
+    /// it. Nothing is pre-ticked, so each tick is a decision worth keeping.
     @ObservedObject private var lvm: LeftoversViewModel
     @State private var diskAccess: PermissionState = .granted
     @State private var confirmingBatch = false
@@ -20,9 +19,8 @@ struct LeftoversSettingsPage: View {
     }
 
     /// What the row's menu may call this. An ellipsis is a promise that another
-    /// step follows; for a leftover none does, and the click deleted. Where no
-    /// dialog follows the row says exactly what the bar below it says, because
-    /// it is the same act.
+    /// step follows; for a leftover none does. Where no dialog follows, the row
+    /// says exactly what the bar below it says, because it is the same act.
     private static func deleteLabel(for item: StaleItem) -> String {
         LeftoverActions.askBeforeDeleting(item) != nil ? LfStr.deleteItem : HelmWord.moveToTrash
     }
@@ -36,9 +34,8 @@ struct LeftoversSettingsPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // **A bar is drawn because it holds something.** With the filters behind
-            // `items.isEmpty` and the Scan behind the invitation, the first screen
-            // was a 48 pt strip with a hairline under it and nothing in it at all.
+            // **A bar is drawn because it holds something**, never as an empty strip
+            // with a hairline under it.
             if toolbarHasSomethingToSay {
                 toolbar
                 Divider()
@@ -48,15 +45,12 @@ struct LeftoversSettingsPage: View {
                     .helmPageStrip()
                 Divider()
             }
-            // The safety line, where the thing it is about is: over the list,
-            // in the page's own copy rather than in its chrome. It says nothing
-            // is ticked by default *because macOS loads these*, which is the
-            // one sentence on this screen a person must not miss.
-            // Over the list, and only when there is one: with the rows filtered
-            // away this sentence stood over the empty area explaining ticks
-            // nobody could see. The toolbar's own «Found: N» and its filters stay
-            // whatever the list holds — the menu that hid the rows has to remain
-            // reachable, or the page is a dead end.
+            // The safety line, over the list it is about, in the page's own copy: it
+            // says nothing is ticked by default *because macOS loads these*, the one
+            // sentence on this screen a person must not miss. Only when there are rows:
+            // with them filtered away it would explain ticks nobody can see. The
+            // toolbar's «Found: N» and its filters stay whatever the list holds, so the
+            // menu that hid the rows remains reachable.
             if lvm.nothingToShow == nil {
                 HelmSettingsNote(LfStr.reviewNote)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -101,26 +95,20 @@ struct LeftoversSettingsPage: View {
         // shares (`HelmHeaderContent.swift` in `HelmUI`) — see `headerContent` below for what each carries.
         .helmHeaderContent(headerContent)
         // **No curve on the page, on the tab or on the count.** «Leftovers» and
-        // «All» are one `List` whose rows `visibleItems` changes, and a rescan or
-        // a removal changes the same list, so a curve on the whole page (keyed to
-        // the tab or to `lvm.items.count`) was SwiftUI interpolating two states of
-        // one view: the «Found: N» figure morphed
-        // digit by digit, rows the new tab drops were still drawn and re-laid out
-        // under moving stripes, and the section headers slid. A tab and a rescan are a swap.
-        // Narrowing the list drops the ticks it hides, the way the kind filter
-        // and a fresh scan already do. Without this the switcher was the one
-        // way a selection could outlive its row. Moved here from the switcher
-        // view itself once that view moved into the header row, which
-        // owns no state of the page's to hang a change handler on
+        // «All» are one `List` whose rows `visibleItems` changes, and a rescan or a
+        // removal changes the same list, so a curve would interpolate two states of
+        // one view: the count morphing digit by digit, dropped rows re-laid out under
+        // moving stripes. A tab and a rescan are a swap.
+        // Narrowing the list drops the ticks it hides, as the kind filter and a fresh
+        // scan do, so no selection outlives its row. Here rather than in the switcher,
+        // which lives in the header row and owns no state of the page's
         // (`HomebrewManager` does the same for its own segment).
         .onChange(of: lvm.showAll) { _, _ in lvm.dropHiddenSelections() }
     }
 
-    /// **What is left of the page's bar once its controls are in the
-    /// window's header row: what the scan found.** The filter, the kind menu and
-    /// Scan moved to `headerContent`; the captions stay in the page because
-    /// they describe the list under them rather than act on it, and a count
-    /// is not a control to put glass behind.
+    /// **What is left of the page's bar once its controls are in the window's
+    /// header row: what the scan found.** The captions stay in the page because
+    /// they describe the list under them rather than act on it.
     private var toolbar: some View {
         HStack(spacing: HelmSpace.s5) {
             captions
@@ -131,20 +119,15 @@ struct LeftoversSettingsPage: View {
 
     /// **The page's controls, in the window's header row.**
     ///
-    /// Tabs are declared only while there is a list — an empty tab array
-    /// leaves the switcher out of the bar entirely, the same guard the old
-    /// `pageToolbar` used (`!lvm.items.isEmpty`), so the toolbar's shape
-    /// changes, and is swapped as a whole, on the first scan and again if a
-    /// removal empties the list. Owner's alternative, not taken here: always
-    /// declare the two tabs and gate the switcher with `tabsEnabled` instead
-    /// — no swap, but a filter shows before the first scan has anything to
-    /// filter.
+    /// Tabs are declared only while there is a list: an empty tab array leaves
+    /// the switcher out of the bar, so the toolbar's shape is swapped as a whole
+    /// on the first scan and again if a removal empties the list. The other way —
+    /// always two tabs, gated by `tabsEnabled` — would show a filter before the
+    /// first scan has anything to filter.
     ///
-    /// The kind menu is a `.menu` action, checkmarked one item per
-    /// `StaleKind`, in the capsule beside Scan — both visible only where the
-    /// old toolbar showed them: the menu over a list, Scan wherever the
-    /// page's own invitation is not already offering one
-    /// (`invitationCarriesTheScan`).
+    /// The kind menu is a `.menu` action, checkmarked one item per `StaleKind`, in
+    /// the capsule beside Scan: the menu over a list, Scan wherever the page's own
+    /// invitation is not already offering one (`invitationCarriesTheScan`).
     private var headerContent: HelmHeaderContent {
         let hasList = !lvm.items.isEmpty
         return HelmHeaderContent(
@@ -172,18 +155,15 @@ struct LeftoversSettingsPage: View {
             ])
     }
 
-    /// **Whether a scan may run right now** — read by both the toolbar's own
-    /// action above and the invitation's `scanButton` below, so the two
-    /// never drift apart on what refuses a press. A rescan mid-removal would
-    /// land a fresh `items` on top of the list the removal is about to
-    /// report on; the model refuses it as well, and both, or neither, is
-    /// reliable.
+    /// **Whether a scan may run right now**, read by both the toolbar's action
+    /// and the invitation's `scanButton`, so the two never drift apart on what
+    /// refuses a press. A rescan mid-removal would land a fresh `items` on top of
+    /// the list the removal is about to report on; the model refuses it as well.
     private var scanRefused: Bool { lvm.scanning || lvm.busy }
 
-    /// **What the verb says right now** — read by both `headerContent` and
-    /// `scanButton`, for the same reason as `scanRefused` above: one
-    /// derivation, so the toolbar and the invitation cannot say two
-    /// different things about the same scan.
+    /// **What the verb says right now**, read by both `headerContent` and
+    /// `scanButton`: one derivation, so the toolbar and the invitation cannot say
+    /// two different things about the same scan.
     private var scanTitle: String {
         lvm.scanning ? HelmWord.scanning : (lvm.scanned ? HelmWord.scanAgain : LfStr.scan)
     }
@@ -191,11 +171,9 @@ struct LeftoversSettingsPage: View {
     /// What the scan found, and what it could not judge — one caption or two,
     /// whichever the pane can hold.
     ///
-    /// **The strip had no slack, and an `HStack` pays for that out of whatever is
-    /// flexible.** With both captions fixed, at a 606 pt pane, which the window
-    /// no longer gives: «Сканировать заново» drawn 20.5 pt against the 154.0 its
-    /// words need, «Escanear de nuevo» 20.5 against 139.0, German 92.5 against
-    /// 118.5 — the verb reduced to an ellipsis by two labels.
+    /// **The strip has no slack, and an `HStack` pays for that out of whatever is
+    /// flexible**: with both captions fixed, a narrow pane reduces the verb to an
+    /// ellipsis in Russian, Spanish and German.
     ///
     /// So the captions give way, in an order: what survives a narrow pane is the
     /// one saying the number beside it is incomplete, because a count with no
@@ -211,17 +189,13 @@ struct LeftoversSettingsPage: View {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: HelmSpace.s5) { found; unchecked }
                 unchecked
-                // Where even one would not fit — Russian at 606 pt, which the window
-                // no longer gives — the strip
-                // keeps its controls, and nothing said only here is lost: the
-                // screen this is about is the *empty* one, where the sentence is
-                // the message and no width can take it away.
+                // Where even one would not fit, the strip keeps its controls, and nothing
+                // said only here is lost: on the *empty* screen the sentence is the message
+                // and no width can take it away.
                 //
-                // **A zero-width view, not `EmptyView`**, which contributes no
-                // subview at all: `ViewThatFits` then never sees a third candidate
-                // and falls back to its last whether it fits or not — measured,
-                // Russian went on drawing one caption and the button stayed
-                // 26.0 pt short.
+                // **A zero-width view, not `EmptyView`**, which contributes no subview at
+                // all: `ViewThatFits` would never see a third candidate and would fall back
+                // to its last whether it fits or not.
                 Color.clear.frame(width: 0, height: 0)
             }
         } else {
@@ -261,13 +235,10 @@ struct LeftoversSettingsPage: View {
         return LeftoversEmpty.invites(nothing)
     }
 
-    /// **The invitation's own verb, now that Scan has moved into the
-    /// window's header row** (`headerContent` above) — drawn only on the
-    /// empty-state screens `LeftoversEmpty.invites` names, where the
-    /// invitation is the call to action and the header row's own Scan is
-    /// hidden by `invitationCarriesTheScan`. The header row's own button and
-    /// this one are drawn in one place each, never both, so `scanRefused` and `scanTitle` above
-    /// are shared rather than restated here.
+    /// **The invitation's own verb**, drawn only on the empty-state screens
+    /// `LeftoversEmpty.invites` names, where the header row's Scan is hidden by
+    /// `invitationCarriesTheScan`. The two buttons are drawn in one place each,
+    /// never both, so `scanRefused` and `scanTitle` are shared rather than restated.
     private var scanButton: some View {
         Button {
             Task { await lvm.scan() }
@@ -280,23 +251,19 @@ struct LeftoversSettingsPage: View {
     @ViewBuilder private var content: some View {
         if let nothing = lvm.nothingToShow {
             // **`nothingToShow`, not `items.isEmpty`.** The list is built from
-            // `visibleItems`, and on an ordinary Mac the two disagree: the scan
-            // finds hundreds of settings files in use and no leftovers, so this
-            // branch was skipped and the page drew an empty list area instead.
+            // `visibleItems`, and on an ordinary Mac the two disagree: the scan finds
+            // hundreds of settings files in use and no leftovers.
             //
-            // Before the first scan the page has nothing to show and room to
-            // explain itself, so the sentence that was in the toolbar is here,
-            // under the call to action it belongs to.
+            // Before the first scan the page has nothing to show and room to explain
+            // itself, so the sentence sits here, under the call to action it belongs to.
             HelmEmptyState(symbol: Self.symbol(for: nothing),
                            tint: LeftoversDescriptor.tint.colour,
                            message: LfStr.emptyMessage(nothing),
                            note: nothing == .notScanned ? LfStr.intro : nil) {
-                // **The verb, where the sentence that asks for it is.** The only
-                // «Scan» was in the toolbar, 374 pt above this line and 400 pt to
-                // its right, so the first screen of the module was an invitation
-                // with nothing to accept. Asked of `LeftoversEmpty.invites`, which
-                // is the same split `HelmEmptyState` documents: a statement gets no
-                // button, because one here offers to repeat the scan that has just
+                // **The verb, where the sentence that asks for it is**, so the first screen
+                // is not an invitation with nothing to accept. Asked of
+                // `LeftoversEmpty.invites`, the split `HelmEmptyState` documents: a statement
+                // gets no button, because one would offer to repeat the scan that has just
                 // answered.
                 if LeftoversEmpty.invites(nothing) {
                     // The page's own call to action, in the weight every other
@@ -304,8 +271,8 @@ struct LeftoversSettingsPage: View {
                     scanButton.buttonStyle(.borderedProminent)
                 }
             }
-            // A bounded minimum: enough to centre the message, without the
-            // unbounded height that made the window grow to fill the screen.
+            // A bounded minimum: enough to centre the message, without an unbounded
+            // height that grows the window to fill the screen.
             .frame(maxWidth: .infinity, minHeight: 260)
         } else {
             List {
@@ -327,19 +294,15 @@ struct LeftoversSettingsPage: View {
             if item.removable {
                 Toggle(item.identifier, isOn: Binding(
                     get: { lvm.selected.contains(item.path) },
-                    // Through the model, which refuses while a removal runs. A
-                    // checkbox inside a row is the Uninstaller's own defect again:
-                    // a bar that dims does not cover a control drawn per row.
+                    // Through the model, which refuses while a removal runs: a bar that dims
+                    // does not cover a control drawn per row.
                     set: { on in lvm.setTicked(on, path: item.path) }
                 ))
                 .toggleStyle(.checkbox)
                 .labelsHidden()
             } else {
-                // Keeps rows aligned where there is nothing to tick — and it is
-                // `HelmCheckboxSlot` rather than a rectangle of a width typed here,
-                // because the one typed here was 14 against a checkbox macOS draws
-                // at 16, so every protected row's name began 2 pt left of every
-                // markable one.
+                // Keeps rows aligned where there is nothing to tick: `HelmCheckboxSlot`
+                // is the width macOS draws a checkbox at, so every name starts at one edge.
                 HelmCheckboxSlot()
             }
 
@@ -352,25 +315,20 @@ struct LeftoversSettingsPage: View {
                         // exists to hold. A row nobody may delete is still a row
                         // somebody has to read.
                         .foregroundStyle(item.removable ? Color.primary : HelmText.quiet)
-                    // Asked of the rule rather than decided here: «Disabled» used
-                    // to *replace* the status, and «At login» was appended to it
-                    // over a job launchd will not start (`LeftoverBadges`).
+                    // Asked of the rule rather than decided here (`LeftoverBadges`):
+                    // «Disabled» does not replace the status, and «At login» is not shown over
+                    // a job launchd will not start.
                     ForEach(LeftoverBadges.on(item), id: \.self) { badge($0) }
                 }
-                // **One line under the name, not two.** The path and the missing
-                // target were a `Text` each — 44 pt with a path, 59 with both — so
-                // one list held three row heights and the third arrived on whichever
-                // rows happened to be broken. One row of two `Text`s keeps the one
-                // height and lets the line decide which half gives way.
+                // **One line under the name, not two**, so the list keeps one row height
+                // whichever rows are broken. One row of two `Text`s lets the line decide
+                // which half gives way.
                 //
-                // **And the half that gives way is the path.** Joined into a single
-                // `Text` cut at the tail, the clause wanted 687.9 pt in English and
-                // was given 363.0 at the 606 pt pane, 602.0 at 845 — so «Points at a
-                // missing file: …», which is the strongest evidence a login item is
-                // dead, never drew at all in either. The path is cut in the middle,
-                // where both its ends carry meaning, and the clause is whole.
-                // And below its floor the path gives way entirely — the line
-                // and the floor it reads are `LeftoverDetailLine`'s.
+                // **And the half that gives way is the path.** Joined into a single `Text`
+                // cut at the tail, «Points at a missing file: …», the strongest evidence a
+                // login item is dead, would not draw at all at ordinary widths. The path is
+                // cut in the middle, where both its ends carry meaning, and the clause is
+                // whole; below its floor the path gives way entirely (`LeftoverDetailLine`).
                 if let detail = LfStr.detail(for: item) {
                     LeftoverDetailLine(detail: detail)
                         .helmQuietDetail()
@@ -391,9 +349,8 @@ struct LeftoversSettingsPage: View {
     /// What a row offers at its trailing edge: the switch, and then either the way
     /// to System Settings or the size and the menu.
     ///
-    /// Its own function because the row's was over the complexity the lint allows
-    /// once the menu could say two things instead of one — and this half is about
-    /// what may be *done* to an item, where the half above it is what the item is.
+    /// Its own function to keep the row under the lint's complexity limit: this
+    /// half is what may be *done* to an item, the half above what the item is.
     @ViewBuilder private func controls(for item: StaleItem) -> some View {
         if item.canToggle {
             // Not everything here is rubbish to delete — most of it is
@@ -431,15 +388,13 @@ struct LeftoversSettingsPage: View {
                             Task { await lvm.remove(item) }
                         }
                     }
-                    // `trash` refuses a second round; without this the menu
-                    // offers one anyway, which is the Uninstaller's own defect
-                    // — a bar that dims does not cover a menu inside a row.
+                    // `trash` refuses a second round; without this the menu would offer
+                    // one anyway — a bar that dims does not cover a menu inside a row.
                     .disabled(lvm.busy)
                 } else if let withheld = LeftoverActions.whyDeleteIsWithheld(from: item) {
-                    // Say why rather than hide it: the row looks broken
-                    // otherwise, and the reason is not the user's fault. Which
-                    // reason matters — this line said «find an administrator»
-                    // over Apple's own files, where no password helps.
+                    // Say why rather than hide it: the row looks broken otherwise, and
+                    // the reason is not the user's fault. Which reason matters: over Apple's
+                    // own files no administrator's password helps.
                     Text(LfStr.noDelete(withheld))
                 }
             }
@@ -483,9 +438,8 @@ struct LeftoversSettingsPage: View {
         case .inUse: (LfStr.statusInUse, HelmSignal.success)
         case .protectedItem: (LfStr.statusProtected, HelmBadge.neutralTint)
         // **Grey, not the warning colour.** «Leftover» wears the warning colour,
-        // and an unreadable row in it would draw as the same pill two rows apart,
-        // so the warning colour separating «ticked by Select all» from «never ticked»
-        // would say nothing. Grey is what `.protectedItem` and the unchecked statuses below wear.
+        // and an unreadable row in it would draw as the same pill, so the colour
+        // separating «ticked by Select all» from «never ticked» would say nothing.
         case .unreadable: (LfStr.statusUnreadable, HelmBadge.neutralTint)
         // Grey for the reason above: what the warning colour separates here is
         // «ticked by Select all» from «never ticked», and these are the never-ticked. **One
@@ -501,39 +455,20 @@ struct LeftoversSettingsPage: View {
 
     /// What actually happened, in a row of its own above the bar.
     ///
-    /// **It was the fifth thing in the bar's `HStack`**, beside three buttons and
-    /// two lines of text, and an `HStack` does not wrap: the report took the width
-    /// the buttons left over and paid for it in height. Measured at 646 × 540 with
-    /// one file moved and two refused, the bar went 49 → 171 pt and the list fell
-    /// 416 → 294 — and inside that column the German heading was laid out seven
-    /// lines deep, the file names truncated to «co….plist» and the reasons to «Helm
-    /// braucht…», which is the half of each sentence that says what to do next. The
-    /// buttons either side of it clipped too.
+    /// **Its own row, not a thing in the bar's `HStack`**, which does not wrap:
+    /// the report would take the width the buttons left and pay in height, with
+    /// the reasons that say what to do next truncated. Its own row costs the list
+    /// one row's height instead, in every language.
     ///
-    /// Its own row costs the list one row's worth of height instead, in every
-    /// language.
-    ///
-    /// **Nothing here asks whether the outcome has anything to say**, and a first
-    /// version of this did: a removal that moved nothing and refused nothing —
-    /// which is a real round, the one the Uninstaller's orphans view produces —
-    /// draws `EmptyView`, and the question was there so a row of padding would not
-    /// be drawn around it. Measured, it was inert: SwiftUI gives a view whose body
-    /// is `EmptyView` no layout at all, so the padding and the frame here cost
-    /// exactly 0 pt, and the same reading came back for a silent round as for a
-    /// page nobody had pressed anything on. The component owns that decision; a
-    /// second copy of it here would have been a guard against nothing. What is
-    /// **not** free is anything drawn beside it: a `Divider()` added here cost the
-    /// list 1 pt on a silent round.
+    /// A removal that moved and refused nothing draws `EmptyView`, which SwiftUI
+    /// gives no layout at all, so the component owns that decision; anything drawn
+    /// beside it here (a `Divider()`) would cost the list height on a silent round.
     @ViewBuilder private var outcomeRow: some View {
         if let outcome = removalOutcome { statement(outcome) }
     }
 
-    /// A full-width line of prose at the foot of the page, in the shape this row
-    /// established and the selection line then needed as well.
-    ///
-    /// One member rather than the same three modifiers under both: they are the
-    /// *same* row, and a page whose two statements drifted apart by a padding is
-    /// the drift a shared member prevents.
+    /// A full-width line of prose at the foot of the page, shared by this row and
+    /// the selection line, so two statements cannot drift apart by a padding.
     private func statement(_ view: some View) -> some View {
         view
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -544,14 +479,12 @@ struct LeftoversSettingsPage: View {
     /// Which of the component's verdicts this round is, or nil for a page nobody
     /// has pressed anything on.
     ///
-    /// Its own member so the frame and the padding above are written once.
-    ///
     /// **The Grant button is keyed to the refusal, not to the page's own probe.**
-    /// Keyed to `diskAccess` it stood beside every refusal on a Mac without the
-    /// grant — over `noPermission` on a launch daemon, where the answer is a
-    /// password and not a setting — and never appeared for the right reason:
-    /// `PermissionCheck.reason` names Full Disk Access for container paths only,
-    /// and this module's sources reach none.
+    /// Keyed to `diskAccess` it would stand beside every refusal on a Mac without
+    /// the grant — over `noPermission` on a launch daemon, where the answer is a
+    /// password — and never for the right reason: `PermissionCheck.reason` names
+    /// Full Disk Access for container paths only, and this module's sources reach
+    /// none.
     private var removalOutcome: HelmRemovalOutcome? {
         guard let banner = lvm.banner else { return nil }
         return HelmRemovalOutcome(succeededText: banner,
@@ -564,15 +497,9 @@ struct LeftoversSettingsPage: View {
 
     /// What is ticked, on a line of its own above the buttons.
     ///
-    /// **It was the fourth thing in the button row, and an `HStack` does not
-    /// wrap** — the same defect the report above it was moved out for, one row
-    /// down. At a 606 pt pane the row overflowed and what paid for it was the
-    /// destructive button: measured against natural widths at 606 pt, «Move to
-    /// Trash» came out 40.0 pt short in German, 36.0 in French, 33.5 in Spanish and
-    /// 18.5 in Russian, drawn as «In den Papierkorb…» and «Переместить в Корзи…» —
-    /// an ellipsis invented by truncation, on the page that had just spent a commit
-    /// making an ellipsis mean *a question follows*. The German caption wrapped to
-    /// two lines on top of that, which moved the whole row down.
+    /// **Not a thing in the button row**, because an `HStack` does not wrap: at a
+    /// narrow pane the row overflows and the destructive button pays for it, its
+    /// label cut to an ellipsis that reads as *a question follows*.
     ///
     /// A caption is a statement, not a control, so it takes the full-width row
     /// `outcomeRow` established and the buttons get the width they ask for.
@@ -581,19 +508,16 @@ struct LeftoversSettingsPage: View {
             .helmQuietDetail())
     }
 
-    /// **Drawn only where there is something to act on**, which is the guard the
-    /// toolbar has had since its own pass and this row had none of: three controls,
-    /// one of them the destructive one, on a page with nothing to select and nothing
-    /// to move — including the very first screen, where the only thing to do is
-    /// scan. Rows the *filter* is hiding keep the bar, exactly as they keep the
-    /// filter menu: what emptied the list is then a menu on screen, not the Mac.
+    /// **Drawn only where there is something to act on**: three controls, one of
+    /// them destructive, on a page with nothing to select would include the very
+    /// first screen, where the only thing to do is scan. Rows the *filter* is
+    /// hiding keep the bar, as they keep the filter menu: what emptied the list
+    /// is then a menu on screen, not the Mac.
     private var actionBar: some View {
         HStack(spacing: HelmSpace.s5) {
             Button(HelmWord.selectAll) { lvm.tickAll() }
-            // `busy` for the same reason as its neighbour: five controls on this
-            // page can start or change an act, and two of them dimmed during a
-            // removal. Ticking rows mid-request changes what the report that comes
-            // back is about.
+            // `busy` for the reason its neighbour has: ticking rows mid-removal
+            // changes what the report that comes back is about.
             .disabled(lvm.leftoverCount == 0 || lvm.busy)
             Button(HelmWord.clearSelection) { lvm.untickAll() }
                 .disabled(lvm.selected.isEmpty || lvm.busy)
@@ -602,9 +526,8 @@ struct LeftoversSettingsPage: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(lvm.selected.isEmpty || lvm.busy)
                 // `selectedCount`, not `selected.count`: the bar above this button
-                // counts what the list shows, and the question about to be asked
-                // has to be about the same rows. One quantity, one derivation —
-                // today they cannot differ, which is luck rather than a guard.
+                // counts what the list shows, and the question about to be asked has to
+                // be about the same rows. One quantity, one derivation.
                 .confirmationDialog(LfStr.confirmSelected(lvm.selectedCount,
                                                           Bytes(lvm.selectedBytes)),
                                     isPresented: $confirmingBatch, titleVisibility: .visible) {

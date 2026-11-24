@@ -9,27 +9,16 @@ import HelmRuntime
 ///
 /// `VPNAutoConnectCore` keeps two books: `rules`, which the settings page
 /// overwrites whenever anything is saved, and `launched`, which records the
-/// rule that was in force when an app was counted as running. Its own doc
-/// comment says why — "`rules` … cannot be trusted to say what a quit should
-/// undo" — and `appTerminated` is written to consult `launched` alone.
+/// rule in force when an app was counted as running. `appTerminated` consults
+/// `launched` alone, so every quit must reach it, whatever the current rules
+/// say. If a quit were filtered through `core.rules` and the rule disappeared
+/// between launch and quit — turned off, or dropped by `VPNRules.valid`
+/// because the VPN was renamed — `launched[bundleID]` would never be cleared,
+/// and `appLaunched` would refuse that app for the rest of the session, with
+/// a rule on screen that says it is on.
 ///
-/// `VPNEngine.appsChangedNow` then filters both halves of the diff through the
-/// *current* rules:
-///
-///     for id in quit where core.rules[id] != nil { core.appTerminated(id, …) }
-///
-/// which puts the untrustworthy book back in front of the trustworthy one. When
-/// the rule for a running app disappears between its launch and its quit — the
-/// user turns the rule off, or `VPNRules.valid` drops it because the VPN was
-/// renamed — the quit never reaches the core. `launched[bundleID]` is never
-/// cleared, and `appLaunched` refuses to act on any app it believes is already
-/// launched. Auto-connect for that app is dead for the rest of the session,
-/// with a rule on screen that says it is on.
-///
-/// Guards an unattended action (a rule raising a tunnel); M103 below is the
-/// defect where a first unreadable list dropped every rule for good.
-///
-/// Past defect: commit 6dec5f2f, «fix: eight defects a second agent pass turned up».
+/// Guards an unattended action (a rule raising a tunnel), including the case
+/// of a first list read that fails.
 final class VPNEngineRuleReloadTests: XCTestCase {
     /// Off and on again. The rule is present, the VPN is present, the app
     /// launches — and the second launch issues nothing.
@@ -66,12 +55,10 @@ final class VPNEngineRuleReloadTests: XCTestCase {
                        "the rule is on and the app launched, so the VPN must be raised again")
     }
 
-    /// The control, and it passes today: the same sequence with the quit
-    /// arriving while the rule is still in force reconnects on the next launch.
-    /// The difference between this test and the one above is the quit landing
-    /// inside the window where `core.rules` has no entry — which is what pins
-    /// the failure on the `where core.rules[id] != nil` filter rather than on
-    /// the reload or on the fake.
+    /// The control: the same sequence with the quit arriving while the rule is
+    /// still in force reconnects on the next launch, so the test above is about
+    /// the quit landing where `core.rules` has no entry, not about the reload or
+    /// the fake.
     func test_control_a_quit_while_the_rule_is_live_reconnects_on_relaunch() {
         let runner = FakeRunner(list: "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
         let store = VPNSettings.inMemory()
@@ -130,8 +117,8 @@ final class VPNEngineRuleReloadTests: XCTestCase {
 }
 
 extension VPNEngineRuleReloadTests {
-    /// M103: the first `--nc list` fails, so the rules cannot be filtered against
-    /// the connections; the second answers, and the app already running when the
+    /// The first `--nc list` fails, so the rules cannot be filtered against the
+    /// connections; the second answers, and the app already running when the
     /// engine started fires its rule once, through the identity gate.
     func test_rules_dropped_by_an_unread_list_come_back_and_replay_the_running_app() {
         let runner = FakeRunner()

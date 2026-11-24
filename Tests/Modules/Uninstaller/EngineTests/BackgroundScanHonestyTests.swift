@@ -12,17 +12,10 @@ private struct FakeAccess: FullDiskAccessPort {
 
 // MARK: - Tests
 
-/// `ScanReport`'s doc is explicit, and it is the rule the whole background
-/// feature rests on:
-///
-/// > **Nil is not an empty report.** A scan whose root was refused, or that was
-/// > cancelled, or that could not read a directory in scope, must not come back
-/// > as "we looked and it was clean".
-///
-/// `DuplicatesEngine.backgroundScan` honours it — a refused root returns nil.
-/// `UninstallerEngine.backgroundScan` returns nil when `~/Library` cannot be
-/// seen (`checks.library`) and when the installed-apps reading is empty while
-/// the Library is not (`checks.installed`); the two tests below reach one guard each.
+/// Nil is not an empty report (`ScanReport`). `UninstallerEngine.backgroundScan`
+/// returns nil when `~/Library` cannot be seen (`checks.library`) and when the
+/// installed-apps reading is empty while the Library is not
+/// (`checks.installed`); the two tests below reach one guard each.
 final class UninstallerBackgroundScanHonestyTests: XCTestCase {
 
     private let home = URL(fileURLWithPath: "/Users/x")
@@ -32,27 +25,18 @@ final class UninstallerBackgroundScanHonestyTests: XCTestCase {
                           running: NoRunning())
     }
 
-    /// The no-permission case: the home Helm was given has no `~/Library` in it at all. There is no Mac
-    /// in that state — it means the port could not see the home — and the scan
-    /// still answers with a finished, empty report.
+    /// A home with no `~/Library` is no Mac's state: the port could not see the
+    /// home, and that is not a clean scan.
     func testAHomeWithoutALibraryIsNotACleanScan() async {
         let fs = FakeFS()
         let report = await engine(fs).backgroundScan()
         XCTAssertNil(report, "a home the port cannot see was reported as clean")
     }
 
-    /// The other direction of the same missing guard, and the expensive one.
-    ///
-    /// `OrphanDetector.isOrphan` treats "not in `installedBundleIDs`" as
-    /// evidence of an orphan. The set has no error channel: an
-    /// `installedBundleIDs()` that fails answers `[]`, indistinguishable from a
-    /// Mac with no apps — and then **every** bundle-id-shaped folder under
-    /// `~/Library` is an orphan. Unattended, with nobody reading the screen,
-    /// that is the person's entire Library offered up for removal in one go.
-    ///
-    /// A Library holding third-party support folders while zero apps are
-    /// installed is a contradiction, and a scan that runs with nobody watching
-    /// is the place to notice it.
+    /// A failed `installedBundleIDs()` answers `[]`, and `OrphanDetector.isOrphan`
+    /// would then make every bundle-id-shaped folder under `~/Library` an orphan,
+    /// unattended. A Library of third-party folders with zero apps installed is a
+    /// contradiction, and the scan answers nil.
     func testAFailedInstalledAppsReadingDoesNotOrphanTheWholeLibrary() async {
         let fs = FakeFS()
         fs.existing = ["/Users/x/Library": 1_000]
@@ -69,7 +53,7 @@ final class UninstallerBackgroundScanHonestyTests: XCTestCase {
                           + "into a removal candidate")
     }
 
-    // MARK: Full Disk Access gate (Q10b)
+    // MARK: Full Disk Access gate
 
     /// Every path exists and `~/Library` lists one folder, as on a Mac that grants the read.
     private func countingFS() -> FakeFS {

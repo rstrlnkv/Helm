@@ -25,8 +25,7 @@ import Module_Uninstaller_UI
         // the Mac's own language.
         AppSettings.applyStoredLanguage()
         AppSettings.applyAppearance()
-        // Dev builds always log: the file is the evidence we triage before a
-        // build graduates to the stable channel.
+        // Dev builds always log: the file is the evidence a build is triaged on.
         let version = AppBuild.shortVersion ?? "0"
         HelmLog.shared.start(version: version, override: AppSettings.loggingOverride, isDev: AppBuild.isDev)
         // Straight after the log opens, because this is the one thing that can
@@ -39,9 +38,8 @@ import Module_Uninstaller_UI
         statusController = StatusItemController(host: host)
         // After bootstrap, because it asks the host for live modules. It does
         // nothing at launch beyond starting a one-minute tick: `ScanSchedule`
-        // refuses a scan that already ran today, which is what stops somebody
-        // who opens and quits Helm five times an afternoon from re-reading the
-        // volume five times.
+        // refuses a scan that already ran today, so relaunching Helm does not
+        // re-read the volume.
         scanCoordinator = ScanCoordinator(host: host)
         scanCoordinator?.start()
         // Accessory apps launched without activation can fail to render their
@@ -89,11 +87,9 @@ import Module_Uninstaller_UI
     /// The tour on a launch that has not seen it, then the permission audit;
     /// without the tour, the audit at once.
     ///
-    /// The audit can put up an alert, and on a launch that shows the tour that
-    /// is the same moment the welcome window
-    /// wants. Two of them arriving together is not an introduction, it is a
-    /// pile-up — so the audit waits for the window to go away, by Done, by Skip or by the close
-    /// button.
+    /// The audit can put up an alert, and two windows arriving together are a
+    /// pile-up, so the audit waits for the welcome window to go away, by Done,
+    /// by Skip or by the close button.
     private func introduceOrAudit() {
         guard WelcomeWindow.shouldShow(store: AppSettings.store) else {
             PermissionAudit.run()
@@ -120,8 +116,8 @@ import Module_Uninstaller_UI
                 isLaunchAtLogin: { LoginItem.current().isOn },
                 setLaunchAtLogin: { LoginItem.setEnabled($0).isOn },
                 // The page first, then the tour goes away: closing it runs the
-                // permission audit, and an alert arriving over a window that has
-                // not been drawn yet is the pile-up the line above is about.
+                // permission audit, which must not arrive over a window not yet
+                // drawn.
                 openModule: { [weak self] id in
                     self?.statusController.showSettings(module: id)
                     self?.welcomeWindow?.close()
@@ -133,19 +129,16 @@ import Module_Uninstaller_UI
     ///
     /// Called from three places, and each covers what the others cannot: at
     /// launch (an app deleted while Helm was closed), when the module is switched
-    /// on by hand, and on the module's watcher noticing an arrival — which is the
-    /// case people actually produce, dragging an app to the Trash with Helm
-    /// running. The module being off is the whole answer: no engine, no sweep, no
-    /// window.
+    /// on by hand, and on the module's watcher noticing an arrival (an app
+    /// dragged to the Trash with Helm running). The module being off is the
+    /// whole answer: no engine, no sweep, no window.
     ///
     /// Full Disk Access is not checked here. Without it the Trash cannot be read,
     /// the sweep comes back empty and no window appears — and the place that says
     /// why is the module's own page, which already carries the notice.
     private func offerTrashLeftovers() {
-        // A window already up is not a reason to do nothing — it is the reason
-        // the host does nothing *here*: the model hands an arrival to the open
-        // window, which takes the new app into the list it is already showing,
-        // which is what a second app dropped a moment after the first deserves.
+        // A window already up takes the arrival itself: the model hands it to
+        // the open window, which adds the new app to the list it is showing.
         guard trashWindow == nil else {
             HelmLog.shared.info("app", "trash arrival goes to the open window")
             return
@@ -185,20 +178,14 @@ import Module_Uninstaller_UI
 
     /// The reading nothing else takes.
     ///
-    /// Called `idle` until 2026-07-31, which was a lie by omission: it is a
-    /// timer, and it fires whatever the app is doing. A run of `idle: 179 MB
-    /// (+120)` / `75 MB (-104)` was read as an app churning while sitting still,
-    /// by someone holding this app's own log — `listApps` and `appSizes` were
-    /// running between those lines. It is a sample, it says so, and it now
-    /// carries what was running when it was taken.
+    /// Named `sample`, not `idle`: it is a timer and fires whatever the app is
+    /// doing, and the line carries what was running when it was taken.
     ///
     /// Every other `memory(_:)` call sits on an operation, which answers "what
-    /// did that cost" — and says nothing at all about growth that happens while
-    /// the app sits there. This one runs on a timer and is silent unless the
-    /// footprint has moved past the threshold since the last time it spoke, so
-    /// a quiet app writes nothing and a growing one leaves a timestamped trail
-    /// of where it grew. It is what turns "48 GB by morning" into a interval
-    /// somebody can look at.
+    /// did that cost" and says nothing about growth while the app sits there.
+    /// This one is silent unless the footprint has moved past the threshold
+    /// since it last spoke, so a quiet app writes nothing and a growing one
+    /// leaves a timestamped trail of where it grew.
     private func startFootprintWatch() {
         footprintTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { _ in
             HelmLog.shared.memory("sample")
@@ -213,7 +200,7 @@ import Module_Uninstaller_UI
     /// Opening Helm again (Finder, Spotlight, Launchpad, `open -a`) does not start a
     /// second copy of a running app: the running one is sent this reopen event.
     /// Helm is an accessory app with no window of its own until Settings is
-    /// opened, so without this handler the open did nothing and Helm looked dead.
+    /// opened, so without this handler the open would do nothing.
     ///
     /// With nothing on screen it asks for Settings through the notification every
     /// other caller uses (`StatusItemController` listens). With a window up there
@@ -229,16 +216,10 @@ import Module_Uninstaller_UI
     /// Quitting must not leave the machine changed.
     ///
     /// Keep Awake's lid option runs `sudo pmset disablesleep 1`, which is
-    /// system state, not a process assertion — it outlives Helm. What takes it
-    /// back is `deactivate()`, and nothing called it on quit: the only recovery
-    /// was in `activate()`, i.e. the *next* launch of Helm. So quitting during
-    /// a clamshell session left the Mac unable to sleep until the app was
-    /// started again, and deleting the app left it that way for good.
-    ///
-    /// Deactivating every live engine fixes the class rather than that one
-    /// instance — the IOKit assertions, the event tap, the folder watchers and
-    /// the power observers are all released the same way, by the code that
-    /// already knows how.
+    /// system state, not a process assertion: it outlives Helm, and only
+    /// `deactivate()` takes it back. So every live engine is deactivated here,
+    /// and the IOKit assertions, the event tap, the folder watchers and the
+    /// power observers are released the same way, by the code that knows how.
 
     func applicationWillTerminate(_ notification: Notification) {
         HelmLog.shared.terminating()

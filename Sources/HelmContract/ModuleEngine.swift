@@ -4,14 +4,11 @@ public protocol ModuleEngine: AnyObject {
     ///
     /// Called by the host from the person's own switch and from «Reset all
     /// settings» handing the system back (`ModuleHost.handBackSystemState`) —
-    /// never from quitting, which is `deactivate()` alone. The distinction is not
-    /// tidiness: `applicationWillTerminate` calls `deactivate()` on every live
-    /// engine, so anything there that needs an answer from a person is a dialog
-    /// raised on behalf of an app that is already gone. Keep Awake shipped
-    /// exactly that once — an administrator password prompt at quit, for a
-    /// `/etc/sudoers.d` rule it was trying to take back out — and the rule then
-    /// had to be left behind on *every* route out, including the one where
-    /// somebody had just said they did not want the feature.
+    /// never from quitting, which is `deactivate()` alone.
+    /// `applicationWillTerminate` calls `deactivate()` on every live engine, so
+    /// anything there that needs an answer from a person (an administrator
+    /// prompt to withdraw a `/etc/sudoers.d` rule, say) is a dialog raised on
+    /// behalf of an app that is already gone.
     ///
     /// So: put work that needs the person here, and work that must happen however
     /// the process ends in `deactivate()`. Defaulted, because most engines have

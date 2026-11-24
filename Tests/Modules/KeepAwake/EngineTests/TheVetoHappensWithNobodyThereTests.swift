@@ -6,28 +6,21 @@ import HelmTestSupport
 /// The battery veto is the one thing this app does with nobody in front of the
 /// screen.
 ///
-/// Every other account of it is a place the person is, by definition, not
-/// looking: the hero announces it to VoiceOver on a page that has to be open,
-/// the panel draws a banner behind a click, and the log is the log. The session
-/// ends, the Mac goes to sleep, and the first the person knows of it is a Mac
-/// that is asleep with the work not done — which is the state the guard exists
-/// to produce and the one nothing was telling them about.
-///
-/// So one system notification, on the veto's rising edge. The decision is here
+/// Every other account of it is a place the person is not looking: the hero
+/// on a page that has to be open, the panel behind a click, the log. So one
+/// system notification, on the veto's rising edge. The decision is here
 /// rather than in the view model, because a view model is built when a screen
 /// asks for one and «nobody is looking» is precisely when no screen has.
 final class TheVetoHappensWithNobodyThereTests: XCTestCase {
 
     // MARK: - Whether the arrival is news at all
 
-    /// A veto that took nothing away is not news, and this is not a nicety: the
-    /// guard is recomputed from every power event, so a laptop woken on a low
-    /// battery vetoes before anybody has asked for anything. A notification
-    /// then names a session nobody started.
+    /// A veto that took nothing away is not news: the guard is recomputed from
+    /// every power event, so a laptop woken on a low battery vetoes before
+    /// anybody has asked for anything.
     ///
-    /// The same question `releaseForBattery` already asked inline to decide
-    /// whether to write its log line — one predicate, so the banner and the log
-    /// cannot disagree about whether anything happened.
+    /// The same predicate `releaseForBattery` uses for its log line, so the
+    /// banner and the log cannot disagree about whether anything happened.
     func testAVetoThatEndedNothingIsNotNews() {
         XCTAssertFalse(BatteryVetoNews.tookSomethingAway(active: false, manual: false,
                                                          hasDeadline: false))
@@ -48,12 +41,10 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
 
     // MARK: - What to do about a permission
 
-    // The three cases that were here — nobody asked yet, refused, granted — are
-    // `NoticeChannel.step`'s now, with the scan and sweep channels asking macOS
-    // the same question in the same order.
-    // What this module still owns is *why* it asks from an unattended moment at
-    // all, which is prose at `BatteryVetoNews.tell` — and the engine cases below,
-    // which drive the whole conversation through this module's own path.
+    // Nobody asked yet, refused, granted: `NoticeChannel.step`'s cases, shared
+    // with the scan and sweep channels. Why this module asks from an unattended
+    // moment is at `BatteryVetoNews.tell`; the engine cases below drive the
+    // conversation through this module's own path.
 
     // MARK: - The engine, with a notification centre it can reach
 
@@ -158,20 +149,16 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
                        "every percentage step on a draining battery posted a banner")
     }
 
-    /// **A press while the veto holds is not news, and the person is watching.**
+    /// A press while the veto holds is not news, and the person is watching.
     ///
-    /// The rising edge is what makes this so, and nothing else does: pressing
-    /// «15 min» under the veto sets `manualOn`, which is one of the three facts
-    /// that say something was taken away — so a notification decided on those
-    /// alone would post a system banner at somebody who is looking at the very
-    /// screen that explains it, once per press. The page's own notice and the
-    /// dimmed verbs are that answer; a banner is for the arrival nobody saw.
+    /// Only the rising edge makes this so: pressing «15 min» under the veto sets
+    /// `manualOn`, one of the three facts that say something was taken away, so
+    /// a notification decided on those alone would post at somebody looking at
+    /// the screen that explains it, once per press.
     ///
-    /// Found by mutation: with the `!batteryStopped` half deleted, every other
-    /// test in this file still passed, because `releaseForBattery` clears those
-    /// three facts on the way out and the *next power event* therefore has
-    /// nothing to report. A press is the case that does not go through a power
-    /// event.
+    /// The one case that guards the `!batteryStopped` half: `releaseForBattery`
+    /// clears those facts on the way out, so the next power event has nothing
+    /// to report, and a press does not go through a power event.
     func testAPressUnderTheVetoIsNotABannerBecauseThePersonIsRightThere() async {
         build(FakeAutomationNotice(state: .authorized))
         onAFlatBattery()

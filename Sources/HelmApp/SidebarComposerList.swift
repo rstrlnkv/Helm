@@ -2,23 +2,18 @@ import SwiftUI
 import HelmUI
 import HelmAppStrings
 
-/// The sidebar's arrangement as a SwiftUI `List` — the prototype that asks
-/// whether the `NSTableView` was necessary.
+/// The sidebar's arrangement as a SwiftUI `List`, not an `NSTableView`.
 ///
-/// **The table exists because `.onMove` cannot cross a `Section`.** That is
-/// true, and it stops being a problem the moment the sections are not
-/// `Section`s: this list is one flat `ForEach` over `layout.flattened`, where a
-/// heading is a row like any other and a section is something the rows *draw* —
-/// the first module rounds the top corners, the last rounds the bottom. Then
-/// `.onMove` hands over flat indices, which is exactly what
-/// `SidebarLayout.applyingDrag(of:toFlatIndex:)` has always taken: the same
-/// pure function that the table's `acceptDrop` called.
+/// **`.onMove` cannot cross a `Section`, so the sections are not `Section`s**:
+/// this list is one flat `ForEach` over `layout.flattened`, where a heading is
+/// a row like any other and a section is something the rows draw (the first
+/// module rounds the top corners, the last the bottom). `.onMove` then hands
+/// over flat indices, which is what `SidebarLayout.applyingDrag(of:toFlatIndex:)`
+/// takes.
 ///
-/// What it buys is one renderer for the whole block, which is what the version
-/// before the redesign had and what made its transition smooth without anything
-/// being asked of it: there is no hosting view between the rows, so an
-/// animation on the list reaches every one of them. The list is always in its
-/// editing form; the sheet is its only caller.
+/// It buys one renderer for the whole block: no hosting view between the rows,
+/// so an animation on the list reaches every one of them. The list is always
+/// in its editing form; the sheet is its only caller.
 @MainActor
 struct SidebarComposerList: View {
     let layout: SidebarLayout
@@ -27,9 +22,9 @@ struct SidebarComposerList: View {
     let apply: (SidebarLayout) -> Void
     let rename: (SidebarLayout.Section) -> Void
 
-    /// Measured per row and summed, the way the pre-redesign list did it: the
-    /// block's height is an expression evaluated in the same pass, not a value
-    /// reported back through a binding on a later turn of the run loop.
+    /// Measured per row and summed: the block's height is an expression
+    /// evaluated in the same pass, not a value reported back through a binding
+    /// on a later turn of the run loop.
     @State private var heights: [String: CGFloat] = [:]
 
     /// Every row is drawn, an empty section's heading included: it is the drop
@@ -42,13 +37,10 @@ struct SidebarComposerList: View {
 
     /// What a row will be, before anything has been drawn.
     ///
-    /// Measuring is more accurate and it arrives too late for the one caller
-    /// that cannot wait: a sheet's window is sized by AppKit at presentation,
-    /// so a height that lands a turn of the run loop later leaves the window at
-    /// whatever the first frame asked for. `tableHeight` started at a flat 200,
-    /// which put the sheet at its 360 pt floor while its content wanted 631 —
-    /// title, Done, both footer buttons and the last two modules outside the
-    /// window, and Escape the only way out.
+    /// Measuring is more accurate and arrives too late for the one caller that
+    /// cannot wait: a sheet's window is sized by AppKit at presentation, so a
+    /// height that lands a turn of the run loop later leaves the window at
+    /// whatever the first frame asked for (`SidebarComposerSheet.tableHeight`).
     static func estimate(of row: SidebarLayout.Row, in layout: SidebarLayout) -> CGFloat {
         switch row {
         case .module: return SidebarComposerListRow.height
@@ -96,13 +88,11 @@ struct SidebarComposerList: View {
         .frame(height: total)
         // **Said explicitly, because the sum lands a pass late.** The rows
         // report their measured heights during layout, so `total` changes after
-        // the transaction that flipped the mode has closed — and what animated
-        // it then was whatever transaction happened to be open, which is how the
-        // block came to trail its own rows by a tenth of a second.
+        // the transaction that flipped the mode has closed, and would otherwise
+        // ride whatever transaction happened to be open, trailing its own rows.
         .animation(HelmMotion.interface, value: total)
         // The sheet's own window is sized from this, so it has to travel in the
-        // same transaction as the list inside it. Written raw, the list ramped
-        // inside a window that jumped.
+        // same transaction as the list inside it.
         .onChange(of: total) { _, now in
             withAnimation(HelmMotion.interface) { height = now }
         }
@@ -116,8 +106,7 @@ struct SidebarComposerList: View {
 }
 
 /// One line of the list: a section's heading with its menu, or a module with its
-/// switch. The drawing is the table's, unchanged — what changes is who owns the
-/// renderer it draws into.
+/// switch.
 @MainActor
 struct SidebarComposerListRow: View {
     let row: SidebarLayout.Row
@@ -220,10 +209,9 @@ struct SidebarComposerListRow: View {
                           tint: descriptor.moduleTint.colour, size: 22,
                           active: host.isEnabled(descriptor))
             // 6 more than the stack's own 10, because a letter does not start
-            // where its box does: measured at 2x, the plate-to-glyph gap read
-            // 7.5 pt where the handle-to-plate gap beside it read 11, and the
-            // difference is the side bearing of whatever letter the name
-            // begins with. The eye compares the two gaps, not the numbers.
+            // where its box does: the side bearing of the name's first letter
+            // makes the plate-to-glyph gap read narrower than the
+            // handle-to-plate gap beside it, and the eye compares the two.
             Text(descriptor.moduleMetadata.name)
                 .font(HelmText.rowTitle)
                 .padding(.leading, 6)

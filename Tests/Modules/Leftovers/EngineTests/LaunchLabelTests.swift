@@ -5,13 +5,10 @@ import XCTest
 /// The one rule about a label the switch will act on, read by the offer and by
 /// the port that runs `launchctl`.
 ///
-/// It exists because those two had their own answers: `LeftoverActions.available`
-/// offered «Turn off» to any agent with a non-empty label, and
-/// `ActiveExtensions.setDisabled` refused a `/` before running anything — so the
-/// page drew a live button whose press asked launchd nothing.
-/// `ASwitchTheSystemWillRefuseTests` asserts the implication over a whole scan;
-/// this file is the rule itself, spelled as literals rather than derived from the
-/// predicate under test.
+/// With two answers, the page could draw a live «Turn off» whose press asks
+/// launchd nothing. `ASwitchTheSystemWillRefuseTests` asserts the implication
+/// over a whole scan; this file is the rule itself, spelled as literals rather
+/// than derived from the predicate under test.
 final class LaunchLabelTests: XCTestCase {
 
     /// An ordinary label, and the rule must let it through — a predicate that

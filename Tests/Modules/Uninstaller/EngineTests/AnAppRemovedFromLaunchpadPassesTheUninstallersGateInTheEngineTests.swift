@@ -4,13 +4,11 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// **An app asked for through the door meets the Uninstaller's gate where the deleting is.**
+/// An app asked for through the door meets the Uninstaller's gate where the deleting is.
 ///
-/// `SystemApp.isSystem` was the page's alone: a `com.apple.` app in `/Applications` is a row without a
-/// checkbox, and the engine would have taken a batch that named it. The door's callers are not that page,
-/// so `removalVerdict` carries the refusals and `removeApp` and `removalPreview` ask it again before
-/// anything is scanned or quit. Each refusal below runs with the app **up** and the quit **agreed**: a
-/// missing gate then shows as a quit and a move, not as a quiet pass.
+/// The door's callers are not the page and its checkboxes, so `removalVerdict` carries the refusals, and
+/// `removeApp` and `removalPreview` ask it before anything is scanned or quit. Each refusal runs with the
+/// app up and the quit agreed: a missing gate then shows as a quit and a move, not a quiet pass.
 final class AnAppRemovedFromLaunchpadPassesTheUninstallersGateInTheEngineTests: XCTestCase {
 
     private var home: URL!

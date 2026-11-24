@@ -36,15 +36,9 @@ final class NamespacedStoreTests: XCTestCase {
 /// actually make.
 ///
 /// `InMemoryKeyValueStore` stands in for `UserDefaults`, which is safe to touch
-/// from any thread — and the engines it is handed to read their own state from
-/// their own queues while the test that owns them writes from its. As a bare
-/// dictionary it was neither: two threads in a Swift `Dictionary` is undefined
-/// behaviour, not a race with a bad outcome, and it took the Autopilot bundle
-/// down with no assertion and no message about once in thirty runs under load.
-/// The thread sanitizer named it: `AutopilotSealTests.plant` against
-/// `InMemoryKeyValueStore.object(forKey:)` on the engine's queue.
-///
-/// Guards: edcba2c0 (the bare dictionary behind the fake store crashed the Autopilot bundle about once in thirty runs).
+/// from any thread, and engines read their state from their own queues while
+/// the test writes from its. Two threads in a bare Swift `Dictionary` are
+/// undefined behaviour: a crash with no assertion and no message.
 final class InMemoryKeyValueStoreThreadingTests: XCTestCase {
 
     /// Written from one thread while another reads, which is the shape of every
@@ -92,21 +86,16 @@ final class InMemoryKeyValueStoreThreadingTests: XCTestCase {
 
 /// The fake and the file must answer the same question the same way.
 ///
-/// Every wrong-type test in the suite is written against `InMemoryKeyValueStore`
-/// — "a string where an Int lived answers the module's default" — and what it
-/// proves is only worth something if the fake casts the way the real store
-/// casts. It did not. `UserDefaults` goes through a plist, so **every** number
-/// comes back as an `NSNumber` whatever Swift type went in, and an `NSNumber`
-/// casts by value rather than by declaration: `1` under a `Bool` key is `true`
-/// in production, `5.0` under an `Int` key is `5`. The fake kept Swift natives,
-/// where both of those casts fail — so the tests said "the module refused it"
-/// about a value the module accepts.
+/// Every wrong-type test in the suite is written against `InMemoryKeyValueStore`,
+/// so the fake must cast as the real store casts. `UserDefaults` goes through a
+/// plist, so every number comes back as an `NSNumber`, which casts by value:
+/// `1` under a `Bool` key is `true`, `5.0` under an `Int` key is `5`. Swift
+/// natives would fail both casts, and the tests would say "the module refused
+/// it" about a value the module accepts.
 ///
-/// The oracle is a plist round trip rather than `UserDefaults.standard`, which
-/// no test may touch (3028 keys accumulated in the shared domain), and rather
-/// than a hand-written list of expected answers, which would only record what
-/// this file's author believed. `PropertyListSerialization` is the same
-/// conversion `UserDefaults` performs.
+/// The oracle is a plist round trip (`PropertyListSerialization`, the
+/// conversion `UserDefaults` performs), not `UserDefaults.standard`, which no
+/// test may touch, and not a hand-written list of what someone believed.
 final class InMemoryKeyValueStoreBridgingTests: XCTestCase {
 
     /// The same value after the trip to a file and back.
@@ -147,9 +136,8 @@ final class InMemoryKeyValueStoreBridgingTests: XCTestCase {
         }
     }
 
-    /// The two the tester measured, stated as the production answers they are.
-    /// The comparison above would be satisfied by two stores that are wrong
-    /// together; these say which answer is the right one.
+    /// Two production answers stated outright: the comparison above would be
+    /// satisfied by two stores wrong together.
     func testANumberUnderAFlagIsTheFlagAndARealUnderAnIntIsTheInt() {
         let backing = InMemoryKeyValueStore()
         let store = NamespacedStore(namespace: "demo", backing: backing)

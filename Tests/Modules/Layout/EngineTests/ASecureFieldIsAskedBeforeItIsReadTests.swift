@@ -4,41 +4,24 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
-/// **«Helm never reads a password: a field the system marks as secure is
-/// skipped whole.»** That is the page's own sentence (`LyStr.deniedGuarantee`), and
-/// the gesture read the field first and refused afterwards.
+/// «Helm never reads a password: a field the system marks as secure is
+/// skipped whole.» That is the page's own sentence (`LyStr.deniedGuarantee`),
+/// so `fix()` asks about the field before it reads the selection.
 ///
-/// `fix()` opened with
-///
-/// ```
-/// let readIn = secure.frontmostBundleID()
-/// let selected = selection?.selectedTextWithoutClipboard()
-/// ```
-///
-/// and asked nothing about the field. The refusal came two hops later, inside
-/// `convertSelection`, by which time the text had been pulled out of the accessibility
-/// tree, carried across a queue hop and held as a `String`. `AXSelection`
-/// applies no role check of its own — it copies `kAXSelectedTextAttribute` off
-/// the focused element — while `AXSecureContext.isSecure()` reads
-/// `kAXRoleAttribute` off *the same element* and answers `AXSecureTextField`.
-/// The two questions were one round trip apart and asked in the wrong order.
+/// `AXSelection` applies no role check of its own (it copies
+/// `kAXSelectedTextAttribute` off the focused element), while
+/// `AXSecureContext.isSecure()` reads `kAXRoleAttribute` off the same element
+/// and answers `AXSecureTextField`. Asked afterwards, the text would already
+/// have been pulled out of the tree and held as a `String`.
 ///
 /// What a person does: types their password into a login form the browser never
 /// escalated for — so `IsSecureEventInputEnabled()` is false, which is the whole
 /// reason the expensive role check exists — selects it, and taps the key they
-/// bound, because tapping it is a reflex by then. What they got: the password
-/// read out of the field and dropped a moment later. What they get now: the
-/// question asked before the reading: both calls go to the same
-/// accessibility element.
+/// bound out of reflex.
 ///
-/// The same move was meant to settle a second thing. `convertSelection` runs on
-/// main, and `isSecure()` «reaches the accessibility server, and a hung app
-/// there blocks for the messenger's timeout» — `emitState` carries that
-/// sentence and keeps the call outside its lock for it. The gesture paid that
-/// round trip on the main thread, which is the thread `fix()`'s background hop
-/// exists to keep clear and the thread the tap callback runs on. Asking in the
-/// background block put one ask off main; `convertSelection` still asks again
-/// on main.
+/// The first ask is in `fix()`'s background block, off main;
+/// `convertSelection` asks again on main, where that ask is the gate
+/// (Architecture/Layout.md § Keys, waits, guards and files).
 final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
 
     private func engine(_ context: FakeSecure, _ selection: FakeSelection) -> LayoutEngine {
@@ -86,9 +69,9 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
         selection.text = "hunter2"
         let engine = engine(context, selection)
 
-        // The expensive check is the one point both the old order and the
-        // repaired one pass through, which makes it the synchronisation point:
-        // when it has been asked, the gesture has decided.
+        // The expensive check is the one point every order passes through,
+        // which makes it the synchronisation point: when it has been asked, the
+        // gesture has decided.
         let asked = expectation(description: "the gesture asked whether it may act")
         context.onExpensiveCheck = { asked.fulfill() }
         engine.fix()

@@ -4,23 +4,18 @@ import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
-/// The log carries no names, and nothing checked that this module's lines obey
-/// it.
+/// The log carries no names, and this checks that this module's lines obey it.
 ///
-/// (ARCHITECTURE.md § Diagnostics log) states the rule and `Redact` implements it, with three test files
-/// of its own. What none of them can see is the *call site*: a line written as
-/// `info("vpn", "connect \(name)")` instead of `Redact.vpn(name)` compiles,
-/// reads correctly, and puts somebody's employer in the file they are asked to
-/// send when they report a problem. It would be an error nowhere.
-///
-/// A VPN name is the sharpest case in the app. "Acme Corp VPN" names where
-/// somebody works; the connection list is the shape of their week.
+/// `Redact` implements the rule (Architecture/DiagnosticsLog.md § Diagnostics log),
+/// but only a *call site* can break it: `info("vpn", "connect \(name)")` instead
+/// of `Redact.vpn(name)` compiles, reads correctly, and puts somebody's
+/// employer in the file they send with a bug report. "Acme Corp VPN" names
+/// where somebody works.
 ///
 /// **The control matters more than the assertion here.** A test that only
-/// checks the raw name is absent passes when nothing was logged at all — which
-/// is the state a test process is in by default, since `LogPolicy` keeps the
-/// log off for a build that is not `-dev`. So each test below also proves the
-/// line it is judging actually exists.
+/// checks the raw name is absent passes when nothing was logged at all — the
+/// default in a test process, since `LogPolicy` keeps the log off for a build
+/// that is not `-dev`. So each test below also proves its line exists.
 final class TheLogDoesNotNameTheConnectionTests: XCTestCase {
 
     /// Distinctive enough that finding it in a message cannot be a coincidence.

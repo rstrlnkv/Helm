@@ -10,9 +10,8 @@ import SwiftUI
 /// one either. **And `NSHostingView`, never `ImageRenderer`**, which hands back a
 /// blank image for the same content.
 ///
-/// The appearance is a required argument. There is no default, because the
-/// default was the bug: the pixel readings this file used to carry inherited
-/// `NSApp.effectiveAppearance`, and `NSApp` in a test process is whatever the
+/// The appearance is required, with no default: a default would inherit
+/// `NSApp.effectiveAppearance`, which in a test process is whatever the
 /// person's Mac is set to that hour.
 @MainActor
 public final class MountedRender {
@@ -41,16 +40,13 @@ public final class MountedRender {
         self.window = window
     }
 
-    /// **The page's search field: the one in the header row of the card, inside `host`.**
+    /// The page's search field, in the header row of the card inside `host`.
     ///
-    /// A page asks for one through `helmHeaderContent`, and the header row (`helmCardHeader`) draws it
-    /// as `HelmHeaderSearch` in the same hosting view as the page, so a walk of `host` finds it — but only
-    /// where the mount was given the row: a mount of a bare page declares into a preference nothing reads and
-    /// finds none (`LivePageUnderTheHeaderFixture`, `Tests/HelmAppTests`, is the one that draws the row).
-    /// Nil is a real answer where a page declared none; every caller that means «a field must be here» says so
-    /// itself, loudly.
-    ///
-    /// **A field that is there may be hidden**, and it is returned too.
+    /// The header row (`helmCardHeader`) draws it as `HelmHeaderSearch` in the
+    /// same hosting view as the page, so a walk of `host` finds it only where the
+    /// mount was given the row (`LivePageUnderTheHeaderFixture`,
+    /// `Tests/HelmAppTests`). Nil is a real answer where a page declared none; a
+    /// caller that needs a field says so itself. A hidden field is returned too.
     public var searchField: NSSearchField? {
         host.everyView(ofType: NSSearchField.self).first
     }
@@ -73,12 +69,11 @@ public final class MountedRender {
     }
 
     /// Press Return in the header row's search field, which is what
-    /// `HelmHeaderQuery.onSubmit` answers to — `HelmHeaderSearch` wires a real
-    /// `target`/`action` to the field it builds and turns
-    /// `sendsActionOnEndEditing` off, so no end of editing reaches the action;
-    /// Return and the clear button do, and `HelmHeaderSearch.Coordinator.submitted(_:)` calls `onSubmit` only when
-    /// the field is not empty. A `keyDown` carrying Return on the field editor is what delivers
-    /// that Return, the same event AppKit itself would post from a keystroke.
+    /// `HelmHeaderQuery.onSubmit` answers to. `HelmHeaderSearch` turns
+    /// `sendsActionOnEndEditing` off, so only Return and the clear button reach
+    /// the action, and `HelmHeaderSearch.Coordinator.submitted(_:)` calls
+    /// `onSubmit` only for a non-empty field. A `keyDown` carrying Return on the
+    /// field editor is the event AppKit itself would post.
     @discardableResult
     public func pressReturn(turns: Int = 5) -> Bool {
         guard let field = searchField, let window,

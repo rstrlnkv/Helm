@@ -6,9 +6,9 @@ import XCTest
 /// two things hold of it: the row keeps its own delete while the batch does not,
 /// and the switch is not offered on a guessed label.
 ///
-/// `APlistNobodyCouldReadTests` is the finding: an unreadable launchd job was
-/// swept up by «Select all». Keeping it out of the batch leaves the row's own
-/// menu. The question that menu asks first is a rule of `Architecture/Leftovers.md`.
+/// An unreadable launchd job is kept out of «Select all»
+/// (`APlistNobodyCouldReadTests`), which leaves the row's own menu. The question
+/// that menu asks first is a rule of `Architecture/Leftovers.md`.
 final class AnUnreadableJobKeepsItsOwnDeleteTests: XCTestCase {
 
     private func item(_ status: ItemStatus) -> StaleItem {
@@ -31,11 +31,9 @@ final class AnUnreadableJobKeepsItsOwnDeleteTests: XCTestCase {
     /// `LaunchAgentReader` falls back to the file name when `Label` cannot be
     /// read, which is right for a job that *omits* the key — launchd does the same
     /// — and is an invention for a file whose contents never came. Sending that
-    /// guess to `launchctl disable` writes an entry under a name that may be no
-    /// job at all, and the row then reads it back and wears «Disabled»: the badge
-    /// this module offers as reassurance that a login item will not run, over a
-    /// job nobody switched off. The same implication `ASwitchTheSystemWillRefuse`
-    /// asserts about a label launchd would refuse, for a label Helm made up.
+    /// guess to `launchctl disable` would write an entry under a name that may be no
+    /// job at all, and the row would read it back and wear «Disabled» over a job
+    /// nobody switched off.
     func testAnUnreadableJobIsNotOfferedTheSwitchEither() {
         XCTAssertFalse(item(.unreadable).canToggle)
         XCTAssertTrue(item(.inUse).canToggle,

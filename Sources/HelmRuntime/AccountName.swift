@@ -7,10 +7,8 @@ import Foundation
 /// sudoers rule and Homebrew's `chown -R <user>:admin /opt/homebrew` — where a
 /// backtick or `$(…)` is code, and where a name that breaks `sudoers` syntax
 /// takes sudo down for the whole machine, recoverable only from recovery mode.
-/// Neither is worth supporting an exotic name for.
-///
-/// It lives here because it was written twice, character for character, and a
-/// rule that is stated twice is a rule that will be strengthened once.
+/// Neither is worth supporting an exotic name for. One rule for both, so it
+/// cannot be strengthened in one place only.
 public enum AccountName {
     public static func isPlausible(_ name: String) -> Bool {
         // `ALL` is a sudoers keyword, and a leading `-` reads as a flag to the

@@ -130,10 +130,9 @@ final class AModuleOwnsItsModelTests: XCTestCase {
     }
 
     /// Quitting asks no question because there is nobody to answer it:
-    /// `willDisable()` is for the person's switch and for a reset. Keep Awake
-    /// shipped an `osascript` administrator password dialog raised from the
-    /// quit path, for a `/etc/sudoers.d` rule it was trying to take back out, and
-    /// the rule then had to be left behind on every route.
+    /// `willDisable()` is for the person's switch and for a reset. An
+    /// administrator password dialog on the quit path is a dialog on the way
+    /// out (Architecture/KeepAwake.md § The closed lid).
     func testQuittingStopsTheModelBeforeTheEngineToo() throws {
         let d = Converted()
         let host = ModuleHost.shared

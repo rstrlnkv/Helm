@@ -3,12 +3,9 @@ import Foundation
 /// The whole conversation with macOS about one banner, in the order the
 /// permission allows.
 ///
-/// It was written inside Keep Awake, where the battery veto was the only event
-/// this app had that happens to an empty chair. Two more arrived together — a
-/// background scan's finding and Autopilot's hourly sweep — and a conversation
-/// spelled three times is three chances to prompt somebody twice, or to trust a
-/// permission that was revoked in System Settings an hour ago. So it lives here
-/// with the port it talks to.
+/// Shared by everything that speaks to an empty chair (Keep Awake's battery
+/// veto, a background scan's finding, Autopilot's sweep): one conversation
+/// cannot prompt somebody twice, or trust a permission revoked an hour ago.
 ///
 /// **Notification authorization is keyed to the bundle identifier**, not to the
 /// code signature, so unlike Full Disk Access and Accessibility it survives
@@ -19,9 +16,7 @@ public enum NoticeChannel {
 
     /// What to do with a notification macOS may never have been asked about.
     ///
-    /// Internal: nothing outside this target asks it — `tell` below is the whole
-    /// interface, and the rule is a step inside the conversation rather than a
-    /// question a module puts on its own.
+    /// Internal: `tell` below is the whole interface.
     ///
     /// Three cases and no `default`: a fourth authorization state has to be
     /// decided here rather than falling into whichever of these the compiler
@@ -57,16 +52,13 @@ public enum NoticeChannel {
     /// it may.
     ///
     /// **The permission is read, never remembered.** It can be revoked in System
-    /// Settings at any moment and nothing tells the app; a channel holding a
-    /// remembered `authorized` is the local flag standing in for a live external
-    /// fact that this codebase keeps paying for.
+    /// Settings at any moment and nothing tells the app; a remembered
+    /// `authorized` would be a local flag standing in for a live external fact.
     ///
     /// **The one prompt macOS allows is spent at the first moment there is
-    /// something to say**, rather than at launch — a permission asked for at
-    /// launch is the one people learn to refuse. Asking from `.denied` is not
-    /// attempted at all: macOS answers the standing refusal without showing
-    /// anybody anything, so the ask would be the code believing it can undo a
-    /// decision.
+    /// something to say**, not at launch, where people learn to refuse it.
+    /// Asking from `.denied` is not attempted: macOS answers the standing
+    /// refusal without showing anything.
     @discardableResult
     public static func tell(_ port: AutomationNoticePort, _ words: NoticeText) async -> Outcome {
         var heard = await port.authorizationState()

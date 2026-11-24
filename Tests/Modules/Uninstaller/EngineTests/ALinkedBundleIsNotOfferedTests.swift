@@ -3,39 +3,16 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
-/// **A symlinked app bundle was listed as installed and weighed at zero.**
+/// A symlinked app bundle is not offered for removal. It lists like a bundle,
+/// reads the target's `Info.plist` and weighs zero, and whether `trashItem`
+/// moves the link or the target, both are defects
+/// (Architecture/TheGates.md § The gates; `WorkspaceAppLister.leadsElsewhere`).
 ///
-/// Measured in a scratch directory: a link named `Linked.app` pointing at a real
-/// bundle is returned by `contentsOfDirectory`, has `pathExtension == "app"`, and
-/// `PropertyListFile.infoPlist(ofBundleAt:)` reads the *target's* `Info.plist` through it — so
-/// the row carried the real bundle id and the real name, while `FileWeight`
-/// answered **0** bytes for it. `RemovableScope.isRemovable` allows it, so a
-/// tick, a review and a press all went through.
-///
-/// What `FileManager.trashItem` does with such a leaf — move the link or move the
-/// target — is deliberately unmeasured here: it needs a real write to somebody's
-/// Trash, and **both answers are defects**. If it moves the link, «The app itself
-/// — always removed» is false and the app is still installed with its containers
-/// gone; if it moves the target, (ARCHITECTURE.md § The gates)'s "leaves the leaf
-/// alone" is false. So the offer is withdrawn instead: an entry
-/// whose path does not lead to itself is not listed among the apps this module
-/// offers to remove.
-///
-/// Who has one: anyone whose apps arrive as links into `/Applications` or
-/// `~/Applications` — nix-darwin, some cask layouts, hand-made links. **And every
-/// Mac**: measured against the real `/Applications` on this one, 39 bundles of
-/// which exactly one is a link — `Safari.app`, into
-/// `/System/Volumes/Preboot/Cryptexes/App/…`. That is why the rule below has an
-/// exception rather than being "no links": a `com.apple.` row carries no checkbox
-/// and `setChecked` refuses the id, so it is not an offer to remove anything, and
-/// withdrawing it would only take a visible row away from a person who can see
-/// the app in Finder. Both halves are guarded here.
+/// A `com.apple.` link (`Safari.app` into the Cryptexes) stays listed: its row
+/// is no offer. Both halves are guarded here.
 final class ALinkedBundleIsNotOfferedTests: XCTestCase {
-    /// Resolved, so the *entries* under it are canonical and the link below is the
-    /// only thing that is not. `$TMPDIR` is `/var/folders/…`, and `/var` is itself
-    /// a link to `/private/var` — without this every entry in the scratch tree
-    /// answers "not canonical" and the test would pass for a reason that has
-    /// nothing to do with the subject.
+    /// Resolved, so the link below is the only thing not canonical: `/var` is a
+    /// link to `/private/var`, and every entry would otherwise answer "not canonical".
     private var home: URL!
     private var apps: URL!
 
@@ -66,15 +43,12 @@ final class ALinkedBundleIsNotOfferedTests: XCTestCase {
         WorkspaceAppLister(home: home, fs: FMFileSystem())
     }
 
-    /// `WorkspaceAppLister` reads `/Applications` as well as the home it is given,
-    /// so every assertion here is about this test's own tree. The owner's machine
-    /// is read and left alone; it is not the subject.
+    /// `WorkspaceAppLister` reads `/Applications` too, so every assertion is about
+    /// this test's own tree.
     ///
-    /// Matched on the scratch folder's own name and not on its path, because the
-    /// two spellings of it are not the same string: `contentsOfDirectory` hands
-    /// back `/private/var/folders/…` for a directory asked for as `/var/folders/…`.
-    /// A prefix test filtered every row of this tree out, and the claim below —
-    /// that a link is *not* listed — then passed with the whole fixture invisible.
+    /// Matched on the scratch folder's name, not its path: `contentsOfDirectory`
+    /// answers `/private/var/…` for `/var/…`, and a prefix test would hide the
+    /// whole fixture and pass the absence below vacuously.
     private func listedHere() -> [InstalledApp] {
         let mine = home.lastPathComponent
         return lister().installedApps().filter { $0.path.contains("/\(mine)/") }
@@ -82,9 +56,9 @@ final class ALinkedBundleIsNotOfferedTests: XCTestCase {
 
     // MARK: -
 
-    /// The precondition, and the survey's own measurement: the link really is
-    /// listed, really does carry the target's identity, and really weighs nothing.
-    /// An assertion about an absence passes when the subject never happened.
+    /// The precondition: the link really is listed, carries the target's identity
+    /// and weighs nothing. An assertion about an absence passes when the subject
+    /// never happened.
     func test_the_link_is_there_and_weighs_nothing() throws {
         let target = try makeBundle(at: home.appendingPathComponent("Store/Target.app"),
                                     bundleID: "com.acme.target", name: "Target")
@@ -104,12 +78,9 @@ final class ALinkedBundleIsNotOfferedTests: XCTestCase {
                              "the target weighs nothing either — the fixture is wrong")
     }
 
-    /// **The claim**, with its own control beside it: the link is not among the
-    /// apps offered for removal, and the real bundle in the same folder still is.
-    ///
-    /// One test rather than two, because the control is what makes the claim mean
-    /// anything — an empty answer proves nothing about the link if the fixture was
-    /// never seen at all.
+    /// The claim, with its control: the link is not offered, and the real bundle
+    /// in the same folder still is. One test, since an empty answer proves
+    /// nothing if the fixture was never seen.
     func test_a_linked_bundle_is_not_offered_and_a_real_one_beside_it_is() throws {
         try makeBundle(at: apps.appendingPathComponent("Real.app"),
                        bundleID: "com.acme.real", name: "Real")
@@ -146,10 +117,8 @@ final class ALinkedBundleIsNotOfferedTests: XCTestCase {
                        "and the line must not name the software: \(logged)")
     }
 
-    /// **The exception, and it is Apple's own.** `/Applications/Safari.app` is a
-    /// link on this Mac, and its row is not an offer: no checkbox is drawn and the
-    /// id is refused at the model. So it stays listed, where the person can see
-    /// it, and the rule above is about rows that offer a removal.
+    /// The exception: a `com.apple.` link's row is not an offer (no checkbox, the
+    /// id refused at the model), so it stays listed.
     func test_a_linked_system_bundle_is_still_listed() throws {
         let target = try makeBundle(at: home.appendingPathComponent("Cryptex/Safari.app"),
                                     bundleID: "com.apple.Safari", name: "Safari")
@@ -166,12 +135,9 @@ final class ALinkedBundleIsNotOfferedTests: XCTestCase {
                       "and the reason it may stay is that nothing can tick it")
     }
 
-    /// **A different question, deliberately answered differently.**
-    /// `installedBundleIDs()` is not an offer to remove anything — it is the
-    /// evidence `LeftoverOwnership` and `OrphanDetector` weigh when they ask
-    /// "is an app with this id still installed?". An app reached through a link
-    /// is installed, so its id stays: dropping it would make every file named
-    /// after it an orphan and offer *those* for removal instead.
+    /// `installedBundleIDs()` is not an offer but the evidence `LeftoverOwnership`
+    /// and `OrphanDetector` weigh. An app reached through a link is installed, so
+    /// its id stays, or every file named after it would become an orphan.
     func test_the_id_behind_a_link_still_counts_as_installed() throws {
         let target = try makeBundle(at: home.appendingPathComponent("Store/Target.app"),
                                     bundleID: "com.acme.target", name: "Target")

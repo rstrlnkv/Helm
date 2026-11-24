@@ -4,27 +4,14 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
-/// **The Trash-offer switch said on with no channel from either thing that can
-/// make that false.**
-///
-/// `FolderWatcher.start` discarded `FSEventStreamStart`'s return and returned
-/// silently when `FSEventStreamCreate` answered nil, so «trash offer switched on»
-/// reached the log whether or not a stream existed. And the feature needs Full
-/// Disk Access to see anything at all — which every local install takes away
-/// again — a question the engine never asked: only `trashedApps()` found out, only
-/// when a sweep ran, and it folded the refusal into «the Trash holds no apps».
-///
-/// So the port answers `[TrashedApp]?` now, nil for a read it was not allowed to
-/// make, and the engine keeps the two live facts behind one value the page can
-/// draw. What the switch's own row *says* in the two blind states is a sentence
-/// this file does not invent: the state is wired and the wording is the
-/// localizer's.
-/// Past defect: fix commit f710c8f9.
+/// The Trash-offer switch says what it is doing, from the two facts that can
+/// make «on» false: a stream that did not start, and a Trash Helm may not read
+/// (the port's `nil`, not «no apps»). The wording of the blind states is the
+/// localizer's; this guards the state.
 final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
 
-    /// A Trash that can refuse to be read, and change its mind — the grant is
-    /// taken away by an install and given back in System Settings, both while the
-    /// app is running. A fake with a fixed answer could not say either.
+    /// A Trash that can refuse to be read and change its mind, as the grant does
+    /// while the app runs.
     private final class TrashOfMine: AppLister, @unchecked Sendable {
         private let lock = NSLock()
         private var readable: Bool
@@ -67,8 +54,7 @@ final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
     // MARK: - The reading itself
 
     /// Off wins; a stream that never started is the stronger fact; and an unknown
-    /// is not a failure — a person who has just pressed the switch must not be
-    /// shown a permission note because an answer has not come back yet.
+    /// is not a failure, or a fresh press would show a permission note.
     func test_the_state_is_read_from_the_three_things_that_decide_it() {
         XCTAssertEqual(TrashWatch.state(on: false, watching: true, trashReadable: true), .off)
         XCTAssertEqual(TrashWatch.state(on: false, watching: false, trashReadable: false), .off,
@@ -128,9 +114,8 @@ final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
         XCTAssertEqual(engine.trashWatch, .off)
     }
 
-    /// **The reverse channel.** The grant is taken away by the next install and
-    /// given back in System Settings, both while the app is running, so the state
-    /// is a reading and not a memory: the sweep is where the port says so.
+    /// The reverse channel: the grant changes while the app runs, so the state is
+    /// a reading, not a memory, and the sweep is where the port says so.
     func test_a_grant_lost_after_the_switch_went_on_is_noticed_by_the_sweep() async {
         let apps = TrashOfMine(readable: true)
         let engine = engine(apps)
@@ -144,9 +129,7 @@ final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
                        "the switch went on saying on after the grant it depends on was gone")
     }
 
-    /// And back: nothing here is sticky, or the note would outlive the grant being
-    /// restored — which is the half of this family that keeps a page green with
-    /// nobody listening.
+    /// And back: nothing is sticky, or the note would outlive the restored grant.
     func test_a_grant_given_back_is_noticed_too() async {
         let apps = TrashOfMine(readable: false)
         let engine = engine(apps)
@@ -160,9 +143,8 @@ final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
                        "the person restored the grant and the page never noticed")
     }
 
-    /// A sweep that could not read the Trash says so instead of answering «there
-    /// is nothing in it», which is the same sentence a working sweep of an empty
-    /// Trash gives.
+    /// A sweep that could not read the Trash says so, rather than what a sweep of
+    /// an empty Trash says.
     func test_a_sweep_that_could_not_read_the_trash_says_so() async {
         let apps = TrashOfMine(readable: false)
         let engine = engine(apps)
@@ -182,13 +164,11 @@ final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
 
     /// The real lister's two silences, which are not one silence.
     ///
-    /// A Trash that is **not there** is empty: a fresh account has none until
-    /// something is deleted, and reporting that as a missing permission would put a
-    /// note on the page of somebody who has every grant. A Trash that is there and
-    /// **refused** is nil, which is the Full Disk Access case — every install
-    /// (ARCHITECTURE.md § The gates: a nil report is never an empty one). Reached here with a mode-000 directory rather than by revoking
-    /// anything on this machine: `contentsOfDirectory` answers
-    /// `NSFileReadNoPermissionError` either way.
+    /// A Trash that is not there (a fresh account) is empty, not a missing
+    /// permission. One that is there and refused is nil, the Full Disk Access case
+    /// (Architecture/TheGates.md § The gates: a nil report is never an empty one).
+    /// Reached with a mode-000 directory rather than by revoking a grant:
+    /// `contentsOfDirectory` answers `NSFileReadNoPermissionError` either way.
     func test_a_missing_trash_is_empty_and_a_refused_one_is_not_an_answer() throws {
         let lister = WorkspaceAppLister(home: home, fs: FMFileSystem())
         XCTAssertEqual(lister.trashedApps()?.count, 0,

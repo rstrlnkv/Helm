@@ -12,22 +12,18 @@ import XCTest
 /// has handed out and not been given back — the number an autoreleased `Data`
 /// moves and a resident-page reading need not.
 ///
-/// What it asserts: on a tree of 200 settings files, 200 launch agents and 200 plug-in
-/// bundles, the bytes in use per item after the scan stay under a ceiling that a scan
-/// without the pools exceeds. The figures the ceiling was chosen from (about 1 800 an
-/// item with the pools, about 10 200 without) were taken with the reader this module
-/// used before `PropertyListFile`, and are not remeasured for it here. The mutation that
-/// proves the guard is the three `autoreleasepool` calls in `LeftoversScanner` replaced
-/// by a closure that only calls its body, read back in the file before the run and
-/// restored from a copy after it.
+/// What it asserts: on a tree of 200 settings files, 200 launch agents and 200
+/// plug-in bundles, the bytes in use per item after the scan stay under a ceiling
+/// that a scan without the pools exceeds. The mutation that proves the guard is
+/// the three `autoreleasepool` calls in `LeftoversScanner` replaced by a closure
+/// that only calls its body, read back in the file before the run and restored
+/// from a copy after it.
 ///
 /// **The home is resolved before the scanner is given it.** `$TMPDIR` is
 /// `/var/folders/…`, `/var` is a symbolic link to `/private/var`, and
 /// `LeftoversScanner.isItsOwnPlace` refuses a source that is not the directory it
 /// names — so a scratch home handed over unresolved makes every source skipped
 /// and the scan measures nothing while looking exactly like a scan.
-///
-/// Past defect: fixed in `5603872d`.
 final class AScanKeepsWhatItFoundTests: XCTestCase {
 
     /// Enough files that the per-item figure is about the loop rather than about

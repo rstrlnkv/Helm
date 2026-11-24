@@ -4,9 +4,9 @@ import SwiftUI
 
 /// The toolbar item's view: the control's width (its segments and the track's inset either side) and `lift` more than
 /// its 36 pt in height, the control at the bottom (see `SettingsToolbar`). The control is the `contentView` of the
-/// strip's own glass track, and both are fresh each time the strip enters a window (a glass that re-entered drew
-/// empty; a control that re-entered drew a divider between unselected segments every second entry). The attention dots and the accessibility elements lie over the segments' places and take no
-/// press.
+/// strip's own glass track, and both are fresh each time the strip enters a window (a glass that re-enters draws
+/// empty; a control that re-enters draws a divider between unselected segments every second entry). The attention
+/// dots and the accessibility elements lie over the segments' places and take no press.
 @MainActor final class TabsStrip: NSView {
     var onPick: (Int) -> Void = { _ in }
 
@@ -38,7 +38,7 @@ import SwiftUI
         let control = NSSegmentedControl()
         control.trackingMode = .selectOne
         control.controlSize = .extraLarge
-        // A reused control drew a divider between unselected segments every second entry under every style; with the default style even a first entry drew one at times, with `.capsule` no fresh control did.
+        // `.capsule`: with the default style even a fresh control draws a divider between unselected segments at times.
         control.segmentStyle = .capsule
         control.target = self
         control.action = #selector(picked(_:))

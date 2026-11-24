@@ -10,8 +10,7 @@ import HelmTestSupport
 /// `ModuleHost.shared` is a singleton, so a bootstrap in any test builds every
 /// enabled module's *real* engine: Layout's `CGKeyTap` sits on the main run
 /// loop with the accessibility grant and feeds every real keystroke into the
-/// engine, which spell-checks words — visible as endless contactsd/CoreData
-/// 4097 retry spam through the remainder of `swift test`. The teardowns in
+/// engine for the rest of `swift test`. The teardowns in
 /// `BootstrapDoesNotOrphanEnginesTests` and
 /// `TheHostPutsAModulesOwnItemInTheMenuBarTests` call `shutdown()` to prevent
 /// that; this test is what makes those calls a guard rather than a gesture.
@@ -19,7 +18,8 @@ import HelmTestSupport
 /// The assertion is that the engines are **gone**, not that `live` is empty —
 /// `live` emptied is `shutdown()` reading back its own write. An engine still alive
 /// after the host let go of it is being held by something it should have cancelled
-/// (`Task { [weak self] }` holds strongly once the body runs, ARCHITECTURE.md § State that outlives a page and ends with its module), and whatever it registered is still
+/// (`Task { [weak self] }` holds strongly once the body runs,
+/// Architecture/StateAndLifetime.md § State that outlives a page and ends with its module), and whatever it registered is still
 /// registered. Freed is the state no leftover can survive: the tap's own `deinit`
 /// is unreachable while the engine lives, and certain once it does not.
 @MainActor

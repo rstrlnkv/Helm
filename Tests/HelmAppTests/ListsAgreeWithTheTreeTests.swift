@@ -7,24 +7,16 @@ import XCTest
 
 /// The hand-written lists have to agree with what they name.
 ///
-/// **`HelmApp` can carry a test target after all.** Every plan written about
-/// this assumed it could not — it is an `executableTarget` with a `main.swift`,
-/// which historically cannot be imported for testing — so four defects lived in
-/// `ScanCoordinator` unpinnable, and the fix was written as "move the decisions
-/// out". Moving them out was right for its own reasons and this target is what
-/// covers the rest: `.testTarget(dependencies: ["HelmApp"])`, `@testable import`,
-/// and the registry answers. Nothing needed to move for these.
-///
-/// **Every engine builds in 55 ms with an in-memory store**, measured over the nine there were
-/// before this file was written, so a test may hold the real registry
-/// rather than a copy of it. `activate()` is never called: building is what these
-/// checks need, and starting the modules' watchers inside a test is not.
+/// `HelmApp` is an `executableTarget`, and `@testable import` reaches it all
+/// the same, so these read the real registry rather than a copy of it. Every
+/// engine builds fast with an in-memory store. `activate()` is never called:
+/// building is what these checks need, and starting the modules' watchers
+/// inside a test is not.
 final class ListsAgreeWithTheTreeTests: XCTestCase {
 
     @MainActor private func engines() -> [(id: String, engine: any ModuleEngine)] {
         // In-memory, never `UserDefaults`: a test that builds every engine
-        // against the real store leaves every module's settings behind, and the
-        // house rule about harnesses was written after exactly that.
+        // against the real store leaves every module's settings behind.
         let backing = InMemoryKeyValueStore()
         return ModuleRegistry.all.map { descriptor in
             (descriptor.idRaw,
@@ -58,11 +50,11 @@ final class ListsAgreeWithTheTreeTests: XCTestCase {
     /// **This holds the engine's half of a silent, expensive failure.** A module
     /// in the list whose descriptor does not override the scan falls to the
     /// default, which answers `nil`; the caller reads `nil` and logs "no answer".
-    /// That the descriptor passes the call on is held by `testTheDescriptorPassesTheScanOn`
-    /// in each scanner's stopped-model class; `testEveryScannableModuleHasAPassOnTest`
-    /// holds that the test is there.
-    /// The coordinator then wakes every minute, tries again once per
-    /// `ScanSchedule.retryInterval`, up to the day's runs, and nothing anywhere says the module never had a scan to run.
+    /// The coordinator then retries once per `ScanSchedule.retryInterval`, up
+    /// to the day's runs, and nothing says the module never had a scan to run.
+    /// That the descriptor passes the call on is held by
+    /// `testTheDescriptorPassesTheScanOn` in each scanner's stopped-model
+    /// class, and `testEveryScannableModuleHasAPassOnTest` holds that it is there.
     @MainActor func testEveryScannableModuleHasAnEngineThatCanScan() {
         let scannable = Set(ScanRunner.scannableModules)
         for (id, engine) in engines() where scannable.contains(id) {

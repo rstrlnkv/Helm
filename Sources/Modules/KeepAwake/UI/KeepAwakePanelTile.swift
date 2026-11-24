@@ -19,12 +19,9 @@ struct KeepAwakePanelTile: View {
     /// What is *drawn*, as against what the engine says. Both rows below read
     /// these and neither reads `vm` directly.
     ///
-    /// `.animation(_:value:)` carries a property of a view that stays; it
-    /// carries neither a transition nor a layout change. Measured in
-    /// `KeepAwakeHero`, whose comment has the table: the swap under
-    /// `.animation(_:value:)` is **one** distinct frame, the same swap written
-    /// inside `withAnimation` is eleven, so both animations in this file are
-    /// written inside `withAnimation`.
+    /// `.animation(_:value:)` carries neither a transition nor a layout change,
+    /// so both animations in this file are written inside `withAnimation`
+    /// (Architecture/DesignSystem.md § Motion).
     ///
     /// Seeded from the engine rather than from a constant: the first value is
     /// not a change, and a panel opened while a timer is already running must
@@ -72,22 +69,14 @@ struct KeepAwakePanelTile: View {
                 }
             }
             .padding(.top, HelmSpace.s4)
-            // Above the ⋯ block, never inside it. The whole point of this row
-            // is that nothing else on any screen says the rule has stopped
-            // working, so putting it behind a disclosure would leave it exactly
-            // as unfindable as the log line it replaces.
-            //
-            // The same accordion the block below uses. This is the panel — a
-            // card that changes size under the pointer with no motion is the
-            // defect the disclosure token was introduced to end.
+            // Above the ⋯ block, never inside it: nothing else on any screen
+            // says the rule has stopped working. The same accordion as below,
+            // so the card does not change size under the pointer with no motion.
             suppressedRow
                 .helmAccordion(open: shownSuppressed, height: $suppressedHeight)
-            // The accordion, and **available in both states**: the block is
-            // mounted whether or not a session is running, so the ⋯ button
-            // opens the same automation controls either way. Why there is no
-            // `.opacity` is on the modifier (`HelmAccordion.swift`): a fade here
-            // snaps the «Automation» heading's colour when its layer is dropped,
-            // and a compositing group washes out the divider and switches.
+            // The accordion, mounted whether or not a session is running, so
+            // the ⋯ button opens the same automation controls either way. Why
+            // there is no `.opacity` is on the modifier (`HelmAccordion.swift`).
             moreControls
                 .helmAccordion(open: showMore, height: $moreHeight)
         }
@@ -108,12 +97,10 @@ struct KeepAwakePanelTile: View {
     // MARK: - Header
 
     private var header: some View {
-        // The shared widget header, not a fourth arrangement of a plate and a
-        // name: five widgets in one panel, one heading.
-        // The token, not `.orange`. The 1×1 widget draws the module's own
-        // #DE7A21, and the system colour would repaint the plate in place when
-        // a tile is resized between the two — the very defect
-        // `HelmWidgetHeader` exists to end.
+        // The shared widget header: five widgets in one panel, one heading.
+        // The token, not `.orange`: the 1×1 widget draws the module's own
+        // #DE7A21, and the system colour would repaint the plate when a tile
+        // is resized between the two.
         HelmWidgetHeader(symbol: "moon.zzz.fill", tint: KeepAwakeDescriptor.tint.colour,
                          name: KAStr.moduleName,
                          subtitle: activeSubtitle, active: vm.isActive) {
@@ -124,12 +111,9 @@ struct KeepAwakePanelTile: View {
                 // Orange switch = an automation rule (display/power/app) is
                 // holding the session, so flipping it off may not stick.
                 .tint(autoDriven ? KeepAwakeDescriptor.tint.colour : nil)
-                // Live but dead while the battery guard vetoes: the engine
-                // refuses the session instantly and the switch springs back, so
-                // the one control in the menu bar that starts a session would be
-                // a control that visibly does nothing. The notice below it is on
-                // screen saying why, which is what makes disabling honest rather
-                // than mute.
+                // Disabled while the battery guard vetoes: the engine refuses
+                // the session at once and the switch would spring back. The
+                // notice below says why.
                 .disabled(vm.batteryStopped)
                 .accessibilityLabel(KAStr.moduleName)
         }
@@ -148,12 +132,9 @@ struct KeepAwakePanelTile: View {
         if !vm.activeConditions.isEmpty {
             parts.append(vm.activeConditions.map(KAStr.condition).sorted().joined(separator: ", "))
         }
-        // **What is true of the machine, not what is true of the lid.** «Lid
-        // closed — staying awake» in a list of what is holding the Mac would be
-        // wrong — the lid is not holding anything: sleep is off for the whole Mac,
-        // through a rule that outlives this process, and the lid being closed is
-        // merely the reason somebody asked for that. The settings row says the
-        // same sentence, with the way back out of it after it.
+        // What is true of the machine, not of the lid: sleep is off for the
+        // whole Mac, through a rule that outlives this process. The settings
+        // row says the same sentence, with the way back out after it.
         if vm.clamshellActive { parts.append(KAStr.sleepIsOffNow) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
@@ -165,20 +146,17 @@ struct KeepAwakePanelTile: View {
             presetPill(KAStr.duration(15, compact: true), 15)
             presetPill(KAStr.duration(60, compact: true), 60)
             presetPill(KAStr.duration(120, compact: true), 120)
-            // The glyph is the label a 320 pt row can take; the word is what
-            // it means, and what the settings page's own button says. Without
-            // this VoiceOver read the character.
+            // The glyph is the label a 320 pt row can take; VoiceOver gets the
+            // word the settings page's own button says, not the character.
             presetPill("∞", 0, spoken: KAStr.indefinite)
             morePill
         }
     }
 
-    /// Every one of these asks the engine for a session, and while the battery
-    /// guard vetoes, the engine refuses instantly — `releaseForBattery` is
-    /// reached before anything is held. Pressing one would be silence with a
-    /// banner beside it explaining a state the person has no reason to connect
-    /// to the press. Disabled, not hidden: a row of pills that came and went would take
-    /// the card's height with it, and the notice is the sentence.
+    /// Every one of these asks the engine for a session, which the battery veto
+    /// refuses at once (`releaseForBattery` is reached before anything is held).
+    /// Disabled, not hidden: pills that came and went would take the card's
+    /// height with them, and the notice is the sentence.
     private func presetPill(_ label: String, _ minutes: Int,
                             spoken: String? = nil) -> some View {
         Button {
@@ -199,12 +177,9 @@ struct KeepAwakePanelTile: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(HelmA11y.moreActions)
-        // Which of the two things this button does it has just done. The block
-        // below is hidden from the tree while collapsed, so without this the
-        // only feedback for pressing it would be silence.
-        // `HelmA11y`'s, not a second pair in this module: the panel and the
-        // settings row's ⓘ answer the same question, and the shared one is read
-        // out of macOS's own tables rather than translated (`HelmA11y.expanded`).
+        // Which of the two things this button does it has just done: the block
+        // below is hidden from the tree while collapsed. `HelmA11y`'s pair, so
+        // one state has one name across the app.
         .accessibilityValue(HelmA11y.expanded(showMore))
     }
 
@@ -223,21 +198,14 @@ struct KeepAwakePanelTile: View {
     /// A rule applies, and the Mac is asleep anyway.
     ///
     /// Stopping a session while a rule still holds silences that rule until it
-    /// fires again — and a timer that ends automation does the same when it
-    /// runs out. Both are correct and neither is visible: the switch reads off,
-    /// the rule reads on, and the Mac sleeps with the app that should be
-    /// holding it still on screen. The settings page has a line for it; this
-    /// is the panel, which is where somebody actually looks when the Mac
-    /// slept and they did not expect it to.
+    /// fires again, and a timer that ends automation does the same when it runs
+    /// out. Neither is otherwise visible: the switch reads off, the rule reads
+    /// on, and the Mac sleeps with the rule's app on screen. The panel is where
+    /// somebody looks when the Mac slept unexpectedly.
     ///
     /// It ends by itself when the condition drops, so there is nothing to
-    /// dismiss — only a way to say «no, keep going».
-    /// The same shape the settings page draws, from the same component.
-    ///
-    /// Through `HelmBanner`, not a hand-built `HStack` of a mark, `.caption`
-    /// text and a button: one statement in two appearances, decided by which
-    /// window you happened to open. The wrapping and the literal colours it
-    /// needs are in the component.
+    /// dismiss, only a way to say «no, keep going». The same component the
+    /// settings page draws, so one statement has one appearance.
     @ViewBuilder private var suppressedRow: some View {
         KeepAwakeNoticeBanner(notice: vm.notice, batteryFloor: batteryFloor, compact: true,
                               resume: { vm.resumeAutomation() })
@@ -249,13 +217,11 @@ struct KeepAwakePanelTile: View {
     /// (the accordion: the card grows by the block's measured height, clipped,
     /// no fade).
     private var moreControls: some View {
-        // The top gap lives INSIDE the measured block: with stack spacing at 0
-        // it must not exist while collapsed, and it should animate in with the
-        // rest of the block.
-        // Order follows intent: the custom timer continues the preset row above
-        // it (same action, arbitrary length), then the automation rules — which
-        // are standing settings, not actions — sit under their own heading so
-        // their labels read as conditions.
+        // The top gap lives inside the measured block, so it does not exist
+        // while collapsed and animates in with the rest.
+        // The custom timer continues the preset row above it; the automation
+        // rules are standing settings, not actions, so they sit under their own
+        // heading and their labels read as conditions.
         VStack(alignment: .leading, spacing: HelmSpace.s4) {
             Divider().padding(.top, HelmSpace.s4)
 
@@ -293,22 +259,16 @@ struct KeepAwakePanelTile: View {
                 // `smallPrint`, the settings scale's fine print, which is also
                 // the panel card's group heading.
                 .font(HelmText.smallPrint)
-                // A literal colour, not `.secondary`. Hierarchical styles are
-                // resolved against the rendering context, and this block gets
-                // its own layer while its height animates (that is what
-                // `.clipped()` needs). When the layer goes away at the end of
-                // the animation the style resolves again — visibly, as a blink.
-                // primary-with-alpha tracks light and dark on its own and does
-                // not depend on the layer.
+                // A literal colour, not `.secondary`: this block gets its own
+                // layer while its height animates, and a hierarchical style
+                // resolves again when the layer goes, as a blink.
                 .foregroundStyle(HelmText.quiet)
                 .padding(.top, HelmSpace.s1)
 
-            // Hidden on a Mac with no lid, the way the settings
-            // page hides the same rule and the engine refuses it: every display a
-            // mini or a Studio has is external, so the rule would mean «never
-            // sleep». The panel is a writer too: offering the switch here while
-            // the page hides its row would let a desktop be put into a state
-            // whose only control is on the screen that does not draw it.
+            // Hidden on a Mac with no lid, as on the settings page and in the
+            // engine (Architecture/KeepAwake.md § Rules read from the machine).
+            // The panel is a writer too, so offering it here would let a
+            // desktop reach a state no page draws a control for.
             //
             // The row's visible Text is a sibling, not the toggle's label, so
             // the title goes into the Toggle itself and labelsHidden keeps it
@@ -361,17 +321,15 @@ struct KeepAwakePanelTile: View {
     /// and finally 30.
     ///
     /// The remembered value is capped here, where it is read, to what the tile
-    /// itself can produce (`TimerPolicy.longestSessionMinutes`), so a hand-edited `Int.max` in
-    /// the plist reaches the engine as that; `startSession` clamps again before
-    /// its `minutes * 60`. It goes straight into `vm.start(minutes:)`. The key is the tile's own and the engine never reads it, which is why it
-    /// stays out of the settings type; that is about who reads it, not about
-    /// whether the file can be trusted.
+    /// itself can produce (`TimerPolicy.longestSessionMinutes`), so a hand-edited
+    /// `Int.max` in the plist reaches `vm.start(minutes:)` as that;
+    /// `startSession` clamps again before its `minutes * 60`. The key stays out
+    /// of the settings type because only the tile reads it, not because the
+    /// file can be trusted.
     ///
-    /// The ceiling is the one the page and `startSession` use: the entry below
-    /// caps at the same number, so nothing that can be typed here is above it.
     /// The module's default arrives already clamped by `KeepAwakeSettings` and
-    /// is taken as it comes — narrowing it again here would be the tile
-    /// overruling a duration the module considers legal.
+    /// is taken as it comes, so the tile does not overrule a duration the
+    /// module considers legal.
     static func openingMinutes(_ store: NamespacedStore) -> Int {
         let remembered = store.int(panelTimerMinutes, default: 0)
         let fallback = KeepAwakeSettings(store: store).defaultDurationMinutes
@@ -418,16 +376,14 @@ struct KeepAwakePanelTile: View {
                     .layoutPriority(1)
                     .contentTransition(.numericText(countsDown: true))
                     .animation(HelmMotion.interface, value: remaining)
-                    // Once a second, this row is rebuilt. Without the trait
-                    // VoiceOver re-speaks the figure every time and interrupts
-                    // itself doing it, so the panel cannot be used while a
-                    // timer runs — and the panel is where the timer lives.
+                    // Rebuilt once a second: without the trait VoiceOver
+                    // re-speaks the figure every time and interrupts itself.
                     .accessibilityLabel(KAStr.a11yRemaining(
                         TimerProgress.label(remaining: remaining)))
                     .accessibilityAddTraits(.updatesFrequently)
                 // No minimum: every sibling is rigid and the figure is the one
-                // thing that can give, so the default gap here truncated
-                // «23:59:56» beside the longer Russian and German captions.
+                // thing that can give, so a default gap truncates «23:59:56»
+                // beside the longer Russian and German captions.
                 Spacer(minLength: 0)
                 Button("+" + KAStr.duration(Self.extraMinutes, compact: true)) {
                     vm.start(minutes: TimerPolicy.extendedMinutes(
@@ -438,19 +394,17 @@ struct KeepAwakePanelTile: View {
                 // Ends the timed session; the header toggle is the all-or-nothing
                 // switch, this stops just the countdown.
                 //
-                // **The word never changes here, and it does not need to.** This
-                // button is drawn only while a countdown is running, and a
-                // session running is precisely what rules out `StopPress`'s
-                // second step — so this press is `.stopEverything` or
-                // `.stopSessionOnly`, and «Стоп» is the word for both. The page
-                // spells its button from `KAStr.stopWord` because its Stop
-                // outlives the countdown; this one does not.
+                // The word never changes here: the button is drawn only while a
+                // countdown runs, which rules out `StopPress`'s second step, and
+                // «Stop» is the word for both remaining presses. The page spells
+                // its button from `KAStr.stopWord` because its Stop outlives the
+                // countdown.
                 Button(HelmWord.stop) { vm.stopSession() }
                     .controlSize(.small)
                     .fixedSize()
-                // The automation controls must stay reachable while a timer runs.
+                // The automation controls stay reachable while a timer runs.
                 // A fixed width, not fixedSize(): the pill stretches inside the
-                // preset row, so left to itself here it shrank to the glyph.
+                // preset row, and left to itself here it shrinks to the glyph.
                 morePill.frame(width: 46)
             }
         }

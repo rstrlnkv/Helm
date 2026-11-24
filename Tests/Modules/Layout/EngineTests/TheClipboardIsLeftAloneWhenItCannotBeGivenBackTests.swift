@@ -4,8 +4,8 @@ import Carbon.HIToolbox
 
 /// A person's clipboard is not borrowed when Helm cannot put it back.
 ///
-/// Defect class kept: a clipboard destroyed (data overwritten; REQUIRED in
-/// ARCHITECTURE.md § What proves what). `AXSelection`'s paste route
+/// Defect class kept: a clipboard destroyed (data overwritten; required by
+/// Architecture/TestsAndMeasurement.md § What proves what). `AXSelection`'s paste route
 /// saves a string and restores a string, so a clipboard holding RTF, an image
 /// or a promised file comes back as plain text or nothing. `PasteboardSafety`
 /// decides; this file guards that the route asks it before the first write or

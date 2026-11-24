@@ -36,8 +36,8 @@ final class TheHotkeyNamesAreOneDeclarationTests: XCTestCase {
     }
 
     /// **The host registers whatever the descriptors declare, so the declaration is
-    /// the one place the stored keys can drift.** The literals below are what the
-    /// host registered before descriptors declared them: a slot is what
+    /// the one place the stored keys can drift.** The literals below are the
+    /// stored spellings: a slot is what
     /// `HotkeyStatus` and the page ask about, a prefix is where the recorded
     /// chord lives, a fallback is what works before anybody recorded anything.
     /// For each, a chord recorded under exactly that prefix is held while the

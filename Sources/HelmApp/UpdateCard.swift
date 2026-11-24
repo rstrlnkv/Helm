@@ -2,16 +2,14 @@ import Foundation
 
 /// Which arm of the About page's update card is drawn.
 ///
-/// **The order these facts are read in was the defect.** The card asked about
-/// an offer before it asked about the note beside it, so the sentence written
-/// for «this release published no digest — install it yourself» could not be
-/// reached: the offer was still there. Written as a chain of `else if`s inside a
-/// `@ViewBuilder`, that order was a thing to be read rather than a thing to be
-/// asked about, and reading it is what shipped the unreachable branch.
+/// **The order these facts are read in decides what can be reached**: an
+/// offer is asked about before the note beside it, so a note under a standing
+/// offer is never drawn. A chain of `else if`s inside a `@ViewBuilder` can only
+/// be read; a value can be asked about and tested.
 ///
-/// So the decision is a value now, and the view switches over it exhaustively —
-/// no `default`, so a state the updater learns to write is a build error here
-/// rather than a card that draws the wrong thing.
+/// The view switches over it exhaustively, with no `default`, so a state the
+/// updater learns to write is a build error rather than a card that draws the
+/// wrong thing.
 enum UpdateCard: Equatable {
     case downloading
     case installing
@@ -47,9 +45,8 @@ enum UpdateCard: Equatable {
         if let inFlight = drawnFor(installState) { return inFlight }
         // A check in flight is newer than whatever it is about to replace.
         if checking { return .checking }
-        // An offer outranks the notes below it, which is right and is exactly
-        // why a refused install has to take the offer away rather than write a
-        // note underneath one.
+        // An offer outranks the notes below it, which is why a refused install
+        // takes the offer away rather than writing a note underneath one.
         if hasRelease { return .ready }
         switch note {
         case .manualInstall: return .manualInstall
@@ -57,8 +54,8 @@ enum UpdateCard: Equatable {
         case .checkFailed: return .checkFailed
         case .upToDate, nil: break
         }
-        // Before "up to date", which this state used to be read as: the check
-        // reports both, and being ahead is the more specific answer.
+        // Before "up to date": the check reports both, and being ahead is the
+        // more specific answer.
         if hasAhead { return .ahead }
         if note == .upToDate { return .upToDate }
         return hasUnfinishedUpdate ? .unfinishedUpdate : .lastChecked

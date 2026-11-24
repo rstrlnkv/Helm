@@ -3,12 +3,10 @@ import XCTest
 
 /// What an unattended walk must not descend into, wherever it meets it.
 ///
-/// The root gate (`ScanRoot.resolve`) cannot answer this: on 2026-08-03 a
-/// background scan of a perfectly legitimate root met
-/// `~/Pictures/Photos Library.photoslibrary` several levels down, macOS raised a
-/// consent dialog, and it sat there until somebody came back to an empty desk
-/// and a question with no context. Every filename inside would have gone into a
-/// 0600 journal had they said yes.
+/// The root gate (`ScanRoot.resolve`) cannot answer this: a background scan of
+/// a legitimate root can meet `~/Pictures/Photos Library.photoslibrary` levels
+/// down, and macOS raises a consent dialog in front of an empty desk; a yes
+/// would put every filename inside into a journal.
 final class ScanDescentTests: XCTestCase {
 
     private var home: String { FileManager.default.homeDirectoryForCurrentUser.path }

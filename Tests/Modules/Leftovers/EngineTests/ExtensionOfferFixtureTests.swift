@@ -3,20 +3,10 @@ import XCTest
 import HelmRuntime
 @testable import Module_Leftovers_Engine
 
-/// `LeftoversScanTests.testExtensionsOfMissingAppsAreOfferedUnlessStillActive`
-/// built its extension with `FakeExtensions(ids: ["com.gone.vendor.app.ext"])` —
-/// the name that fixture had when this was written — and then asserted that
-/// nothing removable came back.
-///
-/// Nothing removable came back because nothing came back. `ids` is not the
-/// field `installedExtensions()` returns — the scan is handed an empty list, so
-/// the assertion is about a list with no rows in it, and it would hold just the
-/// same if every extension on the machine were offered for deletion in a batch.
-///
-/// This is a known shape: a parameter varied between
-/// fixtures that the code under test never reads.
-///
-/// Past defect: fixed in `51247cad`.
+/// An assertion that nothing removable comes back holds just as well for a
+/// list with no rows in it. A fixture that sets a field `installedExtensions()`
+/// does not return hands the scan an empty list, and the assertion would hold
+/// if every extension on the machine were offered for deletion.
 final class ExtensionOfferFixtureTests: XCTestCase {
 
     private let home = URL(fileURLWithPath: "/Users/x")
@@ -46,9 +36,7 @@ final class ExtensionOfferFixtureTests: XCTestCase {
     /// What the rule actually is, over a list that contains the extension:
     /// listed, called an orphan because its host is gone, and never offered —
     /// Helm cannot remove an extension by moving a file, and SIP would stop it
-    /// if it tried. `LeftoversScanTests.testExtensionsAreNeverSelectable` says
-    /// the same thing about the same items, which is why the "…AreOffered…"
-    /// name above it should never have been able to pass.
+    /// if it tried (`LeftoversScanTests.testExtensionsAreNeverSelectable`).
     func testAnExtensionWhoseHostIsGoneIsListedOrphanedAndStillNotOffered() throws {
         let items = scan(LeftoversFakeLoaded(installed: [info]))
         let extensionItem = try XCTUnwrap(items.first { $0.kind == .systemExtension })

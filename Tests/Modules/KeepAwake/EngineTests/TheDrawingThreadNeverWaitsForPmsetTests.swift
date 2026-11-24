@@ -17,20 +17,14 @@ import HelmRuntime
 ///   started per press of Return; while eight of those are out, the ninth
 ///   caller waits on the semaphore before it even spawns.
 ///
-/// And every KeepAwake caller of that port is the thread that draws.
-/// `activate()` is the host's module enable, at launch; `recompute()` runs from
-/// the display, power and application observers, all of which deliver on main;
-/// the model's calls into the engine are made on the main actor. So a Mac
-/// whose Homebrew page is busy can have its main thread parked inside
-/// `ClamshellCoordinator`, at launch, before anything is drawn — which is the
-/// arrangement `fix(settings): the thread that draws never waits for the
-/// keychain` (4dcc5fb6) took out of `SettingGuard`.
+/// And every KeepAwake caller of that port is the thread that draws:
+/// `activate()` at launch, `recompute()` from observers that deliver on main,
+/// the model's calls on the main actor. A busy Homebrew page could then park
+/// the main thread inside `ClamshellCoordinator` before anything is drawn.
 ///
 /// These cases assert **where** the work happens, never how long it takes: the
 /// call has to have happened before the thread is judged, or this is an
 /// absence-passes-vacuously test of a port nobody asked anything.
-///
-/// Guards: bf6c973b (the drawing thread waited on pmset).
 final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!
@@ -110,11 +104,9 @@ final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
     /// answer: `activate()` **waits** for the child.
     ///
     /// Told with a port that has not finished, because nothing else can tell a
-    /// caller that waits from one that does not — a port answering instantly
-    /// makes the question vacuous, and a bare «had it been asked yet?» after
-    /// `activate()` returns is a race that a real fix loses about as often as
-    /// it wins. Here the gate is not opened until the deadline has passed, so
-    /// the only way to return in time is not to have waited.
+    /// caller that waits from one that does not. The gate is not opened until
+    /// the deadline has passed, so the only way to return in time is not to
+    /// have waited.
     func testTheLaunchDoesNotWaitForTheChildProcessToFinish() {
         store.set(true, for: KeepAwakeSettings.Key.clamshellGuard)
         clamshell.blockUntilReleased = true

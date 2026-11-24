@@ -2,12 +2,10 @@ import XCTest
 import HelmTestSupport
 @testable import HelmRuntime
 
-/// `NSWorkspace.runningApplications` is main-thread-only, and Helm's VPN engine
-/// read it from its own serial queue for four releases. It crashed the process
-/// the first time an app quit while the engine happened to be looking —
-/// `EXC_BAD_ACCESS` inside `_cow_copy`, with the main thread mutating the same
-/// array. These cover the rule that replaced it: off the main thread, answer
-/// from the snapshot and do not touch AppKit at all.
+/// `NSWorkspace.runningApplications` is main-thread-only: read from another
+/// queue while an app quits, it crashes inside `_cow_copy` with the main thread
+/// mutating the same array. Off the main thread, `RunningApps` answers from the
+/// snapshot and does not touch AppKit at all.
 final class RunningAppsTests: XCTestCase {
 
     func testABackgroundReadAnswersFromTheSnapshot() {
@@ -94,16 +92,12 @@ final class RunningAppsTests: XCTestCase {
         let atCompletion = Locked<Set<String>>(["not read"])
         DispatchQueue.global().async {
             apps.refreshOnMain {
-                // Read the way the engine reads — through the snapshot path,
-                // off the main thread. Calling `bundleIDs()` here directly
-                // would refresh a second time (the completion lands on the
-                // main thread) and hide a completion-before-refresh regression
-                // behind that accidental second read. `global().sync` is no
-                // better: sync onto a concurrent queue may run the block on
-                // the calling thread. A detached thread is guaranteed not to
-                // be the main one, and waiting for it HERE holds the main
-                // thread, so a refresh mis-ordered to after the completion
-                // could not slip in before the snapshot is read.
+                // Read as the engine reads, through the snapshot, off the
+                // main thread: `bundleIDs()` on main would refresh a second
+                // time and hide a mis-ordering, and `global().sync` may run
+                // on the calling thread. A detached thread is never main, and
+                // waiting for it here holds main, so a refresh ordered after
+                // the completion cannot slip in first.
                 let readDone = DispatchSemaphore(value: 0)
                 Thread.detachNewThread {
                     atCompletion.value = apps.bundleIDs()

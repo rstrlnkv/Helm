@@ -5,20 +5,18 @@ import XCTest
 /// heading its document has, a backticked path names something the tree holds, and
 /// the pages the pointers land on are laid out so that a name means one place.
 ///
-/// **Why one test.** A pointer is a sentence in one file naming a place in
-/// another, and no compiler or parser joins the two. Five checks once read it from
-/// five sides, each with its own list of the documents and its own reader of a
-/// heading, and the copies disagreed. One reader of headings and one resolver
-/// serve all of them here.
+/// One test, because a pointer is a sentence in one file naming a place in
+/// another and no compiler joins the two: one reader of headings and one
+/// resolver serve every side, so they cannot disagree.
 ///
-/// **Why a pointer is read from where it is written.** The document may grow a
-/// section nobody points at; a pointer at a section nobody wrote is the finding.
-/// Matching is case-insensitive, headings are read outside fenced code only, and
-/// a heading is taken longest first so a short heading never wins a match a
-/// longer one deserved.
+/// A pointer is read from where it is written: a section nobody points at is
+/// fine, a pointer at a section nobody wrote is the finding. Matching is
+/// case-insensitive, headings are read outside fenced code only, and the
+/// longest heading is tried first so a short one never wins a longer one's
+/// match.
 ///
-/// **Why the canaries.** Every check here is green over no text, so each one has a
-/// count that a reader which silently stopped reading cannot reach.
+/// Every check here is green over no text, so each has a canary count that a
+/// reader which silently stopped reading cannot reach.
 final class EveryPointerArrivesTests: XCTestCase {
 
     // MARK: - Reading

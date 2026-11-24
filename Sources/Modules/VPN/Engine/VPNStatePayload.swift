@@ -5,17 +5,14 @@ import Foundation
 
 /// The state every VPN surface draws, and the one declaration of it.
 ///
-/// Out of `VPNEngine` and still `VPNEngine.StatePayload`, the way
-/// `KeepAwakeEngine.StatePayload` already sits beside its engine: an extension
-/// keeps the name every reader spells while taking the payload out of the middle
-/// of the connect logic. The name is the point — the same type, not a copy —
-/// because a payload declared twice is two declarations of one fact.
+/// Out of `VPNEngine`'s file and still `VPNEngine.StatePayload`, as
+/// `KeepAwakeEngine.StatePayload` sits beside its engine: the same type, not a
+/// copy, because a payload declared twice is two declarations of one fact.
 extension VPNEngine {
     /// Public because the model reads it from `stream()` — see the note on KeepAwake's.
     /// `Equatable` because the engine refuses to emit a payload equal to the
-    /// last one it sent (`emitState`): the poll re-reads up to 26 times behind
-    /// one connect, and every field-for-field duplicate it produced re-rendered
-    /// every mounted page to learn nothing.
+    /// last one it sent (`emitState`): the poll re-reads many times behind one
+    /// connect, and a duplicate would re-render every mounted page.
     public struct StatePayload: Equatable, Sendable {
         public let connections: [VPNConnection]
         public let autoConnected: [String]
@@ -31,11 +28,9 @@ extension VPNEngine {
         /// Every connected tunnel that has an interface reading, the one
         /// carrying the default route first.
         ///
-        /// It was one `VPNTunnelState?` — the routed tunnel, or the first that
-        /// was up — so a Mac with two tunnels up drew one of them and offered no
-        /// way to reach the other. The order is what «the first» rests on
-        /// (`VPNTunnelChoice.primaryFirst`): the page opens on it, and a
-        /// selection naming a tunnel that has gone falls back to it.
+        /// A list, so a Mac with two tunnels up can reach both. The order is what
+        /// «the first» rests on (`VPNTunnelChoice.primaryFirst`): the page opens
+        /// on it, and a selection naming a tunnel that has gone falls back to it.
         ///
         /// Empty when nothing is up — the strip is absent then, rather than
         /// empty.
@@ -55,13 +50,10 @@ public struct VPNTunnelState: Equatable, Sendable {
     public let interface: String
     /// When the tunnel came up.
     ///
-    /// **The tool's own answer first, Helm's observation behind it.** This said
-    /// «when Helm saw it come up, or nil when it was already up at launch», and
-    /// that nil was on screen as a missing column on every Mac whose VPN starts
-    /// before the menu bar app does — while `scutil` had been writing
-    /// `LastStatusChangeTime` at the end of every status read the engine already
-    /// performs (`VPNStatusParser.Reading.since`). Helm's own stamp is still
-    /// there for the tool that does not answer.
+    /// **The tool's own answer first, Helm's observation behind it.** `scutil`
+    /// writes `LastStatusChangeTime` at the end of every status read
+    /// (`VPNStatusParser.Reading.since`), which also covers a VPN that started
+    /// before Helm did. Helm's own stamp is there for a tool that does not answer.
     public let since: Date?
     /// What this configuration carries **around** the tunnel: the local network,
     /// Apple's own, anything else counted (`VPNExcludedRoutes`).
@@ -81,23 +73,13 @@ public struct VPNTunnelState: Equatable, Sendable {
     /// needs is missing (`VPNExitVerdict.of`).
     public let exit: VPNExitVerdict
     public let speed: VPNSpeedReading?
-    /// **Whether a measurement is in flight, as the engine's own answer.**
-    ///
-    /// It began as a `@Published` flag on the view model, set on the press and
-    /// cleared by the arrival of any state — a local boolean standing in for a
-    /// live fact somebody else owns, which is the family (ARCHITECTURE.md
-    /// § Module pattern) names: a port that can change under the app has a reverse
-    /// channel.
-    /// It could be wrong in three ways at once: a page opened while a run was
-    /// going knew nothing about it, a run outliving the page that started it
-    /// spun a spinner nobody would clear, and — the one that shipped — a run the
-    /// tool refused over a quiet tunnel changed no other field, so `emitState`
-    /// withheld the payload as a duplicate and the arrival that was supposed to
-    /// clear the spinner never came.
-    ///
-    /// In the published state it fixes that by construction rather than by a rule anybody
-    /// has to keep: the start and the end of a run are both changes, so neither
-    /// can be withheld.
+    /// **Whether a measurement is in flight, as the engine's own answer**, not a
+    /// flag the page sets on a press: a live fact somebody else owns needs a
+    /// reverse channel (Architecture/ModulePattern.md § Module pattern). A page
+    /// flag would miss a run started before the page opened, spin for a run that
+    /// outlived its page, and never clear for a refused run that changed no other
+    /// field. In the published state the start and the end of a run are both
+    /// changes, so neither can be withheld.
     public let measuring: Bool
 
     init(name: String, interface: String, since: Date?, bytesIn: UInt64?,
@@ -119,17 +101,13 @@ public struct VPNTunnelState: Equatable, Sendable {
 extension VPNTunnelState {
     /// One tunnel's reading, assembled from what the engine remembers about it.
     ///
-    /// **Here rather than at the engine's call site**, which is where it was: it
-    /// is the construction of a published value out of seven remembered facts, and
-    /// putting it beside the value keeps `VPNEngine.tunnelStates` to the two
-    /// questions that are actually the engine's — which tunnels, and in what
-    /// order. The counters reach the state as whole kilobytes for the reason
-    /// `VPNInterfaceCounters.onTheWire` gives, and nil stays nil: an interface
-    /// the kernel has no counters for is not a tunnel that has carried nothing.
-    /// `since` is Helm's **own** observation, and it is the fallback: the tool's
-    /// stamp is preferred where there is one. Written the other way round the
-    /// change would be invisible on the machine it was made for — Helm has no
-    /// observation there, which is the whole defect.
+    /// **Beside the value rather than at the engine's call site**, so
+    /// `VPNEngine.tunnelStates` keeps to the engine's two questions: which
+    /// tunnels, and in what order. The counters reach the state as whole
+    /// kilobytes (`VPNInterfaceCounters.onTheWire`), and nil stays nil: an
+    /// interface the kernel has no counters for is not a tunnel that has carried
+    /// nothing. `since` is Helm's **own** observation and only the fallback: the
+    /// tool's stamp is preferred, since Helm has none for a tunnel up before it.
     init(_ connection: VPNConnection, on reading: VPNStatusParser.Reading,
          primary: String?, since: Date?, carried: (in: UInt64, out: UInt64)?,
          speed: VPNSpeedReading?, region: String?, measuring: Bool) {

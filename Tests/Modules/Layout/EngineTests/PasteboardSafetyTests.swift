@@ -7,10 +7,8 @@ import XCTest
 /// one back — but it can only put back a string. A clipboard holding an image,
 /// RTF or a file promise comes back as plain text or as nothing.
 ///
-/// That was a known defect with a containment: the shortcuts that reached this
-/// path were unbound by default, so only somebody who asked for it could meet
-/// it. Then the gesture was given a default key and the containment was gone
-/// while the defect stayed. This is the decision that replaces it.
+/// The gesture has a default key, so this path is reachable by default, and this
+/// decision is what contains it.
 final class PasteboardSafetyTests: XCTestCase {
 
     func testAStringOnlyClipboardCanBeBorrowed() {
@@ -24,8 +22,8 @@ final class PasteboardSafetyTests: XCTestCase {
         XCTAssertTrue(PasteboardSafety.canBorrow(types: []))
     }
 
-    /// The cases the defect was written about. Each of these is destroyed by a
-    /// save-and-restore that only knows about strings.
+    /// Each of these is destroyed by a save-and-restore that only knows about
+    /// strings.
     func testAnythingElseIsRefused() {
         XCTAssertFalse(PasteboardSafety.canBorrow(types: ["public.tiff"]))
         XCTAssertFalse(PasteboardSafety.canBorrow(types: ["public.rtf"]))

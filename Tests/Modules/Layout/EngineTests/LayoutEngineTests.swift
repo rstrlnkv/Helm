@@ -6,8 +6,7 @@ import HelmContract
 
 /// The newest state the engine published — `stream()` hands every new
 /// subscriber the latest one first, so this is not racing the emit.
-/// Beside the shared fakes for the reason they are here: three suites read the
-/// state back and each had spelled this loop for itself.
+/// Shared, because three suites read the state back.
 func latestLayoutState(_ engine: LayoutEngine) async -> LayoutState? {
     for await state in engine.stream() { return state }
     return nil
@@ -122,10 +121,9 @@ extension LayoutEngineTests {
                        "the caret has moved on; undo must refuse")
     }
 
-    /// A command chord is not text and not a confirmation. ⌘Space — the gesture
-    /// someone makes on noticing the wrong layout — used to arrive as a plain
-    /// space and budget a backspace for a character that never reached the
-    /// field, eating the one to its left.
+    /// A command chord is not text and not a confirmation. ⌘Space, made on
+    /// noticing the wrong layout, must not budget a backspace for a space that
+    /// never reached the field, eating the character to its left.
     func testACommandChordEndsTheWordWithoutConverting() {
         let engine = engine()
         tap.type("ghbdtn")

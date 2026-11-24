@@ -3,18 +3,9 @@ import XCTest
 
 /// One repeated entry, on each side in turn.
 ///
-/// `ScanComparison.between` already argues the case for the previous side, in
-/// its own comment on `went`:
-///
-/// > From the set, so a previous list carrying the same entry twice does not
-/// > report one departure twice.
-///
-/// `appeared` and `stayed` are plain filters over `current` and get no such
-/// treatment, so the identical input on the identical structure is handled two
-/// different ways. The byte totals the journal draws are `reduce` over those
-/// arrays, so the asymmetry is not cosmetic: it is one number twice.
-///
-/// Guards: 9b750e18 (a repeated entry counted twice on the current side only).
+/// A repeated entry is counted once on either side: `went` is read from a
+/// set, and `appeared` and `stayed` must be too, because the byte totals the
+/// journal draws are `reduce` over those arrays.
 final class ScanComparisonRepeatedEntryTests: XCTestCase {
 
     /// The mirror of the existing `testARepeatedPathDoesNotBreakTheComparison`,

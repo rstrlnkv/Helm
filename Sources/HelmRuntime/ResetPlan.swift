@@ -28,22 +28,19 @@ public enum ResetPlan {
         /// **The part that is not a path.** The passwordless `pmset` rule Keep
         /// Awake's closed-lid option installs in `/etc/sudoers.d` is root's. It
         /// comes out silently when the rule permits its own withdrawal, and
-        /// otherwise only through an administrator dialog. A reset that
-        /// taught itself that filename would be the rule in the wrong place; it
-        /// asks the engines instead, through the one call that means «the
-        /// person is here and this is the last moment to ask»
-        /// (`ModuleEngine.willDisable`). Asking is not being given — a declined
-        /// dialog leaves the rule exactly where it was — which is why this is
-        /// asked rather than assumed, and why it is asked **first**, while the
-        /// settings an engine decides with are still there.
+        /// otherwise only through an administrator dialog. The reset does not
+        /// know that filename; it asks the engines, through the call that means
+        /// «the person is here and this is the last moment to ask»
+        /// (`ModuleEngine.willDisable`). A declined dialog leaves the rule where
+        /// it was. Asked **first**, while the settings an engine decides with
+        /// are still there.
         case handBackWhatIsOutsideHelm
 
         /// **Registered by the application, not by a module.** `SMAppService`
         /// keeps the registration in a system database outside both of Helm's
         /// folders, so trashing folders and forgetting preferences leaves Helm
-        /// opening at login — which is the one thing a person resetting an app
-        /// notices the next morning. `ModuleEngine` has no channel to it and
-        /// should not grow one: nothing a module owns registered this.
+        /// opening at login. `ModuleEngine` has no channel to it and should not
+        /// grow one: nothing a module owns registered this.
         ///
         /// Before `.forgetPreferences`, because unregistering reads
         /// `Bundle.main` and reports through the log, and after the engines,
@@ -53,8 +50,7 @@ public enum ResetPlan {
         /// Every live module stopped, deactivated and its menu-bar item taken
         /// away, **before** the folders go to the Trash and the preferences are
         /// forgotten. A model stopping writes (the Screenshots bar's place), and
-        /// a write after `.forgetPreferences` survives the reset: the quit's
-        /// `shutdown()` used to be the one that ran it, too late.
+        /// a write after `.forgetPreferences` would survive the reset.
         case stopEveryModule
         case trashHelmsOwnFolders
 
@@ -66,8 +62,7 @@ public enum ResetPlan {
         case relaunch
     }
 
-    /// The order, as a value. It was the shape of a function body, and what was
-    /// missing from it was invisible for exactly that reason.
+    /// The order, as a value, so a missing step is visible and testable.
     public static let order: [Step] = [
         .handBackWhatIsOutsideHelm,
         .giveBackTheLoginItem,

@@ -5,26 +5,19 @@ import Foundation
 
 /// Where the engine does work that blocks.
 ///
-/// `scutil` is a subprocess: on this machine a single `--nc list` measured
-/// 16 ms, and a connect polls it up to 25 times. All of that used to run on the
-/// main thread — through `DispatchQueue.main.asyncAfter` for the poll, and
-/// through AppKit's own running-applications notification for auto-connect,
-/// which also reaches a synchronous keychain read that can put a modal panel on
-/// screen. Tests drive the engine synchronously and assert on the commands it
-/// issued, so they run it `.inline`; the app runs it `.background`.
+/// `scutil` is a subprocess, a connect polls it many times, and auto-connect
+/// reaches a synchronous keychain read that can put a modal panel on screen:
+/// none of it may run on the main thread. Tests drive the engine synchronously
+/// and assert on the commands it issued, so they run it `.inline`; the app runs
+/// it `.background`.
 ///
-/// **`.inline` is serial too, and it was not.** It ran the block on whichever
-/// thread offered it, which is one thread for everything a test drives directly
-/// and a *different* one for the two pieces of work that leave the module and
-/// come back through `run` — `checkExit`'s completion and `startMeasuring`'s.
-/// Under `.background` those arrive behind the refresh that started them; under
-/// the old `.inline` they arrived inside it, from another thread, which is the
-/// one thing the real queue rules out. Two callers then met in `emitState`,
-/// which compares and stamps `_lastEmitted` under the lock and emits outside
-/// it, so one payload was swallowed as a duplicate of the other and the
-/// survivor was emitted from a thread the test had already run past — a fake
-/// freer than the port it stands for (ARCHITECTURE.md § Fakes), and every test in this module
-/// written against it.
+/// **`.inline` is serial too.** Two pieces of work leave the module and come
+/// back through `run` from another thread — `checkExit`'s completion and
+/// `startMeasuring`'s. Under `.background` they arrive behind the refresh that
+/// started them; an `.inline` that ran them at once on their own thread would
+/// let two callers meet in `emitState` and swallow one payload as a duplicate,
+/// a fake freer than the port it stands for
+/// (Architecture/TestsAndMeasurement.md § Fakes).
 public enum VPNWorkQueue: Sendable {
     case background
     case inline
@@ -49,8 +42,8 @@ public enum VPNWorkQueue: Sendable {
     /// is already running — `connectNow` calls `poll`, and `pollUntilSettled`
     /// re-enters itself through `run(after:)`, which `.inline` runs at once —
     /// so a plain lock would deadlock the poll loop the whole module depends on.
-    /// What a recursive lock still refuses is the case that was wrong: a
-    /// *second* thread entering while the first is inside.
+    /// What a recursive lock still refuses is a *second* thread entering while
+    /// the first is inside.
     private static func inlineSerially(_ block: @escaping @Sendable () -> Void) {
         inlineLock.withLock { block() }
     }

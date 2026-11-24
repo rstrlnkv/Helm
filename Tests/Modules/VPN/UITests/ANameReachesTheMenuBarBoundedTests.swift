@@ -14,8 +14,6 @@ import XCTest
 /// `appearance.title` verbatim — so the bound is applied by the module that has
 /// an unbounded string, which is this one: the name comes out of a configuration
 /// somebody else wrote.
-///
-/// Past defect: commit 1fe5e099, «fix(vpn): a rule is bound to a signature, and a forged plist stops summoning dialogs».
 @MainActor
 final class ANameReachesTheMenuBarBoundedTests: XCTestCase {
 

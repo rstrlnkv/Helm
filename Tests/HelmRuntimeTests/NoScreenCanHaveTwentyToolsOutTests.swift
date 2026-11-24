@@ -5,20 +5,14 @@ import XCTest
 @testable import HelmRuntime
 import HelmTestSupport
 
-/// **Nothing bounded how many tools Helm had out at once, and one screen found
-/// out.**
+/// How many tools Helm has out at once is bounded.
 ///
-/// Homebrew's search field put every press of Return on its own unbounded
-/// `Task`, and one press is two `brew search` runs of about nine seconds
-/// followed by a `brew desc` per kind. Ten presses were twenty-odd Ruby
-/// processes: the crash report shows ten threads inside one `brew` call and
-/// nine more parked on a pipe, and the thread that started the twenty-first is
-/// where the app died.
-///
-/// `HomebrewViewModel`'s `LatestRequest` stops that screen from asking. This is
-/// the floor under every screen not yet written that goes through `run` or
-/// `runData` — a caller may still ask for more than `launchCeiling`, and what it
-/// gets is a queue.
+/// A repeatedly pressable control that starts a tool each press (one Homebrew
+/// search is several `brew` runs of seconds each) would otherwise pile up
+/// processes and threads parked on pipes until a launch kills the app.
+/// `LatestRequest` stops a screen from asking; this is the floor under every
+/// caller of `run` or `runData`, which may ask for more than `launchCeiling`
+/// and gets a queue.
 final class NoScreenCanHaveTwentyToolsOutTests: XCTestCase {
 
     override func setUp() {
@@ -38,10 +32,8 @@ final class NoScreenCanHaveTwentyToolsOutTests: XCTestCase {
     /// Twice the ceiling asked for at once, each holding its slot long enough
     /// that they would overlap if nothing stopped them.
     ///
-    /// **The precondition is that they really did overlap** — a run of twelve
-    /// tools that happened to finish one after another would satisfy any
-    /// ceiling and prove nothing, so the peak has to reach the cap before the
-    /// assertion that it does not pass it means anything.
+    /// The precondition is that they really overlapped: tools that finished one
+    /// after another satisfy any ceiling, so the peak must reach the cap first.
     func testTwiceTheCeilingAskedForAtOnceIsStillTheCeiling() {
         let asked = HelmProcess.launchCeiling * 2
         let group = DispatchGroup()

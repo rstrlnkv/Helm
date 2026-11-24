@@ -4,7 +4,7 @@ import XCTest
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-/// **The Leftovers tab's scan outlives a sidebar click** (owner decision Q10a).
+/// The Leftovers tab's scan outlives a sidebar click.
 ///
 /// A sidebar click unmounts `OrphansView`; the scan, the ticks and the report
 /// live in `OrphansModel`, which `UninstallerViewModel` owns. Mounting the tab

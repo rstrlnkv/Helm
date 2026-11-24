@@ -3,31 +3,20 @@ import HelmTestSupport
 import XCTest
 @testable import HelmRuntime
 
-/// **Warming the key off the main thread is not the same as the main thread
-/// never waiting for it, and the app shipped believing it was.**
+/// Warming the key off the main thread is not the same as the main thread
+/// never waiting for it.
 ///
-/// Measured from `HelmApp_2026-08-19-235500_MacBook.hang`: 19,09 s of an
-/// unresponsive settings window on `0.11.0-dev.1`. Two threads, one lock.
+/// `SealKeyCache` holds its lock across the source's own call, so two callers
+/// arriving together cost one dialog rather than two
+/// (`TheSealKeyIsAskedOnceAndNotOnMainTests`). The second caller then waits for
+/// the whole round trip, and when it is the main thread reading a sealed
+/// setting behind a warm-up parked on an authorization dialog, the window
+/// hangs.
 ///
-/// - `SettingGuard.warmKey()` was inside `KeychainSealKey.read()` →
-///   `SecItemCopyMatching` → `ClientSession::decrypt` → `mach_msg`, parked in
-///   securityd behind the modal authorization dialog every ad-hoc build earns.
-/// - The main thread, answering `NSApplication.didBecomeActive`, read
-///   `AppSettings.disabledScans` → `SettingGuard.verdict` → `SealKeyCache.key()`
-///   → `_pthread_mutex_firstfit_lock_slow`, which the report names outright:
-///   *blocked by turnstile … waiting for … thread 0x1bc925*.
-///
-/// `SealKeyCache` holds its lock **across** the source's own call, deliberately,
-/// so that two callers arriving together cost one dialog rather than two — and
-/// `TheSealKeyIsAskedOnceAndNotOnMainTests` proves that half. What neither that
-/// file nor this one could say before was what the second caller pays, and when
-/// the second caller is the thread that draws, it pays the whole dialog.
-///
-/// So there is a second way to ask: `keyIfWarm()` answers from what is already
-/// in hand and never makes, or waits for, a round trip. Nil from it means «not
-/// yet», which is a third answer and not a refusal — folding it into `.broken`
-/// would tell somebody their settings had been forged because a keychain was
-/// slow.
+/// So there is a second way to ask: `keyIfWarm()` answers from what is in hand
+/// and never makes, or waits for, a round trip. Its nil means «not yet», a third
+/// answer and not a refusal: folding it into `.broken` would tell somebody their
+/// settings had been forged because a keychain was slow.
 final class TheMainThreadNeverWaitsForTheKeychainTests: XCTestCase {
 
     // MARK: - The port answers from what it holds
@@ -62,15 +51,12 @@ final class TheMainThreadNeverWaitsForTheKeychainTests: XCTestCase {
 
     // MARK: - The hang itself
 
-    /// **The report, written as a test.** A fetch is inside the source and
-    /// cannot leave; a second caller arrives; it must be answered.
+    /// A fetch is inside the source and cannot leave; a second caller arrives
+    /// and must be answered.
     ///
-    /// The second caller runs on a queue rather than on this thread on purpose:
-    /// a `keyIfWarm()` that blocks would hang the test rather than fail it, and
-    /// a guard that hangs tells nobody anything. On a queue the wait below
-    /// fails with a sentence. The property under test — *does not wait for a
-    /// round trip somebody else is making* — is about the lock, not about which
-    /// thread holds it, so nothing is lost by asking it from here.
+    /// The second caller runs on a queue, so a `keyIfWarm()` that blocks fails
+    /// the wait below rather than hanging the test. The property is about the
+    /// lock, not about which thread holds it.
     func testACallerIsAnsweredWhileAFetchIsStillInFlight() {
         let gate = DispatchSemaphore(value: 0)
         let source = SealKeyProbe(gate: gate)
@@ -145,10 +131,8 @@ final class TheMainThreadNeverWaitsForTheKeychainTests: XCTestCase {
         await guarded.warmKey()
 
         XCTAssertTrue(guarded.isWarm)
-        // Warming *is* the run that created the item, so it is the ask that
-        // spent first use — and an unsealed value is a refusal ever after. The
-        // point here is the round trips, not the verdict: it is still computed
-        // from live values, and computing it costs nothing more.
+        // Warming created the item and spent first use, so an unsealed value
+        // is refused. The point is the round trips, not the verdict.
         XCTAssertEqual(guarded.verdict(payload: Data("disk".utf8), mac: ""), .broken)
         XCTAssertEqual(source.reads, 1, "a verdict taken while warm went back to the keychain")
     }

@@ -41,9 +41,8 @@ final class OrphanDetectorTests: XCTestCase {
 
     // MARK: - Apps the directory listing cannot see
 
-    /// /Applications is not a flat list. Acrobat lives in "Adobe Acrobat DC/",
-    /// and OneDrive carries a SharePoint helper *inside* its own bundle —
-    /// both were reported as leftovers of uninstalled software while running.
+    /// /Applications is not a flat list: Acrobat lives in "Adobe Acrobat DC/", and
+    /// OneDrive carries a helper inside its own bundle.
     func testAnAppTheSystemKnowsIsNotAnOrphan() {
         XCTAssertFalse(OrphanDetector.isOrphan(name: "com.adobe.Acrobat.Pro",
                                                installedBundleIDs: [],

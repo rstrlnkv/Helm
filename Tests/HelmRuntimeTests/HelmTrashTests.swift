@@ -2,8 +2,7 @@ import XCTest
 import HelmTestSupport
 @testable import HelmRuntime
 
-/// The trash loop, which four modules used to keep their own copy of — and
-/// three of which threw the reason away.
+/// The shared trash loop, and the reason each refusal carries.
 final class HelmTrashTests: XCTestCase {
 
     private var root: URL!
@@ -63,14 +62,10 @@ final class HelmTrashTests: XCTestCase {
 
 /// What "freed" means when the thing trashed is a folder.
 ///
-/// `HelmTrash` reads `totalFileAllocatedSize` on the path it is given. For a
-/// file that is the file; for a directory it is the directory entry — a few
-/// kilobytes, whatever is inside. Disk trashes folders for a living and
-/// Leftovers trashes plug-in and extension bundles, so the figure both of them
-/// show after a removal is the one number the screen exists to produce.
-///
-/// Leftovers never hit this because it kept its own loop and its own recursive
-/// `size`. That is the difference that has to close before its loop can go.
+/// For a directory, `totalFileAllocatedSize` is the directory entry, a few
+/// kilobytes, whatever is inside. Disk trashes folders and Leftovers trashes
+/// bundles, so the freed figure is what is inside: the one number the screen
+/// exists to produce.
 final class HelmTrashFolderSizeTests: XCTestCase {
 
     private var root: URL!

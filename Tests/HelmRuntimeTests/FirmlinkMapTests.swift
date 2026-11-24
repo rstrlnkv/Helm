@@ -4,10 +4,8 @@ import XCTest
 /// macOS presents `/` as the read-only System volume with the Data volume's
 /// directories firmlinked in. The same files are therefore reachable twice:
 /// `/Users/...` and `/System/Volumes/Data/Users/...`. A walk that follows both
-/// counts every byte under whichever path it happened to reach first — which
-/// is what parked 327 GB under "System" and left "Users" at 1.5 MB.
-///
-/// Guards: 45186d77 (the Data volume was walked twice).
+/// counts every byte under whichever path it reached first, and the home can
+/// land under "System".
 final class FirmlinkMapTests: XCTestCase {
     private let table = """
     /AppleInternal\tAppleInternal

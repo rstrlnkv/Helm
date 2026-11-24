@@ -46,24 +46,18 @@ import SwiftUI
         store(for: d).bool("enabled", default: true)
     }
 
-    /// Which modules are on, as ids — the question the sidebar and the consent
-    /// section each ask about a *group*, and each had answered one store read
-    /// per module of their own.
+    /// Which modules are on, as ids: the question the sidebar and the consent
+    /// section each ask about a group, answered in one place.
     var enabledModuleIDs: Set<String> {
         Set(ModuleRegistry.all.filter(isEnabled).map(\.idRaw))
     }
 
-    /// Idempotent, on the same test `setEnabled` has always made and this one
-    /// had not: a module already live is left alone.
-    ///
-    /// It used to assign a second engine over the first without deactivating
-    /// it, so every extra call orphaned one engine per enabled module — each
-    /// still holding whatever it had registered, and each then freed with it
-    /// still registered. For Layout that is a live `CGEvent` tap on the main
-    /// run loop pointing at freed memory (`CGKeyTap`), which is a crash inside
-    /// whatever the person is typing; for Keep Awake it is power assertions held
-    /// until the process exits. The `deinit`s are the backstop for the
-    /// routes nobody remembers; not building the orphan is the fix.
+    /// Idempotent, on the same test `setEnabled` makes: a module already live
+    /// is left alone. A second engine built over the first would orphan it
+    /// with whatever it registered: for Layout a live `CGEvent` tap pointing at
+    /// freed memory (`CGKeyTap`), a crash inside whatever the person is typing;
+    /// for Keep Awake power assertions held until the process exits. The
+    /// `deinit`s are the backstop; not building the orphan is the guard.
     func bootstrap() {
         ObsoleteDefaults.purge(from: UserDefaults.standard)
         for d in ModuleRegistry.all
@@ -112,9 +106,7 @@ import SwiftUI
     private func tearDown(_ key: String, _ d: any ModuleDescriptor) {
         live[key]?.stop()
         live[key]?.engine.deactivate()
-        // The module's own menu-bar item goes with the module. Nothing used to
-        // take Keyboard's indicator away here at all: it sat in the menu bar
-        // until somebody switched the module back on, which is what rebuilt it.
+        // The module's own menu-bar item goes with the module.
         d.detachMenuBarPresence()
         live[key] = nil
         // A scan task can outlive the engine that started it, and an interval
@@ -122,12 +114,8 @@ import SwiftUI
         HelmActivity.sweep(module: key)
     }
 
-    /// Measured **around** the construction, which is the whole point.
-    ///
-    /// The reading used to be taken on the line before the module was built, so
-    /// `module.disk.enable: 9 MB` was the process total *before* Disk existed and
-    /// said nothing whatever about Disk. Nine such lines at launch read like nine
-    /// per-module costs and were nine consecutive totals.
+    /// Measured **around** the construction, which is the whole point: a
+    /// reading taken before it would be a process total, not the module's cost.
     ///
     /// What this can and cannot answer, so nobody reads more into it than it holds:
     /// it is what switching the module on cost and what switching it off gave back.
@@ -155,9 +143,8 @@ import SwiftUI
         parts.engine.activate()
         // After the engine is running, and from here rather than from
         // `makeModule`: a module's own menu-bar item is part of it running, not
-        // part of it being constructed. Keyboard's indicator was built inside
-        // the engine's construction, so every process that built a module —
-        // the offscreen render harness included — got a status item on its Mac.
+        // part of it being constructed, or every process that built a module
+        // (the offscreen render harness included) would get a status item.
         d.attachMenuBarPresence()
         return Live(descriptor: d, engine: parts.engine, model: model,
                     page: { d.settingsPage(model) },
@@ -237,8 +224,8 @@ import SwiftUI
         // Before the teardown: this is the person's own switch, so it is the
         // last moment an engine may ask them something; `handBackSystemState`
         // is the one other caller.
-        // `shutdown()` — quitting — deliberately does not call it
-        // (`ModuleEngine.willDisable` has the story).
+        // `shutdown()` (quitting) deliberately does not call it
+        // (`ModuleEngine.willDisable` says why).
         live[key]?.engine.willDisable()
         tearDown(key, d)
         // Whoever listens for the module's end lets go (the hotkeys).
@@ -254,14 +241,11 @@ import SwiftUI
     ///
     /// The second caller of `willDisable()`, and the only one that is not a
     /// module being switched off: «Reset all settings» promises the machine is
-    /// as it was just after installing, and one of the things Helm changes
-    /// beyond its two directories is the passwordless `pmset` rule Keep Awake's
-    /// lid option installs. A reset that reached for `/etc/sudoers.d` itself
-    /// would be the rule in the wrong place: the file is root's, and what takes
-    /// it out, `sudo -n` or, where the rule cannot withdraw itself, an
-    /// administrator dialog, is Keep Awake's port. So the
-    /// module that installed it is asked to give it back, which is exactly what
-    /// `willDisable` means (`ModuleEngine.willDisable`).
+    /// as it was just after installing, and Helm changes things beyond its own
+    /// directories, such as the passwordless `pmset` rule Keep Awake's lid
+    /// option installs. Taking that rule out is Keep Awake's port, not the
+    /// reset's, so the module that installed it is asked to give it back,
+    /// which is what `willDisable` means.
     ///
     /// **Asking is not being given.** The dialog, when it is needed, can be
     /// declined, and what that leaves behind is the rule; nothing here can wait for the answer, because
@@ -288,12 +272,8 @@ import SwiftUI
     /// arrivals; stored tiles keep the order of `panelWidgets`. The sidebar and
     /// the icon menu read `SidebarLayoutStore` themselves.
     ///
-    /// It used to be `AppSettings.moduleOrder`, and that key stopped being
-    /// written when the «Module order» section was deleted: nothing in the tree
-    /// assigned it, so the panel had been frozen in registry order for everyone
-    /// while the composer quietly rearranged the settings sidebar alone. The
-    /// person who wanted VPN above Keep Awake in the panel — the surface they
-    /// open twenty times a day — had no control at all.
+    /// One arrangement for the panel and the sidebar, so the composer orders
+    /// both (Architecture/TheSettingsWindow.md § The sidebar is an arrangement).
     ///
     /// `reconciled` runs on every read, so a module that arrived with this
     /// build is in the list without anything being rearranged first.

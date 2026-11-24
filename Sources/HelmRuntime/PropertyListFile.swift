@@ -33,8 +33,8 @@ public enum PropertyListFile {
     }
 
     /// Where applications are installed, in order: `/Applications`, `/Applications/Utilities`, the person's
-    /// `Applications`, and macOS's own. `/Applications/Utilities` was a root of its own in the Leftovers walk,
-    /// so an app two levels below it counted; dropping it would shrink the set by one level there.
+    /// `Applications`, and macOS's own. `/Applications/Utilities` is a root of its own, so an app two levels
+    /// below it counts.
     public static func installedRoots(home: String) -> [String] {
         ["/Applications", "/Applications/Utilities", home + "/Applications", "/System/Applications"]
     }

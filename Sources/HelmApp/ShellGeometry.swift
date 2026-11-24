@@ -53,8 +53,8 @@ enum ShellGeometry {
     nonisolated static let buttonShift: CGFloat = 6
 
     /// How far right and down of where they stand without a toolbar AppKit puts the window's three buttons once the
-    /// window wears one (`SettingsToolbar`): measured on macOS 27.3, 19 against 9 across and as far down. Helm holds
-    /// the buttons at the same place under both looks (`ShellWindowButtons.placed`).
+    /// window wears one (`SettingsToolbar`): measured, 19 against 9 across and as far down. Helm holds the buttons at
+    /// the same place under both looks (`ShellWindowButtons.placed`).
     nonisolated static let toolbarShift = CGSize(width: 10, height: 10)
 
     /// The title bar's band without a toolbar, which the sidebar's content stands below (measured: 32 against 66 with

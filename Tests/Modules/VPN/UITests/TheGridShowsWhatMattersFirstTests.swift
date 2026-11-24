@@ -8,12 +8,12 @@ import HelmRuntime
 
 /// The page draws six cards, and the connected tunnel is one of them.
 ///
-/// `VPNConnectionOrder` is tested on its own; what this holds is that the page
-/// applies it and the cap, in the one order they can be applied in. Capping before sorting is the same page with the defect back:
-/// nine configurations, the ninth up, six drawn — and the card the page exists
-/// for behind a button.
+/// `VPNConnectionOrder` is tested on its own; this holds that the page
+/// applies it and the cap in the one order they can be applied in. Capping
+/// before sorting would draw nine configurations, the ninth up, six drawn —
+/// and the card the page exists for behind a button.
 ///
-/// Guards: the page sorts before it caps, so the connected tunnel is never behind a button (no fix commit; the code and this test landed together).
+/// Guards: the page sorts before it caps, so the connected tunnel is never behind a button.
 @MainActor
 final class TheGridShowsWhatMattersFirstTests: XCTestCase {
 

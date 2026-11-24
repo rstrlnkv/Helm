@@ -7,11 +7,8 @@ import XCTest
 /// the item is offered for deletion at all. A mangled one turns off the wrong
 /// label and offers a live app's job as a leftover.
 final class LaunchAgentLabelTests: XCTestCase {
-    /// ".plist" is stripped with `replacingOccurrences`, which removes EVERY
-    /// occurrence — including one in the middle of the name.
-    /// `com.vendor.plistwatcher.plist` → `com.vendorwatcher`.
-    /// `OrphanDetector.bundleID(from:)` does the same job with
-    /// `hasSuffix` + `dropLast`; this is the sibling that never got it.
+    /// Only a trailing ".plist" is stripped, not every occurrence:
+    /// `com.vendor.plistwatcher.plist` must not become `com.vendorwatcher`.
     func testOnlyTheTrailingExtensionIsStripped() {
         let info = LaunchAgentReader.read(plist: [:],
                                           path: "/Library/LaunchAgents/com.vendor.plistwatcher.plist")

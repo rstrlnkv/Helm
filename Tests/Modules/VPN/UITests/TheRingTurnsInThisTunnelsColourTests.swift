@@ -11,19 +11,17 @@ import HelmTestSupport
 /// **A setting that is written and never read is a control that does nothing.**
 ///
 /// The per-connection notices, the ring and its two colours are stored in
-/// `VPNNoticeBook`, keyed by the configuration's id. The firing path — the
+/// `VPNNoticeBook`, keyed by the configuration's id. If the firing path — the
 /// banner, the menu-bar name, the ring and its colour — read the module-wide
-/// values instead, for the first hour those popovers existed: a person could set
-/// one tunnel to silence and hear it announce itself for ever, with the store
-/// holding exactly what they had asked for. Nothing failed, because every test
-/// there was asked the book directly.
+/// values instead, a person could set one tunnel to silence and hear it
+/// announce itself, with the store holding exactly what they asked for, and a
+/// test that asks the book directly would not notice.
 ///
-/// So these tests go through the model the way the menu bar does, and the join
-/// they exercise is the one that had been missing: a firing carries the
-/// configuration's *name* (`scutil --nc start` takes a name), the settings are
-/// keyed by its *id*, and something has to turn one into the other.
+/// So these tests go through the model the way the menu bar does: a firing
+/// carries the configuration's *name* (`scutil --nc start` takes a name), the
+/// settings are keyed by its *id*, and the join turns one into the other.
 ///
-/// Guards: a firing's name is joined to the configuration id its per-tunnel settings are keyed by (no fix commit; the code and this test landed together).
+/// Guards: a firing's name is joined to the configuration id its per-tunnel settings are keyed by.
 @MainActor
 final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
 
@@ -59,10 +57,9 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
                      "a name this Mac does not have resolves to no configuration")
     }
 
-    /// **Two configurations may carry one display name**, which is the fact
-    /// `_cameUp` was re-keyed for. A per-connection setting applied to a firing
-    /// that might be the namesake's is a setting applied to the wrong tunnel, so
-    /// the join refuses and the module-wide value answers.
+    /// **Two configurations may carry one display name.** A per-connection
+    /// setting applied to a firing that might be the namesake's is applied to the
+    /// wrong tunnel, so the join refuses and the module-wide value answers.
     func testTwoConfigurationsOfOneNameResolveToNeither() async {
         let vm = await model([("id-A", "Office"), ("id-B", "Office")],
                        book: { settings in

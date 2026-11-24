@@ -15,7 +15,7 @@ import XCTest
 /// a test of `VPNSettings` alone would pass with the view model still reading
 /// the rules' mode for everything.
 ///
-/// Guards: a drop reads its own notice setting, not the rules' (no fix commit; the code and this test landed together).
+/// Guards: a drop reads its own notice setting, not the rules'.
 @MainActor
 final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
 
@@ -58,8 +58,7 @@ final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
                        "the tunnel fell over and the module read the rules' silence")
         // `first`, never a subscript: when the assertion above fails this test
         // has to *report* it, and an index into an empty array ends the whole
-        // xctest process — which is how a mutation run comes back as a crash
-        // with nothing said about the guard.
+        // xctest process.
         XCTAssertEqual(said.banner.first?.body.contains("Office"), true,
                        "the banner did not name the connection: \(said.banner)")
     }
@@ -89,12 +88,8 @@ final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
 
     /// The teardown a quit rule performs is announced no more quietly than the
     /// fall it looks like from the outside — through the real path, because the
-    /// view model chooses the mode and a test of `VPNSettings` alone would pass
-    /// with this end still reading the rules' setting.
-    ///
-    /// The reason it is a security fix and not a preference: a quit can be
-    /// provoked by anything running as this user, and a teardown is booked as a
-    /// rule doing as it was told.
+    /// view model chooses the mode. It is a security matter and not a preference:
+    /// a quit can be provoked by anything running as this user.
     func testAProvokedTeardownIsNotQuieterThanTheFallItLooksLike() async {
         let said = await announce(kind: .disconnected, rules: .silent, drop: .system)
 

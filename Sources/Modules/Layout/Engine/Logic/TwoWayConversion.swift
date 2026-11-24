@@ -8,10 +8,9 @@ import Foundation
 ///
 /// A selection is different in kind. It may have been typed yesterday, pasted
 /// from somewhere, or written by somebody else, and the input source that
-/// happens to be active now says nothing about it. Deciding by the active one
-/// is why selecting `ghbdtn` with Russian on and pressing the key did nothing:
-/// Helm asked for Russian → English, `g` is not on the Russian keyboard, the
-/// translation declined, and the app had no way to say so.
+/// happens to be active now says nothing about it: `ghbdtn` selected with
+/// Russian on has no Russian → English reading, since `g` is not on the
+/// Russian keyboard.
 ///
 /// So both directions are asked, the current one first. A direction that hands
 /// back what it was given has converted nothing and is not an answer.

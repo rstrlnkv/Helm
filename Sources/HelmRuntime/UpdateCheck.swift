@@ -17,11 +17,8 @@ public enum UpdateCheck {
         case available(Release)
         /// The running build is a prerelease newer than anything the channel
         /// publishes: 0.7.2-dev.34 against a Beta channel whose newest is
-        /// 0.7.1. Carries what the channel does have.
-        ///
-        /// This used to read as `.upToDate`, because `isNewer` compares numeric
-        /// cores and 0.7.1 is not newer than 0.7.2 — so the About page told the
-        /// one person definitely running an unreleased build that they were on
+        /// 0.7.1. Carries what the channel does have. Not `.upToDate`, which
+        /// would tell the person running an unreleased build that they are on
         /// the latest version.
         case ahead(newest: String)
         case error
@@ -29,10 +26,9 @@ public enum UpdateCheck {
 
     /// Which GitHub releases a user opts into.
     ///
-    /// The slower of the two channels is `beta`, not "stable": Helm has not
-    /// reached 1.0, and a channel called stable promises something no release
-    /// so far has earned. It is the same endpoint either way — the name is a
-    /// claim made to the user, and this one is true.
+    /// The slower of the two channels is `beta`, not "stable": before 1.0 a
+    /// channel called stable promises something no release has earned. The name
+    /// is a claim made to the user.
     public enum Channel: String, Sendable, CaseIterable {
         case beta, dev
 
@@ -59,18 +55,15 @@ public enum UpdateCheck {
     /// When the last check happened, from the stored `lastUpdateCheck` — or
     /// `nil` for a number that is not a moment this app checked at.
     ///
-    /// The subtraction it feeds used to be `now - last` on two `Int`s, in
-    /// `checkOnLaunch`, which `AppDelegate` calls at launch:
-    /// `<integer>-9223372036854775808</integer>` **overflows** it and the app
-    /// terminates before anything is drawn. Done here rather than at the
-    /// arithmetic because the About page reads the same key to say "checked 2
-    /// hours ago", and the two were free to disagree about what a stored
-    /// number means.
+    /// A moment rather than arithmetic on the raw `Int`: `now - last` on
+    /// `<integer>-9223372036854775808</integer>` **overflows**, at launch, before
+    /// anything is drawn. Here rather than at the arithmetic because the About
+    /// page reads the same key, and the two must agree on what a stored number
+    /// means.
     ///
-    /// A stamp in the future is refused with the negative ones, and it is the
-    /// half that never crashes: taken at face value it keeps "checked
-    /// recently" true until the clock catches up, so `Int.max` in that key is
-    /// an app that quietly never looks for an update again.
+    /// A stamp in the future is refused too: taken at face value it keeps
+    /// "checked recently" true until the clock catches up, so `Int.max` would
+    /// mean never looking for an update again.
     public static func lastChecked(stored seconds: Int, now: Date) -> Date? {
         guard seconds > 0 else { return nil }
         let when = Date(timeIntervalSince1970: TimeInterval(seconds))
@@ -132,9 +125,9 @@ public enum UpdateCheck {
         guard UpdateVersion.isNewer(gh.tag_name, than: currentVersion, currentBuild: currentBuild) else {
             // Only a prerelease reports being ahead. A *final* release ahead of
             // its own channel is a state the release flow does not produce
-            // (ARCHITECTURE.md § Release: everything ships to dev first), and
-            // treating it as one would put a notice on every ordinary user's
-            // About page the day a channel lags.
+            // (Architecture/Release.md § Channels and publishing), and treating
+            // it as one would put a notice on every ordinary user's About page
+            // the day a channel lags.
             guard UpdateVersion.prereleaseOrdinal(currentVersion) != nil,
                   UpdateVersion.isNewer(currentVersion, than: gh.tag_name)
             else { return .upToDate }

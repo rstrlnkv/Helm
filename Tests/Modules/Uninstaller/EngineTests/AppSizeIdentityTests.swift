@@ -2,17 +2,9 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
-/// The stronger half of `UninstallerDuplicateBundleIDTests`.
-///
-/// That test ends at `XCTAssertEqual(sizes.count, mine.count)` under the name
-/// "…AndEachKeepsItsOwnSize". A count of two says the dictionary has two keys;
-/// it says nothing about *which* size sits under which key, and that is the
-/// entire defect: `appSizes` is filled by `concurrentPerform`, so a key written
-/// twice keeps whichever thread finished last. Keyed by bundle id the count was
-/// one, which the old assertion would have caught — keyed by path but measured
-/// from the wrong app it is still two, and the banner still says the wrong
-/// number about a removal it is about to perform.
-/// Past defect: fix commit 51247cad.
+/// Which size sits under which key, where `UninstallerDuplicateBundleIDTests`
+/// counts keys: `appSizes` is filled by `concurrentPerform`, and a count of two
+/// would pass with each copy measured as the other.
 final class AppSizeIdentityTests: XCTestCase {
 
     private var home: URL!
@@ -37,10 +29,8 @@ final class AppSizeIdentityTests: XCTestCase {
         return home.appendingPathComponent(relative).path
     }
 
-    /// Two builds of one app, an order of magnitude apart in size. The small
-    /// one must not be able to wear the large one's number: "Uninstall will
-    /// free 900 KB" about a 40 KB copy is the sentence this screen exists to
-    /// get right.
+    /// Two copies of one app, an order of magnitude apart in size: the small one
+    /// does not wear the large one's number.
     func testEachCopyIsMeasuredAsItselfAndNotAsTheOtherOne() throws {
         try makeApp("Applications/Tool.app", id: "com.acme.tool", bytes: 40_000)
         try makeApp("Applications/Setapp/Tool.app", id: "com.acme.tool", bytes: 900_000)

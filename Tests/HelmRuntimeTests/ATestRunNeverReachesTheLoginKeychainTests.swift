@@ -8,10 +8,8 @@ import XCTest
 ///
 /// `ATestNamesTheKeychainPortsItBuildsOverTests` holds every construction a test
 /// spells; `ModuleHost.bootstrap` builds engines no test spells, on their
-/// production ports. Measured 2026-09-17: once this Mac's builds carried a
-/// stable signing identity, the seal item's access list no longer matched the
-/// test runner, Autopilot's key read waited on a dialog, and
-/// `ShutdownLetsTheEnginesGoTests` found the engine still alive.
+/// production ports. A seal item whose access list does not match the test
+/// runner would make a key read wait on a dialog and hold an engine alive.
 ///
 /// Asked of an account nothing else uses, so the defect — a port that does go
 /// to the keychain — creates an item this test can see and then removes.

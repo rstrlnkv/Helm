@@ -9,27 +9,17 @@ import HelmTestSupport
 /// `CGKeyTap` hands CoreGraphics a **non-owning** pointer to itself, which is
 /// the only shape that lets the object be freed while the tap is still live —
 /// and a live tap resolving that pointer is a `swift_retain` on freed memory,
-/// on the main run loop, inside somebody's typing. It was seen as one SIGSEGV
-/// in about six runs of `HelmAppTests`, where a nested run loop spin services a
-/// tap whose engine an earlier `bootstrap()` had already replaced.
+/// on the main run loop, inside somebody's typing — for instance where a nested
+/// run loop spin services a tap whose engine `bootstrap()` already replaced.
 ///
-/// The assertion is on **the taps' own mach port names**, not on surviving: a
+/// The assertion is on the taps' own mach port names, not on surviving: a
 /// use-after-free takes the whole runner down rather than failing a test, and
 /// whether the port was handed back is a fact about teardown that no
 /// scheduling can fake.
 ///
-/// It used to count the task's whole namespace (`mach_port_names` before and
-/// after) against a threshold, and that flaked at about 1 full run in 3 while
-/// every tap tore down correctly: the suite process shares one namespace with
-/// everything else that lives in it, and `HelmAppTests` bootstraps the real
-/// modules through `ModuleHost.shared` — a singleton, so a real `CGKeyTap`
-/// and a real spell pipeline stay live for the rest of the suite. Typing
-/// anywhere on the machine during this test's window then lands spell-server
-/// and AddressBook XPC traffic (each connection a fresh receive right, each
-/// retry a fresh name) inside the diff. Measured: one background spell thread
-/// alone added 11 names — RECV×3, RECV+SEND×3, SEND×3, PSET×1 — and none of
-/// them was a tap. Asking about the specific names the taps held is immune to
-/// all of it.
+/// Not a count of the task's whole namespace: the suite shares it with live
+/// spell-server and XPC traffic (a real `CGKeyTap` from `ModuleHost.shared`
+/// stays live for the rest of the suite), which adds names that are not taps.
 final class KeyTapOutlivesNobodyTests: XCTestCase {
 
     /// Enough cycles that a real leak is an order of magnitude clear of name
@@ -60,7 +50,7 @@ final class KeyTapOutlivesNobodyTests: XCTestCase {
                           "no accessibility grant for the test runner — no tap to tear down")
     }
 
-    /// The defect exactly: dropped without anyone calling `stop()`.
+    /// Dropped without anyone calling `stop()`.
     @MainActor
     func testATapDroppedWithoutStopHandsItsPortBack() async throws {
         try skipWithoutTheGrant()
@@ -95,7 +85,7 @@ final class KeyTapOutlivesNobodyTests: XCTestCase {
 
     /// And the ordinary route gives the port back too. Without
     /// `CFMachPortInvalidate` the port and the run loop source it caches retain
-    /// each other, so `stop()` alone left one behind per start.
+    /// each other, so `stop()` alone would leave one behind per start.
     @MainActor
     func testStopHandsThePortBack() async throws {
         try skipWithoutTheGrant()

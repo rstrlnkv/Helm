@@ -3,39 +3,26 @@ import HelmRuntime
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// **`StaleItem.id` is the path, and a system extension's path is its
-/// identifier** — so two records of one extension are two rows with one id.
+/// **`StaleItem.id` is the path, and two records of one system extension are
+/// two rows with two ids.**
 ///
 /// `systemextensionsctl list` prints a line per *record*, not per extension, and
 /// an upgrade leaves two: the new one `[activated enabled]` and the old one
-/// `[terminated waiting to uninstall on reboot]`. `SystemExtensionParser.parse`
-/// answers one `SystemExtensionInfo` a line, correctly — the enabled flag and
-/// the version differ — and `LeftoversScanner.systemExtensions` then builds a
-/// `StaleItem` per record whose `path` is `info.identifier`, which is the same
-/// string for both.
+/// `[terminated waiting to uninstall on reboot]`, with one identifier.
 ///
-/// Two things rest on that string being unique to a row, and both are stated in
-/// this module's own comments:
+/// Two things rest on a row's id being unique:
 ///
-///   • **The sort.** «The path breaks the tie, because the identifier does not
-///     always … The path is unique by construction: it is the item's `id`»
-///     (`LeftoversScanner.scan`). For these two rows both keys are equal, so the
-///     comparator is false in both directions, Swift's sort is not stable, and
-///     «Scan again» may swap a pair whose badges disagree — one carries
-///     `runAtLoad` from `enabled`, the other does not. That is the very defect
-///     `ScanOrderIsTotalTests` was written for, in the one kind of row where the
-///     fix does not reach.
+///   • **The sort.** «The path breaks the tie … it is the item's `id`»
+///     (`LeftoversScanner.scan`). With both keys equal the comparator is false
+///     both ways, Swift's sort is not stable, and «Scan again» could swap a pair
+///     whose badges disagree.
 ///   • **The list.** `LeftoversSettingsPage` draws `ForEach(group.items)` over
 ///     `Identifiable`, and a duplicate id there is undefined by SwiftUI's own
-///     documentation — rows drop, or repeat, or animate into each other. The
-///     selection is a `Set<String>` of paths for the same reason.
+///     documentation. The selection is a `Set<String>` of paths for the same
+///     reason.
 ///
 /// The fixture is two records of one identifier because that is what the port
-/// hands back; `LeftoversFakeLoaded` has always been able to hold it, and no test
-/// had used it — a capability of a fake nobody has exercised is a missing test,
-/// not dead weight (ARCHITECTURE.md § Fakes).
-///
-/// Past defect: fixed in `5603872d`.
+/// hands back (Architecture/TestsAndMeasurement.md § Fakes).
 final class TwoRowsCannotWearOneIdentityTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
@@ -53,7 +40,7 @@ final class TwoRowsCannotWearOneIdentityTests: XCTestCase {
                          extensions: LeftoversFakeLoaded(installed: upgrading)).scan()
     }
 
-    /// **The finding.** Every row in a list drawn by `id` needs an id of its own.
+    /// **The guard.** Every row in a list drawn by `id` needs an id of its own.
     func testEveryRowInAScanHasAnIdNoOtherRowHas() {
         let items = scan()
 
@@ -68,8 +55,8 @@ final class TwoRowsCannotWearOneIdentityTests: XCTestCase {
             """)
     }
 
-    /// And the pair the sort cannot order, said as the sort says it: neither row
-    /// is less than the other, so nothing decides which is drawn first.
+    /// And the tie the sort must be able to break: the two rows differ by
+    /// the key the sort reads, so something decides which is drawn first.
     ///
     /// Read off the two rows the scan produced rather than off the comparator
     /// re-typed here — a check whose two sides are one spelling is not a check.

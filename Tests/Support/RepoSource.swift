@@ -2,27 +2,13 @@ import Foundation
 
 /// The repository, as the tests that read it see it.
 ///
-/// A whole family of checks in this suite reads source rather than calling it,
-/// because what they pin is not something a type system says: a string
-/// that must not be a literal, a list that must agree with the tree, a card
-/// that must not spell a constant its own arithmetic reads. Every one of them
-/// began with the same four lines —
+/// A family of checks reads source rather than calling it, because what they
+/// pin is not something a type system says: a string that must not be a
+/// literal, a list that must agree with the tree.
 ///
-/// ```swift
-/// URL(fileURLWithPath: #filePath)
-///     .deletingLastPathComponent()   // HelmUITests
-///     .deletingLastPathComponent()   // Tests
-///     .deletingLastPathComponent()   // repo
-/// ```
-///
-/// — and the count of `deletingLastPathComponent`s is a fact about where the
-/// test file sits, so a test under `Tests/Modules/<X>/UITests` needs a fourth
-/// and a moved file needs an edit that nothing reports. **This walks up to
-/// `Package.swift` instead**, which is the same answer from any depth and stops
-/// being a number anybody has to keep right.
-///
-/// This does not go back and convert the twenty-odd files that already spell it
-/// out; it is here so the next one does not make it twenty-one.
+/// The root is found by walking up to `Package.swift`, the same answer from any
+/// depth, rather than by a count of `deletingLastPathComponent()` calls that is
+/// a fact about where the test file sits.
 public enum RepoSource {
 
     /// The directory holding `Package.swift`, found by walking up from this
@@ -46,10 +32,8 @@ public enum RepoSource {
     /// Read from the tree rather than from a build product: a scan asserts
     /// about what is written, and a stale module would answer for the wrong source.
     ///
-    /// Wrapped rather than left to throw whatever `String(contentsOf:)` throws
-    /// on its own: a file that is not valid UTF-8 comes back as Cocoa error
-    /// 259 with no path in it at all, so a scan over many files could not say
-    /// which one it had choked on.
+    /// Wrapped because a file that is not valid UTF-8 throws Cocoa error 259
+    /// with no path in it, and a scan over many files must say which one.
     public static func text(of relative: String) throws -> String {
         do {
             return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
@@ -107,17 +91,12 @@ public enum RepoSource {
     /// Every `.swift` file under a directory of the repository, repo-relative
     /// and in walk order.
     ///
-    /// One scan had this privately for the nine module UI directories, and the
-    /// second scan that needed it — one that reads all of `Sources` — is the
-    /// point at which it stops being one reader's business. The paths come back
-    /// relative because that is what `text(of:)` and `lines(of:)` take, and
-    /// because a finding has to name a file somebody can open.
+    /// Relative, because that is what `text(of:)` and `lines(of:)` take and
+    /// what a finding names.
     ///
-    /// The enumerator carries its own error handler now: with none, Foundation
-    /// drops a subdirectory it could not read and moves on without a word, so
-    /// a mode-000 directory read as "empty" rather than "refused" — the same
-    /// failure this file's own promise, "fails on a file it cannot read", is
-    /// supposed to rule out.
+    /// The enumerator carries an error handler: with none, Foundation drops a
+    /// subdirectory it could not read without a word, so a refused directory
+    /// would read as empty.
     public static func swiftFiles(under relative: String) throws -> [String] {
         let base = root.appendingPathComponent(relative)
         var refusal: (any Error)?
@@ -139,10 +118,8 @@ public enum RepoSource {
 
     /// A line with its comment tail removed.
     ///
-    /// Every one of these scans has to do this, and for the same reason each
-    /// time: the rule is explained in a comment somewhere, usually by quoting
-    /// the very thing it forbids, so a scan that reads comments reports the
-    /// explanation as the offence.
+    /// A rule is usually explained in a comment that quotes what it forbids,
+    /// so a scan that read comments would report the explanation.
     public static func code(_ line: String) -> String {
         guard let range = line.range(of: "//") else { return line }
         return String(line[line.startIndex..<range.lowerBound])

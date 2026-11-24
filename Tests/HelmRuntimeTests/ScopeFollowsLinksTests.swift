@@ -5,21 +5,16 @@ import HelmTestSupport
 /// The gate must judge the path the filesystem will act on, not the path as
 /// it was spelled.
 ///
-/// `RemovableScope` and `UserFileScope` standardize (`..` and `.` collapse) and
-/// stop there — but `standardizedFileURL` and `standardizingPath` do **not**
-/// resolve symlinks, while `HelmTrash.trashItem` follows them. So a link
-/// planted inside an allowed root pointed the gate at a path it approved and
-/// the Trash at a file somewhere else entirely: the gate says
-/// `~/Library/Caches/com.evil.app/taxes.pdf`, the filesystem moves
-/// `~/Documents/taxes.pdf`.
+/// `standardizedFileURL` and `standardizingPath` do not resolve symlinks,
+/// while `HelmTrash.trashItem` follows them. A link planted inside an allowed
+/// root would point the gate at `~/Library/Caches/com.evil.app/taxes.pdf` and
+/// the filesystem at `~/Documents/taxes.pdf`.
 ///
-/// It is reachable: `LeftoversScanner.plugins()` enumerates four `~/Library`
+/// It is reachable: `LeftoversScanner.plugins()` enumerates `~/Library`
 /// directories that do not exist on a stock install, so any process running as
-/// the user can create one as a symlink and wait.
-///
-/// The answer already existed in this codebase — `WatchScope.canonical`
-/// resolves the deepest ancestor that exists and puts the missing tail back,
-/// because "the question is where a path *leads*".
+/// the user can create one as a symlink and wait. So the scopes resolve the
+/// deepest ancestor that exists and put the missing tail back, as
+/// `WatchScope.canonical` does.
 final class ScopeFollowsLinksTests: XCTestCase {
     private var home: URL!
 
@@ -88,10 +83,8 @@ final class ScopeFollowsLinksTests: XCTestCase {
     /// Resolving must never promote a relative path to an absolute one.
     ///
     /// `URL(fileURLWithPath:)` resolves against the process's working
-    /// directory, so canonicalizing before the "is this absolute" guard turned
-    /// `""` and `relative/path` into paths the gate approved. That is how the
-    /// first cut of this fix broke `UserFileScope`, and it is the kind of
-    /// mistake a gate cannot afford to make twice.
+    /// directory, so canonicalizing before the "is this absolute" guard would
+    /// turn `""` and `relative/path` into paths the gate approves.
     func testRelativePathsAreNotPromotedToAbsoluteOnes() {
         for spelling in ["", "relative/path", "..", "Library/Caches/x"] {
             XCTAssertEqual(PathCanonical.resolvingAncestors(spelling), spelling,

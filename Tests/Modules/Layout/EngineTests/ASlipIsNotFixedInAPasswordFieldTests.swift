@@ -2,7 +2,7 @@ import XCTest
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-/// **A slipped Shift is not repaired in an app's own password field.**
+/// A slipped Shift is not repaired in an app's own password field.
 ///
 /// `isSecureInput()` is the cheap system-wide flag; `isSecure()` reads the focused element's role and is the only
 /// one that sees a password field in a browser that never escalated. The two answers differ here on purpose: the

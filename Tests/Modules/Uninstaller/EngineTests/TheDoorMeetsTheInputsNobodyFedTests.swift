@@ -4,13 +4,12 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// **What the door does with the app it was not shown: spelled another way, changed since the card,
-/// unreadable, quoting a glob, up again, refused by macOS.**
+/// What the door does with an app it was not shown: spelled another way, changed since the card,
+/// unreadable, quoting a glob, up again, refused by macOS.
 ///
-/// Each case is a path or a state the other classes do not feed. A refusal asserts that nothing reached
-/// the Trash port and nothing was quit, with the app up and the quit agreed, so a missing check shows as
-/// a move and not as a quiet pass; a spelling that is the same app asserts the bundle moved and was
-/// *reported* moved. `ALaunchpadRemovalMovesOnlyWhatTheIdOwnsAndListsEveryRefusalTests` holds the plain
+/// A refusal asserts nothing reached the Trash port and nothing was quit, with the app up and the quit
+/// agreed, so a missing check shows as a move; a spelling of the same app asserts the bundle moved and
+/// was reported moved. `ALaunchpadRemovalMovesOnlyWhatTheIdOwnsAndListsEveryRefusalTests` holds the plain
 /// cases.
 final class TheDoorMeetsTheInputsNobodyFedTests: XCTestCase {
 

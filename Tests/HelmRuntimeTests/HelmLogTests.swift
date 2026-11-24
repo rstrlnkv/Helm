@@ -2,7 +2,7 @@ import XCTest
 import HelmTestSupport
 @testable import HelmRuntime
 
-/// Guards the dev build that an «off» saved by the beta silenced (fix 4ce355a9).
+/// A dev build logs whatever a beta sharing its settings domain saved.
 final class LogPolicyTests: XCTestCase {
     func testDevBuildsLogByDefault() {
         XCTAssertTrue(LogPolicy.isEnabled(isDev: true, override: nil))
@@ -59,13 +59,11 @@ final class LogLineTests: XCTestCase {
     }
 }
 
-/// The log file was 0644 inside a 0700 folder, where (ARCHITECTURE.md § Diagnostics
-/// log) describes the 0700 as the protection — measured on the owner's own Mac,
-/// where the folder was doing all of it and the file none.
+/// The log file is as private as its 0700 folder (Architecture/DiagnosticsLog.md § Diagnostics log).
 ///
 /// Two halves, because a file gets its mode from whoever created it: `append`
-/// creates through `PrivateFile` now, and a file an *earlier build* created keeps
-/// its 0644 for as long as it is appended to, so launch tightens what it finds.
+/// creates through `PrivateFile`, and a file an earlier build created keeps its
+/// mode for as long as it is appended to, so launch tightens what it finds.
 final class TheLogFileIsAsPrivateAsItsFolderTests: XCTestCase {
 
     override func tearDown() {

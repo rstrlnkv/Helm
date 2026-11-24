@@ -1,10 +1,8 @@
 import Foundation
 
-/// The three orders the Apps tab can be read in, each with the one direction
-/// that answers a question somebody asks while removing apps: what is big, and
-/// what have I not opened for a long time. The reverse of each answers no
-/// question of that kind, so there is no direction to choose and the menu that
-/// offers these stays a flat list of three.
+/// The three orders the Apps tab can be read in, each in the one direction
+/// that answers a removal question (what is big, what have I not opened), so
+/// the menu is a flat list of three with no direction to choose.
 public enum AppSortOrder: String, CaseIterable, Sendable {
     /// A to Z. Also what every list is in until a reading arrives.
     case name
@@ -15,14 +13,12 @@ public enum AppSortOrder: String, CaseIterable, Sendable {
     case dateLastOpened
 
     /// What a Mac that has never chosen reads as. Not size: the list arrives
-    /// before the sizes do, and a list that rebuilt itself under the pointer
-    /// seconds after it appeared would be the first thing anybody saw.
+    /// before the sizes, and would rebuild itself under the pointer.
     public static let standard = AppSortOrder.name
 
-    /// A stored value, bounded on the way in. It comes out of a property list
-    /// any process running as the user can write, so an unknown spelling reads
-    /// as the standard order rather than as an error nobody can act on. A case
-    /// retired later is kept in the enum and mapped here, never deleted.
+    /// A stored value, bounded on the way in: any process running as the user
+    /// can write the property list, so an unknown spelling reads as the standard
+    /// order. A retired case is kept in the enum and mapped here, never deleted.
     init(stored raw: String?) {
         self = raw.flatMap(AppSortOrder.init(rawValue:)) ?? .standard
     }
@@ -30,10 +26,9 @@ public enum AppSortOrder: String, CaseIterable, Sendable {
 
 /// What the engine says about when the listed apps were last opened.
 ///
-/// Three answers per app, and the type keeps them apart because the screen
-/// draws three different things: a date (`opened`), "no record" (asked, and
-/// Spotlight had none) and nothing at all (`unread` — not asked, because the
-/// read was cut short by its ceiling or its deadline).
+/// Three answers per app, kept apart because the screen draws three things:
+/// a date (`opened`), "no record" (asked, and Spotlight had none) and nothing
+/// (`unread`: not asked, the read cut short by its ceiling or deadline).
 public struct AppOpenedReading: Equatable, Sendable {
     /// Path → last opened. An app that is not here and not in `unread` has no
     /// record.
@@ -69,11 +64,9 @@ public enum AppSort {
     /// `nil` until Spotlight has been asked; an absent path is "no record".
     ///
     /// `unread` is what the last-opened read never got to. In the date order those
-    /// go **after every app that has an answer** (by name among themselves): the
-    /// head of that order says "least evidence this app is used", which Helm can
-    /// say of an app Spotlight answered nothing for and cannot say of one it did
-    /// not ask about. An app with a date keeps its place whether or not others
-    /// are unread.
+    /// go after every app with an answer (by name among themselves): the head of
+    /// that order says "least evidence this app is used", which Helm cannot say
+    /// of an app it did not ask about.
     ///
     /// Ties fall to the name, then the path, so two rows equal in the key do not
     /// trade places on every redraw and two copies of one app stay put.

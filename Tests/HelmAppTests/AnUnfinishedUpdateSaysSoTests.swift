@@ -8,14 +8,12 @@ import HelmTestSupport
 
 /// **The report belongs to whichever Helm launches next.**
 ///
-/// An update that goes wrong goes wrong after `NSApp.terminate`: there is no
-/// screen, no view model and no log — the process that owns all three is what
-/// the swap script waits for before it starts. So the note is written *before*
-/// the handover, by the app, and the script's only duty is to take it away when
-/// the copy landed. The failure is then reported by an act nobody had to
-/// remember to perform, which is also why it covers the cases a status file
-/// written afterwards would miss: a script that was killed, a machine that lost
-/// power, a swap that never started at all.
+/// An update that goes wrong goes wrong after `NSApp.terminate`, with no
+/// screen, no view model and no log. So the app writes the note *before* the
+/// handover, and the script's only duty is to take it away when the copy
+/// landed. The failure is then reported by an act nobody has to remember,
+/// which also covers what a status file written afterwards would miss: a
+/// script that was killed, a machine that lost power, a swap never started.
 final class AnUnfinishedUpdateSaysSoTests: XCTestCase {
 
     override func setUp() {
@@ -44,8 +42,8 @@ final class AnUnfinishedUpdateSaysSoTests: XCTestCase {
                        "the note an update was in flight did not survive being written")
     }
 
-    /// Read once. A note left in place would tell every launch from now on about
-    /// one update that failed a month ago.
+    /// Read once. A note left in place would tell every later launch about one
+    /// update that failed a month ago.
     func testTakingItTakesItAway() {
         _ = UpdateHandoff.note(version: "0.9.9")
         XCTAssertNotNil(UpdateHandoff.take(), "precondition: there was a note to take")
@@ -94,7 +92,7 @@ final class AnUnfinishedUpdateSaysSoTests: XCTestCase {
                       "an update that installed cleanly is reported as a failure")
     }
 
-    /// Q16a: the sentence on the updates card does not depend on the log. A
+    /// The sentence on the updates card does not depend on the log. A
     /// Beta build ships with logging off, so a report that travels only through
     /// `HelmLog` reaches nobody there.
     func testTheFailureIsPublishedWithLoggingOff() throws {

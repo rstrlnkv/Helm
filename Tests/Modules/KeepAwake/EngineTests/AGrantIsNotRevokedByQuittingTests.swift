@@ -3,27 +3,15 @@ import HelmTestSupport
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
-/// Taking the NOPASSWD rule back out at quit was a promise the process could not
-/// keep, and it cost the one thing that could have kept it.
+/// Quitting raises no administrator dialog: `applicationWillTerminate` calls
+/// `deactivate()` on every live engine, and nobody types a password into a
+/// dialog belonging to an app that is already gone.
 ///
-/// `tearDown()` ran `clamshell.removeSudoers { _ in }` — which hops to a global
-/// queue and runs `osascript … with administrator privileges`. It is called from
-/// `deactivate()`, and `applicationWillTerminate` calls that on every live
-/// engine, so the sequence at quit was: dispatch to a background queue, put an
-/// administrator password dialog on screen, and terminate. Nobody types a
-/// password into a dialog belonging to an app that is already gone. The evidence
-/// that it never ran is on the machine this was written on: `/etc/sudoers.d`
-/// holds **two** abandoned rules from predecessors, and this app's own removal
-/// was written the same way.
+/// And a refused restore leaves system sleep off machine-wide with
+/// `clamshellGuard` set so the next launch comes back and looks; the recovery
+/// needs `sudo -n pmset disablesleep 0`, which is this grant.
 ///
-/// Worse, it ran *after* `if active { disengage() }` with nothing between them.
-/// A refused restore leaves system sleep off machine-wide and keeps
-/// `clamshellGuard` set precisely so the next launch comes back and looks — and
-/// the recovery it comes back for needs `sudo -n pmset disablesleep 0`, which is
-/// the grant this was removing on the way out. So the one path where the rule is
-/// load-bearing is the one where it was being taken away.
-///
-/// The decision: **the grant's lifetime is the feature, not the process.**
+/// The decision: the grant's lifetime is the feature, not the process.
 /// `releaseIfUnneeded()` removes it on the lid option's falling edge and
 /// `releaseOnModuleDisabled()` on the module's, both where there is a person
 /// present to answer the dialog. Quitting leaves it, the same way a crash does —
@@ -71,9 +59,9 @@ final class AGrantIsNotRevokedByQuittingTests: XCTestCase {
         XCTAssertTrue(clamshell.isSudoersInstalled())
     }
 
-    /// The expensive case, and the reason the order mattered: the restore was
-    /// refused, so sleep is off machine-wide and the next launch is the only
-    /// thing that can fix it — with the grant it needs still there.
+    /// The expensive case: the restore was refused, so sleep is off machine-wide
+    /// and the next launch is the only thing that can fix it, with the grant it
+    /// needs still there.
     @MainActor
     func testARefusedRestoreLeavesBothHalvesOfItsOwnRecovery() async {
         engine.startSession(minutes: 0)

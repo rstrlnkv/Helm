@@ -11,8 +11,8 @@ import HelmAppStrings
 /// it again. Whoever hosts it gives it its width.
 ///
 /// **Rows are `Button`s, and the column takes keyboard focus.** A column of
-/// plain buttons does not move a selection by arrow keys the way a `List` did,
-/// so Up and Down are handled here and go through
+/// plain buttons does not move a selection by arrow keys the way a `List`
+/// does, so Up and Down are handled here and go through
 /// `ShellSidebarRows.neighbour`; at either end they change nothing.
 ///
 /// **Typing the first letters of a row's name selects that row**, as a system list's type-select does
@@ -23,17 +23,14 @@ import HelmAppStrings
 /// buffer lingers, and the next press after any gap starts afresh. A press with ⌘, ⌃ or ⌥ is not text and
 /// passes. The match is by the name the row draws, anchored, blind to case, accents and width; no name in
 /// the eight languages begins with an article. The column is a focusable view, not a text input client,
-/// so a system input method does not compose into it. Tried in a script with the same match options,
-/// not in a running window: katakana typed matches a katakana name; hiragana does not, and the kanji
-/// names (重複, 設定) match nothing typed as kana; pinyin matches nothing.
+/// so a system input method does not compose into it: kanji names (重複, 設定) match nothing typed as
+/// kana, hiragana does not match katakana, and pinyin matches nothing (tried in a script, not a window).
 ///
 /// **It observes `host` itself.** The rows are filtered by whether a module is
-/// on, and switching a module off in Settings calls `ModuleHost.setEnabled`
-/// directly, which posts nothing this view listens for. `model.host` is a plain
-/// `let`, so reaching it through the model would not redraw: the row of a
-/// module that had just been switched off would stay until something else
-/// invalidated the view. It is not about where the value is read from — "on" is
-/// read from the store — but about being redrawn at all.
+/// on, and switching a module off calls `ModuleHost.setEnabled` directly, which
+/// posts nothing this view listens for. `model.host` is a plain `let`, so
+/// reaching it through the model would not redraw, and the row of a module
+/// just switched off would stay.
 struct ShellSidebar: View {
     @ObservedObject private var model: SettingsModel
     @ObservedObject private var host: ModuleHost

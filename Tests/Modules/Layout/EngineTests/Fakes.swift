@@ -203,10 +203,9 @@ struct FakeSpell: SpellPort {
 /// A tap that can be in the three states the real one can: watching, refused
 /// for want of the grant, and stopped by macOS behind the app's back.
 ///
-/// `start` used to return `true` unconditionally, so «macOS would not give us a
-/// tap» and «macOS took the tap away» were states no test could write down — which
-/// is why the second one shipped as a page that said «Active» with nobody listening
-/// (Architecture/ModulePattern.md § Ports and logic).
+/// So «macOS would not give us a tap» and «macOS took the tap away» are states a
+/// test can write down; the second otherwise reads as «Active» with nobody
+/// listening (Architecture/ModulePattern.md § Ports and logic).
 final class FakeTap: KeyTapPort, @unchecked Sendable {
     var handler: (@Sendable (TypingBuffer.Event) -> Void)?
     var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
@@ -252,11 +251,9 @@ final class FakeTap: KeyTapPort, @unchecked Sendable {
 
 /// A keyboard that is actually on the layout it was switched to.
 ///
-/// `current()` used to answer `"en"` for ever, whatever `select()` had been
-/// told — so "convert, then convert the next word back" was unrepresentable:
-/// the engine reads `current()` at the top of every conversion, and in a test
-/// the second one always started from where the first one had. No test could
-/// have covered the sequence, whatever anybody wrote.
+/// The engine reads `current()` at the top of every conversion, so a keyboard
+/// that ignored `select()` would make "convert, then convert the next word
+/// back" unrepresentable.
 ///
 /// Shared rather than private: every Layout test that needs a keyboard takes this
 /// one, so a fix to it reaches all of them. KeepAwake and VPN keep theirs in a

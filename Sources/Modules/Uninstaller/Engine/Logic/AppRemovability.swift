@@ -3,11 +3,9 @@ import HelmRuntime
 
 /// Whether the Uninstaller would offer this app for removal, for a caller that is not its own page.
 ///
-/// **The gate sits in the engine because the engine is what deletes.** `SystemApp.isSystem` is
-/// otherwise the page's: a `com.apple.` app in `/Applications` is a row without a checkbox, and
-/// nothing below the page would stop a batch that named it. A door another module calls cannot lean
-/// on a page, so the same refusals are written here, in this order, and `removalPreview` and
-/// `removeApp` run them again before anything is scanned or quit:
+/// The gate sits in the engine because the engine is what deletes: a door another module calls
+/// cannot lean on the page's checkboxes. The refusals, in this order, which `removalPreview` and
+/// `removeApp` run before anything is scanned or quit:
 ///
 /// 0. it is not Helm itself (`ownApp`: its id, an id under it, its bundle; refused as `.notOffered`),
 /// 1. the candidate names an id, 2. the id is not macOS's, 3. the path is a `.app` spelled plainly

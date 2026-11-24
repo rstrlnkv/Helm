@@ -46,26 +46,17 @@ enum SystemExtensionParser {
 public enum SystemExtensionCLI {
     /// The tool's own answer, or `nil` when it did not give one.
     ///
-    /// **An empty list and a tool that failed are two facts.** The exit status was
-    /// dropped here, so a `systemextensionsctl` that could not run read as «nothing
-    /// is loaded on this Mac» — and «nothing is loaded» is what stops a launch agent
-    /// whose label is a live system extension from being called a leftover.
+    /// **An empty list and a tool that failed are two facts.** Read as «nothing
+    /// is loaded on this Mac», a tool that could not run would let a launch
+    /// agent whose label is a live system extension be called a leftover.
     static func listing() -> String? {
-        // This used to wait before reading, which is the deadlock order, and
-        // paid 67 ms in the run-loop poll on every call.
         let result = HelmProcess.run("/usr/bin/systemextensionsctl", ["list"])
         return result.status == 0 ? result.output : nil
     }
 
-    // **The folded pair is gone, and nothing here can lose the tool's silence
-    // again.** `listOutput()` answered `""` for a tool that did not run and
-    // `installed()` parsed that into an empty list, so «no extensions on this
-    // Mac» and «the tool was not there» arrived as one value. The last reader of
-    // either was the uninstaller's `systemExtensions` command, which no screen
-    // ever sent; it went on 2026-08-16 and took them with it. Every reader below
-    // can say that the tool did not answer, which is what a caller deciding
-    // whether something may be deleted — or drawing a control on the strength of
-    // what is loaded — has to be able to tell.
+    // Every reader below can say that the tool did not answer: a caller deciding
+    // whether something may be deleted, or drawing a control on the strength of
+    // what is loaded, has to tell that from «no extensions on this Mac».
 
     /// The list, or `nil` when `systemextensionsctl` itself did not answer.
     public static func installedIfAnswered() -> [SystemExtensionInfo]? {
@@ -75,11 +66,9 @@ public enum SystemExtensionCLI {
     /// The apps whose extensions are loaded, or `nil` when `systemextensionsctl`
     /// itself did not answer.
     ///
-    /// It replaces a folded `hostIdentifiers()` built on `listOutput()`, whose
-    /// empty answer meant «this Mac has no extensions» and «the tool did not run»
-    /// in one value. The uninstaller reads it to decide whether a live extension
-    /// is why macOS refused to move a bundle, which is a claim, so the two have to
-    /// be different values.
+    /// The uninstaller reads it to decide whether a live extension is why macOS
+    /// refused to move a bundle, which is a claim, so «no extensions» and «the
+    /// tool did not run» have to be different values.
     public static func hostIdentifiersIfAnswered() -> Set<String>? {
         listing().map(SystemExtensionParser.hostIdentifiers)
     }

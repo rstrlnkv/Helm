@@ -8,14 +8,12 @@ import HelmTestSupport
 /// declared permissions, and nothing else. Keep Awake's pointer nudge posts a
 /// synthetic `CGEvent`, which macOS drops without Accessibility — and every
 /// ad-hoc signed build is a new app to TCC, so the grant lapses on every
-/// update while the checkbox stays ticked. Declaring only `.adminHelper` meant
-/// a Keep Awake user who does not also run Layout was never told.
+/// update while the checkbox stays ticked; a Keep Awake user who does not also
+/// run Layout is told only if Keep Awake declares it.
 ///
 /// A source scan because the descriptor lives in the UI target, which this
 /// test target cannot import, and because the fact worth pinning is the link
 /// between the two files rather than either one alone.
-///
-/// Guards: 8287d151 (Accessibility grant the pointer nudge needs was not declared).
 final class DeclaredPermissionsTests: XCTestCase {
 
     private var moduleRoot: URL {

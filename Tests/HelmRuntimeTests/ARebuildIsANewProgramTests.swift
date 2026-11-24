@@ -9,19 +9,13 @@ import XCTest
 /// **Two builds of one version are two programs to TCC, and the audit has to be
 /// able to tell them apart.**
 ///
-/// `PermissionAudit` was keyed on `CFBundleShortVersionString`, which is a
-/// string in a plist: a local build twenty commits on carries the same one. The
-/// grants were gone and the audit stayed silent, in the one situation it exists
-/// for. What moves is the cdhash — the hash of the code directory — because an
+/// A version string is a string in a plist, and a local rebuild carries the
+/// same one while its grants are gone. What moves is the cdhash, because an
 /// ad-hoc bundle has no team identifier and a grant is tied to the bytes.
 ///
-/// This builds the situation rather than describing it: two ad-hoc signed
-/// bundles carrying the same version **and** the same build number, differing by
-/// one byte of code. Nothing here reads the app installed on the machine running
-/// the suite; what is installed there is not this test's business, the same
-/// reason `ABundleIdIsNotAnIdentityTests` next door reads `/bin/ls`.
-///
-/// Past defect: commit b134c772, «Аудит разрешений спрашивает подпись, а не версию».
+/// Two ad-hoc signed bundles with the same version and build number, differing
+/// by one byte of code. Nothing here reads the app installed on this machine
+/// (as `ABundleIdIsNotAnIdentityTests` reads `/bin/ls`).
 final class ARebuildIsANewProgramTests: XCTestCase {
 
     private static let codesign = "/usr/bin/codesign"
@@ -61,8 +55,8 @@ final class ARebuildIsANewProgramTests: XCTestCase {
         return app
     }
 
-    /// The defect in one place: everything the audit used to read is identical
-    /// across the two bundles, and the thing it reads now is not.
+    /// Version and build number are identical across the two bundles; the
+    /// cdhash the audit reads is not.
     func testTwoBuildsOfOneVersionAreToldApart() throws {
         let root = scratchDirectory("rebuild")
         let first = try bundle("First", printing: "one", in: root)
@@ -103,9 +97,9 @@ final class ARebuildIsANewProgramTests: XCTestCase {
         XCTAssertFalse(PermissionAuditPlan.shouldSpeak(lastSeenIdentity: first, current: second))
     }
 
-    /// **The number is the one macOS means by it.** Without this, both
-    /// assertions above would pass on any function that returns two different
-    /// strings — a counter would do. So the reading is put back to the system as
+    /// The number is the one macOS means: without this, the tests above would
+    /// pass on any function returning two different strings. So the reading is
+    /// put back to the system as
     /// a `cdhash` requirement, which is macOS answering about its own code, and
     /// the negative half proves that oracle can say no.
     func testTheReadingIsWhatMacOSMeansByACdhash() throws {

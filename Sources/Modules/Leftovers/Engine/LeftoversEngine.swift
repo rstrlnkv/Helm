@@ -8,19 +8,14 @@ import HelmRuntime
 public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///
-    /// It reaches disk in shapes nothing would flag if they disagreed: the
-    /// `module.leftovers.*` keys of a store and the removal attributed to it in the
-    /// log. `LeftoversDescriptor.id`
-    /// is built from this rather than repeating it, so the two spellings are
-    /// one. **The string itself never changes** — it names folders and stored
-    /// settings that are already on people's machines.
+    /// `LeftoversDescriptor.id` is built from it, so the `module.leftovers.*`
+    /// store keys and the log's attribution are one spelling. **The string itself
+    /// never changes**: it names stored settings already on people's machines.
     public static let moduleID = "leftovers"
 
     private let scanner: LeftoversScanner
-    /// The one the scan uses. The removal gate used to fall back to the
-    /// process's own home, so an engine built for a different one scanned
-    /// there and would have refused to remove there — two homes in a type
-    /// that was handed one.
+    /// The one the scan uses, and the one the removal gate is given, so an
+    /// engine built for a home scans and removes in that home and no other.
     private let home: URL
     /// Held for the switch, not for the scan: `LaunchClaims.onDisk` reads the two
     /// agent folders at the moment of a press, so the engine's refusal rests on
@@ -97,10 +92,9 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// (`Sources/HelmRuntime/ResetPlan.swift`) asks the engines before it
     /// forgets preferences, and that order is why this can read anything at all.
     ///
-    /// One ambiguity stays and is written down rather than solved: a label the
-    /// person disabled themselves *after* Helm did is indistinguishable from
-    /// Helm's own, so it is given back too. It is described in
-    /// ARCHITECTURE.md § Giving everything back.
+    /// One ambiguity stays: a label the person disabled themselves *after* Helm
+    /// did is indistinguishable from Helm's own, so it is given back too
+    /// (Architecture/GivingEverythingBack.md § Giving everything back).
     public func willDisable() {
         switchLock.withLock {
             handedBack = true
@@ -138,29 +132,22 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             // that have already passed one.
             let (allowed, refused) = RemovableScope.partition(Array(Set(paths)),
                                                               home: self.home.path)
-            // The loop this used to write by hand was the last of the four
-            // `HelmTrash` was made for, and the only one that classified
-            // nothing: `localizedDescription` reached the screen untranslated,
-            // so a refusal by Full Disk Access read as "The operation couldn't
-            // be completed" with the domain, the code and the path thrown away.
+            // Through `HelmTrash`, which classifies each refusal, so a refusal by
+            // Full Disk Access reaches the screen as a sentence rather than an
+            // untranslated `localizedDescription` with the path thrown away.
             HelmLog.shared.info(Self.moduleID,
                                 "trashing \(allowed.count), refused \(refused.count) out of scope")
-            // `hasSystemExtension` is left at its default, `false`, on purpose,
-            // not for want of wiring. `activeSystemExtension` only ever classifies
-            // a path ending in `.app` (`PermissionCheck.reason`), and the leftovers
-            // scan never offers one: it emits launchd `.plist`s, preference
-            // `.plist`s, plug-in bundles (`.qlgenerator`, `.prefPane`, `.plugin`,
-            // `.component`) and system-extension *identifiers* it never trashes —
-            // no `.app` among them. A live-extension check here would be inert, and
-            // an inert check is worse than none: it says a question was answered
-            // that was not. The uninstaller, which does hand over `.app` bundles,
-            // wires the real one.
-            // **The leaf of every path here is a bundle id**, which is what
-            // `Redact.app` exists for — a settings file is `com.acme.tool.plist`, a
-            // launch agent its label, a plug-in the product's own name. A refusal by
-            // Full Disk Access is an ordinary outcome for this module, so these
-            // lines are what a person's log fills up with before they attach it to a
-            // bug report.
+            // `hasSystemExtension` is left at its default, `false`, on purpose.
+            // `activeSystemExtension` only ever classifies a path ending in `.app`
+            // (`PermissionCheck.reason`), and the leftovers scan never offers one: it
+            // emits launchd `.plist`s, preference `.plist`s, plug-in bundles and
+            // system-extension *identifiers* it never trashes. A check here would be
+            // inert, and an inert check says a question was answered that was not. The
+            // uninstaller, which does hand over `.app` bundles, wires the real one.
+            // **The leaf of every path here is a bundle id**, which is what `Redact.app`
+            // exists for — a settings file is `com.acme.tool.plist`, a launch agent its
+            // label. A refusal by Full Disk Access is an ordinary outcome here, so these
+            // lines fill a log a person attaches to a bug report.
             return HelmTrash.remove(allowed: allowed, outOfScope: refused,
                                     module: Self.moduleID, leaf: .softwareName)
         }
@@ -194,12 +181,10 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
         }
         let claimants = LaunchClaims.claimants(of: request.label, in: reading.claims)
         // **And a folder that did not open is not a folder with nothing
-        // in it.** Either agent folder can refuse a listing —
-        // `LaunchClaims.Reading` names the reasons, and that listing
-        // `/Library/LaunchAgents` is open to everyone on the Mac this
-        // was written on — and either one going unread turns «two files
-        // claim this switch» into «one does», on the safe-direction
-        // side of a guard whose whole subject is the unsafe direction.
+        // in it.** Either agent folder can refuse a listing
+        // (`LaunchClaims.Reading` names the reasons), and either one going
+        // unread would turn «two files claim this switch» into «one does»,
+        // the unsafe direction this guard exists for.
         guard reading.everyFolderOpened else {
             HelmLog.shared.warn(Self.moduleID,
                                 "refused a switch: an agent folder would not open, so "
@@ -220,9 +205,6 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
 /// What `trash` answers with — the same value `DiskRemoval` and
 /// `DuplicateRemoval` name, and for the same reason.
 ///
-/// It was a field-for-field copy: `failed` for `refused`, and a
-/// `TrashFailureDetail` whose `message` carried `reason.rawValue` so that the
-/// page could hand it back to `TrashReasonText.sentence`. Nothing in the type
-/// said the string was a reason. The engine and the UI target are in one build,
-/// and the UI target imports this one, so one declaration serves both.
+/// One declaration serves the engine and the UI target, which imports it,
+/// so the page reads a typed reason rather than a string carrying one.
 public typealias LeftoversRemoval = HelmTrash.Result

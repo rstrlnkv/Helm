@@ -2,12 +2,8 @@ import Foundation
 
 /// Whether what a background scan found is worth interrupting somebody for.
 ///
-/// Three modules walk the volume once a day and the whole product of it was a
-/// relative date on a settings page: `ScanJournal.change(module:)` computed the
-/// delta and nothing in `Sources/` called it. This is the half that was missing,
-/// and it is pure for the usual reason — every refusal below is a banner
-/// somebody would otherwise have been shown for nothing, and each is a test
-/// rather than an argument.
+/// Pure, because every refusal below is a banner somebody would otherwise be
+/// shown for nothing, and each is a test rather than an argument.
 ///
 /// **It answers about the delta, never about the finding.** A scan's total is
 /// the same 40 GB every morning; saying it again is «we looked», which is not
@@ -46,14 +42,10 @@ public enum ScanNews {
     ///
     /// **Space that *went* is silent too.** The floor is asked of what appeared
     /// alone, so somebody who emptied their Downloads folder is not congratulated
-    /// for it by an app that had nothing to do with it — a rule that asked
-    /// only whether anything changed gets that case wrong.
+    /// for it by an app that had nothing to do with it.
     ///
-    /// There is deliberately no `startedByHand` parameter. The journal has one
-    /// writer, `ScanCoordinator`, and it is the unattended path — so anything
-    /// read back out of it is by construction about work nobody watched, and a
-    /// flag standing in for a fact the structure already guarantees is the shape
-    /// this codebase keeps paying for.
+    /// No `startedByHand` parameter: the journal's one writer is the unattended
+    /// `ScanCoordinator`, so everything read back is about work nobody watched.
     public static func finding(in change: ScanChange, floor: Int = floorBytes) -> Finding? {
         guard change.hadPrevious else { return nil }
         let bytes = change.appearedBytes

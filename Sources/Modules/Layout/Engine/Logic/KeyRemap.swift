@@ -5,24 +5,16 @@ import Foundation
 /// `UCTranslation`; what a *string* becomes is here, where it can be tested
 /// without a keyboard.
 ///
-/// **It was all-or-nothing, and that is what killed the selection path.** The
-/// tables leave out whitespace (`UCTranslation.buildTable`),
-/// and the loop refused the whole string at the first character it could not
-/// find in them. A word is letters, so the last-word path never met the case
-/// and stayed healthy; a selection is a sentence, and a sentence has spaces in
-/// it. Measured on a Mac with US and Russian installed: `ghbdtn` → `привет`,
-/// `ghbdtn rfr` → nil. «Select a sentence and put it right» could not work
-/// once, ever, and the only trace was a log line counting the characters it
-/// declined.
-///
-/// So a character the source layout does not carry is **passed through**, and
-/// the string is refused only when nothing in it converted at all.
+/// The tables leave out whitespace (`UCTranslation.buildTable`), and a
+/// selection is a sentence with spaces in it. So a character the source layout
+/// does not carry is passed through, and the string is refused only when
+/// nothing in it converted at all (or at a letter, below).
 enum KeyRemap {
 
     /// The text as the other layout would have typed it, or nil when this
     /// layout has nothing to say about it.
     ///
-    /// **Nil, not the string back.** A "conversion" that returns its input is
+    /// Nil, not the string back. A "conversion" that returns its input is
     /// still an edit where it lands: `convertSelection` would hand it to the
     /// app, which clears that app's undo stack, scrolls the view and in some
     /// apps drops the selection — three visible consequences for a keystroke
@@ -39,13 +31,12 @@ enum KeyRemap {
         var converted = false
         let characters = Array(text)
         for (index, character) in characters.enumerated() {
-            // **A key is only «punctuation» in the layout you are holding**, and
+            // A key is only «punctuation» in the layout you are holding, and
             // which reading applies is decided by the neighbour on the right.
             //
-            // `,` types `б` in Russian, `;` types `ж`, `[` types `х`. The table
-            // used to keep letters only, so seven Cyrillic letters had no key —
-            // and admitting them broke sentences instead: `Ghbdtn, rfr ltkf?`
-            // came back `Приветб как дела?`, measured. Both readings are right.
+            // `,` types `б` in Russian, `;` types `ж`, `[` types `х`; read as
+            // letters everywhere, `Ghbdtn, rfr ltkf?` would come back
+            // `Приветб как дела?`. Both readings are right.
             //
             // A letter after it means the person pressed it for a letter, in
             // the middle of a word they are still typing (`cgfcb,j`) or at its
@@ -68,15 +59,10 @@ enum KeyRemap {
                   let code = from.first(where: { $0.value == lower })?.key,
                   let mapped = to[code]
             else {
-                // **A letter it cannot map refuses the whole string; anything
-                // else is kept.** That line is the whole of this type's
-                // judgement, and passing a letter through was measured doing
-                // real damage: `дфых` came back `lasх` with a Cyrillic х on
-                // the end, because х sits on the `[` key and `[` is not a
-                // letter, so it is absent from the latin table. NSSpellChecker
-                // accepts `lasх` as an English word — so the verdict, which
-                // asks only «is the translation a word», converted somebody's
-                // word into a broken one.
+                // A letter it cannot map refuses the whole string; anything
+                // else is kept. Passing a letter through would turn `дфых` into
+                // `lasх`, a Cyrillic х on the end (х sits on `[`, absent from
+                // the latin table), which NSSpellChecker accepts as English.
                 //
                 // A space or a comma carries no reading in another layout and
                 // is kept because the person put it there. A letter carries

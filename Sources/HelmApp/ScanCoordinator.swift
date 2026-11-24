@@ -27,18 +27,15 @@ final class ScanCoordinator {
 
     /// Scans running right now.
     ///
-    /// Without it the tick at t=60 s reads a `lastScanAt` that `run` only writes
-    /// when it *finishes*, sees the budget unspent, and starts a **second
-    /// concurrent scan of the same module** — two readers of every file in
-    /// scope. The module then cancels the first, so the day's budget of two is
-    /// spent on one scan that never completed.
+    /// `run` writes `lastScanAt` only when a scan finishes, so without this the
+    /// next tick would see the budget unspent and start a second concurrent
+    /// scan of the same module; the module would cancel the first, and the
+    /// day's budget would be spent on a scan that never completed.
     private var inFlight: Set<String> = []
 
     /// One minute. The scan itself runs at most twice a day, so this is only how
-    /// often the conditions are re-read — and both readings are cheap: idle was
-    /// measured at 0,0000 ms after the first call, the power source at well
-    /// under a millisecond. A timer rather than a notification because idleness
-    /// has nothing to announce: nothing tells you that nothing happened.
+    /// often the conditions are re-read, and both readings are cheap. A timer
+    /// rather than a notification because idleness has nothing to announce.
     private static let pollInterval: TimeInterval = 60
 
     init(host: ModuleHost,
@@ -50,9 +47,7 @@ final class ScanCoordinator {
     }
 
     /// The one category the app layer files a module's story under, and the area
-    /// the notice port names itself with. It is the single shared category on
-    /// purpose; a literal spelled at every use in this file is the same name with
-    /// a chance to drift at each.
+    /// the notice port names itself with.
     static let logArea = "scan"
 
     func start() {
@@ -106,10 +101,8 @@ final class ScanCoordinator {
     /// How long the person has been away, which is not what the counter says
     /// once Helm has nudged the pointer itself.
     ///
-    /// Reading the counter is this layer's job — it is a live system call, and
-    /// the only thing here that cannot be handed a number. Everything the
-    /// reading *means* is `ScanRunner`'s, where it is a test rather than an
-    /// argument.
+    /// Reading the counter is this layer's job, being a live system call;
+    /// everything the reading means is `ScanRunner`'s, where it is tested.
     func effectiveIdleSeconds() -> TimeInterval {
         let next = ScanRunner.advance(idle, systemIdle: SystemIdle.seconds(),
                                       lastOwnNudge: lastOwnNudge, now: Date())
@@ -119,21 +112,10 @@ final class ScanCoordinator {
 
     /// Everything a tick reads that cannot differ between the modules in it.
     ///
-    /// **Sampled once, not once per module.** Every field here was read inside
-    /// `verdict(for:)`, so a tick over three modules paid for each answer three
-    /// times: three seal verifications, which were three `SecItemCopyMatching`
-    /// round trips into securityd before `SealKeyCache` held the key for a
-    /// process; three power readings; and six `CGSessionCopyCurrentDictionary`
-    /// calls, since `ownsTheConsole` and `screenIsLocked` each make their own.
-    /// Measured on this machine, before the cache, at 0,1785 ms for the keychain
-    /// read and 0,1071 ms for the session dictionary — about 1,2 ms a tick
-    /// against 0,4 hoisted, which is small and is not the reason.
-    ///
-    /// The reason is that they were three *different* readings. Lock the screen
-    /// between the first module and the third and the same tick judged them
-    /// against two different machines; re-seal `disabledScans` mid-tick and the
-    /// `.adopt` branch could write while a later module read what it wrote. One
-    /// snapshot cannot disagree with itself.
+    /// **Sampled once, not once per module**, so the modules of one tick are
+    /// judged against one machine: per-module readings could straddle a screen
+    /// lock, or an `.adopt` write of `disabledScans` that a later module then
+    /// reads. One snapshot cannot disagree with itself.
     struct Conditions {
         let now: Date
         let idleSeconds: TimeInterval
@@ -151,9 +133,7 @@ final class ScanCoordinator {
 
     /// - Parameter idleSeconds: sampled once per tick by the caller, not read
     ///   per module. `effectiveIdleSeconds` folds a reading into an estimate it
-    ///   keeps, so asking it three times a tick would be three folds of the same
-    ///   minute — the shape of a getter with a side effect, which
-    ///   is wrong, and cheaper to avoid than to serialise.
+    ///   keeps, so asking it per module would fold the same minute several times.
     func conditions(idleSeconds: TimeInterval) -> Conditions {
         Conditions(now: Date(),
                    idleSeconds: idleSeconds,
@@ -191,19 +171,18 @@ final class ScanCoordinator {
 
     /// The last verdict logged for each module, so only changes are written.
     ///
-    /// A line per module per tick is 4320 a day and would push everything else
-    /// out of `LogTail`, which is capped at 1000. Silence is the wrong answer
-    /// too — see `considerAll`.
+    /// A line per module per tick would push everything else out of `LogTail`.
+    /// Silence is the wrong answer too; see `considerAll`.
     private var lastLogged: [String: ScanSchedule.Verdict] = [:]
 
     private func considerAll() async {
         rollOverTheDayIfNeeded()
-        // The off-list below is sealed, and the key behind that seal comes from
-        // the login keychain — a modal authorization dialog on every ad-hoc
-        // build. `AppSettings` is `@MainActor`, so a blocking read here is a
-        // dialog on the thread that draws, with nobody at the desk to dismiss
-        // it. Awaiting suspends; the round trip happens on another thread and
-        // every read afterwards is memory (`SealKeyCache`).
+        // The off-list below is sealed, and the key comes from the login
+        // keychain, a modal dialog on an ad-hoc build. `AppSettings` is
+        // `@MainActor`, so a blocking read here would hang the thread that
+        // draws with nobody at the desk. Awaiting suspends; the round trip
+        // happens on another thread and every read afterwards is memory
+        // (`SealKeyCache`).
         await AppSettings.scanGuard.warmKey()
         // One reading of the machine for the whole tick — see `Conditions`.
         var sampled = conditions(idleSeconds: effectiveIdleSeconds())
@@ -212,29 +191,20 @@ final class ScanCoordinator {
         for id in ScanRunner.scannableModules {
             guard !inFlight.contains(id) else { continue }
             let verdict = verdict(for: id, in: sampled)
-            // **A refusal says why.** Without this the log is empty whether the
-            // schedule refused correctly or the timer never fired, and "no
-            // `[scan]` lines" — which is how this feature is meant to be
-            // verified on battery — cannot tell a working refusal from a dead
-            // coordinator. `ScanSchedule` names eight verdicts precisely so the
-            // reason can be said; saying none of them wasted the vocabulary.
-            //
-            // On change only. The state is steady for hours at a time, and a
-            // heartbeat is what makes a log unreadable.
+            // **A refusal says why**, or an empty log could not tell a working
+            // refusal from a coordinator whose timer never fired. On change
+            // only: the state is steady for hours, and a heartbeat makes a log
+            // unreadable.
             if lastLogged[id] != verdict {
                 lastLogged[id] = verdict
                 HelmLog.shared.info(Self.logArea, "\(id): \(verdict)")
             }
             guard case .run = verdict else { continue }
             await run(id)
-            // A scan is minutes, not milliseconds, and the loop is suspended for
-            // all of it: whatever was sampled before it is history by now. The
-            // person may have come back to the keyboard, unplugged the machine
-            // or locked the screen — and `notAtTheConsole` is a refusal the next
-            // module is entitled to. The snapshot is for the modules judged in
-            // the same instant, never for the ones judged after a walk of the
-            // volume. Before this the reading was only ever taken once, so a
-            // second scan could start against a minute that had long passed.
+            // A scan is minutes, and the loop is suspended for all of it: the
+            // person may have come back, unplugged the machine or locked the
+            // screen since. The snapshot is for the modules judged in the same
+            // instant, never for the ones judged after a walk of the volume.
             sampled = conditions(idleSeconds: effectiveIdleSeconds())
         }
     }
@@ -253,10 +223,10 @@ final class ScanCoordinator {
         let started = Date()
         AppSettings.scanRunsToday[id, default: 0] += 1
         // The attempt is recorded before anything can go wrong with it, so a
-        // scan still running is never treated as one that never happened — and
-        // so a crash mid-walk costs the retry gap rather than the whole day.
-        // What it must NOT do is stand in for a completion: writing one figure
-        // for both is what made the day's second run unreachable.
+        // scan still running is never treated as one that never happened, and
+        // a crash mid-walk costs the retry gap rather than the whole day. It
+        // must not stand in for a completion, or the day's second run could
+        // never come.
         AppSettings.lastScanAttemptAt[id] = started
 
         // The interval is the walk and nothing after it: it closes before the
@@ -283,18 +253,9 @@ final class ScanCoordinator {
 
     /// A banner about what turned up while nobody was looking, or silence.
     ///
-    /// **This is the call the journal was written for and never got.**
-    /// `ScanJournal.change(module:)` and `list(module:_:)` had no caller
-    /// anywhere in `Sources/`: three modules walked the volume once a day, the
-    /// delta was computed and thrown away, and the whole product of it was a
-    /// relative date on a settings page.
-    ///
-    /// **A finding, never a claim of action** — «Duplicates / 7 items since the
-    /// last check — 34,2 GB», not «cleaned» and not «freed». Helm did not clean
-    /// anything here; it looked. `ScanNews` decides whether the delta is worth
-    /// saying and `AppStr` says it, in the eight languages and with the words
-    /// that would claim an act held out by a test; what is left here is asking,
-    /// which is why it is this short.
+    /// **A finding, never a claim of action** (`AppStr.scanFindingNotice`).
+    /// `ScanNews` decides whether the delta is worth saying and `AppStr` says
+    /// it; what is left here is asking.
     ///
     /// Internal rather than private because it is the seam a test drives:
     /// reaching it through `run` would need a live module and a walk of the
@@ -305,39 +266,28 @@ final class ScanCoordinator {
     /// a scan's whole result belongs. The banner may name the person's folder; the
     /// log line keeps to counts.
     ///
-    /// **`change` reads back off disk what `record` has just written, and that
-    /// is deliberate — measured and kept.** Measured 2026-08-21 (54635be9),
-    /// three runs each: at 6900 items `record` costs 0.0080 s a call
-    /// and this reading 0.0321–0.0322 s; at 69 000, 0.0743–0.0746 s against
-    /// 0.3260–0.3263 s. Four times the write, once per completed background
-    /// scan — against a scan that walked the volume for minutes, off the
-    /// drawing thread, once a day a module.
-    ///
-    /// Handing `change` what `record` held in memory would buy back less than
-    /// half of that and cost the property the banner rests on. Half, because
-    /// `record` never holds the *previous* list: it renames a file, so a caller
-    /// wanting both lists in memory has to read `previous.json` anyway. And the
-    /// property, because `PrivateFile.write` reports failure in a `Bool` that
-    /// `ScanJournal.record` folds into a warning in the log and does not hand
-    /// back — so a caller holding an in-memory delta cannot tell that the
-    /// journal may not actually record it, and the next tick, comparing against
-    /// a `previous` that never rotated, announces the same items over again.
-    /// This reading is the one thing that knows the write landed.
+    /// **`change` reads back off disk what `record` has just written, on
+    /// purpose.** The read costs a few times the write, once per completed
+    /// scan, against a walk of the volume that took minutes. An in-memory
+    /// delta would save little (`record` renames a file and never holds the
+    /// previous list) and would lose the property the banner rests on:
+    /// `ScanJournal.record` folds a failed `PrivateFile.write` into a log
+    /// warning, so only this reading knows the write landed. Otherwise the
+    /// next tick, comparing against a `previous` that never rotated, would
+    /// announce the same items again.
     func tellSomebodyWhatAppeared(in id: String) {
         guard let finding = ScanNews.finding(in: journal.change(module: id)) else { return }
         let name = ModuleRegistry.descriptor(id)?.moduleMetadata.name ?? id
         let words = AppStr.scanFindingNotice(module: name, finding: finding)
         let port = notices
-        // One task, replaced rather than accumulated: the modules are scanned
-        // one after another and a prompt standing through the next scan is the
-        // only way two can overlap, which macOS answers once and for all anyway.
+        // One task, replaced rather than accumulated: two overlap only while a
+        // prompt stands through the next scan, and macOS answers it once.
         noticeTask?.cancel()
         noticeTask = Task {
             switch await NoticeChannel.tell(port, words) {
             case .posted:
-                // English outright, the way every other line in this file is
-                // written: the log is read by whoever is diagnosing a Mac,
-                // which is not always the person whose Mac it is.
+                // English, like every log line: the log is read by whoever is
+                // diagnosing a Mac, not always the person whose Mac it is.
                 HelmLog.shared.info(Self.logArea,
                                     "\(id): told about \(finding.count) new, "
                                     + "\(HelmBytes.string(finding.bytes, language: "en"))")

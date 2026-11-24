@@ -4,26 +4,15 @@ import XCTest
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-/// **The fifth model that trashes, and the one a scan by file name would miss.**
+/// `TrashedLeftoversModel` sends one batch at a time: «The model refuses; the
+/// page dims» (Architecture/Removal.md § One removal at a time).
 ///
-/// «The model refuses; the page dims. Both, or neither is reliable» —
-/// Architecture/Removal.md § One removal at a time, stated once for the four view
-/// models that send a removal. Each model has its own test of it. The model here,
-/// `TrashedLeftoversModel`, is not called a view model. It calls the model's `trashPaths`, and
-/// it has `busy` for the footer to read with nothing standing beside the request:
-/// `removeSelection` sets the flag and starts the batch whatever was already in
-/// flight.
+/// A second press is not a second deletion but a wrong report about the
+/// first: the second round finds every path gone and would overwrite
+/// `failures`, `removedCount` and `outcome`.
 ///
-/// What a second press costs is not a second deletion — the files are already in
-/// the Trash. It is a **wrong report about the first**: the second round finds
-/// every path gone, comes back with a refusal apiece, and this model overwrites
-/// `failures`, `removedCount` and `outcome` with it. The person is shown a list
-/// of everything that moved, under a sentence saying it did not. This window is
-/// the only place some of those files are ever named.
-///
-/// **The work does not answer until it is told to.** A fake that answers
-/// synchronously releases the gate before the call it is gating returns, so a
-/// test built on one passes whether or not the gate exists.
+/// The work does not answer until told to (`HeldWork`), or the test would pass
+/// without the gate.
 @MainActor
 final class TheTrashOfferSendsOneBatchTests: XCTestCase {
 
@@ -51,9 +40,8 @@ final class TheTrashOfferSendsOneBatchTests: XCTestCase {
         await waitUntil("the first batch is in flight") { work.trashRequests > 0 }
         XCTAssertEqual(work.trashRequests, 1, "precondition: the first batch is in flight")
 
-        // A task as well: without the gate the second press reaches the held
-        // work and stays there, so awaiting it here would hang the test
-        // rather than fail it.
+        // A task: without the gate the second press would wait on the held
+        // work and hang the test rather than fail it.
         let second = Task { await model.removeSelection() }
         await grace()
 
@@ -67,8 +55,7 @@ final class TheTrashOfferSendsOneBatchTests: XCTestCase {
         _ = await (first.value, second.value)
     }
 
-    /// And the flag has to be up while the work runs, or the footer cannot dim
-    /// anything — the other half of «both, or neither».
+    /// The flag is up while the work runs, so the footer can dim.
     func testTheModelSaysItIsBusyWhileTheBatchIsInFlight() async throws {
         let work = HeldWork(offers: [offer("com.vendor.tool")])
         let model = await opened(work)

@@ -7,10 +7,9 @@ import Foundation
 /// the key the hand actually rests on. Whichever is chosen, its twin keeps
 /// working as an ordinary modifier, so nothing is taken away.
 ///
-/// The left keys were withheld at first on exactly that reasoning. It is still
-/// true — a stray solo tap is likelier on the key you use all day — but it is
-/// the person's keyboard, and somebody on a 60% board or typing left-handed has
-/// a use for them. The page says which half is which; it does not decide.
+/// The left keys are offered too: a stray solo tap is likelier on the key you
+/// use all day, but somebody on a 60% board or typing left-handed has a use for
+/// them. The page says which half is which; it does not decide.
 public enum TapKey: String, CaseIterable, Sendable {
     case off
     case rightCommand, rightOption, rightControl, rightShift
@@ -61,12 +60,8 @@ public enum TapKey: String, CaseIterable, Sendable {
 
     /// The same nine keys, indexed the way an arriving event identifies them.
     ///
-    /// `CGEventTapPort` used to carry its own `[Int64: UInt64]` literal of
-    /// these — the identical nine constants, written a second time — and the
-    /// comment above it had already drifted from what it held, claiming it was
-    /// the left-side bits when it was all of them. Derived here instead, so a
-    /// key added to the enum is a key the tap can classify, and neither half
-    /// can be updated without the other.
+    /// Derived here rather than written again in `CGEventTapPort`, so a key
+    /// added to the enum is a key the tap can classify.
     public static let masksByKeyCode: [Int64: UInt64] = allCases.reduce(into: [:]) { table, key in
         guard let code = key.keyCode, let mask = key.deviceMask else { return }
         table[code] = mask
@@ -101,10 +96,9 @@ public enum TapKey: String, CaseIterable, Sendable {
 /// was not held.
 public struct ModifierTap {
     public enum Input: Equatable {
-        /// `othersHeld` comes from the event's own flags. It used to be
-        /// derived from a set of codes the tap kept between events, which could
-        /// only be emptied by a release — and a release that never arrived left
-        /// every later tap spoiled, silently and permanently.
+        /// `othersHeld` comes from the event's own flags, not from codes kept
+        /// between events: those are emptied only by a release, and a release
+        /// that never arrives would spoil every later tap.
         case down(Int64, at: TimeInterval, othersHeld: Bool)
         case up(Int64, at: TimeInterval)
         /// Any other key, any click: proof the key is being used as a modifier.
@@ -143,9 +137,7 @@ public struct ModifierTap {
         case let .down(code, at, othersHeld):
             if code == watched {
                 pressedAt = at
-                // Read from the event's own flags, not from a set kept between
-                // events. The set could only be emptied by a release, and a
-                // release that never came left the gesture spoiled forever.
+                // Read from the event's own flags (see `othersHeld`).
                 spoiled = othersHeld
             } else if pressedAt != nil {
                 spoiled = true

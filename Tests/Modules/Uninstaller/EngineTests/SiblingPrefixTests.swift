@@ -3,15 +3,10 @@ import XCTest
 
 /// Uninstalling one app must not offer another installed app's data.
 ///
-/// Every id-derived glob is `"<id>*"` or `"*<id>*"`, and a bundle id is a prefix
-/// of its own vendor's next product: `com.acme.tool*` matches `com.acme.toolPro`,
-/// which is a different app, possibly running. `scanOrphansSync` runs every
-/// entry it finds past `installedBundleIDs()`; `scanSync` ran its glob matches
-/// past nothing at all — and because a glob hit is never `matchedByName`,
-/// `UninstallPlan.defaultSelection` arrives with it already ticked.
+/// A bundle id is a prefix of its vendor's next product: `com.acme.tool*`
+/// matches `com.acme.toolPro`, a different app, and a glob hit arrives ticked.
 ///
-/// These assert on *which paths* the scan claims, never on how many, because
-/// the count is satisfied by any two of them.
+/// These assert which paths the scan claims, never how many.
 final class SiblingPrefixTests: XCTestCase {
     private let lib = "/Users/x/Library"
 
@@ -37,8 +32,7 @@ final class SiblingPrefixTests: XCTestCase {
                        "and it still claims its own")
     }
 
-    /// The same shape in every folder a glob reaches, because one filter that
-    /// covers Containers and misses Caches is not a fix.
+    /// The same shape in every folder a glob reaches.
     func test_no_glob_folder_lets_a_longer_named_sibling_through() async throws {
         var entries: [String: Int] = [:]
         var theirs: [String] = []
@@ -62,10 +56,8 @@ final class SiblingPrefixTests: XCTestCase {
         }
     }
 
-    /// A sibling that is a *namespaced* app of the same vendor — the shape the
-    /// separator rule alone waves through, because `com.acme.tool.staging`
-    /// really is `com.acme.tool` followed by a dot. It is installed; it is not
-    /// this app's leftover.
+    /// A namespaced app of the same vendor (`com.acme.tool.staging`) passes the
+    /// separator rule; it is installed, so it is not this app's leftover.
     func test_an_installed_namespaced_app_is_not_this_apps_leftover() async throws {
         let mine = "\(lib)/Caches/com.acme.tool"
         let theirs = "\(lib)/Caches/com.acme.tool.staging"
@@ -75,9 +67,8 @@ final class SiblingPrefixTests: XCTestCase {
         XCTAssertEqual(result.leftovers.map(\.path), [mine])
     }
 
-    /// Positive control, and the reason the glob exists: a helper or extension
-    /// container that belongs to no installed app of its own is still found.
-    /// Without this the tests above pass by refusing everything.
+    /// Positive control: a helper or extension container belonging to no
+    /// installed app is still found, or refusing everything would pass.
     func test_helper_and_team_prefixed_containers_are_still_found() async throws {
         let entries = [
             "\(lib)/Caches/com.acme.tool": 1,
@@ -90,10 +81,8 @@ final class SiblingPrefixTests: XCTestCase {
         XCTAssertEqual(Set(result.leftovers.map(\.path)), Set(entries.keys))
     }
 
-    /// The consequence the review screen shows. A glob hit carries
-    /// `matchedByName == false`, which is what `defaultSelection` ticks — so an
-    /// unfiltered hit is not merely listed, it is pre-selected next to a Trash
-    /// button.
+    /// A glob hit is not `matchedByName`, which `defaultSelection` ticks, so an
+    /// unfiltered hit would be pre-selected, not merely listed.
     func test_nothing_belonging_to_an_installed_sibling_arrives_pre_ticked() async throws {
         let theirs = "\(lib)/Containers/com.acme.toolPro"
         let result = try await scan("com.acme.tool",

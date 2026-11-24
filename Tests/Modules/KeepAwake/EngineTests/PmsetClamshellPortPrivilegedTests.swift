@@ -4,10 +4,9 @@ import XCTest
 @testable import Module_KeepAwake_Engine
 
 /// Which command each half of `PmsetClamshellPort` sends to root, and how it
-/// reads the answer. The route to the administrator dialog was reachable by no
-/// test: swapping install for remove, or reading «not done» as success, stayed
-/// green. A cancelled dialog reported as a removal is a grant believed gone
-/// that is still there.
+/// reads the answer: swapping install for remove, or reading «not done» as
+/// success, goes red here. A cancelled dialog reported as a removal is a grant
+/// believed gone that is still there.
 final class PmsetClamshellPortPrivilegedTests: XCTestCase {
 
     private final class Recorder: @unchecked Sendable {

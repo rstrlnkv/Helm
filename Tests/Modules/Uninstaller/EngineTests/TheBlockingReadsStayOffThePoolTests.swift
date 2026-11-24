@@ -1,16 +1,11 @@
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// **The hop to `offTheCooperativePool` is seen only from the thread that makes
-/// the call.**
-///
-/// `waitUntilGone` polls the running list and the force quit asks AppKit to
-/// terminate: both are blocking AppKit reads, and both were moved behind
-/// `offTheCooperativePool` (ARCHITECTURE.md § Running applications). Nothing in a
-/// result shows that — an engine that calls them on the pool returns the same
-/// values — so the fake records the label of the queue it was called on. The
-/// global queue `offTheCooperativePool` uses is `com.apple.root.user-initiated-qos`;
-/// a call made on the pool says `...cooperative`.
+/// `waitUntilGone`'s polls and the force quit are blocking AppKit calls, made
+/// through `offTheCooperativePool`
+/// (Architecture/RunningOtherPrograms.md § Running applications). No result
+/// shows the hop, so the fake records the label of the queue it was called
+/// on: `com.apple.root.user-initiated-qos` off the pool, `...cooperative` on it.
 final class TheBlockingReadsStayOffThePoolTests: XCTestCase {
 
     /// Every call, with the label of the queue it arrived on.

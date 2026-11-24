@@ -13,10 +13,9 @@ enum LeftoverMatcher {
         let isGlob: Bool
     }
 
-    /// A bundle id and a display name are free-form strings read off disk —
-    /// `CFBundleDisplayName` is whatever the app's plist says. Two shapes are
-    /// not merely useless but dangerous, because the review screen arrives with
-    /// every candidate built from the bundle id pre-ticked and offers the rest:
+    /// A bundle id and a display name are free-form strings from the app's own
+    /// plist, and the review arrives with the id's candidates pre-ticked. Two
+    /// shapes are dangerous:
     ///
     /// - empty: `appendingPathComponent("")` returns the parent unchanged, so
     ///   the candidate becomes the shared `Application Support` folder itself,
@@ -31,12 +30,8 @@ enum LeftoverMatcher {
     static func usable(_ token: String) -> Bool {
         !token.isEmpty && token != "." && token != ".."
             && !token.contains("/") && !token.contains("\0")
-            // A `*` in the token is the empty-id defect wearing a different
-            // hat: every glob below is built by pasting the token next to a
-            // `*`, so an id of "*" yields `**`, which matches every
-            // sibling in Caches, Containers, Group Containers and every
-            // LaunchAgent on the machine — pre-ticked, because a glob is never
-            // `matchedByName`. The plist that supplies the id is the app's own.
+            // A `*` or `?` in the token is the empty id again: pasted next to
+            // a glob's `*`, it matches every sibling, pre-ticked.
             && !token.contains("*") && !token.contains("?")
     }
 
@@ -44,10 +39,8 @@ enum LeftoverMatcher {
         func u(_ parts: String...) -> URL { parts.reduce(lib) { $0.appendingPathComponent($1) } }
         var out: [Candidate] = []
         func add(_ url: URL, _ kind: LeftoverKind, name byName: Bool = false, glob: Bool = false) {
-            // Belt to the braces above: whatever the lines below build, a
-            // candidate that is not strictly inside its own kind folder — two
-            // components below the library, one for the kind and one for the
-            // app — never reaches the list.
+            // Whatever is built below, a candidate not strictly inside its kind
+            // folder (two components below the library) never reaches the list.
             let path = url.standardizedFileURL.path
             guard path.hasPrefix(lib.standardizedFileURL.path + "/"),
                   path.dropFirst(lib.standardizedFileURL.path.count)

@@ -11,8 +11,6 @@ import HelmRuntime
 /// contain. Two writers reach this key without the picker — a hand-edited
 /// plist, and `AppTriggerRules.migrating(from:)`, which turns the older
 /// `autoApps` string list into rules and does nothing about what is in it.
-///
-/// Guards: de97195b (rules a file can hold that the picker never writes).
 final class RulesAPlistCanHoldTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!
@@ -37,16 +35,15 @@ final class RulesAPlistCanHoldTests: XCTestCase {
     ///
     ///     ForEach(Array(appTriggers.enumerated()), id: \.element.bundleID)
     ///
-    /// A repeated id there is not a cosmetic problem: SwiftUI says outright that
+    /// A repeated id there is not cosmetic: SwiftUI says outright that
     /// duplicate ids in a `ForEach` give undefined results, and this is the list
     /// whose rows carry a per-row condition menu and a remove button that works
     /// by index. The rules also compose as an OR, so the second copy can only
     /// ever loosen the first — «only when plugged in» and «always» for one app
     /// means «always», drawn as two rows that disagree.
     ///
-    /// The older key is the writer that makes this ordinary rather than exotic:
-    /// `autoApps` is a plain `[String]`, and nothing between it and
-    /// `migrating(from:)` has ever looked at it twice.
+    /// The older key makes this ordinary: `autoApps` is a plain `[String]`, and
+    /// nothing between it and `migrating(from:)` removes a repeat.
     func testTheSameAppTwiceComesBackAsOneRule() {
         plant("autoApps", ["com.apple.Safari", "com.apple.Safari"])
 
@@ -127,12 +124,10 @@ final class RulesAPlistCanHoldTests: XCTestCase {
     /// first N are read» is the shape of defect that hides in a list nobody makes
     /// by hand, and it is what these two are for.
     ///
-    /// **This used to be five hundred, and the number moved for a reason.** The
-    /// value is unbounded input read on every recompute — 4.7 MB of it decodes to
-    /// 50 001 rules at 57 ms an event — so `AppTriggerRules.maxRules` refuses past
-    /// 200 now and the refusal goes to the banner. What is asserted here is the
-    /// half that must not change with it: everything up to the ceiling is read,
-    /// and the last rule matters as much as the first
+    /// The value is unbounded input read on every recompute, so
+    /// `AppTriggerRules.maxRules` refuses past its ceiling and the refusal goes
+    /// to the banner. What is asserted here: everything up to the ceiling is
+    /// read, and the last rule matters as much as the first
     /// (`AFileWithMoreRulesThanAnybodyChoseTests` holds both boundaries).
     func testTheTwoHundredthRuleStillHoldsTheMac() {
         var rules = (0..<199).map { AppTrigger(bundleID: "com.example.filler\($0)") }
@@ -164,20 +159,15 @@ final class RulesAPlistCanHoldTests: XCTestCase {
 
     // MARK: - A value under the rules key that is not a string at all
 
-    /// **The banner covers a rules *string* nothing can read, and not a rules
-    /// *value* nothing can read.**
+    /// The banner covers a rules value nothing can read, not only a rules string.
     ///
-    /// `appRulesUnreadable` is `!encoded.isEmpty && readable(encoded) == nil`, and
-    /// `encoded` comes from `store.string(…)` — an `as? String` over whatever the
-    /// file holds. So a plist whose `autoAppRules` is an *array* answers with the
-    /// empty string, which reads as «nothing was ever written»: every app rule is
-    /// dead, the page draws its empty state, and the new banner says nothing. That
-    /// is the exact silence the banner shipped to break, one plist type over.
+    /// `store.string(…)` is an `as? String` over whatever the file holds, so a
+    /// plist whose `autoAppRules` is an array would answer the empty string,
+    /// «nothing was ever written»: every app rule dead and the banner silent.
     ///
-    /// Not exotic, either. `autoApps` — the key this module still reads for
-    /// migration — *is* a `[String]`, so an array under a rules key is what this
-    /// app's own older format looks like; a hand edit, a restored backup or a
-    /// half-finished migration all produce it.
+    /// Not exotic: `autoApps`, the older key this module still reads, is a
+    /// `[String]`, so an array under a rules key is what a hand edit, a restored
+    /// backup or a half-finished migration produces.
     func testARulesValueThatIsNotAStringIsReportedAsUnreadable() {
         for value in [["com.apple.Safari"] as Any, 42 as Any, Data() as Any] {
             backing.raw.removeValue(forKey: "module.keep-awake.autoAppRules")

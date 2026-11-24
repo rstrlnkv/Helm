@@ -1,19 +1,14 @@
 import Foundation
 
 /// A stored setting that steers work nobody is watching.
+/// Architecture/StoredSettings.md § Sealed settings.
 ///
-/// **The gate was the compensation, not the cure.** `ScanRoot` exists because
-/// `module.duplicates.folder` is a plain string in `com.helm.app.plist` that any
-/// process running as this user can rewrite, and `disabledScans` sits beside it
-/// deciding whether a scan runs at all — a switch worth flipping, since Disk's
-/// scan is off by default and reads every filename on the volume. Sitting in the
-/// same file is `module.autopilot.foldersMAC`, because Autopilot already decided
-/// that a plist is untrusted input. Two answers to one question, in one file.
-///
-/// So the scan settings are sealed with the same HMAC under the same kind of
-/// keychain-held key. `ScanRoot` stays regardless — defence in depth, and the
-/// interactive path has no seal at all, because a person choosing a folder in an
-/// open panel is the authority the seal is trying to stand in for.
+/// `module.duplicates.folder` and `disabledScans` sit in a plist any process
+/// running as this user can rewrite, and decide where an unattended scan reads
+/// and whether it runs, so they are sealed with the same HMAC as Autopilot's
+/// rules. `ScanRoot` stays regardless, as defence in depth. The interactive
+/// path has no seal: a person choosing a folder in an open panel is the
+/// authority the seal stands in for.
 public struct SettingGuard: Sendable {
 
     private let keys: SealKeyPort
@@ -47,13 +42,11 @@ public struct SettingGuard: Sendable {
     /// Whether the key is already in hand, so every member above answers from
     /// memory rather than from securityd.
     ///
-    /// **This is the question the main actor asks before it asks anything
-    /// else.** A round trip here is a modal dialog on every ad-hoc build, and on
-    /// the thread that draws it is `HelmApp_2026-08-19-235500_MacBook.hang`:
-    /// 19,09 s of a settings window that could not answer a mouse-up. False
-    /// means «cannot say yet», which is a third answer and not a refusal —
-    /// reading it as `.broken` would tell somebody their settings had been
-    /// forged because a keychain was slow.
+    /// **The main actor asks this before anything else.** A round trip to the
+    /// keychain is a modal dialog on every ad-hoc build, and on the thread that
+    /// draws it is a window that cannot answer a click. False means «cannot say
+    /// yet», a third answer and not a refusal: reading it as `.broken` would
+    /// tell somebody their settings had been forged because a keychain was slow.
     ///
     /// It only ever goes false → true: the key is created once and kept, so a
     /// caller that has seen this true cannot be overtaken by a fetch.
@@ -74,11 +67,9 @@ public struct SettingGuard: Sendable {
     ///
     /// Every other member here is synchronous because a verdict is arithmetic;
     /// the fetch behind it is not, and on an ad-hoc build it is a modal dialog
-    /// (see `SealKeyCache`). Taken on the main thread inside a window's own
-    /// construction, that dialog stood in front of a window with nothing drawn
-    /// in it. Awaiting this suspends rather than blocks, so the window lays out
-    /// and draws while the keychain is still deciding; with `SealKeyCache` in
-    /// front of the port, the read that follows is then memory.
+    /// (`SealKeyCache`). Awaiting this suspends rather than blocks, so the
+    /// window draws while the keychain decides, and the read that follows is
+    /// memory.
     public func warmKey() async {
         let keys = self.keys
         await Task.detached(priority: .userInitiated) { _ = keys.key() }.value
@@ -87,7 +78,6 @@ public struct SettingGuard: Sendable {
     /// The key a MAC is stored under, beside the value's own.
     ///
     /// One spelling, because the writer and the reader are usually in different
-    /// targets — the duplicate finder's folder is written by its UI and read by
-    /// its engine.
+    /// targets (a module's UI writes, its engine reads).
     public static func macKey(for key: String) -> String { key + "MAC" }
 }

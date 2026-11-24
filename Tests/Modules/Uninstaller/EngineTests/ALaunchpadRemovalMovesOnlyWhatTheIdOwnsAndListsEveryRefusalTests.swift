@@ -4,8 +4,8 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// **The door takes what the Uninstaller's review ticks by default — the app and what is found under
-/// its bundle id — and nothing a name merely resembles, and every refusal is in the report.**
+/// The door takes what the Uninstaller's review ticks by default (the app and what is found under
+/// its bundle id) and nothing a name merely resembles, and every refusal is in the report.
 ///
 /// A file named for the app (`Application Support/Tool`) is a guess; another app's id that starts with
 /// this one's (`com.acme.toolbox`) is another app's. Neither is moved. A refusal by macOS is never

@@ -4,9 +4,7 @@ import Foundation
 /// the test: a callback's last report, a flag, a count.
 ///
 /// A plain captured `var` is not legal from a `@Sendable` block, and `Mutex`
-/// is noncopyable, so it cannot be captured by an escaping one. Hand-written
-/// in dozens of test files before it moved here (`ProgressBox` was its first
-/// shared form, for a progress callback's last count). A change that reads then
+/// is noncopyable, so it cannot be captured by an escaping one. A change that reads then
 /// writes goes through `withLock`, never `value += 1`: a get and a set are two
 /// lock takings, not one.
 public final class Locked<Value>: @unchecked Sendable {

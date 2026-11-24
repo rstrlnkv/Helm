@@ -9,19 +9,16 @@ import HelmTestSupport
 /// **A private file is private from the moment it exists, not from the moment
 /// somebody remembers to tighten it.**
 ///
-/// `Data.write(options: .atomic)` renames a fresh inode over the destination,
-/// and that inode was created before the rename with the process umask on it —
-/// measured 0644. A `chmod` afterwards closes the file, but not the window: for
-/// as long as the write takes, and then for the gap between the rename and the
-/// `chmod`, a file holding an index of somebody's filenames sits at the
-/// destination readable by every process running as this user. Today
-/// `PrivateFile.directory` puts 0700 on the folder above it, which covers the
-/// window — a second defence standing in for the first one, and the day a
-/// caller writes into a folder it did not make, nothing is left.
+/// `Data.write(options: .atomic)` renames a fresh inode created with the
+/// process umask over the destination, and a `chmod` afterwards leaves a window
+/// in which an index of somebody's filenames is readable by every process
+/// running as this user. The 0700 that `PrivateFile.directory` puts on the
+/// folder is a second defence, gone the day a caller writes into a folder it
+/// did not make.
 ///
-/// The house rule (Architecture/DiagnosticsLog.md, `PrivateFile`): «files naming
-/// somebody's files via `PrivateFile.swift`, not atomic write plus mode
-/// change». The rule had one exception left, and it was `PrivateFile` itself.
+/// The house rule (Architecture/DiagnosticsLog.md, `PrivateFile`): files naming
+/// somebody's files go through `PrivateFile.swift`, not an atomic write plus a
+/// mode change, and that holds for `PrivateFile` itself.
 final class TheModeBelongsToTheWriteTests: XCTestCase {
 
     // MARK: - The mode arrives with the file
@@ -48,13 +45,9 @@ final class TheModeBelongsToTheWriteTests: XCTestCase {
                        "it was made with something already in it")
     }
 
-    /// And the umask cannot widen it. This is the measurement the finding was
-    /// made on, taken the other way round: at 0o000 an atomic write's temporary
-    /// file is 0666, and this one is not.
-    ///
-    /// The umask is process-wide, so it is put back on the way out — including
-    /// on a failure, which is what `defer` is for here rather than a line at the
-    /// end.
+    /// And the umask cannot widen it: at 0o000 an atomic write's temporary
+    /// file is 0666, and this one is not. The umask is process-wide, so a
+    /// `defer` puts it back, on a failure too.
     func testAPermissiveUmaskCannotWidenIt() throws {
         let folder = scratchDirectory("born-private-umask")
         let destination = folder.appendingPathComponent("journal.json")

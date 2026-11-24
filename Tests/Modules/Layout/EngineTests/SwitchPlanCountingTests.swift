@@ -9,9 +9,9 @@ import XCTest
 /// the head of the word in place. This is the other side: one too many eats the
 /// character before the word, which is text the module never looked at.
 ///
-/// The arithmetic is `word.count + tail.count`, two counts added after the
-/// fact. That is the same number as `(word + tail).count` for every ending that
-/// stands on its own, and a different number for one that does not.
+/// `word.count + tail.count` is the same number as `(word + tail).count` for
+/// every ending that stands on its own, and a different number for one that
+/// does not.
 final class SwitchPlanCountingTests: XCTestCase {
 
     /// A combining mark is a keystroke and is not a grapheme.
@@ -19,9 +19,8 @@ final class SwitchPlanCountingTests: XCTestCase {
     /// U+0301 has no width of its own: typed after `приве` the field still
     /// holds five characters, with the accent sitting on the last one. The tap
     /// delivers it as `.punctuation` — it is not a letter, so it ends the word
-    /// — and the ending is carried into the plan, where it is counted as one
-    /// more thing to delete. Six deletes for five characters: the space before
-    /// the word goes too, and with it the end of the word before that.
+    /// — and the ending is carried into the plan. Counted apart it would be six
+    /// deletes for five characters, eating the space and the word before.
     ///
     /// Combining marks are ordinary keys on the Greek polytonic, Vietnamese and
     /// several Cyrillic layouts, and the stress mark U+0301 is typed by hand in

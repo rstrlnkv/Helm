@@ -22,8 +22,8 @@ public struct StatusAppearance: Equatable, Sendable {
     /// Deliberately not `tintToken`: that field is what `StatusPlan.choose`
     /// reads to decide who owns the menu bar *between* moments, and a module
     /// that only wants its own second of animation coloured must not thereby
-    /// become the module that owns the icon all day. `VPNDescriptor` records
-    /// "no tint, ever" for the same reason and that decision still stands.
+    /// become the module that owns the icon all day. `VPNDescriptor` sets no
+    /// tint, ever, for the same reason.
     public var spinTintToken: String?
     public init(tintToken: String? = nil, iconStyle: String? = nil,
                 timerProgress: Double? = nil, title: String? = nil,

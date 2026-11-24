@@ -8,27 +8,21 @@ import XCTest
 
 /// Two assertions, because the real port holds two.
 ///
-/// This was a single `held` flag plus a record of the last `display:` argument,
-/// which made the interesting state **unrepresentable**: `IOKitSleepAssertions`
-/// takes an IOKit assertion per kind, and a display assertion outliving the
-/// setting that asked for it is what "the display never sleeps" looks like from
-/// the inside. A fake simpler than the thing it stands for cannot fail the way
-/// the thing can, and the one test that touched `display` only asked whether
-/// the argument had been passed.
+/// `IOKitSleepAssertions` takes an IOKit assertion per kind, and a display
+/// assertion outliving the setting that asked for it is what "the display never
+/// sleeps" looks like from the inside. A fake simpler than the thing it stands
+/// for cannot fail the way the thing can.
 final class FakeAssertions: SleepAssertions {
-    /// Whether the system assertion is up. `held` is kept as its old name
-    /// because every existing test reads it and it means the same thing.
+    /// Whether the system assertion is up.
     var held = false
-    /// Whether the *display* assertion is up — the half that used to be a
-    /// record of an argument rather than a state.
+    /// Whether the display assertion is up.
     var displayHeld = false
     var lastDisplay: Bool?
     var preventCount = 0
     var releaseCount = 0
-    /// Whether IOKit takes the assertion. **A fake that always succeeds makes
-    /// «macOS refused to hold the Mac awake» an unrepresentable state**, which
-    /// is the shape of half the defects in this module: the Mac sleeps, and
-    /// every surface says the session is holding it.
+    /// Whether IOKit takes the assertion, so «macOS refused to hold the Mac
+    /// awake» is representable: the Mac sleeps while every surface says the
+    /// session is holding it.
     var succeeds = true
     func preventSleep(display: Bool) -> Bool {
         preventCount += 1
@@ -66,18 +60,14 @@ final class FakeDisplayObserver: DisplayObserverPort {
 
 final class FakePower: PowerInfoPort {
     var snap: (onBattery: Bool, percent: Int)? = (onBattery: false, percent: 100)
-    /// What `IOPSGetProvidingPowerSourceType` named, and it is a separate fact
-    /// from `snap` on a real Mac: a desktop answers `.mains` while `snapshot()`
-    /// answers nil — the combination the power rule was broken on — and a Mac
-    /// drawing from a UPS names a supply this app does not reason about while a
-    /// capacity is perfectly readable.
+    /// What `IOPSGetProvidingPowerSourceType` named, a separate fact from `snap`
+    /// on a real Mac: a desktop answers `.mains` while `snapshot()` answers nil,
+    /// and a Mac drawing from a UPS names a supply this app does not reason
+    /// about while a capacity is readable.
     ///
-    /// **The third answer is the one that matters here.** While this was a
-    /// `Bool` the real port could not produce «no reading *and* not on mains» —
-    /// `isOnMains` folded every unreadable source to `true` — so a test
-    /// planting it was testing a state that did not exist, and
-    /// `BatteryGuard.shouldDeactivateWithNoReading`'s whole reason for being
-    /// was unreachable in production while its test passed.
+    /// Three answers, as the real port has, so «no reading and not on mains»
+    /// (`BatteryGuard.shouldDeactivateWithNoReading`) is a state a test can
+    /// plant.
     private var plantedSupply: PowerSource.Supply??
     /// The system names this supply. `nil` is «it named one this app does not
     /// know, or named none at all», which is a state and not an omission.
@@ -120,8 +110,8 @@ final class FakePointer: PointerPort {
 }
 
 final class FakeClamshell: ClamshellPort, @unchecked Sendable {
-    /// **Behind one lock, because the port is asked from whichever thread the
-    /// caller is on** (the coordinator's queue, the drawing thread) while the test
+    /// Behind one lock, because the port is asked from whichever thread the
+    /// caller is on (the coordinator's queue, the drawing thread) while the test
     /// reads from its own. It covers the recorded state (the call lists, the
     /// counters, `sudoersInstalled`, `installCompletion`, the pending prompts) and
     /// the one-shot holds (`holdNextLook`). The answers a test sets before it
@@ -156,7 +146,7 @@ final class FakeClamshell: ClamshellPort, @unchecked Sendable {
     private var pendingInstalls: [(Bool) -> Void] = []
     private var pendingRemovals: [(Bool) -> Void] = []
 
-    /// **The port's answers come back on a thread of their own**, as `osascript`'s
+    /// The port's answers come back on a thread of their own, as `osascript`'s
     /// do (`installSudoers` and `removeSudoers` hand theirs back on a global queue).
     /// Set at construction; the rule on disk is left as it was.
     let answersOffTheCallersThread: Bool
@@ -169,9 +159,9 @@ final class FakeClamshell: ClamshellPort, @unchecked Sendable {
         self.holdsRemovals = holdsRemovals
     }
 
-    /// Which thread each call came on. **A port that is asked the instant a test
-    /// looks cannot tell a caller on the drawing thread from one that is not**, so
-    /// «which thread asked» is recorded here, as a fact about the caller.
+    /// Which thread each call came on, recorded as a fact about the caller: a
+    /// port asked the instant a test looks cannot tell the drawing thread from
+    /// another.
     private var _asked: [(method: String, onMain: Bool)] = []
     private var _onAsked: [String: XCTestExpectation] = [:]
     var asked: [(method: String, onMain: Bool)] { locked { _asked } }
@@ -182,9 +172,9 @@ final class FakeClamshell: ClamshellPort, @unchecked Sendable {
     func fulfil(_ expectation: XCTestExpectation, whenAsked method: String) {
         locked { _onAsked[method] = expectation }
     }
-    /// A child process that has not finished yet. **A port that answers the
+    /// A child process that has not finished yet. A port that answers the
     /// instant it is asked cannot tell a caller that waits from one that does
-    /// not**; with `blockUntilReleased` every call parks on `stillRunning` (a
+    /// not; with `blockUntilReleased` every call parks on `stillRunning` (a
     /// turnstile: a gate that let one through would leave the others parked for
     /// the rest of the run) until the test signals it.
     let stillRunning = DispatchSemaphore(value: 0)
@@ -241,12 +231,10 @@ final class FakeClamshell: ClamshellPort, @unchecked Sendable {
         installCompletion = nil
         for done in waiting { done(granted) }
     }
-    /// Answer the prompt that is on screen. **The real one takes seconds to
-    /// minutes and can be declined**, and a fake that only ever completed
-    /// through a stored closure nobody called left the engine permanently
-    /// mid-prompt — which is a state that flatters every «did it ask again?»
-    /// test, because the in-flight guard suppresses the second ask for a reason
-    /// that has nothing to do with the code under test.
+    /// Answer the prompt that is on screen. The real one takes seconds to
+    /// minutes and can be declined; an engine left mid-prompt would flatter
+    /// every «did it ask again?» test, because the in-flight guard suppresses
+    /// the second ask for a reason unrelated to the code under test.
     func finishInstall(granted: Bool) {
         let done = installCompletion
         installCompletion = nil
@@ -256,13 +244,10 @@ final class FakeClamshell: ClamshellPort, @unchecked Sendable {
     }
     private var _removeCalls = 0
     var removeCalls: Int { locked { _removeCalls } }
-    /// Whether the removal goes through. **A fake that always succeeded made «the
-    /// administrator dialog was declined» an unrepresentable state**, so no test
-    /// of it could exist whatever anybody wrote — and what a declined removal
-    /// leaves behind is a permanent passwordless `pmset disablesleep` for this
-    /// account, for a feature that has just been switched off. `removeSudoers`
-    /// answering `false` while the file stays put is exactly what `osascript`
-    /// does when somebody presses Cancel.
+    /// Whether the removal goes through, so «the administrator dialog was
+    /// declined» is representable: it leaves a permanent passwordless `pmset
+    /// disablesleep` for a feature just switched off. `removeSudoers` answering
+    /// `false` with the file in place is what `osascript` does on Cancel.
     var removalSucceeds = true
     func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         record("removeSudoers")
@@ -283,13 +268,10 @@ final class FakeClamshell: ClamshellPort, @unchecked Sendable {
         }
         for done in waiting { done(granted) }
     }
-    /// Whether the rule on disk permits its own withdrawal. **False is a real
-    /// state, not a failure mode**: a rule installed by a version of Helm from
-    /// before that line existed cannot take itself out, and neither can one
-    /// written by something else — and that is the only case in which the
-    /// removal still costs a password. A fake that always allowed the free route
-    /// would make «the rule is too old to withdraw itself» unrepresentable, and
-    /// with it the whole fallback.
+    /// Whether the rule on disk permits its own withdrawal. False is a real
+    /// state: a rule without the withdrawal line, or one written by something
+    /// else, cannot take itself out, and only then does the removal cost a
+    /// password.
     var withdrawalIsGranted = true
     /// How many times the free route was tried. «No dialog was raised» has to be
     /// read beside this or it is green because nothing was attempted at all.
@@ -306,21 +288,19 @@ final class FakeClamshell: ClamshellPort, @unchecked Sendable {
         sudoersInstalled = false
         return true
     }
-    /// Whether `pmset` accepts the call. A fake that always succeeds makes
-    /// «the sudoers rule was removed behind the app's back» an unrepresentable
-    /// state, so no test of the failure could exist whatever anybody wrote —
-    /// and that failure is the one that leaves a Mac unable to sleep.
+    /// Whether `pmset` accepts the call, so «the sudoers rule was removed behind
+    /// the app's back» is representable.
     var disableSleepSucceeds = true
     /// Whether a passwordless rule exists at all — separate from
     /// `sudoersInstalled`, which is «our file is there». On a real Mac the two
     /// differ: a rule written by something else grants the same capability
-    /// under another name, and that is the state the file check could not see.
+    /// under another name, a state a file check cannot see.
     var passwordlessGrantExists: Bool?
     /// How many times the coordinator asked whether it may disable sleep without
-    /// a password — the question that is `sudo -n pmset disablesleep 0`, and
-    /// which it now asks on a queue of its own. «No dialog was raised» has to be
-    /// read *after* the question was answered, or it is green because nobody has
-    /// asked yet, which is the vacuous absence (ARCHITECTURE.md § What makes a check) warns about.
+    /// a password — `sudo -n pmset disablesleep 0`, asked on a queue of its own.
+    /// «No dialog was raised» has to be read after the question was answered,
+    /// or it is green because nobody has asked yet.
+    /// Architecture/TestsAndMeasurement.md § What makes a check.
     private var _grantChecks = 0
     var grantChecks: Int { locked { _grantChecks } }
     /// Set to hold the next probe on the lid's queue until the test signals it,
@@ -337,12 +317,10 @@ final class FakeClamshell: ClamshellPort, @unchecked Sendable {
     func setDisableSleep(_ on: Bool) -> Bool {
         record("setDisableSleep")
         locked { _disableSleepCalls.append(on) }
-        // **The call needs the grant.** `PmsetClamshellPort` runs
-        // `sudo -n pmset disablesleep …`, and `-n` fails outright when no
-        // passwordless rule covers it. Answering yes without one made «the rule
-        // is gone, so the restore cannot run» an unrepresentable state — which is
-        // the state the grant's lifetime was changed for: a removal fired at quit
-        // took away the very thing the next launch's recovery needs.
+        // The call needs the grant: `PmsetClamshellPort` runs `sudo -n pmset
+        // disablesleep …`, and `-n` fails outright when no passwordless rule
+        // covers it. So «the rule is gone, so the restore cannot run» is
+        // representable.
         guard canDisableSleepWithoutPassword() else { return false }
         return disableSleepSucceeds
     }
@@ -398,10 +376,8 @@ final class FakeClock: Clock {
 
 /// Waiting for the two things this module's ports do off the caller's thread.
 ///
-/// Both were written out in each file that needed them — `settle()` twice,
-/// word for word, and the wait for a withdrawal would have been a third and a
-/// fourth. Test plumbing shared by one target lives beside that target's fakes,
-/// the way `HelmTestSupport` holds what every target shares.
+/// Test plumbing shared by one target lives beside that target's fakes, the
+/// way `HelmTestSupport` holds what every target shares.
 extension XCTestCase {
 
     /// Everything already posted to the main actor has run.
@@ -421,12 +397,9 @@ extension XCTestCase {
     /// calls back on a background queue, and engine state belongs on main); this
     /// block is enqueued after it, and a serial queue runs them in order.
     ///
-    /// What the tests prove with it is the assertion that the block ran on
-    /// main: a drain that skipped the hop is red. The ordering itself is not
-    /// shown to be needed by any caller, because `await fulfillment` yields to
-    /// the main queue anyway; no caller waits on this alone. `await fulfillment`
-    /// rather than `wait(for:)`: these tests are on the main actor, and blocking
-    /// it is what stops the queue draining at all.
+    /// It asserts that the block ran on main, so a drain that skipped the hop
+    /// is red. `await fulfillment` rather than `wait(for:)`: these tests are on
+    /// the main actor, and blocking it stops the queue draining at all.
     @MainActor
     func drainMainQueue() async {
         let drained = expectation(description: "main queue drained")

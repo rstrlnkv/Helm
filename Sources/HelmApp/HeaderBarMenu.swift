@@ -9,9 +9,9 @@ import HelmUI
 ///
 /// **Why the window and not the row.** The row lies in the window's title bar zone (`.fullSizeContentView`, a
 /// transparent title bar), where AppKit's own title bar view takes a right-click before the hosting view, so a
-/// SwiftUI `.contextMenu` on the row never opened for a person (owner, Helm Dev build 2024), and opened through
-/// accessibility it drew a blank row after each choice and wrote nothing. A local event monitor sees the press
-/// first, and `opens(type:modifiers:at:band:excluding:)` decides it from a point alone.
+/// SwiftUI `.contextMenu` on the row never opens for a person (opened through accessibility, it draws a blank row
+/// after each choice and writes nothing). A local event monitor sees the press first, and
+/// `opens(type:modifiers:at:band:excluding:)` decides it from a point alone.
 ///
 /// **Top to bottom**: Page header (With Icon, Without Icon) on every page; Tab labels (Text Only, Icon Only,
 /// Icon and Text) only where the page has tabs; Appearance (Flat, Liquid Glass) on every page; Always Collapse Search,

@@ -2,10 +2,9 @@ import Foundation
 
 /// What the app is costing, and what made it cost that.
 ///
-/// A total on its own answers nothing: the app was 15 MB at launch and half a
-/// gigabyte after a while, and knowing both did not say which operation stood
-/// between them. So the log carries a **delta against the last reading for the
-/// same label** — "leftovers.scan +38 MB" is a lead, "504 MB" is a number.
+/// A total on its own does not say which operation made it, so the log carries
+/// a **delta against the last reading for the same label**: "leftovers.scan
+/// +38 MB" is a lead, "504 MB" is a number.
 ///
 /// `phys_footprint` is the figure Activity Monitor calls Memory and the one the
 /// system kills a process over; `resident_size` counts pages shared with other

@@ -6,8 +6,6 @@ import HelmRuntime
 @testable import Module_VPN_Engine
 
 /// How loudly a firing is announced, and what a refused banner falls back to.
-///
-/// Past defect: commit 1fe5e099, «fix(vpn): a rule is bound to a signature, and a forged plist stops summoning dialogs» (a teardown Helm performed answered to the rules' setting alone).
 final class VPNNoticeTests: XCTestCase {
     private func settings() -> VPNSettings {
         VPNSettings(store: NamespacedStore(namespace: "vpn-test-\(UUID().uuidString)",
@@ -55,9 +53,9 @@ final class VPNNoticeTests: XCTestCase {
         XCTAssertFalse(settings().bannerAuthorized)
     }
 
-    /// Remembered across launches on purpose — macOS is asked once, and a
-    /// mirror that resets at every launch would demote `.system` to the label
-    /// for a person who granted the permission months ago.
+    /// Remembered across launches on purpose: macOS is asked once, and a mirror
+    /// reset at every launch would demote `.system` to the label for a person
+    /// who granted the permission long ago.
     func testTheAuthorizationMirrorRoundTrips() {
         let s = settings()
         s.setBannerAuthorized(true)
@@ -70,18 +68,15 @@ final class VPNNoticeTests: XCTestCase {
 
     /// **An automatic disconnect is not quieter than a drop.**
     ///
-    /// `.disconnected` is Helm taking a tunnel down because a mapped app quit,
-    /// and it answered to the *rules'* setting — which on this machine is
-    /// `silent` while `dropNotice` is `system`: the person asked to be told
-    /// loudly about losing a tunnel and quietly about rules doing as they were
-    /// told, and a teardown they did not ask for at that instant took the quiet
-    /// channel. The two events end the same way, with traffic in clear after the
-    /// last thing said was that it was not, so the teardown is announced at least
-    /// as loudly as the fall would have been.
+    /// `.disconnected` is Helm taking a tunnel down because a mapped app quit.
+    /// Answering to the *rules'* setting alone, a person who asked to be told
+    /// loudly about losing a tunnel and quietly about rules would hear a teardown
+    /// they did not ask for at that instant on the quiet channel. Both events end
+    /// with traffic in clear after the last thing said was that it was not, so the
+    /// teardown is announced at least as loudly as the fall would have been.
     ///
     /// It matters more than a volume: a quit can be provoked. Anything running as
-    /// this user can launch and quit a bundle carrying a mapped identifier, and
-    /// the teardown that follows is booked as a rule doing as asked.
+    /// this user can launch and quit a bundle carrying a mapped identifier.
     func testAnAutomaticTeardownTakesTheLouderOfTheTwoSettings() {
         XCTAssertEqual(VPNNotice.mode(for: .disconnected, rules: .silent, drop: .system), .system)
         XCTAssertEqual(VPNNotice.mode(for: .disconnected, rules: .system, drop: .silent), .system)
@@ -89,9 +84,7 @@ final class VPNNoticeTests: XCTestCase {
     }
 
     /// The controls: the other two kinds each answer to one setting, and only
-    /// one. Without them «the louder of the two» could be applied to everything,
-    /// which is a module that announces whatever is loudest and reads neither
-    /// choice.
+    /// one, so «the louder of the two» is not applied to everything.
     func testTheOtherTwoKindsEachAnswerToTheirOwnSetting() {
         XCTAssertEqual(VPNNotice.mode(for: .connected, rules: .silent, drop: .system), .silent)
         XCTAssertEqual(VPNNotice.mode(for: .dropped, rules: .system, drop: .silent), .silent)

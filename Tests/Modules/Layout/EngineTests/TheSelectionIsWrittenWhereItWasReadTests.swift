@@ -4,38 +4,18 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
-/// **The selection path read from one app and wrote into whichever app was in
-/// front when the write happened, and nothing held those two to being the
-/// same.**
+/// The selection is written only into the app it was read from.
 ///
-/// The word path was taught this lesson twice. `RememberedWord` carries the
-/// bundle id the word was typed in and `UndoRecord` carries the one the
-/// conversion happened in, both for the same stated reason: a blind edit is
-/// only correct in the app it was measured in. The selection is the same kind
-/// of edit against a stranger's text — `convertSelection`'s own comment calls
-/// it «text Helm has never seen, in
-/// an app it did not choose» — and it carried no app at all before `readIn`.
+/// `RememberedWord` and `UndoRecord` carry a bundle id for the same reason: a
+/// blind edit is only correct in the app it was measured in. The selection is
+/// the same kind of edit against a stranger's text, so it is pinned with
+/// `readIn`.
 ///
-/// **The gap was not theoretical.** Both routes read the selection and then act
-/// on the result:
-///
-/// - `convertSelection` was handed an app and a text, ran the app past
-///   `AppScope`, and wrote to whichever app was in front at the write. The scope
-///   verdict is as old as the read that preceded it.
-/// - `fix()` read the selection on `DispatchQueue.global`, precisely because
-///   that read can block, and then hopped back to `DispatchQueue.main`. The text
-///   crossed a queue boundary; the app it came from did not cross with it.
-///
-/// Between the read and the write the frontmost app can change, and the tap
-/// cannot see it happen: a `.click` or a `.chord` would end a word, and neither
-/// is involved in a Space swipe, an app calling `activate()`, an alert coming
-/// forward, or a call joining. What landed was a paragraph converted out of one
-/// application typed into a different one — and, in the first case below, into
-/// a terminal that `AppScope` blocks by default, because the rule was applied to
-/// an app that was no longer there.
-///
-/// The repair is the one the word path already has: pin the app the selection
-/// was read from and refuse to write anywhere else.
+/// Both routes read the selection and then act on it: `convertSelection` runs
+/// the app past `AppScope` and writes, and `fix()` reads on
+/// `DispatchQueue.global`, because that read can block, then hops back to main.
+/// Between the read and the write the frontmost app can change unseen by the
+/// tap (a Space swipe, an app calling `activate()`, an alert, a call joining).
 @MainActor
 final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
 
@@ -62,10 +42,8 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
 
     // MARK: - The scope verdict is older than the write
 
-    /// `convertSelection` asked `AppScope` about Notes, took the selection it was
-    /// given, and replaced text in a terminal — the app class the module
-    /// blocks by default, on the stated ground that `ghbdtn` there is as likely
-    /// to be a filename as a mistake.
+    /// `AppScope` is asked about Notes; the write must not then land in a
+    /// terminal, the app class the module blocks by default.
     func testAScopeVerdictIsNotSpentOnAnAppThatArrivedAfterIt() async throws {
         let engine = engine()
         selection.text = "ghbdtn"
@@ -99,11 +77,10 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
 
     // MARK: - The text is older than the app it lands in
 
-    /// The gesture's own hop. `fix()` reads the selection off the main queue
-    /// because that read blocks, then comes back to main to act — and the text
-    /// it carried across was written into whoever held the keyboard on arrival.
-    /// Mail is not blocked, so no scope rule saves this one: it was a paragraph
-    /// from Notes typed over whatever was selected in Mail.
+    /// The gesture's own hop: `fix()` reads the selection off the main queue
+    /// because that read blocks, then comes back to main to act. Mail is not
+    /// blocked, so no scope rule can stop a paragraph from Notes being typed
+    /// over Mail's selection; only the pin can.
     func testTheTextTheGestureReadIsNotWrittenIntoADifferentApp() async {
         let engine = engine()
         selection.text = "ghbdtn"

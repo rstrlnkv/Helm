@@ -3,21 +3,16 @@ import HelmTestSupport
 import Module_Leftovers_Engine
 @testable import Module_Leftovers_UI
 
-/// **Two scans could land out of order, and the list went to the last one to
-/// finish.**
+/// **Two scans in flight land in request order: the list goes to the last one
+/// asked for, not the last one to finish.**
 ///
-/// `scan()` had no latch of any kind, and it is not only the Scan button that
-/// calls it: `setDisabled` rescans so the row shows what launchd actually did, and
-/// `trash` rescans after a removal. Two quick toggles are therefore two scans in
-/// flight over the same `items`, and whichever the machine happens to answer last
-/// wins — the last writer by scheduling, one module over from Autopilot's
-/// tampered-rules verdict.
+/// It is not only the Scan button that calls `scan()`: `setDisabled` rescans so
+/// the row shows what launchd actually did, and `trash` rescans after a removal.
+/// Two quick toggles are two scans in flight over the same `items`.
 ///
 /// The fake below is a gate per request rather than one gate, because the state
-/// this is about is *two* requests outstanding at once: a fake that could only
-/// hold one open could not represent the moment the defect lives in (ARCHITECTURE.md § Fakes).
-///
-/// Past defect: fixed in `4c8bbed9`.
+/// this is about is *two* requests outstanding at once
+/// (Architecture/TestsAndMeasurement.md § Fakes).
 @MainActor
 final class TwoScansLandInRequestOrderTests: XCTestCase {
 
@@ -27,10 +22,9 @@ final class TwoScansLandInRequestOrderTests: XCTestCase {
         private let gates: [(stream: AsyncStream<Void>, continuation: AsyncStream<Void>.Continuation)]
         private var taken = 0
         /// A removal, answered at once — because the request this file is about is
-        /// the **rescan `trash` makes afterwards**, and that is a scan like any
-        /// other. A fake that could only answer scans could not put a removal in
-        /// the middle of two of them, which is the interleaving the survey named
-        /// and `testAScanInFlightWhenARemovalLandsDoesNotWinTheList` is about.
+        /// the **rescan `trash` makes afterwards**, and a fake that could only answer
+        /// scans could not put a removal in the middle of two of them
+        /// (`testAScanInFlightWhenARemovalLandsDoesNotWinTheList`).
         private let removal: LeftoversRemoval
 
         init(answers: [[StaleItem]],
@@ -126,23 +120,18 @@ final class TwoScansLandInRequestOrderTests: XCTestCase {
 
     // MARK: - And a removal in the middle of them
 
-    /// **The interleaving the survey named: a scan already in flight when a removal
-    /// finishes.** The Scan button is `.disabled(lvm.scanning)` and nothing more, so
-    /// it is live all the way through a removal — and `trash` ends with a rescan of
-    /// its own. Three scans are therefore outstanding in one ordinary sequence: the
-    /// one that built the list, the one the person started while the batch was
-    /// running, and the one the removal makes to show what happened.
+    /// **A scan already in flight when a removal finishes.** Three scans can be
+    /// outstanding in one ordinary sequence: the one that built the list, one the
+    /// person started while the batch was running, and the one the removal makes
+    /// to show what happened.
     ///
-    /// The removal's rescan is the newest request, so it must win — even when the
-    /// person's older scan is the last to be answered. If it loses, the page shows a
-    /// list taken *before* the removal directly under a report saying what the
-    /// removal did, which is the one pairing this screen must not draw: rows the
-    /// person is invited to tick again, in a list the report has already contradicted.
+    /// The removal's rescan is the newest request, so it must win, even when the
+    /// person's older scan is answered last. If it lost, the page would show a list
+    /// taken *before* the removal under a report saying what the removal did.
     ///
-    /// Nothing here needs a fix today — this is the ground walked, pinned. It can
-    /// fail: it fails on a `LatestRequest` that latches instead of counting, on a
-    /// `trash` that rescans before writing its report, and on any return to `items =
-    /// found` without the token check.
+    /// It fails on a `LatestRequest` that latches instead of counting, on a `trash`
+    /// that rescans before writing its report, and on any `items = found` without
+    /// the token check.
     func testAScanInFlightWhenARemovalLandsDoesNotWinTheList() async {
         let before = agent("before-the-removal")
         let work = OrderedScans(answers: [[before], [before], [agent("after-the-removal")]],

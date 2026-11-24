@@ -10,16 +10,14 @@ import HelmTestSupport
 /// **A green mark on a tunnel three seconds into a handshake says the Mac is
 /// protected while it is not.** The settings page's dot and the button's colour,
 /// the panel tile's header and its rows, and the 1×1 widget's figure and dot each
-/// ask "is it up" by their own word, and `.connecting` is up in one vocabulary
-/// (`isUp`) and not in the other (`isConnected`). Each surface now answers
-/// through one hook (`VPNConnectionCard.lit`, `VPNPanelTile.lit`,
-/// `VPNPanelTile.anyConnected`, `VPNCompactWidget.up`); this asks all four, for
-/// every status, and wants green exactly on `.connected`.
+/// ask "is it up", and `.connecting` is up in one vocabulary (`isUp`) and not in
+/// the other (`isConnected`). Each surface answers through one hook
+/// (`VPNConnectionCard.lit`, `VPNPanelTile.lit`, `VPNPanelTile.anyConnected`,
+/// `VPNCompactWidget.up`); this asks all four, for every status, and wants
+/// green exactly on `.connected`.
 ///
 /// What it cannot see: a body that stops calling its hook. That is a change of
 /// look, and a look is proved by shots, not by this class.
-///
-/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity» (the dot lit during a handshake in the panel tile and the 1×1 widget).
 @MainActor
 final class TheGreenIsOnlyOnATunnelThatIsConnectedTests: XCTestCase {
 

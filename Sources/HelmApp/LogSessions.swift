@@ -8,11 +8,9 @@ import HelmAppStrings
 
 // **What the Log page draws, derived from the lines and from nothing else.**
 //
-// The page has a card for each launch of the app, and draws the newest of them
-// first. Nothing in the log file says "launch" except the line `HelmLog.start`
-// writes first, so a launch is read out of the lines themselves — here, in pure
-// functions, and not in the view: a view cannot be handed a fixture, and a rule
-// about where one launch ends and the next begins is exactly what a fixture is for.
+// Nothing in the log file says "launch" except the line `HelmLog.start` writes
+// first, so a launch is read out of the lines themselves, in pure functions and
+// not in the view: a view cannot be handed a fixture.
 //
 // **Nothing here drops a line or moves one.** Every function below takes the
 // lines in the order they arrived and hands back the same lines in the same
@@ -38,13 +36,10 @@ struct LogSession: Identifiable {
     /// it: the launch the tail happens to begin in the middle of.
     let isTailHead: Bool
 
-    /// **The identity is the start line's — and one fixed identity for the
-    /// tail's head.** A full tail drops its oldest line every second, so the
-    /// first line of the head launch is a different line every second, and a
-    /// card keyed on it is torn down and built whole on every tick: measured on
-    /// a full tail that is one long launch, 70–92 ms of the main thread a tick
-    /// against 37 ms with the identity held still. There is only ever one head,
-    /// so one constant names it.
+    /// **The identity is the start line's, and one fixed identity for the
+    /// tail's head.** A full tail drops its oldest line every second, so a card
+    /// keyed on the head's first line would be torn down and built whole on
+    /// every tick. There is only ever one head, so one constant names it.
     var id: LogEntry.ID { isTailHead ? Self.tailHeadID : lines[0].id }
     private static let tailHeadID = UUID(uuidString: "5E9B6C5A-7A49-4E0B-9F4D-0C2B7D8E1A63")!
     var start: LogEntry? { opensWithLaunch ? lines[0] : nil }
@@ -56,11 +51,10 @@ struct LogSession: Identifiable {
     }
 
     /// **A start line that is not an ordinary one is a row as well.** The header
-    /// draws a day, a minute and a version and never the words of the line, so a
-    /// start line that carries a warning or an error — a warning a crash tore
-    /// and the next launch's first line glued on, or a warning with no site that
-    /// quotes one — would be counted on the badge and shown nowhere. Such a line
-    /// is the card's header *and* its first row.
+    /// never draws the words of the line, so a start line that carries a warning
+    /// or an error (a crash-torn line glued to the next launch's first) would be
+    /// counted on the badge and shown nowhere. Such a line is the card's header
+    /// *and* its first row.
     var startIsARow: Bool { opensWithLaunch && lines[0].level != .info }
 
     /// Everything after the start line and the burst — and the start line
@@ -88,11 +82,10 @@ enum LogCardTitle: Equatable {
     /// The first card of the tail, whose start line scrolled out of it: the run
     /// began *earlier* than anything the page holds, and the word says so.
     case earlierLaunch
-    /// A run with no start line of its own that is not the tail's head — the
+    /// A run with no start line of its own that is not the tail's head: the
     /// lines after a «terminating», or after a «logging enabled» nothing
-    /// answered. It began *later* than the card above it, so «earlier» would
-    /// be false; what the file records is the time of its first line, and the
-    /// header says that and nothing else.
+    /// answered. It began later than the card above it, so «earlier» would be
+    /// false; the header says the time of its first line and nothing else.
     case noStartLine
 }
 
@@ -101,21 +94,18 @@ enum LogSessions {
     static func isStart(_ entry: LogEntry) -> Bool { LogSeed.version(of: entry) != nil }
 
     /// **Lines that cannot belong to the launch above them.** A launch is not a
-    /// process: two builds no longer share a folder, but older files still
-    /// interleave, and logging can be switched on in the middle of a run that
-    /// wrote no start line. So a launch ends at the line
-    /// where it says it is terminating — a process that has said so writes
-    /// nothing more, and whatever follows is some other's — and a «logging
-    /// enabled» that does not answer a «logging disabled» just above it is the
-    /// first word of a run whose start this file never saw. Neither may be filed
-    /// under the launch before it: the card would name a version for lines it
-    /// cannot know the version of.
+    /// process: files from two builds can interleave, and logging can be
+    /// switched on in the middle of a run that wrote no start line. So a launch
+    /// ends at the line where it says it is terminating (a process that has
+    /// said so writes nothing more), and a «logging enabled» that does not
+    /// answer a «logging disabled» just above it is the first word of a run
+    /// whose start this file never saw. Neither may be filed under the launch
+    /// before it: the card would name a version it cannot know.
     private static func opensNewRun(_ entry: LogEntry, after run: [LogEntry]) -> Bool {
         guard let previous = run.last else { return false }
         // A «terminating» after a «terminating» has no launch of its own: two
-        // builds that quit one after the other write it twice (49 ms apart in
-        // the owner's log), and it belongs to the launch it ends. Anything else
-        // after one is another run's.
+        // builds that quit one after the other write it twice, and it belongs
+        // to the launch it ends. Anything else after one is another run's.
         if LogSeed.isTerminating(previous) { return !LogSeed.isTerminating(entry) }
         guard let named = LogSeed.loggingEnabled(entry) else { return false }
         guard LogSeed.isLoggingDisabled(previous) else { return true }
@@ -126,7 +116,7 @@ enum LogSessions {
         // version, and a build that writes one is newer than any build that
         // wrote it bare: a version change is a relaunch, so this edge is
         // another launch's. A run with no first word of its own to go by (the
-        // tail's head) is left whole, as before.
+        // tail's head) is left whole.
         guard let running = run.first.flatMap(versionOfRun(openedBy:)) else {
             return run.first.map(LogSeed.isBareLoggingEnabled) ?? false
         }
@@ -141,15 +131,12 @@ enum LogSessions {
         return LogSeed.loggingEnabled(first) ?? nil
     }
 
-    /// **How long after the start line a line still belongs to the burst.**
-    /// Measured on a copy of the owner's log (`grep -c '^2026-09-30 13:04:11\.'`):
-    /// the launch of 13:04:11 wrote 29 lines, its start line at .517 and the last
-    /// at .660 of one second — every module's «enable», its memory reading, the
-    /// list of modules, the permission probes — and the first line after it
-    /// came at 13:04:19.075, 7.4 s after the last. Two seconds is that burst
-    /// with room, and far from the next thing a launch says. The burst is only the
-    /// **unbroken** run of `info` lines from the start line: a warning inside it
-    /// ends it, so the fold can never hide one.
+    /// **How long after the start line a line still belongs to the burst.** A
+    /// launch's enables, memory reading and permission probes land within a
+    /// fraction of a second, and the next thing it says comes seconds later;
+    /// two seconds is the burst with room. The burst is only the **unbroken**
+    /// run of `info` lines from the start line: a warning inside it ends it, so
+    /// the fold can never hide one.
     static let startupWindow: TimeInterval = 2
 
     /// The lines cut into launches, in order.
@@ -237,19 +224,17 @@ enum LogSearch {
     }
 
     /// What a card's header draws is searchable too: the version, and the
-    /// launch's day and time. The start line alone matches «Helm 0.11.1 started»
-    /// and is a header, never a row, so a search for the words on the card found
-    /// nothing while they were on screen.
+    /// launch's day and time. The start line is a header, never a row, so a
+    /// search must find the words the card shows.
     ///
-    /// **Whole words of the header, and nothing shorter.** «Helm» is on every
-    /// card, «PM» on half of them and «0.11» on all, so a part of a header drew a
-    /// card with no line in it for every launch of the tail (800 of 821 cards for
-    /// «Helm» on the owner's log, all of them for «PM»). The query must be the
-    /// version, «Helm <version>», or the day and minute as drawn, case and
-    /// accents aside; a card whose lines match is drawn for its lines. The head of
-    /// the tail also draws «Earlier launch», in the page's language, and a query
-    /// that is a part of those words finds that card (`LogCardTitle.earlierLaunch`):
-    /// it is the one card that draws them, so a short query cannot draw every card.
+    /// **Whole words of the header, and nothing shorter.** «Helm», «PM» or a
+    /// version prefix is on most cards, so a part of a header would draw an
+    /// empty card for nearly every launch. The query must be the version,
+    /// «Helm <version>», or the day and minute as drawn, case and accents aside;
+    /// a card whose lines match is drawn for its lines. The head of the tail
+    /// also draws «Earlier launch», in the page's language, and a part of those
+    /// words finds that card (`LogCardTitle.earlierLaunch`): it is the one card
+    /// that draws them, so a short query cannot draw every card.
     static func matches(header session: LogSession, _ query: String,
                         drawnTime: (Date) -> String) -> Bool {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -269,10 +254,9 @@ enum LogSearch {
 
     /// **Every blank is the one a keyboard types.** English draws «9/21/26,
     /// 7:13 PM» with a narrow no-break space (U+202F) before «PM», French draws
-    /// one before a colon, and no key types either: compared as drawn, the time
-    /// on a card could be read off the screen and never typed. Each blank is
-    /// read as an ordinary space on both sides — one for one, so a doubled
-    /// space inside is still not the drawn words.
+    /// one before a colon, and no key types either. Each blank is read as an
+    /// ordinary space on both sides, one for one, so a doubled space inside is
+    /// still not the drawn words.
     static func plainBlanks(_ text: String) -> String {
         String(String.UnicodeScalarView(text.unicodeScalars.map { $0.properties.isWhitespace ? " " : $0 }))
     }
@@ -323,12 +307,10 @@ struct LogPresentation {
 
     /// The day a run of lines belongs to, written when it changes.
     ///
-    /// **A heading and not a column.** The row carries a time to the
-    /// millisecond, and a date beside it would cost every row about a third of
-    /// its message width in the languages that spell a short date longest; the
-    /// day changes a few times in a log and the row would repeat it a thousand.
-    /// Inside a card it is written where a launch crosses midnight — the card's
-    /// own header names the day it began.
+    /// **A heading and not a column.** A date beside every row's time would
+    /// cost a large share of the message width, for a day that changes a few
+    /// times in a log. Inside a card it is written where a launch crosses
+    /// midnight; the card's own header names the day it began.
     ///
     /// The spelling is `HelmDates.day` — the app's language, a formatter cached
     /// per language — and the comparison is the reader's calendar day, the same
@@ -349,12 +331,11 @@ struct LogPresentation {
     /// Launches in the tail, drawn or not.
     let launchCount: Int
     /// **What the footer counts:** the lines of every card in `cards`, drawn yet
-    /// or not, that passed the filters — the rows, the start-up fold, and a start
-    /// line only where it passed them itself. Not `lines`: that is the copy set,
-    /// which carries the header of every card in `cards` whether or not it
-    /// passed, and under «Warnings» one more line per card than the footer
-    /// counts. Not what the badges count either: a badge counts **all** of its
-    /// launch's lines (`Card.warnings`), so with a filter on the two differ by design.
+    /// or not, that passed the filters: the rows, the start-up fold, and a start
+    /// line only where it passed them itself. Not `lines`, which carries every
+    /// card's header whether or not it passed, and not the badges, which count
+    /// all of a launch's lines (`Card.warnings`): with a filter on, they differ
+    /// by design.
     let shown: Int
 
     var isEmpty: Bool { cards.isEmpty }
@@ -365,18 +346,12 @@ struct LogPresentation {
     /// `rowsBefore` rows between them** (a card counts its rows and its start-up
     /// rows). Every card when they hold fewer, and only the newest when
     /// `rowsBefore` is 0 or below. A card is never split, which would put a
-    /// header and its fold over rows that begin mid-launch, and a launch not drawn
-    /// takes no height and is no estimate (a drawn card of more than
-    /// `LogView.lazyAbove` rows is lazy, and its height is one).
+    /// header and its fold over rows that begin mid-launch.
     ///
     /// **The newest card is outside the count** because it is the only one that
-    /// grows. Counted from the end, the cut would move down as lines arrive and
-    /// take a whole card away from under a reader standing in it; counted over
-    /// the older cards alone, which never grow, a line that enters the newest
-    /// launch cannot move the cut, and the oldest card shrinking can only widen
-    /// it. A line that opens a new launch can: the launch that was the newest is
-    /// counted from then on, and the oldest launches drawn may leave the page
-    /// from above.
+    /// grows: counted from the end, the cut would move as lines arrive and take
+    /// a card away from under a reader standing in it. The rest is
+    /// Architecture/DiagnosticsLog.md § The log pane.
     func drawn(rowsBefore: Int) -> ArraySlice<Card> {
         guard !cards.isEmpty else { return cards[...] }
         var first = cards.count - 1
@@ -403,11 +378,9 @@ struct LogPresentation {
             let passingIDs = Set(passing.map(\.id))
             let burst = session.startup.filter { passingIDs.contains($0.id) }
             let rest = session.rest.filter { passingIDs.contains($0.id) }
-            // A launch with nothing to show under the filters gets no card — the
-            // start line alone never earns a card while a filter is on, since
-            // it is the header and not a finding — unless the search names what
-            // the header says: its version, its day. With no filter every launch
-            // gets a card, even one that has only just said it started.
+            // A launch with nothing to show under the filters gets no card (the
+            // start line is the header, not a finding) unless the search names
+            // what the header says. With no filter every launch gets a card.
             let named = LogSearch.isActive(query)
                 && LogSearch.matches(header: session, query, drawnTime: { HelmDates.dayAndMinute($0) })
             guard !filtering || !burst.isEmpty || !rest.isEmpty || named else { continue }

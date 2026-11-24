@@ -38,23 +38,17 @@ public protocol AutomationNoticePort: AnyObject, Sendable {
 
 /// Production `AutomationNoticePort`: `UNUserNotificationCenter`.
 ///
-/// It lived in VPN's engine until Keep Awake's battery veto needed one too —
-/// the veto being the one event this app has that happens with nobody in front
-/// of the screen. Two modules, so it is plumbing, and plumbing lives here.
+/// Shared by more than one module, so it is plumbing and lives here.
 ///
 /// `UNUserNotificationCenter.current()` raises `NSInternalInconsistencyException`
-/// — "bundleProxyForCurrentProcess is nil" — in any process that is not a
-/// bundled app, and an ObjC exception does not fail a test case: it kills the
-/// whole `swift test` run. Hence two defences. The centre is reached inside
-/// each method and never in `init`, so constructing one stays free for the
-/// tests that build a descriptor or an engine; and `AppBuild.isBundledApp` answers
-/// before anything is asked, so a test that does reach one of these methods
-/// gets a refusal instead of ending the run.
+/// ("bundleProxyForCurrentProcess is nil") in any process that is not a
+/// bundled app, and an ObjC exception kills the whole `swift test` run. Two
+/// defences: the centre is reached inside each method and never in `init`, so
+/// constructing one stays free for tests; and `AppBuild.isBundledApp` answers
+/// first, so a test that reaches a method gets a refusal instead.
 public final class SystemAutomationNotice: AutomationNoticePort {
-    /// The log area of the module this one belongs to — «vpn», «keep-awake».
-    /// Passed in rather than fixed, because the one thing this class says in the
-    /// log is that the banners are dead, and the module it is dead for is the
-    /// whole of that line's value.
+    /// The log area of the module this one belongs to («vpn», «keep-awake»),
+    /// so the line saying the banners are dead names whose.
     private let area: String
 
     public init(area: String) { self.area = area }

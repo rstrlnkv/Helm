@@ -3,7 +3,7 @@ import Security
 
 /// Where a log line came from.
 ///
-/// Four call sites can produce the same wording, and the wording is what a
+/// Several call sites can produce the same wording, and the wording is what a
 /// bug report carries. `#fileID` and `#line` cost nothing at the call site and
 /// turn "refused out-of-scope path" into a place in the source.
 public struct LogSite: Sendable, Equatable {
@@ -30,11 +30,10 @@ public struct LogSite: Sendable, Equatable {
 
 /// Turns a failure into something worth writing down.
 ///
-/// The log used to record `error.localizedDescription`, which for a Cocoa
-/// error is usually "The operation couldn’t be completed." — the domain, the
-/// code, the failing path and the underlying error all discarded, and the
-/// underlying error is nearly always the answer. OSStatus went in as a bare
-/// integer: a number to paste into a search engine rather than a fact.
+/// `error.localizedDescription` for a Cocoa error is usually "The operation
+/// couldn’t be completed.", with the domain, the code, the failing path and
+/// the underlying error discarded, and the underlying error is nearly always
+/// the answer. A bare OSStatus is a number to search for rather than a fact.
 ///
 /// Everything here is redacted on the way through: a path is the most useful
 /// thing in a failure and the most private, so it goes in as `~/Documents/…`
@@ -53,10 +52,7 @@ public enum HelmFailure {
 
         // A Swift enum bridged to NSError loses everything: the associated
         // value is gone and the code is declaration order, which renumbers on
-        // the next edit. `InstallError.versionMismatch("0.7.0")` arrived as
-        // `… 0 "The operation couldn't be completed"` — which is precisely the
-        // uselessness this type was written to end, at the one call site it
-        // was written for.
+        // the next edit.
         if !(type(of: error) is NSError.Type) {
             parts.append("(\(oneLine(swiftDescription(of: error))))")
         }
@@ -102,11 +98,9 @@ public enum HelmFailure {
     ///
     /// `DecodingError` and `EncodingError` carry a coding path, and for an
     /// object-shaped document every key in that path came off the file. A table
-    /// keyed by path is an ordinary shape (`HashCache` and `appSizes` are both
-    /// written that way), so the keys are somebody's file names — and the line
-    /// carries the type it wanted, never the content. The case and the type
-    /// it was reaching for are the whole of what a reader needs; the call site
-    /// already names the arm and the type it asked for.
+    /// keyed by path is an ordinary shape (`HashCache`, `appSizes`), so the keys
+    /// are somebody's file names. The line carries the case and the type it
+    /// wanted, never the content.
     private static func swiftDescription(of error: Error) -> String {
         switch error {
         case let decoding as DecodingError:
@@ -141,10 +135,9 @@ public enum HelmFailure {
     /// How much of one message is worth keeping.
     ///
     /// `helm.log` rotates at 2 MB and keeps one previous file, so a single
-    /// unbounded message can erase the history the log exists to build: a 4 MB
-    /// description, twice, and everything before it is gone. No real failure
-    /// needs more than this; anything longer is a payload that got into a
-    /// message field.
+    /// unbounded message can erase the history the log exists to build. No real
+    /// failure needs more than this; anything longer is a payload that got into
+    /// a message field.
     private static let messageLimit = 800
 
     /// `spelling` becomes `~` only where the path component ends: at the end of
@@ -178,11 +171,10 @@ public enum HelmFailure {
     /// carry no key for `Redact.path` to find them by, and which come from
     /// errors Helm has not written yet.
     ///
-    /// The line breaks are the obvious half. The rest are the characters a
-    /// *reader* obeys: a lone carriage return, U+2028 and U+2029 all break a
-    /// line in something, and U+202E reverses everything after it in whatever
-    /// the bug report gets pasted into — a log that can be made to misread
-    /// itself is worse than one that is merely long.
+    /// Besides line breaks, the characters a *reader* obeys: a lone carriage
+    /// return, U+2028 and U+2029 break a line in something, and U+202E reverses
+    /// everything after it wherever the bug report is pasted. A log that can be
+    /// made to misread itself is worse than one that is merely long.
     private static func oneLine(_ text: String) -> String {
         var flat = text
         for control in ["\r\n", "\n", "\r", "\u{2028}", "\u{2029}",
@@ -190,12 +182,10 @@ public enum HelmFailure {
                         "\u{2067}", "\u{2068}", "\u{2069}", "\u{200F}", "\u{200E}"] {
             flat = flat.replacingOccurrences(of: control, with: " ")
         }
-        // Both spellings, longest first. On an APFS boot volume group every
-        // file under the home is reachable a second time as
-        // `/System/Volumes/Data` + the same path, which `Redact.path` and the
-        // `path:` extraction both answer `~` for. Stripping only the home left
-        // `/System/Volumes/Data~/Desktop/…` in the message: no account name in
-        // it, and no path either — it says the file is somewhere it is not.
+        // Both spellings, longest first: every file under the home is also
+        // reachable as `/System/Volumes/Data` + the same path, and stripping
+        // only the home would leave `/System/Volumes/Data~/Desktop/…`, a path
+        // that says the file is somewhere it is not.
         let home = NSHomeDirectory()
         if !home.isEmpty {
             for spelling in [DataVolume.mount + home, home] {

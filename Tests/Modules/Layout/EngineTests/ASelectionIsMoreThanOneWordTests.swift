@@ -3,23 +3,15 @@ import XCTest
 
 /// A selection is a sentence, and a sentence has spaces in it.
 ///
-/// The whole selection path was dead for exactly that reason, and nothing said
-/// so: the key tables `UCTranslation` builds hold letters only, and the
-/// translation refused the entire string at the first character that was not in
-/// them. Measured against the real ports on a Mac with US and Russian
-/// installed: `ghbdtn` → `привет`, and `ghbdtn rfr` → nil. So «select a
-/// sentence and put it right» could not work once, ever — while the last-word
-/// path, whose input is one word of letters, was healthy and hid it.
-///
-/// The three log lines the owner's Mac had for this read
-/// `selection left alone: no conversion for 24 characters`.
-///
-/// Guards a past defect: a space refusing a whole selection (fix commit `bf3302b4`).
+/// The key tables `UCTranslation` builds hold letters only, so a translation
+/// that refused the string at the first character not in them would turn
+/// `ghbdtn rfr` into nil and the selection path would never work, while the
+/// last-word path, one word of letters, hid it.
 final class ASelectionIsMoreThanOneWordTests: XCTestCase {
 
     /// Toy tables, in the shape `UCTranslation.buildTable` produces: key code →
     /// the letter it types. Only letters, because that is what the real one
-    /// holds — the defect under test is what happens to everything else.
+    /// holds; what is under test is what happens to everything else.
     private let latin: [UInt16: Character] = [0: "g", 1: "h", 2: "b", 3: "d", 4: "t", 5: "n", 6: "r", 7: "f", 8: "k"]
     private let cyrillic: [UInt16: Character] = [0: "п", 1: "р", 2: "и", 3: "в", 4: "е", 5: "т", 6: "к", 7: "а", 8: "л"]
 
@@ -27,7 +19,7 @@ final class ASelectionIsMoreThanOneWordTests: XCTestCase {
         XCTAssertEqual(KeyRemap.map("ghbdtn", from: latin, to: cyrillic), "привет")
     }
 
-    /// The defect itself.
+    /// A sentence converts.
     func testASpaceDoesNotKillTheWholeSentence() {
         XCTAssertEqual(KeyRemap.map("ghbdtn rfr", from: latin, to: cyrillic), "привет как")
     }
@@ -59,15 +51,12 @@ final class ASelectionIsMoreThanOneWordTests: XCTestCase {
         XCTAssertNil(KeyRemap.map("12:34 — ...", from: latin, to: cyrillic))
     }
 
-    /// **A letter it cannot map refuses the whole string, and that is the line
-    /// between this and punctuation.** Passing an unmappable *letter* through
-    /// produced a mixed-script word — measured on this Mac, `дфых` came back
-    /// `lasх` with a Cyrillic х on the end, because х sits on the `[` key and
-    /// `[` is not a letter in the latin table. `NSSpellChecker` accepts `lasх`
-    /// as an English word, so the verdict then converted somebody's word into
-    /// a broken one. A space or a comma carries no reading in another layout
-    /// and is simply kept; a letter carries exactly the reading this is about,
-    /// so one it cannot read means it cannot read the word.
+    /// A letter it cannot map refuses the whole string, and that is the line
+    /// between this and punctuation. Passed through, `дфых` would come back
+    /// `lasх`, a Cyrillic х on the end (`[` is not a letter in the latin table),
+    /// which `NSSpellChecker` accepts as English. A space or a comma carries no
+    /// reading in another layout and is kept; a letter it cannot read means it
+    /// cannot read the word.
     func testAnUntranslatableLetterRefusesTheWholeString() {
         XCTAssertNil(KeyRemap.map("ghbdtn ñ", from: latin, to: cyrillic),
                      "a letter with no key in this layout was passed through")
@@ -78,7 +67,7 @@ final class ASelectionIsMoreThanOneWordTests: XCTestCase {
     }
 
     /// And the control: everything that is not a letter still passes, or the
-    /// selection path is dead again.
+    /// selection path is dead.
     func testNonLettersStillPass() {
         XCTAssertEqual(KeyRemap.map("ghbdtn rfr!", from: latin, to: cyrillic), "привет как!")
     }

@@ -2,51 +2,34 @@ import Foundation
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// **A row offers «Turn off» for a label the switch behind it will not carry.**
+/// **A row offers «Turn off» only for a label the switch behind it will carry.**
 ///
 /// The label is not Helm's: it is whatever string a `.plist` in a LaunchAgents
 /// folder put in its `Label` key, and `LaunchAgentReader` passes it through
-/// untouched (its only rule is that an empty one falls back to the file name). Two
-/// characters in it are not ordinary text by the time the switch runs:
+/// untouched (an empty one falls back to the file name). Two characters in it
+/// are not ordinary text by the time the switch runs:
 ///
-///   • **`/`** — `ActiveExtensions.setDisabled` refuses it outright, and its own
-///     comment says why: «A `/` in it re-points the service target at the domain
-///     itself, and `launchctl bootout gui/<uid>` ends the user's login session».
-///     So the guard is right, and the row above it does not know about it:
-///     `LeftoverActions.available` inserts `.turnOff` for any launch agent with a
-///     non-empty label, the page draws a live button, and the press does nothing
-///     at all. «The model refuses this while a removal runs; the page has to say
-///     so, or the press is a control that does nothing» is that page's own comment
-///     about the *other* reason it can refuse.
+///   • **`/`** re-points the service target at the domain itself, and
+///     `launchctl bootout gui/<uid>` ends the user's login session. The switch
+///     refuses it, so a row offering it would draw a live button that does
+///     nothing.
 ///
-///   • **`"` and a newline** — carried through to `launchctl`, and read back by
-///     `LaunchctlDisabled.parse`, which is line-oriented over
-///     `launchctl print-disabled`'s own format (verified on this Mac,
-///     2026-08-13):
+///   • **`"` and a newline** are carried through to `launchctl` and read back
+///     by `LaunchctlDisabled.parse`, which is line-oriented over
+///     `launchctl print-disabled`'s own format:
 ///
 ///         	disabled services = {
 ///         		"com.apple.Siri.agent" => enabled
 ///         		"com.vendor.updater" => disabled
 ///
-///     A label of `x" => disabled` + newline + `\t\t"com.vendor.updater` therefore
-///     prints as two lines that parse as two labels, and the second one is a job
-///     nobody switched off. The badge that says «Disabled» is the whole of what
-///     this module offers as reassurance that a login item will not run, and it
-///     would be drawn on a row that runs at every login. This is the VPN pass's
-///     forged row — a name that stands in for an identity — in launchd's list
-///     instead of `scutil`'s.
+///     A label of `x" => disabled` + newline + `\t\t"com.vendor.updater` would
+///     print as two lines that parse as two labels, and the «Disabled» badge —
+///     the module's whole reassurance that a login item will not run — would be
+///     drawn on a row that runs at every login.
 ///
-/// **What is asserted is the implication, not the fix.** A row may offer the switch
-/// only if the label it would send is one the switch will act on. That leaves both
-/// repairs open: withhold `.turnOff` (one predicate, read by `available` and by
-/// `setDisabled`, so the page and the port cannot come to disagree — the shape
-/// `StaleItem.removable` already uses), or refuse the label at the reader and fall
-/// back to the file name the way a blank one does. Either satisfies this file; a
-/// row that offers a switch nothing can throw does not.
-///
-/// Expected to fail until one of those lands.
-///
-/// Past defect: fixed in `6de0a337`.
+/// **What is asserted is the implication, not the fix.** A row may offer the
+/// switch only if the label it would send is one the switch will act on
+/// (`LaunchLabel`, one predicate read by `available` and by `setDisabled`).
 final class ASwitchTheSystemWillRefuseTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
@@ -71,12 +54,8 @@ final class ASwitchTheSystemWillRefuseTests: XCTestCase {
     ///
     /// **Three dot-separated components, because two are covered by accident.**
     /// `com.vendor/updater` is turned away by `StaleItemRules.isRemovable`'s
-    /// reverse-DNS rule — «at least vendor + name» — which makes it
-    /// `.protectedItem`, and a protected row offers nothing but Reveal. That is not
-    /// this rule doing its job, it is a different rule catching one spelling of the
-    /// problem; move the separator one component along and the row is an ordinary
-    /// leftover with a live switch. A fixture that had used the shorter form would
-    /// have passed and proved nothing.
+    /// reverse-DNS rule, which makes it `.protectedItem`; move the separator one
+    /// component along and the row is an ordinary leftover with a live switch.
     func testAnAgentWhoseLabelCarriesASeparatorIsNotOfferedTheSwitch() throws {
         let item = try agent(labelled: "com.vendor.updater/x")
         XCTAssertEqual(item.status, .orphaned,

@@ -6,15 +6,10 @@ import HelmTestSupport
 
 /// A `TrashPort` that really moves what it is given.
 ///
-/// `FakeTrash` records a path and leaves the file where it is, so a folder and
-/// something inside it both "succeed" and the case the batch rules exist for —
-/// the child went with its parent — cannot happen. No test of it could fail,
-/// whatever anybody wrote. This one moves the item into a bin of its own and
-/// answers `NSFileNoSuchFileError` for a path that is not there, which is what
-/// `FileManager.trashItem` does.
-///
-/// The bin sits inside the test's own temporary tree, so nothing here reaches
-/// the Trash of whoever ran `swift test`.
+/// `FakeTrash` leaves the file in place, so "the child went with its parent"
+/// cannot happen with it. This one moves the item into a bin of its own and
+/// answers `NSFileNoSuchFileError` for a path that is not there, as
+/// `FileManager.trashItem` does. The bin is inside the test's temporary tree.
 final class MovingTrash: TrashPort, @unchecked Sendable {
     private let bin: URL
     private let lock = NSLock()
@@ -46,11 +41,9 @@ final class MovingTrash: TrashPort, @unchecked Sendable {
 
 /// What one press of Move to Trash does to a tree, over real files.
 ///
-/// The engine wrote its own batch loop beside the one in `HelmTrash`, which
-/// three other modules share, and the copy was missing the parts that only
-/// show up on a tree: a folder basketed with a file inside it, two names for
-/// one file, and a row that was already gone. Each of these is a rule
-/// `HelmTrash` states in a comment and the copy never learned.
+/// The batch goes through `HelmTrash`, shared with three other modules, and
+/// these guard the rules that only show up on a tree: a folder basketed with a
+/// file inside it, two names for one file, and a row already gone.
 final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
 
     private var home: URL!
@@ -58,8 +51,7 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
 
     override func setUpWithError() throws {
         // The engine is told this is home: `RemovableScope` refuses everything
-        // outside one, and a test exempted from that gate is a test of a
-        // different program.
+        // outside one, and the test keeps the gate.
         home = scratchDirectory("unbatch")
         try FileManager.default.createDirectory(at: home.appendingPathComponent("Library/Caches"),
                                                withIntermediateDirectories: true)
@@ -67,8 +59,6 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
     }
 
     /// The real filesystem port, so the sizes are the ones production reads.
-    /// A fake sizing table would make every byte assertion here a statement
-    /// about the table.
     private func engine() -> UninstallerEngine {
         UninstallerEngine(home: home, apps: FakeApps(), fs: FMFileSystem(),
                           trash: trash, running: FakeRunning(running: []))
@@ -80,10 +70,8 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
                   bytes: bytes).path
     }
 
-    /// What production would say this path frees, since `FMFileSystem.size` is
-    /// this same call. The expectation is stated in the units the code answers
-    /// in — a byte count written down here would be a statement about APFS
-    /// block sizes.
+    /// What production would say this path frees (`FMFileSystem.size` is this
+    /// call), so no assertion depends on APFS block sizes.
     private func weight(_ path: String) -> Int {
         FileWeight.allocated(of: URL(fileURLWithPath: path))
     }
@@ -103,14 +91,9 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
 
     // MARK: - A folder and something inside it
 
-    /// Basket a folder on one screen and a file inside it on another and the
-    /// child's turn comes after the folder has already moved. It is in the
-    /// Trash; saying nothing about it makes the count say one when two went,
-    /// and reporting a refusal sends the person looking for a file that is
-    /// there.
-    ///
-    /// Asserted for both orders and absolutely, not by comparing the two
-    /// results: two wrongs of equal size satisfy a comparison.
+    /// A file whose folder already moved went to the Trash with it: it counts as
+    /// removed, not refused. Asserted for both orders and absolutely, since two
+    /// wrongs of equal size satisfy a comparison.
     func testAChildTakenWithItsParentIsRemovedWhicheverOrderTheBatchArrivesIn() async throws {
         for parentFirst in [true, false] {
             let folder = caches("Ghost-\(UUID().uuidString)")
@@ -135,9 +118,8 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
 
     // MARK: - Two names for one file
 
-    /// A hard link is one allocation wearing two names, and taking the second
-    /// name frees nothing. Both are real leftovers — a helper's cache linked
-    /// into the app's own — and both are offered.
+    /// A hard link is one allocation with two names, and the second name frees
+    /// nothing. Both are real leftovers, and both are offered.
     func testTwoNamesForOneFileFreeItsBytesOnce() async throws {
         let first = try write(caches("Ghost-\(UUID().uuidString)/big.bin"), bytes: 300_000)
         let second = caches("Helper-\(UUID().uuidString)/same.bin")
@@ -155,10 +137,8 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
 
     // MARK: - A row that was already gone
 
-    /// The list on screen is minutes old. A path that vanished before the
-    /// batch started is a refusal with a reason — the person is looking at a
-    /// stale list and that is the one thing worth telling them about it. It
-    /// used to be dropped from both lists, so the report said nothing at all.
+    /// A path that vanished before the batch started is a refusal with a reason,
+    /// not dropped from both lists: the person is looking at a stale list.
     func testAPathAlreadyGoneIsRefusedRatherThanDroppedFromBothLists() async throws {
         let present = try write(caches("Ghost-\(UUID().uuidString)/here.bin"), bytes: 8_000)
         let vanished = caches("Ghost-\(UUID().uuidString)/gone.bin").path
@@ -195,9 +175,8 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
 
     // MARK: - What it says was freed
 
-    /// Three sizes, deliberately all different: with equal ones a batch that
-    /// counted one path twice and another not at all would come to the same
-    /// total, and the assertion below would bless it.
+    /// Three different sizes: with equal ones, counting one path twice and
+    /// another not at all would come to the same total.
     func testTheAppAndItsLeftoversAreCountedOnceEach() async throws {
         let cache = try write(caches("Ghost-\(UUID().uuidString)/big.bin"), bytes: 200_000)
         let plist = try write(caches("Ghost-\(UUID().uuidString)/small.plist"), bytes: 8_000)
@@ -213,9 +192,7 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(result.freedBytes, 308_000, "nothing was weighed at all")
     }
 
-    /// Only what moved counts. The bytes of a path macOS refused are still on
-    /// the disk, and a banner that included them would be telling the person
-    /// they got back space they still owe.
+    /// Only what moved counts: a refused path's bytes are still on the disk.
     func testARefusedPathIsNotCountedAsFreed() async throws {
         let cache = try write(caches("Ghost-\(UUID().uuidString)/big.bin"), bytes: 200_000)
         let locked = try write(caches("Ghost-\(UUID().uuidString)/locked.bin"), bytes: 8_000)
@@ -232,9 +209,8 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(result.freedBytes, 300_000, "nothing was weighed at all")
     }
 
-    /// macOS's own sentence reaches the failure sheet, which draws it under the
-    /// classified reason as the evidence behind it. The classification crosses
-    /// `HelmTrash.Result`; this does not, and it is the module's own to carry.
+    /// macOS's own sentence reaches the failure sheet, under the classified
+    /// reason. It does not cross `HelmTrash.Result`; the module carries it.
     func testWhatMacOSSaidReachesTheReport() async throws {
         let locked = try write(caches("Ghost-\(UUID().uuidString)/locked.bin"), bytes: 8_000)
         let engine = UninstallerEngine(home: home, apps: FakeApps(), fs: FMFileSystem(),

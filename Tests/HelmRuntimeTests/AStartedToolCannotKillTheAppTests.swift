@@ -5,33 +5,19 @@ import XCTest
 import HelmLaunch
 @testable import HelmRuntime
 
-/// **`NSTask` raises, and a Swift `catch` cannot catch a raise.**
+/// `NSTask` raises, and a Swift `catch` cannot catch a raise: an Objective-C
+/// exception has nothing to land on in a Swift frame, so the process aborts
+/// inside `-[NSConcreteTask launchWithDictionary:error:]`.
 ///
-/// `HelmProcess.runData` guarded its launch with `do { try process.run() }
-/// catch { return (-1, Data()) }` — which reads like a guard and is not one for
-/// this class of refusal: an Objective-C exception has nothing to land on in a
-/// Swift frame, so the runtime reaches `std::terminate` and the process aborts.
-/// A shipped build died that way with SIGABRT inside
-/// `-[NSConcreteTask launchWithDictionary:error:]`.
-///
-/// **What these tests cannot show is the abort, and that is worth writing
-/// down.** Put the Swift `catch` back and they fail — measured, both NUL cases
-/// — but they fail as ordinary failures rather than taking the bundle with
-/// them: XCTest installs its own Objective-C exception handler around every
-/// test case, so inside this harness the raise is caught by the harness. The
-/// app has no such handler. The evidence that the raise really is `abort()`
-/// outside a test is a standalone binary — `libc++abi: terminating due to
-/// uncaught exception of type NSException` — and the crash report the fix was
-/// written from.
-///
-/// So what is guarded here is the part a test can guard: that a raise arrives
-/// as a refusal with a status every caller already reads, and that nothing of
-/// what was passed in comes back with it.
+/// These tests cannot show the abort: XCTest wraps every case in its own
+/// Objective-C exception handler, so without the shim they fail as ordinary
+/// failures. The app has no such handler. What is guarded is what a test can
+/// guard: a raise arrives as a refusal with a status every caller already
+/// reads, and nothing of what was passed in comes back with it.
 final class AStartedToolCannotKillTheAppTests: XCTestCase {
 
-    /// The two inputs measured to raise on macOS 27. Neither is something Helm
-    /// means to send; the point is that the third one — whatever it was, the
-    /// crash report names an offset and not a cause — is caught the same way.
+    /// Two inputs known to raise. Neither is something Helm means to send; the
+    /// point is that any raise is caught the same way.
     func testANulInAnArgumentIsARefusalRatherThanAnAbort() {
         let result = HelmProcess.run("/bin/echo", ["a\u{0000}b"])
         XCTAssertEqual(result.status, -1, """
@@ -86,7 +72,7 @@ final class AStartedToolCannotKillTheAppTests: XCTestCase {
                         "the error carries no exception name, so the log has nothing to say")
     }
 
-    /// **And it carries the name only.** A reason string holds whatever `NSTask`
+    /// It carries the name only: a reason string holds whatever `NSTask`
     /// was given — an argument, an environment value, a path — and this app's
     /// log carries no names.
     func testTheShimKeepsNothingOfWhatWasPassedIn() {

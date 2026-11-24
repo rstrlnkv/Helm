@@ -6,8 +6,6 @@ import XCTest
 /// The decision is small and every branch of it is a judgement rather than
 /// arithmetic, which is why it is a pure unit and not four `if`s inside
 /// `activate()`.
-///
-/// Guards: 5e25c02c (a session outlives the process that started it).
 final class SessionRestoreTests: XCTestCase {
 
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
@@ -71,10 +69,8 @@ final class SessionRestoreTests: XCTestCase {
 
     /// A session cannot come back longer than it ever was. If the system clock
     /// moves backwards — an NTP correction, a timezone change, a battery-dead
-    /// Mac starting from an epoch — `endDate - now` exceeds the whole duration,
-    /// and a two-hour session restored as a nine-hour one is the same defect as
-    /// the one being fixed, wearing the opposite sign. `startDate` is stored for
-    /// the countdown arc; it also bounds this.
+    /// Mac starting from an epoch — `endDate - now` exceeds the whole duration.
+    /// `startDate` is stored for the countdown arc; it also bounds this.
     func testAClockThatMovedBackwardsCannotLengthenTheSession() {
         // A 30-minute session, but "now" is a day earlier than it started.
         let started = now.addingTimeInterval(86_400)
@@ -97,13 +93,11 @@ final class SessionRestoreTests: XCTestCase {
 
     // MARK: - A deadline no session could have produced
 
-    /// The bound above is **relative**, and it was the only one: a stored
-    /// duration that is itself absurd is bounded by itself and comes back
-    /// whole. Both of these reach `Int(left / 60)` in
-    /// `KeepAwakeEngine.restoreSession`, which **traps** — "Double value cannot
-    /// be converted to Int because the result would be greater than Int.max" —
-    /// so the app terminates on launch, before anything is drawn, with no way
-    /// back in to switch the session off. `<real>1e300</real>` is a legal plist
+    /// The bound above is relative: a stored duration that is itself absurd is
+    /// bounded by itself. Both of these would reach `Int(left / 60)` in
+    /// `KeepAwakeEngine.restoreSession`, which traps, so the app would
+    /// terminate on launch, before anything is drawn, with no way back in to
+    /// switch the session off. `<real>1e300</real>` is a legal plist
     /// and `UserDefaults` hands it straight back as a `Double`.
     ///
     /// Refused rather than clamped: nothing this module can start produces a
@@ -117,10 +111,9 @@ final class SessionRestoreTests: XCTestCase {
                        .none)
     }
 
-    /// And a start date does not rescue it. `min(left, endDate - startDate)` is
-    /// a bound *by the stored duration*, so when that duration is the absurd
-    /// number the bound is the absurd number — the missing condition was an
-    /// absolute one, on both branches rather than on the second.
+    /// And a start date does not rescue it: `min(left, endDate - startDate)` is
+    /// a bound by the stored duration, so the absolute bound applies on both
+    /// branches.
     func testAStartDateDoesNotRescueADeadlineThatIsItselfAbsurd() {
         XCTAssertEqual(SessionRestore.decide(manualOn: true,
                                              startDate: now.addingTimeInterval(-60),
@@ -138,14 +131,11 @@ final class SessionRestoreTests: XCTestCase {
                        .none)
     }
 
-    /// The same trap entered through the *other* stored field. Every test above
-    /// moves the deadline; the bound is `min(left, endDate - startDate)`, so a
-    /// start date **after** the end date makes that subtraction negative and the
-    /// ceiling above waves it through — `isFinite` is true of -1e300 and it is
-    /// certainly under a day. It then reaches the same `Int(left / 60)` in
-    /// `KeepAwakeEngine.restoreSession` and traps at the other end: "the result
-    /// would be less than Int.min". `<real>1e300</real>` in `sessionStartedAt`
-    /// is as legal a plist as it is in `sessionEndsAt`.
+    /// The same trap entered through the other stored field: a start date after
+    /// the end date makes `endDate - startDate` negative, finite and under a
+    /// day, and `Int(left / 60)` would trap at the other end.
+    /// `<real>1e300</real>` in `sessionStartedAt` is as legal as in
+    /// `sessionEndsAt`.
     func testAStartDateAfterTheDeadlineIsRefused() {
         XCTAssertEqual(SessionRestore.decide(manualOn: true,
                                              startDate: Date(timeIntervalSinceReferenceDate: 1e300),
@@ -154,10 +144,9 @@ final class SessionRestoreTests: XCTestCase {
                        .none)
     }
 
-    /// And the modest version, which does not trap and is worse for it: a start
-    /// a minute past the deadline restores `.remaining(-60)`, so the module
-    /// holds the IOKit assertion for a session that ended before it began and
-    /// every surface draws 0:00 over it. A negative duration is not a session.
+    /// And the modest version, which does not trap: a start a minute past the
+    /// deadline must not restore `.remaining(-60)`, holding the assertion for a
+    /// session that ended before it began. A negative duration is not a session.
     func testASessionThatEndedBeforeItBeganIsRefused() {
         let ends = now.addingTimeInterval(1800)
         XCTAssertEqual(SessionRestore.decide(manualOn: true,

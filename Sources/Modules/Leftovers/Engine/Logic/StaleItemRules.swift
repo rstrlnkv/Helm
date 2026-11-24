@@ -33,10 +33,9 @@ enum StaleItemRules {
         // Reverse-DNS with at least vendor + name: a bare word says nothing
         // about who owns the file.
         guard identifier.split(separator: ".").count >= 3 else { return false }
-        // A dry run on a real machine offered com.adobe.Photoshop and
-        // com.microsoft.office: settings whose ids match no app bundle, while
-        // the software was very much installed. If a vendor has anything
-        // installed at all, leave their files alone.
+        // Settings ids often match no app bundle while the software is
+        // installed (com.adobe.Photoshop, com.microsoft.office). If a vendor
+        // has anything installed at all, leave their files alone.
         guard !vendorHasInstalledApp(identifier, installedIDs) else { return false }
         // An installed app's own id, or a helper carrying its prefix: that app still needs it.
         return !isOwned(identifier, byInstalled: installedIDs)

@@ -19,28 +19,16 @@ private struct Declarers: AppLister {
     }
 }
 
-/// The sibling tests are about the *names* a glob reaches. This one is about
-/// the id itself.
-///
-/// `SiblingPrefixTests` and `NestedSiblingTests` both compare an entry's name
-/// against the bundle id being removed, and both take for granted that the id
-/// belongs to the app being removed. It does not have to: the id is read from
-/// that app's own `Info.plist`, and an app may write anybody's there.
-///
-/// The exact candidates — `Containers/<id>`, `Preferences/<id>.plist`,
-/// `HTTPStorages/<id>`, `WebKit/<id>`, `Cookies/<id>.binarycookies`,
-/// `Saved Application State/<id>.savedState` — went through no ownership check
-/// at all, so removing a 2 MB download would take the whole of another app's
-/// container with it, ticked, on a screen whose next button is Trash.
-///
-/// The evidence available is that two installed bundles declare the one id.
-/// Assertions name paths, never counts.
+/// The id itself, where the sibling tests are about the names a glob reaches.
+/// The id is read from the app's own `Info.plist`, where an app may write
+/// anybody's, and the exact candidates (`Containers/<id>` and the rest) would
+/// hand over another app's data, ticked. Two installed bundles declaring the
+/// id is the evidence. Assertions name paths, never counts.
 final class ImpostorBundleIDTests: XCTestCase {
     private let lib = "/Users/x/Library"
     private let id = "com.adobe.acrobat"
 
-    /// Every folder the exact candidates reach, so a fix that covers Containers
-    /// and misses Cookies is visibly not a fix.
+    /// Every folder the exact candidates reach, so missing one is visible.
     private var theirData: [String: Int] {
         ["\(lib)/Containers/\(id)": 4_000_000,
          "\(lib)/Caches/\(id)": 900_000,
@@ -71,9 +59,8 @@ final class ImpostorBundleIDTests: XCTestCase {
         }
     }
 
-    /// The same, with the rightful owner one folder down where the listing
-    /// cannot see it — so the engine has to ask the port rather than group the
-    /// listing itself.
+    /// The same, with the rightful owner where the listing cannot see it, so the
+    /// engine has to ask the port.
     func test_a_rival_the_listing_cannot_see_still_stops_the_claim() async throws {
         let apps = Declarers(id: id, listed: ["/Applications/Sketchy.app"],
                              nested: ["/Applications/Adobe Acrobat DC/Adobe Acrobat.app"])
@@ -93,9 +80,8 @@ final class ImpostorBundleIDTests: XCTestCase {
         XCTAssertEqual(UninstallPlan.defaultSelection([group]), [])
     }
 
-    /// The control, and the reason none of this may be answered by refusing
-    /// everything: one bundle declares the id, so the app's own files are found
-    /// in every one of those folders.
+    /// The control: one bundle declares the id, and the app's own files are found
+    /// in every folder.
     func test_an_app_that_alone_declares_its_id_keeps_its_leftovers() async throws {
         let apps = Declarers(id: id, listed: ["/Applications/Sketchy.app"])
         let result = try await scan(apps, entries: theirData)

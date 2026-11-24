@@ -18,14 +18,10 @@ public protocol LeftoversFilePort: Sendable {
     /// `~/Library/Preferences` still goes to the Trash; an ordinary one in
     /// `/Library/LaunchAgents` does not.
     ///
-    /// **It used to be `isWritable(_ item: URL)`** — handed the item, quietly
-    /// looking at its parent — and two things came of the name. The scan asked
-    /// once per item: 542 identical calls for one answer on this machine's
-    /// `~/Library/Preferences`, measured at 3,000 ms against 0,004 ms asked
-    /// once, which made it the most expensive step of the pass by 4.5× over
-    /// reading every file's size. And the fakes answered by *item* path, so the
-    /// tests modelled one locked file among readable ones — a distinction the
-    /// shipping code cannot make and does not need to.
+    /// **Asked of the directory, once**: asked per item, hundreds of identical
+    /// calls make it the most expensive step of the scan, and a fake answering by
+    /// item path would model one locked file among writable ones — a distinction
+    /// the shipping code cannot make and does not need to.
     func isWritableDirectory(_ url: URL) -> Bool
     /// Where this path actually leads, with **every** symbolic link in it followed.
     ///
@@ -38,37 +34,29 @@ public protocol LeftoversFilePort: Sendable {
     /// **The whole path, not its last component.** `isSymbolicLinkKey` on
     /// `~/Library/QuickLook` answers about `QuickLook` alone, and a link at
     /// `~/Library` redirects the same scan without that ever being true — the
-    /// ancestor case `PathCanonical` was written for, one layer up from the removal
-    /// gate. A source whose resolved spelling is its own is canonical in every
-    /// component, so the children built from it are honest by construction and need
-    /// no second resolution of their own.
+    /// ancestor case `PathCanonical` handles for the removal gate. A source whose
+    /// resolved spelling is its own is canonical in every component, so the
+    /// children built from it need no second resolution of their own.
     func resolvingSymlinks(_ url: URL) -> URL
     /// What a source directory holds — and whether it opened at all.
     ///
-    /// **It answered `[URL]`, and the empty array meant two things.** A folder that
-    /// is not there and a folder this process may not read both came back with
-    /// nothing in them, and the scan has no way to tell one from the other: the
-    /// second is a permission drawn as a fact about somebody's Mac, and the page
-    /// over it says «No leftovers found» about a folder nobody opened. The same
-    /// fold `exists` was taken apart for below, one declaration further down, and
-    /// the same repair — `DirectoryListing.Contents.refused` is the third answer,
-    /// and a fake of this port can hold it because the port can.
+    /// **Three answers, not an array.** A folder that is not there and a folder
+    /// this process may not read would both come back empty, and the second is a
+    /// permission drawn as a fact about somebody's Mac — «No leftovers found» about
+    /// a folder nobody opened. `DirectoryListing.Contents.refused` is the third
+    /// answer, and a fake of this port can hold it because the port can.
     func contents(of url: URL) -> DirectoryListing.Contents
     /// Whether something is at this path — and `nil` when this process cannot tell.
     ///
-    /// **It answered `Bool`, and `false` meant two things.**
+    /// **Not `Bool`, because `false` would mean two things.**
     /// `FileManager.fileExists` returns false for a path that is not there *and*
-    /// for one inside a directory this process may not search: measured on this
-    /// Mac, a file under a mode-000 parent answers `false` while `stat` answers
-    /// `EACCES`. The one thing between a live login item and `.orphaned` is
-    /// whether its `Program` is there, so a refused read made a working job point
-    /// at nothing — an orange «Leftover» badge, a tick from «Select all», and a
-    /// «Turn off» that really does switch off working software. Any refusal
-    /// does it — a mode, an ACL, somebody else's folder, a missing TCC grant.
-    ///
-    /// The same fold, one file over, that commit `6de0a337` closed for the plist
-    /// read: `nil` is «I could not tell», and the scan answers `.undetermined`
-    /// rather than guessing which of the two it was.
+    /// for one inside a directory this process may not search (a mode, an ACL,
+    /// somebody else's folder, a missing TCC grant). The one thing between a live
+    /// login item and `.orphaned` is whether its `Program` is there, so a refused
+    /// read would make a working job point at nothing — an orange «Leftover»
+    /// badge, a tick from «Select all», and a «Turn off» that really does switch
+    /// off working software. `nil` is «I could not tell», and the scan answers
+    /// `.undetermined` rather than guessing.
     func exists(_ path: String) -> Bool?
     func size(_ url: URL) -> Int
     func readPlist(_ url: URL) -> PlistData?
@@ -87,14 +75,14 @@ public protocol InstalledAppsPort: Sendable {
 /// switched off — and they travel together because one scan wants both and
 /// neither is a file. Activated extensions are here so an extension whose app is
 /// gone can be told apart from one that is simply not running.
-/// **Both readings are optional, and `nil` is «the tool did not answer».** They
-/// answered `[]` and `[]`, which is the unsafe direction for each: no active
-/// extension means a launch agent whose label *is* a live system extension stops
-/// being in use and becomes a leftover with a tick beside it, and no disabled label
-/// means a login item somebody switched off loses the badge that says so. Two
-/// facts — «nothing is loaded» and «nobody asked» — and a dropped exit status made
-/// them one (ARCHITECTURE.md § Module pattern: an unreadable system answer is not
-/// folded toward the permissive side). Nothing is promoted to `.orphaned` on a reading that did not happen.
+/// **Both readings are optional, and `nil` is «the tool did not answer».**
+/// An empty list is the unsafe direction for each: no active extension means a
+/// launch agent whose label *is* a live system extension becomes a leftover
+/// with a tick beside it, and no disabled label means a login item somebody
+/// switched off loses the badge that says so (Architecture/ModulePattern.md
+/// § Module pattern: an unreadable system answer is not folded toward the
+/// permissive side). Nothing is promoted to `.orphaned` on a reading that did
+/// not happen.
 public protocol LoadedItemsPort: Sendable {
     /// The full list, so the module can name them instead of counting them.
     func installedExtensions() -> [SystemExtensionInfo]?
@@ -104,11 +92,8 @@ public protocol LoadedItemsPort: Sendable {
 
 /// Switching a login item off or back on, and stopping it now if it is running.
 ///
-/// **Split from the reading side, because the scan never writes.** These three
-/// methods were one protocol named after extensions, two of them launchd's, and
-/// the scanner took the whole of it to read two. The cost was visible in the
-/// tests: five fakes carried an empty `setDisabled` to satisfy a protocol they
-/// only ever read from — five stubs for a method no scan calls.
+/// **Split from the reading side, because the scan never writes**: the
+/// scanner and its fakes take only what they read.
 ///
 /// **The answer is launchd's, not the call's returning.** `.accepted` means launchd
 /// accepted the `disable` or `enable`; `.refused` is a definite refusal, a label

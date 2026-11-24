@@ -18,15 +18,11 @@ final class HelmFailureAdversarialTests: XCTestCase {
 
     // MARK: - Size
 
-    /// BUG (pinned): nothing bounds the described string. The message field is
-    /// whatever the failing framework put there — a rejected AppleScript's
-    /// reply, a captured stderr — and it goes in whole. `helm.log` rotates at
-    /// 2 MB and keeps exactly one previous file, so a single failure carrying a
-    /// multi-megabyte message rotates the log twice and takes the entire
-    /// diagnostic history with it: the one artefact the log exists to preserve.
+    /// The described string is bounded. The message is whatever the failing
+    /// framework put there (an AppleScript reply, a captured stderr), and
+    /// `helm.log` rotates at 2 MB keeping one previous file, so one
+    /// multi-megabyte message would take the whole diagnostic history with it.
     func testOneFailureCannotCostTheWholeLog() {
-        // Was an expected failure when written: the message went through at
-        // any length, and two 4 MB lines erase the log they are written to.
         let huge = String(repeating: "x", count: 4 * 1024 * 1024)
         let error = NSError(domain: "D", code: 1, userInfo: [NSLocalizedDescriptionKey: huge])
         let written = line(HelmFailure.describe(error))
@@ -34,15 +30,11 @@ final class HelmFailureAdversarialTests: XCTestCase {
                                  "one line took \(written.utf8.count) bytes of a 2 MB log")
     }
 
-    /// BUG (pinned): the same absence seen from the depth side — `describe`
-    /// recurses through `NSUnderlyingErrorKey` with no cap. A 2000-deep chain
-    /// produces a 129 KB single line; the recursion is unguarded, so a chain
-    /// long enough (or one made cyclic by an NSError subclass that vends
-    /// itself) is a stack overflow rather than a long line.
+    /// The same bound from the depth side: `describe` follows
+    /// `NSUnderlyingErrorKey` only so far, because a long enough chain (or a
+    /// cyclic one, from an NSError subclass that vends itself) would otherwise
+    /// be a stack overflow.
     func testADeepUnderlyingChainIsNotFollowedForever() {
-        // Was an expected failure when written: `describe` followed every
-        // level there was. The chain is capped now, so this is a plain
-        // regression test.
         var error = NSError(domain: "Leaf", code: 0)
         for i in 1...2_000 {
             error = NSError(domain: "L\(i)", code: i,
@@ -67,16 +59,10 @@ final class HelmFailureAdversarialTests: XCTestCase {
 
     // MARK: - One event, one line
 
-    /// BUG (pinned): `oneLine` replaces CRLF and LF and stops there. A lone CR
-    /// — which is what a captured CLI progress line is made of — survives into
-    /// the log, and every editor a bug report gets pasted into treats it as a
-    /// line break. So does U+2028. And U+202E reverses everything after it, so
-    /// a filename can rewrite how the rest of the line reads. The invariant the
-    /// method exists to hold is "one event is one line"; it holds it for one
-    /// character out of four.
+    /// One event is one line. A lone CR (a captured CLI progress line) and
+    /// U+2028/9 read as line breaks in any editor a bug report is pasted into,
+    /// and U+202E lets a filename reverse how the rest of the line reads.
     func testTheControlCharactersAReaderObeysAreNeutralised() {
-        // Was an expected failure when written: only \n and \r\n were
-        // replaced, so a lone \r, U+2028/9 and the bidi overrides survived.
         for (name, raw) in [("CR", "\r"), ("LS", "\u{2028}"),
                             ("PS", "\u{2029}"), ("RLO", "\u{202E}")] {
             let error = NSError(domain: "D", code: 1,
@@ -100,20 +86,14 @@ final class HelmFailureAdversarialTests: XCTestCase {
 
     // MARK: - Redaction
 
-    /// BUG (pinned): `Redact.path` rewrites a path only when it starts with the
-    /// literal home directory. Every user file on an APFS boot volume is also
-    /// reachable through the Data volume's firmlink — `/System/Volumes/Data` +
-    /// the same path — and the Disk module lets a user point a scan at any
-    /// folder through an open panel, including that one. A failure on a path
-    /// the scan produced from there is written to the log with the account name
-    /// in it, which is the one thing the redaction rule forbids.
+    /// Every user file is also reachable through the Data volume's firmlink
+    /// (`/System/Volumes/Data` + the same path), and Disk can scan from there,
+    /// so a home matched only literally would put the account name in the log.
     func testTheAccountNameCannotArriveThroughTheDataVolumeTwin() throws {
         let home = NSHomeDirectory()
         try XCTSkipIf(home.isEmpty || !home.hasPrefix("/Users/"))
         let account = (home as NSString).lastPathComponent
 
-        // Was an expected failure when written: Redact.path matched the home
-        // prefix literally, so the Data-volume twin carried the account name.
         let twin = "/System/Volumes/Data" + home + "/Documents/tax.pdf"
         let error = NSError(domain: NSCocoaErrorDomain, code: 4,
                             userInfo: [NSFilePathErrorKey: twin])
@@ -122,14 +102,10 @@ final class HelmFailureAdversarialTests: XCTestCase {
                        "the account name reached the log: \(described)")
     }
 
-    /// The same twin, in a message rather than a `path:` key.
-    ///
-    /// The account name does not leak here — `oneLine` replaces the home
-    /// *anywhere* in the string, not only at the front, so the twin lost it by
-    /// accident. What came out was `/System/Volumes/Data~/Desktop/secret.txt`:
-    /// not a path anyone can paste, and it puts the file somewhere it is not.
-    /// `Redact.path` and the `path:` extraction both answer `~/…` for the twin,
-    /// and free text is where paths arrive from errors Helm has not written.
+    /// The same twin, in a message rather than a `path:` key, reads `~/…` as
+    /// the `path:` extraction does, not `/System/Volumes/Data~/…`, which puts
+    /// the file somewhere it is not. Free text is where paths arrive from
+    /// errors Helm has not written.
     func testTheDataVolumeTwinReadsAsTheHomeInFreeTextToo() throws {
         let home = NSHomeDirectory()
         try XCTSkipIf(home.isEmpty || !home.hasPrefix("/Users/"))
@@ -272,9 +248,8 @@ final class HelmFailureAdversarialTests: XCTestCase {
 
     // MARK: - Threads
 
-    /// `LogLine.line` builds its own DateFormatter per call, so many threads
-    /// formatting at once cannot corrupt each other's output. Every line must
-    /// come back complete and correctly attributed.
+    /// Many threads formatting at once cannot corrupt each other's output:
+    /// every line comes back complete and correctly attributed.
     func testFormattingFromManyThreadsKeepsEveryLineWhole() {
         let count = 500
         let lines = Locked([String](repeating: "", count: count))

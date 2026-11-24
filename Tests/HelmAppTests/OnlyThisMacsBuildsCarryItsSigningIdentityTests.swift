@@ -5,8 +5,8 @@ import HelmTestSupport
 /// may not.**
 ///
 /// An ad-hoc build is a new program to TCC and the keychain on every rebuild,
-/// so each install cost the grants and one keychain dialog per item, per build,
-/// per app — counted 2026-09-17, four to five dialogs a build across two apps.
+/// so each install costs the grants and one keychain dialog per item, per
+/// build, per app.
 /// `Scripts/signing-identity.sh` lets this Mac name a certificate of its own,
 /// and `Scripts/make-zip.sh` and `Scripts/make-dmg.sh` refuse any bundle not
 /// signed ad-hoc, because that key lives on one machine and every user's grants

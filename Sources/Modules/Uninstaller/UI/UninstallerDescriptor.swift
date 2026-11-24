@@ -45,8 +45,7 @@ import Module_Uninstaller_Engine
     private func productionEngine(store: NamespacedStore,
                                   trashChanged: @escaping @Sendable () -> Void) -> UninstallerEngine {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        // The store the host hands every module was unused here until the Trash
-        // offer needed somewhere to remember a "no" across launches.
+        // Remembers the Trash offer's "no", the switch and the sort order.
         return UninstallerEngine(home: home, apps: WorkspaceAppLister(home: home, fs: FMFileSystem()),
                                  fs: FMFileSystem(), trash: FMTrash(),
                                  running: WorkspaceRunningApps(),
@@ -58,10 +57,8 @@ import Module_Uninstaller_Engine
 
     /// The engine and the model that calls it. The engine's "look at the Trash
     /// again" goes into a stream the model reads (`listenForTrash`), newest one
-    /// kept: the signal means "look again" and carries nothing, so any number
-    /// that arrive while the model is not reading (before its first read, or
-    /// while it handles an earlier one) are one. A model already waiting is
-    /// woken by each of two back to back, and looks twice.
+    /// kept: the signal carries nothing, so any number that arrive while the
+    /// model is not reading are one.
     public func makeModule(store: NamespacedStore) -> ModuleParts<UninstallerViewModel> {
         let (arrivals, arrived) = AsyncStream.makeStream(of: Void.self,
                                                          bufferingPolicy: .bufferingNewest(1))

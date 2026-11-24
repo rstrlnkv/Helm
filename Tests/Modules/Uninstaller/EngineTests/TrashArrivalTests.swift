@@ -3,10 +3,8 @@ import XCTest
 
 /// Which changes in the Trash are worth looking again for.
 ///
-/// The watcher fires for everything that lands in `~/.Trash` — a screenshot, a
-/// download, forty files a person selected at once — and looking again costs a
-/// directory read plus a scan of `~/Library` per app found. The question this
-/// answers is the cheap one: could this event have been an application arriving?
+/// The watcher fires for everything that lands in `~/.Trash`, and looking again
+/// costs a scan per app found: could this event be an application arriving?
 final class TrashArrivalTests: XCTestCase {
 
     private let trash = "/Users/ann/.Trash"
@@ -15,10 +13,8 @@ final class TrashArrivalTests: XCTestCase {
         XCTAssertTrue(TrashArrival.namesAnApp(["/Users/ann/.Trash/Notes Pro.app"], trash: trash))
     }
 
-    /// The event that actually arrives. Finder copies a bundle in file by file
-    /// with `kFSEventStreamCreateFlagFileEvents`, so what the callback sees is
-    /// paths *inside* the bundle — the bundle's own path may never appear at all,
-    /// and a rule matching only the top level would never fire on a real drag.
+    /// The event that actually arrives: with file events the callback sees paths
+    /// inside the bundle, and the bundle's own path may never appear.
     func testAFileInsideTheBundle() {
         XCTAssertTrue(TrashArrival.namesAnApp(
             ["/Users/ann/.Trash/Notes Pro.app/Contents/Info.plist"], trash: trash))
@@ -29,8 +25,7 @@ final class TrashArrivalTests: XCTestCase {
             ["/Users/ann/.Trash/Notes Pro.app/Contents/Resources/en.lproj/Main.nib"], trash: trash))
     }
 
-    /// The common case, and the one that decides whether this rule earns its
-    /// keep: everything else a person throws away.
+    /// The common case: everything else a person throws away.
     func testAnOrdinaryFile() {
         XCTAssertFalse(TrashArrival.namesAnApp(["/Users/ann/.Trash/statement.pdf"], trash: trash))
     }
@@ -40,9 +35,8 @@ final class TrashArrivalTests: XCTestCase {
             ["/Users/ann/.Trash/old work/notes.txt"], trash: trash))
     }
 
-    /// A bundle one folder down is not something the sweep can see —
-    /// `trashedApps()` reads the top level of the Trash only — so waking it for
-    /// one is a scan that cannot find anything.
+    /// A bundle one folder down is not something the sweep can see
+    /// (`trashedApps()` reads the top level only).
     func testABundleInsideAFolderInTheTrash() {
         XCTAssertFalse(TrashArrival.namesAnApp(
             ["/Users/ann/.Trash/old work/Notes Pro.app/Contents/Info.plist"], trash: trash))
@@ -88,9 +82,8 @@ final class TrashArrivalTests: XCTestCase {
         XCTAssertTrue(TrashArrival.namesAnApp(["/Users/ann/.Trash/Notes Pro.app/"], trash: trash))
     }
 
-    /// A file named like a bundle is still worth a look: the sweep reads its
-    /// `Info.plist` and refuses it there, where the refusal is one plist read
-    /// rather than a rule here pretending to know what is on disk.
+    /// A file named like a bundle is still worth a look: the sweep refuses it at
+    /// its `Info.plist`, and this rule does not read the disk.
     func testTheRuleJudgesThePathAndNotTheDisk() {
         XCTAssertTrue(TrashArrival.namesAnApp(["/Users/ann/.Trash/not really.app"], trash: trash))
     }

@@ -3,10 +3,10 @@ import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
-/// **Past defect guarded: a stored "dev" read as Beta is a setting lost on the next
-/// `setChannel`.** The channel is the bare `updateChannel` key in `UserDefaults.standard`
-/// (decision 6, `UpdateService.swift`), and its read moved behind a port: the cast is
-/// `object as? String`, so what a property list holds decides, not what Swift put in.
+/// **A stored "dev" read as Beta would be a setting lost on the next `setChannel`.**
+/// The channel is the bare `updateChannel` key in `UserDefaults.standard`
+/// (`UpdateService.swift`), read through a port: the cast is `object as? String`, so
+/// what a property list holds decides, not what Swift put in.
 ///
 /// Held here: what each stored value reads as, and that a write lands under the same
 /// bare key, which a deployed copy of Helm reads back.

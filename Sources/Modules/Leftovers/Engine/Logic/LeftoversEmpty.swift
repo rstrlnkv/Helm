@@ -2,16 +2,14 @@ import Foundation
 
 /// Why the list has no rows, in the page's own terms — or nothing, when it has.
 ///
-/// **The page asked the wrong question.** Its empty state branched on «the scan
-/// found nothing» while the `List` under it was built from what the filters leave,
-/// and those are different facts on almost any Mac: `LeftoversScanner.preferences`
-/// returns every plist in `~/Library/Preferences` and nearly all of them are
-/// `.inUse`. So an ordinary first scan drew «Found: 542 items», the sentence about
-/// nothing being ticked by default, and 515 pt of nothing under the two of them.
+/// **Asked of what the filters leave, not of what the scan found.** Those are
+/// different facts on almost any Mac: `LeftoversScanner.preferences` returns
+/// every plist in `~/Library/Preferences` and nearly all of them are `.inUse`,
+/// so a page asking «did the scan find nothing» would draw a count and an
+/// empty area under it.
 ///
 /// Here rather than in the view, and over counts rather than over `[StaleItem]`,
-/// because it is the module's rule about what its screen means and not a shape a
-/// row happens to have.
+/// because it is the module's rule about what its screen means.
 public enum LeftoversEmpty {
 
     /// Four, not two. «Nothing is left over» is a fact about the Mac; «all of it
@@ -39,13 +37,12 @@ public enum LeftoversEmpty {
     /// filtered list it offers to rescan a Mac when the verb the person wants is
     /// in the menu directly above the message.
     ///
-    /// **And the fourth invites.** It is not a statement about the Mac — it says
-    /// Helm did not finish, and the verb that answers that is the Scan button; a
-    /// screen reporting an unfinished scan with no way to run it again is a dead
-    /// end.
+    /// **And the fourth invites.** It says Helm did not finish, and the verb that
+    /// answers that is the Scan button; a screen reporting an unfinished scan with
+    /// no way to run it again is a dead end.
     ///
-    /// Exhaustive on purpose. A `default` here is how a fifth state would come to
-    /// be given a verb, or lose one, without anybody deciding.
+    /// Exhaustive on purpose: a fifth state cannot gain or lose a verb without
+    /// anybody deciding.
     public static func invites(_ reason: Reason) -> Bool {
         switch reason {
         case .notScanned, .notEverythingChecked: true

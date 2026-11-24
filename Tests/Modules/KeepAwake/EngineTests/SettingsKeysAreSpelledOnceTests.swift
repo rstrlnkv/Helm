@@ -4,20 +4,14 @@ import HelmRuntime
 
 /// The names the module's settings have on somebody's disk.
 ///
-/// Seven of these keys, and every one of their defaults, used to be written out
-/// again in `KeepAwakeSettingsPage` and once more in `KeepAwakePanelTile` — three
-/// copies of each, in three targets, where a drift would show the page one thing
-/// and let the Mac do another with nothing in the build to say so. `Key` is the
-/// only spelling now, and that moves the risk rather than removing it: a rename
-/// there is silent. It reads a key nobody's Mac has ever had, the setting comes
-/// back to its default, and the person's answer sits on disk under the old name.
+/// `Key` is the only spelling, so a rename there is silent: it reads a key
+/// nobody's Mac has ever had, the setting comes back to its default, and the
+/// person's answer sits on disk under the old name.
 ///
 /// So the literals live here, once, and the two directions are separate: what a
 /// setter puts on disk under that exact name, and what the getter finds there.
 /// Both, because a setter and a getter that agree on the *wrong* name are
 /// perfectly consistent and lose every existing answer.
-///
-/// Guards: 667917ad (the key names are on somebody's disk; a rename strands the stored value).
 final class SettingsKeysAreSpelledOnceTests: XCTestCase {
     private var backing: InMemoryKeyValueStore!
     private var settings: KeepAwakeSettings!
@@ -119,8 +113,7 @@ final class SettingsKeysAreSpelledOnceTests: XCTestCase {
     }
 
     /// The jiggle timer is a `while` interval: a stored 0 is a loop that fires as
-    /// fast as it can wake up. The clamp is the module's, not the menu's —
-    /// the page's own copy of it was the seventh duplicate.
+    /// fast as it can wake up. The clamp is the module's, not the menu's.
     func test_a_jiggle_interval_below_a_minute_is_read_as_a_minute() {
         for stored in [0, -3] {
             backing.raw["module.keep-awake.jiggleIntervalMinutes"] = stored

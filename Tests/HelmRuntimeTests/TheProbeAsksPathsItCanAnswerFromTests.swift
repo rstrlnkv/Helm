@@ -4,24 +4,14 @@ import XCTest
 @testable import HelmRuntime
 
 /// The Full Disk Access probe asks each of its paths for one byte. A path it
-/// cannot get a byte out of *whatever the grant says* is not a probe at all: it
-/// answers "denied" on a Mac that granted everything, and it is reached exactly
-/// when the paths before it have already failed — which, on an ad-hoc signed
-/// build, is the state every update leaves behind.
-///
-/// `~/Library/Application Support/AddressBook` was such a path for as long as
-/// the probe had four of them. It is a directory, it exists on every Mac, and it
-/// sat last in the list, so the only run that ever opened it was the run where
-/// the answer was already going to be "denied" — while being the one entry
-/// pointed at a Contacts-gated subtree rather than a Full-Disk-gated file.
-///
-/// Guards: f914152e (a probe path that was a directory could only answer denied).
+/// cannot get a byte out of whatever the grant says is not a probe: it answers
+/// "denied" on a Mac that granted everything, and it is reached exactly when the
+/// paths before it have failed, which on an ad-hoc signed build is the state
+/// every update leaves behind. A directory is such a path.
 final class TheProbeAsksPathsItCanAnswerFromTests: XCTestCase {
 
-    /// The control, and the whole reason the test below is worth writing: the
-    /// read shape fails on an ordinary directory nothing protects. Measured
-    /// rather than reasoned about — `/tmp` refuses this read as flatly as
-    /// somebody's Messages database does, and for an entirely different reason.
+    /// The control: the read shape fails on an ordinary directory nothing
+    /// protects, `/tmp` as flatly as a Messages database, for another reason.
     func testTheReadShapeCannotSucceedOnADirectory() throws {
         let root = scratchDirectory("probe-shape")
         let file = try write("readable", in: root, bytes: 1)

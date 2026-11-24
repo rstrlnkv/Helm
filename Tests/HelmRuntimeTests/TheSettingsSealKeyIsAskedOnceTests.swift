@@ -5,13 +5,10 @@ import XCTest
 
 /// One keychain item, one cache over it.
 ///
-/// `SealKeyCache` serialises the callers that share the instance and nobody
-/// else, so two instances over one item are two `SecItemCopyMatching` calls —
-/// and on an ad-hoc signed build, where the item's access list names a build
-/// that no longer exists, the second is a second modal dialog for anyone who
-/// answers the first with "Allow" rather than "Always Allow". That is what
-/// shipped: `AppSettings.scanGuard` and `DuplicatesSettings.guardOfScanSettings`
-/// each built one, each documenting at length that the item was shared.
+/// `SealKeyCache` serialises only the callers that share the instance, so two
+/// instances over one item are two `SecItemCopyMatching` calls, and on an
+/// ad-hoc signed build a second modal dialog for anyone who answered the first
+/// with "Allow" rather than "Always Allow".
 ///
 /// That the item's names are spelled in one file only is held by
 /// `TheRulesTheCompilerCannotHoldTests`; what is left here is the account mapping.

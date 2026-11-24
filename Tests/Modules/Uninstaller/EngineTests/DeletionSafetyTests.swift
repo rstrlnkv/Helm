@@ -2,10 +2,8 @@ import XCTest
 import HelmRuntime
 @testable import Module_Uninstaller_Engine
 
-/// Everything here answers one question: can Helm be made to delete something
-/// it should not? The module has already shipped two versions of this mistake
-/// — a leftovers scan that could not see apps in subfolders, and a bulk list
-/// that arrived pre-ticked — so these are regressions in waiting, not theory.
+/// Can Helm be made to delete something it should not: an app in a subfolder
+/// read as uninstalled, a hidden or crafted name, a misclassified refusal.
 final class DeletionSafetyTests: XCTestCase {
     private func orphan(_ name: String, installed: Set<String> = [],
                         known: @escaping (String) -> Bool = { _ in false }) -> Bool {
@@ -34,23 +32,16 @@ final class DeletionSafetyTests: XCTestCase {
         }
     }
 
-    /// The skip list is read against the id exactly as it comes off disk, so a
-    /// leading dot walks straight past it: `.com.apple.finder.plist` still
-    /// splits into three reverse-DNS components, still fails
-    /// `hasPrefix("com.apple.")`, and arrives on the review screen as an
-    /// orphan — inside `~/Library`, where `RemovableScope` allows the trash.
-    /// `StaleItemRules` refuses a leading dot outright; this is the sibling
-    /// rule that does not.
+    /// A leading dot would walk past the skip list: `.com.apple.finder.plist`
+    /// splits into three components and fails `hasPrefix("com.apple.")`.
     func testALeadingDotDoesNotSmuggleAnAppleDomainPast() {
         for name in [".com.apple.finder.plist", ".com.apple.dock.savedState"] {
             XCTAssertFalse(orphan(name), "\(name) is Apple's, dot or no dot")
         }
     }
 
-    /// A hidden file is not a bundle-id-shaped entry belonging to an app: the
-    /// id derived from it carries the dot, matches no installed bundle id, and
-    /// so can never be recognised as owned. Whatever it is, it is not evidence
-    /// that its owner is gone.
+    /// A hidden file is not evidence that its owner is gone: its id carries the
+    /// dot and can never be recognised as owned.
     func testHiddenEntriesAreNotOrphanCandidates() {
         XCTAssertFalse(orphan(".com.vendor.tool.plist"))
     }
@@ -66,9 +57,8 @@ final class DeletionSafetyTests: XCTestCase {
     // MARK: - Trash failure classification
 
     /// A refusal inside a container is the one case that really is Full Disk
-    /// Access; the same code anywhere else is a plain permission problem, and
-    /// sending someone to a setting they already granted is the bug this rule
-    /// was written to end.
+    /// Access; the same code elsewhere is a plain permission problem, not a
+    /// setting the person already granted.
     func testContainerRefusalPointsAtFullDiskAccess() {
         XCTAssertEqual(TrashFailure.reason(path: "/Users/x/Library/Containers/com.acme",
                                            errorCode: 513, hasSystemExtension: false),

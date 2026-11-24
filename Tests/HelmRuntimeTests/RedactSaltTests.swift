@@ -3,11 +3,9 @@ import XCTest
 
 /// A tag must be stable on this machine and meaningless on any other.
 ///
-/// The tag was an unsalted 16-bit FNV-1a over values drawn from small public
-/// lists — bundle ids, VPN providers, Homebrew formulae. Hashing the 104 bundle
-/// ids installed on one Mac and inverting the table identified every single
-/// one, so the log named the applications after all, and "Copy log" handed that
-/// to whoever read the issue.
+/// The tagged values come from small public lists (bundle ids, VPN providers,
+/// Homebrew formulae), so an unsalted tag inverts by dictionary and the log
+/// names the applications after all.
 ///
 /// Both halves matter, and they pull against each other: salt it per install
 /// and the dictionary attack dies; keep it stable across restarts and triage

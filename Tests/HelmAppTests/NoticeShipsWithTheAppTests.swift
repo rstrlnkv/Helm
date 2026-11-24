@@ -1,22 +1,13 @@
 import XCTest
 import HelmTestSupport
 
-/// `NOTICE.md` is the app's only attribution now, so it has to reach the copy.
+/// `NOTICE.md` is the app's only attribution, so it has to reach the copy.
 ///
-/// **Past defect: the attribution notice could stop shipping unseen** (6a5e7e59, the
-/// commit that removed the on-screen credit and added this class).
-///
-/// The About page carried a visible «Flag artwork: flag-icons, MIT» line, and
-/// it is gone: MIT asks for the notice to *accompany* copies, not to be drawn
-/// on a screen, and `NOTICE.md` ships inside the bundle with the copyright and
-/// the full permission text. That is allowed, and it moves the whole obligation
-/// onto one file that nothing in the app reads — so nothing in the app would
-/// ever notice it going missing.
-///
-/// It can go missing without a sound: `Scripts/package-app.sh` can stop copying
-/// it into `Contents/Resources` — a `cp` that is one line of a hundred, with no
-/// build error and no visible symptom, because a bundle without a notice looks
-/// exactly like a bundle with one.
+/// MIT asks for the notice to *accompany* copies, not to be drawn on a screen,
+/// so `NOTICE.md` ships inside the bundle with the copyright and the full
+/// permission text, and nothing in the app reads it. `Scripts/package-app.sh`
+/// could stop copying it into `Contents/Resources` with no build error and no
+/// visible symptom: a bundle without a notice looks exactly like one with it.
 ///
 /// Source-reading rather than bundle-reading for the reason
 /// `ReleaseBuildsTheProductTests` gives: the packaged app is a release build

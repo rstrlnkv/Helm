@@ -2,15 +2,11 @@ import XCTest
 import HelmTestSupport
 @testable import HelmRuntime
 
-/// `FileWeight` is the answer to "how many bytes does removing this give back",
-/// and it has no tests of its own. Four callers depend on it — `HelmTrash`'s
-/// freed total, the uninstaller's per-app size, Leftovers' row sizes and
-/// Autopilot's size conditions — and the last of those decides whether an
-/// unattended rule trashes a file.
-///
-/// Everything it is asked today is asked through one of those four, which means
-/// the type's own edges are covered by whatever fixture the caller happened to
-/// build. These are the edges.
+/// `FileWeight` answers "how many bytes does removing this give back".
+/// `HelmTrash`'s freed total, the uninstaller's per-app size, Leftovers' row
+/// sizes and Autopilot's size conditions read it, and the last decides whether
+/// an unattended rule trashes a file. These are the type's own edges, not
+/// whatever a caller's fixture happens to cover.
 final class FileWeightTests: XCTestCase {
 
     private var root: URL!
@@ -21,11 +17,9 @@ final class FileWeightTests: XCTestCase {
 
     // MARK: - The walk counts everything, once
 
-    /// The Uninstaller's `testAHardLinkedFileIsMeasuredOnce` (removed; this class
-    /// is its survivor) asserted `whole == one` over a folder holding exactly one
-    /// allocation under two names. That equality is also what a walk which stopped after
-    /// its first entry would produce. A third file, on its own inode, is what
-    /// tells "counted once" from "counted one".
+    /// `whole == one` over one allocation under two names is also what a walk
+    /// that stopped after its first entry would produce. A third file, on its
+    /// own inode, tells "counted once" from "counted one".
     func testAHardLinkIsCountedOnceAndTheOtherFilesAreStillCounted() throws {
         let payload = try write("Support/payload.bin", in: root, bytes: 400_000)
         try FileManager.default.linkItem(
@@ -71,9 +65,8 @@ final class FileWeightTests: XCTestCase {
     // MARK: - Things that are not plain files
 
     /// A `.app` is a package, which `URLResourceValues` reports as *not* a
-    /// directory. That is the case the type was written for: unwalked, it
-    /// answers zero, and "smaller than 1 MB → Trash" then matches every
-    /// application in a watched folder.
+    /// directory. Unwalked, it would answer zero, and "smaller than 1 MB →
+    /// Trash" would match every application in a watched folder.
     func testAPackageIsWalkedRatherThanReportedAsNothing() throws {
         try write("Downloaded.app/Contents/MacOS/Downloaded", in: root, bytes: 4_000_000)
         let app = root.appendingPathComponent("Downloaded.app")
@@ -90,10 +83,8 @@ final class FileWeightTests: XCTestCase {
                                     300_000)
     }
 
-    /// A symlink is a few bytes of path text. Trashing one frees those bytes
-    /// and not the tree at the other end — and the tree at the other end is
-    /// still there afterwards, so charging it to the removal would be a promise
-    /// of gigabytes the disk never gives back.
+    /// A symlink is a few bytes of path text. Trashing one frees those bytes,
+    /// not the tree at the other end, which is still there afterwards.
     func testASymlinkIsNotChargedTheWeightOfWhatItPointsAt() throws {
         try write("real/big.bin", in: root, bytes: 800_000)
         let link = root.appendingPathComponent("link")

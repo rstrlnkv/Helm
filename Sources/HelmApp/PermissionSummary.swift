@@ -4,9 +4,8 @@ import HelmRuntime
 
 /// What macOS is withholding, counted once.
 ///
-/// The settings page and the panel both need this and had it written out in
-/// one of them; the second copy would have been the first place the two could
-/// disagree about how many permissions are missing.
+/// The settings page and the panel both need this, and one copy cannot
+/// disagree with itself about how many permissions are missing.
 @MainActor
 enum PermissionSummary {
 

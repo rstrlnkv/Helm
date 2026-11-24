@@ -7,48 +7,24 @@ import HelmRuntime
 /// The clamshell port with the removal half told the way the install half
 /// already is: a password prompt that is **up**.
 ///
-/// `FakeClamshell` answers `removeSudoers` inline unless it is built with
-/// `holdsRemovals`, calling `done(true)` and setting `sudoersInstalled = false`
-/// in the same breath. `PmsetClamshellPort` does
-/// neither: it hops to a global queue and runs
-/// `osascript … with administrator privileges`, which blocks for as long as the
-/// person takes to find their password, and `/etc/sudoers.d` still holds the
-/// rule for every second of that. A fake that finishes instantly makes a test of
-/// a gate vacuous the same way a fake that answers synchronously does — the
-/// second call finds the world already tidied and never meets the gate at all.
-///
-/// So this one is built to hold the completion, and `isSudoersInstalled()` goes on
-/// answering yes until the prompt is answered. That is the state the real port
-/// is in for minutes at a time.
+/// `PmsetClamshellPort` hops to a global queue and runs `osascript … with
+/// administrator privileges`, which blocks for as long as the person takes to
+/// find their password, with the rule still in `/etc/sudoers.d`. A fake that
+/// finishes instantly makes a test of a gate vacuous: the second call finds the
+/// world already tidied. So this one is built with `holdsRemovals`, and
+/// `isSudoersInstalled()` answers yes until the prompt is answered.
 
 /// Switching «stay awake with the lid closed» off takes the passwordless-sudo
 /// rule back out — and asks for a password to do it.
 ///
-/// `ClamshellCoordinator.engage` keeps `installInFlight` for exactly this, with a
-/// comment naming what it costs: "the person got one password dialog per click
-/// for a single decision". `releaseSudoersIfUnneeded` is the same shape with
-/// nothing in front of it —
+/// The settings page sends `settingsChanged` on every control it draws (a
+/// colour swatch, the jiggle interval, the battery floor), so the removal must
+/// not ask again on each of them for the one decision the person already made.
 ///
-///     guard !settings.clamshellEnabled, clamshell.isSudoersInstalled() else { return }
-///     clamshell.removeSudoers { _ in }
-///
-/// — and it runs on `settingsChanged`, which the settings page sends on **every
-/// control it draws**: a colour swatch, the jiggle interval, the battery floor.
-/// With the option off and the rule still on disk, each of those is another
-/// `osascript` asking for an administrator password for the one decision the
-/// person already made.
-///
-/// **What asks is the switch, not the message.** This file used to send bare
-/// `settingsChanged`es with the option *never having been on* — so what it
-/// called «turning the option off» was «the option is off», which is the
-/// reading `ADeclinedRemovalIsNotAskedForEverTests` showed the cost of: it is
-/// true from the first edit of every future launch, and the battery floor's
-/// `Slider` sends one of these per rounded value it passes. The ask follows the
-/// option's **falling edge** now (`ClamshellCoordinator.releaseIfUnneeded`), the
-/// same shape the install side already had, so every case here drives the
-/// switch rather than repeating a message that says nothing changed. Nothing
-/// asserted here was given up: a decline can still be asked again, it just takes
-/// the gesture that means «take that rule away» rather than any edit at all.
+/// What asks is the switch, not the message: the ask follows the option's
+/// falling edge (`ClamshellCoordinator.releaseIfUnneeded`), as the install side
+/// does, so every case here drives the switch. A decline can still be asked
+/// again, by the gesture that means «take that rule away».
 @MainActor
 final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
 
@@ -61,13 +37,11 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         clamshell = FakeClamshell(holdsRemovals: true)
         clamshell.sudoersInstalled = true
-        // A rule that cannot take itself out — the case the dialog still exists
-        // for, and therefore the only one in which this file's subject is reached
-        // at all. Letting it withdraw itself would never meet the gate below.
+        // A rule that cannot take itself out: the only case in which the dialog,
+        // and so this file's subject, is reached at all.
         clamshell.withdrawalIsGranted = false
-        // The option is on and its rule is installed, which is where somebody
-        // who has used the feature starts — and it is what makes switching it
-        // off below an *edge* rather than a value that was always false.
+        // The option is on and its rule is installed, so switching it off below
+        // is an edge rather than a value that was always false.
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
         engine = fakeEngine(store: store, clamshell: clamshell)
         engine.activate()
@@ -76,19 +50,14 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// What the settings page sends when anything on it moves — **and the app
     /// having finished acting on it**, which is not the same instant.
     ///
-    /// `send` awaits the command handler, and the handler is done once it has
-    /// put the removal on the coordinator's own queue. The ask itself — the
-    /// thing every assertion in this file counts — happens on that queue
-    /// afterwards. Counting straight after the `await` counted a subject still
-    /// in motion: it failed once in a full suite on 2026-08-25 and passed 5/5
-    /// alone, 5/5 as a class and 3/3 as a bundle, because an idle queue always
-    /// won the race. Slowing the queue by 50 ms failed **all seven** tests here,
-    /// which is the measure of how little the green had been worth.
+    /// `send` awaits the command handler, which is done once it has put the
+    /// removal on the coordinator's own queue; the ask every assertion here
+    /// counts happens on that queue afterwards. Counting straight after the
+    /// `await` would count a subject still in motion.
     ///
     /// The barrier belongs here rather than at each assertion so the negative
-    /// cases get it too: «no second dialog» over a second dialog that had not
-    /// happened yet is an absence assertion passing on a subject that never
-    /// occurred.
+    /// cases get it too: «no second dialog» read before it could have happened
+    /// passes on nothing.
     private func settingsChanged() async {
         engine.settingsChanged()
         await engine.drainClamshellForTests()
@@ -137,9 +106,8 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// guard is left holding once unrelated edits no longer ask: somebody
     /// flicking the switch while the dialog waits gets one dialog, not three.
     ///
-    /// Here because without it `removalInFlight` is guarded by nothing a test
-    /// can see — every other case above is now answered by the edge, and a flag
-    /// no test can fail is a flag the next reader deletes.
+    /// Without it `removalInFlight` is guarded by nothing a test can see: every
+    /// other case above is answered by the edge.
     func testFlickingTheSwitchWhileThePromptIsUpDoesNotStackPrompts() async {
         await switchTheOption(false)
         XCTAssertEqual(clamshell.removeCalls, 1, "precondition: one prompt is up")
@@ -179,9 +147,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// already keeps (`testADeclinedPromptCanBeAskedAgainOnTheNextSession`).
     ///
     /// What asks again is the switch, not the next edit of anything on the page:
-    /// «any settings change» is the trigger that made one drag of the battery
-    /// floor six administrator dialogs, and it never stopped, because a declined
-    /// removal leaves the file exactly where the next launch finds it.
+    /// a declined removal leaves the file where every later edit would find it.
     func testADeclinedRemovalCanBeAskedAgain() async {
         await switchTheOption(false)
         clamshell.answerRemovalPrompts(granted: false)

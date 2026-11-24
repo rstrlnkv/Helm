@@ -1,20 +1,14 @@
-/// Keeping a value inside a range, in one place.
-///
-/// `min(max(value, low), high)` stood in most of the modules and in the shared
-/// targets under them, in three spellings of the one rule — `max(low, min(value,
-/// high))` and `min(high, max(low, value))` are the same sentence read from the
-/// other end, and a reader has to prove that to themselves each time
-/// (`grep -rn 'min(.*max(' Sources/` is what counts them). A family of crashes
-/// — a plist holding `<integer>9223372036854775807</integer>`, then
-/// `<real>1e300</real>`, reaching arithmetic that traps — was fixed each time by
-/// writing one more by hand, which is the argument (ARCHITECTURE.md § Tests and
-/// measurement) makes for reading `HelmRuntime` first.
+/// Keeping a value inside a range, in one place: hand-written `min(max(…))`
+/// comes in several spellings a reader has to prove equal each time, and a
+/// value from a plist (`<integer>9223372036854775807</integer>`,
+/// `<real>1e300</real>`) reaching arithmetic that traps is a family of crashes.
+/// Architecture/StoredSettings.md § A number that came from a file. Look in
+/// `HelmRuntime` before writing a helper (Architecture/TestsAndMeasurement.md § Tests and measurement).
 ///
 /// **The range does the arguing about bounds.** `ClosedRange` traps on its own
 /// initialiser when the upper bound is below the lower one, so a call site whose
 /// bounds are computed raises the upper to the lower before the range is formed
-/// rather than relying on which of `min` and `max` happens to win — that used to
-/// be silent, and which one wins depends on the spelling.
+/// rather than relying on which of `min` and `max` happens to win.
 extension Comparable {
     public func clamped(to range: ClosedRange<Self>) -> Self {
         min(max(self, range.lowerBound), range.upperBound)
@@ -28,12 +22,10 @@ extension FloatingPoint {
     ///
     /// `clamped(to:)` **cannot** contain a NaN: `Swift.max(.nan, low)` is NaN
     /// and `Swift.min(.nan, high)` is NaN, so a clamp built from them hands back
-    /// a value inside no range at all — and `Int(thatValue)` traps, which is the
-    /// crash this family keeps producing. Infinity is refused with it: it does
-    /// have a place on the number line, but `RuleCondition` is the standing
-    /// proof that sending a non-finite value to *a* bound is safe under one
-    /// comparison and catastrophic under the other, so the choice belongs to
-    /// whoever knows what the number means.
+    /// a value inside no range at all, and `Int(thatValue)` traps. Infinity is
+    /// refused with it: sending a non-finite value to *a* bound is safe under
+    /// one comparison and catastrophic under the other (`RuleCondition`), so
+    /// the choice belongs to whoever knows what the number means.
     public func clampedIfFinite(to range: ClosedRange<Self>) -> Self? {
         isFinite ? clamped(to: range) : nil
     }
@@ -42,15 +34,12 @@ extension FloatingPoint {
     /// a number means to them — a drawn fraction, an opacity, the height of a
     /// window.
     ///
-    /// This is the repair for a site that used to be spelled `min(hi, max(lo,
-    /// x))` or `max(lo, min(x, hi))`. Those two **absorb** a NaN, at the low
-    /// bound and at the high bound respectively, by an accident of which
-    /// argument `Swift.min` and `Swift.max` return when a comparison is false;
-    /// `clamped(to:)` does not, and four call sites quietly lost their answer
-    /// when they moved to it. `clampedIfFinite` is not that repair: it refuses
-    /// infinity as well, and infinity *has* a place on the number line — it is
-    /// precisely the value a bound knows what to do with, and collapsing both
-    /// ends onto one fallback is a second wrong answer beside the first.
+    /// `min(hi, max(lo, x))` and `max(lo, min(x, hi))` **absorb** a NaN, at the
+    /// low and the high bound respectively, by an accident of which argument
+    /// `Swift.min` and `Swift.max` return; `clamped(to:)` does not, so a caller
+    /// that relied on the accident names its answer here. Not
+    /// `clampedIfFinite`, which refuses infinity too, and infinity is precisely
+    /// the value a bound knows what to do with.
     public func clamped(to range: ClosedRange<Self>, whenNotANumber fallback: Self) -> Self {
         isNaN ? fallback : clamped(to: range)
     }

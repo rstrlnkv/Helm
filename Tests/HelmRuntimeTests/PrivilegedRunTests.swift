@@ -3,7 +3,7 @@ import XCTest
 
 /// «You cancelled» and «the write failed» are different sentences on screen and
 /// different next steps. A port that answers `Bool` makes the first a state no
-/// fake can be in — the family this app named on 2026-08-12.
+/// fake can be in.
 final class PrivilegedRunTests: XCTestCase {
 
     func testACancelledDialogIsNotAFailure() {
@@ -11,11 +11,10 @@ final class PrivilegedRunTests: XCTestCase {
         XCTAssertEqual(outcome, .declined)
     }
 
-    /// AppleScript's own error number, because the wording is localized —
-    /// `osascript` reports errors in the user's language. Verbatim from row 2
-    /// of the measurement in `PrivilegedRun.arguments(for:)`: it came back in
-    /// Russian on the machine it was run on, which is why nothing in the
-    /// sentence beside the number can be matched on.
+    /// AppleScript's own error number, because `osascript` reports errors in
+    /// the user's language, so nothing in the sentence beside the number can be
+    /// matched on. Verbatim from row 2 of the measurement in
+    /// `PrivilegedRun.arguments(for:)`.
     func testTheCancelIsRecognisedByItsNumberToo() {
         XCTAssertEqual(
             PrivilegedRun.outcome(status: 1,
@@ -32,15 +31,10 @@ final class PrivilegedRunTests: XCTestCase {
     }
 }
 
-/// The three-way reading above is only worth having if the text it reads on
-/// ever arrives. It does not, by default.
-///
-/// `osascript(1)`: «e  Print script errors to stderr (default). / o  Print
-/// script errors to stdout.» — and `HelmProcess.run` sends the child's stderr
-/// to `FileHandle.nullDevice` on purpose. So a
-/// cancelled dialog reaches `outcome(status:output:)` as status 1 with an
-/// *empty* output, `.declined` is unreachable, and every cancel is reported as
-/// a failed write. `-s o` is the half that makes the number arrive.
+/// The three-way reading above needs the text it reads to arrive. `osascript`
+/// prints script errors to stderr by default, and `HelmProcess.run` discards
+/// the child's stderr, so a cancel would arrive as status 1 with empty output
+/// and read as a failed write. `-s o` sends the errors to stdout.
 final class ThePrivilegedRunHearsTheCancelTests: XCTestCase {
 
     /// The argument list is a seam so this can be pinned without a password

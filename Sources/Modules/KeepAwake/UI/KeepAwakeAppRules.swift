@@ -17,16 +17,14 @@ extension KeepAwakeSettingsPage {
     /// section draws the padding and the hairline between rows, and a wrapper
     /// would be one row with neither.
     /// - Parameter explained: whether the empty state may say what an app rule is.
-    ///   Not while the banner is up: unreadable rules read as no rules, so «No apps
-    ///   chosen» and a paragraph about adding one under a banner saying the apps
-    ///   could not be read would be two sentences contradicting the third about
-    ///   whether anything was chosen. The button stays: the banner tells them to
-    ///   press it.
+    ///   Not while the banner is up: unreadable rules read as no rules, and «No
+    ///   apps chosen» under a banner saying the apps could not be read would
+    ///   contradict it. The button stays: the banner tells them to press it.
     @ViewBuilder
     func appRules(explained: Bool) -> some View {
         if appTriggers.isEmpty {
-            // A sentence, not a shrug: «No apps yet.» says nothing about what an
-            // app rule is or why anybody would want one.
+            // A sentence that says what an app rule is and why anybody would
+            // want one.
             HelmEmptyState(symbol: "plus.app",
                            tint: KeepAwakeDescriptor.tint.colour,
                            title: explained ? KAStr.noAppsYet : nil,
@@ -55,9 +53,8 @@ extension KeepAwakeSettingsPage {
                     saveTriggers()
                 }
         }
-        // Under a list, never under the empty state: there the one prominent
-        // button already carries this action, and two «Add app…» in one card is
-        // the app asking the same question twice.
+        // Under a list, never under the empty state, whose prominent button
+        // already carries this action.
         if !appTriggers.isEmpty {
             // The card's last row, not a button sitting in one: a line of the
             // list it adds to, in the accent, which is also how macOS's own
@@ -65,10 +62,8 @@ extension KeepAwakeSettingsPage {
             Button {
                 pickApp()
             } label: {
-                // The app rows above are an icon and a gap a `Label` does not
-                // use — its own spacing would put this title left of every app
-                // name it sits under. Both numbers are `HelmAppRuleGeometry`'s, so the
-                // two agree by construction.
+                // Not a `Label`: its own spacing would put this title left of the
+                // app names above it. Both numbers are `HelmAppRuleGeometry`'s.
                 HStack(spacing: HelmAppRuleGeometry.iconGap) {
                     Image(systemName: "plus")
                         .frame(width: HelmAppRuleGeometry.iconSide,

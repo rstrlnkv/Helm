@@ -3,9 +3,8 @@ import Foundation
 /// One app queued for removal, with the files found for it. The review screen
 /// shows these grouped per app; the plan turns them into paths to trash.
 public struct UninstallGroup: Identifiable, Equatable, Sendable {
-    /// The copy on disk, not the bundle id. Two builds of one app — a Setapp
-    /// copy beside a direct download — share an id and are two rows, and
-    /// `ForEach` given one identity for two draws one of them.
+    /// The copy on disk, not the bundle id: two copies of one app share an id
+    /// and are two rows, and `ForEach` given one identity for two draws one.
     public var id: String { app.path }
     public let app: InstalledApp
     public let leftovers: [Leftover]
@@ -72,18 +71,14 @@ public enum UninstallPlan {
     /// What to do about the apps that are up, asked at the moment of removal and
     /// never carried from the scan.
     ///
-    /// `readiness` above answers the same question from `ScanResult.runningNow`,
-    /// which is a reading taken when the review was built and stale in both
-    /// directions by the time anybody presses anything — an app quit since then
-    /// still shows as running, and an app started since then does not. That one
-    /// words the warning and the button's help; this one decides what moves.
+    /// `readiness` answers from `ScanResult.runningNow`, read when the review was
+    /// built and stale by the press; it words the warning and the help, and
+    /// this decides what moves.
     ///
-    /// **A refusal takes the whole batch.** The batch is a flat list of paths: a
-    /// leftover carries no link back to the app it was found for, so "move
-    /// everything except that bundle" removes a live app's preferences and caches
-    /// and leaves the app running to write them back — the half-uninstall
-    /// `waitUntilGone` exists to prevent. Nothing moves, the review stays, and the
-    /// person can untick the app or allow the quit.
+    /// A refusal takes the whole batch: a leftover carries no link back to its
+    /// app, so moving the rest would take a live app's files and leave it running
+    /// to write them back. Nothing moves, and the person can untick the app or
+    /// allow the quit.
     static func verdict(running: [RunningApp], mayQuit: Bool) -> RunningVerdict {
         guard !running.isEmpty else { return .proceed }
         return mayQuit ? .quitFirst(running) : .refuse(running)
@@ -91,8 +86,7 @@ public enum UninstallPlan {
 
     /// Bundles always go; leftovers only when ticked on the review screen.
     /// Deduplicated in order: a prefix glob and an exact candidate can resolve
-    /// to the same directory, and trashing it twice makes the second attempt
-    /// fail with "doesn't exist" — a failure the user can do nothing about.
+    /// to one directory, and a second attempt would fail with "doesn't exist".
     public static func paths(_ groups: [UninstallGroup], selectedLeftovers: Set<String>) -> [String] {
         var seen: Set<String> = []
         return groups.flatMap { group in
@@ -103,10 +97,8 @@ public enum UninstallPlan {
 
     /// What one group shows, bundle first.
     ///
-    /// The screen used to draw `group.leftovers` alone, so the one path every
-    /// removal is certain to take was the only one nobody was shown. Built here
-    /// rather than in the view so that what is displayed and what `paths`
-    /// returns are two readings of the same rule.
+    /// The bundle is the one path every removal takes, so it is shown. Built
+    /// here so what is displayed and what `paths` returns read one rule.
     public static func reviewRows(_ group: UninstallGroup) -> [ReviewRow] {
         [.bundle(app: group.app)] + group.leftovers.map { .leftover($0) }
     }
@@ -127,12 +119,10 @@ public enum UninstallPlan {
 
     /// The leftovers the review screen may arrive with already ticked.
     ///
-    /// A path found under the app's *bundle id* is that app's, near enough to
-    /// certain. A path found under its *display name* — `Application Support/
-    /// <Name>`, `Logs/<Name>` — is a guess, and names collide: "Mail", "Notes",
-    /// "Player". A guess arriving pre-ticked next to a Trash button means the
-    /// user has to notice it to keep their data; unticked, they have to notice
-    /// it to lose it. Same information, opposite default.
+    /// A path found under the app's bundle id is that app's, near enough to
+    /// certain. One found under its display name is a guess, and names collide
+    /// ("Mail", "Notes"): pre-ticked, the person must notice it to keep their
+    /// data; unticked, to lose it.
     public static func defaultSelection(_ groups: [UninstallGroup]) -> [String] {
         ownLeftovers(groups.flatMap { $0.leftovers }).map(\.path)
     }

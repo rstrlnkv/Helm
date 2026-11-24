@@ -11,12 +11,8 @@ import HelmUI
 private final class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
 
-    /// Escape closes it, as every menu and popover on the machine does.
-    ///
-    /// The panel took key focus so its controls would accept input, and then
-    /// answered only the mouse: clicking outside dismissed it, Escape did
-    /// nothing at all. Somebody who opened it from the keyboard shortcut had no
-    /// way to close it from the keyboard.
+    /// Escape closes it, as every menu and popover on the machine does, so a
+    /// panel opened from the keyboard can be closed from it.
     ///
     /// `cancelOperation` rather than a key handler: it is what AppKit sends for
     /// Escape *and* for ⌘. , and it arrives after the responder chain has had
@@ -30,25 +26,20 @@ private final class KeyablePanel: NSPanel {
 
 /// One width for the strip window and the card content inside it.
 ///
-/// It was briefly a setting, on the argument that the column count follows from
-/// it. It does — 480 buys a third column — and that is not a reason to ask:
-/// three columns of 147 pt in a menu-bar panel is a grid nobody wants and a
-/// question everybody has to answer once.
+/// Not a setting: a wider panel buys a third column, and three narrow columns
+/// in a menu-bar panel are a grid nobody wants and a question everybody would
+/// have to answer once.
 ///
-/// **320, not the 300 it shipped at.** `PanelGrid.minimumTile` is 144 and the
-/// prose under it argues the floor properly — «below it a button already costs
-/// the figure it sits under» — and then 300 pt bought two columns of 134. Every
-/// 1×1 in the app was 10 pt under a floor the app itself had written down. 320
-/// is the width the mockups always used, and it makes the rule true: two tiles
-/// of exactly 144.
+/// **320** is two `PanelGrid.minimumTile` tiles of exactly 144, one
+/// `PanelGrid.gap` and `PanelGrid.padding` either side: below the floor a
+/// button already costs the figure it sits under.
 let helmPanelWidth: CGFloat = PanelGrid.minimumTile * 2 + PanelGrid.gap + PanelGrid.padding * 2
 /// Room on each side of the card for the glass to cast into.
 ///
-/// A window shadow is drawn by the window server *outside* the frame, so the
-/// strip could be exactly as wide as the card. Glass draws its shading inside
-/// the view, so with the two the same width the card's own shadow was cut off
-/// flat at the left and right edges. The band is transparent and behaves like
-/// the rest of the strip below the card: a click there dismisses the panel.
+/// Glass draws its shading inside the view, unlike a window shadow, so a strip
+/// as wide as the card would cut the card's shadow off flat at the left and
+/// right edges. The band is transparent and behaves like the rest of the strip
+/// below the card: a click there dismisses the panel.
 private let helmPanelShadowMargin: CGFloat = 28
 
 @MainActor final class HelmPanel: NSObject {
@@ -63,10 +54,8 @@ private let helmPanelShadowMargin: CGFloat = 28
     private var anchorScreen: NSScreen?
 
     init(host: ModuleHost) {
-        // A placeholder — `reframe()` sets the real frame before every open —
-        // but spelled from the width rather than left at the 300 the panel
-        // shipped at before it went to 320. A stale number in a placeholder is
-        // the next person's evidence about what the panel is.
+        // A placeholder (`reframe()` sets the real frame before every open),
+        // spelled from the width so it cannot become a stale number.
         let panel = KeyablePanel(
             contentRect: NSRect(x: 0, y: 0,
                                 width: helmPanelWidth + helmPanelShadowMargin * 2, height: 200),
@@ -83,12 +72,10 @@ private let helmPanelShadowMargin: CGFloat = 28
         panel.isOpaque = false
         panel.backgroundColor = .clear
         // The window draws no shadow: Liquid Glass carries its own, and the two
-        // disagree about what the silhouette is. With `.regularMaterial` the
-        // window's shadow was derived from the opaque part — the card — and
-        // looked right. Glass paints its backdrop across the hosting view,
-        // which is a transparent strip running from the status item to the
-        // bottom of the screen, so AppKit started shading *that*: a hairline
-        // tracing the shadow instead of the card's edge.
+        // disagree about what the silhouette is. Glass paints its backdrop
+        // across the hosting view, a transparent strip from the status item to
+        // the bottom of the screen, so a window shadow would trace the strip
+        // rather than the card's edge.
         panel.hasShadow = false
         panel.isMovable = false
         self.panel = panel
@@ -96,10 +83,10 @@ private let helmPanelShadowMargin: CGFloat = 28
         // Sized ONCE per open (a transparent strip from the status item to the
         // screen bottom) and never moved while visible: moving a transparent
         // layer-backed window drags its composited surface ahead of the SwiftUI
-        // redraw, which is what made an animating card look like it slid. The
-        // card is top-pinned and animates entirely inside the static window.
-        // A plain NSHostingView is used deliberately — a custom hitTest here
-        // previously swallowed every click.
+        // redraw, so an animating card would look like it slid. The card is
+        // top-pinned and animates entirely inside the static window.
+        // A plain NSHostingView, deliberately: a custom hitTest here swallows
+        // every click.
         let hosting = NSHostingView(rootView: HelmPanelContent(host: host))
         hosting.sizingOptions = []
         panel.contentView = hosting
@@ -128,8 +115,7 @@ private let helmPanelShadowMargin: CGFloat = 28
     }
 
     /// Whether the panel is on screen, for a caller that wants it open rather
-    /// than toggled. The one accessor: a second one spelled `isVisible` sat
-    /// beside this saying the same thing and was read by nobody.
+    /// than toggled.
     var isShown: Bool { panel.isVisible }
 
     private func hide() {

@@ -2,30 +2,23 @@ import HelmTestSupport
 import XCTest
 
 /// `Scripts/test.sh` promises that a `--filter` alternative it cannot count is
-/// named and failed (`Scripts/test.sh`, its header). An alternative
-/// that is *empty* is the one that cannot be counted at all: `swift test`
-/// reads it as a pattern that matches every test (measured for a trailing `|`
-/// only: the whole suite; the rest follow from the regex), so a trailing `|` turns a
-/// family run into the whole suite, and the runner's own count never fails a bare one:
-/// splitting on `|` drops a trailing empty side and counts a leading or middle one
-/// as matching every case. A group's has no empty piece; its unbalanced halves do fail
-/// the count, but only after the run is spent.
+/// named and failed (`Scripts/test.sh`, its header). An empty alternative
+/// cannot be counted at all: `swift test` reads it as a pattern matching every
+/// test, so a trailing `|` turns a family run into the whole suite, and the
+/// runner's count never fails it.
 ///
-/// **What is run.** The real script, with a stub `swift` first on `PATH` that
-/// records its arguments and exits 0, so nothing real is ever started — a
-/// failure here is a recorded call, never a suite spent. The test refuses to
-/// go on at all unless the shell it spawns resolves `swift` to the stub.
+/// What is run: the real script, with a stub `swift` first on `PATH` that
+/// records its arguments and exits 0, so a failure here is a recorded call,
+/// never a suite spent. The test goes on only if the spawned shell resolves
+/// `swift` to the stub.
 ///
-/// **What is asserted.** An empty alternative is refused *before* `swift`
-/// runs: the stub was never called, the status is 1, the last line on stdout
-/// is the runner's `==> FAIL (runner exit=1, swift test exit=not run)` line —
-/// the same shape as the newline refusal beside it — and standard error says
-/// the `--filter` alternative is empty. A refusal that merely exits is not enough: an
-/// empty script would pass it. And the controls: a value with no empty
-/// alternative, group included, reaches `swift` with exactly the arguments it
-/// was given, so a refusal that refuses everything fails here too.
+/// What is asserted: an empty alternative is refused before `swift` runs (the
+/// stub never called, status 1, the runner's `==> FAIL (runner exit=1, swift
+/// test exit=not run)` as the last stdout line, and stderr naming the empty
+/// alternative), since a bare exit would pass an empty script. The controls: a
+/// value with no empty alternative reaches `swift` with exactly its arguments.
 ///
-/// **Why a group counts.** `(A|)` has no empty piece when the value is split
+/// Why a group counts: `(A|)` has no empty piece when the value is split
 /// on `|` — it falls into `(A` and `)` — yet its regular expression has an
 /// empty alternative and, by the regex, matches everything, while
 /// `Foo(A|B)Tests` has none.

@@ -4,28 +4,22 @@
 import XCTest
 @testable import Module_VPN_Engine
 
-/// "No VPNs are configured" and "scutil did not answer" are different facts,
-/// and until now they were the same empty array.
+/// "No VPNs are configured" and "scutil did not answer" are different facts.
 ///
-/// `refreshNow` reads only the stdout `ScutilRunner.run` returns and never its
-/// exit status, and `parseList` skips every line it cannot read — so a failed read
-/// produced `[]`, exactly like a machine with nothing configured. Two things
-/// then went wrong at once, and the second is the worse one:
+/// `parseList` skips every line it cannot read, so a failed read parsed alone
+/// would produce `[]`, exactly like a machine with nothing configured. Two
+/// things would go wrong at once:
 ///
-/// 1. The page said "No VPNs in System Settings" while two were connected, and
-///    every per-app rule reported that its connection no longer exists. That is
-///    what the user photographed.
-/// 2. `refreshNow` computes what dropped as `_autoConnected - up`. With an
-///    empty read, **everything Helm ever raised looks dropped** — so the module
-///    concludes the tunnels went away, and now that a firing is announced, it
-///    would spin the ring and name a disconnection that never happened.
+/// 1. The page would say "No VPNs in System Settings" while two were
+///    connected, and every per-app rule would report its connection gone.
+/// 2. `refreshNow` computes what dropped from `_autoConnected` and what is up.
+///    With an empty read **everything Helm ever raised looks dropped**, and the
+///    ring would name a disconnection that never happened.
 ///
 /// The discriminator: a real answer either carries the header `scutil --nc
 /// list` prints before it enumerates anything — present even on a machine with
-/// no VPNs at all, checked against the real tool — or contains at least one row
-/// we could read. Nothing else is an answer.
-///
-/// Past defect: commit 4b7564a0, «fix(vpn): silence from scutil is not "you have no VPNs"».
+/// no VPNs at all — or contains at least one row we could read. Nothing else
+/// is an answer.
 final class UnreadableListTests: XCTestCase {
 
     private let header = "Available network connection services in the current set (*=enabled):"

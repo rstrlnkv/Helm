@@ -5,16 +5,15 @@ import HelmRuntime
 
 /// Who is allowed to put a system administrator password dialog on screen.
 ///
-/// «Stay awake with the lid closed» installs a NOPASSWD sudoers rule, and that
-/// was reached from `recompute()` on every false→true edge of `isActive` —
-/// including the edges a *rule* causes. So launching a watched app raised a
-/// real macOS password prompt at a moment nobody had touched Helm, with nothing
-/// on the dialog naming the app, the rule or this program. Any process running
-/// as this user could pick that moment by launching the app.
+/// «Stay awake with the lid closed» installs a NOPASSWD sudoers rule. Raised
+/// from a rule's edge, a real macOS password prompt would appear at a moment
+/// nobody touched Helm, with nothing on it naming the app, the rule or this
+/// program, and any process running as this user could pick that moment by
+/// launching a watched app.
 ///
-/// The prompt now needs a gesture behind it: the lid switch's own rising edge
+/// The prompt needs a gesture behind it: the lid switch's own rising edge
 /// (`lidSwitchTurned`) and nothing else — a Start press is a gesture on another
-/// control (owner decision 2026-11-11). Automatic paths still engage when the grant already exists,
+/// control (owner decision). Automatic paths still engage when the grant already exists,
 /// because that costs no dialog — and the session itself is never held back,
 /// since an IOKit assertion keeps an open Mac awake perfectly well.
 final class APasswordDialogNeedsAGestureTests: XCTestCase {
@@ -128,8 +127,8 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
 
     /// The other door into the prompt. `settingsChanged` arrives for every
     /// control the page draws, and `clamshellEnabled` stays true after a dialog
-    /// is *declined* — so asking on the value meant a password dialog for every
-    /// later edit of an unrelated setting.
+    /// is declined, so asking on the value would mean a password dialog for
+    /// every later edit of an unrelated setting.
     @MainActor
     func testEditingAnUnrelatedSettingDoesNotAskAgain() async {
         engine.startSession(minutes: 0)
@@ -191,9 +190,9 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
     }
 }
 
-/// The lid switch's gesture outside a session (defect lid-switch-outside-session,
-/// owner decision 2026-11-11): it asks for the rule at once, with no session
-/// running, instead of spending the edge and leaving the next Start without it.
+/// The lid switch's gesture outside a session (owner decision): it asks for the
+/// rule at once, with no session running, instead of spending the edge and
+/// leaving the next Start without it.
 final class TheLidSwitchAsksOutsideASessionTests: XCTestCase {
     private var store: NamespacedStore!
     private var clamshell: FakeClamshell!

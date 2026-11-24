@@ -2,14 +2,11 @@ import Foundation
 
 /// What the module has put right, by day, so the figure outlives a launch.
 ///
-/// The day counter this replaced held one day in memory, so the page's one
-/// figure went back to
-/// zero at every launch — and the silent updater relaunches the app, which
-/// means «words fixed today» could be zero at four in the afternoon for
-/// somebody who had used it all morning.
+/// On disk because the silent updater relaunches the app: a count held in
+/// memory would read zero at four in the afternoon for somebody who had used
+/// the module all morning.
 ///
-/// **No word is written down, and that is a decision rather than an
-/// omission.** This module sees every keystroke, including the ones beside a
+/// No word is written down, and that is a decision. This module sees every keystroke, including the ones beside a
 /// password field: secure input and the app exclusions are good, but a web form
 /// with the wrong field type is a password macOS never marked. A day, a count,
 /// and how many characters those words held is everything here — and the
@@ -20,15 +17,10 @@ struct ConversionLedger: Codable, Equatable, Sendable {
     /// One day. `words` is how many were put right, `characters` how many
     /// letters those words held together.
     ///
-    /// **A calendar day, not an instant, and that distinction cost a day's
-    /// count.** `day` was `startOfDay(for:)` — midnight in whichever zone was
-    /// active when the row was written — and every reader matched it with `==`
-    /// or a dictionary keyed on it. A Mac that corrects its own time zone at
-    /// lunchtime then writes 30 August twice, nine hours apart: «words fixed
-    /// today» goes backwards, and the morning's word matches no bar in the
-    /// fortnight the tile draws, so it is not drawn short — it is not drawn.
-    /// `add`'s own comment already said «a Mac can wake in another timezone»
-    /// and answered it by re-sorting; sorting fixes the order, not the identity.
+    /// A calendar day, not an instant. Midnight in whichever zone was active
+    /// is an instant: a Mac that corrects its own time zone at lunchtime would
+    /// write one date twice, nine hours apart, and the morning's words would
+    /// match no bar in the fortnight the tile draws.
     ///
     /// `stamp` is `yyyymmdd` in the zone the person was in when they typed,
     /// which is the only sense in which the word happened on a day.
@@ -45,18 +37,15 @@ struct ConversionLedger: Codable, Equatable, Sendable {
 
         private enum CodingKeys: String, CodingKey { case stamp, day, words, characters }
 
-        /// **Hand-written, because a stored default does not decode an older
-        /// payload.** Swift's synthesised `Decodable` requires every coding key
-        /// whatever a property's initial value is, and `JSONDecoder` gives up on
-        /// the whole document rather than filling one field in — so a ledger
-        /// written before this change would have thrown, `LedgerStore` would have
-        /// read nil, and somebody's whole count would have been replaced by an
-        /// empty file without a word. `PanelLayout.Tab` is the same repair for the same
-        /// reason (ARCHITECTURE.md § A value read back whole).
+        /// Hand-written, because a stored default does not decode an older
+        /// payload: synthesised `Decodable` requires every coding key, and
+        /// `JSONDecoder` gives up on the whole document, so a ledger with the
+        /// older instant field would read nil and the count would be replaced
+        /// by an empty file.
+        /// Architecture/StateAndLifetime.md § A value read back whole.
         ///
-        /// The old instant is converted in the current zone. A row written far
-        /// from here may land a day out — once, on the rows that already exist,
-        /// which is the price of not discarding them.
+        /// The older instant is converted in the current zone. A row written far
+        /// from here may land a day out, which is the price of not discarding it.
         init(from decoder: Decoder) throws {
             let box = try decoder.container(keyedBy: CodingKeys.self)
             words = try box.decode(Int.self, forKey: .words)
@@ -130,11 +119,9 @@ struct ConversionLedger: Codable, Equatable, Sendable {
 
     /// The last `days` days, oldest first, one number per day.
     ///
-    /// **Zero-filled, and that is the whole point.** `days` holds only the days
-    /// something happened on, so a drawing made straight from it spaces five
-    /// bars evenly across a fortnight and a quiet week looks exactly like a busy
-    /// one. This is what the 2×N tile draws to answer «why is it that many» —
-    /// a question a single figure cannot answer, however large the digits.
+    /// Zero-filled: `days` holds only the days something happened on, and a
+    /// drawing made straight from it would make a quiet week look like a busy
+    /// one. This is what the 2×N tile draws to answer «why is it that many».
     func recent(days count: Int, now: Date,
                 calendar: Calendar = .current) -> [Int] {
         guard count > 0 else { return [] }

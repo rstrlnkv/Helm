@@ -6,8 +6,8 @@ import SwiftUI
 ///
 /// The detail line under a broken login item gives its width to the reason
 /// first (it is the strongest evidence the item is dead) and lets the path
-/// truncate in the middle. At a 540 pt pane, which the window no longer gives, a real reason left the path
-/// exactly one glyph: «/», drawn, and read to VoiceOver, saying nothing.
+/// truncate in the middle. In a narrow pane a real reason can leave the path
+/// one glyph, «/», drawn and read to VoiceOver, saying nothing.
 ///
 /// So the path has a floor: the width of «…» and its own last component at
 /// the detail size. Below it no cut — head, middle or tail — can show even
@@ -48,16 +48,14 @@ struct LeftoverDetailLine: View {
                     // truncation eats the dot and leaves the sentence
                     // hanging off the end of a path. `fixedSize`, not
                     // `layoutPriority`: a candidate that can truncate is a
-                    // candidate that always «fits», and this arrangement
-                    // was measured being chosen at 540 with the path at
-                    // one glyph — the lesson of the page's own captions.
+                    // candidate that always «fits», and would be chosen
+                    // with the path at one glyph.
                     Text(reason)
                         .lineLimit(1)
                         .fixedSize()
                 }
                 // The clause, not the reason: with no path in front of it
-                // the separator would open the line — measured, «· Points
-                // at…» — which is the dangling dot one character earlier.
+                // the separator would open the line («· Points at…»).
                 Text(clause)
                     .lineLimit(1)
             }

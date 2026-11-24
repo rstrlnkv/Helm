@@ -46,12 +46,11 @@ final class LayoutEngineEdgeTests: XCTestCase {
     /// the app it happened in". The shortcut cannot be a bare key — the
     /// recorder refuses one — and the tap is head-inserted, so Helm's engine
     /// sees the chord *before* Carbon delivers the hotkey and turns it into
-    /// `.chord`. `handle` invalidates the undo on every event it sees, so by
-    /// the time `undoLast` runs the record it needs is already dead.
+    /// `.chord`, before `undoLast` runs.
     ///
-    /// The fix is not to stop invalidating on caret movement — ⌘→ really does
-    /// move the caret. It is that the one chord which *is* the undo shortcut
-    /// must not destroy its own precondition. Which bare keys may spend that
+    /// Caret movement still invalidates (⌘→ really does move the caret); the
+    /// one chord which is the undo shortcut must not destroy its own
+    /// precondition. Which bare keys may spend that
     /// forgiveness is `UndoAfterNavigationTests`.
     func testTheUndoShortcutCanUndo() {
         let engine = engine(table: ["ghbdtn": "привет"])
@@ -71,11 +70,10 @@ final class LayoutEngineEdgeTests: XCTestCase {
     ///
     /// The engine remembers the last completed word so its own shortcut — a
     /// chord, which ends the word before Carbon delivers it — has something to
-    /// work on. But *every* boundary arms that memory, including the click,
-    /// which the module's own rules call "the person went somewhere else".
-    /// Type six letters, click into another field, press convert: six
-    /// backspaces and a Russian word land wherever the caret now is. Nothing
-    /// expires it either — the click could have been an hour ago.
+    /// work on. The click is "the person went somewhere else": remembered past
+    /// it, six letters typed and a click into another field would put six
+    /// backspaces and a Russian word wherever the caret now is, however long
+    /// ago the click was.
     func testAWordLeftBehindByAClickIsNotTheHotkeysToConvert() {
         let engine = engine(table: ["ghbdtn": "привет"])
         tap.type("ghbdtn")
@@ -99,16 +97,14 @@ final class LayoutEngineEdgeTests: XCTestCase {
 
     /// Switched off is switched off, and the word goes with it.
     ///
-    /// `deactivate` clears the buffer and the undo record on purpose — the
-    /// module's own note is that a tap sees passwords typed into fields an app
-    /// forgot to mark secure, and the only safe place for them is somewhere
-    /// already gone. The remembered last word is the third place a word lives
-    /// and the one that is not cleared, so it outlives the module that was
-    /// turned off.
+    /// `deactivate` clears the buffer and the undo record: a tap sees passwords
+    /// typed into fields an app forgot to mark secure, and the only safe place
+    /// for them is somewhere already gone. The remembered last word is the third
+    /// place a word lives, and it goes too.
     func testATurnedOffModuleTypesNothingAndRemembersNothing() {
         let engine = engine(table: ["ghbdtn": "привет"])
         tap.type("ghbdtn")
-        // A chord, not an arrow: a caret move now forgets the word by itself, so
+        // A chord, not an arrow: a caret move forgets the word by itself, so
         // arranging this with one would prove nothing about `deactivate`.
         tap.send(.chord(layoutShortcut))        // ends the word without converting; it is remembered
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")

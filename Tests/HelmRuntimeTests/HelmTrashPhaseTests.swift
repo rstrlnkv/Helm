@@ -5,17 +5,13 @@ import HelmTestSupport
 /// A phase names itself while it runs — for every deleting module, not one.
 ///
 /// `HelmTrash.remove` weighs each path with `FileWeight` before it moves
-/// anything, a walk apiece for a folder, and only Disk wrapped its call in a
-/// phase: Disk was not the outlier, it was the one that got audited. The phase
-/// lives in the loop now, named `"\(module).trash"`, so Uninstaller, Leftovers
-/// and Duplicates carry a name beside their memory readings for free.
+/// anything, a walk apiece for a folder. The phase lives in the loop, named
+/// `"\(module).trash"`, so every deleting module carries a name beside its
+/// memory readings.
 ///
-/// Caught **during** the move rather than read off the source: `trashing` is a
+/// Caught during the move, not read off the source: `trashing` is a
 /// synchronous injection point inside the loop, so what `HelmActivity.running`
-/// answers there is what any memory reading taken mid-removal would see. No
-/// scheduling guess, no scan of a function body.
-///
-/// Guards: 669ff491 (only Disk named its trash phase).
+/// answers there is what a memory reading taken mid-removal would see.
 final class HelmTrashPhaseTests: XCTestCase {
 
     override func tearDown() {

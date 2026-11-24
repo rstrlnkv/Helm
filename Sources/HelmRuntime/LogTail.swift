@@ -6,12 +6,8 @@ import Foundation
 /// keeps them apart rather than parsing them out again. `LogLine` remains the one
 /// place a line is spelled — this is what it is spelled *from*.
 ///
-/// **All five parts, and it used to be four.** `site` was the one the file had
-/// and the tail did not, so the page could not draw where a warning came from and
-/// «Copy log» could not put it in a bug report — on the owner's own machine, 469
-/// of 500 warnings were one wording from one place, arriving in a report with
-/// neither its level nor its origin. A part the file carries and this does not is
-/// a tail that is no longer spelled from what the line is spelled from.
+/// **All five parts.** A part the file carries and this does not (the `site`,
+/// say) is one the page cannot draw and «Copy log» cannot put in a bug report.
 public struct LogEntry: Sendable, Equatable, Identifiable {
     public let id = UUID()
     public let date: Date

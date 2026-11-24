@@ -4,21 +4,17 @@
 import XCTest
 @testable import Module_VPN_Engine
 
-/// `_cameUp` — the set added today so `refreshNow` can tell "not up yet" from
-/// "came up and then went" — is filled by `refreshNow` and emptied by
-/// `refreshNow`. Nothing else touches it.
+/// `_cameUp` lets `refreshNow` tell "not up yet" from "came up and then
+/// went".
 ///
-/// `disconnectNow` empties `_autoConnected` and leaves `_cameUp` holding the
-/// name. The two sets are then out of step, and the next time Helm raises the
-/// same VPN the first refresh after the connect — the one whose whole reason
-/// for existing is that it "usually still reports the old status" — reads
-/// `_autoConnected \ up ∩ _cameUp` as `{name}` and forgets that Helm raised it.
+/// `disconnectNow` empties `_cameUp` as well as `_autoConnected`. Left out of
+/// step, the next time Helm raises the same VPN the first refresh after the
+/// connect — which usually still reports the old status — would read the name
+/// as a tunnel that went and forget that Helm raised it.
 ///
 /// Asserted on the engine's own record rather than on a rendered number: what
 /// `autoConnected` is *for* is answering "did Helm raise this", and the page's
 /// AUTOMATIC count is one reader of it.
-///
-/// Past defect: commit 51247cad, «fix: eight more, three of them mine from earlier today».
 final class VPNAutoConnectMemoryTests: XCTestCase {
 
     /// The second session with the same app. Launch → connect → up → quit →
@@ -47,8 +43,8 @@ final class VPNAutoConnectMemoryTests: XCTestCase {
                        "a connection Helm dropped is no longer Helm's")
 
         // The app launches again. `scutil --nc start` is asynchronous, so the
-        // refresh that follows still reports Disconnected — the case the whole
-        // `_cameUp` mechanism was added to survive.
+        // refresh that follows still reports Disconnected — the case `_cameUp`
+        // exists for.
         engine.connect("A", auto: true)
 
         XCTAssertTrue(engine.autoConnected.contains("A"),
@@ -57,17 +53,14 @@ final class VPNAutoConnectMemoryTests: XCTestCase {
                       + "disconnected: autoConnected = \(engine.autoConnected)")
     }
 
-    /// The behaviour the day's change exists for, so a fix cannot buy the test
-    /// above by simply never forgetting anything: a connection Helm raised,
-    /// that came up and then dropped on its own, stops being Helm's.
+    /// The other half, so a fix cannot buy the test above by never forgetting
+    /// anything: a connection Helm raised, that came up and then dropped on its
+    /// own, stops being Helm's.
     ///
     /// **The deadline is `VPNDropSettle.window`, not the first read that saw it
-    /// down.** It was the first read for one release, and the settle then
-    /// deferred only the *announcement* — so a three-second re-handshake
-    /// emptied this book while the tunnel was up and Helm was holding it, and
-    /// the next real drop had nothing to be read out of
-    /// (`ABlipDoesNotCostHelmItsTunnelTests`). Both ends are asserted here now:
-    /// still Helm's inside the window, and not Helm's past it.
+    /// down**: a re-handshake of a few seconds must not empty this book while the
+    /// tunnel is up and Helm is holding it (`ABlipDoesNotCostHelmItsTunnelTests`).
+    /// Both ends are asserted: still Helm's inside the window, not Helm's past it.
     func test_a_vpn_that_came_up_and_then_went_is_forgotten() {
         let runner = FakeRunner()
         let clock = TestClock()

@@ -2,26 +2,17 @@ import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
-/// The banner and the rules were two readings of one value, and in the migration
-/// case they said opposite things.
+/// The banner and the rules are one reading of one value.
 ///
-/// `appTriggers` asked `store.string(autoAppRules)` — an `as? String` — got the
-/// empty string for a value of the wrong type, read that as «nothing was ever
-/// written» and fell back to migrating the older `autoApps` list.
-/// `appRulesUnreadable` asked `store.object(autoAppRules)`, found something that
-/// was not a string and answered yes. So a plist holding an *array* under the
-/// rules key, on a Mac that also still has the legacy list — which is a
-/// hand-edited file, a restored backup or a half-finished migration — got two
-/// rules holding the Mac awake and a banner over them saying no app was holding
-/// anything. Measured on that fixture: two rules honoured, «the stored app rules
-/// could not be read; no app is holding sleep» in the log.
+/// Read two ways, a plist holding an array under the rules key on a Mac that
+/// still has the legacy list (a hand-edited file, a restored backup, a
+/// half-finished migration) would get two rules holding the Mac awake under a
+/// banner saying no app was holding anything.
 ///
-/// One reading now, `appRulesReading`, with the migration fallback inside it and
-/// both accessors derived from it. Unreadable means **no rules and the banner**:
+/// One reading, `appRulesReading`, with the migration fallback inside it and
+/// both accessors derived from it. Unreadable means no rules and the banner:
 /// the module fails toward the Mac sleeping and says so, which is the honest pair
 /// (and the path the size cap in `AppTriggerRules.readable` routes into).
-///
-/// Guards: d18692b8 (banner and rules read one value two ways).
 final class TheBannerAndTheRulesAreOneReadingTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!

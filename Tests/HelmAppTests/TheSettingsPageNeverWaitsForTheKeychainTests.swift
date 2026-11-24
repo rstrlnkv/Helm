@@ -11,11 +11,8 @@ import XCTest
 /// build this app ships — the cdhash changes each time, no access list an
 /// earlier build wrote still names this one, and the answer is a modal
 /// authorization dialog rather than data. `AppSettings` is `@MainActor`, so
-/// *every* reader of that getter is on the thread that draws.
-///
-/// Measured, on the owner's own Mac: `HelmApp_2026-08-19-235500_MacBook.hang`,
-/// 19,09 s unresponsive on `0.11.0-dev.1`, the main thread inside this getter by
-/// way of `NSApplication.didBecomeActive` while `warmKey()` sat in securityd.
+/// *every* reader of that getter is on the thread that draws, and a getter
+/// that waits on securityd hangs the app.
 ///
 /// So there is a second way to ask, and it answers «not yet» rather than
 /// waiting: nil until the key is in hand. Nil is not «no scans are off» and not
@@ -39,9 +36,9 @@ final class TheSettingsPageNeverWaitsForTheKeychainTests: DisabledScansTestCase 
             """)
     }
 
-    /// The fresh-install branch too: nothing stored is where the getter used to
-    /// *create* the keychain item, which is the most expensive round trip of
-    /// them all and the one a first launch pays.
+    /// The fresh-install branch too: with nothing stored, a waiting getter would
+    /// *create* the keychain item, the most expensive round trip of them all and
+    /// the one a first launch pays.
     func testNothingStoredIsAlsoNotAnsweredWhileTheKeyIsCold() {
         let source = SealKeyProbe()
         AppSettings.scanGuard = SettingGuard(keys: SealKeyCache(source))

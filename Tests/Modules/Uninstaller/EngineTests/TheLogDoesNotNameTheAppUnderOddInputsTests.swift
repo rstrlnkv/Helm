@@ -4,16 +4,11 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// **The refusal lines the shared removal loop writes for this module, at the
-/// inputs `TheLogDoesNotNameTheAppTests` did not feed in.** That class feeds one
-/// bundle in `/Applications`, a bundle in a forbidden folder (the out-of-scope
-/// line) and nested bundles. The loop writes three kinds of line — out of scope,
-/// ancestor changed, macOS refused — and this class feeds the last two.
-/// Ancestor changed: a leftover whose parent was swapped. macOS refused:
-/// leftovers named by a bundle id, with an extension or with none of their own
-/// (`~/Library/Containers/<id>`), and a refusal whose sentence names the bundle
-/// by its *display name*, in Russian, or by a name of three letters: the line
-/// leaves that sentence out.
+/// The refusal lines the shared removal loop writes for this module name no
+/// app, at the inputs `TheLogDoesNotNameTheAppTests` does not feed: a leftover
+/// whose parent was swapped, leftovers named by a bundle id with or without an
+/// extension, and macOS sentences naming the bundle by display name, in
+/// Russian, or by three letters. The line leaves the sentence out.
 ///
 /// Every case asserts that its line was written before asserting what the line
 /// does not carry: the log is off in a test process, and an absence proves
@@ -65,8 +60,8 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
             + "так как у Вас нет разрешения на доступ к нему."
         let result = await engine(trash: SayingTrash(failing: [path: said])).trashPaths([path])
         XCTAssertEqual(result.failed, [path], "precondition: macOS refused the app")
-        // The sentence is not logged any more (it quotes names the redaction cannot
-        // find); the code and Helm's own classification are what the line carries.
+        // The sentence is not logged (it quotes names the redaction cannot find);
+        // the code and Helm's own classification are what the line carries.
         XCTAssertTrue(logged.contains { $0.contains("NSCocoaErrorDomain 513, noPermission") },
                       "the system's half of the line was not logged: \(logged)")
         XCTAssertFalse(logged.contains { $0.contains("Корзину") },
@@ -76,12 +71,10 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
 
     // MARK: - Leftovers named by a bundle id
 
-    /// **The common leftover has no extension of its own**, so the bundle id's
-    /// last dot is read as one: `Containers/com.acme.SecretTool` is a stem of
-    /// `com.acme` and an "extension" of `SecretTool`, and the line keeps the
-    /// part of the id that names the product. `Caches/<id>`,
-    /// `Application Support/<id>`, `HTTPStorages/<id>`, `WebKit/<id>` and the
-    /// group container `<team>.<id>` are the same shape (`LeftoverMatcher`).
+    /// The common leftover has no extension of its own, so the id's last dot
+    /// would be read as one (`com.acme` + `SecretTool`) and the product's name
+    /// kept. `Caches/<id>`, `Application Support/<id>` and the group container
+    /// `<team>.<id>` are the same shape (`LeftoverMatcher`).
     func testALeftoverNamedByABundleIDIsRefusedWithoutTheProductsName() async {
         let id = "com.acme.\(secret)"
         let paths = ["/Users/x/Library/Containers/\(id)",
@@ -96,7 +89,7 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
     }
 
     /// A leftover with an extension, for contrast: the stem is the whole id and
-    /// is tagged. This passes today and is what the one above should read like.
+    /// is tagged.
     func testALeftoverWithAnExtensionIsRefusedWithoutTheID() async {
         let id = "com.acme.\(secret)"
         let path = "/Users/x/Library/Preferences/\(id).plist"
@@ -107,12 +100,8 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
 
     // MARK: - The name macOS uses is not the file's
 
-    /// **macOS names a refused bundle by its display name**, measured on this
-    /// Mac: `trashItem` on a bundle `SecretTool.app` whose `InfoPlist.strings`
-    /// says `CFBundleDisplayName = "Hidden Title"` answered «“Hidden Title”
-    /// couldn’t be moved to the trash because you don’t have permission to access
-    /// it.» Redaction replaces the file's stem, which that sentence does not
-    /// contain, so the line carries the error's domain and code instead.
+    /// macOS names a refused bundle by its display name, which redaction of the
+    /// file's stem cannot find, so the line carries the error's domain and code.
     func testARefusalQuotingTheDisplayNameDoesNotNameTheApp() async {
         let path = "/Applications/\(secret).app"
         let shown = "Hidden Title \(secret.suffix(6))"
@@ -123,10 +112,8 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
         assertLogged("trash refused ", without: [secret, shown])
     }
 
-    /// **A three-letter name reaches the log in no form.** `Arc.app` and
-    /// `Zed.app` are real products; the refusal line carries the code and Helm's
-    /// classification, never the system's sentence, so the length of the name
-    /// decides nothing.
+    /// A three-letter name (`Arc.app`) reaches the log in no form: the line never
+    /// carries the system's sentence, so the name's length decides nothing.
     func testAThreeLetterAppIsRefusedWithoutItsName() async {
         let path = "/Applications/Qzx.app"
         let said = "“Qzx” couldn’t be moved to the trash because you don’t have "
@@ -138,10 +125,9 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
 
     // MARK: - Ancestor changed
 
-    /// The third line the loop writes: a parent swapped between the gate and the
-    /// move. Driven on real directories, because the ancestry read is `stat` on
-    /// the parent: the first path's move renames the second path's parent away
-    /// and puts a fresh folder of the same name in its place.
+    /// A parent swapped between the gate and the move. Real directories, since
+    /// the ancestry read is `stat`: the first move renames the second path's
+    /// parent away and puts a fresh folder in its place.
     func testALeftoverWhoseParentWasSwappedIsRefusedWithoutItsName() async throws {
         let root = scratchDirectory("uninstaller-ancestry")
         let home = (root.path as NSString).resolvingSymlinksInPath

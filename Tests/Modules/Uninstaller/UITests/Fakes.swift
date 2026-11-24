@@ -5,9 +5,8 @@ import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-// The engine's `FileSystemPort` fake, copied here rather than shared with that
-// target because a test target cannot depend on another one. The duplication that
-// is left is this file against `EngineTests/Fakes.swift`.
+// Copied from `EngineTests/Fakes.swift`, since a test target cannot depend on
+// another one.
 
 /// A Mac with none of the files a test asks about (`FakeFS()`), or one where every
 /// path exists at `everyPathExistsAt` bytes: the two answers the view-model tests give
@@ -33,17 +32,10 @@ struct FakeApps: AppLister {
     func trashedApps() -> [TrashedApp]? { trashed }
 }
 
-/// **Nothing here removes anything.** These tests are about what the view model
-/// shows, and the engine behind it takes a `TrashPort` whether or not anybody
-/// is going to remove something.
-///
-/// **And that claim has a runner now.** The engine's copy at least carried a
-/// measurement saying an unconditional refusal changed nothing there; this one
-/// carried the claim with nothing behind it at all — and this is the target
-/// where it could hide, because a view model handed a `.success` it never
-/// earned shows a removal that did not happen. A test that wants a refusal, or
-/// wants to know what was asked for, wants `FakeTrash` in the engine's tests or
-/// a double of its own here. The return is unreachable by the time it is read.
+/// Nothing here removes anything: the engine takes a `TrashPort` whether or not
+/// anybody removes something. Enforced by `XCTFail`, since a view model handed
+/// an unearned `.success` shows a removal that did not happen. A test that
+/// wants a refusal or a record brings a double of its own.
 struct NoTrash: TrashPort {
     func trashItem(_ url: URL) -> TrashOutcome {
         XCTFail("no test here trashes — this test wants a trash double of its own")
@@ -64,11 +56,9 @@ struct NoRunning: RunningAppsPort {
     }
 }
 
-/// The engine's place for the model's tests: it answers what it is told to, and
-/// writes down every call — **port states and a log, nothing else**. The model
-/// refuses a stopped state itself, so a test of that reads `calls`; a test of a
-/// state the engine can really be in (a batch macOS refused, an app still up)
-/// builds the `UninstallResult` the engine would.
+/// The engine's place for the model's tests: it answers what it is told to and
+/// writes down every call, port states and a log, nothing else. A test of a
+/// real engine state builds the `UninstallResult` the engine would.
 ///
 /// Held answers are the exception, each behind a method a test calls:
 /// `land()` for the sizes and `holdScans()` for the scans, because a fake that
@@ -168,8 +158,7 @@ final class AnsweringWork: UninstallerWork, @unchecked Sendable {
 
     var sortOrder: AppSortOrder { lock.withLock { order } }
 
-    /// The engine keeps what it is told, as the real one does — a fake that forgot
-    /// it would answer the next `sortOrder` with the old order.
+    /// The engine keeps what it is told, as the real one does.
     func setSortOrder(_ next: AppSortOrder) {
         note(.setSortOrder(next))
         lock.withLock { order = next }
@@ -223,9 +212,8 @@ final class AnsweringWork: UninstallerWork, @unchecked Sendable {
 
 /// Answers the sweep at once and holds the batch open until released.
 ///
-/// **It does not answer until it is told to.** A fake that answers synchronously
-/// releases the gate before the call it is gating returns, so a test built on
-/// one passes whether or not the gate exists.
+/// It does not answer until told to: a fake that answers at once releases the
+/// gate before the gated call returns, and a test would pass without the gate.
 final class HeldWork: UninstallerWork, @unchecked Sendable {
     private let lock = NSLock()
     private var trashCount = 0

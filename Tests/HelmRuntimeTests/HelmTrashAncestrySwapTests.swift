@@ -13,12 +13,10 @@ import HelmTestSupport
 /// directory with a symlink to `~/Documents` inside that window and the gate's
 /// approval of one subtree becomes a move of another.
 ///
-/// `HelmTrash.remove` reads the resolved parent's identity once before the walk
-/// and again immediately before the move, and refuses the path if it changed.
-/// This does not *close* the window — the reference is taken as the batch
-/// begins, not at the gate, and a swap that lands before that first read is not
-/// caught, which is why the comment in `remove` is honest about narrowing to one
-/// stat chain. It does take the walk, the wide part, out of the attacker's hands.
+/// `HelmTrash.remove` reads the resolved parent's identity before the walk and
+/// again immediately before the move, and refuses the path if it changed. This
+/// narrows the window rather than closing it: a swap before the first read is
+/// not caught. It takes the walk, the wide part, out of the attacker's hands.
 final class HelmTrashAncestrySwapTests: XCTestCase {
 
     private var root: URL!

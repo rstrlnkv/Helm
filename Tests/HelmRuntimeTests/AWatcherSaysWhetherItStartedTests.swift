@@ -3,9 +3,9 @@ import XCTest
 import HelmTestSupport
 @testable import HelmRuntime
 
-/// `FolderWatcher.start` threw away `FSEventStreamStart`'s return and returned
-/// silently when `FSEventStreamCreate` answered nil, so two engines logged that
-/// they were watching a folder with nothing to say whether they were.
+/// `FolderWatcher` says whether its stream started: `FSEventStreamCreate` can
+/// answer nil and `FSEventStreamStart` can fail, and an engine that logs it is
+/// watching must know whether it is.
 ///
 /// The answer arrives on the watcher's own queue rather than as a return value,
 /// and that is deliberate: `watch` hands its work to that queue, where the change
@@ -13,8 +13,6 @@ import HelmTestSupport
 /// Autopilot's `folders` getter, which reads a keychain item. A `queue.sync` here
 /// would park whoever asked, up to and including the thread that draws, waiting
 /// for a change notification to finish.
-///
-/// Guards: f710c8f9 (FolderWatcher discarded whether its stream started).
 final class AWatcherSaysWhetherItStartedTests: XCTestCase {
 
     /// The answer, waited for rather than assumed: it comes back on the watcher's
@@ -43,8 +41,8 @@ final class AWatcherSaysWhetherItStartedTests: XCTestCase {
     }
 
     /// And watching nothing is not watching. `watch([])` is what both engines
-    /// reach when their folder list is empty, and it used to be indistinguishable
-    /// from a stream that was running.
+    /// reach when their folder list is empty, and it must not read as a running
+    /// stream.
     func testAWatcherWithNoFoldersSaysItIsNotWatching() throws {
         let watcher = FolderWatcher { _ in }
         defer { watcher.stop() }

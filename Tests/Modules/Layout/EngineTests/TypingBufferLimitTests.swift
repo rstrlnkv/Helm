@@ -16,9 +16,8 @@ final class TypingBufferLimitTests: XCTestCase {
     /// in the field — the first six letters survive, the replacement is typed
     /// after them, and somebody's token is now half English and half Russian.
     ///
-    /// A word the buffer could not hold entirely is not a word it may report.
-    /// Note that clearing on overflow is not a fix either: the tail of a long
-    /// token is just as wrong a thing to convert.
+    /// A word the buffer could not hold entirely is not a word it may report,
+    /// and nor is the tail of a long token: clearing on overflow is no answer.
     func testAWordTooLongToHoldIsNotReported() {
         var buffer = TypingBuffer()
         let typed = TypingBuffer.maxLength + 6

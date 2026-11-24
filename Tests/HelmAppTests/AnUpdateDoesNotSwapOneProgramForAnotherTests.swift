@@ -9,10 +9,10 @@ import HelmTestSupport
 /// An update is refused when the downloaded bundle calls itself something else.
 ///
 /// **Why this is a test.** The swap goes to `Bundle.main.bundlePath`, and a dev
-/// build is a release build with its identifier rewritten after signing — so
-/// `Helm Dev.app`, whose prerelease is strictly older than its own release,
-/// accepted an update and became a bundle calling itself `com.helm.app` at the
-/// dev address. Nothing noticed: both halves were correct on their own.
+/// build is a release build with its identifier rewritten after signing, so
+/// `Helm Dev.app`, whose prerelease is older than its own release, would take
+/// the release and become a bundle calling itself `com.helm.app` at the dev
+/// address. Both halves are correct on their own.
 final class AnUpdateDoesNotSwapOneProgramForAnotherTests: XCTestCase {
 
     /// A bundle on disk with nothing in it but the one key that matters.

@@ -10,17 +10,12 @@ public final class EngineNews<Value: Sendable>: @unchecked Sendable {
     private var subscribers: [UUID: AsyncStream<Value>.Continuation] = [:]
     /// Last value said in each slot, replayed to every new subscriber. Engine state
     /// is level-triggered (the last "state" IS the current truth), so a subscriber
-    /// that comes after the engine has spoken must still see it. Today that is a
-    /// test: in the app the model subscribes before `activate()`
-    /// (`ModuleHost.makeLive`), and no engine says anything in `init`.
-    /// Keyed by slot, not one value.
+    /// that comes after the engine has spoken must still see it. In the app the
+    /// model subscribes before `activate()` (`ModuleHost.makeLive`); tests may not.
     ///
-    /// One slot is right for one kind of news and wrong for two. Homebrew says
-    /// an operation's log (a streaming line) and its state (level-triggered) into
-    /// the same engine: closing and reopening its page during a `brew upgrade` gave
-    /// the new model whichever arrived last, and log lines stream continuously —
-    /// so the page came back idle, buttons live, with an operation still running
-    /// behind it.
+    /// Keyed by slot, because one value is wrong for two kinds of news: Homebrew
+    /// streams an operation's log lines beside its level-triggered state, and a
+    /// page reopened mid-operation must get the state, not the last line.
     private var last: [String: Value] = [:]
     /// Replayed in the order the slots first appeared, so a subscriber sees
     /// state in the sequence the engine established rather than a dictionary's.
@@ -29,14 +24,9 @@ public final class EngineNews<Value: Sendable>: @unchecked Sendable {
     public init() {}
 
     /// **The history goes out before the subscriber goes live, and both
-    /// happen under the one lock.** Registering first and yielding the
-    /// replay afterwards left a window: a `say` landing in it reached
-    /// the new subscriber immediately, and the replay — older by
-    /// definition — followed it. The stream then carried the new state
-    /// and then the state it had replaced, and a model that assigns
-    /// what it receives ends on the stale one. That is precisely the
-    /// defect this replay exists to prevent, produced by the replay
-    /// itself.
+    /// happen under the one lock.** Registering first would leave a window
+    /// where a `say` reaches the new subscriber before the older replay,
+    /// and a model that assigns what it receives ends on the stale state.
     ///
     /// Yielding while holding the lock is safe here and is the point: a
     /// `say` during the replay blocks until it is done and is delivered

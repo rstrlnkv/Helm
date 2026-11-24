@@ -8,7 +8,7 @@ import HelmTestSupport
 /// front» observations live behind `AppActivationPort`, and deactivation is the
 /// one call that takes them away.
 ///
-/// Defect class kept (ARCHITECTURE.md § State and lifetime): an observer started in
+/// Defect class kept (Architecture/StateAndLifetime.md § An observer outlives the thing it points at): an observer started in
 /// `activate()` that `deactivate()` does not stop. A module switched off would
 /// go on rebuilding a key tap whenever Helm came to the front, and selecting a
 /// layout for an app it was told to leave alone. The fake carries the port's

@@ -3,18 +3,11 @@ import XCTest
 
 /// A modifier whose release never arrived must not disable the gesture forever.
 ///
-/// The tap used to remember other held modifiers in a set: a code went in on
-/// its press and came out on its release. Nothing guarantees the release ever
-/// arrives — the tap starts while a key is held, an event is dropped while the
-/// tap is re-enabled, or a key reports its press and its release under
-/// different codes. Whatever the cause, the code stayed in the set and every
-/// tap from then on was spoiled: the gesture stopped working with the tap
-/// running, the events flowing and nothing in the log. Reading the flags off
-/// each event instead means there is no state left to get stuck.
-///
-/// Shipped broken in 0.7.2-dev.21, which put the 🌐 key into that set.
-///
-/// Guards a past defect: the tap remembered a modifier that never came back up (fix commit `7abc76f3`).
+/// Nothing guarantees a release arrives: the tap starts while a key is held, an
+/// event is dropped while the tap is re-enabled, or a key reports its press and
+/// release under different codes. Remembered between events, the code would
+/// spoil every later tap with nothing in the log. Reading the flags off each
+/// event leaves no state to get stuck.
 final class StuckModifierTests: XCTestCase {
 
     func testATapStillFiresAfterAModifierThatNeverReleased() {
@@ -32,8 +25,6 @@ final class StuckModifierTests: XCTestCase {
 
 /// The tap says why it refused, so a gesture that silently never fires leaves
 /// something behind to read.
-///
-/// Guards a past defect: the tap remembered a modifier that never came back up (fix commit `7abc76f3`).
 final class RefusalReasonTests: XCTestCase {
 
     private let rightCommand = TapKey.rightCommand.keyCode!

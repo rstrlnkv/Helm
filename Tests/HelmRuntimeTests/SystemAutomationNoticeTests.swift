@@ -4,24 +4,14 @@
 import XCTest
 @testable import HelmRuntime
 
-/// The one class in the tree that talks to `UNUserNotificationCenter`, and the
-/// one that could not be run at all.
+/// The one class in the tree that talks to `UNUserNotificationCenter`.
 ///
-/// It sat in VPN's engine until Keep Awake's battery veto needed a banner too;
-/// the class and this file moved to `HelmRuntime` together, because a test that
-/// stays behind in the module the code left is a test of nothing.
-///
-/// `UNUserNotificationCenter.current()` raises `NSInternalInconsistencyException`
-/// — "bundleProxyForCurrentProcess is nil" — in a process that is not a bundled
-/// app, and an ObjC exception does not fail a case: it takes the whole
-/// `swift test` run down. So the class was written to be reached only in the
-/// app and left with no coverage at all, one careless `await` away from a suite
-/// that cannot run.
-///
-/// It now asks whether it is inside an app bundle before it asks macOS
-/// anything. Measured rather than assumed: under `xctest` `Bundle.main` is
-/// `/Applications/Xcode.app/Contents/Developer/usr/bin`, whose extension is
-/// empty; the shipped app's is `Helm.app`.
+/// `UNUserNotificationCenter.current()` raises "bundleProxyForCurrentProcess is
+/// nil" in a process that is not a bundled app, and an ObjC exception does not
+/// fail a case: it takes the whole `swift test` run down. So the class asks
+/// whether it is inside an app bundle before it asks macOS anything: under
+/// `xctest`, `Bundle.main` has an empty extension; the shipped app's is
+/// `Helm.app`.
 final class SystemAutomationNoticeTests: XCTestCase {
 
     func testATestProcessIsNotAnAppBundle() {

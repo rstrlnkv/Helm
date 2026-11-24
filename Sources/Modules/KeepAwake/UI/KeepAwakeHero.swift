@@ -4,81 +4,31 @@ import Module_KeepAwake_Engine
 
 /// The top of the Keep Awake page: what is happening, and the verbs for it.
 ///
-/// A view of its own rather than two members of the settings page, because the
-/// only way to review motion is to measure it, and a `private var` on a page
-/// that needs a store and a running engine cannot be hosted in a
-/// window and photographed.
+/// A view of its own rather than two members of the settings page, so that its
+/// motion can be hosted in a window and measured without a store or an engine.
 ///
-/// **Why a cross-fade and not a reveal.** The house rule is that reveals grow —
-/// a measured height and `.clipped()`, never a fade — and it does not apply
-/// here, because nothing is being revealed. The four states are different
-/// views, not one view in four shapes: there is no shared figure to interpolate
-/// between a sentence and a countdown, and no row that was always there and is
-/// now visible. Growing would play the old block closing and the new one
-/// opening — two beats for a one-beat change, and the cards below it moving
-/// twice. `KeepAwakePanelTile` reached the same conclusion for its
-/// two rows; at 40 pt the conclusion does not change. (How the tile *spells* it
-/// is a different matter, and the table below is about that.)
+/// A cross-fade and not a reveal, because nothing is being revealed: the four
+/// states are different views, with no shared figure to interpolate between a
+/// sentence and a countdown. Growing would play the old block closing and the
+/// new one opening, two beats for a one-beat change.
 ///
-/// **What does change at 40 pt is the second half.** The tile's swap sits
-/// inside a card that is already ramping its own height, so nothing else is
-/// needed there. This block has the page's cards beneath it and nothing else
-/// moves them: `.timed` and `.idle` happen to be the same height, but
-/// `.indefinite` is a line shorter and `.automatic` a caption taller, and a
-/// fade that snaps the page by 20 pt underneath somebody's eyes is the fade
-/// being blamed for a jump it did not cause. So the states are cross-faded
-/// *and* the block's measured height is animated, both on one curve — two
-/// systems need one curve, not one duration. Measured off a 60 fps recording of
-/// the real window, on a grouped-Form page, not on this scroller of cards: starting a timer
-/// fades over 20 frames (2.767 s → 3.100 s), and the first card below travels
-/// 21 pt across 14 distinct positions in the same 300 ms. Stopping one: 13
-/// positions in 333 ms.
+/// The block's measured height is animated as well, on the same curve:
+/// `.indefinite` is a line shorter than `.timed` and `.automatic` a caption
+/// taller, and nothing else moves the cards beneath it. The clip needs that
+/// animating frame: a departing view is not inside the bounds a bare
+/// `.clipped()` is taken from, so without it the outgoing caption draws over
+/// the cards below for a few frames.
 ///
-/// The clip is not decoration. With the measured frame and `.clipped()`, ink
-/// past the block's new edge is 78707 at the first sample and **0** at every
-/// one after; without them it is 77427, 13025, 1438 — the outgoing caption goes
-/// on drawing over the form below for three more frames (measured on the grouped-Form page). `.clipped()` on its own does
-/// not do it: a departing view is not inside the bounds a bare clip is taken
-/// from, so the clip needs a frame that is animating.
-///
-/// **Where the transaction comes from, and why it is not `.animation`.** The
-/// state does not change because a button was pressed; it changes when the
-/// engine says so, in a published value, so there is no call
-/// site to wrap in `withAnimation`. The obvious answer is
-/// `.animation(HelmMotion.disclosure, value: state)` on the block — and it does
-/// nothing. Measured in an offscreen window, ink mass in the figure band, 20 ms
-/// apart, on this exact shape (a `Group`, two branches, `.transition(.opacity)`
-/// on each):
-///
-/// | how the swap is made | distinct values in 400 ms |
-/// |---|---|
-/// | `.animation(_:value:)` on the group | **1** |
-/// | `.animation(_:value:)`, group also clipped to a fixed height | **1** |
-/// | the branch written inside `withAnimation` | **11** |
-/// | the same, clipped | **11** |
-///
-/// The instrument was proved on the same run: a plain `.opacity` on a view that
-/// *stays* ramps over 8 samples under `.animation(_:value:)` and arrives in one
-/// step with the animation nil. So the modifier is not dead — it carries a
-/// property of a view that persists, and it carries neither a structural change
-/// (an insert or a remove, which is what a transition is) nor a layout one.
-/// This is the same shape of finding as the law about `onGeometryChange`, and
-/// the same remedy: the value that arrives from outside lands in this view's
-/// own state, *inside* a transaction, and everything drawn reads that.
-///
-/// The same measurement says a frame height is no better off: a plain grey
-/// block, nothing measured about it, gave `[160, 160, 160 …]` under
-/// `.animation(HelmMotion.disclosure, value:)` — one step, twenty samples — and
-/// `[3, 24, 53, 83, 110, 129, 143, 151, 155, 158, 159, 160 …]` with the same
-/// boolean written inside `withAnimation`. Which is why the suppression row
-/// below keeps its own drawn flag too.
+/// The state arrives from the engine, so there is no press to wrap in
+/// `withAnimation`, and `.animation(_:value:)` carries neither a transition nor
+/// a layout change. The value lands in this view's own state inside a
+/// transaction, and everything drawn reads that
+/// (Architecture/DesignSystem.md § Motion).
 struct KeepAwakeHero: View {
     let state: SessionHero
-    /// The tick the figure is drawn from. Taken from the page's `TimelineView`
-    /// rather than read off the clock inside the body, so the countdown is a
-    /// function of the tick: a body re-run for any other reason (a window
-    /// resize, the suppression row arriving) then redraws the same digits
-    /// instead of a new second nobody asked for, which would fire the numeric
+    /// The tick the figure is drawn from, taken from the page's `TimelineView`
+    /// rather than read off the clock inside the body: a body re-run for any
+    /// other reason then redraws the same digits instead of firing the numeric
     /// transition at a random moment.
     let now: Date
     let anyRuleOn: Bool
@@ -91,11 +41,8 @@ struct KeepAwakeHero: View {
     /// it decides whether Stop silences the rule as well as ending the session.
     let ruleHolds: Bool
     /// «The timer pauses the automation rules when it finishes», the setting.
-    ///
-    /// A property of the block rather than of the page, because the button's
-    /// word depends on it: with that switch on, Stop hands the second half back
-    /// to the person instead of taking it — `StopPress` has the reasoning, and
-    /// this block and the engine both spell the decision from it.
+    /// The button's word depends on it: `StopPress` has the reasoning, and this
+    /// block and the engine both spell the decision from it.
     let timerEndsAutomation: Bool
     /// The battery guard is holding everything down. When it is, it is the
     /// only thing worth saying: a paused rule is a detail beside «nothing this
@@ -115,8 +62,7 @@ struct KeepAwakeHero: View {
 
     /// Natural height of whichever state is showing, so the block can ramp
     /// between two of them instead of snapping. `nil` until the first one
-    /// lands; the law about writing it inside the transaction where it *lands*
-    /// is on `helmMeasuredHeight`, which does it.
+    /// lands; `helmMeasuredHeight` writes it.
     @State private var stateHeight: CGFloat?
     /// The same measurement for the suppression row, which grows and shrinks on
     /// the engine's say-so rather than on a press.
@@ -129,23 +75,22 @@ struct KeepAwakeHero: View {
     /// first value is not a change: a page opened while a timer is already
     /// running must show the countdown, not play `.idle` swapping into it. A
     /// `State` initial value is used once per identity, and this view's
-    /// identity is stable — the page's `TimelineView` builds it afresh every
-    /// second and the seed is ignored every time but the first.
+    /// identity is stable, so the seed is ignored on every rebuild after the
+    /// first.
     ///
-    /// An optional falling back to the property is a check that cannot fail:
-    /// while nothing has arrived the fallback *is* the live value, so the row
-    /// draws itself the instant the flag flips and the `onChange` that follows
-    /// animates from the new value to itself — measured, twenty samples of 300.
+    /// Not an optional falling back to the property: while nothing has arrived
+    /// the fallback is the live value, so the row would draw itself the instant
+    /// the flag flips and the `onChange` would animate from the new value to
+    /// itself.
     @State private var shownState: SessionHero
     @State private var shownSuppressed: Bool
 
     /// Free-form minutes, and the popover that takes them.
     ///
-    /// Not stored anywhere. The panel remembers its custom duration because the
-    /// panel's number *is* a setting — it is what its Start button starts next time.
-    /// Here the number is an instruction carried out on the spot, and a page
-    /// that reopened holding somebody's «47» from last week would be offering a
-    /// choice they had already used up.
+    /// Not stored anywhere. The panel's number is a setting (what its Start
+    /// button starts next time); here it is an instruction carried out on the
+    /// spot, and a page reopened holding last week's «47» would offer a choice
+    /// already used up.
     @State private var showCustomTime = false
     /// The number the field is holding, in minutes. Seeded from the module's
     /// default duration when the popover opens; that default is 0
@@ -153,15 +98,10 @@ struct KeepAwakeHero: View {
     /// at 00:00 with the verb disabled.
     @State private var customMinutes = 0
 
-    /// **The notice and the battery floor carry no defaults, deliberately.** With
-    /// `.none` and `0` a call site that forgets them compiles everywhere and gives
-    /// a hero that can never draw the notice. Of every input here they are the two
-    /// whose default *looks like* «nothing is wrong», so the compiler is the only
-    /// reader that can catch a call site dropping them.
-    ///
-    /// `timerEndsAutomation` is a third of the same kind and carries none for the
-    /// same reason: `false` is today's one-press Stop, so a call site forgetting
-    /// it would leave the two-step switched off with everything still compiling.
+    /// The notice, the battery floor and `timerEndsAutomation` carry no
+    /// defaults: each one's default looks like «nothing is wrong» (`.none`, `0`,
+    /// the one-press Stop), so the compiler is the only reader that can catch a
+    /// call site dropping them.
     init(state: SessionHero, now: Date, anyRuleOn: Bool, defaultDurationMinutes: Int,
          notice: KeepAwakeNotice, ruleHolds: Bool, timerEndsAutomation: Bool,
          appNames: [String] = [],
@@ -195,38 +135,26 @@ struct KeepAwakeHero: View {
                 // The four states' buttons only, asked once; the banner's «Resume» below stays the kit's well.
                 .helmCapsuleButtons()
                 .frame(maxWidth: .infinity)
-                // The measurement alone, and **not** `helmAccordion`: this
-                // block has no open state and never collapses. What it needs is
-                // to be the size of whatever it is showing, so that the
-                // cross-fade has an animating frame for its clip to be taken
-                // from — which is the next two lines and their own reason.
+                // The measurement alone, not `helmAccordion`: this block never
+                // collapses. It needs to be the size of whatever it shows, so
+                // the cross-fade has an animating frame for its clip.
                 .helmMeasuredHeight($stateHeight)
                 .frame(height: stateHeight, alignment: .top)
-                // The pair, not either half. The outgoing state is a line
-                // taller than the one arriving, and without an animating frame
-                // for the clip to be taken from it goes on drawing past the
-                // block's edge, over what sits below — measured, on the grouped-Form
-                // page, at the top of this file. The height would ramp without this frame (the swap's
-                // own transaction carries the layout), so it is here for the
-                // edge rather than for the travel.
+                // The pair, not either half: the frame is here for the edge
+                // rather than for the travel, so an outgoing state a line
+                // taller does not draw over what sits below.
                 .clipped()
-            // Under the four states rather than inside three of them.
-            //
-            // Written into each branch, it would make `.timed` a line taller than
-            // `.idle` — and those two are the same height *by design*, so that
-            // the cards below do not move when somebody presses «15 min».
-            // Out here the caption belongs to the block,
-            // not to a state, so every state keeps its height.
+            // Under the four states rather than inside three of them:
+            // `.timed` and `.idle` are the same height by design, so the cards
+            // below do not move when somebody presses «15 min».
             stopNote
             // The Mac is asleep, a rule that applies is on screen saying
             // nothing, and there is a third thing to read. It ends by itself
             // when the condition drops, so there is nothing to dismiss.
             //
             // Not an `if`, but the accordion: the row always exists and its
-            // height animates between 0 and its own measurement. `shownSuppressed`
-            // rather than the incoming flag is what the accordion's «the
-            // transaction comes from the caller» means for a value an engine
-            // publishes — the pair is written below.
+            // height animates between 0 and its own measurement, from
+            // `shownSuppressed`, which is written inside a transaction below.
             suppressionRow
                 .helmAccordion(open: shownSuppressed, height: $suppressedHeight)
         }
@@ -237,19 +165,14 @@ struct KeepAwakeHero: View {
             withAnimation(HelmMotion.disclosure) { shownState = arrived }
         }
         // Either notice fills the same slot, so the drawn flag is «there is
-        // something to say» rather than «a rule is paused» — the battery guard
-        // sets no `suppressed` of its own, and gating on that one left its
-        // banner permanently collapsed to nothing.
+        // something to say» rather than «a rule is paused»: the battery guard
+        // sets no `suppressed` of its own.
         .onChange(of: notice) { _, arrived in
             withAnimation(HelmMotion.disclosure) { shownSuppressed = arrived != .none }
         }
-        // **The one change on this page that nobody caused.** Every other state
-        // here follows a press: the reader has just pressed Stop, or a preset, and
-        // whatever the screen does next is the answer to it. The veto arrives
-        // because a charge fell — the session ends, five buttons go grey and a
-        // notice grows in, and none of that moves focus or changes the value of
-        // anything a VoiceOver reader is on. Without this the page would go silent
-        // and stay silent.
+        // The one change on this page that nobody caused. The veto arrives
+        // because a charge fell, and none of what follows moves focus or
+        // changes anything a VoiceOver reader is on, so it is said.
         //
         // On the rising edge only: `onChange` fires on a change, and the guard
         // lifting is not news that needs interrupting anybody — the buttons work
@@ -290,26 +213,20 @@ struct KeepAwakeHero: View {
                 .font(HelmText.heroFont)
                 .foregroundStyle(HelmText.quiet)
                 .helmHeroSentence()
-            // Why *this module* is not holding the Mac, in two readings and no
+            // Why this module is not holding the Mac, in two readings and no
             // third: «something other than Helm is keeping this Mac awake» would
-            // contradict the 40 pt sentence directly above it (see the note on
-            // `heroIdle`).
+            // contradict the 40 pt sentence directly above it.
             //
-            // And it steps aside for the banner. Under the veto «No rule applies
-            // right now» is true, and the vaguest of the three things the screen
-            // then knows, sitting between a figure saying the Mac sleeps and a
-            // notice naming the charge. Two answers to one question, and the
-            // useful one is the lower.
+            // It steps aside for the banner: under the veto it is true and the
+            // vaguest thing the screen knows, and the notice naming the charge
+            // is the useful answer.
             //
             // Opacity, not an `if`: the condition arrives from the engine and
             // changes under the reader, and `.idle` and `.timed` are the same
-            // height by design — the note on `stopNote` below is the same rule.
+            // height by design.
             Text(anyRuleOn ? KAStr.heroIdleReason : KAStr.heroNoRules)
-                // `quiet`, like the other three states' captions. `faint` would
-                // be one slot, two inks, 115 against 112 of 255, which is about
-                // 1.2 % of luminance and nothing anybody can see. A
-                // distinction that is in the source and not on the screen is
-                // one person twice.
+                // `quiet`, like the other three states' captions; `faint` here
+                // would differ from it by a luminance nobody can see.
                 .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                 .helmHeroSentence()
                 .opacity(batteryStopped ? 0 : 1)
@@ -317,10 +234,9 @@ struct KeepAwakeHero: View {
                 .accessibilityHidden(batteryStopped)
             HelmWrappingRow {
                 presetButtons
-                // Lengths first, then the one that has none. Every button up to
-                // here answers «for how long», and the free-form field is the
-                // fourth answer to that question rather than a fifth kind of
-                // thing — «Indefinite» between them read as a gap in the run.
+                // Lengths first, then the one that has none: the free-form field
+                // is the fourth answer to «for how long», and «Indefinite»
+                // between them would read as a gap in the run.
                 customButton
                 startButton(KAStr.indefinite, minutes: 0)
             }
@@ -347,13 +263,10 @@ struct KeepAwakeHero: View {
                 // slot behaves when one of them does.
                 .helmHeroSentence()
                 .contentTransition(.numericText(countsDown: true))
-                // The other half. A content transition is not an
-                // animation, it is an instruction for one: `.numericText` says
-                // *how* to interpolate a change that is already being animated,
-                // and this `Text` sits in a `TimelineView` that rebuilds it
-                // every second with no transaction anywhere near it — so the
-                // digits cut. Keyed on the label rather than on the interval,
-                // for the reason above.
+                // A content transition is an instruction for an animation, not
+                // one: the `TimelineView` rebuilds this with no transaction, so
+                // without this the digits cut. Keyed on the label, for the
+                // reason above.
                 .animation(HelmMotion.interface, value: label)
                 // A figure that redraws once a second is a figure VoiceOver
                 // re-speaks once a second, and it interrupts itself doing it —
@@ -379,14 +292,7 @@ struct KeepAwakeHero: View {
         }
     }
 
-    /// One figure for «awake», and the reason on the line below.
-    ///
-    /// Two sentences — «Awake until you stop it» and «A rule is holding the
-    /// Mac» — would not be parallel: one names a deadline, the other describes
-    /// the machinery, and the reader would parse a new construction for each
-    /// state of one screen. The figure answers a single question — is
-    /// this Mac going to sleep — and everything about *why* sits under it, which
-    /// is what the countdown state already did.
+    /// One figure for «awake», and the reason on the line below (`KAStr.heroAwake`).
     private var indefinite: some View {
         VStack(spacing: HelmSpace.s4) {
             Text(KAStr.heroAwake)
@@ -419,12 +325,9 @@ struct KeepAwakeHero: View {
                 // carrying whatever «Default duration» says would offer a length
                 // nobody chose for this session and hide the other two.
                 presetButtons
-                // Zero is not a length, it is «no deadline» — composing «start
-                // a timer for 0 min» from it would offer a timer of nothing.
-                // The word is the one the idle row uses for the same choice. A
-                // rule can hold this Mac for an hour or for a day, and without
-                // this the only way to say «and keep holding it after the app
-                // quits» is to stop the rule and start again by hand.
+                // Zero is not a length, it is «no deadline», in the idle row's
+                // word. It lets a person keep holding the Mac after the rule's
+                // app quits without stopping the rule and starting again.
                 customButton
                 startButton(KAStr.indefinite, minutes: 0)
                 stopButton
@@ -437,13 +340,10 @@ struct KeepAwakeHero: View {
 
     /// A field, not three loose pieces.
     ///
-    /// Not a bare `HStack` — a mark, some quiet text, a button — floating
-    /// under a centred 40 pt figure with nothing to say the three belong
-    /// together. `HelmBanner` is the shape for a statement with one verb beside
-    /// it, and the same one the panel's permissions notice draws. Its colours are
-    /// literal for the reason this block needs: the
-    /// height animates, `.clipped()` gives it a layer of its own, and a
-    /// hierarchical style resolves again when that layer is dropped — which
+    /// `HelmBanner` is the shape for a statement with one verb beside it, as
+    /// the panel's permissions notice draws. Its colours are literal because
+    /// the height animates, `.clipped()` gives it a layer of its own, and a
+    /// hierarchical style resolves again when that layer is dropped, which
     /// reads as a blink.
     @ViewBuilder private var suppressionRow: some View {
         KeepAwakeNoticeBanner(notice: notice, batteryFloor: batteryFloor, compact: false,
@@ -457,34 +357,16 @@ struct KeepAwakeHero: View {
     /// Stop does not only end a session — while a rule's trigger is true it
     /// silences the rule as well, so the Mac does not simply take itself back.
     ///
-    /// Not only in the branch that draws an automatic session: the *engine*
-    /// asks a different question, and `stopSession` suppresses whenever a
-    /// trigger holds, whatever started the session. A hand-started timer running
-    /// while the rule's app is also on screen draws the countdown, and Stop there
-    /// pauses the rule, so a screen has to mention it. One condition, and it is
-    /// the engine's own.
+    /// Not only in the branch that draws an automatic session: `stopSession`
+    /// suppresses whenever a trigger holds, whatever started the session, so a
+    /// hand-started timer with the rule's app on screen pauses the rule too.
+    /// One condition, and it is the engine's own.
     ///
-    /// A rule could be paused by pressing Stop, and has not been already.
-    ///
-    /// The second half is not pedantry. With the rule suppressed, the caption
-    /// «Stop pauses the rule until it applies again» directly above the banner
-    /// «Paused until the rule applies again» would be the same sentence twice,
-    /// one of them in the future tense about something that had already
-    /// happened. The banner is the one that belongs there, because it
-    /// carries the way back.
-    ///
-    /// And not while the battery guard has everything stopped, which is the one
-    /// state where a trigger holds, nothing is suppressed and there is **no Stop
-    /// button on screen**: `recompute` refreshes the triggers before the veto
-    /// returns, so the engine emits `isActive` false with a trigger true — `.idle`,
-    /// whose row is the three lengths and «Indefinite». The caption offered to
-    /// pause a rule by pressing something that is not there, over a banner saying
-    /// nothing will run until the charger goes in.
-    ///
-    /// And only while one press really does both. Once Stop is two of them the
-    /// sentence is false on the first — the rule goes on holding the Mac — and
-    /// redundant on the second, where the button has stopped saying «Stop» and
-    /// says what it does instead.
+    /// Not once the rule is suppressed: the banner then says the same thing and
+    /// carries the way back. Not under a notice: under the battery veto a
+    /// trigger holds with `.idle` drawn, and there is no Stop button on screen.
+    /// And only while one press does both: once Stop is two presses the
+    /// sentence is false on the first and redundant on the second.
     var saysWhatStopWouldDo: Bool {
         stopPress == .stopEverything && ruleHolds && notice == .none
     }
@@ -495,16 +377,12 @@ struct KeepAwakeHero: View {
     ///
     /// Recomputed on every rebuild, which the page's `TimelineView` does once a
     /// second. That is the whole of the button's memory: the second step is
-    /// offered while the state that means it is true, and stops being offered
-    /// the moment it is not — a rule that quits, a timer that runs out, a fresh
-    /// session, a relaunch.
+    /// offered while the state that means it is true, and not a moment longer.
     ///
     /// Read from `state` and not from the drawn `shownState`, so the word
-    /// belongs to the press that would land — the caption below is drawn from
-    /// the live values for the same reason. What that costs is 300 ms in which
-    /// the outgoing copy of a cross-fade carries the new word, at an opacity on
-    /// its way to nothing; what the other spelling would cost is a button that
-    /// says one thing and does another for exactly as long.
+    /// belongs to the press that would land; the caption below is drawn from
+    /// the live values for the same reason. The cost is a cross-fade's outgoing
+    /// copy carrying the new word as it fades.
     var stopPress: StopPress {
         StopPress.next(sessionRunning: state.sessionRunning, ruleHolds: ruleHolds,
                        timerEndsAutomation: timerEndsAutomation)
@@ -514,11 +392,9 @@ struct KeepAwakeHero: View {
         Text(KAStr.heroStopSuppresses)
             .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
             .helmHeroSentence()
-            // Opacity, not an `if`. The condition is the engine's and changes
-            // under the reader — an app quits, a charger comes out — and a
-            // caption that removed itself from the hierarchy would take the
-            // page's height with it in one frame, which is the accordion
-            // defect the suppression row below avoids.
+            // Opacity, not an `if`: the condition is the engine's and changes
+            // under the reader, and a caption that left the hierarchy would
+            // take the page's height with it in one frame.
             .opacity(saysWhatStopWouldDo ? 1 : 0)
             .animation(HelmMotion.interface, value: saysWhatStopWouldDo)
             .accessibilityHidden(!saysWhatStopWouldDo)
@@ -529,11 +405,8 @@ struct KeepAwakeHero: View {
 
     /// The three lengths every state offers, written once.
     ///
-    /// Spelled out in each of `.idle`, `.indefinite` and `.automatic` they would
-    /// be the same three numbers and the same three keys, three times, so
-    /// changing a preset, or adding a fourth, would mean three edits. Computed rather than stored: the labels are
-    /// `L()` lookups and a `static let` would freeze them in whatever language
-    /// the app opened in.
+    /// Computed rather than stored: the labels are `L()` lookups and a
+    /// `static let` would freeze them in whatever language the app opened in.
     @ViewBuilder private var presetButtons: some View {
         startButton(KAStr.duration(15), minutes: 15)
         startButton(KAStr.oneHour, minutes: 60)
@@ -553,27 +426,15 @@ struct KeepAwakeHero: View {
         .controlSize(.large)
     }
 
-    /// **No accented preset.** Every button on this row is the same button.
+    /// No accented preset: every button on this row is the same button. A fill
+    /// on the one matching «Default duration» would land on «Indefinite» on a
+    /// fresh install, and on any other reads as the thing to press. «Default
+    /// duration» in the Behaviour card names the controls that use it.
     ///
-    /// Filling the one matching «Default duration», to say which length the
-    /// panel's switch and the keyboard shortcut start, fails twice over: the
-    /// default is zero on a fresh install, so the fill lands on «Indefinite», the
-    /// one choice that never ends; with zero excluded it lands on «15 min», where
-    /// a filled button in a row of five reads as *the* thing to press rather than
-    /// as a note about a setting.
-    ///
-    /// That fact belongs where the setting is: «Default duration» in the
-    /// Behaviour card names the two controls that use it. A row of verbs is not the place to annotate a
-    /// preference.
-    /// Disabled while the battery guard vetoes, which is the one state where
-    /// every verb on this row is a verb that does nothing.
-    ///
-    /// `recompute` reaches `releaseForBattery` before anything is held, so a
-    /// session asked for under the veto is refused *instantly* — «a person who
-    /// pressed 15 min at 5 % saw nothing happen», which is the sentence the
-    /// notice was written for. The notice explains it; a live button beside it
-    /// invites the person to test the explanation, and the second press is what
-    /// makes somebody decide the app is broken rather than the battery flat.
+    /// Disabled while the battery guard vetoes: `recompute` reaches
+    /// `releaseForBattery` before anything is held, so a session asked for then
+    /// is refused at once, and a live button beside the notice invites the
+    /// person to test the explanation.
     private func startButton(_ title: String, minutes: Int) -> some View {
         Button(title) { start(minutes) }
             .controlSize(.large)
@@ -593,19 +454,16 @@ struct KeepAwakeHero: View {
 
     /// Any duration, not one of the presets.
     ///
-    /// Any length, on the page as on the panel: «keep this Mac awake for the
-    /// length of this build» is neither of the presets, and the page is the
-    /// screen somebody is already looking at when they think it. Same strings as
-    /// the panel's entry, so the two surfaces say the same word for the same thing.
+    /// Any length, on the page as on the panel, with the panel's strings, so
+    /// the two surfaces say the same word for the same thing.
     private var customButton: some View {
         Button(KAStr.customTime) {
             customMinutes = defaultDurationMinutes
             showCustomTime = true
         }
         .controlSize(.large)
-        // The fourth answer to «for how long», and under the veto it is as dead
-        // as the three presets beside it — see `startButton`. Worse than dead, in
-        // fact: this one opens a popover and takes a number before refusing.
+        // Disabled under the veto, as `startButton` is: otherwise it would
+        // open a popover and take a number before refusing.
         .disabled(batteryStopped)
         .popover(isPresented: $showCustomTime, arrowEdge: .bottom) { customTimeEditor }
     }
@@ -613,7 +471,7 @@ struct KeepAwakeHero: View {
     /// macOS's own timer, in the two units this module can keep.
     ///
     /// One box asking for minutes would make «two hours» a sum the person has
-    /// to do — and a box holding `120` reads the same as one holding `12`. `HelmDurationField` is the Clock shape: a column per unit, the
+    /// to do. `HelmDurationField` is the Clock shape: a column per unit, the
     /// abbreviation above the figure.
     var customTimeEditor: KeepAwakeCustomDuration {
         // Zero minutes is «Indefinite», and that word is the button beside

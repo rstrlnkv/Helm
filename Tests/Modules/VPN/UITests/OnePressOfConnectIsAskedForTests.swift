@@ -11,20 +11,14 @@ import HelmTestSupport
 
 /// **The state Helm declined to ask about, said on the screen.**
 ///
-/// An automatic connect may not open the System keychain, and an empty credential
-/// cache therefore means a rule cannot raise its tunnel at all. The engine knows
-/// (`VPNSecretBook`); until this landed the only account of it was a line in
-/// `~/Library/Logs/Helm/helm.log`, which is the outcome the house rules forbid — the app
-/// silently not doing the thing it was asked.
+/// An automatic connect may not open the System keychain, so an empty
+/// credential cache means a rule cannot raise its tunnel at all. The engine
+/// knows (`VPNSecretBook`), and the page says so: a line in `helm.log` alone
+/// would be the app silently not doing what it was asked.
 ///
-/// **One surface, and it used to be two.** The banner spoke for the configurations
-/// no rule covered and each rule's own row spoke for the rest, which is why
-/// `VPNRules.unspokenFor` existed. The rules live behind a door on their card now,
-/// so that row is invisible until somebody opens a popover — and a configuration
-/// that cannot raise its tunnel said so nowhere at all. Measured here as «the page
-/// grows a news card, once per locked configuration».
-///
-/// Past defect: commit ed04d30c, «fix(vpn): a rule that cannot reach its secret says so, once, on the screen».
+/// **One surface**: the rules live behind a door on their card, so a row
+/// under a rule would be invisible until somebody opens a popover. Measured
+/// here as «the page grows a news card, once per locked configuration».
 @MainActor
 final class OnePressOfConnectIsAskedForTests: XCTestCase {
 
@@ -71,11 +65,10 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
                        "a locked configuration drew no news card")
     }
 
-    /// **And it says it however many rules point at that configuration.** This is
-    /// the regression the door cost: `unspokenFor` removed a configuration a rule
-    /// covered, on the strength of a row 230 pt below — a row that is inside a
-    /// popover now. Both fixtures have a rule; one points at the locked
-    /// configuration and one somewhere else, and the sentence has to survive both.
+    /// **And it says it however many rules point at that configuration**: a
+    /// rule's row is inside a popover. Both fixtures have a rule; one points at
+    /// the locked configuration and one somewhere else, and the sentence has to
+    /// survive both.
     func testTheRuleBehindTheDoorDoesNotSilenceThePage() async {
         for pointedAt in ["One", "Other"] {
             let quiet = await newsCardHeight(locked: [], ruleFor: pointedAt)
@@ -90,10 +83,8 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
     /// configuration adds exactly the height of the first sentence.
     ///
     /// **Both fixtures keep the rule pointing at «One».** A rule pointing anywhere
-    /// else is a rule pointing at a configuration this Mac does not have, which is
-    /// its own sentence in the same card — measured at 107 pt against 54 while this
-    /// test was being written, and read for a moment as the page saying the locked
-    /// one twice.
+    /// else points at a configuration this Mac does not have, which is its own
+    /// sentence in the same card and would read as the locked one said twice.
     func testEachLockedConfigurationIsNamedOnce() async {
         let one = await newsCardHeight(locked: ["One"], ruleFor: "One")
         let two = await newsCardHeight(locked: ["One", "Two"], ruleFor: "One")

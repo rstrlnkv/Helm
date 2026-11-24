@@ -6,13 +6,9 @@ import Foundation
 /// Helm's own folder under Application Support: where durable state that is not
 /// the log lives.
 ///
-/// It was spelled out by hand in three places — `ScanJournal.defaultDirectory`
-/// builds it from `FileManager`, `ResetPlan.removablePaths` from a home directory, and the
-/// VPN credential purge needed a third — which is the duplication `HelmRuntime`
-/// exists to end. The two shapes are both here on purpose: a reset is a pure
-/// function of somebody's home directory and has to stay testable without
-/// touching this Mac's, while everything that actually writes wants the folder
-/// this process should use.
+/// Two shapes, on purpose: a reset is a pure function of somebody's home
+/// directory and has to stay testable without touching this Mac's, while
+/// everything that actually writes wants the folder this process should use.
 public enum HelmSupport {
 
     /// The folder for a given home directory, as a path. `ResetPlan` names it as

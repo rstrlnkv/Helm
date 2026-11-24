@@ -14,17 +14,14 @@ import HelmRuntime
 /// caret moved" would mean the shortcut destroying its own precondition. So
 /// one chord is forgiven and a second is not.
 ///
-/// The budget was being spent by the wrong keys. `SystemPorts` reported both
-/// the shortcut's chord and a plain Left Arrow, Home, End, Tab or Escape as
-/// the same `.navigation`, so an ordinary caret move was forgiven exactly like
-/// the shortcut — and with the default gesture there is nothing to spend the
-/// rest of the budget afterwards, because a solo-modifier tap goes through
-/// `deliverModifier` and never reaches `handle()`.
+/// A plain Left Arrow, Home, End, Tab or Escape is not the shortcut, so it is
+/// not forgiven. With the default gesture nothing else spends the budget: a
+/// solo-modifier tap goes through `deliverModifier` and never reaches
+/// `handle()`.
 ///
-/// The sequence that cost somebody their text: type `ghbdtn ` → converted to
-/// `привет ` → press Left Arrow once → tap the bound modifier → `canUndo` was
-/// still true → backspaces and a retype at the new caret, in the middle of the
-/// sentence, and the action the person actually wanted was eaten.
+/// The sequence this guards: type `ghbdtn ` → converted to `привет ` → press
+/// Left Arrow once → tap the bound modifier; an undo still live would send
+/// backspaces and a retype at the new caret, in the middle of the sentence.
 final class UndoAfterNavigationTests: XCTestCase {
     private var typing = FakeTyping()
     private var context = FakeSecure()
@@ -33,8 +30,8 @@ final class UndoAfterNavigationTests: XCTestCase {
     /// Recorded, because a chord is only forgiven when it matches the binding.
     /// With nothing bound — the shipped default, where the gesture is a tap of
     /// a single modifier through `deliverModifier` and never reaches `handle` —
-    /// no chord is forgiven at all, and this suite would be asserting about a
-    /// budget that no longer exists.
+    /// no chord is forgiven at all, and this suite would be asserting about no
+    /// budget.
     private func engine(shortcutBound: Bool = true) -> LayoutEngine {
         typing = FakeTyping(); context = FakeSecure(); tap = FakeTap()
         let store = layoutStore(bound: shortcutBound)
@@ -107,10 +104,9 @@ final class UndoAfterNavigationTests: XCTestCase {
         XCTAssertEqual(typing.performed.count, 1)
     }
 
-    /// **A chord that is not the shortcut is not forgiven, and that is the
-    /// repair.** The budget existed because the tap sees the recorded hotkey's
-    /// own keys before Carbon dispatches the action — a reason that covers one
-    /// chord and was being spent by all of them. ⌘V inserts text at the caret;
+    /// A chord that is not the shortcut is not forgiven. The budget exists
+    /// because the tap sees the recorded hotkey's own keys before Carbon
+    /// dispatches the action, a reason that covers one chord. ⌘V inserts text at the caret;
     /// the undo is a blind edit of a fixed length, and after a paste the text it
     /// was measured against is gone.
     func testAChordThatIsNotTheShortcutIsNotForgiven() {

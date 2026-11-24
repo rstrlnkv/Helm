@@ -3,14 +3,10 @@ import XCTest
 
 /// Which layout the word is converted *into*.
 ///
-/// With two input sources there is only one answer and the question never came
-/// up. With three — and a Mac with English, Russian and Ukrainian is ordinary —
-/// the engine took `installed().first(where: { $0 != current })`, which is
-/// whichever the system happens to list first. So the module converted into a
-/// layout the word has nothing to do with, and the person watched it produce
-/// nonsense and switch their keyboard to a language they were not typing.
-///
-/// Guards a past defect: conversion into the first-listed layout with three input sources (fix commit `134128dd`).
+/// With two input sources there is only one answer. With three — and a Mac
+/// with English, Russian and Ukrainian is ordinary — whichever the system lists
+/// first may be a layout the word has nothing to do with, producing nonsense
+/// and switching the keyboard to a language the person was not typing.
 final class OtherSourceTests: XCTestCase {
 
     private let abc = "com.apple.keylayout.ABC"
@@ -34,7 +30,7 @@ final class OtherSourceTests: XCTestCase {
 
     /// Nothing fits — `Fix` is still allowed to act, because forcing a
     /// conversion is exactly what that gesture is for. Falls back to the order
-    /// the system gives, which is what it always did.
+    /// the system gives.
     func testNoCandidateFitsFallsBackToTheFirst() {
         XCTAssertEqual(
             OtherSource.pick(current: abc, installed: [abc, uk, ru], makesSense: { _ in false }),

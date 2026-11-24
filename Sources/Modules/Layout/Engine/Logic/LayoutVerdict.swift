@@ -18,12 +18,9 @@ enum LayoutVerdict {
     /// question here and confidence is the right one.
     static let shortWordLength = 3
 
-    /// **One character used to be «a keystroke, not a word», and that was an
-    /// English sentence about a Russian problem.** English has two one-letter
-    /// words; Russian has eight, and they are `в`, `и`, `с`, `к`, `о`, `у`, `а`
-    /// and `я` — prepositions, conjunctions and a pronoun that turn up in
-    /// almost every sentence somebody types. Type `d ` on a latin layout and it
-    /// stayed `d` for ever.
+    /// One letter is a word: Russian has eight one-letter words (`в`, `и`, `с`,
+    /// `к`, `о`, `у`, `а`, `я`), prepositions, conjunctions and a pronoun that
+    /// turn up in almost every sentence.
     ///
     /// They are decided by `ShortWords.isCommon`, from an explicit list and
     /// never from a dictionary: a checker asked about one character answers
@@ -41,17 +38,14 @@ enum LayoutVerdict {
             // word in the middle of a sentence.
             guard ShortWords.isCommon(translated), !ShortWords.isCommon(word)
             else { return .leave }
-            // **At one letter the list replaces the checker rather than joining
-            // it.** Asked about a single character a checker answers noise in
-            // both directions — it accepts `d` as readily as it accepts `в` —
-            // so requiring its yes would refuse every Russian preposition and
-            // its no would let nothing through. The list already says what a
-            // one-letter word is, in both languages, and it is the stricter
-            // answer: `d` is not on the English side, which is the whole
-            // reason converting it is safe.
+            // At one letter the list replaces the checker rather than joining
+            // it: asked about a single character a checker answers noise in
+            // both directions (it accepts `d` as readily as `в`). The list says
+            // what a one-letter word is in both languages, and is stricter:
+            // `d` is not on the English side, which is why converting it is safe.
             //
-            // Two and three letters keep both bars. The dictionary is worth
-            // something there and nothing about that was failing.
+            // Two and three letters keep both bars: the dictionary is worth
+            // something there.
             if word.count > 1 {
                 guard !validAsTyped, validTranslated else { return .leave }
             }
@@ -84,9 +78,8 @@ enum LayoutVerdict {
         guard !exceptions.contains(word.lowercased()),
               !exceptions.contains(translated.lowercased()) else { return .leave }
         // The gesture skips the dictionary because the person asked for this
-        // word by name — but they also said, twice, that this exact word is to
-        // be left alone, and that is the later instruction. Same reasoning as
-        // the never-list one line above.
+        // word by name, but the never-list is their later instruction about
+        // this exact word.
         // The dictionary is skipped here, not this: they asked for a word, and
         // a bracket where a letter was is not the word they asked for.
         guard !turnsALetterIntoAMark(word, translated) else { return .leave }
@@ -95,16 +88,12 @@ enum LayoutVerdict {
 
     /// The same refusals, over a selection rather than a word.
     ///
-    /// **One gesture, two doors, and only one of them had these.** `fix()`
-    /// routes to `convertLastWord` → `decideForced` when nothing is selected,
-    /// and to the selection path when something is — and that path wrote
-    /// whatever the translation handed back. Put `ghbdtn` on «Never change
-    /// these words» *because* Helm kept rewriting it, then select the word —
-    /// which is exactly what somebody does when the module has been refusing to
-    /// touch it — and it was converted. `дфых` went to `las[` there too, the
-    /// case measured in this file's own doc comment.
+    /// One gesture, two doors: `fix()` routes to `convertLastWord` →
+    /// `decideForced` when nothing is selected, and to the selection path when
+    /// something is. Both refuse a word on the never-list and a letter that
+    /// would become a mark.
     ///
-    /// **All or none.** A selection half replaced is worse than one left alone:
+    /// All or none. A selection half replaced is worse than one left alone:
     /// the person gets a sentence in two alphabets and no idea which half moved.
     /// The same principle `TypingPort.perform` states for its own events.
     ///
@@ -125,15 +114,13 @@ enum LayoutVerdict {
         return false
     }
 
-    /// **A letter may become a letter; it may not become a mark.**
+    /// A letter may become a letter; it may not become a mark.
     ///
-    /// Opening the key table so `,` reads as `б` gave every letter its key in
-    /// the other direction too, and some of those keys type punctuation:
-    /// measured on this Mac, `дфых` translates to `las[` and `срфех` to
-    /// `chat[`, both of which `NSSpellChecker` accepts as English words — a
-    /// trailing mark does not trouble it. Without this guard the verdict, which
-    /// asks only «is the translation a word», rewrites a word into one with a
-    /// bracket on the end.
+    /// The key table reads `,` as `б`, so every letter has its key in the
+    /// other direction too, and some of those keys type punctuation: `дфых`
+    /// translates to `las[` and `срфех` to `chat[`, both of which
+    /// `NSSpellChecker` accepts as English words. Without this guard the
+    /// verdict would rewrite a word into one with a bracket on the end.
     ///
     /// Asymmetric on purpose. A mark becoming a letter is the repair itself —
     /// `cgfcb,j` → `спасибо`, where the comma key was pressed for `б`. A letter
@@ -155,10 +142,9 @@ enum LayoutVerdict {
 
     /// All caps is an acronym often enough that the dictionary's opinion of it
     /// is worth less than the risk.
-    /// **Two letters at least, because one capital is not an abbreviation.**
-    /// It is a word at the start of a sentence — `I`, `Я`, `В` — and this rule
-    /// refused every one of them the moment one-letter words became reachable.
-    /// `GDP` and `ООО` are what it is for, and they are all longer than this.
+    /// Two letters at least, because one capital is not an abbreviation: it is
+    /// a word at the start of a sentence (`I`, `Я`, `В`). `GDP` and `ООО` are
+    /// what it is for.
     private static func isAcronym(_ word: String) -> Bool {
         let letters = word.filter(\.isLetter)
         return letters.count >= 2 && letters.allSatisfy(\.isUppercase)

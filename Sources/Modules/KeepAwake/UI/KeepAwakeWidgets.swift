@@ -4,9 +4,7 @@ import Module_KeepAwake_Engine
 
 /// Keep Awake at 1×1: the one number, and nothing to press.
 ///
-/// A size is a different question, not a smaller answer. The 2×1 tile is the
-/// whole control — presets, the countdown, the automation drawer — and none of
-/// that fits in a square that is 144 pt wide. What does fit is the answer to
+/// A size is a different question, not a smaller answer: a 144 pt square holds
 /// «is it on, and for how much longer», which is what somebody glances at the
 /// panel for.
 struct KeepAwakeCompactWidget: View {
@@ -21,9 +19,8 @@ struct KeepAwakeCompactWidget: View {
             HelmWidgetHeader(symbol: "moon.zzz.fill", tint: KeepAwakeDescriptor.tint.colour,
                              name: KAStr.moduleName, active: vm.isActive, compact: true)
             if let end = vm.endDate, vm.isActive {
-                // The clock has to keep its own time: nothing else in the panel
-                // redraws once a second, and a countdown that only moves when
-                // something else happens is a stopped clock with a good excuse.
+                // The clock keeps its own time: nothing else in the panel
+                // redraws once a second.
                 TimelineView(.periodic(from: .now, by: 1)) { ctx in
                     HelmWidgetFigure(TimerProgress.label(remaining: max(0, end.timeIntervalSince(ctx.date))),
                                      KAStr.timer, .compact)

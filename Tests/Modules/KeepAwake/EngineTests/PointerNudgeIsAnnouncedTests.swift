@@ -4,11 +4,10 @@ import HelmTestSupport
 import XCTest
 @testable import Module_KeepAwake_Engine
 
-/// The nudge tells the rest of the app it was Helm, and nothing held it.
+/// The nudge tells the rest of the app it was Helm.
 ///
-/// Moving the pointer resets the system idle counter — measured in the engine's
-/// own comment at 284,97 s to 0,30 s — and this module's default interval is
-/// five minutes, which is exactly `ScanSchedule.idleThreshold`. So anything
+/// Moving the pointer resets the system idle counter, and this module's default
+/// interval is five minutes, which is exactly `ScanSchedule.idleThreshold`. So anything
 /// deciding "has the person left" from that counter alone finds the Mac
 /// permanently busy, and **no background scan ever runs** for anybody with this
 /// switch on. `ScanCoordinator` subtracts what it hears on
@@ -16,11 +15,8 @@ import XCTest
 /// posts it.
 ///
 /// Three parts in three targets — the name in `HelmRuntime`, the post here, the
-/// listener in `HelmApp` — and no test touched any of them. The failure is
-/// silent in the worst way: Keep Awake goes on working perfectly, and a
-/// different module quietly stops.
-///
-/// Guards: f69e4167 (the nudge was not announced as Helm's own).
+/// listener in `HelmApp`. The failure is silent: Keep Awake goes on working
+/// perfectly, and a different module quietly stops.
 final class PointerNudgeIsAnnouncedTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!

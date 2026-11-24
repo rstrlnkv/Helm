@@ -9,17 +9,12 @@ public struct FileSystemLeftovers: LeftoversFilePort {
     }
 
     /// **Not `resolvingSymlinksInPath()`, which is `realpath` and gives up on a
-    /// link whose target is not there.** It fails with `ENOENT` for one, and
-    /// Foundation hands back the spelling it was given — so the one caller of this
-    /// port, `LeftoversScanner.isItsOwnPlace`, asked «did resolving this change
-    /// it» about a planted link and was told no. The planting is done in that
-    /// order on purpose: the link goes down while its target does not exist, the
-    /// scan reads `ENOENT` from `opendir` as an empty folder, and the source
-    /// produces no row of any kind; the target is created afterwards.
-    ///
-    /// `PathCanonical.followingEveryLink` answers the question this port's
-    /// documentation states — the whole path, every link followed — for a target
-    /// that is not there as well as for one that is.
+    /// link whose target is not there**: it fails with `ENOENT` and Foundation hands
+    /// back the spelling it was given, so `LeftoversScanner.isItsOwnPlace` would be
+    /// told a planted link changes nothing. A link planted before its target exists
+    /// makes the scan read `ENOENT` as an empty folder with no row of any kind.
+    /// `PathCanonical.followingEveryLink` follows every link in the whole path, for
+    /// a target that is not there as well as for one that is.
     public func resolvingSymlinks(_ url: URL) -> URL {
         URL(fileURLWithPath: PathCanonical.followingEveryLink(url.path))
     }
@@ -51,12 +46,11 @@ public struct FileSystemLeftovers: LeftoversFilePort {
 ///
 /// **What this one does not have is that LaunchServices backstop.** The
 /// shared walk covers a vendor folder like `/Applications/Adobe Photoshop 2026/`,
-/// but not the other case
-/// `OrphanDetector.isOrphan` records: a helper nested inside another
-/// application's bundle, under `Contents/`, which is in no applications
-/// directory at any depth. Uninstaller pays for that lookup because it once
-/// offered such bundles for deletion while their apps were installed and
-/// running. This module trashes on the same kind of judgement.
+/// but not a helper nested inside another application's bundle, under
+/// `Contents/`, which is in no applications directory at any depth
+/// (`OrphanDetector.isOrphan`). Uninstaller pays for that lookup because it
+/// offers bundles for deletion; this module trashes on the same kind of
+/// judgement.
 public struct WorkspaceInstalledApps: InstalledAppsPort {
     private let home: String
 
@@ -70,8 +64,7 @@ public struct WorkspaceInstalledApps: InstalledAppsPort {
 }
 
 /// What macOS has loaded, and the one switch that changes it. Reading goes
-/// through the shared tested parser — this file used to carry its own ad-hoc
-/// line splitter.
+/// through the shared tested parser.
 ///
 /// One type for both protocols because both are `launchctl` and
 /// `systemextensionsctl` on this machine; the split is about what a *caller*
@@ -83,8 +76,8 @@ public struct ActiveExtensions: LoadedItemsPort, LoginItemSwitchPort {
     }
 
     /// `nil` for a `launchctl` that did not answer, which is not an empty disabled
-    /// list: the exit status is the only thing that tells them apart, and dropping
-    /// it made a tool that failed say «nobody has switched anything off».
+    /// list: the exit status is the only thing that tells them apart, and without
+    /// it a tool that failed says «nobody has switched anything off».
     public func disabledLabels() -> Set<String>? {
         disabledLabels(timeout: nil)
     }
@@ -99,7 +92,7 @@ public struct ActiveExtensions: LoadedItemsPort, LoginItemSwitchPort {
     /// **How long one `launchctl` call may take: ten seconds.** `willDisable()` calls
     /// the port on the main thread through a synchronous contract
     /// (`HelmContract/ModuleEngine.swift`), and the reset's order leaves no room to
-    /// hop off it, so this deadline is what bounds main. Owner decision Q9a.
+    /// hop off it, so this deadline is what bounds main.
     static let launchctlDeadline: TimeInterval = 10
 
     public func setDisabled(_ disabled: Bool, label: String) -> SwitchAnswer {

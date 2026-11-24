@@ -5,8 +5,6 @@ import XCTest
 /// blame on a system extension, so a wrong entry here becomes wrong advice on a
 /// failure sheet. Fed the real `systemextensionsctl list` shape, including the
 /// two kinds of line that are not extensions.
-///
-/// Guards: 5f196564 (a host id matched without a separator blamed the wrong app).
 final class SystemExtensionHostTests: XCTestCase {
 
     /// Real output shape: a `---` section marker, the column header, one enabled

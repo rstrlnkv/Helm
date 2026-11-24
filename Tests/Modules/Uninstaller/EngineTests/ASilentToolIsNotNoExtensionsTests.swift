@@ -3,27 +3,14 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
-/// **`systemextensionsctl`'s silence was read as «no extensions», and it cost the
-/// module its one actionable reason.**
-///
-/// `SystemExtensionCLI.listing()` answers nil when the tool's exit status is not
-/// 0; `listOutput()` folded that to `""`, and the host lookup was built on the
-/// folded reader. So a bundle macOS refused *because its extension is live* was
-/// classified from the bare Cocoa code, and the failure sheet's «Open
-/// Extensions…» button — the one thing on that screen a person can act on — did
-/// not appear.
-///
-/// The repair is on the port, the `PowerSource.supply()` precedent:
-/// `activeExtensionHosts()` answers `Set<String>?`, nil for «the tool did not
-/// answer». Two things follow, and both are below: a silence is said out loud
-/// instead of being taken for an empty list, and it is **not** remembered for the
-/// rest of the batch, so one transient failure does not take the extension reason
-/// away from every bundle after it.
+/// `systemextensionsctl`'s silence is not «no extensions»: read so, a bundle
+/// refused for a live extension loses the sheet's «Open Extensions…», the one
+/// thing a person can act on. `activeExtensionHosts()` answers nil for it; the
+/// silence is logged, and not remembered for the rest of the batch.
 private final class ToolThatMaySayNothing: SystemExtensionPort, @unchecked Sendable {
     private let lock = NSLock()
-    /// One answer per call, the last repeating — so «it failed, then it worked»
-    /// is a state this fake can be in. A single stored value could not say it,
-    /// and that is the state the whole finding is about.
+    /// One answer per call, the last repeating, so «it failed, then it worked»
+    /// is a state this fake can be in.
     private var answers: [Set<String>?]
     private var count = 0
 
@@ -41,7 +28,6 @@ private final class ToolThatMaySayNothing: SystemExtensionPort, @unchecked Senda
 
 }
 
-/// Past defect: fix commit f710c8f9.
 final class ASilentToolIsNotNoExtensionsTests: XCTestCase {
     private var root: URL!
 
@@ -94,16 +80,11 @@ final class ASilentToolIsNotNoExtensionsTests: XCTestCase {
                        "a reading Helm never got was turned into a claim about the bundle")
     }
 
-    /// **The harm, made observable.** One silence used to be remembered as an
-    /// empty list for the whole batch, so every bundle after it lost the reason —
-    /// and with it the «Open Extensions…» button, the only thing on that screen
-    /// anybody can act on.
-    /// Both bundles host an extension, and the tool is silent only the first time
-    /// it is asked. Which of the two `HelmTrash` reaches first is its business, so
-    /// the assertion is on the pair: one of them was judged while nothing had been
-    /// read — that one keeps macOS's own reason — and the other was judged from an
-    /// answer that arrived because the silence was not remembered. With the
-    /// silence stored, **both** would read as «no permission».
+    /// Both bundles host an extension, and the tool is silent only the first
+    /// time. Which one `HelmTrash` reaches first is its business, so the assertion
+    /// is on the pair: one keeps macOS's own reason, the other is judged from the
+    /// answer that came because the silence was not remembered. Stored, both
+    /// would read as «no permission».
     func test_a_silence_is_not_remembered_for_the_rest_of_the_batch() async throws {
         let first = try makeApp(named: "First", bundleID: "com.vendor.first")
         let second = try makeApp(named: "Second", bundleID: "com.vendor.second")
@@ -124,8 +105,7 @@ final class ASilentToolIsNotNoExtensionsTests: XCTestCase {
                        "and the one judged before any answer arrived keeps macOS's own reason")
     }
 
-    /// The half that keeps the retry above from becoming a shell-out per path: an
-    /// answer is an answer, and it is read once for the batch.
+    /// An answer is read once for the batch, so the retry is not a shell-out per path.
     func test_an_answer_is_read_once_for_the_whole_batch() async throws {
         let one = try makeApp(named: "One", bundleID: "com.vendor.one")
         let two = try makeApp(named: "Two", bundleID: "com.vendor.two")

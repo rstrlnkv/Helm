@@ -4,21 +4,12 @@ import HelmRuntime
 
 /// A session the person started, across the end of the process.
 ///
-/// `endDate`, `startDate` and `manualOn` lived in engine memory and nowhere else,
-/// so a two-hour Keep Awake was cancelled by anything that ended the process —
-/// and the routine one is Helm's own silent updater, which calls
-/// `NSApp.terminate(nil)` (`HelmApp/Installer.swift:44`) and has a detached script
-/// swap the bundle and start it again. The IOKit assertion is per-process too, so
-/// the Mac could sleep with the countdown gone from the menu bar and nothing
-/// anywhere saying the session had been cut short.
+/// Anything that ends the process would otherwise cancel the session, and the
+/// routine one is Helm's own silent updater, which terminates the app and has a
+/// detached script start it again.
+/// Architecture/KeepAwake.md § State a person asked for outlives the process.
 ///
-/// The module already knew how to survive a relaunch, one field away:
-/// `clamshellGuard` is written at the moment sleep is disabled and undone in
-/// `activate()`, because that change outlives the process. It protected the
-/// *system* from being left wrong and not the person's own request.
-///
-/// A relaunch is two engines over one store — which is what the module's own
-/// `KeepAwakeEngineTests` already does for the clamshell recovery.
+/// A relaunch is two engines over one store.
 final class SessionSurvivesRelaunchTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!
@@ -57,7 +48,7 @@ final class SessionSurvivesRelaunchTests: XCTestCase {
     }
 
     /// The countdown in the menu bar and the arc's proportion are both drawn from
-    /// `startDate` (`KeepAwakeDescriptor.swift:61`), so a session that comes back
+    /// `startDate` (`KeepAwakeDescriptor`), so a session that comes back
     /// without one comes back with no countdown.
     func testTheRestoredSessionKnowsWhenItBegan() {
         let before = engine()
@@ -177,16 +168,13 @@ final class SessionSurvivesRelaunchTests: XCTestCase {
     /// And the deadline the engine comes back holding is the one it decided on,
     /// not the one it read.
     ///
-    /// A stored pair can be credible as a *duration* and absurd as a pair of
+    /// A stored pair can be credible as a duration and absurd as a pair of
     /// dates: `sessionStartedAt` and `sessionEndsAt` an hour apart out at 1e19
-    /// bound each other to an hour, so the session restores — and the engine
-    /// then kept the stored `endsAt` as its `endDate`. Every countdown surface
-    /// draws `TimerProgress.label(remaining: end.timeIntervalSinceNow)`, which
-    /// converts that `Double` to an `Int`, so the menu bar, the panel widget and
-    /// the settings page each trap on the next redraw. The expiry the engine
-    /// schedules is measured from the decision, so the two disagreed anyway —
-    /// on a Mac whose clock had moved, the countdown showed a day while the
-    /// timer was set for half an hour.
+    /// bound each other to an hour, so the session restores. Every countdown
+    /// surface converts `end.timeIntervalSinceNow` to an `Int`, so a stored
+    /// `endsAt` kept as `endDate` would trap the menu bar, the panel widget and
+    /// the settings page on the next redraw, and disagree with the expiry the
+    /// engine schedules.
     func testTheRestoredDeadlineIsTheOneTheModuleDecidedOn() throws {
         store.set(true, for: KeepAwakeEngine.SessionKey.on)
         store.set(1e19 - 4096, for: KeepAwakeEngine.SessionKey.startedAt)
@@ -223,10 +211,9 @@ final class SessionSurvivesRelaunchTests: XCTestCase {
         XCTAssertFalse(assertions.held)
     }
 
-    /// And the modest version, which never traps and is the worse defect for
-    /// it: a start a minute past the deadline restored a session of -60
-    /// seconds, so the engine held the IOKit assertion — the Mac awake, on
-    /// purpose — behind a countdown every surface drew as 0:00.
+    /// And the modest version, which never traps: a start a minute past the
+    /// deadline must not restore a session of -60 seconds, holding the Mac
+    /// awake behind a countdown every surface draws as 0:00.
     func testASessionThatEndedBeforeItBeganDoesNotHoldTheMacAwake() {
         let ends = clock.current.addingTimeInterval(1800)
         store.set(true, for: KeepAwakeEngine.SessionKey.on)
@@ -245,10 +232,9 @@ final class SessionSurvivesRelaunchTests: XCTestCase {
     // MARK: - A deadline that is not a date
 
     /// The session is on and the stored deadline is something Helm never writes.
-    /// Read as "no deadline" it came back as an indefinite session: the Mac held
-    /// awake for as long as nobody noticed, on the strength of a number nobody
-    /// wrote. Nothing is held and the engine is off; the record is wiped so a
-    /// second launch ends in the same state.
+    /// Read as "no deadline" it would be an indefinite session on the strength
+    /// of a number nobody wrote. Nothing is held and the engine is off; the
+    /// record is wiped so a second launch ends in the same state.
     private func assertRefusedWhenDeadlineIs(_ junk: Any, _ what: String,
                                              file: StaticString = #filePath, line: UInt = #line) {
         store.set(true, for: KeepAwakeEngine.SessionKey.on)

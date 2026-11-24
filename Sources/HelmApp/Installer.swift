@@ -28,9 +28,9 @@ enum Installer {
     }
 
     /// Unzips `zipURL`, validates the bundle, then swaps + relaunches (terminates the app).
-    /// Runs on the main actor, but the unzip does not: `ditto` on the 7.4 MB asset
-    /// is a blocking child process, and holding the main thread through it froze
-    /// the Installing line. Everything that touches `Bundle.main`, `NSApp` or the
+    /// Runs on the main actor, but the unzip does not: `ditto` is a blocking
+    /// child process, and holding the main thread through it would freeze the
+    /// Installing line. Everything that touches `Bundle.main`, `NSApp` or the
     /// swap stays on main.
     ///
     /// The unzipped payload is removed on every way out that does not hand it to
@@ -74,13 +74,10 @@ enum Installer {
         guard accepts(version: got, build: build(ofBundleAt: newApp), expected: expectedVersion)
         else { throw InstallError.versionMismatch(got) }
 
-        // The swap goes to Bundle.main.bundlePath, whatever is standing there —
-        // so before it moves anything, the downloaded bundle must call itself
-        // the same program that is installed here. Without this, a dev build
-        // (a release build with its identifier rewritten after signing) reads
-        // Beta's release, which is newer than its own prerelease, and ends up
-        // holding a bundle that calls itself the release's identifier at the
-        // dev build's own address.
+        // The swap goes to Bundle.main.bundlePath, whatever is standing there,
+        // so the downloaded bundle must call itself the same program that is
+        // installed here: a dev build (identifier rewritten after signing) would
+        // otherwise take Beta's newer release into the dev build's own address.
         guard isSameProgram(newApp, as: installedID) else {
             throw InstallError.identityMismatch
         }
@@ -170,11 +167,9 @@ enum Installer {
         }
 
         // Not `HelmProcess.run`: that runner reads the child to EOF and waits
-        // for its status, and this child is waiting for *this* process to exit
-        // before it does any work. It is `HelmProcess.start` all the same —
-        // the launch itself has to go through the door that answers instead of
-        // raising, and this is the worst place in the app for an abort, since
-        // it happens while Helm is replacing itself.
+        // for its status, and this child waits for *this* process to exit.
+        // `HelmProcess.start` all the same, the door that answers instead of
+        // raising: an abort while Helm is replacing itself is the worst place.
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/bash")
         proc.arguments = [scriptURL.path]

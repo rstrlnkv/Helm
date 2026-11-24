@@ -5,13 +5,9 @@ import HelmRuntime
 
 /// The module's settings read from a file any process can rewrite.
 ///
-/// `SettingsKeysAreSpelledOnceTests` proves each key is written and read under
-/// its own name, and that a jiggle interval below a minute is clamped. The
-/// reason that clamp exists is stated in the source — "the menu cannot offer
-/// less than a minute, and a plist can say anything" — and it is the whole of
-/// this file's premise: `~/Library/Preferences` is not a trusted input, a
-/// menu's range is not a guarantee about what is on disk, and a value that
-/// arrives from there is arithmetic the module is about to do.
+/// `~/Library/Preferences` is not a trusted input, a menu's range is not a
+/// guarantee about what is on disk, and a value that arrives from there is
+/// arithmetic the module is about to do.
 ///
 /// The module whose worst failure is a Mac that will not sleep is where that
 /// matters most.
@@ -34,8 +30,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
 
     // MARK: - Numbers that are about to be multiplied
 
-    /// The jiggle interval was clamped from below and not from above, and its
-    /// only reader multiplies it:
+    /// The jiggle interval's only reader multiplies it:
     ///
     ///     let interval = TimeInterval(settings.jiggleIntervalMinutes * 60)
     ///     // KeepAwakeEngine.scheduleJiggle
@@ -44,7 +39,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
     /// well as debug, so any stored value above `Int.max / 60` is not a long
     /// interval — it is the app terminating the moment a session with jiggle on
     /// starts. `<integer>9223372036854775807</integer>` is a legal plist and
-    /// `UserDefaults` hands it straight back (measured).
+    /// `UserDefaults` hands it straight back.
     ///
     /// Asserted as the property the multiply needs rather than as a particular
     /// clamped value, so a fix may choose any ceiling it likes.
@@ -58,10 +53,9 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
         }
     }
 
-    /// The same shape one setting over.
-    /// `defaultDurationMinutes` had no clamp at all, and `startSession` does
-    /// `TimeInterval(minutes * 60)` twice on it — reached from `toggleSession`,
-    /// which is the panel tile's main button.
+    /// The same shape one setting over: `startSession` does
+    /// `TimeInterval(minutes * 60)` on `defaultDurationMinutes`, reached from
+    /// `toggleSession`, the panel tile's main button.
     ///
     /// The picker offers a fixed list of durations, so nothing a person can do
     /// produces this; a hand-edited or migrated plist can, and the picker's
@@ -73,15 +67,11 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
                                  + "overflows the multiply that turns it into seconds")
     }
 
-    /// The weakest of the three: the battery floor was unclamped in both
-    /// directions. The slider offers 5…50; a stored 0 or
-    /// a negative leaves `percent <= threshold` unable to fire, which switches
-    /// off the only thing that ever ends an unattended session — while the
-    /// screen still draws the guard as on. A stored 101 ends every session on
-    /// battery immediately, which reads as the feature being broken.
-    ///
-    /// Hardening rather than a crash. It is here because its sibling one field
-    /// up *is* clamped, for a reason that applies word for word to this one.
+    /// The battery floor, in both directions. The slider offers 5…50; a stored
+    /// 0 or a negative leaves `percent <= threshold` unable to fire, which
+    /// switches off the only thing that ever ends an unattended session while
+    /// the screen draws the guard as on. A stored 101 ends every session on
+    /// battery immediately.
     func testAStoredBatteryFloorStaysInsideWhatTheStepperCanOffer() {
         for stored in [0, -1, 101, Int.max] {
             plant("batteryGuardPercent", stored)
@@ -90,9 +80,8 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
         }
     }
 
-    /// What must keep working once the ceilings go in: the ordinary values
-    /// come back untouched. A clamp that ate
-    /// a real answer would be the same defect wearing the other sign.
+    /// The ordinary values come back untouched: a clamp that ate a real answer
+    /// would be the same defect wearing the other sign.
     func testTheValuesTheStepperCanProduceComeBackUnchanged() {
         for minutes in [1, 5, 30, 60] {
             plant("jiggleIntervalMinutes", minutes)
@@ -119,7 +108,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
     /// Each default is asserted to be something other than the type's zero, so
     /// "answered the default" cannot be confused with "answered nothing".
     ///
-    /// **A number is not the wrong type for a flag**, which is why `1` is not in
+    /// A number is not the wrong type for a flag, which is why `1` is not in
     /// the list below and has a test of its own. A plist holds no booleans of
     /// its own kind: `<true/>` and `<integer>1</integer>` arrive as the same
     /// `NSNumber`, and the cast reads its value.
@@ -171,11 +160,9 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
     /// not JSON. It must come back as no rules rather than as invented ones,
     /// and it must not take the process with it.
     ///
-    /// (What it does *not* do is fall back to the older `autoApps` list, because
-    /// the string is non-empty. That is a loss, and it fails in the safe
-    /// direction — the Mac sleeps — so the module goes on working while the apps
-    /// somebody chose stop holding it awake. The line that says so is
-    /// `testARulesStringThatCouldNotBeReadIsSaidSoInTheLog` below.)
+    /// It does not fall back to the older `autoApps` list, because the string is
+    /// non-empty: a loss in the safe direction, said by
+    /// `testARulesStringThatCouldNotBeReadIsSaidSoInTheLog` below.
     func testARulesStringThatIsNotJSONIsNoRulesRatherThanInventedOnes() {
         plant("autoApps", ["com.apple.Safari"])
         XCTAssertEqual(settings.appTriggers, [AppTrigger(bundleID: "com.apple.Safari")],
@@ -200,11 +187,9 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
 
     // MARK: - The one loss that is allowed to be quiet, but not silent
 
-    /// **A rules string nothing can read costs somebody their apps, and the
-    /// module goes on looking well.** Nothing is refused and nothing crashes:
-    /// the list is simply empty, the conditions never hold, and the Mac sleeps
-    /// through the render it was meant to sit out. The safe direction is the
-    /// right one to fail in; saying nothing at all is not part of it.
+    /// A rules string nothing can read costs somebody their apps while the
+    /// module looks well: the list is empty, the conditions never hold, and the
+    /// Mac sleeps. The safe direction is right; saying nothing is not.
     ///
     /// Written at `activate`, once, and not in `appTriggers` — that getter is
     /// read from `recompute`, which runs from three observers, and this module's

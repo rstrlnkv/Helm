@@ -3,19 +3,15 @@ import Foundation
 /// Which request a reply belongs to, so an older one can be dropped rather than
 /// land on top of a newer answer.
 ///
-/// **A counter, not a latch, and the difference is the whole point.** A latch —
-/// «refuse a second request while the first runs» — is right for an *act*
-/// (`guard !busy` before a removal) and wrong for a *reading*: the second request
-/// exists because something changed, and refusing it leaves the screen showing
-/// what was true before. Leftovers is the case that made it plain: `setDisabled`
-/// rescans so the row shows what launchd actually did, so a latch there would drop
-/// the one scan that tells the truth. What has to be dropped is the older
+/// **A counter, not a latch.** A latch («refuse a second request while the
+/// first runs») is right for an *act* (`guard !busy` before a removal) and
+/// wrong for a *reading*: the second request exists because something changed.
+/// Leftovers' `setDisabled` rescans so the row shows what launchd actually did,
+/// and a latch would drop that scan. What has to be dropped is the older
 /// *answer*.
 ///
-/// Written out by hand in two view models before it was named: the last writer
-/// wins by scheduling, and Autopilot's tampered-rule verdict is the same shape
-/// one target over. Held by value on a `@MainActor`
-/// object: the arithmetic is never concurrent, only the awaits between it are.
+/// Held by value on a `@MainActor` object: the arithmetic is never concurrent,
+/// only the awaits between it are.
 ///
 ///     latest = LatestRequest()   // stored on the view model
 ///     let mine = latest.take()

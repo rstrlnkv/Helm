@@ -3,17 +3,15 @@ import Foundation
 /// Where a store of somebody's own files goes instead, while XCTest is loaded.
 ///
 /// `TestProcess` answers whether to ask for one of these at all and says why the
-/// question is the one it is; this answers what it looks like. Four stores need
-/// it — the scan journal, Disk's last-scan cache, the support directory and
-/// Screenshots' home — which is why the shape lives here rather than in any one:
-/// the naming, the sweep and the liveness question are the same three things
-/// each time. Disk's cache is a file whose contents a suite read by accident
-/// for months.
+/// question is the one it is; this answers what it looks like. Several stores
+/// need it (the scan journal, Disk's last-scan cache, the support directory,
+/// Screenshots' home), and the naming, the sweep and the liveness question are
+/// the same each time.
 ///
-/// **A redirection with no end to it is half an improvement.** One directory per
-/// process, kept for ever, is what the journal did first: **452 of them** in
-/// `$TMPDIR` by the time anyone counted. So handing out this process's directory
-/// is also when the ones belonging to processes that have gone are taken back.
+/// **A redirection with no end to it is half an improvement.** One directory
+/// per process, kept for ever, piles up in `$TMPDIR`, so handing out this
+/// process's directory is also when those of processes that have gone are
+/// taken back.
 public struct TestScratch: Sendable {
 
     /// What every directory of this family is called, before the process number.
@@ -27,10 +25,9 @@ public struct TestScratch: Sendable {
     /// processes left there.
     ///
     /// **Per process rather than one directory reused by every run.** The log
-    /// takes the other shape and is right to: it appends to one file that its own
-    /// rollover bounds. A store holds a slot, and two suites run side by side on
-    /// a build machine — a slot one process reads and another writes is the
-    /// nondeterminism this redirection exists to end, not a smaller version of it.
+    /// takes the other shape: it appends to one file its own rollover bounds. A
+    /// store holds a slot, and two suites can run side by side; a slot one
+    /// process reads and another writes is the nondeterminism this ends.
     ///
     /// The directory is named, not created: whoever writes into it makes it, with
     /// the mode that file deserves (`PrivateFile`). A run that only reads leaves
@@ -57,12 +54,9 @@ public struct TestScratch: Sendable {
     /// this family's, or whose tail is not a number, is not this function's
     /// business.
     ///
-    /// **The sanity check on the number lives here, not in the caller.** It sat
-    /// beside `kill` first, so this would happily have returned
-    /// `helm-scan-journal-0` and `helm-scan-journal--1` for removal on the word
-    /// of any liveness answer — a decision looser than the code it stands in
-    /// front of, which is the defect `RemovableScope` records in its own
-    /// comments. `0` and negatives are process *groups* to `kill`, not processes.
+    /// **The sanity check on the number lives here, not in the caller**, so the
+    /// decision is never looser than the code in front of it. `0` and negatives
+    /// are process *groups* to `kill`, not processes.
     func abandoned(_ names: [String], isAlive: (Int32) -> Bool) -> [String] {
         names.filter { name in
             guard name.hasPrefix(prefix),

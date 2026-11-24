@@ -17,45 +17,33 @@ public enum UserFileScope {
     private static let loweredHome = homePath.lowercased()
 
     public static func isRemovable(_ rawPath: String) -> Bool {
-        // Judge the resolved path, not the spelling. "/Users/me/Documents/.."
+        // Judge the resolved path, not the spelling: "/Users/me/Documents/.."
         // is the home directory however it is written, and every check below
-        // is a string test — RemovableScope standardizes for exactly this
-        // reason, and this gate is the last word on deletion for Disk, Duplicates and Autopilot, and on the
-        // one file Screenshots replaces.
+        // is a string test. This gate is the last word on deletion for Disk,
+        // Duplicates and Autopilot, and on the one file Screenshots replaces.
         //
-        // The absolute-path guard comes FIRST, before any resolution: every
-        // resolver here builds a `URL(fileURLWithPath:)`, which resolves a
-        // relative path against the process's working directory and hands back
-        // something absolute. Canonicalizing before the guard therefore turned
-        // "" and "relative/path" into paths this gate approved — the guard was
-        // asking a question that had already been answered for it.
+        // The absolute-path guard comes FIRST: `URL(fileURLWithPath:)` resolves
+        // a relative path against the working directory, so resolving first
+        // would turn "" and "relative/path" into paths this gate approves.
         let standardized = (rawPath as NSString).standardizingPath
         guard standardized.hasPrefix("/"), standardized != "/" else { return false }
         // Then symlinks, which `standardizingPath` does not resolve while
         // `trashItem` follows them: a link in an ordinary user folder pointing
-        // at `/System/Library` made a protected path wear a permitted spelling.
-        // Only ancestors are resolved — trashing a stale alias must still be
-        // allowed to remove the alias (PathCanonical says why).
+        // at `/System/Library` gives a protected path a permitted spelling.
+        // Only ancestors are resolved: trashing a stale alias must still
+        // remove the alias (`PathCanonical`).
         let path = PathCanonical.resolvingAncestors(standardized)
         guard path.hasPrefix("/"), path != "/" else { return false }
-        // **The bucket is a flag, never a name.** This used to refuse any path
-        // ending in `/…`, because that was once the only way to recognise the
-        // disk module's folded aggregate — and `…` is a name a person can type
-        // and Finder accepts. Their own file was then drawn as a system item
-        // with no basket button and no sentence saying why, in a gate whose
-        // whole question is «does this belong to the user». The bucket is
-        // `DiskNode.isFolded` now, all the way to `DiskEntry.isFolded`, and it is told apart by the flag at the row, in the basket and
-        // in `DiskRemovalPlan` — none of which can be typed into a filename.
-        // Both spellings. `standardizingPath` does more than drop `.` and `..`:
-        // for a path that **exists on disk** it rewrites `/private/var/…` to
-        // `/var/…`. So `/private/var/db` — the entry on the list — was rewritten
-        // out from under its own prefix and let through, while
-        // `/private/var/db/does-not-exist` was refused, because nothing rewrote
-        // it. The old test used a path that does not exist and passed.
+        // The disk module's folded aggregate is told apart by a flag
+        // (`DiskNode.isFolded`), never by a name here: `…` is a name a person
+        // can type.
         //
-        // `/private` is not a firmlink, `/` and `/private/var/db` share a
-        // device, so a scan of the volume walks it and the row reaches the
-        // basket. This is the disk module's last word on deletion.
+        // Both spellings. For a path that **exists on disk**
+        // `standardizingPath` rewrites `/private/var/…` to `/var/…`, which
+        // would take `/private/var/db` out from under its own prefix; a test
+        // with a path that does not exist cannot see it. `/private` is not a
+        // firmlink, so a scan of the volume walks it and the row reaches the
+        // basket.
         //
         // Folded, too: the boot volume is case-insensitive and
         // `standardizingPath` resolves `..`, `~` and `/private` but never case,
@@ -71,10 +59,9 @@ public enum UserFileScope {
         guard lowered != loweredHome,
               !lowered.hasPrefix("/volumes/") || path.split(separator: "/").count > 2
         else { return false }
-        // Never a top-level directory of the boot volume either. The named list
-        // above cannot keep up: scan `/`, click the second-largest arc, and
-        // `/Users` went into the basket. Nothing at the root of a volume is a
-        // file someone means to delete — their contents still are.
+        // Never a top-level directory of the boot volume either: the named list
+        // above cannot keep up (`/Users`), and nothing at the root of a volume
+        // is a file someone means to delete. Their contents still are.
         guard path.split(separator: "/").count > 1 else { return false }
         return true
     }

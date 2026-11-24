@@ -9,15 +9,10 @@ public enum AppStr {
     /// have to be right in that language too.
     public static var developerSection: String { L(.developerSection) }
     public static var interfaceLanguage: String { L(.interfaceLanguage) }
-    /// Named after the place the answer comes from, and named the way macOS
-    /// names it there — «System Settings» in English, «Настройки системы» in
-    /// Russian, and so on out of each language's own System Settings. «Same as
-    /// the Mac» described a relationship; this points at the pane.
+    /// Named after the place the answer comes from, the way macOS names it
+    /// there: «System Settings», «Настройки системы», and so on out of each
+    /// language's own System Settings.
     public static var systemLanguage: String { L(.systemLanguage) }
-    /// It used to end «windows already open keep the language they were drawn
-    /// in», which was true of the first attempt and is not true now: both the
-    /// settings window and the panel take a new identity and are rebuilt. A
-    /// note describing a limitation that has been removed is worse than none.
     public static var interfaceLanguageNote: String { L(.interfaceLanguageNote) }
     /// The names of `HelmBarAppearance`'s two cases; "Liquid Glass" is
     /// macOS's own name for its material, spelled as System Settings spells it.
@@ -41,22 +36,17 @@ public enum AppStr {
     /// The badge beside a module's name in its page header.
     ///
     /// «Active» is a module that is working. Its partner, `moduleIdle`, is the
-    /// ordinary state, which nothing in the app had a word for before this badge
-    /// drew it.
+    /// ordinary state.
     public static var moduleActive: String { L(.moduleActive) }
     /// The Tweaks entry's name and its one line; each tweak's own words are in its own target's catalog.
     public static var tweaksName: String { L(.tweaksName) }
     public static var tweaksSummary: String { L(.tweaksSummary) }
-    /// The negative of `moduleActive`, so the two come as a pair. Two English
-    /// spellings of one idea had already collapsed into one word in German and
-    /// Japanese, which is the translators noticing what the source had not.
+    /// The negative of `moduleActive`, so the two come as a pair.
     public static var moduleIdle: String { L(.moduleIdle) }
 
-    /// The settings window's own title. Never drawn — the window hides its
-    /// title bar text — and read aloud all the same: VoiceOver announces it on
-    /// focus, and the Window menu lists it. It was the one user-visible English
-    /// string in the app that was not behind `L()`, which is exactly the kind of
-    /// string that keeps being the last one.
+    /// The settings window's own title. Never drawn (the window hides its
+    /// title bar text) and read aloud all the same: VoiceOver announces it on
+    /// focus, and the Window menu lists it.
     ///
     /// "Helm Settings", the shape macOS uses for an app's own settings window,
     /// with each language's word for the pane taken from `settingsPane` so the
@@ -67,10 +57,9 @@ public enum AppStr {
     /// The first of the Settings page's three tabs. Not "General": that word is
     /// a glyph category's name, another meaning, and one English text means one thing.
     public static var settingsTabGeneral: String { L(.settingsTabGeneral) }
-    /// The light/dark control, which macOS itself calls «Appearance» — the same
-    /// word as the section it now sits in. A section and its first row reading
-    /// identically is how a person stops seeing the heading at all, so the row
-    /// says what it chooses between.
+    /// The light/dark control, which macOS calls «Appearance», the same word as
+    /// its section. A section and its first row reading identically hide the
+    /// heading, so the row says what it chooses between.
     public static var lightOrDark: String { L(.lightOrDark) }
     public static var checking: String { L(.checking) }
     public static var upToDate: String { L(.upToDate) }
@@ -94,19 +83,17 @@ public enum AppStr {
     /// The banner for a release the daily check found with nobody watching.
     ///
     /// The title is `updateReady`, the card's own words rather than a second
-    /// spelling of them: two sentences for one state is how the app came to say
-    /// «Configure panel» about a button that says «Edit panel».
+    /// spelling of them: two sentences for one state drift apart.
     public static func updateFoundNotice(version: String,
                                   language: AppLanguage = AppLanguage.current) -> NoticeText {
         NoticeText(title: updateReady, body: updateFoundBody(version: version, language: language))
     }
 
-    /// **It is the version and the way to it, and no verb.** A banner is not a
-    /// button: nothing in Helm answers a click on one, so a sentence that says
-    /// «install it» describes something the banner itself cannot do. The path is
-    /// spelled in each language exactly as that language's own `Settings` and
-    /// `About Helm` are spelled, since those two are what the person will be
-    /// reading when they go looking.
+    /// The version and the way to it, and no verb: nothing in Helm answers a
+    /// click on a banner, so «install it» would describe something it cannot
+    /// do. The path is spelled in each language exactly as that language's own
+    /// `Settings` and `About Helm` are, since those are what the person reads
+    /// when they go looking.
     static func updateFoundBody(version: String,
                                 language: AppLanguage = AppLanguage.current) -> String {
         L(.updateFoundBody(version), language: language)
@@ -117,23 +104,11 @@ public enum AppStr {
     static var fullDiskAccess: String { L(.fullDiskAccess) }
     public static var fullDiskAccessAdHoc: String { L(.fullDiskAccessAdHoc) }
     public static var permissionGranted: String { L(.permissionGranted) }
-    /// Beside `grant`, and never a bare "Show": Login Items already labels its
-    /// filter menu that way, where the word is a standing choice rather than an
-    /// action — Russian tells the two apart («Показывать» against «Показать»)
-    /// and one key cannot hold both.
-    ///
-    /// **Just «Show».** It was `Show permissions`, then `Show all`, and both
-    /// were measured: at the panel's width the German `Show permissions` button
-    /// took 154 pt and left the notice four lines, and `Show all` left Russian
-    /// three. The count beside it already says permissions and the notice says
-    /// how many, so the verb is the whole of what the button has to add — and
-    /// the shorter it is, the more room the sentence beside it has.
-    ///
-    /// The word had to be taken back off Leftovers' filter menu, which used it
-    /// for the *other* sense: that one is «Показывать: всё», imperfective, a
-    /// standing choice; this is «Показать», perfective, done once. One English
-    /// key means one thing, so the filter is `Filter` now — which is also what
-    /// it is, beside a filter glyph.
+    /// Just «Show», the action (Russian «Показать», perfective, done once),
+    /// never the standing choice a filter menu offers («Показывать»): one
+    /// English key means one thing. The notice beside it already says what and
+    /// how many, so the verb is all the button adds, and the shorter it is the
+    /// more room the sentence has at the panel's width.
     public static var showPermissions: String { HelmWord.show }
 
     /// The one thing on the settings page that is wrong right now, said above
@@ -141,20 +116,12 @@ public enum AppStr {
     /// the sidebar's triangle marks a module that can do nothing, and this line
     /// is about every module a missing grant reaches.
     ///
-    /// **Both clauses lost their verb, and Russian lost another word.**
-    /// Measured on the real row at the panel's 320 pt, one line being 44 pt and
-    /// each further line 14: «… · 7 modules affected» put Russian, French and
-    /// Portuguese on **three** lines beside a button that is on one. The
-    /// trailing participle is what the middle dot already implies — «2
-    /// permissions not granted · 7 modules» says the same thing — and that
-    /// brought French and Portuguese to two. Russian needed one word more,
-    /// because «Показать все» is the widest of the eight buttons at 96 pt:
-    /// «Не выдано» → «Нет». All eight are two lines or fewer now, and Chinese
-    /// is one.
-    /// **The panel says only how many grants are missing.** The module count
-    /// is a second fact, and the widget is 320 pt wide with a button on the
-    /// same line: two facts there is a paragraph wrapped around a control, at
-    /// the top of the first thing anybody opens when something is wrong. The
+    /// Both clauses are verbless («2 permissions not granted · 7 modules»): the
+    /// middle dot implies the rest, and every language must fit two lines
+    /// beside a button at the panel's width.
+    ///
+    /// The panel says only how many grants are missing: beside a button on a
+    /// narrow widget, two facts are a paragraph wrapped around a control. The
     /// settings page has the room and keeps both.
     public static func permissionsWithheld(count: Int,
                                     language: AppLanguage = AppLanguage.current) -> String {
@@ -177,10 +144,8 @@ public enum AppStr {
     /// and the page's longer one cannot come to disagree about the half they
     /// have in common.
     ///
-    /// Split into named parts rather than written as one expression: the
-    /// concatenation of eight interpolated ternaries is more than the
-    /// type-checker will take in one go, and «try breaking up the expression»
-    /// is not a hint worth rediscovering.
+    /// Split into named parts rather than one expression: the type-checker
+    /// cannot take eight interpolated ternaries in one go.
     private static func permissionsClause(_ count: Int, language: AppLanguage) -> String {
         let number = String(count)
         switch form(count, language) {
@@ -209,17 +174,15 @@ public enum AppStr {
         switch need {
         case .fullDiskAccess: return L(.fullDiskAccessWhy)
         // Names both things the grant buys, because one of them is that Helm can
-        // see every keystroke in every application. The lapsed-grant alert
-        // (`permissionReason`) already said so; this is the caption a person reads
-        // *while deciding*, and it described a mouse jiggle.
+        // see every keystroke in every application, and this is the caption a
+        // person reads while deciding.
         case .accessibility: return L(.accessibilityWhy)
         case .screenRecording: return screenRecordingWhy
         }
     }
     static var accessibility: String { L(.accessibility) }
     /// The pane's own name on this macOS (`SCREENANDAUDIOCAPTURE` in the Security &
-    /// Privacy extension's table), which replaced «Screen Recording» — a person is
-    /// looking for this word in a list, and the old one is not in it.
+    /// Privacy extension's table): a person is looking for this word in a list.
     static var screenRecording: String { L(.screenRecording) }
     /// Says what the grant is *for*, and that Helm records nothing: the name is
     /// macOS's and it reads as a camera, which is what a person weighs the ask by.
@@ -248,10 +211,9 @@ public enum AppStr {
     public static var modulesSection: String { L(.modulesSection) }
     /// The section that says Helm reads the disk with nobody at the desk.
     ///
-    /// It had no screen at all: `ScanCoordinator` walks the volume for three
-    /// modules while the Mac is idle, and `AppSettings.disabledScans` — the one
-    /// switch — was written by nothing in `Sources/`. The heading names the act
-    /// rather than the setting, because the setting is not what the person is
+    /// `ScanCoordinator` walks the volume for three modules while the Mac is
+    /// idle, and `AppSettings.disabledScans` is the one switch. The heading names
+    /// the act rather than the setting, because the act is what the person is
     /// being asked about.
     ///
     /// Each takes a language, so a test can ask about the seven this machine is
@@ -284,17 +246,13 @@ public enum AppStr {
     /// ever says out loud.
     ///
     /// **A finding, never a claim of action.** «Duplicates / 7 items since the
-    /// last check — 34,2 GB» — not «cleaned», and not «freed». Helm did not
-    /// clean anything: it walked the volume while the Mac was idle and this is
-    /// what it saw. A banner claiming an act the person did not ask for is the
-    /// one thing a channel like this cannot come back from, so the words that
-    /// would claim one are held out of all eight languages by a test rather than
-    /// by this paragraph.
+    /// last check — 34,2 GB», not «cleaned» or «freed»: Helm walked the volume
+    /// and this is what it saw. A test keeps the words that would claim an act
+    /// out of all eight languages.
     ///
-    /// Titled with the module's name, because a notification with no title is
-    /// drawn as the app's name and a body, and «Helm» does not say which of ten
-    /// modules is speaking. The name comes from the registry rather than being
-    /// written again here — `ScanCoordinator` passes what the sidebar shows.
+    /// Titled with the module's name, because an untitled notification is
+    /// drawn as the app's name and «Helm» does not say which module is
+    /// speaking. `ScanCoordinator` passes the name the sidebar shows.
     ///
     /// The count and the size are written in the sentence's language first and
     /// the catalog's template wraps them.
@@ -304,9 +262,8 @@ public enum AppStr {
                    body: scanFindingBody(finding, language: language))
     }
 
-    /// The body alone, so a test can read the sentence in a language without
-    /// having to build the pair around it — and so the eight-language check is
-    /// of the words rather than of the assembly.
+    /// The body alone, so the eight-language check reads the words rather than
+    /// the assembly.
     public static func scanFindingBody(_ finding: ScanNews.Finding,
                                 language: AppLanguage = AppLanguage.current) -> String {
         let code = language.rawValue
@@ -315,10 +272,8 @@ public enum AppStr {
                  language: language)
     }
 
-    /// «in your menu bar» was false and had been since the panel: Helm is also
-    /// a panel, a settings window and a sidebar the person arranges. A tagline
-    /// under the wordmark is the app's own claim about itself, so it names the
-    /// machine it serves rather than one of the places it appears in.
+    /// The app's own claim about itself, so it names the machine it serves
+    /// rather than one of the places it appears in (menu bar, panel, window).
     public static var tagline: String { L(.tagline) }
     public static var metricVersion: String { L(.metricVersion) }
     public static var metricBuild: String { L(.metricBuild) }
@@ -340,10 +295,8 @@ public enum AppStr {
 
     public static func openPane(_ need: PermissionNeed) -> String {
         switch need {
-        // The Uninstaller's button and this one open the same pane and said two
-        // different things — and the seven translations of both were identical,
-        // which is the proof they were one concept with two English spellings.
-        // One key each, naming the pane the way System Settings does.
+        // One key per pane, shared with the Uninstaller's button, naming the
+        // pane the way System Settings does.
         case .fullDiskAccess: return HelmWord.openFullDiskAccess
         case .accessibility: return L(.openAccessibilityPane)
         case .screenRecording: return L(.openScreenRecordingPane)
@@ -365,10 +318,9 @@ public enum AppStr {
     public static var devBadge: String { L(.devBadge) }
     public static var betaBadge: String { L(.betaBadge) }
 
-    /// The channel names, chosen by the channel rather than by a ternary at the
-    /// call site — the same shape `openPane(_:)` takes for a permission. The
-    /// About page asked for each of these three times over: the pill's label,
-    /// the pill's tooltip, the note under the row, and the badge's tooltip.
+    /// The channel names, chosen by the channel rather than by a ternary at
+    /// each call site, as `openPane(_:)` does for a permission: the About page
+    /// asks for each in several places.
     public static func channelName(_ channel: UpdateCheck.Channel) -> String {
         switch channel {
         case .beta: return L(.channelBeta)
@@ -409,14 +361,12 @@ public enum AppStr {
     }
     /// The level of one line, **said** rather than shown.
     ///
-    /// A row tells info from warn from error with a 6 % wash and a glyph:
-    /// nothing at all to a screen reader, which is handed the row as one
-    /// combined element, so this word is that element's value.
+    /// A row tells the levels apart with a wash and a glyph, nothing to a
+    /// screen reader, so this word is the combined element's value.
     ///
     /// Singular, and deliberately not the filter's «Warnings» / «Errors»: one
-    /// English text means one thing, and those two name a *filter setting*. Nil
-    /// for an ordinary line — a value on every row would be a word read out
-    /// nine hundred times to say nothing happened.
+    /// English text means one thing, and those two name a filter setting. Nil
+    /// for an ordinary line, so nothing is read out to say nothing happened.
     public static func logLevelWord(_ level: LogLevel) -> String? {
         switch level {
         case .info: return nil
@@ -452,13 +402,11 @@ public enum AppStr {
     }
 
     public static var aboutHelm: String { L(.aboutHelm) }
-    /// Not «Sidebar» any more: the same arrangement now orders the panel and
-    /// the icon menu, so naming one of the three places it shows up was the
-    /// kind of half-truth that sends somebody looking for a second control
-    /// that does not exist.
+    /// Not «Sidebar»: the same arrangement orders the panel and the icon menu
+    /// too, and naming one place would send somebody looking for a second
+    /// control that does not exist.
     public static var sidebarSections: String { L(.sidebarSections) }
-    /// The one thing the sheet did not say. Every explanatory word in it was
-    /// about dragging and sections; the column of switches carried none.
+    /// What the sheet's column of switches does.
     public static var moduleSwitchNote: String { L(.moduleSwitchNote) }
     public static var newSection: String { L(.newSection) }
     public static var removeSection: String { L(.removeSection) }
@@ -472,26 +420,15 @@ public enum AppStr {
     /// Puts the seeded arrangement back. Not `reset`, which in this app means
     /// every setting at once — one English text means one thing.
     public static var restoreSections: String { L(.restoreSections) }
-    /// What the sheet is for, said once at the top of it. The block on the
-    /// page carried this note in its edit mode, where it was only ever read by
-    /// somebody who had already worked out what to do.
-    ///
-    /// One name. It was two — `sidebarSectionsNote` holding the sentence and
-    /// this forwarding to it — with nothing but the sheet calling either. A
-    /// rename that stopped halfway leaves the old name reachable, and the next
-    /// person has to work out which of the two is the one to change.
+    /// What the sheet is for, said once at the top of it.
     public static var sidebarComposerNote: String { L(.sidebarComposerNote) }
 
     /// What is arranged, without opening anything. Counted from the
     /// arrangement rather than from the registry: a section somebody emptied
     /// is still a section they made.
     public static func sidebarSummary(on: Int, of total: Int, sections: Int) -> String {
-        // «9 modules in 4 sections» was `ModuleRegistry.all.count` rendered as
-        // if it were state: `reconciled` guarantees every registered module
-        // appears in exactly one section, so the number could not change. Turn
-        // four modules off and the row still said nine. What a person wants to
-        // know from a summary is what they have done, and how many are on is
-        // the only number here that is theirs.
+        // How many are on, of how many: `reconciled` puts every registered
+        // module in exactly one section, so the total alone never changes.
         let (a, b, c) = (String(on), String(total), String(sections))
         switch form(sections, AppLanguage.current) {
         case .one: return L(.sidebarSummaryOne(a, b, c))
@@ -500,12 +437,9 @@ public enum AppStr {
         }
     }
 
-    /// The two menu-bar rows, and they say **menu bar** because nothing else in
-    /// their section does. They sat under «Appearance» beside the theme as
-    /// «Icon shape» and «Icon size», with no word anywhere on the page saying
-    /// which icon — and the app's own term for it is one Keep Awake already uses
-    /// as a heading over the same picker. `IconShapePicker`'s own
-    /// default title stays as it is: it is titled by that heading there.
+    /// The two menu-bar rows say **menu bar** because nothing else in their
+    /// section says which icon. `IconShapePicker`'s own default title stays: in
+    /// Keep Awake a heading over the picker already names it.
     public static var menuBarIconShape: String { L(.menuBarIconShape) }
     public static var menuBarIconSize: String { L(.menuBarIconSize) }
     public static var settings: String { L(.settings) }
@@ -517,12 +451,8 @@ public enum AppStr {
     /// The name of the panel’s setup mode, in the **two** places that offer it:
     /// the footer’s pencil and the menu-bar icon’s right-click menu.
     ///
-    /// One property because they were two — «Edit panel» on the button and «Edit
-    /// widgets» in the menu, for the same mode, in eight languages each. The
-    /// caption under the panel’s switch tells people the buttons are also in
-    /// that menu, which is a promise about a name and was false about one of
-    /// them. Read from one place it cannot drift, which is the fix
-    /// `VPNStr.secretNeedsAPress` is built the same way for.
+    /// One property, so the two cannot drift: the caption under the panel’s
+    /// switch promises the buttons are also in that menu, by name.
     public static var editPanel: String { L(.editPanel) }
     public static var showSettingsButton: String { L(.showSettingsButton) }
     public static var showPanelEditButton: String { L(.showPanelEditButton) }
@@ -542,12 +472,8 @@ public enum AppStr {
     public static var newTab: String { L(.newTab) }
     public static var closeTab: String { L(.closeTab) }
     public static var tabLabel: String { L(.tabLabel) }
-    /// An unnamed tab is numbered.
-    ///
-    /// Every unnamed tab used to answer «Вкладка», so a strip of three read
-    /// «Главная · Вкладка · Вкладка» — and the care `addingTab` takes to hand
-    /// out a different glyph is invisible at the default label style, which is
-    /// text.
+    /// An unnamed tab is numbered: the default label style is text, so a
+    /// different glyph alone would leave «Tab · Tab» indistinguishable.
     public static func tabTitle(_ tab: PanelLayout.Tab, number: Int? = nil) -> String {
         if let name = tab.name { return name }
         // The seeded tab's name is read in the reader's language rather than
@@ -559,10 +485,9 @@ public enum AppStr {
     public static var moduleIsOff: String { L(.moduleIsOff) }
     public static var nothingOnThisTab: String { L(.nothingOnThisTab) }
     public static var nothingOnThisTabHint: String { L(.nothingOnThisTabHint) }
-    /// The same sentence for a panel whose pencil has been switched off. It
-    /// pointed at the button either way, so with the button hidden the hint
-    /// named a control that was not on screen — and the door it did not
-    /// mention is the one that cannot be closed.
+    /// The same sentence for a panel whose pencil has been switched off: it
+    /// names the icon's menu, the door that cannot be closed, and not a button
+    /// that is not on screen.
     public static var nothingOnThisTabHintNoButton: String { L(.nothingOnThisTabHintNoButton) }
 
     public static var noModules: String { L(.noModules) }
@@ -574,14 +499,10 @@ public enum AppStr {
     /// reader has an alphabet for it, transliterated where they do not. Not a
     /// translation: nobody translates a name, they only spell it.
     ///
-    /// In the catalog like everything else. It was an inline table with
-    /// one row in it, which is six languages absent from a table nothing
-    /// guards — the exact shape the changelog's twenty tables had when one of
-    /// them shipped English to six languages.
+    /// In the catalog like everything else, where the coverage check guards it.
     public static var authorName: String { L(.authorName) }
     public static var quit: String { L(.quit) }
-    /// Explains the tint rule without naming a specific module (the icon is no
-    /// longer ring-only, and module names are themselves localized).
+    /// Explains the tint rule without naming a specific module.
     public static var menuBarNote: String { L(.menuBarNote) }
 
     /// A section's heading: the name somebody typed, or its seed translated.

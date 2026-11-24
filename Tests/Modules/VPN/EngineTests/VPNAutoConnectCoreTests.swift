@@ -4,7 +4,7 @@
 import XCTest
 @testable import Module_VPN_Engine
 
-/// Guards: one launch connects and only the last quit disconnects (no fix commit; the code and this test landed together in 30e6caf8).
+/// Guards: one launch connects and only the last quit disconnects.
 final class VPNAutoConnectCoreTests: XCTestCase {
     func test_launch_connects_on_first_and_not_again() {
         var core = VPNAutoConnectCore(rules: ["a": VPNAppRule(vpnName: "V"), "b": VPNAppRule(vpnName: "V")])

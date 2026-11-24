@@ -12,10 +12,9 @@ import XCTest
 ///
 /// The windows are asserted against `VPNAutomation`'s own arithmetic rather
 /// than against numbers: a test that says "spinUntil is about 1.2 s from now"
-/// passes whenever the clock is kind to it, which is how a broken fix shipped
-/// green once already.
+/// passes whenever the clock is kind to it.
 ///
-/// Guards: the menu-bar windows follow VPNAutomation's own arithmetic (no fix commit; a broken fix shipped green once, per the comment above).
+/// Guards: the menu-bar windows follow VPNAutomation's own arithmetic.
 @MainActor
 final class VPNStatusAppearanceTests: XCTestCase {
 
@@ -46,7 +45,7 @@ final class VPNStatusAppearanceTests: XCTestCase {
     /// The movement is feedback that the app did something rather than a
     /// notification, so the quietest *notice* mode still gets it — the notice
     /// setting decides the fate of the name only. Whether there is movement at
-    /// all is now its own switch, which this test turns on.
+    /// all is its own switch, which this test turns on.
     func testSilentModeStillSpinsButNamesNothing() {
         let fired = firing(secondsAgo: 0)
         let (d, model) = descriptor(firing: fired, notice: .silent, spin: true)
@@ -78,13 +77,10 @@ final class VPNStatusAppearanceTests: XCTestCase {
 
     // MARK: - The banner mode, before there is a banner
 
-    /// The loudest mode was the quietest one.
-    ///
-    /// The descriptor asked `notice.showsMenuBarName`, which is false for
-    /// `.system`, so a person who chose to be told loudly and had refused (or
-    /// never been asked for) the permission got nothing at all — neither banner
-    /// nor name. `effective(bannerAuthorized:)` exists precisely to rule that
-    /// out, and the descriptor has to be the one asking it.
+    /// The loudest mode must not be the quietest one: `notice.showsMenuBarName`
+    /// is false for `.system`, so a person who chose to be told loudly without
+    /// the permission would get neither banner nor name. The descriptor asks
+    /// `effective(bannerAuthorized:)`, which rules that out.
     func testTheBannerModeNamesTheConnectionWhenMacOSHasNotAuthorizedBanners() {
         let (d, model) = descriptor(firing: firing(secondsAgo: 0), notice: .system,
                                    bannerAuthorized: false)
@@ -143,10 +139,8 @@ final class VPNStatusAppearanceTests: XCTestCase {
     /// The end of the name window needs a redraw as much as its start did.
     ///
     /// Nothing else supplies one: the host's spin tick disarms itself the frame
-    /// the spin ends, and `statusChanges` only fires when this model publishes.
-    /// Measured in the menu bar — the name sat on the icon for 76 straight
-    /// frames after its three seconds were up, until an unrelated firing
-    /// happened to redraw it away.
+    /// the spin ends, and `statusChanges` only fires when this model publishes,
+    /// so the name would sit on the icon until an unrelated redraw.
     func testTheNameIsGivenUpWhenItsWindowCloses() async {
         let model = VPNViewModel(work: FakeVPNWork(), settings: seededVPNSettings(notice: .menuBar))
         model.setForTesting(automation: firing(secondsAgo: VPNAutomation.nameDuration - 0.15))
@@ -176,9 +170,7 @@ final class VPNStatusAppearanceTests: XCTestCase {
 
     // MARK: - The spin setting
 
-    /// The reversal, pinned. The automation-feedback spec had the ring turning
-    /// in every mode; movement in the menu bar is a person's to switch off, and
-    /// the default is off.
+    /// Movement in the menu bar is a person's to switch on: the default is off.
     func testNothingTurnsUntilSomebodyAsksForIt() {
         let (d, model) = descriptor(firing: firing(secondsAgo: 0), notice: .menuBar)
         let appearance = d.statusAppearance(model)
@@ -186,9 +178,8 @@ final class VPNStatusAppearanceTests: XCTestCase {
         XCTAssertEqual(appearance.title, "Office", "the name is a separate setting and still applies")
     }
 
-    /// The decision this module wrote down three days ago, which the colour
-    /// work must not quietly spend: a tint is a claim on the icon between
-    /// moments, and this module makes none.
+    /// A tint is a claim on the icon between moments, and this module makes
+    /// none; the colour work must not spend that.
     func testTheModuleStillNeverTints() {
         let (d, model) = descriptor(firing: firing(secondsAgo: 0), notice: .menuBar, spin: true)
         XCTAssertNil(d.statusAppearance(model).tintToken,

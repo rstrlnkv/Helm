@@ -8,41 +8,24 @@ import XCTest
 /// **What somebody typed into the search bar does not go into the settings
 /// file.**
 ///
-/// `NSSearchField` has a history of its own, and it is a *persisted* one: give
-/// the control a `recentsAutosaveName` and AppKit writes the words that were
-/// searched for into the user defaults domain under exactly that key, where any
-/// process running as this user can read them. The two search bars this app has
-/// are fed the worst possible material for that — the Uninstaller's filter is
-/// typed against **the names of the applications on somebody's Mac**, and
-/// Homebrew's is **the packages they went looking for**. Both are the class of
-/// value `Redact` and `PrivateFile` exist for in this tree, and neither would go
-/// through either: the history is written by AppKit, underneath us.
+/// `NSSearchField` has a persisted history: give the control a
+/// `recentsAutosaveName` and AppKit writes the searched-for words into the
+/// user defaults domain under that key, where any process running as this
+/// user can read them. The Uninstaller's filter is typed with the names of
+/// the applications on somebody's Mac, and Homebrew's with the packages they
+/// looked for: the class of value `Redact` and `PrivateFile` exist for, written
+/// by AppKit underneath them.
 ///
-/// **Moved here from `Tests/HelmUITests`, and one reading changed by the move
-/// rather than merely relocated — measured 2026-09-25, not assumed.** This
-/// file used to watch the field SwiftUI's `.searchable` bridged into the
-/// toolbar, whose `target`/`action` were both nil — SwiftUI hung the submit
-/// off its own field editor, so no commit ever reached AppKit's own recording
-/// path and `recentSearches` stayed `[]` through everything this fixture could
-/// do to the field, Return included. `HelmHeaderSearch` wires a
-/// real `target`/`action` (`Coordinator.submitted(_:)`), so a Return now *is* a
-/// commit AppKit's own control recognises — and measured on this field,
-/// `recentSearches` reads `["wget"]` after one, in memory, whatever
-/// `recentsAutosaveName` is set to. `testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents`
-/// reads that in full: empty at mount, still empty after typing without a
-/// commit, and holding the committed word only after one — the in-memory
-/// list this control keeps regardless of persistence.
+/// `HelmHeaderSearch` wires a real `target`/`action`
+/// (`Coordinator.submitted(_:)`), so Return is a commit AppKit records in
+/// `recentSearches`, in memory, whatever `recentsAutosaveName` says.
 ///
 /// **`recentsAutosaveName` is the load-bearing reading, and the in-memory list
-/// is not.** `field.recentsAutosaveName = nil` (`HelmHeaderSearch.makeNSView`) is what
-/// there is no key for AppKit to persist under — measured nil at mount, after
-/// typing and after the commit that populates `recentSearches` — and the
-/// defaults-domain sweep at the end of the same test is what actually answers
-/// the question this file exists to ask: did the word reach a file anything
-/// running as this user can read. `testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile`
-/// is the canary that shows the other half of the mechanism working end to
-/// end on this very control, so the guard above it is standing in front of
-/// something measured rather than something quoted from documentation.
+/// is not.** With `field.recentsAutosaveName = nil` (`HelmHeaderSearch.makeNSView`)
+/// there is no key to persist under, and the defaults-domain sweep answers the
+/// question this file asks: did the word reach a file anything running as this
+/// user can read. `testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile`
+/// is the canary that shows the mechanism working on this very control.
 ///
 /// **The row.** Every row reads the field `LivePageUnderTheHeaderFixture` mounts
 /// under the card's header row (`HelmHeaderSearch`), and asserts it is there before it types.
@@ -141,15 +124,10 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
             «\(field.recentsAutosaveName ?? "")». From here AppKit persists every word searched \
             for into the settings file
             """)
-        // **Measured, not the bridge's own reading.** The bridged field's
-        // `target`/`action` were both nil, so no commit ever reached AppKit's
-        // recording path and this stayed `[]` no matter what was done to the
-        // field. This field's action really fires on Return
-        // (`HelmHeaderSearch.Coordinator.submitted(_:)`), and AppKit keeps its own in-memory list of
-        // what has been committed regardless of `recentsAutosaveName` — that
-        // flag governs persistence, not the in-memory list. The word landing
-        // here is not the leak this file guards against; the next assertion,
-        // against the defaults domain itself, is.
+        // This field's action fires on Return
+        // (`HelmHeaderSearch.Coordinator.submitted(_:)`), and AppKit keeps an
+        // in-memory list of commits whatever `recentsAutosaveName` says. The
+        // word landing here is not the leak; the defaults domain below is.
         XCTAssertEqual(field.recentSearches, [Self.word], """
             \(field.recentSearches) — committing "wget" no longer lands in the field's own \
             in-memory recent-search list, which is a real change in how this control commits \
@@ -169,11 +147,10 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     /// **The canary: the same field with a name on it does write the words
     /// out.**
     ///
-    /// Without this the guard above is a sentence about a framework rather than
-    /// a measurement — it would read the same whether `recentsAutosaveName`
-    /// were a live property of the mounted control or a name that does nothing
-    /// on macOS 27. So the defect is put back here, on the field the header row
-    /// draws, and the cost of it is measured: the typed word in the settings
+    /// Without this the guard above would read the same whether
+    /// `recentsAutosaveName` were a live property of the mounted control or a
+    /// name that does nothing. So the defect is put back on the field the
+    /// header row draws, and its cost is read: the typed word in the settings
     /// domain, under the planted key.
     func testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile() async throws {
         let page = Page()
@@ -204,13 +181,9 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
         XCTAssertEqual(page.text, Self.word, "precondition: the word never reached the binding")
         XCTAssertTrue(fixture.mount.pressReturn(), "Return never reached the field")
 
-        // A Return here would exercise the same real commit path the guard
-        // above already measured, landing the same word in `recentSearches` —
-        // this canary is not about the commit at all, only about what a
-        // *named* field then does with a recent it already holds, so the
-        // recent is handed over directly, deterministically, rather than
-        // typed and committed a second time for a fact this file already
-        // established.
+        // The canary is about what a *named* field does with a recent it
+        // holds, not about the commit the guard already reads, so the recent
+        // is handed over directly.
         field.recentSearches = [Self.word]
         await grace(0.2)
 
@@ -237,9 +210,8 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
 
     /// Every key in this process's defaults domain whose value carries `word`.
     ///
-    /// Strings and arrays of strings only — that is the shape a recents autosave
-    /// writes, measured, and sweeping every value of every type turns the whole
-    /// global domain into noise the message would have to be read through.
+    /// Strings and arrays of strings only: the shape a recents autosave writes.
+    /// Every value of every type would turn the global domain into noise.
     private static func keysCarrying(_ word: String) -> [String] {
         UserDefaults.standard.dictionaryRepresentation().compactMap { key, value in
             switch value {

@@ -13,11 +13,9 @@ import XCTest
 /// path they can reach with `sudo rm` — and if Helm is deleted while it is
 /// running, that path is the only way back to it.
 ///
-/// **The row is no longer where all of that is said, and the promise is
-/// unchanged.** The caption had grown to 606 characters in German; the directory
-/// stays in the row, and the rule's own path and the command that removes it
-/// moved into the explanation behind the ⓘ, which is one press away on the same
-/// row and reachable *before* the password is asked for. So this reads both
+/// The directory is in the row, and the rule's own path and the command that
+/// removes it are in the explanation behind the ⓘ, one press away on the same
+/// row and reachable before the password is asked for. So this reads both
 /// halves — the sentence and what the glyph opens — rather than one string.
 ///
 /// Per language — `AppLanguage.each`, which sets the override and puts it back
@@ -25,8 +23,6 @@ import XCTest
 /// check that reads `AppLanguage.current` inspects one of the eight and reports
 /// on all of them. A translator dropping the path — it looks like noise in a
 /// sentence — leaves that language with a warning about a file it does not name.
-///
-/// Guards: 03545120 (the sudoers grant carries its own revocation).
 final class TheNoteNamesTheFileItLeavesBehindTests: XCTestCase {
 
     /// Everything the lid row can put in front of somebody, in the language

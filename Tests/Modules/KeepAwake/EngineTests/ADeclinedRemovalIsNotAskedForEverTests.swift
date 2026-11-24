@@ -8,39 +8,18 @@ import HelmTestSupport
 ///
 /// `ALidThatDidNotWorkSaysSoTests` covers the answer itself: a declined removal
 /// leaves the rule where it is and `lidGrantRemains` says so. Both cases here
-/// are about the state that answer leaves behind, and both are the family (ARCHITECTURE.md § Ports and logic) names — a local flag standing in for a live external fact, with the
-/// reverse channel sitting unread in the same method.
+/// are about the state that answer leaves behind: a local flag must not stand
+/// in for a live external fact (Architecture/ModulePattern.md § Ports and logic).
 ///
-/// `releaseIfUnneeded()` is called from the `settingsChanged` command, which the
-/// settings page sends **for every control it draws** — a slider sends one per
-/// change. `removalInFlight` covers the seconds a dialog is on screen and is
-/// cleared when it is answered, deliberately, «because a declined removal has to
-/// be askable again». Nothing decides *when* it is asked again: the answer is
-/// «on the next edit of any setting in the module», which is the same five
-/// dialogs for five ordinary edits that the in-flight flag was added to stop,
-/// moved one state along. The install side of the same file already has the
-/// answer — `consumeRisingEdge`, the switch's own edge, «because acting on the
-/// value put a dialog in front of somebody for every later edit of an unrelated
-/// setting».
-///
-/// The control that shows what that costs is the battery floor, which is a
-/// `Slider`: its binding saves on every distinct rounded value, so one drag from
-/// 20 % to 50 % is six `settingsChanged` — six administrator password dialogs.
-/// And the state is not transient. A declined removal leaves the file on disk,
-/// so the next launch is in the same position with nothing remembered: `guard
-/// !settings.clamshellEnabled` and `isSudoersInstalled()` are both true from the
-/// first edit of every future session.
-///
-/// **This contradicts `TheRemovalPromptIsAPromptTooTests.testADeclinedRemovalCanBeAskedAgain`,
-/// deliberately, and one of the two has to give.** That case sends two bare
-/// `settingsChanged` and requires the second to ask — which is right about the
-/// intent (a decline must not be final) and wrong about the trigger, because
-/// «any edit of any setting» is the trigger that produces the six dialogs above.
-/// Both are satisfiable together by asking on a gesture that means «take that
-/// rule away»: the option's falling edge, the same shape `consumeRisingEdge`
-/// already gives the install side, and `willDisable` for the module's own
-/// switch. Written that way, the older case drives the switch off→on→off
-/// instead of sending two messages that say nothing changed, and both pass.
+/// The settings page sends `settingsChanged` for every control it draws, and
+/// the battery floor's `Slider` sends one per rounded value, so asking again
+/// «on the next edit» would be six password dialogs for one drag. A declined
+/// removal leaves the file on disk, so that would be true from the first edit
+/// of every future session. The removal is asked on a gesture that means «take
+/// that rule away»: the option's falling edge, as `consumeRisingEdge` gives the
+/// install side, and `willDisable` for the module's own switch.
+/// `TheRemovalPromptIsAPromptTooTests.testADeclinedRemovalCanBeAskedAgain` holds
+/// the other half: a decline is not final.
 @MainActor
 final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
 
@@ -74,8 +53,8 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
     /// the whole point of the removal and must not be what a fix takes away.
     ///
     /// It is counted on the withdrawal rather than on the dialog because the
-    /// rule permits its own removal now, so the ordinary route raises nothing —
-    /// the dialog below is what a rule *older than that line* still costs.
+    /// rule permits its own removal, so the ordinary route raises nothing; the
+    /// dialog below is what a rule without that line costs.
     func testSwitchingTheOptionOffTakesTheRuleBackOnce() async {
         settings.setClamshellEnabled(false)
         engine.settingsChanged()
@@ -90,10 +69,9 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
     /// Every edit is a `settingsChanged`, and each one finds the same true
     /// answer — the option is off, our rule is on disk — so each one puts an
     /// administrator password dialog on screen for a decision the person has
-    /// already made. The `await drainMainActor()` between them is not decoration: it is
-    /// what lets `removalInFlight` clear, which is exactly what the person
-    /// answering the dialog does, and without it this case would pass on a
-    /// guard that has nothing to do with the defect.
+    /// already made. The `await drainMainActor()` between them lets
+    /// `removalInFlight` clear, as the person answering the dialog does; without
+    /// it this case would pass on the in-flight guard instead.
     func testAnUnrelatedEditAfterACancelDoesNotRaiseTheDialogAgain() async {
         clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
@@ -121,10 +99,9 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
     /// «A passwordless `pmset` rule is still installed» is a claim about
     /// `/etc/sudoers.d` — a directory this account cannot write and anything
     /// with a password can. Once the removal is declined the claim is true; when
-    /// an administrator then takes the file out by hand it is false, and nothing
-    /// here ever looks again. The look is `fileExists` on a `0755` directory,
-    /// and `removeGrant` already does it — in a `guard` whose `else` throws the
-    /// answer away.
+    /// an administrator then takes the file out by hand it is false, so the row
+    /// reads the file (`fileExists` on a `0755` directory) rather than
+    /// remembering.
     func testTheClaimStopsWhenTheRuleIsTakenOutBehindTheAppsBack() async {
         clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false

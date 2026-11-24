@@ -4,19 +4,15 @@
 import XCTest
 @testable import Module_VPN_Engine
 
-/// The country was tied to an event — Helm watching a tunnel go down→up — and
-/// the state it is really about is «a tunnel is up and has no country». The
-/// difference is a whole class of Mac: one whose VPN comes up at login, before
-/// the menu bar app it is being reported in.
-///
-/// Past defect: commit 428f240b, «feat(0.11): the tunnel comes first, hosts leaves the panel, a launch stops killing the app».
+/// The country is asked for whenever «a tunnel is up and has no country»,
+/// not on the event of Helm watching a tunnel go down→up — so a Mac whose
+/// VPN comes up at login, before the menu bar app, gets one too.
 final class TheCountryIsAskedForWheneverItIsMissingTests: XCTestCase {
 
     private let t0 = Date(timeIntervalSince1970: 1_000_000)
 
-    /// The case the change exists for: something is up, nothing is on record,
-    /// nobody has asked. Nothing about *how* the tunnel came up appears here,
-    /// which is the point.
+    /// Something is up, nothing is on record, nobody has asked. Nothing about
+    /// *how* the tunnel came up appears here, which is the point.
     func testATunnelWithNoCountryIsAsked() {
         XCTAssertTrue(VPNExitAsk.should(tunnelIsUp: true, region: nil, asking: false,
                                         lastAsked: nil, now: t0))
@@ -35,10 +31,10 @@ final class TheCountryIsAskedForWheneverItIsMissingTests: XCTestCase {
                                          lastAsked: nil, now: t0))
     }
 
-    /// **The gate that keeps one connect from becoming twenty-six requests.**
-    /// `VPNEngine.poll` re-reads up to 26 times behind a single connect and the
-    /// probe waits up to eight seconds, so without this every one of those reads
-    /// would start a request while the first was still out.
+    /// **The gate that keeps one connect from becoming a request per poll.**
+    /// `VPNEngine.poll` re-reads many times behind a single connect and the probe
+    /// waits up to eight seconds, so without this every read would start a
+    /// request while the first was still out.
     func testARequestInFlightIsNotJoinedByAnother() {
         XCTAssertFalse(VPNExitAsk.should(tunnelIsUp: true, region: nil, asking: true,
                                          lastAsked: nil, now: t0))
@@ -86,11 +82,10 @@ final class TheCountryIsAskedForWheneverItIsMissingTests: XCTestCase {
         XCTAssertFalse(VPNExitAsk.routeMoved(from: "utun4", to: "utun4"))
     }
 
-    /// **Nil on either side is not a move**, and this is the assertion that
-    /// keeps a good answer through a hiccup: `VPNInterfacePort.primaryInterface`
+    /// **Nil on either side is not a move**: `VPNInterfacePort.primaryInterface`
     /// answers nil both for a Mac with no network and for a store that could not
-    /// be read, so a nil read taken as a route change would drop the country
-    /// every time the dynamic store stuttered — and asking again is a request.
+    /// be read, so a nil taken as a route change would drop the country every
+    /// time the dynamic store stuttered — and asking again is a request.
     func testAnUnreadableRouteIsNotAMove() {
         XCTAssertFalse(VPNExitAsk.routeMoved(from: "utun4", to: nil))
         XCTAssertFalse(VPNExitAsk.routeMoved(from: nil, to: "utun4"))

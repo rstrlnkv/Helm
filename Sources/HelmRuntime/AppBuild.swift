@@ -2,19 +2,13 @@ import Foundation
 
 /// What this copy of Helm is, asked of its own bundle.
 ///
-/// Eight places read `Bundle.main.infoDictionary?["CFBundleShortVersionString"]`
-/// by hand and **four different fallbacks** came out of them — `""`, `"0"`,
-/// `"0.0.0"` and `"0.1.0"` — so on a bundle that does not carry the key the app
-/// gave four answers about what it was. Three of those places then wrote the
-/// same `contains("-dev")` beside it, and two of the three had stopped being
-/// read at all.
+/// One reading of the bundle's keys, so the app gives one answer about what it
+/// is.
 ///
-/// **Optional, not defaulted here.** The fallbacks are not interchangeable and
-/// this type must not pick one for everybody: `PermissionAuditPlan.shouldSpeak`
-/// treats an empty identity as «cannot tell» and stays silent, while
-/// `UpdateCheck` wants something `UpdateVersion` can parse and compare. Each
-/// caller says what silence means where it means it; what moves here is the
-/// incantation, which is the part that was copied wrong.
+/// **Optional, not defaulted here.** The fallbacks are not interchangeable:
+/// `PermissionAuditPlan.shouldSpeak` treats an empty identity as «cannot tell»
+/// and stays silent, while `UpdateCheck` wants something `UpdateVersion` can
+/// parse and compare. Each caller says what silence means where it means it.
 ///
 /// **A version is what this copy calls itself; a fingerprint is what it is.**
 /// Neither string below answers «is this the same program macOS granted?», and
@@ -33,20 +27,16 @@ public enum AppBuild {
 
     /// The cdhash of this bundle — what TCC actually keeps a grant against.
     ///
-    /// **Neither version above can tell one local build from another.** They are
-    /// strings in a plist: twenty commits of work carry the same
-    /// `CFBundleShortVersionString`, and the build number is the commit count
-    /// `package-app.sh` writes, so a rebuild at the same commit does not move it
-    /// either. The cdhash moves whenever the bytes do — measured with two ad-hoc
-    /// bundles carrying an identical `0.9.0` and an identical build `405`,
-    /// differing by one byte of code: `72580c71…` against `62511e9b…`, while
-    /// `CodeIdentity.of(bundleAt:)` read the same signing identifier and the same
-    /// absent team for both.
+    /// **Neither version above can tell one local build from another.** Many
+    /// commits carry the same `CFBundleShortVersionString`, and the build number
+    /// is the commit count `package-app.sh` writes, so a rebuild at the same
+    /// commit does not move it either. The cdhash moves whenever the bytes do,
+    /// while the signing identifier and the absent team stay the same.
     ///
     /// **A read, not a verification.** It says which build this is, not whether
-    /// the signature is any good; `codesign --verify` answers that, and
-    /// (ARCHITECTURE.md § Signing and grants) records that passing it does not save a
-    /// grant. Measured on the installed bundle at 0.409 ms, worst of five.
+    /// the signature is any good; `codesign --verify` answers that, and passing
+    /// it does not save a grant (Architecture/Release.md § Signing and grants).
+    /// Well under a millisecond.
     ///
     /// Nil under anything that is not signed code — a test host is a plain
     /// directory, which `SecStaticCodeCreateWithPath` refuses. Nil is «cannot
@@ -57,20 +47,18 @@ public enum AppBuild {
 
     /// Whether this process is the app rather than a test runner or a script.
     ///
-    /// **Measured, not assumed — the identifier is no help:** under `xctest`
-    /// `Bundle.main.bundleIdentifier` is `com.apple.dt.xctest.tool`, thoroughly
-    /// non-nil, while its bundle path is
-    /// `/Applications/Xcode.app/Contents/Developer/usr/bin`, which is a directory
-    /// and not a bundle. The shipped app's is `Helm.app`.
+    /// The identifier is no help: under `xctest` it is
+    /// `com.apple.dt.xctest.tool`, non-nil, while the bundle path is
+    /// `/Applications/Xcode.app/Contents/Developer/usr/bin`, a directory and not
+    /// a bundle.
     ///
     /// Asked by anything that would otherwise do something irreversible to a
     /// person's own things from a process that is not their app: banners
-    /// (`SystemAutomationNotice`, where this sentence was written first) and the
-    /// one-time purge of the old VPN credential cache, which deleted the real
-    /// keychain items on every `swift test` run. `TestProcess.isRunning` answers
-    /// the neighbouring question — "is XCTest loaded" — and the two are not
-    /// interchangeable: the env-gated screenshot harness *is* the app, and a
-    /// bare script linking `HelmRuntime` is neither.
+    /// (`SystemAutomationNotice`) and the purge of the old VPN credential cache,
+    /// which would delete the real keychain items on every `swift test` run.
+    /// Not `TestProcess.isRunning` ("is XCTest loaded"): the env-gated
+    /// screenshot harness *is* the app, and a bare script linking `HelmRuntime`
+    /// is neither.
     public static var isBundledApp: Bool { Bundle.main.bundleURL.pathExtension == "app" }
 
     /// The identifier every published Helm bundle carries — the one
@@ -130,10 +118,9 @@ public enum AppBuild {
     /// The updater swaps a downloaded bundle in at `Bundle.main.bundlePath`, so
     /// the answer is false for `Helm Dev.app` and for anything else running
     /// under a rewritten identifier: the swap would put one program at another's
-    /// address. `Installer.installZip` refuses a swap at the last moment, by
-    /// comparing the downloaded bundle's identifier with the installed one, which
-    /// is the guard that must stay; this asks whether the running bundle is the
-    /// release's, early enough to spend nothing and to have somebody to tell.
+    /// address. `Installer.installZip` refuses such a swap at the last moment
+    /// and is the guard that must stay; this asks early enough to spend nothing
+    /// and to have somebody to tell.
     ///
     /// **False under a test runner too**, where the identifier is
     /// `com.apple.dt.xctest.tool` — a process that has no bundle to replace.
@@ -155,8 +142,8 @@ public enum AppBuild {
     /// can move, and a shipped beta build must not change what it says it is
     /// because somebody asked for updates sooner. The bundle names its channel in
     /// `HelmChannel`, which `Scripts/package-app.sh` writes, because a dev build
-    /// carries a bare version (versioning standard, rule 1). A bundle that will
-    /// not say is not a dev build — the safe direction, since this gates the log.
+    /// carries a bare version. A bundle that will not say is not a dev build,
+    /// the safe direction, since this gates the log.
     public static var isDev: Bool {
         isDev(channel: Bundle.main.infoDictionary?["HelmChannel"] as? String, shortVersion: shortVersion)
     }

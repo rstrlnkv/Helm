@@ -34,19 +34,13 @@ final class FakeRunner: VPNRunnerPort, @unchecked Sendable {
 
     /// **Consecutive answers to `--nc list`, which is what the real tool gives.**
     ///
-    /// `listOutput` alone is a tool whose answer never changes as a consequence
-    /// of the command it was just given — and the engine's whole poll exists
-    /// because it does: `--nc start` is followed by a list that still says
-    /// `Disconnected`, then `Connecting`, then `Connected`, and
-    /// `pollUntilSettled` re-reads up to 25 times waiting for that. With one
-    /// fixed answer, «the tunnel came up on the third read» is a state no test
-    /// could write down — so `maxPollAttempts`, the only thing standing between
-    /// a tunnel that never settles and `scutil` being run for ever, had no test
-    /// of any kind and could be deleted without a single failure.
+    /// `--nc start` is followed by a list that still says `Disconnected`, then
+    /// `Connecting`, then `Connected`, and `pollUntilSettled` re-reads waiting for
+    /// that. A fixed answer could not write «the tunnel came up on the third read»,
+    /// and `maxPollAttempts` would have no test.
     ///
     /// Reads past the end repeat the last entry, because a settled tunnel keeps
-    /// answering the same thing. Empty means «use `listOutput`», so every test
-    /// written before this stays exactly as it was.
+    /// answering the same thing. Empty means «use `listOutput`».
     var listScript: [String] = []
     /// How many of the first `--nc list` reads exit non-zero, as a tool that was
     /// not ready does; the later ones answer from `listOutput`/`listScript`.
@@ -55,39 +49,29 @@ final class FakeRunner: VPNRunnerPort, @unchecked Sendable {
 
     /// What `--nc status <name>` answers, per configuration name.
     ///
-    /// Keyed by name because that is what the tool takes, and what the module
-    /// has: the interface a tunnel is on cannot be looked up by the id in
-    /// `--nc list`, which is a *configuration*'s id and not a network service's
+    /// Keyed by name because that is what the tool takes: the interface cannot
+    /// be looked up by the id in `--nc list`, which is a *configuration*'s id
     /// (`VPNStatusParser`). A name with no entry here is a connection the tool
-    /// knows and can name no interface for — one that is down, or coming up —
-    /// which is a state the real tool is in for most of every session.
+    /// can name no interface for — down, or coming up — which is a state the
+    /// real tool is in for most of every session.
     var statusOutput: [String: String] = [:]
 
     /// What `start` and `stop` answer, **per configuration name**.
     ///
-    /// `reply` alone is a tool that answers the same way about every name, so
-    /// «this rule's configuration was renamed and the other one is fine» — one
-    /// stop refused among several — could only be written by mutating the fake
-    /// between calls, which is a different sequence from the one the app
-    /// performs. The real tool answers per name; so does this now.
+    /// The real tool answers per name, so one stop refused among several is
+    /// written here rather than by mutating the fake between calls.
     var replies: [String: String] = [:]
 
     /// What `start` and `stop` answer when no name-specific answer is set.
     ///
-    /// It was hard-coded to `""`, which is what the real tool prints when it
-    /// **succeeded** — so «scutil refused» was a state no test could write
-    /// down, whatever anybody wrote, and none did. The tool reports failure by
-    /// printing a line and exiting 0 (`No service`), and both call sites threw
-    /// that line away for as long as this fake could not produce one.
-    ///
+    /// `""` is what the real tool prints when it **succeeded**; it reports
+    /// failure by printing a line and exiting 0 (`No service`).
     var reply: String = ""
 
-    /// **A tool that did not run**, which this fake could not be while
-    /// `VPNRunnerPort.run` answered with a bare `String`: `scutil` missing, or
-    /// refused by the sandbox, is empty output — the same value it prints when it
-    /// succeeded — and the exit status `HelmProcess` had read was gone before it
-    /// reached the engine. The port carries the status now, so the state exists
-    /// here too. `-1` is what `HelmProcess` answers when the launch itself threw.
+    /// **A tool that did not run**: `scutil` missing, or refused by the sandbox,
+    /// is empty output — the same value it prints when it succeeded — told apart
+    /// only by the exit status the port carries. `-1` is what `HelmProcess`
+    /// answers when the launch itself threw.
     var exitStatus: Int32 = 0
 
     /// How many times the tool was asked for the list. The engine polls, so
@@ -97,9 +81,9 @@ final class FakeRunner: VPNRunnerPort, @unchecked Sendable {
     /// Called with each command as it is issued, on the thread that issued it.
     ///
     /// The engine runs the tool on its own serial queue, so «the tool was
-    /// reached» is news that arrives on another thread — and a test that reads
-    /// `issued` from its own thread to find out is both a race and a poll. Under
-    /// its own lock because it is the one property here that two threads touch.
+    /// reached» arrives on another thread, and reading `issued` from the test's
+    /// thread would be a race and a poll. Under its own lock because two threads
+    /// touch it.
     var onRun: (@Sendable ([String]) -> Void)? {
         get { hook.lock(); defer { hook.unlock() }; return _onRun }
         set { hook.lock(); _onRun = newValue; hook.unlock() }
@@ -167,10 +151,8 @@ final class FakeRunner: VPNRunnerPort, @unchecked Sendable {
 ///
 /// `KeychainCredentials` answers from Helm's own login-keychain cache without
 /// troubling anybody, and reaches `/usr/bin/security` against the System keychain
-/// — which macOS gates behind a dialog — only on a miss. With one dictionary here,
-/// «the secret exists but only behind a prompt» was a state no test could write
-/// down, so «a rule summoned an authorization dialog» could not be written down
-/// either, whatever anybody wrote.
+/// — which macOS gates behind a dialog — only on a miss, so «the secret exists
+/// but only behind a prompt» is a state a test can write down.
 final class FakeCreds: VPNCredentialsPort {
     /// Readable with no prompt: Helm's own cache.
     var map: [String: VPNCredentials] = [:]
@@ -197,16 +179,14 @@ final class FakeCreds: VPNCredentialsPort {
         guard promptingAllowed else { return .behindAPrompt }
         // **The read a person's gesture allows also fills the cache**, which is
         // what makes one press of Connect enough for every automatic connect
-        // afterwards. A fake that read the System tier and left the cache empty
-        // could not represent that, and «the press repaired it» is the state the
-        // notice on screen tells people to produce.
+        // afterwards — the state the notice on screen tells people to produce.
         map[name] = stored
         return answer(stored)
     }
 
     /// `.ready` only ever carries a usable secret, exactly as `KeychainCredentials`
-    /// builds it — a fake free to answer `.ready` with nothing in it would be freer
-    /// than the port it stands for (ARCHITECTURE.md § Fakes).
+    /// builds it: a fake free to answer `.ready` with nothing in it would be freer
+    /// than the port it stands for (Architecture/TestsAndMeasurement.md § Fakes).
     private func answer(_ creds: VPNCredentials) -> VPNCredentialRead {
         creds.secret?.isEmpty == false ? .ready(creds) : .notNeeded
     }
@@ -219,11 +199,8 @@ final class FakeCreds: VPNCredentialsPort {
 /// for the reason `VPNDropSettle` gives — `VPNWorkQueue.inline` runs a delayed
 /// block at once, so a test of the wait would be over before it began.
 ///
-/// **Six files in this target had written this out privately** — three epochs
-/// between them, one with no `advance` and one with no settable `now` — which
-/// is the shape (ARCHITECTURE.md § Tests and measurement) records for every
-/// helper that ended up in `HelmRuntime`. It is here rather than in `HelmTestSupport` only because
-/// `Tests/Support` has another writer in it today; that is the move owed next.
+/// One clock for the target, so tests do not each write their own
+/// (Architecture/TestsAndMeasurement.md § Tests and measurement).
 final class TestClock: @unchecked Sendable {
     private let lock = NSLock()
     private var _now: Date
@@ -261,13 +238,10 @@ final class FakeNetwork: NetworkWatchPort {
 
 /// The signature the fake rules in this target are bound to.
 ///
-/// A rule is not fired on a bundle identifier alone any more — `VPNRuleTrust`
-/// refuses one whose running instance is not signed as the app the person picked,
-/// and one with no identity on record refuses outright. Five test files spelled
-/// the same `com.a` rule out by hand as JSON, and all five stopped firing when
-/// that landed, which is the change working and five places to arrange one thing.
-/// The JSON stays JSON rather than becoming `VPNRules.encode`, so these tests go
-/// on holding what is actually on disk.
+/// `VPNRuleTrust` refuses a rule whose running instance is not signed as the
+/// app the person picked, and one with no identity on record outright, so every
+/// rule in this target is bound to one signature. The JSON stays JSON rather
+/// than becoming `VPNRules.encode`, so these tests hold what is actually on disk.
 let testAppIdentity = CodeIdentity(signingID: "com.a", teamID: "ABCDE12345")
 
 /// The rule for `com.a`, bound to `testAppIdentity`, connecting on launch and
@@ -315,9 +289,7 @@ final class FakeApps: AppObserverPort {
 
 /// The fixture two blip files share: a tunnel Helm itself raised, because that is
 /// what a drop is about. `_autoConnected` is written by an *automatic* connect — a
-/// rule firing for an app that launched — and not by a command somebody sent, so
-/// the first version of this fixture, which connected with a command, said
-/// nothing about drops until it asserted its own precondition.
+/// rule firing for an app that launched — not by a command somebody sent.
 private let blipBundleID = "com.example.app"
 private let blipIdentity = CodeIdentity(signingID: "com.example.app", teamID: "ABCDE12345")
 
@@ -336,8 +308,7 @@ func blipEngineHoldingTheTunnel(_ runner: FakeRunner, _ clock: TestClock) -> VPN
         [blipBundleID: VPNAppRule(vpnName: "work", identity: blipIdentity)]))
     runner.listOutput = blipList("Disconnected")
     // Every port named, none defaulted: three of the defaults reach the
-    // network or run a tool for fifteen seconds
-    // (`NoTestTakesAProductionPortTests`).
+    // network or run a tool for many seconds (`NoTestTakesAProductionPortTests`).
     let engine = VPNEngine(settings: settings, runner: runner, apps: apps,
                            interfaces: FakeInterfaces(), exit: FakeExit(),
                            speed: FakeSpeed(), now: { clock.now }, work: .inline)

@@ -4,31 +4,17 @@ import HelmRuntime
 
 /// «Only when plugged in», on a Mac that has no battery to be plugged in for.
 ///
-/// The power rule was dead on every desktop Mac, and the fix has shipped:
 /// `snapshot()` is nil for two different reasons — no battery at all, and an
-/// IOKit dictionary that came back incomplete — and reading them as one made
-/// «keep awake on power» never fire on a mini, a Studio or an iMac. The port
-/// grew `isOnMains` for the other question, `powerCondition()` reads it, and
-/// `FakePower.says(_:)` exists so a test can be a desktop.
-///
-/// The commit that did it says, of the same defect, "taking **every app rule
-/// narrowed to `.power`** with it", and the engine's own comment beside
-/// `powerCondition` repeats the claim. `appCondition()`, ten lines below, still
-/// spells the old reading:
-///
-///     onPower: power.snapshot().map { !$0.onBattery } ?? false
-///
-/// So on a desktop a rule saying «keep the Mac awake while Final Cut is running,
-/// but only when it is plugged in» is nil-mapped to `false` and can never fire —
-/// the half of the fix that was described and not made. One rewrite, two call
-/// sites, one of them changed.
+/// IOKit dictionary that came back incomplete — so the mains question is asked
+/// separately (`onMains()`), by `powerCondition()` and by `appCondition()` both.
+/// Read off `snapshot()`, a rule saying «keep the Mac awake while Final Cut is
+/// running, but only when it is plugged in» could never fire on a mini, a
+/// Studio or an iMac. `FakePower.says(_:)` lets a test be a desktop.
 ///
 /// The controls below matter as much as the failures: a plain power rule and an
 /// unqualified app rule both hold on this same desktop, and the same qualified
 /// rule holds on a laptop with the charger in. So «the rule never fires» cannot
 /// be what these tests are measuring.
-///
-/// Guards: de97195b (power rule dead on every Mac with no battery).
 final class AnAppRuleOnPowerWithNoBatteryTests: XCTestCase {
 
     private var store: NamespacedStore!
@@ -62,8 +48,8 @@ final class AnAppRuleOnPowerWithNoBatteryTests: XCTestCase {
         displayInfo.flags = [false]
     }
 
-    /// A laptop with the charger in: both readings agree, which is why the
-    /// defect never showed up on the machine it was written on.
+    /// A laptop with the charger in: both readings agree, so a laptop alone
+    /// cannot tell them apart.
     private func aLaptopOnMains() {
         power.snap = (onBattery: false, percent: 100)
         power.says(.mains)
@@ -84,7 +70,7 @@ final class AnAppRuleOnPowerWithNoBatteryTests: XCTestCase {
 
     // MARK: - The controls, first
 
-    /// The half of the fix that was made. Without this the failures below would
+    /// The plain power rule on a desktop. Without this the failures below would
     /// only be saying that the fake cannot be a desktop.
     func testThePlainPowerRuleHoldsOnAMacWithNoBattery() {
         aMacWithNoBattery()
@@ -120,7 +106,7 @@ final class AnAppRuleOnPowerWithNoBatteryTests: XCTestCase {
         XCTAssertTrue(engine.activeConditions.contains(.app))
     }
 
-    /// The safe direction, which no fix may cost: «only when plugged in» must
+    /// The safe direction: «only when plugged in» must
     /// still mean nothing on battery, or the qualifier is decoration.
     func testTheQualifiedRuleDoesNotHoldOnALaptopOnBattery() {
         aLaptopOnBattery()
@@ -132,7 +118,7 @@ final class AnAppRuleOnPowerWithNoBatteryTests: XCTestCase {
                        "a rule narrowed to «only on power» held a Mac running on its battery")
     }
 
-    // MARK: - The half that was described and not made
+    // MARK: - An app rule narrowed to power
 
     func testAnAppRuleNarrowedToPowerHoldsOnAMacWithNoBattery() {
         aMacWithNoBattery()

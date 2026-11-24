@@ -15,15 +15,10 @@ public struct ModuleMetadata: Sendable {
     public let permissions: [ModulePermission]
     /// The subset without which the module can do *nothing*.
     ///
-    /// `permissions` answers a different question — what a module would use —
-    /// and the sidebar was reading it as if it answered this one. That marked
-    /// seven rows with «Enabled, but macOS is withholding the access it
-    /// needs»: true of Layout, which is inert without Accessibility, and false
-    /// of the four Full Disk modules, which work and find less; false of Keep
-    /// Awake, which holds a power assertion and never touches Accessibility
-    /// unless the pointer nudge is switched on, and that ships off. A mark on
-    /// 78% of the rows is wallpaper, and it cost the one row where it was
-    /// exactly right.
+    /// `permissions` answers a different question, what a module would use. A
+    /// Full Disk module without the grant works and finds less; Layout without
+    /// Accessibility does nothing. A sidebar mark drawn from `permissions` would
+    /// sit on most rows and mean nothing.
     ///
     /// Empty by default, so a module that says nothing is never accused of
     /// being broken.
@@ -32,12 +27,9 @@ public struct ModuleMetadata: Sendable {
     /// the button that takes somebody there — or nothing, which is what every
     /// module but one says.
     ///
-    /// **Here rather than in the tour**, which is where a list of «modules with
-    /// something worth setting up» would have been: a tenth hand-written list of
-    /// module ids, in a target that cannot see the modules, with nothing failing
-    /// on the day it went stale. The descriptor already says the module's name
-    /// and its summary and the tour is built from those; this is one more
-    /// sentence of the same kind.
+    /// **Here rather than in the tour**, where it would be a hand-written list
+    /// of module ids in a target that cannot see the modules, with nothing
+    /// failing the day it went stale. The tour is built from the descriptor.
     public let welcomeOffer: String?
     public init(id: ModuleID, name: String, shortName: String? = nil, summary: String,
                 sfSymbol: String, permissions: [ModulePermission] = [],

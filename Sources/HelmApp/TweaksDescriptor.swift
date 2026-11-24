@@ -33,9 +33,9 @@ final class TweaksEngine: ModuleEngine {
         ModuleMetadata(id: id, name: AppStr.tweaksName, summary: AppStr.tweaksSummary, sfSymbol: "slider.horizontal.3")
     }
     static let category: ModuleCategory = .utilities
-    // A violet, solved by the method `ModuleTint.swift` documents against the ten before it: white reads 6,86:1 on
-    // it, past both floors, so the two sets and the two appearances share one value, and the nearest of the ten
-    // (VPN's) is 0,337 away in sRGB, where the floor is 0,15. Found by a search over the hue wheel from violet.
+    // A violet, solved by the method `ModuleTint.swift` documents against the other tints: white reads 6,86:1 on
+    // it, past both floors, so the two sets and the two appearances share one value, and the nearest tint (VPN's)
+    // is 0,337 away in sRGB, where the floor is 0,15.
     static let tint = ModuleTint(
         ordinary: (light: (0.417, 0.000, 1.000), dark: (0.417, 0.000, 1.000)),
         increasedContrast: (light: (0.417, 0.000, 1.000), dark: (0.417, 0.000, 1.000)))

@@ -5,26 +5,20 @@ import Module_Leftovers_Engine
 
 /// Pressing "Move to Trash" twice must not send the batch twice.
 ///
-/// The Scan button was `.disabled(lvm.scanning)` and nothing else here was gated:
-/// the two removal buttons go dark only when the selection is empty, and the
-/// selection is not emptied until the rescan that *follows* the removal has
-/// come back. Between the press and that moment the button is live and the
-/// paths are still in `selected`. Six controls on this page can start work; the
-/// last of them to be found was Scan itself.
+/// The two removal buttons go dark only when the selection is empty, and the
+/// selection is not emptied until the rescan that *follows* the removal has come
+/// back, so between the press and that moment the button is live and the paths
+/// are still in `selected`.
 ///
-/// What the second press costs is not a second deletion — the files are already
-/// in the Trash — it is a **wrong report about the first**. `HelmTrash` answers
-/// a path that is no longer there with a refusal and a reason, so the second
-/// round returns `removed: []` and a failure per file, and this view model
-/// overwrites `failures`, `removedCount` and `banner` with it. The person is
-/// told nothing moved and shown a list of everything that did, in the one place
-/// this module ever names a refusal.
+/// What a second press would cost is not a second deletion — the files are
+/// already in the Trash — but a **wrong report about the first**: `HelmTrash`
+/// answers a path no longer there with a refusal, so the second round returns
+/// `removed: []` and a failure per file, and would overwrite `failures`,
+/// `removedCount` and `banner`.
 ///
-/// Homebrew has had a gate for exactly this since its own pass, and the note on
-/// that test applies here word for word: **a fake that answers synchronously
-/// releases the gate before the call it is gating returns**, so a test built on
-/// one passes whether or not the gate exists. The fake below does not
-/// answer until it is told to.
+/// **A fake that answers synchronously releases the gate before the call it is
+/// gating returns**, so a test built on one passes whether or not the gate
+/// exists. The fake below does not answer until it is told to.
 @MainActor
 final class OneRemovalAtATimeTests: XCTestCase {
 
@@ -39,7 +33,7 @@ final class OneRemovalAtATimeTests: XCTestCase {
         /// from the breakage.
         private(set) var scanRequests = 0
         /// The other request a control on this page makes, counted for the same
-        /// reason: «Turn off» stayed live through the whole removal.
+        /// reason: «Turn off» must not run during a removal.
         private(set) var setDisabledRequests = 0
         private let released = AsyncStream<Void>.makeStream()
         let items: [StaleItem]
@@ -118,11 +112,9 @@ final class OneRemovalAtATimeTests: XCTestCase {
 
     // MARK: - The other three controls
 
-    /// **Five controls can start an act on this page and two of them dimmed.**
-    /// «Turn off» is one of the three that stayed live, and it is not a harmless
-    /// one: it asks launchd to switch a job off and then **rescans**, so a press
-    /// during a removal lands a fresh `items` on top of the list the removal is
-    /// about to report on.
+    /// **«Turn off» does not run during a removal**: it asks launchd to switch a
+    /// job off and then **rescans**, so a press during a removal would land a fresh
+    /// `items` on top of the list the removal is about to report on.
     func testTurningARowOffWhileARemovalRunsIsRefused() async throws {
         let one = item("/tmp/one.plist")
         let work = HeldWork(items: [one])
@@ -146,17 +138,14 @@ final class OneRemovalAtATimeTests: XCTestCase {
         _ = await (removal.value, press.value)
     }
 
-    /// **Scan is the sixth**, and it was gated on `scanning` alone — which is
-    /// nothing at all during a removal. What it costs is exactly what «Turn off»
-    /// costs and the note on that test spells out: it rescans, so a fresh `items`
-    /// lands on top of the list the removal is about to report on. The button is
-    /// on screen for the whole request, at the end of the toolbar.
+    /// **Scan is refused during a removal** for the reason «Turn off» is: it
+    /// rescans.
     ///
-    /// **And the guard cannot be «no scanning while busy»**, which is the shape
-    /// the other five take: `trash` holds `busy` across the rescan it makes
-    /// *itself*, so a guard written that way would leave the list showing the rows
-    /// the removal had just taken, under a report saying they are gone. So the
-    /// second half of this test is a control: the rescan still arrives.
+    /// **And the guard cannot be «no scanning while busy»**: `trash` holds `busy`
+    /// across the rescan it makes *itself*, so such a guard would leave the list
+    /// showing the rows the removal had just taken, under a report saying they
+    /// are gone. So the second half of this test is a control: the rescan still
+    /// arrives.
     func testAScanStartedByHandWhileARemovalRunsIsRefused() async throws {
         let one = item("/tmp/one.plist")
         let work = HeldWork(items: [one])
@@ -186,8 +175,8 @@ final class OneRemovalAtATimeTests: XCTestCase {
                        + "list still shows the rows that have just gone to the Trash")
     }
 
-    /// And the row's own delete, which is the control the Uninstaller's pass found
-    /// last: `.disabled(busy)` on a bar does not cover a menu inside a row.
+    /// And the row's own delete: `.disabled(busy)` on a bar does not cover a menu
+    /// inside a row.
     func testTheRowsOwnDeleteWhileARemovalRunsIsRefused() async throws {
         let one = item("/tmp/one.plist")
         let two = item("/tmp/two.plist")

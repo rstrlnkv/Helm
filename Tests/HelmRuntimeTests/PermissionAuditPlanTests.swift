@@ -5,11 +5,9 @@ import XCTest
 /// stays ticked. What the user sees afterwards is decided here.
 ///
 /// These are two strings and a comparison, so they are green whatever the app
-/// hands over — which is exactly how the version-keyed defect survived them.
-/// The wiring is `ThePermissionAuditAsksTheSignatureTests`, and what makes one
-/// build tell itself apart from the next is `ARebuildIsANewProgramTests`.
-///
-/// Guards: b134c772 (the audit compared versions, not signatures) and b9edd7ec (it asked on a first run).
+/// hands over. The wiring is `ThePermissionAuditAsksTheSignatureTests`, and
+/// what makes one build tell itself apart from the next is
+/// `ARebuildIsANewProgramTests`.
 final class PermissionAuditPlanTests: XCTestCase {
     func testOnlyWhatIsBothNeededAndMissingIsReported() {
         XCTAssertEqual(PermissionAuditPlan.missing(fullDisk: .denied, accessibility: .denied,
@@ -56,11 +54,9 @@ final class PermissionAuditPlanTests: XCTestCase {
     /// The same build must not ask twice, and a new build must always ask —
     /// once there is a previous run to compare against.
     ///
-    /// **Cdhashes, not version numbers.** Two builds of `0.7.1` are two
-    /// programs to TCC and the same string to `CFBundleShortVersionString`;
-    /// feeding this a version was the defect, so the fixtures here are the
-    /// shape the app really hands over. `ARebuildIsANewProgramTests` is the
-    /// half that proves those strings move where a version does not.
+    /// Cdhashes, not version numbers: two builds of one version are two
+    /// programs to TCC and one string to `CFBundleShortVersionString`, so the
+    /// fixtures are the shape the app really hands over.
     func testItSpeaksOncePerBuild() {
         XCTAssertTrue(PermissionAuditPlan.shouldSpeak(lastSeenIdentity: "72580c71",
                                                       current: "62511e9b"))
@@ -82,12 +78,11 @@ final class PermissionAuditPlanTests: XCTestCase {
         XCTAssertEqual(PermissionAuditPlan.baseline(current: "62511e9b"), "62511e9b")
     }
 
-    /// A first run has nothing to compare against. The audit exists to catch a
-    /// grant that went away — "it was granted yesterday and is denied today" —
-    /// and that is a question you can only ask the second time. Every module
-    /// that needs a grant already shows its own note with a Grant button on its
-    /// own page, so on day one the audit was asking for the two scariest
-    /// permissions macOS has before the person had asked for anything.
+    /// A first run has nothing to compare against: the audit catches a grant
+    /// that went away, a question only the second run can ask. Every module
+    /// that needs a grant shows its own note with a Grant button, so on day one
+    /// the audit would ask for permissions before the person asked for
+    /// anything.
     func testAFirstRunIsNotSpokenTo() {
         XCTAssertFalse(PermissionAuditPlan.shouldSpeak(lastSeenIdentity: "", current: "d395f05b"))
     }

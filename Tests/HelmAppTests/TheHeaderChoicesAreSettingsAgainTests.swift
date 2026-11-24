@@ -4,12 +4,11 @@ import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
-/// **The page header's three choices are settings again, and the launch purge no longer deletes them.**
+/// **The page header's three choices are settings, and the launch purge does not delete them.**
 ///
-/// `module.app.pageBarStyle`, `module.app.toolbarSwitcherStyle` and `module.app.alwaysCollapseSearch` were listed in `ObsoleteDefaults.retired`
-/// while the header row had no such choices; a key still listed is purged at the next launch, which is
-/// indistinguishable from never having restored it. `ObsoleteDefaultsTests` scans only `Sources/HelmApp` for
-/// the literal, so this is where the spellings are put side by side.
+/// `module.app.pageBarStyle`, `module.app.toolbarSwitcherStyle` and `module.app.alwaysCollapseSearch` stay out of
+/// `ObsoleteDefaults.retired`: a key listed there is purged at the next launch. `ObsoleteDefaultsTests` scans only
+/// `Sources/HelmApp` for the literal, so this is where the spellings are put side by side.
 @MainActor
 final class TheHeaderChoicesAreSettingsAgainTests: XCTestCase {
 

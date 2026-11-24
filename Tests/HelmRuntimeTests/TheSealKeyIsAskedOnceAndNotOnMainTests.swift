@@ -3,18 +3,14 @@ import HelmTestSupport
 import XCTest
 @testable import HelmRuntime
 
-/// **The keychain is asked once per process, and not on the thread that draws.**
+/// The keychain is asked once per process, and not on the thread that draws.
 ///
-/// A sealed setting's getter calls the key port on every read: three
-/// `SecItemCopyMatching` round trips per coordinator tick, and one inside the
-/// settings window's own construction. The round trip is not merely slow — on an
-/// ad-hoc build the cdhash changes with every build, no ACL an earlier one wrote
-/// still matches, and the answer is a modal authorization dialog. Held on the
-/// main thread it stands in front of a window that has not drawn yet.
-///
-/// So the key is fetched once and kept, and the fetch has a way to happen off
-/// the main actor. The *verdict* is still computed on every read — nothing here
-/// caches whether a stored value is Helm's own, which is the live fact.
+/// A sealed setting's getter asks the key port on every read, and on an ad-hoc
+/// build the cdhash changes with every build, so a keychain round trip can be a
+/// modal authorization dialog; held on the main thread it stands in front of a
+/// window that has not drawn. So the key is fetched once, off the main actor.
+/// The verdict is still computed on every read: whether a stored value is
+/// Helm's own is the live fact.
 final class TheSealKeyIsAskedOnceAndNotOnMainTests: XCTestCase {
 
     func testTheSourceIsAskedOnceHoweverManyVerdictsAreTaken() {
@@ -93,25 +89,16 @@ final class TheSealKeyIsAskedOnceAndNotOnMainTests: XCTestCase {
 
     // MARK: - Two callers arriving together
 
-    /// **One round trip, and therefore one dialog.** The cache holds its lock
-    /// *across* the source's own call, and its comment says why: two threads
-    /// arriving together must produce one keychain read rather than two, because
-    /// on an ad-hoc build a read is a modal authorization dialog and two of them
-    /// is two dialogs stacked in front of a window.
+    /// One round trip, and so one dialog: the cache holds its lock across the
+    /// source's own call, so two threads arriving together make one keychain
+    /// read. Calls in sequence pass whether or not the lock wraps the call.
     ///
-    /// That claim had no test. Every other case here calls the cache once, or
-    /// twice in sequence, and both orders pass whether the lock wraps the source
-    /// call or is taken after it returns.
+    /// One signal, deliberately: with the lock taken after the fetch, the
+    /// second caller would reach the source too and park on the gate, so the
+    /// wait times out. Both callers finishing on one signal is the assertion.
     ///
-    /// **One signal, deliberately.** If the lock were taken after the fetch, the
-    /// second caller would reach the source too, park on the gate, and never
-    /// return — so the wait below times out rather than the count merely reading
-    /// 2. Both callers finishing on one signal *is* the assertion; the count
-    /// corroborates it.
-    ///
-    /// The first caller is known to be inside before the second starts —
-    /// `waitUntilAsked` — because otherwise the two might not overlap at all and
-    /// the arrangement under test would never occur.
+    /// `waitUntilAsked` puts the first caller inside before the second starts,
+    /// or the two might not overlap at all.
     func testTwoCallersArrivingTogetherCostOneRoundTrip() {
         let gate = DispatchSemaphore(value: 0)
         let source = SealKeyProbe(gate: gate)
@@ -147,8 +134,7 @@ final class TheSealKeyIsAskedOnceAndNotOnMainTests: XCTestCase {
         let gate = DispatchSemaphore(value: 0)
         let source = SealKeyProbe(gate: gate)
         let cache = SealKeyCache(source)
-        // A class behind a lock, because the two callers write from two queues and
-        // `wait(for:)` reads afterwards.
+        // Behind a lock: two queues write, `wait(for:)` reads afterwards.
         let answers = Locked<[SealKey?]>([])
         let both = expectation(description: "both callers answered")
         both.expectedFulfillmentCount = 2
@@ -169,10 +155,8 @@ final class TheSealKeyIsAskedOnceAndNotOnMainTests: XCTestCase {
         XCTAssertEqual(Set(material.compactMap { $0 }).count, 1,
                        "the two callers were given different keys, so a value sealed by one "
                        + "would be refused by the other")
-        // Exactly one of them may spend first use — the trust-on-first-use door
-        // is one door, and two callers holding it open is the defect
-        // `TheFirstReadClosesTheSealsDoorTests` exists for, arriving by another
-        // route.
+        // Exactly one of them may spend first use: the trust-on-first-use door
+        // is one door (`TheFirstReadClosesTheSealsDoorTests`).
         XCTAssertEqual(answers.value.filter { $0?.firstUse == true }.count, 1)
     }
 }

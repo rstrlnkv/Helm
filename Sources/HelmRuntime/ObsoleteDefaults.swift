@@ -9,40 +9,28 @@ public enum ObsoleteDefaults {
     /// Namespaced, always — a purge must not be able to reach a key that isn't
     /// Helm's own.
     public static let retired = [
-        // The panel's grid layout was removed; the list is the only layout.
+        // The panel: one layout, one width, one tab face.
         "module.app.panelLayout",
-        // The Island module was reverted; its settings outlived it.
+        // The Island module's settings.
         "module.island.enabled",
         "module.island.shelfBookmarks",
-        // Replaced by permissionAuditVersion, which re-arms after an update.
+        // Superseded by permissionAuditVersion, which re-arms after an update.
         "module.app.permissionAuditShown",
-        // The panel's width was a setting for one night. 480 pt buys a third
-        // column, and that is not a reason to ask.
         "module.app.panelWidth",
-        // The panel's three footer switches were folded into this for one
-        // unreleased build. They are three settings again and nothing reads it;
-        // only a dev build can still have it on disk.
+        // Three footer switches, not one.
         "module.app.showPanelFooter",
-        // Keyboard's three «when to fix» triggers. Space and punctuation
-        // confirm a word and Return does not — which is what they were set to
-        // anyway, and what keeps a chat from sending a typo.
+        // Keyboard: space and punctuation confirm a word and Return does not,
+        // so a chat never sends a typo; abbreviations are macOS's Text
+        // Replacement; the hero shows both figures; the indicator follows the
+        // app's `menuBarIconSize`.
         "module.layout.onSpace",
         "module.layout.onReturn",
         "module.layout.onPunctuation",
-        // Keyboard's abbreviations. macOS ships the same thing in Text
-        // Replacement and syncs it across the person's devices.
         "module.layout.autoReplace",
-        // Keyboard's hero showed one figure at a time behind a glyph. It shows
-        // both at once now, so there is nothing left to remember.
         "module.layout.heroMetric",
-        // Keyboard's indicator had a menu-bar size of its own, beside the app's
-        // `menuBarIconSize` in General — two items in one menu bar sized by two
-        // settings, over a four-point range, with the indicator's own menu rows
-        // ignoring both and drawing at `.small`.
         "module.layout.badgeSize",
-        // The panel's tabs wear their names: the strip has one face, the one it shipped with.
         "module.app.tabLabelStyle",
-        // `HelmIconPlate` has one look; the plain look was a second axis of the look.
+        // `HelmIconPlate` has one look.
         "module.app.sidebarStyle",
     ]
 

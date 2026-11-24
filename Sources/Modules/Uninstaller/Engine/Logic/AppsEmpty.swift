@@ -2,18 +2,13 @@ import Foundation
 
 /// Why the Apps tab has no rows on it — or nothing, when it has some.
 ///
-/// **The page branched on `loading` alone.** A search that matched nothing and a
-/// Mac whose app folders really came back empty drew the same empty inset
-/// `List`, under a footer still counting apps. Two facts, one picture.
-///
-/// Here rather than in the view, and over counts rather than over the rows, for
-/// the reason `DuplicatesEmpty` and `HistoryEmpty` give: it is the module's
-/// rule about what its own empty screen means.
+/// A search that matched nothing and a Mac with no apps are two facts, and
+/// the page draws them apart. Here rather than in the view, as with
+/// `DuplicatesEmpty`: it is the module's rule about its own empty screen.
 public enum AppsEmpty {
 
     /// Exhaustive on purpose, like `DuplicatesEmpty.Reason`: a `default` at the
-    /// caller is how a third state would come to be drawn as one of these two,
-    /// which is the defect this type exists for.
+    /// caller would draw a third state as one of these two.
     public enum Reason: Equatable, Sendable {
         /// The engine answered, and the app folders held nothing to list.
         case noApps
@@ -32,11 +27,9 @@ public enum AppsEmpty {
         case counted(Int)
     }
 
-    /// **Not answered yet is «counting», not «0 apps».** The page draws its first
-    /// frame before its `.task` has asked for the list, and `apps` is empty
-    /// then; a count read off it would say «0 apps» about a Mac nobody has
-    /// looked at. `answered` is the view model's `listAnswered`, the flag the body
-    /// reads too, so the two cannot disagree.
+    /// Not answered yet is «counting», not «0 apps»: the first frame is drawn
+    /// before the list is asked for. `answered` is the view model's
+    /// `listAnswered`, the flag the body reads too, so the two cannot disagree.
     ///
     /// - Parameters:
     ///   - answered: whether the list has ever been answered.

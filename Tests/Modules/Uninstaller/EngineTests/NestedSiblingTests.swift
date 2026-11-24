@@ -3,35 +3,13 @@ import XCTest
 
 /// The sibling test again, for the sibling the *directory listing* cannot see.
 ///
-/// `SiblingPrefixTests` pins the rule: uninstalling `com.acme.tool` must not
-/// claim `com.acme.tool.staging`'s data, because that is a different app
-/// somebody has installed. `LeftoverOwnership` enforces it with two rules, and
-/// the second — "not another installed app" — is the only one that can refuse a
-/// name like `com.acme.tool.staging`, which really is this id followed by a dot.
+/// `SiblingPrefixTests` pins the rule that uninstalling `com.acme.tool` does
+/// not claim `com.acme.tool.staging`'s data. Here the sibling is where
+/// `installedBundleIDs()` cannot see it (nested in a bundle, or deeper than
+/// two levels), so only LaunchServices refuses it; otherwise its container
+/// would arrive on the review pre-ticked.
 ///
-/// That second rule is answered from `installedBundleIDs()`, and `AppLister`'s
-/// own documentation says what that set is missing:
-///
-/// > Does the system know an app with this bundle id, wherever it lives?
-/// > LaunchServices sees helpers nested inside other bundles and apps deeper
-/// > than the listing's two levels; a directory listing sees neither.
-///
-/// `installedBundleIDs()` is `PropertyListFile.installedBundleIDs`: `.app`
-/// bundles down to two levels under its roots, never inside a bundle.
-/// `/Applications/Adobe Acrobat DC/Adobe Acrobat.app` is in it; every helper
-/// inside another bundle, and any app deeper than level 2, is absent from it. `OrphanDetector` was given
-/// `isKnownToSystem` for exactly this reason — its comment records that nested
-/// apps "were being offered for deletion while their apps were installed and
-/// running" — and `scanSync`'s glob filter, written later, asks the narrow
-/// question.
-///
-/// So the vendor's *other* product, where the listing cannot reach it, is invisible to
-/// the rule meant to protect it: its container is claimed, and because a glob
-/// hit is never `matchedByName` it arrives on the review screen pre-ticked next
-/// to a Trash button.
-///
-/// Assertions name paths, never counts — a count is satisfied by any two of
-/// them.
+/// Assertions name paths, never counts: a count is satisfied by any two.
 final class NestedSiblingTests: XCTestCase {
     private let lib = "/Users/x/Library"
 
@@ -46,10 +24,8 @@ final class NestedSiblingTests: XCTestCase {
 
     /// The shape `SiblingPrefixTests` already refuses, moved one folder down.
     ///
-    /// `com.adobe.acrobat.reader` is `com.adobe.acrobat` followed by a dot, so
-    /// the separator rule waves it through; only "it is another installed app"
-    /// can stop it, and the set that answers that question does not contain a
-    /// bundle inside `/Applications/Adobe Acrobat DC/`.
+    /// `com.adobe.acrobat.reader` passes the separator rule; only "another
+    /// installed app" stops it, and the listing does not hold it.
     func test_a_nested_installed_sibling_is_not_this_apps_leftover() async throws {
         let mine = "\(lib)/Containers/com.adobe.acrobat"
         let theirs = "\(lib)/Containers/com.adobe.acrobat.reader"
@@ -65,9 +41,8 @@ final class NestedSiblingTests: XCTestCase {
         XCTAssertEqual(result.leftovers.map(\.path), [mine], "and it still claims its own")
     }
 
-    /// Every glob folder, because a filter that covers Containers and misses
-    /// LaunchAgents is not a filter. A LaunchAgent is the worst of them: trashing
-    /// it stops the neighbour's updater from ever running again.
+    /// Every glob folder: a filter that misses LaunchAgents is not a filter, and
+    /// trashing one stops the neighbour's updater for good.
     func test_no_glob_folder_lets_a_nested_installed_sibling_through() async throws {
         var entries: [String: Int] = [:]
         var theirs: [String] = []
@@ -92,9 +67,8 @@ final class NestedSiblingTests: XCTestCase {
         for path in theirs { XCTAssertFalse(claimed.contains(path), "claimed \(path)") }
     }
 
-    /// What the review screen does with it. A glob hit carries
-    /// `matchedByName == false`, and that is exactly what `defaultSelection`
-    /// ticks — so the neighbour's data is not merely listed, it is selected.
+    /// A glob hit is not `matchedByName`, which `defaultSelection` ticks, so the
+    /// neighbour's data would be selected, not merely listed.
     func test_a_nested_siblings_data_does_not_arrive_pre_ticked() async throws {
         let theirs = "\(lib)/Containers/com.adobe.acrobat.reader"
         let result = try await scan("com.adobe.acrobat",
@@ -110,9 +84,8 @@ final class NestedSiblingTests: XCTestCase {
                        "pre-ticked a nested installed app's container")
     }
 
-    /// The control, and the reason the glob exists at all: a helper container
-    /// that belongs to no installed app — nested or otherwise — is still found.
-    /// Without this the tests above could be satisfied by refusing everything.
+    /// The control: a helper container belonging to no installed app is still
+    /// found, or refusing everything would pass the tests above.
     func test_a_helper_belonging_to_nobody_is_still_found() async throws {
         let entries = [
             "\(lib)/Caches/com.adobe.acrobat": 1,

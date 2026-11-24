@@ -4,8 +4,8 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-/// Past defect: `UInt16(recorded)` trapped at launch on a hand-edited property
-/// list value past 65535, because the key code is stored as an `Int`.
+/// The key code is stored as an `Int`, so a hand-edited property list value
+/// past 65535 must not reach `UInt16(_:)`, which traps at launch.
 ///
 /// A key code past 16 bits binds nothing, as the recorder's own -1 does:
 /// a chord is then not the gesture, so it drops the word before it.
@@ -33,7 +33,7 @@ final class AStoredKeyCodeCannotTrapTests: XCTestCase {
         }
     }
 
-    /// A value a key can have still binds, as it did before.
+    /// A value a key can have still binds.
     func testAKeyCodeInRangeStillBinds() {
         let typing = FakeTyping(), tap = FakeTap()
         let engine = activatedEngine(storing: 9, typing: typing, tap: tap)

@@ -5,10 +5,9 @@ import Foundation
 ///
 /// `NSWorkspace.runningApplications` is main-thread-only, and reading it from
 /// anywhere else is not merely stale — it crashes. AppKit keeps the list in a
-/// mutable array behind a KVO helper; `-applications` copies that array under a
-/// lock while the main thread mutates it as apps come and go. Helm's VPN engine
-/// read it from its own serial queue, and quitting an app at the wrong instant
-/// segfaulted the whole program inside `_cow_copy`:
+/// mutable array behind a KVO helper; `-applications` copies that array while
+/// the main thread mutates it as apps come and go, so a read from a serial queue
+/// as an app quits segfaults inside `_cow_copy`:
 ///
 /// ```
 /// Thread 0  -[NSWorkspaceApplicationKVOHelper removeApplication:]   ← mutating
@@ -29,13 +28,11 @@ public final class RunningApps: @unchecked Sendable {
     /// Where each running identifier's bundle is, taken in the same main-thread
     /// read as the identifiers themselves.
     ///
-    /// Here rather than asked for on demand for the reason the whole class exists:
-    /// `NSRunningApplication` is AppKit's, and a caller on a background queue
-    /// asking «where is the bundle for this id» would be the same crash the
-    /// identifiers were moved here to avoid. Two instances of one identifier
-    /// collapse to one entry, which is what the identifier-set diff above does
-    /// too — a bundle squatting a running app's identifier is invisible to both,
-    /// and `VPNRuleTrust` says why that is the safe direction.
+    /// Here rather than asked for on demand, because `NSRunningApplication` is
+    /// AppKit's and the same crash waits off the main thread. Two instances of
+    /// one identifier collapse to one entry, as in the identifier set: a bundle
+    /// squatting a running app's identifier is invisible to both, and
+    /// `VPNRuleTrust` says why that is the safe direction.
     private var bundleURLs: [String: URL] = [:]
     private var seeded = false
 
@@ -55,11 +52,10 @@ public final class RunningApps: @unchecked Sendable {
     /// already there (a KVO callback, a workspace notification) should call
     /// this so the snapshot is current before they hand control onwards.
     ///
-    /// Off the main thread it refuses and returns the snapshot unchanged —
-    /// this type exists because reading the live list from the wrong thread
-    /// killed the process, and shipping code will not repeat that even to
-    /// report a mistake. Debug and test builds do trap, deliberately: a
-    /// wrong-thread caller should be found here rather than in a crash log.
+    /// Off the main thread it refuses and returns the snapshot unchanged: it
+    /// will not make the crashing read even to report a mistake. Debug and test
+    /// builds trap, so a wrong-thread caller is found here rather than in a
+    /// crash log.
     @discardableResult
     func refresh() -> Set<String> {
         guard Thread.isMainThread else {

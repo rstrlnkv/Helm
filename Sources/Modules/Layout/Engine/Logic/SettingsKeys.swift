@@ -23,8 +23,8 @@ public enum LayoutKey {
     /// UI-only, but it lives here so the list is the whole list.
     public static let indicator = "indicator"
     public static let badgeStyle = "badgeStyle"
-    /// The old «Show Input Source Name» switch of Helm's own indicator. Nothing
-    /// writes it now: `LanguageIndicator` carries a `true` over to
+    /// The older «Show Input Source Name» switch of Helm's own indicator.
+    /// Nothing writes it: `LanguageIndicator` carries a `true` over to
     /// `BadgeStyle.sourceName` and erases it.
     public static let indicatorShowsName = "indicatorShowsName"
     public static let introSeen = "introSeen"

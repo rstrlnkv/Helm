@@ -3,11 +3,9 @@ import XCTest
 
 /// `Conditions.resolve` decides both *whether* the Mac is held awake and *which
 /// chips the panel draws*. Those are two returns off one switch, and the panel
-/// reads the second while the power assertion follows the first — the shape that
-/// let a filtered list be deleted elsewhere in this app. Exhaustive over all six
-/// flags, because the interesting inputs are the combinations nobody drew.
-///
-/// Guards: 5f196564 (filtered list deleted elsewhere; one switch, two returns).
+/// reads the second while the power assertion follows the first. Exhaustive over
+/// all six flags, because the interesting inputs are the combinations nobody
+/// drew.
 final class ConditionsInvariantTests: XCTestCase {
 
     private func allInputs() -> [Conditions.Inputs] {
@@ -79,8 +77,6 @@ final class ConditionsInvariantTests: XCTestCase {
 /// The guard reads one integer with no way to say "I do not know". Worth
 /// pinning what it promises, because `IOPSPowerInfo.snapshot()` upstream turns
 /// an unreadable capacity into `percent: 0` while still reporting `onBattery`.
-///
-/// Guards: 5f196564 (an unreadable charge is nil, not 0%).
 final class BatteryGuardInvariantTests: XCTestCase {
 
     /// Monotone in the reading and in the threshold: a lower charge can never

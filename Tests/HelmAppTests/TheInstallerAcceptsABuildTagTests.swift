@@ -7,7 +7,7 @@ import XCTest
 /// The one-click install compares the downloaded bundle with the release tag.
 /// A build tag (`v0.11.1.BETA.1620`) is a version and a build, which a bundle
 /// keeps in two plist keys, so comparing the bare version with the whole tag
-/// refused every such release after the download (`versionMismatch`).
+/// would refuse every such release after the download (`versionMismatch`).
 final class TheInstallerAcceptsABuildTagTests: XCTestCase {
     private func accepts(_ v: String, _ b: String?, _ tag: String) -> Bool {
         Installer.accepts(version: v, build: b, expected: tag)

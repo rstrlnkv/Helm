@@ -5,14 +5,11 @@ import XCTest
 
 /// **A suite run must not fetch anything from `formulae.brew.sh`.**
 ///
-/// `FilePopularityStore()` — the convenience init, the one `HomebrewSystemPorts`
-/// uses — bound the live transfer unconditionally, and three files in this
-/// target call `ModuleHost.bootstrap()`, which enables every module in the
-/// registry and reaches `HomebrewEngine.activate()`, which starts the refresh.
-/// So `swift test` downloaded both analytics documents — about 834 KiB — from a
-/// third party on every run, on whatever network the machine happened to be on,
-/// and nothing failed when it failed: the store's whole design is to fall back
-/// to today's behaviour on a refusal.
+/// `FilePopularityStore()`, the convenience init `HomebrewSystemPorts` uses,
+/// binds the live transfer, and tests here call `ModuleHost.bootstrap()`, which
+/// reaches `HomebrewEngine.activate()` and starts the refresh. Unguarded, every
+/// `swift test` would download both analytics documents from a third party,
+/// and nothing would fail when that failed: the store falls back on a refusal.
 ///
 /// **Why two checks and neither a counter nor a listener.** `liveTransfer` is a
 /// `static var` and `NoWireUnderTest` is a named error, so the guard itself is
@@ -21,11 +18,10 @@ import XCTest
 /// make this pass, because nothing here waits on bytes coming back — it is the
 /// *branch*, not the network, under test.
 ///
-/// That alone does not prove anything actually calls `liveTransfer` — the
-/// convenience init could bind the unguarded `overTheNetwork` straight past it,
-/// invisibly, since every store the module's own tests build names its transfer
-/// explicitly. So the second check builds a store the ordinary way and calls
-/// the transfer it holds.
+/// That alone does not prove anything calls `liveTransfer`: the convenience
+/// init could bind the unguarded `overTheNetwork` past it, and every store the
+/// module's own tests build names its transfer. So the second check builds a
+/// store the ordinary way and calls the transfer it holds.
 final class ASuiteRunAsksHomebrewNothingTests: XCTestCase {
 
     func testALiveStoreRefusesTheWireUnderATestRunner() async {

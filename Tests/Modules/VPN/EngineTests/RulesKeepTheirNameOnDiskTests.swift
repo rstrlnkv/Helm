@@ -4,13 +4,11 @@ import HelmRuntime
 
 /// The one name the per-app rules have on disk.
 ///
-/// `VPNSettings` declared the key and its `"{}"` default, and the settings page
-/// spelled both again — reading the store directly on the way in and writing it
-/// directly on the way out. Now the page goes through here, which leaves one
-/// spelling and one silent way to lose every rule somebody wrote: renaming it.
-/// A rename reads a key no install has, `VPNRules.decode` finds nothing, and the
-/// automation simply stops firing with the rules still on disk under the old
-/// name — nothing throws, nothing is logged.
+/// One spelling of the key and its `"{}"` default, which the settings page
+/// reads through, and one silent way to lose every rule somebody wrote:
+/// renaming it. A rename reads a key no install has, `VPNRules.decode` finds
+/// nothing, and the automation stops firing with the rules still on disk
+/// under the old name — nothing throws, nothing is logged.
 final class RulesKeepTheirNameOnDiskTests: XCTestCase {
     private var backing: InMemoryKeyValueStore!
     private var settings: VPNSettings!

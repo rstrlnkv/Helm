@@ -16,8 +16,6 @@ import XCTest
 /// or asks again on every visit to a settings page, spends that one chance on
 /// somebody who was not asking for notifications, so *when* the question is put
 /// is as much a part of this as what is stored.
-///
-/// Past defect: commit b0a3869b, «fix: a VPN card's notice choice applies to that connection only».
 @MainActor
 final class VPNNoticeChoiceTests: XCTestCase {
 
@@ -87,10 +85,9 @@ final class VPNNoticeChoiceTests: XCTestCase {
     /// Building the page must ask macOS nothing at all.
     ///
     /// The permission is requested when the person picks the mode and at no
-    /// other time — and a settings page that reached the notification centre
-    /// while being constructed would not merely prompt: it would end this run,
-    /// because `UNUserNotificationCenter.current()` raises outside an app
-    /// bundle. This walks the real path the app takes, descriptor included.
+    /// other time — and a page that reached the notification centre while being
+    /// constructed would end this run, because `UNUserNotificationCenter.current()`
+    /// raises outside an app bundle. This walks the real path, descriptor included.
     func testTheSettingsPageIsBuiltWithoutAskingMacOSAnything() {
         let descriptor = VPNDescriptor()
         let parts = descriptor.makeModule(store: Self.store())

@@ -6,12 +6,11 @@ import XCTest
 /// The one door the seal leaves open, and who walks through it.
 ///
 /// `SettingSeal.verdict` adopts an unsealed value when `key.firstUse` is true,
-/// which is true only on the run that creates the keychain item. Nothing in the
-/// app ever wrote `disabledScans`, and its getter returned the default *before*
-/// touching the guard — so on every Mac the item was never created, first use
-/// was still unspent, and the first value the app ever saw was adopted and
-/// sealed as Helm's own. `defaults write com.helm.app module.app.disabledScans -array`
-/// is the whole attack: a full-volume walk under Helm's Full Disk Access, blessed.
+/// which is true only on the run that creates the keychain item. A getter that
+/// returned the default *before* touching the guard would leave first use
+/// unspent, and the first value anybody wrote would be adopted and sealed as
+/// Helm's own. `defaults write com.helm.app module.app.disabledScans -array`
+/// would be the whole attack: a full-volume walk under Helm's Full Disk Access.
 @MainActor
 final class TheFirstReadClosesTheSealsDoorTests: DisabledScansTestCase {
 

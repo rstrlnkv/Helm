@@ -5,30 +5,17 @@ import XCTest
 /// Whether Helm can actually move a file is asked of the filesystem, for every
 /// kind of item — not only for launch agents.
 ///
-/// `preferences()` and `plugins()` built their items without a `writable:`
-/// argument, and the initialiser defaults it to true. That value drives
-/// `.delete` in `LeftoverActions.available` and `StaleItem.removable`, which is
-/// what "Select all" ticks — so an item in a folder Helm cannot write to was
-/// offered for one-click bulk deletion. Nothing was lost silently, because
-/// `RemovableScope` and `HelmTrash` still refuse at trash time; the screen
-/// simply said something that was not true.
+/// The initialiser defaults `writable:` to true, and that value drives `.delete`
+/// in `LeftoverActions.available` and `StaleItem.removable`, which is what
+/// "Select all" ticks — so an item built without asking would be offered for
+/// bulk deletion from a folder Helm cannot write to. `RemovableScope` and
+/// `HelmTrash` would still refuse at trash time; the screen would say something
+/// untrue.
 ///
-/// The existing consistency tests only build launch-agent fixtures, which is
-/// the one kind that did ask, so they were vacuous for these two.
-///
-/// **The fixtures used to lock the item and not its folder.** `FakeFiles`
-/// answered by the item's own path — "one locked file among readable ones",
-/// said its comment — while `FileSystemLeftovers` answered about the parent
-/// directory, which is what unlinking a file actually needs. So the case these
-/// tests proved was one no scan can produce, and the case they were written for
-/// — a root-owned `/Library` folder — went through the same assertion by
-/// accident. They lock the directory now, which is the only lock that decides
-/// this — and the fake that does it is `LeftoversFakeFiles`, shared with the rest
-/// of this target since 2026-08-13, because the two fakes that folded writability
-/// to a single flag could not describe one scan with both answers in it. The last
-/// test below is the case they made unwritable.
-///
-/// Past defect: fixed in `e9dd8a65`.
+/// **The fixtures lock the directory, not the item**: unlinking a file needs
+/// write access to its parent, and `FileSystemLeftovers` answers about the
+/// parent. A fake answering by item path would prove a case no scan can
+/// produce.
 final class LeftoversWritableTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
@@ -87,24 +74,17 @@ final class LeftoversWritableTests: XCTestCase {
 
     // MARK: - One scan, both answers
 
-    /// **The pair every Mac with an updater on it has, and no test could hold it.**
-    /// `com.vendor.updater` sits in `~/Library/LaunchAgents` for this person and in
-    /// `/Library/LaunchAgents` for everybody — the same label, two files, and the
-    /// second is root's. `ScanOrderIsTotalTests` already builds that pair for its
-    /// sort, against a fake whose writability was one flag: both rows came back
-    /// `writable: true`, so the row that needs an administrator was ticked in every
-    /// fixture the suite had.
+    /// **The pair every Mac with an updater on it has.** `com.vendor.updater` sits
+    /// in `~/Library/LaunchAgents` for this person and in `/Library/LaunchAgents`
+    /// for everybody — the same label, two files, and the second is root's.
     ///
-    /// Three things have to be true of it at once, and only the third is about the
-    /// sort: the person's copy may be moved, root's may not — and **neither may be
-    /// switched**, which is where this test used to say the opposite. Both files
-    /// register `com.vendor.updater`, `launchctl disable gui/<uid>/…` is aimed at
-    /// that name and not at either file, and Helm cannot read which registration
-    /// launchd kept — so the switch drawn on both rows was one switch drawn twice
-    /// (`OneLabelIsOneSwitchTests`). What that assertion was really about,
-    /// «launchd's disabled list is the user's own, so root's folder does not
-    /// withhold the switch», is a claim about a *system-wide agent* and is asserted
-    /// on one below, where no second file claims the label.
+    /// Three things have to be true of it at once: the person's copy may be moved,
+    /// root's may not — and **neither may be switched**. Both files register
+    /// `com.vendor.updater`, `launchctl disable gui/<uid>/…` is aimed at that name,
+    /// and Helm cannot read which registration launchd kept
+    /// (`OneLabelIsOneSwitchTests`). «launchd's disabled list is the user's own, so
+    /// root's folder does not withhold the switch» is asserted below, on an agent
+    /// no second file claims.
     func testTheSameLabelInBothFoldersIsTwoRowsWithDifferentOffers() throws {
         var files = LeftoversFakeFiles()
         for directory in ["/Users/x/Library/LaunchAgents", "/Library/LaunchAgents"] {
@@ -144,11 +124,10 @@ final class LeftoversWritableTests: XCTestCase {
         XCTAssertEqual(everybodys.labelAlsoClaimedBy, mine.path)
     }
 
-    /// The claim the pair above can no longer carry, on the row it is actually
-    /// about: an agent installed for everybody, in a folder Helm may not write in,
-    /// with nobody else claiming its label. launchd's disabled list is the user's
-    /// own, so this one is switchable without a password — the one offer this row
-    /// keeps, and the reason `LeftoverActions` withholds delete and not the switch.
+    /// An agent installed for everybody, in a folder Helm may not write in, with
+    /// nobody else claiming its label. launchd's disabled list is the user's own,
+    /// so it is switchable without a password — the one offer this row keeps, and
+    /// the reason `LeftoverActions` withholds delete and not the switch.
     func testASystemWideAgentNobodyElseClaimsIsStillSwitchable() throws {
         var files = LeftoversFakeFiles()
         files.listing["/Library/LaunchAgents"] = ["com.vendor.updater.plist"]

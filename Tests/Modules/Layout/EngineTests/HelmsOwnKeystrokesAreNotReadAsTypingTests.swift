@@ -5,8 +5,8 @@ import CoreGraphics
 /// Keystrokes the engine itself sends while converting are not typing.
 ///
 /// Defect class kept: the engine reading its own output back and converting it
-/// again, typing over the person's text a second time (data overwritten; REQUIRED
-/// in ARCHITECTURE.md § What proves what).
+/// again, typing over the person's text a second time (data overwritten; required
+/// by Architecture/TestsAndMeasurement.md § What proves what).
 ///
 /// Every `perform` runs on main and only posts, so the echo reaches the tap after
 /// main is back in its run loop, so a flag set around `perform` would always be

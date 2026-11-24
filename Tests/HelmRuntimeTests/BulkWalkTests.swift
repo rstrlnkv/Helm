@@ -5,14 +5,10 @@ import XCTest
 
 /// The walk three modules share, and the facts each of them needs out of it.
 ///
-/// Disk had this walker to itself while `FileWeight` and the duplicate finder
-/// enumerated the slow way — measured on this Mac, warm cache, compiled `-O`:
-/// 0,79 s against 0,23 s over 105 000 files, and 3,5 s against 1,2 s for the
-/// forty bundles the Uninstaller sizes on its first visit. What each caller
-/// needs is different, so what the walk answers has to carry all of it: the
+/// Each caller needs something different, so the walk carries all of it: the
 /// clone-and-hard-link ledger reads `linkCount` and the file id, the duplicate
-/// finder reads the logical size and the date a copy arrived, Disk reads the
-/// allocated size and the device.
+/// finder the logical size and the date a copy arrived, Disk the allocated size
+/// and the device (Architecture/ModulePattern.md § Bulk reads).
 final class BulkWalkTests: XCTestCase {
 
     private var root: URL!
@@ -45,10 +41,10 @@ final class BulkWalkTests: XCTestCase {
                        accuracy: 0.000_001)
     }
 
-    /// **The ledger's raw material.** `FileWeight` charges one allocation once
-    /// however many names it wears, and it decides which entries can possibly
-    /// collide from the link count — so a walk that answered 1 for every file
-    /// would make every size in the app wrong in the same direction, silently.
+    /// The ledger's raw material: `FileWeight` charges one allocation once
+    /// however many names it wears, deciding from the link count which entries
+    /// can collide, so a link count of 1 for every file would silently skew
+    /// every size in the app.
     func testTwoNamesForOneAllocationAgreeOnTheirIdAndSayThereAreTwo() throws {
         let payload = try write("payload.bin", in: root, bytes: 300_000)
         try FileManager.default.linkItem(at: payload,
@@ -61,19 +57,14 @@ final class BulkWalkTests: XCTestCase {
         XCTAssertEqual(names.map(\.linkCount), [2, 2])
     }
 
-    /// **The date the copy arrived, not the date it was made.** The duplicate
-    /// finder decides which copy stays by Finder's «Date Added», which a file
-    /// does not carry with it when it is copied — read the wrong field and the
-    /// survivor is picked by a different rule from the one the person chose.
+    /// The date the copy arrived, not the date it was made: the duplicate
+    /// finder picks the copy that stays by Finder's «Date Added», which a file
+    /// does not carry when copied.
     ///
-    /// Compared **exactly**, and over enough files to make that mean something:
-    /// a `Date` composed from a 2026-sized number of seconds and left to subtract
-    /// its own epoch afterwards lands 240 ns away from what Foundation reports
-    /// for the same file, in about a quarter of readings. One file with a
-    /// tolerance would have called that agreement; twenty without one is what
-    /// caught it — through `TheScannerCarriesTheDateItReadTests` in Duplicates,
-    /// two modules away, which is exactly how far a promise travels when it is
-    /// not tested where it is made.
+    /// Compared exactly, over twenty files: a `Date` composed in the wrong
+    /// order of arithmetic lands some nanoseconds away from what Foundation
+    /// reports, in a fraction of readings, and a tolerance would call that
+    /// agreement.
     func testEveryFileCarriesTheDateItArrivedWithNothingLostInTheArithmetic() throws {
         for index in 0..<20 { try write("f\(index).bin", in: root, bytes: 1000) }
 
@@ -89,9 +80,8 @@ final class BulkWalkTests: XCTestCase {
     }
 
     /// A symlink is neither descended nor sized: its target belongs to whoever
-    /// owns it. Measured against `FileManager`, whose enumerator does yield the
-    /// link and answers 0 allocated bytes for it — so dropping it here keeps
-    /// every existing total exactly where it was.
+    /// owns it. `FileManager`'s enumerator yields the link with 0 allocated
+    /// bytes, so dropping it changes no total.
     func testASymlinkIsNotYielded() throws {
         try write("real.bin", in: root, bytes: 300_000)
         try FileManager.default.createSymbolicLink(
@@ -102,9 +92,8 @@ final class BulkWalkTests: XCTestCase {
         XCTAssertEqual(entries.map { ($0.path as NSString).lastPathComponent }, ["real.bin"])
     }
 
-    /// **A directory that would not open is never an empty one.** Every TCC
-    /// refusal arrives this way, and answering "no entries" draws a genuine zero
-    /// on a map whose whole job is where the space went.
+    /// A directory that would not open is never an empty one: every TCC
+    /// refusal arrives this way, and "no entries" would draw a false zero.
     func testADirectoryThatWillNotOpenAnswersNothingRatherThanNoEntries() throws {
         let closed = root.appendingPathComponent("closed")
         try FileManager.default.createDirectory(at: closed, withIntermediateDirectories: true)
@@ -149,19 +138,14 @@ final class BulkWalkTests: XCTestCase {
         XCTAssertTrue(found[0].hasSuffix("keep/file.bin"), found[0])
     }
 
-    /// **One spelling out of the walk.** Measured 2026-08-20: an enumerator
-    /// given a root spelled `/var/folders/…` hands back children spelled
-    /// `/private/var/folders/…`, so a gate comparing a walk's paths against the
-    /// root it was given matches nothing and fails open without a word. This
-    /// walk composes every path from the root it was handed, and this is the
-    /// test that says so — it is the reason a new walker must not reintroduce
-    /// the two spellings.
+    /// One spelling out of the walk: an enumerator given `/var/folders/…` hands
+    /// back children spelled `/private/var/folders/…`, so a gate comparing them
+    /// against the root matches nothing and fails open. This walk composes
+    /// every path from the root it was handed.
     func testEveryPathCarriesTheSpellingOfTheRootItWasGiven() throws {
         try write("deep/inside/file.bin", in: root, bytes: 1000)
 
-        // Both spellings of the same directory, where this machine's layout has
-        // two — under `/Users` it has one, and that is luck about the volume
-        // rather than anything the code does.
+        // Both spellings of the same directory; under `/Users` there is one.
         var spellings = [root.path]
         let plain = PathCanonical.withoutPrivate(root.path)
         if plain != root.path {
@@ -199,11 +183,9 @@ final class BulkWalkTests: XCTestCase {
         XCTAssertEqual(denied, [closed.path])
     }
 
-    /// Stop is pressed when a walk is at its longest — that is why it is
-    /// pressed. Asked before the first directory is opened, so the assertion is
-    /// about the files that were not read rather than about a flag being handed
-    /// back: `!isCancelled()` at the end would say "cancelled" for a walk that
-    /// had ignored the question entirely and read the whole tree first.
+    /// Asked before the first directory is opened, so the assertion is about
+    /// files not read rather than a flag handed back: a walk that ignored the
+    /// question and read the whole tree would still say "cancelled".
     func testAWalkCancelledBeforeItBeginsReadsNothingAndSaysSo() throws {
         for index in 0..<8 { try write("d\(index)/file.bin", in: root, bytes: 1000) }
 

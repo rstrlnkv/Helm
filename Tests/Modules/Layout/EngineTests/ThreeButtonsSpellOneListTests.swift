@@ -1,17 +1,11 @@
 import XCTest
 @testable import Module_Layout_Engine
 
-/// **«Never this word» is three buttons, and the list must not be able to tell
-/// which one was pressed.**
+/// «Never this word» is three buttons, and the list must not be able to tell
+/// which one was pressed.
 ///
-/// The page's field, the lists window's field and the panel tile's button each
-/// appended to the same stored array in their own words: two kept the word as
-/// typed and sorted, the third lowercased it and appended without sorting. So a
-/// word set aside from the panel landed at the bottom of the list in a spelling
-/// nobody had typed, and the same word set aside twice from two places could be
-/// held twice. `Exceptions.adding` is the one answer all three now ask for.
-///
-/// Guards a past defect: the panel's «Never this word» did not reach the engine (fix commit `ad9c679f`).
+/// The page's field, the lists window's field and the panel tile's button all
+/// ask `Exceptions.adding`, so a word lands as typed, in sorted order, once.
 final class ThreeButtonsSpellOneListTests: XCTestCase {
 
     func testTheWordIsKeptAsItWasTyped() {

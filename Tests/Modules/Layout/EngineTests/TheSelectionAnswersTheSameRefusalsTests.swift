@@ -3,7 +3,7 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
-/// **One gesture, two doors, one set of refusals — and only one door has them.**
+/// One gesture, two doors, one set of refusals.
 ///
 /// `fix()` looks at what is selected and, finding nothing, converts the last
 /// word. Both outcomes are the same key press to the person making it. The word
@@ -15,12 +15,10 @@ import XCTest
 /// - a translation that turns a letter into a mark, because somebody typing
 ///   letters meant letters.
 ///
-/// The selection door never reached `LayoutVerdict` at all. `convertSelection` converted
-/// straight out of `TranslationPort` and wrote whatever
-/// came back. So the same key press, on the same word, honoured the list when
-/// nothing was selected and ignored it when the word was selected — which was the
-/// harder half to notice, because selecting the word first is what somebody
-/// does when the automatic path has *already* refused it.
+/// The selection door answers the same two (`LayoutVerdict`), or the same key
+/// press on the same word would honour the list with nothing selected and
+/// ignore it with the word selected — which is what somebody does when the
+/// automatic path has already refused it.
 ///
 /// The page's own promise has no footnote: «Never change these words» over
 /// «These are left exactly as you typed them, whatever the dictionary thinks.»
@@ -77,10 +75,9 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
 
     // MARK: - The never-list
 
-    /// The person put `ghbdtn` on «Never change these words» because Helm kept
-    /// rewriting it. The automatic path stopped; the gesture stopped. Then they
-    /// select the word — which is what somebody does when the module has been
-    /// refusing to touch it — and press the same key. It is rewritten.
+    /// The person put `ghbdtn` on «Never change these words». The automatic
+    /// path and the gesture leave it alone; selecting the word and pressing the
+    /// same key must too.
     func testANeverListedWordIsNotConvertedBecauseItWasSelected() async throws {
         let typing = FakeTyping()
         let selection = FakeSelection()
@@ -119,13 +116,11 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
 
     // MARK: - A letter is not a mark
 
-    /// The other absolute refusal, and the same door is missing it.
+    /// The other absolute refusal.
     ///
-    /// `дфых` read through the other layout is `las[` — measured, and the
-    /// reason `turnsALetterIntoAMark` exists: opening the key table so `,` can
-    /// be `б` gave every letter a key in the other direction too, and some of
-    /// those type punctuation. A spell checker accepts `las[`, so nothing else
-    /// stops it. The word path refuses it even when the person asked by name,
+    /// `дфых` read through the other layout is `las[`, the reason
+    /// `turnsALetterIntoAMark` exists. A spell checker accepts `las[`, so
+    /// nothing else stops it. The word path refuses it even when the person asked by name,
     /// because a bracket where a letter was is not the word they asked for.
     func testASelectionIsNotConvertedIntoAWordWithAMarkWhereALetterWas() async throws {
         let typing = FakeTyping()

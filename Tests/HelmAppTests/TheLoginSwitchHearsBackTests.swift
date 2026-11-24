@@ -7,22 +7,16 @@ import HelmAppStrings
 
 /// «Open Helm at login» against the only thing that can refuse it.
 ///
-/// The switch was `@State private var launchAtLogin = LoginItem.isEnabled`,
-/// written once at construction, whose `onChange` called a method that **caught
-/// the throw and discarded it** — while the two permission rows beside it are
-/// re-probed on every activation. So if `register()` failed the switch stayed on
-/// and Helm did not open at login; if the person removed Helm from System
-/// Settings ▸ Login Items with the window open, the switch stayed on then too.
-/// It is the first switch anybody touches in this app.
-///
-/// The family named on 2026-08-12: a local flag standing in for a live external
-/// fact, with no reverse channel from the port that knows. `TrashWatch` is the
-/// shape this follows — one value from the facts that decide it, rather than a
-/// boolean beside a boolean.
+/// The switch shows what the system says, not what Helm last tried: a
+/// `register()` that threw is not on, and Helm removed from System Settings ▸
+/// Login Items with the window open turns the switch off. A local flag
+/// standing in for a live external fact has no reverse channel from the port
+/// that knows. `TrashWatch` is the shape this follows: one value from the
+/// facts that decide it, rather than a boolean beside a boolean.
 @MainActor
 final class TheLoginSwitchHearsBackTests: XCTestCase {
 
-    /// The whole finding: a write that threw is not an on switch.
+    /// A write that threw is not an on switch.
     func testARefusedRegistrationIsNotAnOnSwitch() {
         let state = LoginItemState.state(status: .notRegistered, refused: true)
         XCTAssertEqual(state, .refused)

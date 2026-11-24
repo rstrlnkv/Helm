@@ -4,38 +4,22 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// **A source the scan refused to walk leaves the page saying «No leftovers
-/// found».**
+/// **A source the scan refused to walk does not leave the page saying «No
+/// leftovers found».**
 ///
 /// `isItsOwnPlace` is right to skip a directory that is not the directory it
-/// names — `ADirectoryThatIsNotTheOneItNamesTests` is why it exists, and the
-/// refusal is the safe direction. What it does not do is *say so anywhere a
-/// person can see*: the refusal goes to the log, by kind, and the scan comes back
-/// one source short with nothing in the value to mark the hole.
+/// names (`ADirectoryThatIsNotTheOneItNamesTests`). The refusal must also reach
+/// the page: without a row, the scan comes back one source short with nothing
+/// to mark the hole, `uncheckedCount` is zero, and on the ordinary Mac — where
+/// the default filter shows leftovers only and an honest scan finds none — the
+/// page draws `LeftoversEmpty.Reason.nothingFound`, «No leftovers found.» in
+/// green, on a scan that did not look.
 ///
-/// Those rows are then missing rather than unjudged, so `uncheckedCount` is zero,
-/// and on the ordinary Mac — where the default filter shows leftovers only and an
-/// honest scan finds none (569 items and one offer on the machine this was
-/// written on) — the page draws `LeftoversEmpty.Reason.nothingFound`:
-/// «No leftovers found.» under `checkmark.circle`, in green. That is this
-/// module's strongest claim about somebody's Mac, made on a scan that did not
-/// look.
-///
-/// The module already refuses to make it in the other case, which is what makes
-/// this one an omission rather than a decision: a scan holding rows it could not
-/// judge says `notEverythingChecked` instead, with a question mark over it,
-/// «**Not** the check. A green tick over «Helm could not check 3 items» is the
-/// mark contradicting the sentence under it» (`LeftoversSettingsPage.symbol`).
-/// A source nobody walked is the same fact one step earlier — Helm could not
-/// check a whole folder — and it is the one that leaves no row behind to be
-/// counted.
-///
-/// It needs no attacker. `ADirectoryThatIsNotTheOneItNamesTests` names the
-/// ordinary version itself: «anybody who has ever symlinked a plug-in folder onto
-/// another volume». One of the eight is enough, because it is the *filtered* list
-/// that has to be empty for this message, not the scan.
-///
-/// Past defect: fixed in `5603872d`.
+/// A scan holding rows it could not judge says `notEverythingChecked` instead,
+/// with a question mark over it; a source nobody walked is the same fact one
+/// step earlier. It needs no attacker — anybody who has symlinked a plug-in
+/// folder onto another volume — and one of the eight is enough, because it is
+/// the *filtered* list that has to be empty for this message, not the scan.
 final class ASourceNobodyWalkedIsNotACleanMacTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
@@ -96,15 +80,12 @@ final class ASourceNobodyWalkedIsNotACleanMacTests: XCTestCase {
         XCTAssertNil(message(over: items), "precondition: with a row to draw there is no message")
     }
 
-    /// **The finding.** The two Macs are one screen: a dead plug-in behind a
-    /// link, and a Mac with nothing left over at all, both draw «No leftovers
-    /// found» under a green check.
+    /// **The guard.** A dead plug-in behind a link and a Mac with nothing left
+    /// over must not draw one screen.
     ///
     /// Asserted as a difference between two scans rather than against a named
-    /// reason, so any channel that carries the refusal upward satisfies it — a row
-    /// the scan could not judge, a fourth count, a reason of its own — and none of
-    /// them can be satisfied by luck: the honest side is pinned to
-    /// `.nothingFound` first.
+    /// reason, so any channel that carries the refusal upward satisfies it; the
+    /// honest side is pinned to `.nothingFound` first.
     func testAScanThatSkippedASourceDoesNotSayTheMacIsClean() {
         let blind = scan(redirected: true)
         let clean = scan(redirected: false).filter { $0.kind != .plugin }
@@ -112,7 +93,7 @@ final class ASourceNobodyWalkedIsNotACleanMacTests: XCTestCase {
         XCTAssertEqual(message(over: clean), .nothingFound,
                        "precondition: a Mac with nothing left over says so")
         // The dead plug-in, not «no plug-in row»: a scan that says out loud it
-        // could not read the folder is the fix, and it may well say so with a row.
+        // could not read the folder may well say so with a row.
         XCTAssertEqual(blind.count { $0.identifier == "com.gone.vendor.quicklook" }, 0,
                        "precondition: the redirected folder was not walked")
 
@@ -135,20 +116,13 @@ final class ASourceNobodyWalkedIsNotACleanMacTests: XCTestCase {
 
     /// **The same hole with no symbolic link in it, over the real port.**
     ///
-    /// `DirectoryListing.children` answers `[]` for a directory that is not there
-    /// *and* for one this process may not read — «"not there" and "nothing in it"
-    /// lead to the same finding», which is true of the first case and not of the
-    /// second. It is the fold `FileSystemLeftovers.exists` was taken apart for one
-    /// declaration further down the same file: `false` there meant «no such file»
-    /// and «EACCES», and the fix was a third answer, `nil`, for «I could not
-    /// tell». `children` still has two answers for three facts, and
-    /// `LeftoversFilePort.children` has nowhere to put the third — so neither the
-    /// port nor any fake of it can say «this folder would not open», and the scan
-    /// reports the folder as empty.
+    /// A directory that is not there and one this process may not read must not
+    /// be one answer: the second is a permission, not «nothing in it».
+    /// `LeftoversFilePort.contents` carries the third answer, `.refused`, as
+    /// `exists` carries `nil` for «I could not tell».
     ///
-    /// Run against a real directory at mode 000 rather than a fake, because the
-    /// fake cannot hold this state — which is the finding as much as the reading
-    /// is.
+    /// Run against a real directory at mode 000 rather than a fake, so the port
+    /// itself is shown to say «this folder would not open».
     func testAFolderThisProcessMayNotReadIsNotAnEmptyFolder() throws {
         // Resolved: `$TMPDIR` is `/var/folders/…` and `/var` is a link, which
         // `isItsOwnPlace` would refuse — the scan would then skip every source and
@@ -180,9 +154,8 @@ final class ASourceNobodyWalkedIsNotACleanMacTests: XCTestCase {
         try FileManager.default.setAttributes([.posixPermissions: 0o000],
                                               ofItemAtPath: preferences.path)
         // `contents(of:)` rather than its `.entries`, and the difference is this
-        // test's whole subject: the entries alone fold «refused» back into «empty», so an empty answer here would have
-        // been the precondition passing on the very fold the assertion below
-        // exists to catch. `.refused` says the port really was turned away.
+        // test's subject: the entries alone fold «refused» back into «empty».
+        // `.refused` says the port really was turned away.
         XCTAssertEqual(files.contents(of: preferences), .refused,
                        "precondition: this process really cannot read the folder now")
 

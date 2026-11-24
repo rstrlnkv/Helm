@@ -2,27 +2,21 @@ import Foundation
 
 /// Reading the log back — **the one place in this app a log line is parsed.**
 ///
-/// The rule (ARCHITECTURE.md § The log pane) is that the tail is filled from the same parts the file line
-/// is spelled from, never by parsing the line back apart, and that rule stands
-/// for `write`: the live path holds the parts and hands them over. A *seed* has
-/// no parts to hold. The file is all there is, so it parses — here, once, in a
-/// type whose name says so — and `LogSeed`'s obligation in exchange is to be the
-/// exact inverse of `LogLine.line` rather than an approximate reader of it.
+/// The tail is filled from the parts a line is spelled from, never by parsing
+/// the line back (Architecture/DiagnosticsLog.md § The log pane). A *seed* has
+/// no parts to hold, so it parses, here, as the exact inverse of `LogLine.line`.
 /// `ThePageShowsTheLogAndNotTheSessionTests` holds the round trip.
 ///
 /// **A line it cannot read is kept whole and claims nothing.** Dropping it would
-/// hide the half-written line a crash left behind — which is the line somebody
-/// opened the page for — and guessing at its parts would put a level and a module
-/// on text the app did not write. So the whole line becomes the message, the
-/// category is empty, the level is `info`, and the date is the one on the line
-/// above it: adjacent in the file, adjacent on the page. Nothing else is claimed.
+/// hide the half-written line a crash left behind, and guessing at its parts
+/// would put a level and a module on text the app did not write. The whole line
+/// becomes the message, the category is empty, the level is `info`, and the
+/// date is the one on the line above it.
 ///
-/// **On redaction.** `Redact` runs at the call site, before `write`, so the file
-/// never held a VPN name or a home path and a parse cannot bring one back: a
-/// seeded line carries exactly what «Show in Finder» would show. What a parse
-/// *can* be wrong about is the clock — the file spells local time and no offset,
-/// so lines written in another time zone are drawn at the wall-clock time they
-/// were written at rather than the instant. The alternative is discarding them.
+/// `Redact` runs before `write`, so a parse cannot bring back a name the file
+/// never held. The clock can be wrong: the file spells local time and no
+/// offset, so lines written in another time zone are drawn at their wall-clock
+/// time. The alternative is discarding them.
 public enum LogSeed {
 
     /// How many characters a stamp is: whatever `LogLine.stampFormat` spells.
@@ -38,19 +32,14 @@ public enum LogSeed {
     /// The stamp `LogLine.line` writes, read the other way — and read once a
     /// minute rather than once a line.
     ///
-    /// **Measured 2026-08-14**, three readings in a `-O` binary on this Mac:
-    /// `DateFormatter.date(from:)` costs 48.8, 52.1 and 77.8 µs, so a thousand
-    /// lines parsed the plain way is 49–78 ms — spent on the main thread the
-    /// first time somebody opens the page. A thousand lines of the owner's log
-    /// span about 460 seconds, so the same thousand stamps hold eight minutes:
-    /// eight of those calls instead of a thousand, measured at 1 ms for the lot.
-    /// Remembering the *second* instead would have left 460 of them, which is
-    /// why the minute is what is remembered and the seconds and milliseconds
-    /// after it are arithmetic on the result.
+    /// `DateFormatter.date(from:)` costs tens of microseconds, so a thousand
+    /// lines parsed the plain way is a visible stall on the main thread when the
+    /// page opens. A thousand lines span minutes, not seconds, so the minute is
+    /// remembered and the seconds and milliseconds are arithmetic on it.
     ///
     /// A minute rather than a day because a zone offset can change inside a day
-    /// and cannot change inside a minute — the arithmetic is only safe under a
-    /// constant offset, and that is the largest unit that guarantees one.
+    /// and not inside a minute; the arithmetic is only safe under a constant
+    /// offset.
     final class Stamps {
         private let formatter: DateFormatter
         private var minute = ""
@@ -84,9 +73,8 @@ public enum LogSeed {
     /// `2026-08-14 13:32:01.123 [warn] [layout] message  (File.swift:12 f())`
     ///
     /// The formatter is passed in and never defaulted: one per read, not one per
-    /// line — building a `DateFormatter` is 77–100 µs (three readings, 2026-08-14),
-    /// which over the thousand lines of a seed is more than the parse the minute
-    /// cache above exists to save.
+    /// line, since building a `DateFormatter` per line costs more than the parse
+    /// the minute cache saves.
     static func parse(_ line: String, using formatter: Stamps) -> Line {
         var rest = Substring(line)
         guard let stamp = take(&rest, upTo: " ["), let date = formatter.date(from: stamp),
@@ -140,10 +128,8 @@ public enum LogSeed {
     ///     unreadable line above the first readable one takes that line's date
     ///     instead, so it opens no day of its own.
     ///   - limit: how many lines are wanted, dropped **before** the parse rather
-    ///     than after it. The byte window below holds about 3 400 lines of a log
-    ///     whose newest thousand average 76 bytes, and the tail keeps 1 000, so
-    ///     parsing the window and then trimming is two thirds of the work thrown
-    ///     away.
+    ///     than after it: the byte window holds several times what the tail
+    ///     keeps.
     static func entries(from text: String, startedMidFile: Bool, dated fallback: Date,
                         keepingLast limit: Int = .max,
                         using formatter: Stamps) -> [LogEntry] {
@@ -189,11 +175,9 @@ public enum LogSeed {
     /// The last `bytes` of each file, in the order given — the rolled-over half
     /// first, then the one being written.
     ///
-    /// Bounded by bytes as well as by lines: the file is 2 MB before it rolls
-    /// over, and reading all of it to keep the last thousand lines is the whole
-    /// volume in memory for a page somebody opened to read the end of it. A read
-    /// that starts at an offset says so, so the fragment it lands in the middle of
-    /// is dropped rather than drawn.
+    /// Bounded by bytes as well as by lines, so a page opened to read the end of
+    /// the file does not hold all of it. A read that starts at an offset says so,
+    /// so the fragment it lands in is dropped rather than drawn.
     static func read(_ urls: [URL], atMost bytes: Int, limit: Int,
                      using formatter: Stamps = Stamps()) -> [LogEntry] {
         var out: [LogEntry] = []
@@ -223,21 +207,17 @@ public enum LogSeed {
 }
 
 /// **Recognising the launch words.** `HelmLog` writes them through `LogLine`;
-/// these read them back from the same words, held together by
-/// `TheLogSplitsIntoLaunchesTests`, which has a real `HelmLog` write each and
-/// asks this to read it — a reworded line otherwise turns every card into one
-/// long "earlier launch" and nothing says so.
+/// these read them back from the same words. `TheLogSplitsIntoLaunchesTests`
+/// holds the two together: a reworded line would turn every card into one long
+/// "earlier launch".
 extension LogSeed {
 
     /// The version a start line names, or nil for any other line.
     ///
     /// **A start line a crash glued to a torn one is still a start.** A write cut
-    /// short has no newline, so the next launch's first line is appended to it,
-    /// and `LogSeed` — which keeps a line whole and claims nothing — reads the
-    /// pair as one entry whose category is half a line plus the next stamp and
-    /// whose message is the start line's own «[app] Helm … started». The launch
-    /// after a crash is the one somebody opened the page for, so it is read here
-    /// as the launch it is; the entry stays one line, in the place it was.
+    /// short has no newline, so the next launch's first line is appended to it
+    /// and read as one entry. The launch after a crash is the one somebody opened
+    /// the page for, so it is read as a launch; the entry stays one line.
     public static func version(of entry: LogEntry) -> String? {
         if entry.category == LogLine.appCategory, let version = version(inMessage: entry.message) {
             return version
@@ -282,13 +262,10 @@ extension LogSeed {
     /// Helm … started». A start line standing alone has category `app` and was
     /// answered before this is asked.
     ///
-    /// **Not a line that carries a source site.** `HelmLog.warn` and `.error`
-    /// write one on every line, and a glued start never has one — the start
-    /// line is written without a site and is the end of the glued entry — so a
-    /// warning or an error that merely quotes a start line (a copied log line, a
-    /// file named like one) is not a launch. An `info` line has no site either,
-    /// so the same quote at that level cannot be told from a tear by the entry
-    /// alone.
+    /// **Not a line that carries a source site.** A glued start ends with the
+    /// start line, which has no site, so a warning or an error that merely
+    /// quotes a start line is not a launch. An `info` line quoting one cannot be
+    /// told from a tear by the entry alone.
     fileprivate static func versionOfGluedStart(_ entry: LogEntry) -> String? {
         guard entry.site == nil, entry.message.hasSuffix(LogLine.startedSuffix) else { return nil }
         let text = entry.category.isEmpty ? entry.message : entry.category + "] " + entry.message

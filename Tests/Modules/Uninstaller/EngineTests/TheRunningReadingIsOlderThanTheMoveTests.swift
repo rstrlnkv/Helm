@@ -4,34 +4,22 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// **A reading of which applications are up is not good for the move.**
+/// A reading of which applications are up is not good for the move.
 ///
-/// `trashPaths` quits the running applications of a batch one after another, a
-/// force quit and a `waitUntilGone` per app, five seconds apiece by default,
-/// before `trashSync` moves anything. After that loop it asks again, and
-/// `held()` returns what is still up as `stillRunning` instead of moving it.
-/// These tests hold that second asking; the first reading, taken at the top, is
-/// older than the move by the length of the loop.
+/// `trashPaths` quits a batch's running applications in turn, then asks again,
+/// and `held()` returns what is still up as `stillRunning`. These tests hold
+/// that second asking, against the two ordinary ways an app is up when its
+/// bundle moves:
 ///
-/// Two ways an application is up when its bundle moves, both of them ordinary:
+/// - it came back while the batch was quitting the others (a login item, a
+///   helper, the person double-clicking);
+/// - it ignored the quit, and the deadline ended the wait
+///   (Architecture/Uninstaller.md § Uninstaller).
 ///
-/// - it came back while the batch was quitting the *others* — a login item, a
-///   helper that restarts its app, `open -a`, or the person double-clicking;
-/// - it ignored the quit, and the deadline ended the wait.
-///
-/// The second is the one already decided in ARCHITECTURE.md § Uninstaller:
-/// «the deadline ends the *wait* rather than the question».
-/// Without the second asking, nothing would answer either. macOS lets a running
-/// app's bundle be moved, so nothing would refuse, nothing would be reported,
-/// and the result would be an unqualified success — `trashed` holding the
-/// bundle, `stillRunning` empty, `failures` empty. The process carries on out
-/// of the moved bundle and writes its preferences when it finally exits, so the
-/// leftovers this batch has just taken come back. That is the half-uninstall
-/// `waitUntilGone` exists to prevent, reported as a clean one.
-///
-/// These tests do not prescribe which way out is taken. Refusing the bundle,
-/// naming the app in `stillRunning`, or classifying it as a failure would each
-/// satisfy them; a silent success does not.
+/// macOS moves a running app's bundle without complaint, so without the second
+/// asking the half-uninstall would be reported as a clean one. Any way out
+/// (refusing the bundle, `stillRunning`, a failure) satisfies these tests; a
+/// silent success does not.
 final class TheRunningReadingIsOlderThanTheMoveTests: XCTestCase {
 
     private var home: URL!
@@ -39,8 +27,7 @@ final class TheRunningReadingIsOlderThanTheMoveTests: XCTestCase {
     private let editorID = "com.acme.editor"
 
     override func setUpWithError() throws {
-        // `RemovableScope` refuses everything outside a home, and a test exempted
-        // from that gate is a test of a different program.
+        // `RemovableScope` refuses everything outside a home, and the test keeps the gate.
         home = scratchDirectory("stale-running")
     }
 
@@ -59,18 +46,12 @@ final class TheRunningReadingIsOlderThanTheMoveTests: XCTestCase {
 
     // MARK: -
 
-    /// **An app that came back up while the batch was quitting the next one.**
+    /// An app that came back up while the batch was quitting the next one keeps
+    /// its bundle: something can start an application without asking Helm
+    /// (Architecture/TheGates.md § The gates).
     ///
-    /// Two applications ticked together is the ordinary shape of this screen, and
-    /// the batch quits them in turn. Nothing asks again about the first once its
-    /// wait has come back, so anything that starts it in the seconds that follow
-    /// — and something starting an application without asking Helm is the whole
-    /// point of the family (ARCHITECTURE.md § The gates) names — has its bundle taken out from under
-    /// it.
-    ///
-    /// The moment is pinned rather than timed: `FakeRunning` is told that quitting
-    /// the second app brings the first back, which is a helper restarting its own
-    /// app and is deterministic in a way a `sleep` racing a deadline is not.
+    /// The moment is pinned, not timed: quitting the second app brings the first
+    /// back, as a helper restarting its app does.
     func testAnAppThatCameBackUpWhileTheBatchQuitTheOthersKeepsItsBundle() async throws {
         let player = try appBundle("Player", id: playerID)
         let editor = try appBundle("Editor", id: editorID)
@@ -103,16 +84,11 @@ final class TheRunningReadingIsOlderThanTheMoveTests: XCTestCase {
             """)
     }
 
-    /// **An app that ignored the force quit.**
+    /// An app that ignored the force quit is not reported as removed cleanly
+    /// (Architecture/Uninstaller.md § Uninstaller).
     ///
-    /// The deadline ending the wait, not the question, is a decision
-    /// (ARCHITECTURE.md § Uninstaller); without the second asking nothing refuses
-    /// to move, so the person is told the uninstall worked.
-    ///
-    /// It costs the engine's own five-second deadline, which is the number that
-    /// ships: `trashPaths` calls `waitUntilGone` with its defaults and there is
-    /// nothing to inject. A shorter one here would be a test of a different
-    /// program.
+    /// It costs the engine's own five-second deadline, the one that ships:
+    /// `trashPaths` calls `waitUntilGone` with its defaults.
     func testAnAppThatIgnoredTheQuitIsNotReportedAsRemovedCleanly() async throws {
         let player = try appBundle("Player", id: playerID)
         let running = FakeRunning(running: [playerID], stubborn: [playerID])
@@ -135,8 +111,8 @@ final class TheRunningReadingIsOlderThanTheMoveTests: XCTestCase {
             """)
     }
 
-    /// The control, and it is not decoration: without it, an engine that refused
-    /// every batch would pass both tests above.
+    /// The control: without it, an engine that refused every batch would pass
+    /// both tests above.
     func testAnAppThatReallyQuitStillMovesAndReportsItself() async throws {
         let player = try appBundle("Player", id: playerID)
         // Not zero: an app that vanishes the instant it is asked makes a test of

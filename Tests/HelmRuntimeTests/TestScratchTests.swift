@@ -3,18 +3,15 @@ import XCTest
 @testable import HelmRuntime
 
 /// The directory a store of the person's redirects itself into while XCTest is
-/// loaded, and the sweep that keeps it from becoming 452 of them.
+/// loaded, and the sweep that keeps one per dead process from accumulating.
 ///
-/// The *judgement* — which of these names belong to processes that have gone —
-/// is held first, under the journal's own spelling of it. The rest holds the two
-/// halves that judgement does not reach: that two processes are handed two
-/// directories, and that the sweep beside them actually removes one. The 452
-/// were never a wrong judgement; they were a judgement nobody called.
+/// The judgement (which names belong to processes that have gone) is held
+/// first, under the journal's spelling of it; the rest holds that two processes
+/// get two directories, and that the sweep actually removes one.
 ///
-/// The five cases that make a directory run against a base directory of their
-/// own rather than `$TMPDIR`; the other five judge a list of names
-/// (`ScanJournal.abandonedTestJournals`) and take no directory. So nothing here
-/// can sweep the journal of a suite running beside it.
+/// The cases that make a directory use a base directory of their own, not
+/// `$TMPDIR`, so nothing here can sweep the journal of a suite running beside
+/// it.
 final class TestScratchTests: XCTestCase {
 
     private let scratch = TestScratch(prefix: "helm-scratch-probe-")
@@ -22,21 +19,12 @@ final class TestScratchTests: XCTestCase {
 
     // MARK: - Which names belong to processes that have gone
     //
-    // The judgement behind the one directory the suite used to leave behind.
-    //
-    // `ScanJournal` sends itself into `$TMPDIR` when XCTest is loaded, so a test
-    // run cannot write into the person's real `Application Support`. That part
-    // works and is load-bearing — an earlier attempt keyed on
-    // `XCTestConfigurationFilePath`, which `swift test` does not set, and read
-    // clean while the suite went on writing into their store. What it lacked was
-    // an end: one directory per process, kept for ever, **452 of them** by the
-    // time anyone counted.
-    //
-    // The sweep that ends it is one `removeItem` and one decision, and the
-    // decision is the whole risk: saying "gone" about a process that is running
-    // deletes the journal of a suite running beside this one, which on a build
-    // machine is the ordinary case. So the decision is pure and tested here, and
-    // liveness is asked of the kernel rather than of a timestamp.
+    // `ScanJournal` sends itself into `$TMPDIR` when XCTest is loaded, one
+    // directory per process. The sweep is one `removeItem` and one decision,
+    // and the decision is the whole risk: "gone" said of a running process
+    // deletes the journal of a suite running beside this one. So the decision
+    // is pure and tested here, and liveness is asked of the kernel, not of a
+    // timestamp.
 
     private let myJournal = "helm-scan-journal-4242"
     private let theirs = "helm-scan-journal-777"
@@ -51,9 +39,8 @@ final class TestScratchTests: XCTestCase {
         XCTAssertEqual(swept, [myJournal], "the journal of a live process was swept")
     }
 
-    /// The case that costs somebody a debugging session rather than a file: a
-    /// suite running in parallel under another account. `kill` answers `EPERM`
-    /// for it, which is "there, and not yours" — still there.
+    /// A suite running in parallel under another account: `kill` answers
+    /// `EPERM`, which is "there, and not yours", still alive.
     func testNothingIsSweptWhenEveryProcessIsAlive() {
         XCTAssertTrue(ScanJournal.abandonedTestJournals([myJournal, theirs]) { _ in true }.isEmpty)
     }
@@ -85,11 +72,9 @@ final class TestScratchTests: XCTestCase {
                        "helm-scratch-probe-\(mine)")
     }
 
-    /// Sharing one directory across runs is the other shape available here — the
-    /// log takes it — and it is wrong for a store: two suites run side by side on
-    /// a build machine, a store holds one slot, and a slot read by one process
-    /// and written by another is the nondeterminism the redirection exists to
-    /// end.
+    /// Not one directory shared across runs, as the log has: two suites run
+    /// side by side, and a store slot read by one process and written by
+    /// another is the nondeterminism the redirection exists to end.
     func testItIsNotTheBaseItself() {
         let base = scratchDirectory("scratch-base")
         XCTAssertNotEqual(scratch.directory(in: base).path, base.path)
@@ -108,8 +93,7 @@ final class TestScratchTests: XCTestCase {
                        + "accumulate")
     }
 
-    /// The case that costs somebody a debugging session rather than a directory:
-    /// the suite running beside this one.
+    /// The suite running beside this one keeps its directory.
     func testItLeavesALivingProcessesDirectoryAlone() throws {
         let base = scratchDirectory("scratch-sweep")
         let live = try made("helm-scratch-probe-777", in: base)
@@ -120,10 +104,9 @@ final class TestScratchTests: XCTestCase {
                       "the directory of a running process was swept")
     }
 
-    /// `$TMPDIR` belongs to everything on the machine, and the sweep walks all of
-    /// it. A name that is not this family's is not the sweep's to judge — asked
-    /// here of the removal rather than of the decision, because a sweep that
-    /// ignored the decision would pass every case above.
+    /// `$TMPDIR` belongs to everything on the machine. A name not of this family
+    /// is not the sweep's to judge, asked here of the removal, because a sweep
+    /// that ignored the decision would pass every case above.
     func testItLeavesAStrangerAlone() throws {
         let base = scratchDirectory("scratch-sweep")
         let stranger = try made("com.apple.something", in: base)

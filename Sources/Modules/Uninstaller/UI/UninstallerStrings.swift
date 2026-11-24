@@ -6,9 +6,8 @@ import Module_Uninstaller_Engine
 enum UnStr {
     static var moduleName: String { L(.uninstaller) }
     static var summary: String { L(.removeAnAppWithAllOfItsFiles) }
-    /// The same note when the Trash switch is on, because then the missing
-    /// grant costs two things rather than one — and one grant deserves one
-    /// notice, not a second row with its own Grant button saying the same.
+    /// The same note when the Trash switch is on, naming both costs: one grant,
+    /// one notice.
     static var accessNeededWithWatch: String {
         L(.withoutFullDiskAccessOrTheTrash)
     }
@@ -19,11 +18,8 @@ enum UnStr {
 
     /// A leftover's kind and its size, as one caption.
     ///
-    /// It was assembled in `OrphansView` as `"\(kind) · \(size)"`: the kind
-    /// went through `L()` and the dot between them did not, so every language
-    /// got a Latin middle dot. The same shape turned up in Duplicates' basket
-    /// bar and VPN's connection row; `DupStr.found` sets `・` for Japanese and
-    /// this now does too.
+    /// One sentence, so the dot between is the language's too (`・` in Japanese,
+    /// as `DupStr.found` sets it).
     static func kindAndSize(_ kind: LeftoverKind, _ size: String) -> String {
         let name = self.kind(kind)
         return L(.kindAndSize(name, size))
@@ -49,33 +45,25 @@ enum UnStr {
     /// own tab, for files whose app is already gone, and one English text means
     /// one thing.
     static var trashOfferTitle: String { L(.filesLeftInYourLibrary) }
-    /// The one standing line in that window, and the honest cost of offering
-    /// now rather than waiting for the Trash to be emptied: the app is in the
-    /// Trash, not gone, and it can come back without these.
-    ///
-    /// One sentence, because the first half of the two it used to be was the
-    /// window's own title said again with more words. Naming the Trash carries
-    /// the provenance, so nothing was lost with it. It stays literally true after
-    /// the files are moved: they land beside the app, and restoring the app alone
-    /// still does not bring them.
+    /// The one standing line in that window, the cost of offering now: the app
+    /// is in the Trash, not gone, and it can come back without these. It stays
+    /// true after the files are moved, since restoring the app alone does not
+    /// bring them.
     static var trashOfferNote: String {
         L(.puttingTheAppBack)
     }
-    /// What Cancel really means here, said outright. The record holds for as long
-    /// as the app is in the Trash, and once the Trash is emptied there is nothing
-    /// left to ask about — so "Later" would be a lie and «Отменить» is the system
-    /// word for "make nothing happen", which this does not do.
+    /// What Cancel really means here, said outright: the record holds while the
+    /// app is in the Trash, so "Later" would be a lie, and «Отменить» means "make
+    /// nothing happen", which this does not do.
     static var trashOfferKeep: String { L(.keepTheseFiles) }
     /// The switch on the Leftovers tab.
     ///
-    /// Impersonal, like every other switch in Helm and — the reason that settles
-    /// it — like Finder's own Trash settings in all eight languages.
+    /// Impersonal, like every switch in Helm and like Finder's own Trash settings
+    /// in all eight languages.
     ///
-    /// "when an app goes to the Trash" rather than a state: the person is being
-    /// asked to turn on a thing that happens *at a moment*, and the moment is
-    /// what they will recognise. The offer still covers apps already sitting
-    /// there when the switch goes on — `setWatchingTrash` emits `trashChanged`
-    /// for exactly that — but that is the caption's business, not the label's.
+    /// "when an app goes to the Trash", a moment the person recognises, rather
+    /// than a state. Apps already there are covered too (`setWatchingTrash`), but
+    /// that is the caption's business.
     static var watchTrash: String { L(.lookForLeftoversAutomatically) }
     /// What the feature does, and the one limit worth knowing before turning it
     /// on: the bundle in the Trash is what says whose files these are, so
@@ -98,9 +86,8 @@ enum UnStr {
         return L(.reviewCount(String(n)), language: language)
     }
     static var removing: String { L(.removing) }
-    /// The caption under the first row of every review group. The last screen
-    /// before deletion has no dialog after it, and it said nothing at all about
-    /// the app — only about the files beside it.
+    /// The caption under the first row of every review group: the last screen
+    /// before deletion has no dialog after it, so it says the app goes too.
     static var theAppItself: String { L(.theAppItself) }
     static var systemApp: String { L(.systemApp) }
     static var noLeftoversForApp: String { L(.noExtraFilesFound) }
@@ -125,30 +112,23 @@ enum UnStr {
         let items = Plural.items(n, language: AppLanguage.current.rawValue)
         return L(.couldNotRemove(items))
     }
-    /// The sentences moved to `TrashReasonText` when Disk and Duplicates
-    /// started needing them too. Kept as a name the pages already call.
+    /// The sentences are `TrashReasonText`'s, shared with Disk and Duplicates.
     static func failureReason(_ reason: TrashFailure.Reason) -> String {
         TrashReasonText.sentence(reason.rawValue)
     }
     /// Marks a leftover found by the app's display name rather than its
     /// bundle id, and it is not ticked by default.
     ///
-    /// "by name" named the *method* and left the reader to work out what was
-    /// wrong with it — and two translators drifted to a noun for a category
-    /// («по названию», 名前一致), which is what an under-specified fragment does.
-    /// The word this app already uses for the thing is a guess.
+    /// The word is "guess", what the app calls it elsewhere, not the method
+    /// ("by name"), which left the reader to work out what was wrong with it.
     static var matchedByName: String { L(.guess) }
     /// The message over an empty Apps tab, one per reason there is no list.
     ///
-    /// Takes the language rather than reading `AppLanguage.current`: the suite
-    /// runs in whatever language this machine is set to, so a sentence checked
-    /// against `.current` is checked in one language eight times — and these
-    /// two are compared against each other, which is a check that cannot fail
-    /// when both sides move together.
+    /// Takes the language rather than reading `AppLanguage.current`, so the
+    /// eight tables can be checked from one machine.
     ///
     /// Exhaustive over the enum, with no `default`: a third reason would
-    /// otherwise be drawn as one of these two, which is the defect
-    /// `AppsEmpty.Reason` exists for.
+    /// otherwise be drawn as one of these two (`AppsEmpty.Reason`).
     static func emptyMessage(_ nothing: AppsEmpty.Reason,
                              language: AppLanguage = AppLanguage.current) -> String {
         switch nothing {

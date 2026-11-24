@@ -10,8 +10,7 @@ import Module_Layout_Engine
     public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: LyStr.moduleName, summary: LyStr.summary,
         sfSymbol: "keyboard", permissions: [.accessibility],
-        // Without the grant it watches nothing: 84 logged warnings of
-        // `no accessibility grant — not watching` and no other way to work.
+        // Without the grant it watches nothing and has no other way to work.
         inertWithout: [.accessibility]) }
     public static let category: ModuleCategory = .utilities
     public static let tint = ModuleTint(
@@ -28,11 +27,9 @@ import Module_Layout_Engine
     private(set) var indicator: LanguageIndicator?
     /// Kept so it can be dropped. A block observer does not remove itself, and
     /// this descriptor is one long-lived instance in `ModuleRegistry.all` whose
-    /// `makeModule` runs again on every enable — so turning Keyboard off and on
-    /// left the previous indicator alive, retained by its own orphan observer
-    /// and still owning a status item, while a second one was built. One more
-    /// flag in the menu bar per toggle. `LayoutEngine.activate()` learned this
-    /// twenty lines away; this was the other place that needed it.
+    /// `makeModule` runs again on every enable: an indicator not dropped stays
+    /// alive, retained by its own observer and owning a status item, and each
+    /// toggle adds one more flag to the menu bar.
     private var indicatorObserver: NSObjectProtocol?
 
     public init() {}
@@ -60,33 +57,26 @@ import Module_Layout_Engine
                             sound: SystemSound(),
                             announcer: LayoutAnnouncer(store: store),
                             selection: AXSelection(),
-                            // Nothing about the stored settings is passed here.
-                            // `activate()` reads all of them, and passing a
-                            // second copy meant every default was written twice
-                            // with nothing checking the two agreed — which is
-                            // exactly the asymmetry that hid `tapKey` staying
-                            // `.off` on every launch until 283c3cf. One reader.
+                            // Nothing about the stored settings is passed here:
+                            // `activate()` reads all of them, and a second copy
+                            // would write every default twice with nothing
+                            // checking the two agree. One reader.
                             settings: store)
     }
 
     /// The module's own flag in the menu bar, built when the module starts
     /// running and taken away when it stops.
     ///
-    /// **Not in `makeModule`.** `refresh()` builds
-    /// a real `NSStatusItem` the moment it reads the setting as on, so there anybody
-    /// who built an engine against a store with the indicator switched on
-    /// would decorate the Mac they are running on — including the offscreen render
-    /// harness, whose whole discipline is that a measurement may read this Mac
-    /// and may not change it. Writing the key straight into the backing store
-    /// dodges `.helmStoreChanged` and does not dodge this: no notification is
-    /// involved. Building an engine and appearing in the menu bar are two acts,
-    /// and the host is what performs the second one.
+    /// Not in `makeModule`: `refresh()` builds a real `NSStatusItem` the moment
+    /// it reads the setting as on, so anybody who built an engine against a
+    /// store with the indicator on (the offscreen render harness included, which
+    /// may read this Mac and may not change it) would decorate the Mac they run
+    /// on. Building an engine and appearing in the menu bar are two acts, and
+    /// the host performs the second.
     ///
-    /// There it would also give the module no way *off* the menu bar: building the module
-    /// drops the previous indicator and builds another, so switching Keyboard off leaves
-    /// the flag where it is — retained by its own observers, for the life of
-    /// the process — and only switching it on again cleans up. `detach` is the
-    /// other half.
+    /// There it would also give the module no way off the menu bar: switching
+    /// Keyboard off would leave the flag, retained by its own observers, until
+    /// it was switched on again. `detach` is the other half.
     public func attachMenuBarPresence() {
         guard let store else { return }
         detachMenuBarPresence()
@@ -107,11 +97,8 @@ import Module_Layout_Engine
         indicator = nil
     }
 
-    /// **The widget is back, and the reason it was taken away is answered
-    /// rather than forgotten.** It went because it was «a number with no
-    /// question behind it» — true then. Since today the count outlives a
-    /// launch, it answers for a period rather than for one day, and the module
-    /// has verbs that work from a panel.
+    /// A widget, because the count outlives a launch and answers for a period,
+    /// and the module has verbs that work from a panel.
     ///
     /// With a store the contribution is the tile and not `.utility`; `.utility`,
     /// the compact row behind the panel's disclosure, is what comes back only
@@ -140,16 +127,11 @@ import Module_Layout_Engine
         }
     }
 
-    /// Both verbs write where the settings page writes, and tell the engine —
-    /// a list the engine never hears about is a list that does nothing.
-    ///
-    /// **That sentence stood over a verb that did only the first half.** The
-    /// engine holds `exceptions` in a field and refills it in `reloadSettings`,
-    /// which runs on `activate()` and on `settingsChanged` and nowhere else —
-    /// there is no bridge turning a store write into that call. So this
-    /// button wrote the list and the engine went on converting the word until
-    /// some *other* setting was saved or the app was relaunched, which is the
-    /// panel widget's own headline verb doing nothing.
+    /// Both verbs write where the settings page writes, and tell the engine:
+    /// it holds `exceptions` in a field refilled by `reloadSettings`, which runs
+    /// on `activate()` and `settingsChanged` and nowhere else. No bridge turns a
+    /// store write into that call, so a write alone would leave the engine
+    /// converting the word.
     private static func never(_ word: String, _ store: NamespacedStore, _ model: LayoutViewModel) {
         guard let words = Exceptions.adding(word, to: store.stringArray(LayoutKey.exceptions))
         else { return }
@@ -164,22 +146,15 @@ import Module_Layout_Engine
 
     /// The badge beside the module's name in the page header.
     ///
-    /// **Two steps, and the third one is not this file's to invent.** `enabled`
-    /// on the state is whether the tap is live — the one running/not-running
-    /// this module has — so it is `.active` or `.idle` and nothing else.
-    /// «Switched on but not working» would be a third case, and `ModuleActivity`
-    /// has two by design; a module cannot add one from the outside, and this is
-    /// not the place to decide the app should have it. The page says that state
-    /// in words where it can be acted on: an empty state for a missing grant, a
-    /// note for the pause secure input causes. What that means for the badge is
-    /// below — coarser than the page, never against it.
+    /// Two steps: `enabled` on the state is whether the tap is live, so it is
+    /// `.active` or `.idle`. «Switched on but not working» would be a third
+    /// case, and `ModuleActivity` has two by design. The page says that state in
+    /// words where it can be acted on: an empty state for a missing grant, a
+    /// note for the pause secure input causes.
     ///
-    /// **The header may be coarser than the page. It may not say the
-    /// opposite.** `suspended` was left out here, and the tap stays live
-    /// through a pause — so with a password field in front the header drew a
-    /// green «Active» pill 56 pt above the page's orange «Paused» one. Two
-    /// marks about one module, in two signal colours, disagreeing on one
-    /// screen. A pause reports as idle, and the page keeps the word for it.
+    /// The header may be coarser than the page; it may not say the opposite.
+    /// The tap stays live through a secure-input pause, so `suspended` reports
+    /// as idle here rather than a green «Active» above the page's «Paused».
     public func activity(_ model: LayoutViewModel) -> ModuleActivity? {
         let state = model.state
         return state.enabled && !state.suspended ? .active : .idle

@@ -7,11 +7,8 @@ import XCTest
 /// removal in this module affordable.
 ///
 /// `sudoers` has no expiry and no conditionals, so a rule installed once stays
-/// until something takes it out — and the only thing that could was an
-/// administrator dialog, which costs a password and therefore could only be
-/// asked for with somebody at the screen. Dragging `Helm.app` to the Trash runs
-/// no code at all, so the grant outlived the application that asked for it,
-/// naming an app that no longer exists.
+/// until something takes it out, and an administrator dialog needs somebody at
+/// the screen. Dragging `Helm.app` to the Trash runs no code at all.
 ///
 /// The second line permits exactly one command: deleting this very file. It is
 /// not a widening — the worst anything can do with it is take a privilege
@@ -63,7 +60,7 @@ final class TheRuleTakesItselfBackOutTests: XCTestCase {
     }
 
     /// Argument-exact, one literal path. `pmset -a disablesleep 1` is refused
-    /// for the same reason, and has been all along.
+    /// for the same reason.
     func testNoGrantedCommandCanBeAimedAtAnythingElse() {
         for command in grantedCommands() {
             XCTAssertFalse(command.contains("*"), "a wildcard in \(command)")
@@ -154,10 +151,8 @@ final class TheRuleTakesItselfBackOutTests: XCTestCase {
     /// is the whole of the difference: the same `printf`, the same quoting, the
     /// same `chmod`, the same `visudo -cf`, the same `mv`. It is the half
     /// `testTheFileParses` cannot see, because that one writes the text with
-    /// Foundation and asks only whether the *text* parses. What broke here was
-    /// the file becoming several lines: one `printf` argument with newlines in
-    /// it cannot survive the AppleScript literal the command travels inside, so
-    /// the lines are separate arguments, and that is a claim about a shell.
+    /// Foundation. A multi-line file is a claim about a shell: one `printf`
+    /// argument with newlines cannot survive the AppleScript literal.
     func testTheInstallCommandReallyWritesTheFile() throws {
         try XCTSkipUnless(FileManager.default.fileExists(atPath: "/usr/sbin/visudo"))
         let directory = scratchDirectory("keepawake-install")

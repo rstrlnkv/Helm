@@ -17,9 +17,8 @@ import Module_Launchpad_UI
     static let all: [any ModuleDescriptor] = [KeepAwakeDescriptor(), VPNDescriptor(), UninstallerDescriptor(), ScreenshotsDescriptor(), HomebrewDescriptor(), LeftoversDescriptor(), DiskDescriptor(), DuplicatesDescriptor(), AutopilotDescriptor(), LayoutDescriptor(), LaunchpadDescriptor(removal: { ModuleHost.shared.appRemoval }), TweaksDescriptor()]
 
     /// The descriptor an id names, or nil for an id from a store written by
-    /// another build. Spelled here because everything that reads a stored
-    /// arrangement — the sidebar, the panel, the composer, the status menu —
-    /// needs it, and each had written the search out again.
+    /// another build. One search for everything that reads a stored
+    /// arrangement: the sidebar, the panel, the composer, the status menu.
     static func descriptor(_ id: String) -> (any ModuleDescriptor)? {
         all.first { $0.idRaw == id }
     }

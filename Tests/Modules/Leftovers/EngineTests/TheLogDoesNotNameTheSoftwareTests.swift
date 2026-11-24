@@ -6,19 +6,15 @@ import XCTest
 
 /// **The log carries no names, and in this module the leaf of every path is one.**
 ///
-/// Leftovers' own lines count and never name — but every removal goes through
-/// `HelmTrash`, which writes `Redact.path(path)`, and `Redact.path` only replaces the
-/// home directory with `~`. That is right for a module whose paths name folders; here
-/// the last component is a bundle id (`~/Library/Preferences/com.acme.tool.plist`,
-/// `~/Library/LaunchAgents/com.vendor.updater.plist`), which is exactly what
-/// `Redact.app` exists for: (ARCHITECTURE.md § Diagnostics log) says a bundle id
-/// names a person's habits.
+/// Every removal goes through `HelmTrash`, which writes `Redact.path(path)`, and
+/// `Redact.path` only replaces the home directory with `~`. Here the last
+/// component is a bundle id (`~/Library/Preferences/com.acme.tool.plist`), which
+/// is what `Redact.app` exists for: a bundle id names a person's habits
+/// (Architecture/DiagnosticsLog.md § Diagnostics log).
 ///
-/// And these lines are not the exceptional case. A refusal by Full Disk Access is a
-/// designed state of this module (`LeftoversDescriptor` declares `.fullDisk`, the
-/// page draws a `HelmPermissionNote` while it is missing), so «trash refused …»
-/// is a line a person's log can fill up with, in the file they attach to a bug
-/// report.
+/// A refusal by Full Disk Access is a designed state of this module, so «trash
+/// refused …» is a line a person's log can fill up with, in the file they
+/// attach to a bug report.
 ///
 /// **Nothing here is trashed.** One path is outside the scope, so the engine refuses
 /// it before anything is attempted; the other is inside a temporary home and does not

@@ -2,12 +2,12 @@ import AppKit
 import HelmUI
 
 /// **The settings window's `NSToolbar`, worn under both looks; it carries one thing: the page's tabs, under Liquid
-/// Glass** (owner's decision, 2026-11-23). The tabs are the system's own `NSSegmentedControl`, so they get the press-and-hold
+/// Glass** (the owner's decision). The tabs are the system's own `NSSegmentedControl`, so they get the press-and-hold
 /// lens that nothing outside a toolbar draws. The name, status, actions and search stay in the card's row
 /// (`helmCardHeader`); under Flat the toolbar has no items and the row draws the tabs.
 ///
 /// **Installed once and kept**: `attach(to:)` sets `window.toolbar` and never again. Taking the toolbar off and
-/// putting it back made a glass the strip drew itself come back empty.
+/// putting it back brings a glass the strip draws itself back empty.
 ///
 /// **How the page reaches it**: the page's declaration is relayed by `HelmTabsRelay` through `sink`, and a clear
 /// placeholder in the row (`HelmTabsSlot`) says where the card's row puts the strip; the row's layout keeps centring
@@ -23,8 +23,8 @@ import HelmUI
 /// strip draws its own track (`NSGlassEffectView`) at the control's place, 12 to 48. The item's view is 44 pt tall
 /// (`TabsStrip.lift` above the control) so the toolbar's centring leaves the control at the row's centre. The price:
 /// the item's viewer takes presses over its whole frame, so the 8 pt band above the tabs no longer drags the window.
-/// The viewer also swallows clicks, so the item's width is exactly the control's. A trailing ghost item killed the
-/// button at the right and is not used.
+/// The viewer also swallows clicks, so the item's width is exactly the control's, and there is no trailing ghost
+/// item: it would kill the button at the right.
 ///
 /// **The items are in the toolbar only while a page declares tabs**: an item whose `isHidden` goes false is zoomed in
 /// from small by the toolbar (measured on video, about 4 frames; no transaction, animation context, layout pass or
@@ -46,7 +46,7 @@ import HelmUI
     }
 
     /// One identifier per toolbar: toolbars of one identifier keep their items in step, so a second one alive (a test's,
-    /// a window not yet released) was handed the first's items and refused the insertion of its own ("already contains").
+    /// a window not yet released) would be handed the first's items and refuse its own ("already contains").
     private let toolbar = NSToolbar(identifier: "HelmSettingsToolbar-\(UUID().uuidString)")
     private let strip = TabsStrip()
     private let lead = LeadSpacer()
@@ -180,8 +180,8 @@ import HelmUI
     private var settling = 0
 
     /// What lies left of the strip besides the spacer, in the window's x. Nil while the strip does not yet stand right
-    /// of the spacer's viewer (the toolbar has not laid out: a stale reading, which once gave a spacer of 1078 pt and
-    /// pushed the tabs out of the toolbar for good).
+    /// of the spacer's viewer (the toolbar has not laid out: a stale reading, which can give a spacer wide enough to
+    /// push the tabs out of the toolbar for good).
     nonisolated static func chrome(stripMinX: CGFloat, viewerMinX: CGFloat, viewerWidth: CGFloat) -> CGFloat? {
         guard stripMinX.isFinite, viewerMinX.isFinite, viewerWidth.isFinite,
               stripMinX >= viewerMinX + viewerWidth - 0.5 else { return nil }

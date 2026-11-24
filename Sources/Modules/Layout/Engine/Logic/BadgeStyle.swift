@@ -11,14 +11,9 @@ public enum BadgeStyle: String, CaseIterable, Sendable {
     /// The layout's whole name instead of a badge, the way the system's own
     /// indicator draws it under «Show Input Source Name».
     ///
-    /// **It was a separate stored key, and being separate is what made it a
-    /// defect.** `indicatorShowsName` could only be switched from the status
-    /// item's own menu — nowhere on the settings page — and turning it on made
-    /// the controls there lie: Style and the preview grid captioned
-    /// «your layouts, as they will look» both went on describing a badge that
-    /// was no longer being drawn, with nothing saying why. A style is what this
-    /// always was, so it is a style: «Вид» is total again, and there is one
-    /// place a person changes how the indicator looks.
+    /// A style and not a switch of its own, so «Style» and its preview grid
+    /// always describe what is drawn, and there is one place a person changes
+    /// how the indicator looks.
     public var isName: Bool { self == .sourceName }
 
     /// A flag is the default: it is what people recognise without reading, and
@@ -26,12 +21,9 @@ public enum BadgeStyle: String, CaseIterable, Sendable {
     /// layout with no country to name.
     public static let `default` = BadgeStyle.flagDrawn
 
-    /// **A style that no longer exists reads as the default**, which is what
-    /// `flagEmoji` needs: it was a second name for «Flag», drawn from the
-    /// system's emoji rather than from Helm's own artwork, and nobody could
-    /// predict the difference from «Flag» and «Flag, system». The fallback is
-    /// `flagDrawn`, the one that stays — so a person who had chosen the emoji
-    /// one keeps a flag, which is what they were choosing.
+    /// A stored style this build does not know reads as the default,
+    /// `flagDrawn`: a stored `flagEmoji` keeps a flag, which is what that
+    /// person was choosing.
     public static func from(_ raw: String?) -> BadgeStyle {
         guard let raw, let value = BadgeStyle(rawValue: raw) else { return .default }
         return value

@@ -3,24 +3,15 @@ import Foundation
 /// A digest as the string everything here writes it: lowercase hex, two digits
 /// a byte, nothing between them.
 ///
-/// Written four times before it moved — `ReleaseDigest.sha256`,
-/// `SettingSeal.mac`, `DuplicateScanner.hash` and `DuplicateGroup.id` each
-/// spelled `map { String(format: "%02x", $0) }.joined()`, two of them inside
-/// this target — and the spelling is not free to differ: an update's digest is
+/// One spelling, because it is not free to differ: an update's digest is
 /// compared against what a release note published, and a rule's mark
-/// (`RuleStamp`) is compared as a string against the ones an earlier build wrote
-/// onto somebody's files. A seal is decoded and checked by its bytes
-/// (`SettingSeal.verdict`), so it does not care.
+/// (`RuleStamp`) is compared as a string against the ones an earlier build
+/// wrote onto somebody's files. The answer is identical, for all 256 byte
+/// values, to `String(format: "%02x")`.
 ///
-/// It is also the fast way, which the hand-written line was not.
-/// `String(format:)` goes through Foundation's formatter for every byte and
-/// allocates a `String` for each, then joins 32 of them; a group's id is asked
-/// once per group on every `ForEach` diff, which is a render path. Measured at
-/// `-O` over 100.000 SHA-256 digests, three runs agreeing: 2.25 s the old way
-/// against 0.033 s this way, 22.3 µs a digest against 0.33 µs. The answer is
-/// identical for all 256 byte values; the settings seals compare it with strings
-/// an earlier build stored, and the release digest with the `shasum` line the
-/// release scripts print.
+/// It is also the fast way: `String(format:)` goes through Foundation's
+/// formatter and allocates a `String` per byte, many times slower, and a
+/// duplicate group's id is asked on every `ForEach` diff, a render path.
 public enum HexDigest {
 
     private static let digits = Array("0123456789abcdef".utf8)
@@ -36,11 +27,9 @@ public enum HexDigest {
             out.append(digits[Int(byte & 0x0F)])
         }
         // The rule guards against `String(decoding:)` turning invalid bytes into
-        // U+FFFD where a failable initializer would have said so. There is no
-        // invalid byte to reach here: every element was just taken from
-        // `digits`, which is ASCII. The failable form would need a `?? ""`, and
-        // an empty string standing in for a digest is the one answer this type
-        // must never give — it compares equal to nothing and refuses everything.
+        // U+FFFD. None can reach here: every element came from `digits`, which
+        // is ASCII. The failable form would need a `?? ""`, and an empty string
+        // standing in for a digest is the one answer this type must never give.
         // swiftlint:disable:next optional_data_string_conversion
         return String(decoding: out, as: UTF8.self)
     }

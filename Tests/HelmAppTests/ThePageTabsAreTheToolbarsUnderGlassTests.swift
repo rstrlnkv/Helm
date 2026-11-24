@@ -58,8 +58,8 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         XCTAssertEqual(toolbar.itemIdentifiersForTesting, [], "no declaration, no items: a hidden item zooms in when shown")
     }
 
-    /// The toolbar stays installed under both looks, the same object across every flip, with no items under Flat: the
-    /// re-install on each flip was the root of the fragile own-glass track.
+    /// The toolbar stays installed under both looks, the same object across every flip, with no items under Flat: a
+    /// re-install on each flip makes the own-glass track fragile.
     func testTheToolbarStaysInstalledAcrossEveryFlipAndHasNoItemsUnderFlat() {
         let window = window()
         let before = AppSettings.barAppearance
@@ -80,8 +80,8 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         }
     }
 
-    /// A reading of the strip taken before the toolbar laid it out (strip at 0, the spacer's viewer 493 wide at 92) gave
-    /// a chrome of -493 and a 1078 pt spacer that pushed the tabs out of the toolbar for good: such a reading is refused.
+    /// A reading of the strip taken before the toolbar laid it out gives a negative chrome and a spacer that pushes the
+    /// tabs out of the toolbar for good: such a reading is refused.
     func testAStripNotYetRightOfTheSpacersViewerGivesNoChrome() {
         XCTAssertNil(SettingsToolbar.chrome(stripMinX: 0, viewerMinX: 92, viewerWidth: 493))
         XCTAssertEqual(SettingsToolbar.chrome(stripMinX: 585, viewerMinX: 92, viewerWidth: 489), 96)
@@ -90,8 +90,7 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         XCTAssertNil(SettingsToolbar.chrome(stripMinX: 585, viewerMinX: 92, viewerWidth: .nan))
     }
 
-    /// Guards that the window's frame stays the same across look flips (in Helm Dev 1207x757 across 7 flips and 3
-    /// close/reopen cycles, no `NSWindow.didResize`): the frame after each of eight flips is the first one.
+    /// The window's frame stays the same across look flips: the frame after each of eight flips is the first one.
     func testTheSettingsWindowKeepsItsFrameAcrossEightLookFlips() throws {
         let before = AppSettings.barAppearance
         let controller = SettingsWindow(host: .shared)
@@ -148,8 +147,8 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         XCTAssertLessThan(toolbar.stripForTesting.dotAlphaForTesting(1), 1)
     }
 
-    /// The owner's finding of 2026-11-23: the Glass strip was wider than the Flat one (Russian `.text` 252 against
-    /// 231). The Glass strip's total is `plate + tabs + gaps + plate` of `HelmTabNumbers` (the Flat strip's sum, to within each word's rounding), in every style, with and without a dot.
+    /// The Glass strip is no wider than the Flat one: its total is `plate + tabs + gaps + plate` of `HelmTabNumbers`
+    /// (the Flat strip's sum, to within each word's rounding), in every style, with and without a dot.
     func testTheStripIsTheFlatSumOfHelmTabNumbersInEveryStyle() {
         for style in [HeaderTabLabels.text, .icons, .iconsAndText] {
             for attention in [nil, "c"] {
@@ -169,10 +168,10 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         XCTAssertEqual(HelmTabsMetrics.height, 36)
     }
 
-    /// The owner's screenshot of 2026-11-23: segments summing to the item's width left the control, which keeps its
-    /// own inset either side of them in a toolbar, wider than its item, so the first label sat on the track's edge
-    /// and the last pill ran past it. (The inset itself shows only in a live toolbar, off screen the control reads
-    /// the plain sum: it is measured on a shot, recorded in `ThePageHeader.md`, not held here.)
+    /// In a toolbar the control keeps its own inset either side of its segments, so segments summing to the item's
+    /// width make the control wider than its item: the first label sits on the track's edge and the last pill runs
+    /// past it. (The inset shows only in a live toolbar; off screen the control reads the plain sum, so the inset is
+    /// measured on a shot, Architecture/ThePageHeader.md § Glass tabs.)
     func testTheItemIsTheSegmentsAndTheTracksInsetEitherSideInEveryStyle() {
         XCTAssertEqual(HelmTabsMetrics.trackInset, 9)
         for style in [HeaderTabLabels.text, .icons, .iconsAndText] {
@@ -188,11 +187,10 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         }
     }
 
-    /// The owner's live finding (Helm Dev, 2 of 2): Flat to Liquid Glass with the settings window open left the page
-    /// tabs gone from the toolbar on every page until relaunch; Glass to Flat worked. Driven through the real row
-    /// (`helmCardHeader`, its `HelmTabsRelay`) in a hosting view with the toolbar's own sink and the look read the
-    /// way the pane reads it (`helmTracksBarAppearance`): the relay is dismantled under Flat and releases the row's
-    /// token, and the same row mounts it again under Glass.
+    /// Flat to Liquid Glass with the settings window open brings the page tabs back into the toolbar. Driven through
+    /// the real row (`helmCardHeader`, its `HelmTabsRelay`) in a hosting view with the toolbar's own sink and the look
+    /// read the way the pane reads it (`helmTracksBarAppearance`): the relay is dismantled under Flat and releases the
+    /// row's token, and the same row mounts it again under Glass.
     func testTheTabsComeBackWhenTheLookGoesGlassFlatGlassOnTheSameOpenWindow() {
         let look = Locked(HelmBarAppearance.liquidGlass)
         let toolbar = SettingsToolbar()
@@ -238,7 +236,7 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         XCTAssertEqual(strip.segmentCountForTesting, 2, "the page's tabs are back in the strip")
         // The strip can be lined up with the row's placeholder only if the slot is said by the owner that declares:
         // another owner's `place` is parked as an arrival and never reaches the spacer. (The strip's own x is not read:
-        // an offscreen window's toolbar does not lay out, 759 against the slot's 383.5 on the fix itself.)
+        // an offscreen window's toolbar does not lay out.)
         guard let owner = declared.last, let slot = placed.last(where: { $0.rect != nil }) else {
             return XCTFail("the row declared nothing or placed nothing after the return to Glass")
         }
@@ -264,10 +262,9 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         }
     }
 
-    /// Guards that the three buttons stand at one place with the toolbar worn across look flips (the toolbar is no
-    /// longer taken off, so the old `window.toolbar = nil` race is gone). Driven through the real owner of the buttons
-    /// on an offscreen window, as `ShellContentView` holds it: the close button's origin after each flip, against where
-    /// it stood before.
+    /// The three buttons stand at one place with the toolbar worn across look flips. Driven through the real owner of
+    /// the buttons on an offscreen window, as `ShellContentView` holds it: the close button's origin after each flip,
+    /// against where it stood before.
     func testTheButtonsStandWhereTheyStoodAfterEveryFlipOfTheLook() throws {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 400),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -300,9 +297,8 @@ final class ThePageTabsAreTheToolbarsUnderGlassTests: XCTestCase {
         XCTAssertEqual(close.frame.origin.y, glass.y, accuracy: 0.5, "Glass after Flat: y")
     }
 
-    /// A verifier's finding: every item put in again gets a new viewer, and the observers of the old ones were kept for
-    /// good. After declare and release cycles in a shown window only the current viewers (the strip's and the spacer's)
-    /// are watched.
+    /// Every item put in again gets a new viewer, so observers of the old ones must not be kept. After declare and
+    /// release cycles in a shown window only the current viewers (the strip's and the spacer's) are watched.
     func testTheWatchedViewersAreBoundedAcrossTheItemsComingAndGoing() async {
         let window = window()
         window.titlebarAppearsTransparent = true

@@ -10,12 +10,9 @@ import XCTest
 /// After `stop()` a press on the page reaches no work, no list still in flight
 /// is shown, and a Trash arrival reaches nobody.
 ///
-/// The host calls the descriptor's `stop(_:)` before the engine's `deactivate()`.
-/// A page still on screen (or a task already queued) may press a control after
-/// that; a scan, a removal or a background walk sent to a deactivated engine is
-/// work nobody asked the module to do any more. Each press below is counted at
-/// the fake, and the count before `stop()` is the control that proves the fake
-/// would have counted it.
+/// The host calls the descriptor's `stop(_:)` before the engine's `deactivate()`,
+/// and a page still on screen may press a control after that. Each press is
+/// counted at the fake, and the count before `stop()` is the control.
 @MainActor
 final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
 
@@ -43,9 +40,8 @@ final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
         return (orphans, trash, leftovers, report)
     }
 
-    /// The descriptor's pass-on, which the model's own `backgroundScan` does not
-    /// prove: a descriptor without the override falls to the protocol default,
-    /// which answers nil, and the coordinator then logs «no answer» every tick.
+    /// The descriptor passes the scan on: without the override the protocol
+    /// default answers nil, and the coordinator logs «no answer» every tick.
     func testTheDescriptorPassesTheScanOn() async {
         let work = StoppedWork(apps: [app])
         let parts = ModuleParts(engine: FakeEngine(), model: model(work))
@@ -147,10 +143,9 @@ final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
         XCTAssertEqual(heard.n, 1, "an arrival reached the handler after stop()")
     }
 
-    /// With the offer window open the arrival is the offer's: it takes the new
-    /// Trash and the host's handler (which would open a second window) is not
-    /// called. The offer is built over the model, whose work is the fake, so there
-    /// is no real I/O; its refresh is `refresh()` (internal).
+    /// With the offer window open the arrival is the offer's, and the host's
+    /// handler (a second window) is not called. The offer is built over the
+    /// model, whose work is the fake.
     func testAnArrivalWithTheOfferOpenGoesToTheOffer() async {
         let (arrivals, feed) = AsyncStream.makeStream(of: Void.self)
         let work = StoppedWork(apps: [])

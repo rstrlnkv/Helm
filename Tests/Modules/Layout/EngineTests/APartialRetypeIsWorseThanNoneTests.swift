@@ -13,26 +13,14 @@ import XCTest
 /// «nothing happened» — no undo recorded, no input source switched, nothing
 /// counted, a warning logged and the word dropped.
 ///
-/// The one implementation does not keep it. `SynthesisTyping.perform` posts
-/// `plan.backspaces` real Delete keystrokes first and only then builds the
-/// events for `plan.insert`; the `guard let down = CGEvent(...) else { return
-/// false }` inside that second loop is reached with the deletes already gone to
-/// the HID tap. `CGEvent(keyboardEventSource:virtualKey:keyDown:)` returns nil
-/// on its own — it is a failable allocation against a resource the app does not
-/// own — so the reachable outcome is: the word is deleted, nothing is typed in
-/// its place, `perform` answers `false`, and the module records the whole thing
-/// as «the app refused, nothing to see».
+/// `SynthesisTyping.perform` keeps it: every `CGEvent` for the plan is built
+/// before any is posted (`CGEvent(keyboardEventSource:virtualKey:keyDown:)` is
+/// a failable allocation), so `false` means the field is untouched.
 ///
-/// **The port's all-or-nothing shape is the one to satisfy first, and the order is
-/// not a preference.** The tests below are about the engine trusting
-/// `false` too little — it forgets a word the field still holds, and drops an
-/// undo the app never carried out. Each is repaired by *keeping* state across a
-/// refusal. Do that while `perform` can still half-apply and the kept state is
-/// a blind edit measured against text that is no longer there: the gesture then
-/// sends seven backspaces into the middle of somebody's sentence, which is
-/// strictly worse than the defect being fixed. Make the port all-or-nothing —
-/// build every `CGEvent` before posting any of them, as `SystemCommandKeys.press` in the same
-/// file already does — and only then let the engine believe `false`.
+/// The tests below hold the engine to believing that: it keeps a word the
+/// field still holds, and an undo the app never carried out. Kept state across
+/// a refusal is safe only because the port cannot half-apply; otherwise it
+/// would be a blind edit against text that is no longer there.
 final class APartialRetypeIsWorseThanNoneTests: XCTestCase {
 
     // MARK: - The engine, once the port can be believed
@@ -42,13 +30,10 @@ final class APartialRetypeIsWorseThanNoneTests: XCTestCase {
     ///
     /// What a person does: types `ghbdtn `, sees it stay `ghbdtn ` because the
     /// app declined the synthesised events, and presses the gesture key to fix
-    /// it by hand. Nothing happens — not once, not ever, for that word. They
-    /// have to delete it and type it again.
+    /// it by hand. The word must still be there to fix.
     ///
-    /// `convert` refuses through `perform`, and `perform` calls
-    /// `forgetTheWord()` whether or not anything was typed. Forgetting is right
-    /// when the field changed under the module; it is not right when the module
-    /// is the one that failed to change it.
+    /// Forgetting is right when the field changed under the module; it is not
+    /// right when the module is the one that failed to change it.
     func testAWordTheAppRefusedIsStillTheGesturesToConvert() {
         let world = World()
         let engine = world.engine()
@@ -76,10 +61,9 @@ final class APartialRetypeIsWorseThanNoneTests: XCTestCase {
 
     /// A refused undo, and the row that says what happened.
     ///
-    /// `undoLast` sets `undo = nil` before it types, and `perform` clears
-    /// `lastEvent` on its way through — so a refusal loses both. The page then
-    /// shows no last conversion at all, over a field that is still holding the
-    /// conversion, and «Never this word» goes with it.
+    /// A refusal keeps both the undo and `lastEvent`, or the page shows no last
+    /// conversion over a field still holding it, and «Never this word» goes
+    /// with it.
     func testARefusedUndoLeavesTheChangeOnThePage() async {
         let world = World()
         let engine = world.engine()

@@ -9,20 +9,13 @@ import HelmRuntime
 /// person stopped stays stopped. Its own words for the second are the ones this
 /// file borrows — «otherwise the next launch resurrects what was switched off».
 ///
-/// Pressing Stop while a rule is holding the Mac does something else, and it is
-/// the case the log shows people actually reaching (`released` followed a minute
-/// later by `automation resumed by hand`): the session ends **and the rule is
-/// silenced**, which is the whole of `suppressed`. That flag is written nowhere.
-/// `rememberSession()` stores `manualOn`, `sessionStartedAt` and `sessionEndsAt`
-/// and nothing else, so the decision that reached the store is «no manual
-/// session» — which was already true — while the decision the person actually
-/// made is dropped on the floor.
+/// Pressing Stop while a rule is holding the Mac ends the session and silences
+/// the rule, which is the whole of `suppressed`; the store must carry that
+/// decision, not only «no manual session».
 ///
-/// The relaunch is not hypothetical: Helm's own silent updater terminates the
-/// app and a detached script starts it again (`HelmApp/Installer.swift`), so a
-/// rule paused at 14:00 is holding the Mac again by 14:05 with nobody having
-/// touched anything. The screen agrees with the Mac and both are wrong about
-/// what was asked for.
+/// The relaunch is ordinary: Helm's own silent updater terminates the app and a
+/// detached script starts it again, so a rule paused at 14:00 would otherwise
+/// hold the Mac again by 14:05 with nobody having touched anything.
 ///
 /// A relaunch is two engines over one store, which is the shape
 /// `SessionSurvivesRelaunchTests` and `KeepAwakeEngineTests` both use.
@@ -100,8 +93,8 @@ final class APausedRuleSurvivesARelaunchTests: XCTestCase {
     }
 
     /// And the pause still means «until the trigger drops and comes back», which
-    /// is the one thing that must lift it. Without this the fix could be «never
-    /// hold again», which is a different defect wearing the same green tick.
+    /// is the one thing that must lift it. Without this «never hold again»
+    /// would pass.
     func testTheRestoredPauseStillLiftsWhenTheAppQuitsAndComesBack() {
         let before = engine()
         before.activate()
@@ -111,8 +104,7 @@ final class APausedRuleSurvivesARelaunchTests: XCTestCase {
         let after = engine()
         after.activate()
         // Asserted, not assumed: with no restored pause the rest of this test
-        // is a rule holding a Mac and being asked to stop holding it, which
-        // passes on the defect as readily as on the fix.
+        // would pass whether or not the pause survived.
         XCTAssertTrue(after.suppressed, "precondition: the pause came back with the launch")
 
         // The trigger drops…

@@ -3,16 +3,10 @@ import XCTest
 
 /// Which bundles count as *installed* when two of them declare one id.
 ///
-/// LaunchServices answers "where are the apps with this id" with every copy it
-/// has ever registered, and most of those are not installations: the disk image
-/// the app was dragged out of, the download beside it, and — the one that would
-/// break every scan — the copy an updater stages under `~/Library/Caches`,
-/// which carries the very same bundle id as the app it is about to replace.
-/// Counting a staged copy as a rival would leave every Sparkle-updated app
-/// looking contested, so the test that matters here is that it does not.
-///
-/// Positional, like `RemovableScope`: a place an application is installed in,
-/// not a list of places to distrust.
+/// LaunchServices answers with every copy it has registered, and most are not
+/// installations: the disk image, the download, and the copy an updater stages
+/// under `~/Library/Caches`, which as a rival would make every self-updating
+/// app look contested.
 final class InstalledLocationTests: XCTestCase {
     private let home = "/Users/x"
 
@@ -25,8 +19,7 @@ final class InstalledLocationTests: XCTestCase {
         XCTAssertTrue(installed("/Users/x/Applications/Tool.app"))
     }
 
-    /// The whole point of asking the system: the app one folder down, which the
-    /// directory listing never sees.
+    /// The app one folder down, which the directory listing never sees.
     func testAnAppOneFolderDownIsStillInstalled() {
         XCTAssertTrue(installed("/Applications/Adobe Acrobat DC/Adobe Acrobat.app"))
         XCTAssertTrue(installed("/Applications/Setapp/Tool.app"))
@@ -37,9 +30,7 @@ final class InstalledLocationTests: XCTestCase {
         XCTAssertTrue(installed("/System/Library/CoreServices/Finder.app"))
     }
 
-    /// A staged update carries the id of the app it replaces. It is the app
-    /// being removed, not a rival, and treating it as one would silence the
-    /// scan for every app that updates itself.
+    /// A staged update carries the id of the app it replaces, and is not a rival.
     func testACopyStagedByAnUpdaterIsNotAnInstallation() {
         XCTAssertFalse(installed("/Users/x/Library/Caches/com.acme.tool/update/Tool.app"))
         XCTAssertFalse(installed("/Users/x/Library/Application Support/Acme/Tool.app"))

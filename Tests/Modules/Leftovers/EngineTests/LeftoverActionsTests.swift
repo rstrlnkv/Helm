@@ -4,11 +4,10 @@ import XCTest
 /// What Helm may actually do to an item, as opposed to what it would like to.
 /// Each answer is a fact about the system, not a policy: a button that cannot
 /// work is worse than no button, and a missing button that could have worked
-/// is the complaint that produced this file.
+/// is a complaint too.
 final class LeftoverActionsTests: XCTestCase {
-    /// `writable` is the item's own now, not a second argument handed to
-    /// `available`. It used to be both, and these tests set the two apart: an
-    /// item built writable was asked what it may do when it is not.
+    /// `writable` is the item's own, not a second argument handed to
+    /// `available`, so no test can ask about a shape a scan cannot produce.
     private func item(_ kind: StaleKind, _ status: ItemStatus,
                       id: String = "com.acme.helper",
                       path: String = "/Users/x/Library/LaunchAgents/com.acme.helper.plist",
@@ -91,20 +90,15 @@ final class LeftoverActionsTests: XCTestCase {
     }
 }
 
-/// "Can this be switched off" had two answers, and they disagreed.
-///
-/// `LaunchctlDisabled.canToggle` took a `status` and never read it, so it said
-/// yes for a protected item that `LeftoverActions` — the rule the row's menu
-/// obeys — says no to. The parameter that would have caught the disagreement
-/// was the one going unused, and the test that covered it varied that very
-/// parameter between two assertions that were both decided by the `com.apple.`
-/// prefix instead.
+/// "Can this be switched off" has one answer, `LeftoverActions`, the rule the
+/// row's menu obeys — including for a protected item, where a prefix check
+/// alone would decide nothing.
 final class OneToggleRuleTests: XCTestCase {
 
     /// A file in the folder this module actually reads, named after its own label —
     /// see `offer` below for why the fixture has to be a shape a scan can produce.
-    /// In `/tmp` these rows were unswitchable for a second reason, so
-    /// `testAProtectedAgentIsNotToggleable` would have passed with the protected rule
+    /// Elsewhere these rows would be unswitchable for a second reason, and
+    /// `testAProtectedAgentIsNotToggleable` would pass with the protected rule
     /// deleted.
     private func item(kind: StaleKind, status: ItemStatus, identifier: String) -> StaleItem {
         StaleItem(path: "/Users/x/Library/LaunchAgents/\(identifier).plist",
@@ -135,8 +129,7 @@ final class OneToggleRuleTests: XCTestCase {
     }
 }
 
-/// The cases that used to live on `LaunchctlDisabled.canToggle`, re-pointed at
-/// the rule that survived it. They were real cases; only their subject is gone.
+/// Whether a launch item can be switched off, asked of `LeftoverActions`.
 extension OneToggleRuleTests {
 
     /// Agents load in the user's own domain, so `launchctl disable` works
@@ -160,13 +153,11 @@ extension OneToggleRuleTests {
         XCTAssertFalse(offer(kind: .launchAgent, status: .inUse, id: ""))
     }
 
-    /// **The path is the file the label came from, and it used to be `/tmp/x.plist`
-    /// for every id.** That is a file called `x.plist` claiming to be
-    /// `com.acme.helper` — the shape `ALabelTheFileWouldNotRegisterTests` is about,
-    /// used here to assert the *ordinary* case, and a shape no scan can produce:
-    /// this module reads two LaunchAgents folders, and launchd's convention is that
-    /// a job's file is named after its label. The fixture now says what an agent
-    /// really looks like, so what these three assertions vary is the kind.
+    /// **The path is the file the label came from**: this module reads two
+    /// LaunchAgents folders, and launchd's convention is that a job's file is named
+    /// after its label. A file called `x.plist` claiming `com.acme.helper` is the
+    /// shape `ALabelTheFileWouldNotRegisterTests` is about, and no scan produces it
+    /// for the ordinary case, so what these three assertions vary is the kind.
     private func offer(kind: StaleKind, status: ItemStatus, id: String) -> Bool {
         StaleItem(path: "/Users/x/Library/LaunchAgents/\(id).plist", identifier: id, kind: kind,
                   sizeBytes: 0, status: status, writable: true).canToggle

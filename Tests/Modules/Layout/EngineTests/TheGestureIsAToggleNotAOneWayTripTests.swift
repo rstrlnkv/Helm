@@ -6,21 +6,10 @@ import XCTest
 
 /// Tap, tap, tap: convert, put back, convert again.
 ///
-/// **Reported live, and the log had counted it exactly.** Type `d`, tap the
-/// bound key and get `в`; tap again and get `d` back; tap a third time and
-/// nothing happens — nor on the twelve taps after it. The log held fifteen
-/// «gesture: last word» lines against a single conversion.
-///
-/// `undoLast` puts the text back through `perform`, and `perform` calls
-/// `forgetTheWord()` on success — buffer, remembered word and undo record all
-/// gone. So after an undo the module held no handle at all on text it had
-/// typed itself a moment earlier, and every further tap reached `fix()`, found
-/// nothing, and returned in silence.
-///
-/// It knows what is in the field, because it put it there: the word it just
-/// restored, in the app it restored it in.
-///
-/// Guards a past defect: the gesture was a one-way trip and its keys carried the held option key (fix commit `fcc7cb28`).
+/// Type `d`, tap the bound key and get `в`; tap again and get `d` back; a third
+/// tap converts again. `perform` forgets the word on success, so after an undo
+/// the module keeps what it knows is in the field because it put it there: the
+/// word it just restored, in the app it restored it in.
 final class TheGestureIsAToggleNotAOneWayTripTests: XCTestCase {
 
     private var typing = FakeTyping()

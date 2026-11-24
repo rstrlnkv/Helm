@@ -5,23 +5,14 @@ import HelmTestSupport
 
 private struct HostsExtension: SystemExtensionPort {
     let hosts: Set<String>
-    /// A tool that answered. The silence — `nil` — is
-    /// `ASilentToolIsNotNoExtensionsTests`' subject, and it is a state
-    /// this file must not be able to plant by accident.
+    /// A tool that answered. The silence (`nil`) is
+    /// `ASilentToolIsNotNoExtensionsTests`' subject, not to be planted here.
     func activeExtensionHosts() -> Set<String>? { hosts }
 }
-/// When a bundle refuses to move, the engine decides whether to blame an active
-/// system extension by testing the app's bundle id against the extension hosts
-/// with `hasPrefix`. A bundle id is dot-separated, and `hasPrefix` does not know
-/// that: "at.obdev.littlesnitchmini" starts with "at.obdev.littlesnitch". This
-/// is the identifier form of a path pasted onto its parent without the
-/// separator — the same shape as a path joined onto "/".
-///
-/// The cost is not cosmetic. `.activeSystemExtension` and
-/// `.needsFullDiskAccess` drive different buttons on the failure sheet, so the
-/// wrong verdict sends the user to disable an extension that is not theirs
-/// while the real remedy stays hidden.
-/// Past defect: fix commit 5f196564.
+/// A refused bundle is blamed on a live system extension only when its id is
+/// the host's or extends it past a dot: "at.obdev.littlesnitchmini" starts with
+/// "at.obdev.littlesnitch" and is another product. The two reasons drive
+/// different buttons on the failure sheet.
 final class ExtensionHostBlameTests: XCTestCase {
     private var root: URL!
 

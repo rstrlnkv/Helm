@@ -1,23 +1,16 @@
 import XCTest
 @testable import Module_Layout_Engine
 
-/// Russian's commonest words are one letter long, and the module refused every
-/// one of them.
+/// Russian's commonest words are one letter long, and they are words: English
+/// has `a` and `I`, Russian has `в`, `и`, `с`, `к`, `о`, `у`, `а` and `я`, in
+/// almost every sentence anybody types.
 ///
-/// The minimum word length was 2, under a comment saying «one character is
-/// a keystroke, not a word». That is an English sentence about a Russian
-/// problem: English has `a` and `I`, Russian has `в`, `и`, `с`, `к`, `о`, `у`,
-/// `а` and `я` — prepositions, conjunctions and a pronoun in almost every
-/// sentence anybody types. Type `d ` on a latin layout and it stayed `d`.
-///
-/// **By list, and more strictly than at two letters.** A spell checker asked
+/// By list, and more strictly than at two letters. A spell checker asked
 /// about a single character answers noise, and the latin side of these keys —
 /// `d`, `b`, `c`, `r`, `j`, `e`, `f`, `z` — is also what variable names, flags
 /// and initials look like. The rule is the one the two- and three-letter words
 /// already use: convert only *towards* a word on the list, and only when what
 /// was typed is not on it.
-///
-/// Guards a past defect: every one-letter Russian word refused (fix commit `95da25a3`).
 final class AOneLetterWordIsStillAWordTests: XCTestCase {
 
     private func decide(_ word: String, _ translated: String,
@@ -41,7 +34,7 @@ final class AOneLetterWordIsStillAWordTests: XCTestCase {
         }
     }
 
-    /// `I` typed on a Russian layout is `Ш` — the case this started from.
+    /// `I` typed on a Russian layout is `Ш`.
     func testACapitalIComesBackFromTheRussianLayout() {
         guard case .convert(let out) = decide("Ш", "I") else {
             return XCTFail("«Ш» was left alone: it is «I», and the rule lowercases before it asks")

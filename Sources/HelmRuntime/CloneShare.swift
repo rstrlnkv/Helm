@@ -3,14 +3,14 @@ import Foundation
 /// What removing a copy actually returns to the disk.
 ///
 /// On APFS a *clone* shares its blocks with the file it was made from, and
-/// Finder's Duplicate command makes clones — so this is the ordinary case. The
-/// file's own size says nothing about it: measured on this machine, a 20 MB
-/// file cloned with `cp -c` cost **0 bytes** of free space while a real copy
-/// cost 20 MB, and `stat` reported 40 960 allocated blocks for both.
+/// Finder's Duplicate command makes clones, so this is the ordinary case. The
+/// file's own size says nothing about it: a clone costs no free space while a
+/// real copy costs its size, and `stat` reports the same allocated blocks for
+/// both.
 ///
 /// `ATTR_CMNEXT_CLONEID` is what separates them: every file in one clone family
-/// reports the same id (measured: original and clone 93259253, a real copy
-/// 93259305). The blocks come back only when the family's last member goes.
+/// reports the same id. The blocks come back only when the family's last
+/// member goes.
 public enum CloneShare {
 
     /// The clone family a file belongs to, or `nil` when the volume has no such

@@ -6,15 +6,13 @@ import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
-/// **The plan was right and the wiring was wrong, which is why the plan's own
-/// tests were green through the whole defect.**
+/// **The audit compares the signature, which the plan's own tests cannot see.**
 ///
 /// `PermissionAuditPlan.shouldSpeak` compares two strings and cannot tell what
-/// it is being handed. What it was handed was `AppBuild.shortVersion` — the
-/// marketing version, which does not move between local builds — so an update
-/// that revoked Full Disk Access and Accessibility produced no alert and no
-/// failing test anywhere. The signal that moves with the binary is
-/// `AppBuild.codeFingerprint`; what is kept here is the key the audit stores it under.
+/// it is handed. `AppBuild.shortVersion` does not move between local builds, so
+/// an update that revoked Full Disk Access and Accessibility would raise no
+/// alert. The signal that moves with the binary is `AppBuild.codeFingerprint`;
+/// what is kept here is the key the audit stores it under.
 final class ThePermissionAuditAsksTheSignatureTests: XCTestCase {
 
     private static let audit = "Sources/HelmApp/PermissionAudit.swift"

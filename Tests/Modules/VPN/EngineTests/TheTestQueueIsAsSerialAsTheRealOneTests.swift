@@ -7,42 +7,25 @@ import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
-/// **`VPNWorkQueue.inline` is not a queue, and the thing it stands for is one.**
+/// **`VPNWorkQueue.inline` is serial, as the queue it stands for is.**
 ///
-/// `.background` is `DispatchQueue(label: "helm.vpn")` and its own comment says
-/// why it is serial: «the commands it sends to `scutil` still have to arrive in
-/// the order they were asked for». `.inline` runs the block on whatever thread
-/// handed it over, which is the same thread for everything a test drives
-/// directly — and a **different** one for the two pieces of work that leave the
-/// module and come back through `work.run`: `checkExit`'s completion and
-/// `startMeasuring`'s. Under `.background` those arrive behind the refresh that
-/// started them. Under `.inline` they arrive *inside* it, on another thread,
-/// which is the one thing the real queue rules out.
+/// `.background` is a serial `DispatchQueue`, because the commands sent to
+/// `scutil` have to arrive in the order they were asked for. Two pieces of work
+/// leave the module and come back through `work.run` from another thread —
+/// `checkExit`'s completion and `startMeasuring`'s. Under `.background` they
+/// arrive behind the refresh that started them; a fake that ran them *inside*
+/// it would admit a state the real queue cannot produce
+/// (Architecture/TestsAndMeasurement.md § Fakes).
 ///
-/// So this is (ARCHITECTURE.md § Fakes) read of the
-/// queue itself: the fake admits a state the real one cannot produce, and every
-/// test in this module is written against the fake.
+/// What that would cost: `emitState` compares and stamps `_lastEmitted` under
+/// the lock and emits *outside* it, so two callers with one payload produce one
+/// emission, landing whenever its thread is next scheduled — «the engine said
+/// nothing», read as a defect in the subject rather than in the harness. The
+/// shipped app is not exposed; the suite would be.
 ///
-/// **What it costs, measured.** `emitState` compares and stamps `_lastEmitted`
-/// under the lock and then emits *outside* it. Two callers with the same payload
-/// therefore produce exactly one emission — the loser publishes nothing — and
-/// the winner's `emit` lands whenever its thread is next scheduled, which can be
-/// after the test has already read the stream. Measured on a two-tunnel fixture
-/// with an exit port that answers, same binary, five consecutive processes: the
-/// refresh's state reached the news in two of them and in three it did not.
-/// The failure that produces is «the engine said nothing», which reads as a
-/// defect in the subject rather than in the harness. Commit 4a3d2b81 repaired four tests in this module for a
-/// neighbouring reason and this one was still under them.
-///
-/// **The shipped app is not exposed**: `.background` is serial, so there is only
-/// ever one caller inside `emitState`. What is exposed is the suite.
-///
-/// The occupancy below is asserted rather than counted over repetitions,
-/// because the window in the engine is a handful of instructions wide and a
-/// repetition count large enough to catch it reliably is a threshold nobody can
-/// justify. Two callers or one is a structure, and structure does not need luck.
-///
-/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
+/// The occupancy below is asserted rather than counted over repetitions:
+/// the window in the engine is a handful of instructions wide, and two callers
+/// or one is a structure, which does not need luck.
 final class TheTestQueueIsAsSerialAsTheRealOneTests: XCTestCase {
 
     /// How many blocks were inside the queue at once, at the most.
@@ -123,7 +106,7 @@ final class TheTestQueueIsAsSerialAsTheRealOneTests: XCTestCase {
                        "the module's own queue is documented serial and let two blocks in at once")
     }
 
-    /// **The finding.** The queue every test in this module runs on lets two in.
+    /// **The guard.** The queue every test in this module runs on lets one in at a time.
     func testTheQueueEveryTestUsesAdmitsOneBlockAtATime() async {
         let occupancy = await peakOccupancy(of: .inline)
         XCTAssertEqual(occupancy.entries, 2, "precondition: both blocks did not run")

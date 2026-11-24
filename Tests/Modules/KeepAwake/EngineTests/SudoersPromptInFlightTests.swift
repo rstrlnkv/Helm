@@ -8,14 +8,10 @@ import HelmRuntime
 /// What happens to the sudoers rule while the password prompt is on screen.
 ///
 /// `ClamshellCoordinator.engage` asks the system and, on no, starts an admin
-/// prompt. Nothing records that a prompt is already up, and the file the
-/// question is about does not appear until the prompt is answered — so every
-/// path that reaches `engage` in that window asks again, and every path
-/// that reaches `releaseSudoersIfUnneeded` in that window is told there is
-/// nothing to remove.
-///
-/// Both halves of that are the same missing fact: "an install is in flight" is
-/// state the engine keeps nowhere.
+/// prompt. The file the question is about does not appear until the prompt is
+/// answered, so "an install is in flight" is state the coordinator keeps:
+/// without it, `engage` in that window asks again, and the release is told
+/// there is nothing to remove.
 ///
 /// The prompt is hand-cranked, so every interleaving below is chosen rather than
 /// raced, and the main queue is drained by enqueueing after the engine's own
@@ -62,14 +58,9 @@ final class SudoersPromptInFlightTests: XCTestCase {
     /// prompt is still up, then answer it anyway (or let the shell finish; the
     /// dialog is modal to nothing).
     ///
-    /// `releaseSudoersIfUnneeded` runs on `settingsChanged` and is gated on
-    /// `isSudoersInstalled()`, which is false because the rule is not on disk
-    /// yet. When it lands there is nothing left that looks again.
-    ///
-    /// What is left behind is the exact thing the method's own doc comment
-    /// exists to prevent: a permanent `NOPASSWD` line in `/etc/sudoers.d` for a
-    /// feature the person has switched off — "a grant nobody is holding", and
-    /// the one Helm's predecessor left on this machine.
+    /// The release is gated on `isSudoersInstalled()`, false while the rule is
+    /// not on disk yet, so something has to look again when it lands, or a
+    /// permanent `NOPASSWD` line stays for a feature the person switched off.
     func testARuleThatLandsAfterTheOptionIsOffIsTakenBackOut() async throws {
         await startSessionWithPromptUp()
 
@@ -106,7 +97,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
 
     /// Only the person's own gesture raises the dialog: a Start press or an
     /// unrelated settings change reaches `engage(mayPrompt: false)` and never
-    /// the in-flight flag, so it is not tested here (`AStoredSwitchIsNotAGestureTests`).
+    /// the in-flight flag (`AStoredSwitchIsNotAGestureTests`).
     /// The one way left to ask twice: the person's own gesture, twice. Off and on
     /// again on the switch while the first prompt is still up is a second rising
     /// edge, and only the in-flight flag stands between it and a second dialog.

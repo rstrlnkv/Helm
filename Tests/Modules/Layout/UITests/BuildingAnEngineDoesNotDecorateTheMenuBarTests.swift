@@ -3,27 +3,21 @@ import XCTest
 @testable import Module_Layout_UI
 import Module_Layout_Engine
 
-/// **Building an engine must not put anything in the menu bar.**
+/// Building an engine must not put anything in the menu bar.
 ///
-/// `makeModule` used to build the module's `LanguageIndicator` and call
-/// `refresh()` on it, and `refresh` builds a real `NSStatusItem` the moment it
-/// reads `indicator` = true. So every caller of `makeModule` that happened to
-/// hold a store with that setting on decorated the Mac it was running on — the
-/// offscreen render harness among them, which is how this was found: seeding
-/// Layout's store for a measurement put a second flag in the menu bar of the
-/// test run and two `DistributedNotificationCenter` observers behind it, held by
-/// a descriptor that lives as long as the process. Writing the key straight into
-/// the backing store dodges `.helmStoreChanged` and does not dodge this: no
-/// notification is involved.
+/// `LanguageIndicator.refresh()` builds a real `NSStatusItem` the moment it
+/// reads `indicator` = true, so built in `makeModule` it would decorate the Mac
+/// of any caller holding a store with that setting on — the offscreen render
+/// harness among them — with two `DistributedNotificationCenter` observers held
+/// by a descriptor that lives as long as the process.
 ///
 /// The seam is `attachMenuBarPresence()` / `detachMenuBarPresence()` on the
 /// descriptor, which the host calls around a module's lifetime. A measurement
 /// builds the engine and never attaches, so it may read this Mac without
 /// decorating it.
 ///
-/// **No test here switches the indicator on**, and that is deliberate rather
-/// than a gap: a test that let `refresh` build the item would be the very defect
-/// this file exists about. The setting is off, so `attach` builds the indicator
+/// No test here switches the indicator on, deliberately: a test that let
+/// `refresh` build the item would decorate the Mac it runs on. The setting is off, so `attach` builds the indicator
 /// object and the indicator builds no status item — which is enough to see the
 /// three states apart.
 @MainActor

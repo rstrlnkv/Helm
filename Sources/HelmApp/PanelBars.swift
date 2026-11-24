@@ -8,16 +8,13 @@ import HelmAppStrings
 // gallery of widgets no tab is holding, and the footer. Drawn by the card in
 // `HelmPanel.swift`, which keeps the grid and everything the drag touches.
 //
-// Each takes what it needs and owns none of it. That is the rule the split was
-// made under: the panel's `@State` is what the third drag architecture was
-// bought with (the doc comment of `gridDrag` in `HelmPanel.swift`), so nothing
-// here holds state the panel is steering by — a binding travels down, an action travels up.
+// Each takes what it needs and owns none of it: the drag depends on the panel
+// owning its `@State` (the doc comment of `gridDrag` in `HelmPanel.swift`), so
+// nothing here holds state the panel is steering by. A binding travels down,
+// an action travels up.
 
-/// The tabs, and it is the first row of the card **in both modes**.
-///
-/// In the mockups' first version it stood first when reading and second when
-/// editing, so entering the mode moved every tab out from under the cursor that
-/// had just pressed one.
+/// The tabs, and it is the first row of the card **in both modes**, so
+/// entering the mode moves no tab out from under the cursor.
 struct PanelTabStrip: View {
     /// Padding either side of a tab's content.
     private static let tabInset: CGFloat = 10
@@ -39,9 +36,8 @@ struct PanelTabStrip: View {
     /// popover both reads it and puts it back.
     @Binding var pickingGlyph: String?
     /// Somebody asked to rename this tab, and here is what it is called now.
-    /// An action rather than the two bindings it was: the strip only ever
-    /// *writes* that pair, and what a rename means — an alert on the card —
-    /// belongs to whoever owns the alert.
+    /// An action rather than bindings: the strip only writes, and what a
+    /// rename means (an alert on the card) belongs to whoever owns the alert.
     let rename: (_ tab: String, _ current: String) -> Void
     let apply: (PanelLayout) -> Void
 
@@ -52,10 +48,8 @@ struct PanelTabStrip: View {
             }
             if editing {
                 Button {
-                    // The lowest number nobody is using. Counting the tabs
-                    // breaks the moment one in the middle is closed: three tabs
-                    // minus the second is two, and the next new one would ask
-                    // for an id the third already has.
+                    // The lowest number nobody is using: after a middle tab is
+                    // closed, the count would hand out an id still in use.
                     let taken = Set(layout.tabs.map(\.id))
                     var n = 2
                     while taken.contains("tab.\(n)") { n += 1 }
@@ -78,9 +72,9 @@ struct PanelTabStrip: View {
         // ⌘1…⌘9, as every tabbed window on the machine — on buttons of their
         // own rather than on the tabs.
         //
-        // A `keyboardShortcut` on a button decorates that button's *context
-        // menu* as well, so every item of the tab's menu — Rename, Icon, Close
-        // — was drawn with a «⌘2» it did not have and would not obey.
+        // A `keyboardShortcut` on a button decorates that button's context
+        // menu as well, so on a tab every menu item would show a «⌘2» it does
+        // not obey.
         .background {
             ForEach(0..<min(layout.tabs.count, 9), id: \.self) { index in
                 Button("") { withAnimation(HelmMotion.interface) { activeTab = index } }
@@ -93,24 +87,19 @@ struct PanelTabStrip: View {
     }
 
     private func tabButton(_ index: Int, _ tab: PanelLayout.Tab, _ title: String) -> some View {
-        // The title is handed in. The label, the tooltip, the accessibility
-        // label and the rename's draft are the same sentence, and it was built
-        // four times.
+        // The title is handed in: the label, the tooltip, the accessibility
+        // label and the rename's draft are the same sentence.
         Button {
             // Only the selection slides, on this transaction. The grid under it
             // cuts and the card's height follows without a curve — the panel
             // strips both on its side, where the tab is written (`pickedTab`).
             withAnimation(HelmMotion.interface) { activeTab = index }
         } label: {
-            // The tab as the Liquid Glass mockup drew it (direction B): a
-            // capsule `tabHeight` tall, `tabInset` either side,
-            // `HelmSpace.s2` between the name and the chevron, and type that does **not** change weight when
-            // selected.
-            //
-            // Weight was the first thing tried and it is the one thing a tab
-            // cannot do: bold is wider than regular, so every tab in the strip
-            // moved whenever another was picked. Selection is a fill and a
-            // colour.
+            // A capsule `tabHeight` tall, `tabInset` either side, `HelmSpace.s2`
+            // between the name and the chevron, and type that does **not**
+            // change weight when selected: bold is wider than regular, so every
+            // tab would move whenever another was picked. Selection is a fill
+            // and a colour.
             HStack(spacing: HelmSpace.s2) {
                 Text(title)
                     .font(HelmText.rowDetail)
@@ -129,13 +118,12 @@ struct PanelTabStrip: View {
             .frame(height: Self.tabHeight)
             .background {
                 if index == tabIndex {
-                    // A fill, not a material. The panel is already Liquid
-                    // Glass, and a material under the tab was glass drawn on
-                    // glass with a shadow nothing could see. 12% rather than
-                    // `wellFill`'s 5%, which measured 1.23:1 over the panel's
-                    // glass and 1.04:1 in light. A capsule, because its radius is half of
-                    // `tabHeight`, and `HelmRadius.panel` equals that height: the
-                    // selection sits concentric with the card.
+                    // A fill, not a material: the panel is already Liquid
+                    // Glass. 12% rather than `wellFill`'s 5%, which barely
+                    // shows over the panel's glass. A capsule, because its
+                    // radius is half of `tabHeight`, and `HelmRadius.panel`
+                    // equals that height: the selection sits concentric with
+                    // the card.
                     Capsule()
                         .fill(HelmSurface.panelSelection)
                         // One shape that moves between tabs rather than one
@@ -153,10 +141,8 @@ struct PanelTabStrip: View {
             Button(HelmWord.rename) { rename(tab.id, title) }
             Button(AppStr.tabIcon) { pickingGlyph = tab.id }
             Button(AppStr.closeTab, role: .destructive) {
-                // The token the tab buttons use. Bare, the content cut while
-                // the card's measured height went on ramping around it — its
-                // own transaction — so closing a tab looked unlike switching
-                // to one.
+                // The token the tab buttons use: bare, the content would cut
+                // while the card's measured height ramps around it.
                 withAnimation(HelmMotion.interface) {
                     apply(layout.removingTab(tab.id))
                     activeTab = tabIndex.clamped(to: 0...max(0, layout.tabs.count - 1))
@@ -237,9 +223,7 @@ struct PanelGallery: View {
                         .font(HelmText.rowDetail)
                         .lineLimit(1)
                 } else if let descriptor {
-                    // 26, as the widget header draws it. The same module 200 pt
-                    // apart in two sizes is the defect `HelmWidgetHeader` was
-                    // unified to kill, reappearing in the gallery.
+                    // 26, as the widget header draws it: one module, one size.
                     HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
                                   tint: descriptor.moduleTint.colour, size: 26)
                     Text(descriptor.moduleMetadata.shortName)
@@ -263,10 +247,8 @@ struct PanelGallery: View {
 
 /// The three ways out, at the foot of the panel.
 ///
-/// `showSettings` and `showQuit` both defaulted to false once, which is how a
-/// clean install ended up with no way into settings from the panel it was given
-/// — and no way to find the switch that would have added one. They default to
-/// true now, which is what makes the three of them safe to offer at all.
+/// All three default to true, which is what makes them safe to offer as
+/// switches: a clean install always has a way into settings from the panel.
 struct PanelFooter: View {
     let editing: Bool
     let showSettings: Bool
@@ -283,20 +265,14 @@ struct PanelFooter: View {
                 }
             }
             Spacer(minLength: HelmSpace.s4)
-            // Only on the way in. While the setup bar is on screen it carries
-            // «Готово», and two of them a hundred points apart is one of them
-            // asking whether the other did something else.
+            // Only on the way in: while the setup bar is on screen it carries
+            // «Done», and two ways out would read as two different acts.
             //
-            // A glyph, not a word. «Настроить панель» is the longest label in
-            // the footer and the least often pressed — it is the door to a mode
-            // somebody enters once and then leaves alone — and at 300 pt it was
-            // the label that ran out of room and truncated to «Настроить па…».
-            // A pencil is the one glyph macOS uses for exactly this, and the
-            // name is still there for a pointer that rests on it and for
-            // VoiceOver.
-            // Both glyphs at the right edge, together. A lone icon floating in
-            // the middle of a footer reads as something that lost its label
-            // rather than as something that never needed one.
+            // A glyph, not a word: the label is the footer's longest and least
+            // pressed, and it truncates at the panel's width. A pencil is the
+            // glyph macOS uses for this, and the name stays in the tooltip and
+            // for VoiceOver. Both glyphs at the right edge, together: a lone
+            // icon mid-footer reads as one that lost its label.
             if !editing && showEdit {
                 footerGlyph("pencil", AppStr.editPanel, action: configure)
             }
@@ -308,7 +284,7 @@ struct PanelFooter: View {
     }
 
     /// A footer action with no room for its name: the name is the tooltip and
-    /// the accessibility label, which is the whole of what the word was doing.
+    /// the accessibility label.
     private func footerGlyph(_ symbol: String, _ name: String,
                              action: @escaping () -> Void) -> some View {
         Button(action: action) {

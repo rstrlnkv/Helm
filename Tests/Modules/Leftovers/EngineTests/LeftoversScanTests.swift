@@ -96,10 +96,8 @@ final class LeftoversScanTests: XCTestCase {
     func testExtensionsOfMissingAppsAreOfferedUnlessStillActive() {
         var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/Preferences"] = []
-        // Through the field the port actually answers with. `ids` was a
-        // leftover of `activeExtensionIdentifiers`, deleted today, and the
-        // fixture went on setting it — so the scan saw no extensions at all and
-        // the rule below was asserted over an empty list.
+        // Through the field the port actually answers with: a fixture setting a
+        // field nothing reads would assert the rule over an empty list.
         let active = LeftoversFakeLoaded(installed: [
             SystemExtensionInfo(identifier: "com.gone.vendor.app.ext", version: "1", enabled: true),
         ])
@@ -111,9 +109,8 @@ final class LeftoversScanTests: XCTestCase {
 
     // MARK: - System extensions
 
-    /// The module is called "Login Items & Extensions", and system extensions
-    /// were the one thing it never listed: they showed up only as a count on
-    /// another page, with no names.
+    /// The module is called "Login Items & Extensions", so system extensions are
+    /// listed by name, not only counted.
     func testInstalledExtensionsAreListed() {
         let extensions = LeftoversFakeLoaded(installed: [
             SystemExtensionInfo(identifier: "com.acme.app.network", version: "1.0", enabled: true),
@@ -154,12 +151,9 @@ final class LeftoversScanTests: XCTestCase {
 /// A launchd label is unique inside one directory and not across the three the
 /// scan reads: `com.vendor.updater` sits in `~/Library/LaunchAgents` and in
 /// `/Library/LaunchAgents` on plenty of Macs — one agent per user, one for
-/// everybody. The scan sorted by identifier alone, and Swift's sort is not
-/// stable, so those two came back in whichever order the algorithm happened to
-/// leave them: pressing «Scan again» could swap the pair, in a list where the
-/// row above a checkbox is the whole of what the tick means.
-///
-/// Past defect: fixed in `5603872d`.
+/// everybody. Swift's sort is not stable, so a sort by identifier alone could
+/// let «Scan again» swap the pair, in a list where the row above a checkbox is
+/// the whole of what the tick means.
 final class ScanOrderIsTotalTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 

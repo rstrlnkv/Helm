@@ -7,14 +7,12 @@ import XCTest
 /// **The row a source leaves behind is a folder, and every rule in this module is
 /// about files.**
 ///
-/// A source the scan did not read now comes back as a row of its own
-/// (`ASourceNobodyWalkedIsNotACleanMacTests` is why), and the row carries the
-/// folder's own path. Everything the page offers on a row would be wrong for it: a
-/// checkbox would put `~/Library/Preferences` in a batch, «Move to Trash» would
-/// offer to delete it, «Turn off» is a label the folder does not have, and «Only an
-/// administrator can move this» is a sentence about moving something nobody
-/// proposed to move. `ItemStatus.isSource` is what every rule asks first, and this
-/// is that promise with a test under it.
+/// A source the scan did not read comes back as a row of its own
+/// (`ASourceNobodyWalkedIsNotACleanMacTests`), carrying the folder's path.
+/// Everything the page offers on a row would be wrong for it: a checkbox would
+/// put `~/Library/Preferences` in a batch, «Move to Trash» would offer to delete
+/// it, «Turn off» names a label the folder does not have. `ItemStatus.isSource`
+/// is what every rule asks first, and this tests that promise.
 final class AFolderThatWentUnreadIsNotAFileTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
@@ -46,7 +44,7 @@ final class AFolderThatWentUnreadIsNotAFileTests: XCTestCase {
         XCTAssertNil(rows.first { $0.status == .sourceUnreadable }?.leadsTo)
     }
 
-    /// **The finding this file exists for.** Nothing may be done to a folder here.
+    /// **The guard.** Nothing may be done to a folder here.
     func testASourceRowOffersNothingButALook() {
         for row in sourceRows() {
             XCTAssertEqual(row.actions, [.reveal], "\(row.path) offers \(row.actions)")
@@ -77,11 +75,9 @@ final class AFolderThatWentUnreadIsNotAFileTests: XCTestCase {
 
     /// **The port's third answer, over the real filesystem.**
     ///
-    /// `contents(of:)` answered `[URL]`, so «this folder would not open» was a state
-    /// neither the port nor a fake of it could hold — and the scan reported the
-    /// folder as empty. Read at mode 000 rather than from a fixture, because the
-    /// reading *is* the finding: `FileManager.contentsOfDirectory` throws for a
-    /// missing folder and for a refused one alike.
+    /// «This folder would not open» is a state the port can hold. Read at mode 000
+    /// rather than from a fixture, because `FileManager.contentsOfDirectory` throws
+    /// for a missing folder and for a refused one alike.
     func testTheRealPortTellsARefusedFolderFromAnEmptyOne() throws {
         let root = scratchDirectory("leftovers-contents").resolvingSymlinksInPath()
         let locked = root.appendingPathComponent("locked")

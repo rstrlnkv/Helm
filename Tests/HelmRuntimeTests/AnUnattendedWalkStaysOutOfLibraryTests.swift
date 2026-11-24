@@ -3,13 +3,10 @@ import XCTest
 
 /// `~/Library` is refused all the way down, not only as a place to begin.
 ///
-/// `refusedInHome` was asked exactly one question — where a walk *starts* — and
-/// the home is the commonest duplicate-scan root there is, so the whole subtree
-/// the list exists to protect was reached on the very next step. Measured on the
-/// owner's own machine on 2026-08-20: the journal from the last unattended
-/// duplicate scan held 3895 items, 217 of them under `~/Library` and 19 under
-/// `~/Library/Mobile Documents`, at 0600 — readable by every process running as
-/// this user, including the ones macOS refuses.
+/// The home is the commonest duplicate-scan root, so a gate asked only where a
+/// walk starts would reach the protected subtree on the next step, and an
+/// unattended scan's journal would list `~/Library` paths readable by every
+/// process running as this user (`ScanRoot`, Architecture/TheGates.md § The gates).
 ///
 /// The home is a parameter, so these are facts about the rule rather than about
 /// this Mac.
@@ -68,20 +65,18 @@ final class AnUnattendedWalkStaysOutOfLibraryTests: XCTestCase {
         XCTAssertFalse(refused("/Users/tester/Library backups"))
     }
 
-    /// **A `Library` deeper down is somebody's own folder.** The rule names the
-    /// subtrees of the home that macOS protects, and `~/Documents/Library` is
-    /// not one of them — a gate that refused it by name would be the blocklist
-    /// this one is deliberately not.
+    /// A `Library` deeper down is somebody's own folder: the rule names the
+    /// subtrees of the home that macOS protects, and is not a blocklist of
+    /// names.
     func testAFolderOfTheSameNameFurtherDownIsWalked() {
         XCTAssertFalse(refused("/Users/tester/Documents/Library"))
         XCTAssertFalse(refused("/Users/tester/Projects/Library/src"))
     }
 
-    /// **A `/private` on one side only must not open the gate.** Measured
-    /// 2026-08-20: `FileManager.enumerator` handed a root spelled
-    /// `/var/folders/…` yields its children spelled `/private/var/folders/…`, so
-    /// the walk's paths need not carry the spelling of the root it was given. A
-    /// gate comparing the two would match nothing and fail open without a word.
+    /// A `/private` on one side only must not open the gate:
+    /// `FileManager.enumerator` given `/var/folders/…` yields children spelled
+    /// `/private/var/folders/…`, and a gate comparing the two would match
+    /// nothing and fail open.
     func testTheGateHoldsWhenOnlyOneSideCarriesPrivate() {
         let plain = "/var/folders/x/T/fixture"
         let priv = "/private" + plain
@@ -92,11 +87,10 @@ final class AnUnattendedWalkStaysOutOfLibraryTests: XCTestCase {
         XCTAssertFalse(ScanRoot.refusesDescentInHome(into: priv + "/Downloads", home: plain))
     }
 
-    /// **The two halves of the gate spell the home the same way, or neither is
-    /// guarding anything.** `resolve` hands the walk a fully resolved root and
-    /// the walk's own paths carry that spelling; the descent gate compares
-    /// against `canonicalHome`. A name spelled twice across that seam is an
-    /// error nowhere — the refusal would simply never match.
+    /// The two halves of the gate spell the home the same way: `resolve` hands
+    /// the walk a fully resolved root, and the descent gate compares against
+    /// `canonicalHome`. Two spellings across that seam are an error nowhere;
+    /// the refusal would simply never match.
     func testTheRootGateAndTheDescentGateSpellTheHomeTheSameWay() throws {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let resolved = try XCTUnwrap(ScanRoot.resolve(home))

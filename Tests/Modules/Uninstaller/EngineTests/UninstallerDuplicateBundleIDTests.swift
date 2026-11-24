@@ -2,12 +2,9 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
-/// Two copies of one app, which /Applications and ~/Applications hold at once
-/// often enough — a Setapp build beside a direct download, an old version kept
-/// on purpose. `installedApps()` deduplicates by *path*, so both are listed.
-/// Everything downstream keys off the bundle id, which is the one thing the two
-/// copies share.
-/// Past defect: fix commit 6dec5f2f.
+/// Two copies of one app (a Setapp build beside a direct download, an old
+/// version kept on purpose) share the bundle id and nothing else. Both are
+/// listed, sized and reviewed as themselves, keyed by path.
 final class UninstallerDuplicateBundleIDTests: XCTestCase {
 
     private var home: URL!
@@ -43,23 +40,20 @@ final class UninstallerDuplicateBundleIDTests: XCTestCase {
         let tag = home.lastPathComponent
         let mine = lister.installedApps().filter { $0.path.contains(tag) }
 
-        // Both really are on the list — this is not a hypothetical.
+        // Both really are on the list.
         XCTAssertEqual(Set(mine.map { ($0.path as NSString).standardizingPath }),
                        [(small as NSString).standardizingPath,
                         (large as NSString).standardizingPath])
 
         let sizes = lister.appSizes(mine)
-        // `[String: Int]` is keyed by bundle id, so the second copy's size
-        // overwrites the first — and which one wins is decided by
-        // `concurrentPerform`, i.e. by a race. The page reads
-        // `sizes[app.bundleID]` once per row, so both rows show one number.
+        // Keyed by bundle id, the second copy's size would overwrite the first,
+        // whichever thread of `concurrentPerform` finished last.
         XCTAssertEqual(sizes.count, mine.count,
                        "one size per installed copy; the id is not what tells them apart")
     }
 
-    /// The review screen draws `ForEach(groups, id: \.id)`, and `id` is the
-    /// bundle id. Two copies means two rows claiming one identity, which is a
-    /// list that drops or duplicates rows and puts a tick on the wrong one.
+    /// The review draws `ForEach(groups, id: \.id)`: two rows with one identity
+    /// drop or duplicate rows and put a tick on the wrong one.
     func testTwoCopiesOfOneAppAreTwoIdentities() throws {
         let small = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
                                  path: "/Applications/Tool.app")

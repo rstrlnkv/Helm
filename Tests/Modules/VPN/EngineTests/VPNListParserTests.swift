@@ -1,7 +1,7 @@
 import XCTest
 @testable import Module_VPN_Engine
 
-/// Guards: `scutil --nc` status and list lines parse to name, status and id, and garbage lines are skipped (no fix commit; the sibling classes in this file carry 63e9bcfe).
+/// Guards: `scutil --nc` status and list lines parse to name, status and id, and garbage lines are skipped.
 final class VPNListParserTests: XCTestCase {
     func test_parseStatus() {
         XCTAssertEqual(VPNListParser.parseStatus("Connected"), .connected)
@@ -24,12 +24,9 @@ final class VPNListParserTests: XCTestCase {
 /// Where the protocol tag ends and the connection's name begins.
 ///
 /// `scutil --nc list` puts the protocol in square brackets *before* the quoted
-/// name. `between(line, "[", "]")` takes the first pair on the line, which is
-/// the right one — until the name itself carries brackets, at which point the
-/// first pair is still the protocol's. These pin that the name is not searched
-/// and that the tag is read from where scutil writes it.
-///
-/// Past defect: commit 63e9bcfe, «fix: three more from the suspicions list».
+/// name, so the first pair on the line is the protocol's even when the name
+/// carries brackets. These pin that the name is not searched and that the tag
+/// is read from where scutil writes it.
 final class VPNListParserBracketTests: XCTestCase {
 
     func testTheProtocolComesFromBeforeTheName() {
@@ -80,10 +77,8 @@ final class VPNListParserHostileTests: XCTestCase {
     /// Trap: a row without a UUID-shaped token takes `<name>#<namesakes before
     /// it>` as its id, and macOS lets two VPN configurations carry the same
     /// display name. This test's rows carry UUIDs; the fallback is held by
-    /// `ANameIsNotAnIdentityTests`. Everything downstream keys on
-    /// one or the other — `VPNRules` on `vpnName`, the panel tile's rows on `id` — so if
-    /// ids can collide, two rows become one and a rule points at "whichever".
-    /// This records which of the two is true today rather than asserting a wish.
+    /// `ANameIsNotAnIdentityTests`. `VPNRules` keys on `vpnName` and the panel
+    /// tile's rows on `id`, so colliding ids would make two rows one.
     func test_two_configurations_sharing_a_name_stay_two_rows() {
         let output = """
         * (Disconnected)   D4A0E5D5-3D26-4C0B-9E93-1F2C0F5A9A11 IPSec "Work" [IPSec:—]

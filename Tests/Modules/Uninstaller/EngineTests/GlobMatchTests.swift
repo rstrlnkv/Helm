@@ -1,7 +1,7 @@
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// Guards: the leftover glob's trailing segment must sit at the end of the name; with `guard rest.hasSuffix(last)` turned into `guard true` `testSuffixStar` goes red. Runs by default.
+/// Guards: the leftover glob's trailing segment must sit at the end of the name (`testSuffixStar`).
 final class GlobMatchTests: XCTestCase {
     func testPrefixStar() {
         XCTAssertTrue(GlobMatch.matches("com.acme.tool.helper", pattern: "com.acme.tool*"))

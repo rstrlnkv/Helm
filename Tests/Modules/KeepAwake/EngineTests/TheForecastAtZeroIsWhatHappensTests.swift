@@ -12,18 +12,12 @@ import HelmRuntime
 ///
 ///     TimerPolicy.onExpiry(hasAutoCondition:suppressed:timerEndsAutomation:)
 ///
-/// The two read a different number of inputs. `afterTimer` knows nothing
-/// about `suppressed`, and `Conditions.resolve` puts `.app` in the published set
-/// whenever the app is running and a session is on — suppressed or not. So the
-/// forecast and the outcome agree for exactly one reason: `startSession` clears
-/// `suppressed` as a side effect, three lines above the arithmetic, where
-/// nothing says it is load-bearing for a sentence in another target.
-///
-/// Delete that one line and nothing fails to compile, no test of the timer
-/// notices, and the page tells somebody their render will keep the Mac awake
-/// while the engine has already decided it will not.
-///
-/// Guards: de97195b (the forecast at zero disagreed with what happened).
+/// The two read a different number of inputs: `afterTimer` knows nothing about
+/// `suppressed`, and `Conditions.resolve` puts `.app` in the published set
+/// whenever the app is running and a session is on, suppressed or not. The
+/// forecast and the outcome agree because `startSession` clears `suppressed`,
+/// and nothing else would notice that line going: the page would promise the
+/// Mac stays awake while the engine has decided it will not.
 final class TheForecastAtZeroIsWhatHappensTests: XCTestCase {
 
     private var store: NamespacedStore!

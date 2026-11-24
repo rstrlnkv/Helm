@@ -10,11 +10,10 @@ import HelmTestSupport
 
 /// **A card says «this connection only», so it writes this connection only.**
 ///
-/// The card's choice used to write its book entry *and* the module-wide
-/// notice, which every other connection without an entry inherits: one
-/// tunnel set to Nothing silenced the drop of the next. «None» is a book entry
-/// with no value for the kind; an older payload has no `noticeBook` key at all
-/// and decodes to an empty book, which inherits — today's behaviour.
+/// Writing the module-wide notice as well, which every other connection
+/// without an entry inherits, would let one tunnel set to Nothing silence the
+/// drop of the next. «None» is a book entry with no value for the kind; a
+/// payload with no `noticeBook` key decodes to an empty book, which inherits.
 @MainActor
 final class ACardsNoticeIsNotTheModulesTests: XCTestCase {
 

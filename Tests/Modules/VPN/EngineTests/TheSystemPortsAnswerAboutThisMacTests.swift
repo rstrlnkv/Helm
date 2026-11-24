@@ -9,8 +9,6 @@ import XCTest
 /// The production ports, tested without a network: the trace parser is read
 /// against text the endpoint really prints, and the dynamic store is asked about
 /// this Mac, which answers whatever it answers.
-///
-/// Past defect: commit 237aa6f9, «fix(vpn): a measurement that cannot start says so, and four digits are grouped» (a port that answered nil to everything passed).
 final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
 
     func testTheRegionIsReadFromTheTracesOwnLine() {
@@ -34,18 +32,15 @@ final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
         XCTAssertNil(TraceExit.region(in: "loc="))
     }
 
-    /// **A port that answered nil to everything used to pass this.** The only
-    /// positive assertion sat inside `if let primary`, and the other line
-    /// asserts an absence — so a mistyped store key, or a `SCDynamicStoreCreate`
-    /// that stopped working on a later macOS, would leave the tile strip absent
-    /// on every Mac with the suite green.
+    /// **A port that answers nil to everything fails this.** A mistyped store
+    /// key, or a `SCDynamicStoreCreate` that stops working on a later macOS, would
+    /// otherwise leave the tile strip absent on every Mac with the suite green.
     ///
     /// The machine running the suite has a default route, or it is not on a
-    /// network at all and has bigger problems than this assertion: `scutil -r`
-    /// and `route -n get default` answer for the same store this reads. So the
-    /// answer is required, and the nil below is required to stay nil — a port
-    /// answering an interface for a service id nobody has would be inventing
-    /// one.
+    /// network at all: `scutil -r` and `route -n get default` answer for the same
+    /// store this reads. So the answer is required, and the nil below is required
+    /// to stay nil — a port answering an interface for a service id nobody has
+    /// would be inventing one.
     func testThePrimaryInterfaceIsThisMacsOwn() {
         let port = DynamicStoreInterfaces()
 
@@ -59,12 +54,10 @@ final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
 
     // MARK: - The speed run, without running the tool
 
-    /// **A status of 0 is not a success here, and the code read it as one.**
-    /// Measured on this machine, 2026-08-18: `networkQuality -c -I utun6`
+    /// **A status of 0 is not a success here.** `networkQuality -c -I utun6`
     /// against a live tunnel prints this and **exits 0** — an error object, no
-    /// throughput keys at all. The guard on the status would have let it
-    /// through; what refuses it is the parser's «both throughput figures or nothing», and
-    /// that is now a test rather than a thing somebody remembers.
+    /// throughput keys. What refuses it is the parser's «both throughput figures
+    /// or nothing».
     private static let minusOneThousandAndNine = """
     {"error_code": -1009, "error_domain": "NSURLErrorDomain", \
     "error_message": "A server with the specified hostname could not be found."}
@@ -101,10 +94,8 @@ final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
     /// **A reading carries how long it took to take.**
     ///
     /// The page draws an arc against an expected length while a measurement
-    /// runs, and that length was a constant in a view — 22 s, measured on one
-    /// Mac on one link on one afternoon. The tool already times itself here, so
-    /// the number the arc is drawn against can be a fact about *this* person's
-    /// link instead. Not a stage and not a fraction: the engine still knows only
+    /// runs; the tool times itself, so that length can be a fact about *this*
+    /// person's link. Not a stage and not a fraction: the engine knows only
     /// whether a run is in flight (`VPNEngine.measuringSpeed`), and this is the
     /// length of the last one.
     func testAReadingCarriesHowLongItsRunTook() {
@@ -123,11 +114,10 @@ final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
 
     /// **A clock that does not move is not a run of no length.**
     ///
-    /// Every other test in this file injects a `now` that answers the same
-    /// instant for ever, which is a run of exactly zero seconds — and an arc
-    /// drawn against zero is `HelmExpectedWait`'s own «no claim» case, reached
-    /// by arithmetic rather than by anybody deciding it. A length that is not
-    /// positive is no length.
+    /// A `now` that answers the same instant for ever is a run of exactly zero
+    /// seconds, and an arc drawn against zero would be `HelmExpectedWait`'s «no
+    /// claim» case reached by arithmetic. A length that is not positive is no
+    /// length.
     func testARunWithNoLengthCarriesNone() {
         let at = Date(timeIntervalSince1970: 10_000)
         let port = NetworkQualitySpeed(now: { at }, run: { _ in

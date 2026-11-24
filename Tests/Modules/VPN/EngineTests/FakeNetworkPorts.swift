@@ -6,20 +6,17 @@ import Foundation
 
 /// The three ports the module asks the network about, as fakes.
 ///
-/// **`FakeInterfaces` can no longer be planted with a service id → interface
-/// pair**, because the port cannot answer that question any more: the id the
-/// module has is a configuration's and the store is keyed by network service, so
-/// every such pair this fake accepted was one the system could not produce, and
-/// the suite stayed green while the strip was absent on every Mac (ARCHITECTURE.md § Fakes). The interface is `scutil`'s answer
-/// now, so it is `FakeRunner.statusOutput` — keyed by the name the tool takes.
+/// **`FakeInterfaces` cannot be planted with a service id → interface pair**,
+/// because the port does not answer that question: the id the module has is a
+/// configuration's and the store is keyed by network service, so such a pair is
+/// one the system cannot produce (Architecture/TestsAndMeasurement.md § Fakes).
+/// The interface is `scutil`'s answer, `FakeRunner.statusOutput`, keyed by the
+/// name the tool takes.
 ///
 /// **Every one of them is reached from a thread that is not the test's** — the
 /// module's serial queue reads the interfaces on every emission, and the speed
-/// run happens off both that queue and the cooperative pool. They were
-/// `@unchecked Sendable` with plain mutable properties, which is the compiler
-/// being told to trust the author for exactly the race that was there: the
-/// engine appending to `askedFor` while the test read it. Each keeps its state
-/// under a lock now.
+/// run happens off both that queue and the cooperative pool — so each keeps its
+/// state under a lock.
 final class FakeInterfaces: VPNInterfacePort, @unchecked Sendable {
     private let lock = NSLock()
     private var _primary: String?
@@ -73,12 +70,10 @@ final class FakeExit: VPNExitPort, @unchecked Sendable {
     }
     /// Answers handed out in order, one per call, before `answer` is used.
     ///
-    /// **Two requests do not have to say the same thing**, and the real ones cannot
-    /// be relied on to: a tunnel coming up while a request is out is asked about a
-    /// different exit from the one already in flight, which is the whole reason the
-    /// engine has to tell the two answers apart. With one fixed answer that state
-    /// is unrepresentable, and any test of it passes against an engine that keeps
-    /// the wrong one (ARCHITECTURE.md § Fakes).
+    /// **Two requests do not have to say the same thing**: a tunnel coming up
+    /// while a request is out is asked about a different exit from the one already
+    /// in flight, and the engine has to tell the two answers apart. With one fixed
+    /// answer that state is unrepresentable (Architecture/TestsAndMeasurement.md § Fakes).
     var queued: [String?] {
         get { lock.lock(); defer { lock.unlock() }; return _queued }
         set { lock.lock(); _queued = newValue; lock.unlock() }
@@ -134,14 +129,13 @@ final class FakeExit: VPNExitPort, @unchecked Sendable {
     }
 }
 
-/// **The slowest thing in the module, and the fake could not be slow.**
+/// **The slowest thing in the module, so the fake can be slow.**
 ///
-/// `networkQuality` runs for about fifteen seconds by design and blocks the thread
-/// it is on for as long as it does — which is why `VPNSpeedPort.measure` says so at
-/// the protocol and why the engine keeps it off its serial queue. A fake that
-/// answers the instant it is called makes every test of that arrangement vacuous:
-/// «a Connect pressed while a measurement is in flight» and «the tile says
-/// Measuring…» are both states the subject is already past (ARCHITECTURE.md § Fakes).
+/// `networkQuality` blocks the thread it is on for as long as it runs, which is
+/// why the engine keeps it off its serial queue. A fake that answers the
+/// instant it is called would make «a Connect pressed while a measurement is in
+/// flight» and «the tile says Measuring…» states the subject is already past
+/// (Architecture/TestsAndMeasurement.md § Fakes).
 final class FakeSpeed: VPNSpeedPort, @unchecked Sendable {
     private let lock = NSLock()
     private var _answer: VPNSpeedReading?
@@ -161,7 +155,7 @@ final class FakeSpeed: VPNSpeedPort, @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }; return _askedFor
     }
     /// Hold the run open until `release()`, the way the real tool holds its
-    /// thread for fifteen seconds.
+    /// thread.
     var blocksUntilReleased: Bool {
         get { lock.lock(); defer { lock.unlock() }; return _blocks }
         set { lock.lock(); _blocks = newValue; lock.unlock() }

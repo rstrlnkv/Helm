@@ -3,23 +3,17 @@ import XCTest
 
 /// The eight lines standing between `NSUserName()` and a root shell.
 ///
-/// `AccountName` is asked in exactly two places, and both hand what it approves
-/// to root: Keep Awake writes the name into a `sudoers` rule, and Homebrew puts
-/// it in `chown -R <user>:admin /opt/homebrew` inside a `do shell script … with
-/// administrator privileges`. Its own header states the stake — a name that
-/// breaks `sudoers` syntax takes `sudo` down for the whole machine, and that is
-/// recoverable only from recovery mode — and nothing tested it. The rule was
-/// kept by a `guard` at each of the two call sites and by reading the
-/// implementation.
+/// Both callers hand what `AccountName` approves to root: Keep Awake writes the
+/// name into a `sudoers` rule, and Homebrew puts it in `chown -R <user>:admin
+/// /opt/homebrew` inside an administrator `do shell script`. A name that breaks
+/// `sudoers` syntax takes `sudo` down for the whole machine, recoverable only
+/// from recovery mode.
 ///
-/// `NSUserName()` is not a constant. On a directory-bound or MDM-managed Mac it
-/// is whatever the directory service says, so these inputs are not theoretical
-/// in the way a hand-typed field would be: nobody at this keyboard chooses the
-/// string being tested.
+/// `NSUserName()` is not a constant: on a directory-bound or MDM-managed Mac it
+/// is whatever the directory service says, and nobody at this keyboard chose it.
 ///
-/// The cases are grouped by **what the character does at the far end**, because
-/// a flat list of rejects says nothing about why any of them matters, and the
-/// next person to widen this function will widen it for a reason.
+/// The cases are grouped by what the character does at the far end, so a
+/// widening of this function has to answer for a reason.
 final class AccountNameTests: XCTestCase {
 
     // MARK: - It says yes to the names people actually have

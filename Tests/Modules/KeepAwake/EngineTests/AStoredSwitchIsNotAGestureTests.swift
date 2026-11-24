@@ -3,7 +3,7 @@ import HelmTestSupport
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
-/// Backlog M115. A stored «lid closed» option with no passwordless rule is a
+/// A stored «lid closed» option with no passwordless rule is a
 /// value, not a gesture — and the administrator dialog may come only from the
 /// person's own gesture on the lid switch (`consumeEdge`: edge, not value).
 /// A plain Start press is a gesture on a different control.
@@ -80,7 +80,7 @@ final class AStoredSwitchIsNotAGestureTests: XCTestCase {
                        "the option was switched off and the rule it needed stayed on disk")
     }
 
-    // MARK: - M115: a store value written from outside
+    // MARK: - A store value written from outside
 
     /// The red one. Another process (`defaults write`, a sync, a migration)
     /// flips the key during a running session and the settings-changed path
@@ -104,7 +104,7 @@ final class AStoredSwitchIsNotAGestureTests: XCTestCase {
                        "a value written from outside raised the administrator dialog")
     }
 
-    // MARK: - M123: a Mac with no lid
+    // MARK: - A Mac with no lid
 
     /// A stored «lid closed» option from a laptop week, a plist, a sync, on a
     /// Mac with no lid: a settings edit during a session must not engage it.
@@ -190,7 +190,7 @@ final class AStoredSwitchIsNotAGestureTests: XCTestCase {
         XCTAssertTrue(engine.isActive)
     }
 
-    // MARK: - Owner decision C: the global «external display» condition goes by «has a lid»
+    // MARK: - The global «external display» condition goes by «has a lid»
 
     /// The global rule switched on, an external display reported, a Mac with no
     /// lid: the rule does not fire and nothing holds the Mac.

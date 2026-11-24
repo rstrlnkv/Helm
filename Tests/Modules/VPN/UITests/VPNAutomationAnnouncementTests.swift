@@ -10,14 +10,13 @@ import XCTest
 
 /// A rule fired by itself, and the person is told — or is not.
 ///
-/// This is the trap Task 8 left standing on purpose. `.system` suppresses the
-/// menu-bar label because the banner is supposed to carry the name, so writing
-/// the authorization mirror before wiring the banner turns the loudest mode
-/// into the silent one. The invariant below is structural — *some* channel
-/// carries the firing — rather than a check on one of them, because it is
-/// exactly the "both were switched off" state that shipped once.
+/// `.system` suppresses the menu-bar label because the banner is supposed to
+/// carry the name, so a stale authorization mirror turns the loudest mode into
+/// the silent one. The invariant below is structural — *some* channel carries
+/// the firing — rather than a check on one of them, because «both switched
+/// off» is the state guarded.
 ///
-/// Guards: some channel, banner or menu-bar label, always carries a firing (no fix commit; the code and this test landed together).
+/// Guards: some channel, banner or menu-bar label, always carries a firing.
 @MainActor
 final class VPNAutomationAnnouncementTests: XCTestCase {
 
@@ -36,8 +35,7 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
     /// Waits on the announcement itself rather than on a count of yields: the
     /// firing arrives on the event loop, and everything the assertions read is
     /// written by the task that handles it. A number of yields would be a race
-    /// that happens to come out right, which is the way a broken fix shipped
-    /// green here once already.
+    /// that happens to come out right.
     private func settle(_ model: VPNViewModel) async {
         await waitUntil("the firing handled", within: .seconds(5)) { model.lastAutomation != nil }
         await model.announcement?.value
@@ -112,9 +110,9 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
         XCTAssertNil(said.label)
     }
 
-    /// The measured defect, on its own: the permission was revoked in System
-    /// Settings and nobody has opened the VPN page since, so the only record
-    /// the app holds says yes. The firing must still reach the person.
+    /// The permission was revoked in System Settings and nobody has opened the
+    /// VPN page since, so the only record the app holds says yes. The firing must
+    /// still reach the person.
     func testARevokedPermissionIsNoticedWhenTheRuleFiresAndNotAtTheNextSettingsVisit() async {
         let said = await announce(notice: .system, mirror: true, macOS: .denied)
         XCTAssertTrue(said.banner.isEmpty, "macOS had refused, so nothing was shown")

@@ -2,11 +2,10 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
-/// «Never change these words» has no footnote. The list's own header is
-/// absolute, and the force path — the gesture, the hotkey — used to skip it:
-/// the one word somebody wrote down as untouchable was still one stray tap away
-/// from being rewritten. Whoever really wants the conversion removes the word
-/// from the list; the module does not decide the header meant less than it says.
+/// «Never change these words» has no footnote: the force path — the gesture,
+/// the hotkey — honours it too. Whoever really wants the conversion removes the
+/// word from the list; the module does not decide the header meant less than it
+/// says.
 final class TheNeverListOutranksTheGestureTests: XCTestCase {
 
     private func engine(exceptions: [String],

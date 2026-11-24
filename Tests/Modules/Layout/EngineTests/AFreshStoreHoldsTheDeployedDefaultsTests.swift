@@ -4,10 +4,9 @@ import HelmContract
 import HelmRuntime
 import HelmTestSupport
 
-/// Before anyone has chosen, each setting reads as it did when the defaults were
-/// spelled inline in the engine and the pages. Moving them into one table must
-/// not move a value: a changed default silently changes what every new install
-/// does, and for the period, where the page opens.
+/// Before anyone has chosen, each setting reads its deployed default: a changed
+/// default silently changes what every new install does, and for the period,
+/// where the page opens.
 final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
 
     private func store() -> NamespacedStore {

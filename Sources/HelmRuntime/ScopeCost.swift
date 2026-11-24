@@ -2,18 +2,11 @@ import Foundation
 
 /// What one bounded piece of work cost the process, as a line for the log.
 ///
-/// `FootprintTracker.Report.line` answers a different question at a different
-/// scale: a **total** with a delta against the last reading for the same label, in
-/// whole megabytes, silent below 8 MB. That was right for the hunt it was built
-/// for, where the figures were hundreds of megabytes. Building a module is single
-/// digits — rendered by that formatter every module would print `0 MB`,
-/// and thresholded by it none of them would print at all.
-///
-/// So this one takes a delta measured *around* a scope rather than against a
-/// previous sighting of the same label, keeps a decimal in megabytes, drops to
-/// kilobytes below one, and has no threshold: switching each module on twice
-/// is not a stream, and the figure being small is the answer, not a reason to
-/// withhold it.
+/// `FootprintTracker.Report.line` answers at a different scale: a **total** in
+/// whole megabytes, silent below its threshold, where building a module would
+/// print `0 MB` or nothing. This takes a delta measured *around* a scope, keeps
+/// a decimal in megabytes, drops to kilobytes below one, and has no threshold:
+/// the figure being small is the answer, not a reason to withhold it.
 enum ScopeCost {
 
     /// Below this, the difference is scheduling rather than the work — a redraw

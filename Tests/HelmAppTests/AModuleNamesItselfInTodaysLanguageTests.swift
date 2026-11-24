@@ -5,23 +5,15 @@ import XCTest
 
 /// A module's name, short name and summary follow the language the app is in.
 ///
-/// They did not. `ModuleMetadata` is a struct of finished strings and every
-/// descriptor held one in a `public static let` — so the nine of them were built
-/// the first time anything touched them, in whatever language that first touch
-/// happened to be, and stayed in it for the life of the process. `L()` had
-/// already answered by then; nothing downstream could put it right.
-///
-/// What that cost is everywhere the metadata is drawn rather than the module's
-/// own strings: the sidebar's rows, every page header, the welcome sheet's steps
-/// and the panel. Change the language in Settings and the pages change under
-/// names that do not — until the app is restarted, which is the one thing the
-/// in-app language picker exists to avoid.
+/// `ModuleMetadata` is a struct of finished strings, so metadata held in a
+/// `static let` is built in whatever language first touches it and stays in it
+/// for the life of the process. The sidebar's rows, every page header, the
+/// welcome sheet's steps and the panel draw it: change the language in Settings
+/// and the pages would change under names that do not.
 ///
 /// **Per module, not over all of them together.** A single descriptor left
 /// frozen is invisible to a reading that joins them all: the others still
 /// differ between two languages and the blob differs with them.
-///
-/// Guards the defect fixed in 60c18957 (a module's name froze in the first language).
 @MainActor
 final class AModuleNamesItselfInTodaysLanguageTests: XCTestCase {
 
@@ -59,16 +51,10 @@ final class AModuleNamesItselfInTodaysLanguageTests: XCTestCase {
     ///
     /// The check above is satisfied by metadata that merely *varies*; this one
     /// pins which reading belongs to which language, by taking the eight again
-    /// in the opposite order. It is the guard against the natural next edit
-    /// here: a memo, for a property that now spells three `L()` lookups on every
-    /// read.
-    ///
-    /// **It passed before the fix as well, and that is not the same as being
-    /// unable to fail** — a frozen `static let` is consistent, it is just
-    /// consistently wrong, which is the other test's business. Proven with a
-    /// descriptor that returned the *previous* read: this went red in four
-    /// languages naming the module and both readings, while the check above
-    /// stayed green because the values still varied.
+    /// in the opposite order. It guards against a memo for a property that
+    /// spells three `L()` lookups on every read: a descriptor that returns the
+    /// *previous* read varies, and fails here. A frozen `static let` is
+    /// consistently wrong, which is the other test's business.
     func testTheReadingBelongsToTheLanguageItWasTakenIn() {
         var first: [AppLanguage: [String]] = [:]
         for language in AppLanguage.allCases {

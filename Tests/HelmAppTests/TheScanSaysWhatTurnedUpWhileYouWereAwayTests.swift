@@ -5,14 +5,12 @@ import XCTest
 @testable import HelmApp
 import HelmAppStrings
 
-/// The other half of the journal.
+/// The other half of the journal: what a daily scan turned up reaches the person.
 ///
-/// Three modules walk the volume once a day, `ScanJournal.change(module:)`
-/// computes what turned up since last time — and nothing in `Sources/` ever
-/// called it. The entire user-visible product of all that reading was a relative
-/// date on a settings page. This is the call that was missing, and the silences
-/// around it: the rule itself is `ScanNews`', held next door, and what is held
-/// here is that the coordinator asks it and posts what it says.
+/// `ScanJournal.change(module:)` computes what turned up since last time, and
+/// the rule for what to say is `ScanNews`', held next door. What is held here
+/// is that the coordinator asks it and posts what it says, and the silences
+/// around it.
 @MainActor
 final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
 

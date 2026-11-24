@@ -28,16 +28,13 @@ enum KeepAwakeHotkey {
         summary: KAStr.summary,
         // Accessibility as well as the admin prompt: the pointer nudge posts a
         // synthetic CGEvent, which macOS drops without the grant. The audit
-        // after an update speaks only about permissions a module declares, so
-        // without this line a Keep Awake user who does not also run Layout was
-        // never told the grant had lapsed.
+        // after an update speaks only about permissions a module declares.
         sfSymbol: "moon.zzz.fill", permissions: [.adminHelper, .accessibility]) }
     /// The store the host handed us, or this module's own if it handed none.
     ///
-    /// Spelled out at four call sites — three of them identical and one wrapped
-    /// differently, which is how a fifth would have got a different namespace
-    /// without anybody noticing. The namespace is where every setting the
-    /// person has configured lives.
+    /// One spelling for every call site: the namespace is where every setting
+    /// the person has configured lives, and a call site with its own would
+    /// read a different one unnoticed.
     private func resolved(_ store: NamespacedStore?) -> NamespacedStore {
         store ?? NamespacedStore(namespace: Self.id.rawValue, backing: UserDefaults.standard)
     }
@@ -86,8 +83,7 @@ enum KeepAwakeHotkey {
         return MenuBarContribution(panelTile: AnyView(KeepAwakePanelTile(vm: vm, store: s)))
     }
 
-    /// Two sizes, and the 2×1 is the tile this module has always
-    /// drawn. 1×1 is the countdown alone; 2×1 is the tile, with the two
+    /// Two sizes. 1×1 is the countdown alone; 2×1 is the tile, with the two
     /// automation conditions behind a disclosure because it has to stay short.
     /// There is no 2×N: see the `.tall` branch.
     public func panelWidget(_ size: PanelWidgetSize, _ vm: KeepAwakeViewModel) -> AnyView? {
@@ -95,10 +91,9 @@ enum KeepAwakeHotkey {
         switch size {
         case .compact: return AnyView(KeepAwakeCompactWidget(vm: vm))
         case .wide: return AnyView(KeepAwakePanelTile(vm: vm, store: s))
-        // No 2×N. It was the tile plus the two automation conditions drawn
-        // read-only — and the tile already carries them behind ⋯ as working
-        // toggles. A card that shows the same two rows with a tick you cannot
-        // press is not a third answer; it is the second one, disabled.
+        // No 2×N: the tile already carries the two automation conditions
+        // behind ⋯ as working toggles, and a taller card showing them read-only
+        // would be the same answer, disabled.
         case .tall: return nil
         }
     }

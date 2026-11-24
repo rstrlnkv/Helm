@@ -4,17 +4,12 @@ import XCTest
 @testable import HelmApp
 import HelmAppStrings
 
-/// The other half of the update check.
+/// A release found while nobody is looking is announced, not only logged.
 ///
-/// **Past defect: a release found while nobody looked left only a log line** (866b17a0,
-/// the commit that added the announcement and this class).
-///
-/// `UpdateCheck` decides what a GitHub response means and eight suites hold it —
-/// and the answer went into a published property that exactly one view reads, on
-/// the About page, inside a settings window a menu-bar app does not open by
-/// itself. The daily check could find a release and the only trace of it was a
-/// line in the log. `UpdateNews` is the rule, held next door; what is held here
-/// is that the service asks it, posts what it says, and does not say it twice.
+/// Without it the check's answer reaches only the settings window, which a
+/// menu-bar app does not open by itself.
+/// `UpdateNews` is the rule, held next door; what is held here is that the
+/// service asks it, posts what it says, and does not say it twice.
 @MainActor
 final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
 
@@ -23,7 +18,7 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
 
     /// The store is a namespace of the app's own over an in-memory backing: the
     /// stamp this writes is a real setting, and `UserDefaults.standard` is the
-    /// shared test domain that had 3028 keys in it.
+    /// shared test domain.
     private var store: NamespacedStore!
 
     private func build(_ port: FakeAutomationNotice = FakeAutomationNotice(state: .authorized)) {
@@ -121,10 +116,9 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         XCTAssertEqual(notices.posted.count, 1)
     }
 
-    /// **Launch was the only moment there was.** Helm is launched at login and
-    /// then runs for weeks, so a check that happens once per launch happens
-    /// once — and a banner behind it would be dead for exactly the people who
-    /// never quit.
+    /// **The check runs after launch too.** Helm is launched at login and runs
+    /// for weeks, so a check once per launch happens once, and a banner behind
+    /// it would be dead for the people who never quit.
     func testTheCheckGoesOnHappeningAfterLaunch() {
         let store = AppSettings.store.over(InMemoryKeyValueStore())
         // Stamped as checked a moment ago, so arming the tick asks GitHub

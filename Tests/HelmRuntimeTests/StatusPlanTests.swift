@@ -9,16 +9,10 @@ final class StatusPlanTests: XCTestCase {
 
     private let frames = 36
 
-    /// The clamp did not protect the conversion, because the conversion was
-    /// inside it: `min(max(Int(phase * Double(frameCount)), 0), frameCount - 1)`
-    /// evaluates `Int(_:)` first, and `Int(_:)` traps on anything outside `Int`'s
-    /// range. So the bounds that exist to keep the index sane never saw the
-    /// number — the process was already gone.
-    ///
-    /// This is the KeepAwake family one target over. `spinUntil` reaches the host
-    /// from a module as a `Date`, and a `Date` is a `Double` of seconds:
-    /// nothing between the value and this line says how large. The
-    /// module writing it is not the check.
+    /// A clamp around a conversion does not protect it: `Int(_:)` traps outside
+    /// `Int`'s range before any bound sees the number. `spinUntil` reaches the
+    /// host from a module as a `Date`, a `Double` of seconds nothing bounds, and
+    /// the module writing it is not the check.
     ///
     /// Asserted as the property the host needs — a subscript that exists — rather
     /// than as a particular index, so a fix may choose either end.
@@ -33,11 +27,9 @@ final class StatusPlanTests: XCTestCase {
         }
     }
 
-    /// The other half of the same arithmetic, and the reason the fix cannot stop
-    /// at moving the conversion outwards. Bounding a `Double` cannot remove a NaN
-    /// — `max(.nan, 0)` is NaN and `min(.nan, high)` is NaN — and `phase` is
-    /// infinite for a wild `spinUntil`, so `phase * 0` is NaN and the conversion
-    /// traps again on the far side of a clamp that looks right.
+    /// Bounding a `Double` cannot remove a NaN, and `phase` is infinite for a
+    /// wild `spinUntil`, so `phase * 0` is NaN and would trap past a clamp that
+    /// looks right.
     ///
     /// An empty array has no index either way, which is the answer.
     func testAnEmptyFrameArrayHasNoFrameToDraw() {

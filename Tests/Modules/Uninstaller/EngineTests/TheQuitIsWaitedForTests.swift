@@ -6,19 +6,10 @@ import HelmTestSupport
 /// Asking an app to quit and moving its bundle are two steps, and the second
 /// must not start until the first has happened.
 ///
-/// `quit` only asks. The view model then trashed the bundle after a flat
-/// `Task.sleep(800ms)` — a number standing where an answer was available, since
-/// the engine holds the port that can be asked. Too short is the expensive
-/// direction: macOS lets a running app's bundle be moved, the process carries
-/// on from where it went, and it writes its preferences when it finally exits —
-/// so the leftovers the uninstall had just taken come back, which is the whole
-/// of what this module promises.
-///
-/// **The fake could not have shown it.** `FakeRunning.running` was a `let`, so
-/// quitting changed nothing the port reported and "the app is gone now" was
-/// unrepresentable — no test could have driven a wait for it, whatever anybody
-/// wrote. It is a `var` that a quit empties now, with a set of apps that ignore
-/// the request so the deadline has a subject.
+/// `quit` only asks. macOS moves a running app's bundle, and the process
+/// writes its preferences back on exit, so the removed leftovers return.
+/// `FakeRunning` empties on a quit, and some of its apps ignore the request so
+/// the deadline has a subject.
 final class TheQuitIsWaitedForTests: XCTestCase {
 
     private func engine(running: [String], stubborn: [String] = [],
@@ -32,8 +23,7 @@ final class TheQuitIsWaitedForTests: XCTestCase {
     }
 
     func testItReturnsOnlyOnceTheAppHasGone() async {
-        // The app takes a moment to go, or the wait would have nothing to wait
-        // for and this would pass with `waitUntilGone` deleted.
+        // The app takes a moment to go, or this would pass with the wait deleted.
         let (engine, apps) = engine(running: ["com.acme.editor"], quitAfter: 0.15)
 
         engine.quit(bundleID: "com.acme.editor", force: true)

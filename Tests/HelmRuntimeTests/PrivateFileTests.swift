@@ -4,12 +4,10 @@ import HelmTestSupport
 
 /// Files that name somebody's files are written at 0600, every time.
 ///
-/// **The mode is not a property of the file, it is a property of each write.**
-/// `.atomic` writes a temporary file and renames it over the target, so the mode
-/// comes from the process umask on a fresh write and from the *replaced* file on
-/// a rewrite. Measured in a plain process: 0644 either way. Get it wrong once in
-/// a file holding an index of every filename on the volume and the privacy of
-/// that list becomes an accident of the environment.
+/// The mode is a property of each write, not of the file: `.atomic` renames a
+/// temporary file over the target, so the mode comes from the umask or the
+/// replaced file, 0644 in a plain process. For an index of every filename on
+/// the volume, privacy would be an accident of the environment.
 final class PrivateFileTests: XCTestCase {
 
     private var directory: URL!
@@ -26,9 +24,8 @@ final class PrivateFileTests: XCTestCase {
                        ["a", "b"])
     }
 
-    /// The case the three hand-written copies existed for: a file that is
-    /// already readable stays readable through an atomic rewrite unless the mode
-    /// is set again.
+    /// A file that is already readable stays readable through an atomic
+    /// rewrite unless the mode is set again.
     func testARewriteOverALooseFileIsMadePrivate() throws {
         let url = directory.appendingPathComponent("loose.json")
         FileManager.default.createFile(atPath: url.path, contents: Data("[]".utf8),
@@ -64,12 +61,11 @@ final class PrivateFileTests: XCTestCase {
         XCTAssertEqual(try mode(of: url), 0o700)
     }
 
-    /// A file this app appends to rather than rewrites never passes through
-    /// `write`, so its mode is whatever the umask gave it on the day it was
-    /// created — `~/Library/Logs/Helm/helm.log` is 0644 on the machine this was
-    /// measured on, in a 0700 folder
-    /// (ARCHITECTURE.md § Diagnostics log). Tightening it is a separate call because it is a separate
-    /// moment: once at launch, not once a line.
+    /// A file this app appends to never passes through `write`, so its mode is
+    /// whatever the umask gave it when created, as with `helm.log`
+    /// (Architecture/DiagnosticsLog.md § Diagnostics log). Tightening is a
+    /// separate call because it is a separate moment: once at launch, not once
+    /// a line.
     func testAnExistingLooseFileIsTightened() throws {
         let url = directory.appendingPathComponent("appended.log")
         FileManager.default.createFile(atPath: url.path, contents: Data("line\n".utf8),

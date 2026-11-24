@@ -10,31 +10,20 @@ import XCTest
 /// **`interfaceOf` caches four facts and only one of them holds still.**
 ///
 /// `VPNEngine.readInterfaces` asks `scutil --nc status` once per tunnel and
-/// keeps the whole `VPNStatusParser.Reading` until that tunnel goes. Its comment
-/// justifies the cache with one of the four fields: «a tunnel's `utunN` does not
-/// change while it is up». True — and the same value carries
-/// `isPrimaryInterface`, which is **whether this Mac's traffic is leaving
-/// through the tunnel**, and that changes without the tunnel moving at all:
-/// Wi-Fi to Ethernet, a second tunnel taking the route, a captive network
-/// coming and going. `VPNExitAsk.routeMoved` exists because the module knows
-/// this; the reading it is compared against is frozen.
+/// keeps the whole `VPNStatusParser.Reading` until that tunnel goes. A tunnel's
+/// `utunN` does not change while it is up; `isPrimaryInterface` — **whether this
+/// Mac's traffic is leaving through the tunnel** — changes without the tunnel
+/// moving: Wi-Fi to Ethernet, a second tunnel taking the route, a captive
+/// network. Cached, it would be a local memory of a live external fact
+/// (Architecture/ModulePattern.md § Ports and logic).
 ///
-/// It is a local memory of a live external fact with no reverse channel from
-/// the port that knows — ARCHITECTURE.md § Ports and logic, and the same shape as
-/// `LayoutEngine.tapped`: set once against something macOS can revoke.
-///
-/// **The branch it decides is reached whenever the dynamic store answers nil.**
-/// `VPNInterfacePort.primaryInterface()` documents nil as two states at once, «a
-/// Mac with no default route» and «the store could not be read», and
-/// `VPNExitVerdict.of` falls back to the connection's own flag for exactly that
-/// case — «which answers when the dynamic store could not be opened at all». So
-/// the fallback that exists for the unreadable store is the one reading that can
-/// never be taken again.
+/// **The branch it decides is reached whenever the dynamic store answers nil**
+/// («no default route» or «the store could not be read»): `VPNExitVerdict.of`
+/// then falls back to the connection's own flag, so that flag has to be read
+/// again.
 ///
 /// Both directions are wrong and the second is the dangerous one: an absent
 /// answer reads as «not known», a stale one reads as an answer.
-///
-/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
 
     private let list = """
@@ -52,8 +41,8 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
         -> (engine: VPNEngine, news: EngineNews<VPNEngine.StatePayload>) {
         interfaces.primary = nil
         interfaces.counters = ["utun4": (in: 1_000, out: 2_000)]
-        // Held open, the way the real port is for up to eight seconds — and so
-        // the exit check's own `emitState` does not race this test's reading
+        // Held open, the way the real port is for up to eight seconds, so the
+        // exit check's own `emitState` does not race this test's reading
         // (`TheTestQueueIsAsSerialAsTheRealOneTests`).
         let exit = FakeExit()
         exit.hangs = true

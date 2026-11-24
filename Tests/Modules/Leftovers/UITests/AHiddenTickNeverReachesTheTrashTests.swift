@@ -5,12 +5,11 @@ import Module_Leftovers_Engine
 /// A row ticked while the list showed everything, then hidden by switching the
 /// filter back, is not sent to the Trash.
 ///
-/// **Why this is a test.** The tick survives the filter: the row disappears,
-/// `selected` keeps its path, and `removeSelected` once trashed it anyway
-/// (`LeftoversViewModel.swift`, the comment in `removeSelected`; fixed in
-/// `8fd559be`). Deleting something the person cannot see is the one thing this
-/// module must not do. The in-use row is the one a hidden tick would put at
-/// risk, so it is the one asserted on.
+/// **Why this is a test.** The tick survives the filter: the row disappears
+/// and `selected` keeps its path (`LeftoversViewModel.removeSelected`).
+/// Deleting something the person cannot see is the one thing this module must
+/// not do. The in-use row is the one a hidden tick would put at risk, so it is
+/// the one asserted on.
 @MainActor
 final class AHiddenTickNeverReachesTheTrashTests: XCTestCase {
 

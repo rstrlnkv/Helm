@@ -59,25 +59,23 @@ public final class ScutilRunner: VPNRunnerPort {
 // MARK: - WorkspaceAppObserver
 
 /// Production `AppObserverPort`: reads/observes `NSWorkspace.runningApplications`.
-/// Uses KVO (rather than `NSWorkspace` launch/terminate notifications) because
-/// KVO is more reliable for Catalyst apps, per the fork's implementation notes.
+/// KVO rather than launch/terminate notifications, because KVO is more reliable
+/// for Catalyst apps.
 public final class WorkspaceAppObserver: AppObserverPort {
     private var observation: NSKeyValueObservation?
 
     init() {}
 
     /// Through `RunningApps`, never straight to AppKit: the engine calls this
-    /// from its own serial queue, and reading the live list from there
-    /// segfaulted the app whenever a program quit at the wrong moment.
+    /// from its own serial queue, and reading the live list off main crashes
+    /// when a program quits at the wrong moment.
     public func runningBundleIDs() -> Set<String> { RunningApps.shared.bundleIDs() }
 
     /// The signature of what is running under that identifier.
     ///
-    /// Two steps, on two sides of the same rule: *where* the bundle is comes from
-    /// the snapshot `RunningApps` took on the main thread, and reading the
-    /// signature at that path is Security's, which is safe anywhere. Asking AppKit
-    /// for the running application here instead would be the crash this whole
-    /// arrangement exists to prevent.
+    /// *Where* the bundle is comes from the snapshot `RunningApps` took on the
+    /// main thread; reading the signature at that path is Security's, which is
+    /// safe anywhere. Asking AppKit here instead would be the off-main crash.
     public func identity(of bundleID: String) -> CodeIdentity? {
         RunningApps.shared.bundleURL(of: bundleID).flatMap(CodeIdentity.of(bundleAt:))
     }
@@ -103,24 +101,18 @@ public final class WorkspaceAppObserver: AppObserverPort {
 // MARK: - DynamicStoreNetworkWatch
 
 /// Production `NetworkWatchPort`: a `SCDynamicStore` session on the keys that
-/// move when a tunnel does.
-///
-/// The module used to ask `scutil` once per launch and answer from that for the
-/// rest of the session, so a VPN started from the macOS menu bar, stopped in
-/// System Settings, or dropped by the network left Helm's dot saying whatever
-/// it had said at login.
+/// move when a tunnel does, so a VPN started from the macOS menu bar, stopped in
+/// System Settings, or dropped by the network is seen without asking Helm.
 public final class DynamicStoreNetworkWatch: NetworkWatchPort {
 
     /// The callback's context, and the reason this is a class rather than the
     /// closure itself.
     ///
     /// `SCDynamicStoreCreate` retains what the context holds and releases it
-    /// when the session goes — measured, not assumed: one retain on create, one
-    /// release on drop. So a notification already sitting on the queue when the
+    /// when the session goes, so a notification already on the queue when the
     /// module is switched off resolves to a live object rather than to freed
-    /// memory, which is what (ARCHITECTURE.md § "An observer outlives the thing
-    /// it points at") is about. Clearing the action is what makes that late
-    /// notification a no-op.
+    /// memory (Architecture/StateAndLifetime.md § An observer outlives the thing it points at).
+    /// Clearing the action is what makes that late notification a no-op.
     private final class Sink: @unchecked Sendable {
         private let lock = NSLock()
         private var action: (@Sendable () -> Void)?
@@ -163,8 +155,7 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
         // per-service state entity when any service gains or loses an address
         // (a split tunnel, and a tunnel that simply dropped), and the Setup
         // pattern when the *configuration* changes — a VPN added or removed in
-        // System Settings, which is what left the rule editor offering a list
-        // missing the connection the rule was for.
+        // System Settings, which the rule editor's list must follow.
         let keys = [SCDynamicStoreKeyCreateNetworkGlobalEntity(
             nil, kSCDynamicStoreDomainState, kSCEntNetIPv4)]
         let patterns = [
@@ -206,10 +197,11 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
 ///
 /// macOS gates every read of a VPN secret in the System keychain by a
 /// third-party app behind a prompt (System Settings is exempt as an Apple
-/// binary). So we read the System keychain at most ONCE, cache the values in
-/// Helm's own login-keychain items (which we can read back without a prompt),
-/// and use the cache thereafter. Answers `.notNeeded` for VPNs without a stored
-/// shared secret (e.g. IKEv2). Secrets stay in memory / the keychain, never logged.
+/// binary). So the System keychain is read at most once, the values are cached
+/// in Helm's own login-keychain items (read back without a prompt), and the
+/// cache answers thereafter. Answers `.notNeeded` for VPNs without a stored
+/// shared secret (e.g. IKEv2). Secrets stay in memory and the keychain, never
+/// in an argument list, the environment, a file or the log.
 public final class KeychainCredentials: VPNCredentialsPort {
     /// Service used for Helm's own cached copy of a VPN's credentials, spelled
     /// in this one place for the cache and for its one-time purge. Both literals
@@ -220,9 +212,9 @@ public final class KeychainCredentials: VPNCredentialsPort {
         AppBuild.isDevIdentifier(bundleIdentifier) ? "com.helm.vpn.dev" : "com.helm.vpn"
     }
 
-    /// Whether this build may run the one-time purge; Helm Dev may not, the
-    /// deployed items with the old access list are the real Helm's; Dev's own
-    /// service never held any.
+    /// Whether this build may run the one-time purge. Helm Dev may not: the items
+    /// with the readable access list are the real Helm's, and Dev's own service
+    /// never held any.
     static func mayPurge(for bundleIdentifier: String?) -> Bool {
         !AppBuild.isDevIdentifier(bundleIdentifier)
     }
@@ -262,26 +254,22 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// reaching a keychain.
     ///
     /// **The decision is not injected, only the doing.**
-    /// `CredentialCachePurge.shouldRun` still asks `AppBuild.isBundledApp`
-    /// inside the default action, which is the guard that exists because
-    /// `swift test` once deleted the owner's real VPN secrets. Internal rather
-    /// than public: no other target may forget which one it is taking.
+    /// `CredentialCachePurge.shouldRun` asks `AppBuild.isBundledApp` inside the
+    /// default action, so `swift test` never deletes the owner's real VPN
+    /// secrets. Internal rather than public: no other target may forget which
+    /// one it is taking.
     ///
     /// **And it runs off the thread that built this.** That thread is the main
-    /// one — `VPNDescriptor.makeModule` is `@MainActor` and builds
-    /// `VPNSystemPorts()` while the module list is assembled — so a
-    /// `SecItemDelete` there is a launch-time keychain call, the family of the
-    /// 19,09 s hang fixed in 4dcc5fb6, and on an ad-hoc-signed bundle a dialog
-    /// at every install rather than once (ARCHITECTURE.md § Sealed settings).
-    /// Nothing waits for the answer: the purge is a one-time
-    /// deletion of items this port will simply re-read the System keychain past
-    /// if it beats them to it.
+    /// one (`VPNDescriptor.makeModule` is `@MainActor`), and a `SecItemDelete`
+    /// there is a launch-time keychain call: a hang, and on an ad-hoc-signed
+    /// bundle a dialog at every install (Architecture/StoredSettings.md § Sealed settings).
+    /// Nothing waits for the answer: the port re-reads the System keychain past
+    /// any item the purge has not reached yet.
     ///
     /// A global queue rather than `offTheCooperativePool`, which is the bridge
-    /// *out of* an async context and there is none here — and a keychain dialog
-    /// holds whatever thread it is on for as long as a person looks at it,
-    /// which is the one thing the cooperative pool's thread-per-core must never
-    /// be spent on.
+    /// *out of* an async context, and there is none here; and a keychain dialog
+    /// holds its thread for as long as a person looks at it, which the
+    /// cooperative pool must never be spent on.
     ///
     /// The tool and its deadline are parameters so a test can put a stub that
     /// sleeps in place of `security` and wait a second instead of ten minutes.
@@ -294,17 +282,14 @@ public final class KeychainCredentials: VPNCredentialsPort {
         DispatchQueue.global(qos: .utility).async(execute: purge)
     }
 
-    /// Items written by the previous implementation carry an access list that
-    /// lets `/usr/bin/security` read them with no prompt — anything running as
-    /// this user could take the secret. Updating them in place would keep that
-    /// list, so they are removed once; the next connect re-reads the System
-    /// keychain (one prompt) and re-caches them properly.
+    /// Items that carry an access list letting `/usr/bin/security` read them with
+    /// no prompt give the secret to anything running as this user. Updating them
+    /// in place would keep that list, so they are removed once; the next connect
+    /// re-reads the System keychain (one prompt) and re-caches them.
     ///
     /// **Who may run this, and the record that it has, are `CredentialCachePurge`'s
-    /// to answer** — this deletes somebody's stored secrets, and it used to do so
-    /// on every `swift test` run with a latch that could not remember it had.
-    /// Internal, with the keychain call a parameter, so a test in the suite can
-    /// watch that nothing is sent.
+    /// to answer**: this deletes somebody's stored secrets. Internal, with the
+    /// keychain call a parameter, so a test can watch that nothing is sent.
     static func purgeItemsWithTheOldAccessList(delete: (CFDictionary) -> OSStatus = SecItemDelete) {
         let marker = CredentialCachePurge.markerURL
         // The bundle question first, so a test runner reaches neither the disk nor
@@ -324,18 +309,15 @@ public final class KeychainCredentials: VPNCredentialsPort {
         let status = KeychainCredentials.deleteEveryCacheItem(delete)
         // Only once it is actually gone. Helm starts at login, when the keychain
         // can still be locked (`errSecInteractionNotAllowed`); marking the purge
-        // done first would leave the readable-by-anything item in place forever,
-        // which is the one thing this exists to prevent.
+        // done first would leave the readable-by-anything item in place forever.
         guard status == errSecSuccess || status == errSecItemNotFound else { return }
         let recorded = PrivateFile.writeMakingTheFolder(Data(), at: marker)
         if status == errSecSuccess {
             HelmLog.shared.info(VPNEngine.moduleID, "cleared the old credential cache")
         }
-        // The refusal fails in the safe direction — an unrecorded purge runs
-        // again, and the second `SecItemDelete` finds nothing and marks itself
-        // done — so this is not a warning about the secrets. It is a warning
-        // about the line above it, which would otherwise announce the same
-        // clearing at every launch with nothing anywhere to say why.
+        // An unrecorded purge runs again and its second `SecItemDelete` finds
+        // nothing, which is safe. The warning explains the line above, which
+        // would otherwise announce the same clearing at every launch.
         if !recorded {
             HelmLog.shared.warn(VPNEngine.moduleID, "the credential-cache purge could not be "
                                 + "recorded — it will run again at the next launch")
@@ -349,10 +331,10 @@ public final class KeychainCredentials: VPNCredentialsPort {
     public func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentialRead {
         let shown = runner.read(["--nc", "show", name], timeout: vpnReadDeadline)
         // A read that ran out of time or failed is not an empty one: nobody knows
-        // whether a secret is kept, and a connect that went without it would
-        // report success whether it worked or not (`--nc start` answers nothing
-        // either way) — so a rule connect recorded and announced "connected" with
-        // no tunnel. The engine neither starts nor announces on `.unreadable`.
+        // whether a secret is kept, and a connect without it would report
+        // success either way (`--nc start` answers nothing), so a rule would
+        // announce "connected" with no tunnel. The engine neither starts nor
+        // announces on `.unreadable`.
         if shown.status != 0 {
             HelmLog.shared.warn(VPNEngine.moduleID, "the configuration of \(Redact.vpn(name)) could not be read "
                 + "(\(vpnReadFailureReason(shown.status))); "
@@ -361,9 +343,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
         }
         let show = shown.output
         // No `AuthPassword` line: this configuration keeps no secret Helm has to
-        // supply, and `--nc start` connects it on its own. `.notNeeded` rather
-        // than the nil this used to be — see `VPNCredentialRead`, and the
-        // warning that would otherwise be drawn under every IKEv2 connect.
+        // supply, and `--nc start` connects it on its own (`VPNCredentialRead`).
         guard let uuid = Self.value(inScutilShow: show, field: "AuthPassword") else {
             return .notNeeded
         }
@@ -377,13 +357,12 @@ public final class KeychainCredentials: VPNCredentialsPort {
                                          password: helmCacheRead("\(uuid).pw").value,
                                          secret: secret))
         }
-        // **An item that is there and unreadable is not an empty cache**, and the
-        // two were one silent nil. `SecItemAdd` binds the access list to the code
-        // identity that wrote it, and this bundle is ad-hoc signed — every install
-        // is a different identity to macOS (ARCHITECTURE.md § Signing and grants) — so
-        // this is the ordinary state of the cache after an update, not an exotic
-        // one. Logged with the status, because «no cached credentials» sent the
-        // last investigation looking for a purge that had run hours earlier.
+        // **An item that is there and unreadable is not an empty cache.**
+        // `SecItemAdd` binds the access list to the code identity that wrote it,
+        // and this bundle is ad-hoc signed — every install is a different identity
+        // to macOS (Architecture/Release.md § Signing and grants) — so this is the
+        // ordinary state of the cache after an update. Logged with the status, so
+        // the line is not mistaken for an empty cache.
         if case .refused(let status) = cached {
             HelmLog.shared.warn(VPNEngine.moduleID, "the cached credential for \(Redact.vpn(name)) is not "
                 + "readable by this build: \(HelmFailure.osStatus(status))")
@@ -423,16 +402,15 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// What a read of Helm's own cache found — **three answers, for the reason
     /// `VPNCredentialRead` has three.**
     ///
-    /// «Nothing there» and «there and this build may not read it» were one nil, and
-    /// the second is the ordinary state after every install: an item's access list
-    /// names the code identity that created it, and an ad-hoc signed bundle has a
-    /// new identity in every build. A caller that cannot tell them apart reports
-    /// «no cached credentials» for a cache that is full.
+    /// «There and this build may not read it» is the ordinary state after every
+    /// install: an item's access list names the code identity that created it,
+    /// and an ad-hoc signed bundle has a new identity in every build. A caller
+    /// that took it for «nothing there» would report «no cached credentials» for
+    /// a cache that is full.
     ///
     /// **`KeychainItem.read` in `HelmRuntime` is this same triage**, and it stays a
-    /// second spelling on purpose: this read is an untested, security-critical
-    /// path the VPN area keeps as it is, and moving it would change it outside
-    /// the fix that wrote it.
+    /// second spelling on purpose: this read is a security-critical path with no
+    /// test that reaches a keychain, and moving it would change it untested.
     ///
     /// **What this cannot tell you**, and it matters for the rule above about
     /// automatic connects never summoning a dialog: whether macOS raises the
@@ -471,39 +449,23 @@ public final class KeychainCredentials: VPNCredentialsPort {
         return .value(value)
     }
 
-    /// Written through the keychain API, not the `security` tool.
+    /// Written through the keychain API, never through the `security` tool,
+    /// which takes the value only as a command-line argument: every process of
+    /// this user can read a child's arguments while it lives. `SecItemAdd` gives
+    /// the item an access list naming only the app that created it. Delete
+    /// before add, so an item with a wider access list loses it rather than
+    /// keeping it through an update.
     ///
-    /// The tool needed the secret as a command-line argument — process
-    /// arguments are readable by every process running as this user for as long
-    /// as the process lives — and it was given `-T /usr/bin/security`, which
-    /// meant `security find-generic-password -w -s com.helm.vpn` handed the
-    /// secret to any script with no prompt at all. That is a lower bar than the
-    /// System keychain this cache exists to avoid re-reading.
+    /// **What protects this item is that access list, and nothing else.**
+    /// Without `kSecUseDataProtectionKeychain` the item lands in the file-based
+    /// login keychain, where `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` does
+    /// not apply, so that attribute is not set to look as if it did.
     ///
-    /// `SecItemAdd` gives the item an access list containing only the app that
-    /// created it, and the value never appears in an argument list. Delete
-    /// before add, so an item left behind by the old path loses its access list
-    /// rather than keeping it through an update.
-    ///
-    /// **What protects this item is that access list, and nothing else.** It used
-    /// to set `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` under a comment saying
-    /// the secret was "useless on another Mac and pointless while locked" — a claim
-    /// that was not in force. Without `kSecUseDataProtectionKeychain` the item
-    /// lands in the file-based login keychain, where that attribute does not
-    /// apply: measured on the two live items, neither carried a `pdmn` at all. A
-    /// comment claiming a protection that is not applied is worse than no comment,
-    /// because it closes the question, so the claim is gone rather than the
-    /// attribute being left to look like it does something.
-    ///
-    /// Moving to the data-protection keychain is the real fix and it is not
-    /// available yet: it needs the flag on the write, the read *and* the delete
-    /// (they must agree or the read stops finding the write), and it needs an
-    /// `application-identifier` entitlement this ad-hoc-signed bundle has not got
-    /// — the same Developer ID already blocking the seal on
-    /// `clamshellEnabled` and notarization. It would also be a change to the
-    /// credential path that cannot be tested without writing to somebody's real
-    /// keychain. `TheRulesTheCompilerCannotHoldTests` holds the pair
-    /// together: the attribute may come back only with the flag beside it.
+    /// The data-protection keychain needs the flag on the write, the read *and*
+    /// the delete (they must agree or the read stops finding the write), and an
+    /// `application-identifier` entitlement this ad-hoc-signed bundle has not
+    /// got. `TheRulesTheCompilerCannotHoldTests` holds the pair together: the
+    /// attribute may come back only with the flag beside it.
     private func helmCacheWrite(_ account: String, _ value: String) {
         var attributes = query(account)
         SecItemDelete(attributes as CFDictionary)
@@ -526,10 +488,11 @@ public final class KeychainCredentials: VPNCredentialsPort {
         return nil
     }
 
-    /// Reads a generic password value (`security -w`) from `keychain` (nil = the
-    /// default/login keychain). Returns nil if absent, unreadable or not answered
-    /// within `keychainDeadline`; a timeout is logged, with no name. Never logs
-    /// the value.
+    /// Reads a generic password value from `keychain` (nil = the default/login
+    /// keychain) through `security find-generic-password -w`: the arguments name
+    /// only the item, and the secret comes back on stdout, read here and never
+    /// logged. Returns nil if absent, unreadable or not answered within
+    /// `keychainDeadline`; a timeout is logged, with no name.
     private func keychainSecret(service: String, account: String?, keychain: String?) -> String? {
         var args = ["find-generic-password", "-w", "-s", service]
         if let account, !account.isEmpty { args += ["-a", account] }
@@ -552,15 +515,13 @@ public final class KeychainCredentials: VPNCredentialsPort {
 /// Production `VPNInterfacePort`: the dynamic store, which is where macOS keeps
 /// what is up right now.
 ///
-/// **The global key only, and that is the lesson.** This class also answered
-/// «which interface is service `<id>` on» out of
-/// `State:/Network/Service/<id>/IPv4`, which cannot be asked with the id the
-/// module has: `scutil --nc list` names a *configuration*, the store is keyed by
-/// *network service*, and for a NetworkExtension tunnel those differ — measured
-/// on 2026-08-18, `02196763-…` against `B8689BB0-…`. The tunnel's own interface
-/// comes from `scutil --nc status <name>` now (`VPNStatusParser`); what stays
-/// here is the routing half of the verdict, which the global key answers
-/// correctly and by no identifier at all.
+/// **The global key only.** «Which interface is service `<id>` on» cannot be
+/// asked of `State:/Network/Service/<id>/IPv4` with the id the module has:
+/// `scutil --nc list` names a *configuration*, the store is keyed by *network
+/// service*, and for a NetworkExtension tunnel those differ. The tunnel's own
+/// interface comes from `scutil --nc status <name>` (`VPNStatusParser`); what
+/// is here is the routing half of the verdict, which the global key answers
+/// by no identifier at all.
 ///
 /// The counters are the one answer that does not come from the store: the store
 /// says which interface a service is on, and only the kernel knows what that
@@ -592,15 +553,11 @@ public final class DynamicStoreInterfaces: VPNInterfacePort {
 ///
 /// **A region code is all that is kept.** The endpoint answers plain text, one
 /// `key=value` per line, and the whole of it — the `ip=` line included — is in
-/// this process for as long as it takes to read `loc=NL` out of it; a comment
-/// here used to claim the address was «never read into a variable», which was
-/// not true of a body held in `data` and split line by line one call down. What
-/// *is* true is stronger and checkable: the address is never stored, never
-/// returned and never logged, and `regionCode()` answers a two-letter code —
-/// `region(in:)` refuses anything that is not two letters — so no caller has a
-/// value that could carry one. The country the person sees is `Locale`'s own
-/// name for that code, in the app's language, which is also why no third party
-/// gets to name a place in Helm's window.
+/// this process for as long as it takes to read `loc=NL` out of it. The address
+/// is never stored, returned or logged: `regionCode()` answers a two-letter
+/// code, and `region(in:)` refuses anything else. The country the person sees
+/// is `Locale`'s own name for that code, in the app's language, so no third
+/// party names a place in Helm's window.
 ///
 /// Chosen for its size and for answering without an API key. It is a third party
 /// nevertheless: it learns that this machine asked, and that is the cost the
@@ -628,7 +585,7 @@ public final class TraceExit: VPNExitPort {
 
     /// The phase is named here rather than by the caller: this is the shared path
     /// every exit check goes through, and a wait of up to eight seconds should say
-    /// what it is while it runs (ARCHITECTURE.md § The activity registry).
+    /// what it is while it runs (Architecture/DiagnosticsLog.md § The activity registry).
     public func regionCode() async -> String? {
         await HelmActivity.phase("vpn.exit") {
             guard let (data, response) = try? await session.data(from: url),
@@ -658,24 +615,17 @@ public final class TraceExit: VPNExitPort {
 /// deadline is generous because the tool takes `typicalRun` and a run killed
 /// early prints half its JSON, which `VPNSpeedReading.parse` refuses.
 ///
-/// **Nothing binds today, and the parameter stays.** Measured on this machine,
-/// 2026-08-18: `networkQuality -c -I utunN` against a live tunnel prints
-/// `"error_code": -1009, "error_domain": "NSURLErrorDomain"`, exits 0 and
-/// carries no throughput keys at all, while the same tool unbound answers
-/// normally — a socket bound to a point-to-point tun's address does not reach
-/// the network here. So the engine measures unbound and says why
-/// (`VPNEngine.measureSpeed`); this keeps the seam a build with a working bind
-/// goes through, rather than removing the only place the question is asked.
+/// **Nothing binds, and the parameter stays.** `networkQuality -c -I utunN`
+/// against a live tunnel prints `"error_code": -1009`, exits 0 and carries no
+/// throughput keys, while the same tool unbound answers normally: a socket
+/// bound to a point-to-point tun's address does not reach the network. So the
+/// engine measures unbound and says why (`VPNEngine.measureSpeed`); this keeps
+/// the seam a working bind would go through.
 public final class NetworkQualitySpeed: VPNSpeedPort {
 
-    /// **How long a run takes on a Mac, measured rather than remembered.**
-    ///
-    /// `/usr/bin/networkQuality -c`, four consecutive runs on 2026-08-20:
-    /// 18.52 s, 19.23 s, 20.64 s, 23.67 s — a mean of 20.5 with a 27 % spread.
-    /// Every doc comment in this module that used to say «about 15 s» was
-    /// repeating a figure nobody had taken; this is the one place the number
-    /// lives, and it is deliberately near the *top* of the spread rather than
-    /// at the middle, because the two ways of being wrong are not equal. Set
+    /// **How long a run of `networkQuality -c` takes on a Mac**, and the one
+    /// place the number lives. Near the *top* of the measured spread rather
+    /// than the middle, because the two ways of being wrong are not equal: set
     /// short, the page's arc fills and hands over to the indeterminate spinner
     /// on half of all runs, and a signal that fires half the time says nothing.
     ///
@@ -702,23 +652,15 @@ public final class NetworkQualitySpeed: VPNSpeedPort {
         HelmActivity.phase("vpn.speed") {
             var args = ["-c"]
             if let interface { args += ["-I", interface] }
-            // **Timed here, because this is the only place that knows.**
-            // `HelmActivity.phase` records when a phase began and hands nothing
-            // back when it ends — it is a registry for «what is running now»,
-            // not a stopwatch — so the two stamps are taken around the call
-            // rather than read out of it afterwards.
+            // Timed here: `HelmActivity.phase` is a registry of what is running
+            // now, not a stopwatch, and hands nothing back when it ends.
             let began = now()
             let result = run(args)
             let ended = now()
-            // **A status of 0 is not a success from this tool.** Measured here on
-            // 2026-08-18: `networkQuality -c -I utunN` against a live tunnel
-            // prints `"error_code": -1009, "error_domain": "NSURLErrorDomain"`,
-            // exits **0**, and carries no throughput keys at all. So this guard
-            // catches only the tool that could not be launched or was killed at
-            // its deadline; what refuses an answer that is not one is the
-            // parser's «both throughput figures or nothing», which is where the check
-            // belongs — the tool has more ways to fail successfully than a
-            // status can enumerate.
+            // **A status of 0 is not a success from this tool**: a failed run can
+            // exit 0 with no throughput keys. So this guard catches only the tool
+            // that could not be launched or was killed at its deadline; the
+            // parser's «both throughput figures or nothing» refuses the rest.
             guard result.status == 0 else { return nil }
             // A run that took no measurable time did not take twenty seconds
             // either: nil rather than zero, which the page would draw an arc
@@ -737,11 +679,8 @@ public final class NetworkQualitySpeed: VPNSpeedPort {
 /// runtime. AppKit/Foundation only — kept in this one file so the rest of the
 /// engine target stays SwiftUI/AppKit-free and unit-testable with fakes.
 ///
-/// **All of them, which used to be four of seven.** The three ports the tile
-/// strip added reached the engine as default arguments instead, so this type's
-/// own sentence was false and the app's wiring said nothing about what the
-/// module talks to. A bundle that lists some of the ports is worse than no
-/// bundle: the reader takes the list for the answer.
+/// **All of them.** A bundle that lists some of the ports is worse than none:
+/// the reader takes the list for the answer.
 public struct VPNSystemPorts {
     public let runner = ScutilRunner()
     public let credentials = KeychainCredentials()

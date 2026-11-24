@@ -8,8 +8,6 @@ import XCTest
 /// unknown. What it must never do is invent: a Helm launched after the tunnel
 /// came up does not know how long it has been up, and «—» in that tile would be
 /// a reading rather than an absence.
-///
-/// Past defect: commit 9e2f08f9, «fix(vpn): the measurement leaves the module's queue, and four absences get a value».
 final class TheTilesSayWhatIsKnownTests: XCTestCase {
 
     private let now = Date(timeIntervalSince1970: 10_000)
@@ -51,11 +49,9 @@ final class TheTilesSayWhatIsKnownTests: XCTestCase {
 
     // MARK: - When a figure stops being live
 
-    /// **`speedIsStale` was a check that could not fail.** It read
-    /// `speed == nil || (speedAge ?? 0) > 0`, and `speedAge` is non-nil whenever
-    /// `speed` is — so the fallback never fired and every reading with an age of
-    /// so much as a microsecond was stale. `var speedIsStale: Bool { true }`
-    /// passed the whole suite. One case each side of the named threshold now.
+    /// **`speedIsStale` can fail.** `speedAge` is non-nil whenever `speed` is,
+    /// so a check written against a fallback that never fires would call every
+    /// reading stale; one case each side of the named threshold holds it.
     func testAFreshMeasurementIsNotStale() {
         let taken = now.addingTimeInterval(-(VPNTunnelFacts.speedGoesStaleAfter - 1))
         let facts = VPNTunnelFacts(since: nil, bytesIn: 0, bytesOut: 0,
@@ -86,9 +82,8 @@ final class TheTilesSayWhatIsKnownTests: XCTestCase {
     // MARK: - Counters that are not there
 
     /// **Absent is a state for the counters too.** The kernel has no counters for
-    /// an interface that has gone, and this type could only be told `0` — which
-    /// draws as a tunnel that has carried nothing, the one thing that is
-    /// certainly not true of a tunnel that has been up for an hour.
+    /// an interface that has gone, and `0` would draw a tunnel that has carried
+    /// nothing — certainly not true of a tunnel up for an hour.
     func testCountersTheKernelHadNoAnswerForAreAbsent() {
         let facts = VPNTunnelFacts(since: nil, bytesIn: nil, bytesOut: nil, speed: nil, now: now)
         XCTAssertNil(facts.bytesIn)

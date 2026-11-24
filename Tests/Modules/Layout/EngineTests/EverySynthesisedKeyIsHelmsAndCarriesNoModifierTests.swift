@@ -4,15 +4,14 @@ import XCTest
 
 /// Every key this module synthesises is Helm's own, and goes out with no modifier on it.
 ///
-/// **No modifier. Reported live: «pressing Option converts the word and deletes
-/// one more».** The event source carries the *live* modifier state, and the gesture
+/// No modifier. The event source carries the live modifier state, and the gesture
 /// this module ships with is a tap of a modifier. Release ⌥ a moment late and every
 /// synthesised Delete goes out as ⌥Delete, which removes a whole word rather than a
 /// character; ⌘ is worse, a synthesised ⌘-letter is a menu command in the app in
 /// front. The factory here hands back events whose flags are already ⌥⌘, standing
 /// for that live state, and none may come out carrying it.
 ///
-/// **Helm's own.** The tap drops events whose source data is `helmEventMarker`;
+/// Helm's own. The tap drops events whose source data is `helmEventMarker`;
 /// an event built from an unmarked source is read back as the person's typing.
 ///
 /// Nothing is posted: posting a Delete from a test types into the window in front.

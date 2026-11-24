@@ -10,21 +10,11 @@ import HelmTestSupport
 /// does not fail — it reads a **different store**, which answers with defaults.
 /// The person sees their settings gone, and nothing anywhere is an error.
 ///
-/// Eight sites spelled a namespace as a literal when this was written, and all
-/// eight happened to agree with their descriptor. That is the state this check
-/// exists to keep: agreement by construction rather than by coincidence, and
-/// the literal was never protecting anything — changing a descriptor id is
-/// already a breaking change for stored settings, and a second spelling only
-/// hides half of the breakage.
-///
-/// Six of the eight now read `<Module>Descriptor.id.rawValue` directly, which
-/// cannot drift. `UninstallerEngine`'s default store was the seventh and was
-/// argued to be unfixable — engine-side, where the descriptor is out of reach on
-/// purpose, since an engine importing a UI target would be a door past the
-/// contract. The door was the wrong way round: the engine declares `moduleID`
-/// and the descriptor reads *it*, so nothing has to import upward. The eighth,
-/// `"app"`, stays a literal because it belongs to the host and names no module,
-/// and that is what this first test is for.
+/// A namespace reads `<Module>Descriptor.id.rawValue`, which cannot drift; the
+/// engine declares `moduleID` and the descriptor reads it, so nothing imports
+/// upward. A second spelling only hides half of the breakage a changed id
+/// already is. `"app"` stays a literal because it belongs to the host and names
+/// no module, and a literal that names neither is what the first test finds.
 @MainActor
 final class StoreNamespacesAreModuleIdsTests: XCTestCase {
 
@@ -88,20 +78,15 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     /// store, so the person finds their folder, their schedule and their
     /// exclusions gone, with nothing anywhere reporting an error.
     ///
-    /// Nothing caught that. Measured rather than assumed — `LeftoversEngine`'s
-    /// id was changed to `leftoverz` and the whole suite passed, 2182 tests, 0
-    /// failures, because Leftovers is not a scannable module and so appears in
-    /// no other list. `ListsAgreeWithTheTreeTests` covers only the three that
-    /// `ScanRunner.scannableModules` names.
+    /// No other test notices a module that is in no other list renamed;
+    /// `ListsAgreeWithTheTreeTests` covers only `ScanRunner.scannableModules`.
     ///
-    /// So this is a hand-written list, and it is the kind the house rules allow: it
-    /// is not a second spelling of anything the tree already knows, it is the
-    /// prefixes the registered modules' keys are stored under in people's
-    /// defaults. A module gained or renamed on purpose edits it, and that edit
-    /// is the moment to think about the settings being left behind. A module
-    /// archived leaves the list and its keys stay: Hosts' `module.hosts.*` keys
-    /// are still on machines, and the tag `archive/hosts` holds the module that
-    /// read them.
+    /// So this is a hand-written list, and not a second spelling of anything the
+    /// tree knows: it is the prefixes the registered modules' keys are stored
+    /// under in people's defaults. A module gained or renamed on purpose edits
+    /// it, and that edit is the moment to think about the settings left behind.
+    /// A module archived leaves the list and its keys stay on machines (Hosts'
+    /// `module.hosts.*`, whose module the tag `archive/hosts` holds).
     private static let registeredIDs: Set<String> = [
         "autopilot", "disk", "duplicates", "homebrew", "keep-awake", "launchpad",
         "layout", "leftovers", "screenshots", "tweaks", "uninstaller", "vpn",

@@ -3,10 +3,10 @@ import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
-/// **Past defect: an answer for the channel just left landed on the card.** Switching
-/// channels drops the other channel's offer and asks again, and the first question was
-/// still in flight: when it came back last it wrote its answer over the new one, and its
-/// end cleared the spinner of the check still waiting.
+/// **An answer for the channel just left does not land on the card.** Switching
+/// channels drops the other channel's offer and asks again while the first question may
+/// still be in flight: coming back last, it must not write over the new answer, and its
+/// end must not clear the spinner of the check still waiting.
 @MainActor
 final class AnOldChannelsAnswerDoesNotLandTests: XCTestCase {
 

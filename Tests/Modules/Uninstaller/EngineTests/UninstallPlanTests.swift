@@ -33,9 +33,8 @@ final class UninstallPlanTests: XCTestCase {
                        ["/Applications/Alpha.app", "/Applications/Beta.app"])
     }
 
-    /// Prefix globs and exact paths can resolve to the same directory. Trashing
-    /// it twice made macOS report "doesn't exist" for the second attempt, which
-    /// surfaced as a failure the user could do nothing about.
+    /// Prefix globs and exact paths can resolve to the same directory, and a
+    /// second attempt would fail with "doesn't exist".
     func testPathsAreDeduplicated() {
         let leftover = Leftover(path: "/L/Containers/com.a.b", kind: .containers,
                                 sizeBytes: 10, matchedByName: false)
