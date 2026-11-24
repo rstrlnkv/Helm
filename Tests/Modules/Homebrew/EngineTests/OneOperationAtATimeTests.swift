@@ -90,19 +90,20 @@ final class OneOperationAtATimeTests: XCTestCase {
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester", news: news)
 
-        engine.runDoctorFix(["cleanup"])
+        runner.listing = "ghost 1.0\n"
+        engine.runDoctorFix(["uninstall", "ghost"])
         XCTAssertEqual(runner.calls.count, 1, "precondition: the first fix started")
         let first = await lastOpState(news)
         XCTAssertEqual(first?.phase, .running, "precondition: the first fix reached .running")
 
-        engine.runDoctorFix(["uninstall", "ghost"])
+        engine.runDoctorFix(["uninstall", "ghost2"])
 
         let drained = await replayedState(news)
         let after = drained.state
         XCTAssertTrue(drained.busy,
                       "the refused press did not say so in the console")
         XCTAssertEqual(after?.phase, .running, "the refused press overwrote the running fix: \(String(describing: after))")
-        XCTAssertEqual(after?.label, "cleanup")
+        XCTAssertEqual(after?.label, "uninstall ghost")
         engine.install(name: "wget", isCask: false)
         XCTAssertEqual(runner.calls.count, 1, "the gate was open while the first fix ran")
     }

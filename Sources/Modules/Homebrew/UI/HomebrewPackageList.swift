@@ -4,7 +4,6 @@ import Module_Homebrew_Engine
 
 struct HomebrewPackageList: View {
     @ObservedObject var hb: HomebrewViewModel
-    let singleColumn: Bool
 
     // **Two arms, two views.** A switch of segment is a cut (`HomebrewManager`'s
     // transaction line) because the installed list and the updates list are
@@ -54,14 +53,6 @@ struct HomebrewPackageList: View {
             .selectionDisabled()
     }
 
-    /// The description line a row carries in the single-column layout — a
-    /// space while `hb.description` has nothing for it yet, so the row has its
-    /// second line from the start (`HomebrewPackageRow`'s `desc`); nil in the
-    /// two-column layout, which passes none.
-    private func rowDescription(name: String, isCask: Bool) -> String? {
-        singleColumn ? hb.description(name: name, isCask: isCask) ?? " " : nil
-    }
-
     /// **The "Available to install" section's own three sentences, and its
     /// rows.** Shared by both package tabs' `listOrEmpty`, the only place it is
     /// drawn: Health has no such section.
@@ -77,9 +68,8 @@ struct HomebrewPackageList: View {
         case .unanswerable: noteRow(HbStr.couldNotSearch)
         case .found:
             ForEach(hits) { hit in
-                HomebrewPackageRow(name: hit.name, detail: nil, isCask: hit.isCask, singleColumn: singleColumn,
-                                  hasUpdate: marksUpdates ? false : nil,
-                                  desc: rowDescription(name: hit.name, isCask: hit.isCask))
+                HomebrewPackageRow(name: hit.name, detail: nil, isCask: hit.isCask,
+                                  hasUpdate: marksUpdates ? false : nil)
             }
         }
     }
@@ -93,9 +83,8 @@ struct HomebrewPackageList: View {
                     nothing: HbStr.noneInstalled, unanswerable: HbStr.couldNotList,
                     waiting: HbStr.packagesLoading,
                     marksUpdates: true, section: hb.section, hits: hb.shownHits) { pkg in
-            HomebrewPackageRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask, singleColumn: singleColumn,
-                               hasUpdate: hasUpdate(pkg.id),
-                               desc: rowDescription(name: pkg.name, isCask: pkg.isCask))
+            HomebrewPackageRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask,
+                               hasUpdate: hasUpdate(pkg.id))
         }
     }
 
@@ -121,9 +110,7 @@ struct HomebrewPackageList: View {
                 // though `brew pin` only ever sets one on a formula
                 // (`BrewOutdatedParser.swift`) — so both may be drawn without
                 // choosing between them.
-                HomebrewPackageRow(name: pkg.name, detail: pkg.versionStep, isCask: pkg.isCask,
-                                   singleColumn: singleColumn, pinned: pkg.pinned,
-                                   desc: rowDescription(name: pkg.name, isCask: pkg.isCask))
+                HomebrewPackageRow(name: pkg.name, detail: pkg.versionStep, isCask: pkg.isCask, pinned: pkg.pinned)
             }
         }
     }
@@ -222,7 +209,7 @@ struct HomebrewPackageList: View {
         // `.onTapGesture`, no `.listRowBackground`: macOS draws the system
         // selection itself.
         List(selection: Binding(get: { hb.selected }, set: { hb.select($0) })) {
-            Section(header: HomebrewColumnHeader(marksUpdates: marksUpdates, singleColumn: singleColumn)) {
+            Section(header: HomebrewColumnHeader(marksUpdates: marksUpdates)) {
                 if let note = Self.ownListNote(screen, notes: notes) {
                     noteRow(note.text, busy: note.busy)
                 } else {

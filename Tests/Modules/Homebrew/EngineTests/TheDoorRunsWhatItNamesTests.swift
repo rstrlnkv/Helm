@@ -75,7 +75,6 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
             (.uninstall(iterm), ["uninstall", "--cask", "--", "iterm2"]),
             (.upgrade(name: "wget"), ["upgrade", "--", "wget"]),
             (.upgradeAll, ["upgrade"]),
-            (.doctorFix(argv: ["cleanup"]), ["cleanup"]),
             (.doctorFix(argv: ["uninstall", "wget"]), ["uninstall", "--", "wget"]),
         ]
         for (act, argv) in table {
@@ -120,7 +119,7 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
 
         let fixed = DoorRunner()
         let fixEngine = brewEngine(fixed)
-        fixEngine.perform(.doctorFix(argv: ["cleanup"]))
+        fixEngine.perform(.doctorFix(argv: ["uninstall", "wget"]))
         await waitUntilReached("the fix launches") { !fixed.streams.isEmpty }
 
         let read = DoorRunner()

@@ -30,8 +30,7 @@ import Module_Homebrew_Engine
 ///
 /// **What did not move.** The gate is the same: `DoctorFix.judge` decided
 /// whether a fix is `.runnable` before this page saw it, `FixAsk` decides
-/// whether a question comes before the act (`HomebrewSettingsPage.runLabel`,
-/// `fixQuestion`), the engine judges again at the press and names its refusal,
+/// which question comes before the act (`HomebrewSettingsPage.fixQuestion`), the engine judges again at the press and names its refusal,
 /// and brew's own words are drawn verbatim and selectable. Only where they are
 /// drawn changed.
 ///
@@ -290,9 +289,8 @@ private func copyToPasteboard(_ text: String) {
 /// **The destructive one, drawn and behaved as the destructive one it is.**
 /// `role: .destructive` is what makes `HelmButtonStyle` draw it red, and in a
 /// menu or a dialog behave as one; `askToRunFix` is what makes
-/// it *behave* differently, and `FixAsk` decides which of the two commands on
-/// the allowlist that means — `brew cleanup` would run on the press, because a
-/// cached download comes back; no fix the page draws is that command today.
+/// it *behave* differently: every fix asks before it runs, and the label's
+/// ellipsis says so.
 ///
 /// **It names what it will run in the tooltip and to VoiceOver**, because a
 /// closed row shows the button at the far edge from its title and the command
@@ -303,7 +301,7 @@ private struct HealthRunButton: View {
 
     var body: some View {
         let command = HomebrewSettingsPage.commandLine(fix)
-        Button(HomebrewSettingsPage.runLabel(fix), role: .destructive) { Task { await hb.askToRunFix(fix) } }
+        Button(HbStr.runTheFixAsking, role: .destructive) { Task { await hb.askToRunFix(fix) } }
         .disabled(hb.running)
         .help(command)
         .accessibilityHint(command)

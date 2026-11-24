@@ -1053,8 +1053,7 @@ private final class SharedLatestRequest: @unchecked Sendable {
 
     /// The press on Run, which is not the same thing as running it.
     ///
-    /// `FixAsk` decides — `brew cleanup` would go straight to the engine (no
-    /// fix the page draws is that command today), and anything that takes a
+    /// `FixAsk` decides which question is raised: anything that takes a
     /// package off this Mac raises the question the
     /// Uninstall button has raised since somebody noticed it removed an
     /// application on a single click. The judgement is `FixAsk.of`'s and not
@@ -1066,7 +1065,6 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// there is one list.
     func askToRunFix(_ fix: DoctorFix) async {
         switch FixAsk.of(fix.argv) {
-        case .runsOnThePress: runDoctorFix(fix)
         case let .uninstalls(name):
             // A doctor heading names a formula; a cask's dependents are `[]` anyway.
             await askAboutRemoving(PackageRef(name: name, isCask: false)) { self.pendingFix = fix }
@@ -1180,10 +1178,6 @@ private final class SharedLatestRequest: @unchecked Sendable {
         await loadDescriptions(formulae: searchHits.filter { !$0.isCask }.map(\.name),
                                casks: searchHits.filter(\.isCask).map(\.name),
                                token: mine)
-    }
-
-    func description(name: String, isCask: Bool) -> String? {
-        descriptions[BrewKey.of(name: name, isCask: isCask)]
     }
 
     /// Only what is not held yet, one `brew desc` call per kind.

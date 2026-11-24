@@ -122,15 +122,6 @@ extension Notification.Name {
         store.set(value, for: "sidebarCollapsed")
     }
 
-    /// **The width the sidebar has when it is expanded**, brought into `ShellGeometry.sidebarRange`
-    /// (`ShellGeometry.sidebarWidth(stored:)`). A missing key and a value that is not a number read
-    /// as not-a-number, which that function reads as `ShellGeometry.defaultSidebarWidth`; an
-    /// infinity reads as the bound on its side. Nothing in the window writes it (nothing drags the
-    /// sidebar), and a refused read writes nothing back. Read once, when a window is built; not sealed.
-    static func sidebarWidth(in store: NamespacedStore) -> CGFloat {
-        ShellGeometry.sidebarWidth(stored: CGFloat(store.double("sidebarWidth", default: .nan)))
-    }
-
     /// The language the interface is drawn in, or nil for the Mac's own.
     ///
     /// **Dev builds only** — `AppBuild.isDev` gates the row that writes it, and
@@ -331,8 +322,7 @@ extension Notification.Name {
     }
 
     /// The three buttons at the foot of the panel, each its own switch.
-    /// `PanelFooterSetting` holds their keys, their default and the migration
-    /// out of the one key they spent a build folded into.
+    /// `PanelFooterSetting` holds their keys and their default.
     static func shows(_ button: PanelFooterSetting.Button) -> Bool {
         PanelFooterSetting.shows(button, in: store)
     }
@@ -340,22 +330,6 @@ extension Notification.Name {
     static func setShows(_ button: PanelFooterSetting.Button, _ on: Bool) {
         store.set(on, for: button.rawValue)
         NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
-    }
-
-    /// Reads what the retired keys still have to say, then lets them go.
-    ///
-    /// **One function because the order is the whole of it.** The unfold reads
-    /// `showPanelFooter`, which `ObsoleteDefaults` is about to delete, so a purge
-    /// that ran first would hand every panel the default instead of the
-    /// arrangement its owner chose — and two calls at the call site is an
-    /// ordering somebody has to remember. There is nothing to remember here.
-    ///
-    /// **The store is a parameter, never a default.** A forgetful call taking
-    /// `UserDefaults.standard` would make every test of this an edit of the
-    /// settings the test is about.
-    static func migrateAndPurge(in backing: KeyValueStore) {
-        PanelFooterSetting.restore(in: store.over(backing))
-        ObsoleteDefaults.purge(from: backing)
     }
 
     /// The shape Helm wears in the menu bar. Typed, so the fallback for a value

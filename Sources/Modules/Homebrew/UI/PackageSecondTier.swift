@@ -82,8 +82,8 @@ struct PackageSecondTier: View {
     /// The value may wrap and keeps to the trailing edge when it does:
     /// the widest pair is French at 105.2 pt of label and
 /// 106.3 of value (measured once by hand, no guard), which with the row's own
-/// gaps is a few points more than the 244 pt inspector at `HomebrewSplit`'s
-/// threshold. One wrapped value in one language at one width is the price.
+/// gaps is a few points more than the 244 pt inspector at 560 pt (once `HomebrewSplit`'s
+/// threshold). One wrapped value in one language at one width is the price.
     @ViewBuilder
     private var facts: some View {
         let rows = PackageFacts.of(info, size: size)

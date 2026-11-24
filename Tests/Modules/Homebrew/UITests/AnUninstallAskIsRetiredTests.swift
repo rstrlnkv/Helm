@@ -178,7 +178,7 @@ final class LeavingThePageRetiresAnUninstallAskTests: XCTestCase {
 /// another `brew` holds the lock. In that window the person can move off the
 /// package three ways without pressing Cancel and without leaving the page:
 ///
-/// - **Back** on the narrow screen, which is `select(nil)`;
+/// - **deselecting** in the list, which is `select(nil)`;
 /// - **another row**, which is `List(selection:)`'s setter, `select(id)`;
 /// - **another segment**, which is the segmented picker writing `segment`.
 ///
@@ -243,9 +243,8 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
     /// Each row is its own door, and a fresh runner, pair and ask are built for it.
     func testEveryGestureThatMovesOffThePackageRetiresTheAsk() async {
         let gestures: [(gesture: (HomebrewViewModel) -> Void, message: String)] = [
-            // Back on the narrow screen: `backBar` calls `select(nil)` and nothing
-            // else. The list comes up, and the answer must not put a confirmation
-            // over it.
+            // Deselecting the package: `select(nil)` and nothing else. The answer
+            // must not put a confirmation over the empty inspector.
             ({ $0.select(nil) },
              "pressing Back left the query out, and its answer raised a confirmation for "
              + "the app's only irreversible deletion over the package list"),

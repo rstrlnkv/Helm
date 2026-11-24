@@ -3,7 +3,6 @@
 
 import Foundation
 import XCTest
-import HelmRuntime
 import HelmTestSupport
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
@@ -87,7 +86,7 @@ final class ASupersededSearchLaunchesNoMoreDescribeBatchesTests: XCTestCase {
         runner.release()
 
         await waitUntil("the second search's description arrives") {
-            model.description(name: "small-one", isCask: false) != nil
+            model.descriptions[BrewKey.of(name: "small-one", isCask: false)] != nil
         }
         await grace()
 
@@ -97,6 +96,6 @@ final class ASupersededSearchLaunchesNoMoreDescribeBatchesTests: XCTestCase {
             \(runner.descCalls.filter { $0.first?.hasPrefix("big-") == true }.map(\.count)) names; \
             only the one in flight when it was typed over may finish
             """)
-        XCTAssertNotNil(model.description(name: "small-one", isCask: false))
+        XCTAssertNotNil(model.descriptions[BrewKey.of(name: "small-one", isCask: false)])
     }
 }

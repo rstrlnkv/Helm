@@ -62,7 +62,6 @@ DuplicatesTests
 EachTunnelKeepsItsOwnVoiceTests
 EveryDescriptorForwardsItsEnginesIdTests
 EveryTreeWalkIsTheSharedOneTests
-FeaturePermissionsTests
 FolderReaderDepthTests
 FreeSpaceUnderOddInputsTests
 FrontmostAppWatcherTests

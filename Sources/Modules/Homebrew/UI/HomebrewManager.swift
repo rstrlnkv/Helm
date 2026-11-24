@@ -39,25 +39,21 @@ struct HomebrewManager: View {
     var body: some View {
         VStack(spacing: 0) {
             // The split is asked of the pane, not of the window: `HomebrewSplit`
-            // carries the measured threshold, and a `private var` inside `body`
+            // carries the column widths, and a `private var` inside `body`
             // would be out of a test's reach (`HomebrewSplit.swift`'s own reason).
             //
-            // **The width decides the container, `HomebrewInspector` decides the
-            // content.** Above the threshold the list and the subject sit side
-            // by side; below it, selecting a row replaces the list with that
-            // same view at full width, with `backBar` above it to return —
-            // `packageDetail` is the one builder, called from
-            // both places, so a wide inspector and a narrow screen cannot
-            // drift into offering two different things for one of them.
+            // **The inspector is always beside the list.** The narrowest pane the
+            // window gives is wider than the two columns need, so no width asks
+            // for the list alone (`HomebrewSplit.swift`'s doc comment).
             GeometryReader { proxy in
                 let split = HomebrewSplit(availableWidth: proxy.size.width)
                 if hb.segment == .health {
                     // **Not a master and a subject, at any width.** Health
                     // is one page whose findings open where they stand
                     // (`HomebrewHealthPage`), so the split is not asked and
-                    // no selection exists to put a back bar over.
-                    listArea(singleColumn: false)
-                } else if split.showsInspector {
+                    // no selection exists.
+                    listArea
+                } else {
                     // **No stack spacing — the list meets the divider.** An equal
                     // `HelmSpace.s5` either side of `Divider()` leaves the master
                     // column 12 pt short of the line it is supposed to run to, and
@@ -67,7 +63,7 @@ struct HomebrewManager: View {
                     // the 12 pt on the inspector's side is `HomebrewInspector`'s
                     // own leading padding below.
                     HStack(spacing: 0) {
-                        listArea(singleColumn: split.singleColumn)
+                        listArea
                             // `minWidth` and the compressibility it buys: a fixed `width:` here
                 // would move the floor `HomebrewSplit` carries.
                             .frame(minWidth: HomebrewSplit.masterMinimum, idealWidth: split.masterWidth,
@@ -81,24 +77,6 @@ struct HomebrewManager: View {
                             // inspector's side alone.
                             .padding(.leading, HelmSpace.s5)
                     }
-                } else if hb.selected != nil {
-                    // Selection already lives in `HomebrewViewModel`, per
-                    // segment, so a non-nil `selected` is the whole of what
-                    // puts this screen up — nothing new to hold here, and
-                    // widening past the threshold with a package selected
-                    // lands on that same package beside the list rather than
-                    // on nothing, because both branches read the one selection.
-                    VStack(spacing: 0) {
-                        backBar
-                        Divider()
-                        HomebrewInspector(hb: hb)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    }
-                } else {
-                    // No selection and no room for a second column: the list
-                    // alone, with the description back on the row — the one
-                    // thing the package view was carrying for it.
-                    listArea(singleColumn: split.singleColumn)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -116,15 +94,13 @@ struct HomebrewManager: View {
             .frame(minHeight: Self.statusBarContent)
             .helmPageStrip()
         }
-        // **A press on a row moves; a switch of segment cuts.** Below
-        // `HomebrewSplit`'s threshold a press on a row swaps the whole pane for
-        // the package, and that swap runs on one token, the same one the other
-        // list screens use.
+        // **A press on a row moves; a switch of segment cuts.** A press on a row
+        // moves the inspector, on the token the other list screens use.
         //
-        // `hb.selected == nil` and not `hb.selected`: what the narrow branch
-        // turns on is whether *anything* is selected, so this is the value that
-        // swaps the pane. Keyed on the selection itself, moving between two
-        // packages beside the list would animate a pane that is not swapping.
+        // `hb.selected == nil` and not `hb.selected`: what changes the pane is
+        // whether *anything* is selected, so this is the value that moves it.
+        // Keyed on the selection itself, moving between two packages beside
+        // the list would animate a pane that is not changing.
         //
         // **Switching segment carries no curve** («вкладки везде переключаются
         // резко»): the two lists are different views, so an animation is a
@@ -184,33 +160,13 @@ struct HomebrewManager: View {
     }
 
     @ViewBuilder
-    private func listArea(singleColumn: Bool) -> some View {
+    private var listArea: some View {
         switch hb.segment {
-        case .installed, .updates: HomebrewPackageList(hb: hb, singleColumn: singleColumn)
+        case .installed, .updates: HomebrewPackageList(hb: hb)
         // No columns and no inspector: the tab is one page (`HomebrewHealthPage`),
         // which `HomebrewManager` mounts before it asks the split anything.
         case .health: HomebrewHealthPage(hb: hb)
         }
-    }
-
-    /// The narrow screen's way out of `packageDetail`, back to the list —
-    /// `select(nil)` is the whole of it, the same setter the list's own
-    /// deselect already calls, so there is nothing new to hold for this. Same
-    /// shape as Disk's own `BreadcrumbBar` back control — a bordered glyph
-    /// button, `.help` for a sighted press and `.accessibilityLabel` for
-    /// VoiceOver, which is what a control with no word needs to be read at all.
-    private var backBar: some View {
-        HStack(spacing: HelmSpace.s3) {
-            Button {
-                hb.select(nil)
-            } label: {
-                Image(systemName: "chevron.backward")
-            }
-            .help(HbStr.back)
-            .accessibilityLabel(HbStr.back)
-            Spacer(minLength: 0)
-        }
-        .helmPageStrip()
     }
 
     /// Which list a segment is showing, and therefore which one Refresh

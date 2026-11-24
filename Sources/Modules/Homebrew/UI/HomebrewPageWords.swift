@@ -4,27 +4,18 @@ import Module_Homebrew_Engine
 
 /// **What pressing Run on a `brew doctor` fix has to ask first.**
 ///
-/// The allowlist behind a runnable fix holds two commands (`DoctorFix.Allowed`)
-/// and they are not the same kind of act. `brew cleanup` throws away cached
-/// downloads, every one of which comes back from the network; `brew uninstall
-/// <name>` unlinks a package and removes its cellar directory, and there is
-/// nothing to put back: it is the same irreversible deletion the Uninstall
-/// button performs, which raises a confirmation naming the package.
-///
-/// **No page path produces `["cleanup"]` today.** `DoctorFixCandidate` has one
-/// heading, whose subcommand is `uninstall`, so a fix the page draws is an
-/// `uninstall <name>`; the `cleanup` entry here and on `DoctorFix.Allowed` is
-/// a rule no heading reaches.
+/// The allowlist behind a runnable fix holds one command (`DoctorFix.Allowed`):
+/// `brew uninstall <name>` unlinks a package and removes its cellar directory,
+/// and there is nothing to put back: it is the same irreversible deletion the
+/// Uninstall button performs, which raises a confirmation naming the package.
 ///
 /// **The unrecognised command asks too.** `DoctorFix.judge` is what decides
 /// whether a command may run at all and it is argument-exact, so nothing
-/// outside the two entries reaches this today. That is a fact about today's
-/// allowlist and not a property of this type: a third entry added without
+/// outside the one entry reaches this today. That is a fact about today's
+/// allowlist and not a property of this type: a second entry added without
 /// reading this file gets a question rather than a press, which is the safe
 /// direction for a fix this app is about to run on somebody's machine.
 enum FixAsk: Equatable {
-    /// Nothing is destroyed that cannot be had again. The press runs it.
-    case runsOnThePress
     /// A package leaves this Mac for good. The question names it, with the
     /// words the Uninstall button's own dialog uses.
     case uninstalls(name: String)
@@ -34,7 +25,6 @@ enum FixAsk: Equatable {
     case unrecognised
 
     static func of(_ argv: [String]) -> FixAsk {
-        if argv == ["cleanup"] { return .runsOnThePress }
         if argv.count == 2, argv[0] == "uninstall" { return .uninstalls(name: argv[1]) }
         return .unrecognised
     }
@@ -87,34 +77,14 @@ extension HomebrewSettingsPage {
     /// it — apart from the view that draws them: which act is asked about in
     /// which words is a decision a test can hold.
     ///
-    /// nil is «this fix raises no question», which is `FixAsk.runsOnThePress`
-    /// and never reaches `pendingFix` — `askToRunFix` sends that one straight
-    /// to the engine. It is nil rather than an empty string so that the one
-    /// caller cannot draw a dialog with no title if that ever stops being true.
-    static func fixQuestion(_ fix: DoctorFix) -> String? {
+    static func fixQuestion(_ fix: DoctorFix) -> String {
         switch FixAsk.of(fix.argv) {
-        case .runsOnThePress: return nil
         // The same words the Uninstall button's own dialog uses, naming the
         // same thing: it is the same act, reached by a different control.
         case let .uninstalls(name): return HbStr.confirmUninstall(name)
         // Nothing to name but the command, and naming nothing is how a dialog
         // becomes a reflex.
         case .unrecognised: return HbStr.confirmRunTheFix(Self.commandLine(fix))
-        }
-    }
-
-    /// **What the Run button says: whether a question comes before the act.**
-    ///
-    /// The ellipsis is the Mac's own mark for a control that opens something
-    /// rather than doing it, and `FixAsk` is what knows which of the two this
-    /// press is — so the mark is read off the same answer that decides whether
-    /// the dialog is raised, and cannot claim a question that never comes.
-    /// `brew cleanup` would run on the press and keep the bare word; no page
-    /// path produces it today (`FixAsk`).
-    static func runLabel(_ fix: DoctorFix) -> String {
-        switch FixAsk.of(fix.argv) {
-        case .runsOnThePress: return HbStr.runTheFix
-        case .uninstalls, .unrecognised: return HbStr.runTheFixAsking
         }
     }
 
@@ -137,7 +107,7 @@ extension HomebrewSettingsPage {
     static func fixQuestionNote(_ fix: DoctorFix, dependents: DependentsReading) -> String? {
         switch FixAsk.of(fix.argv) {
         case .uninstalls: return uninstallNote(dependents: dependents)
-        case .runsOnThePress, .unrecognised: return nil
+        case .unrecognised: return nil
         }
     }
 
