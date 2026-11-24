@@ -117,9 +117,9 @@ final class LeftoverOwnershipTests: XCTestCase {
 
     // MARK: - The apps the listing cannot see
 
-    /// `installedBundleIDs()` lists four folders and matches `*.app` at the top
-    /// level, so an app inside `/Applications/Adobe Acrobat DC/` — or nested in
-    /// another bundle — is absent from it while being installed and running.
+    /// `installedBundleIDs()` walks `.app` bundles down to two levels, so an app
+    /// nested in another bundle, or deeper than level 2, is absent from it while
+    /// being installed and running.
     /// LaunchServices is the only witness, and without it the rule above
     /// refuses nothing.
     func testAnAppTheListingCannotSeeIsStillNotThisAppsLeftover() {

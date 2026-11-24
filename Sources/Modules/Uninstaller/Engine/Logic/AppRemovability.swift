@@ -18,7 +18,8 @@ import HelmRuntime
 /// What the bundle's own `Info.plist` says about its id is the engine's to read (a file read, and
 /// this type stays free of ports); the folders and the link test are the filesystem as it is.
 enum AppRemovability {
-    /// The folders `WorkspaceAppLister` lists, in its order.
+    /// The folders `WorkspaceAppLister.installedApps()` offers for removal, one level each, in its order. This is
+    /// the removal gate and is narrower on purpose than the set `installedBundleIDs()` reads (`PropertyListFile`).
     static func folders(home: String) -> [String] {
         ["/Applications", home + "/Applications", "/Applications/Setapp", home + "/Applications/Setapp"]
     }

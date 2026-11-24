@@ -31,8 +31,11 @@ public struct FileSystemLeftovers: LeftoversFilePort {
     public func exists(_ path: String) -> Bool? { DirectoryListing.exists(atPath: path) }
 
     public func size(_ url: URL) -> Int { FileWeight.allocated(of: url) }
+    /// Follows a link at the file itself: a LaunchAgent a dotfile manager keeps is a link, and a plist read as
+    /// nothing would name a rival claimant of the same label by its file name, so the two-claimants rule would
+    /// not see it. The target is bounded as any outside file is: no pipe, regular file, `PropertyListFile.byteCeiling`.
     public func readPlist(_ url: URL) -> PlistData? {
-        guard let dict = NSDictionary(contentsOf: url) as? [String: Any] else { return nil }
+        guard let dict = PropertyListFile.dictionary(atPath: url.path, followingLink: true) else { return nil }
         return PlistData(dict)
     }
 }
@@ -42,59 +45,27 @@ public struct FileSystemLeftovers: LeftoversFilePort {
 /// **Not `RunningApps`, and not the Uninstaller's `WorkspaceAppLister`,
 /// although all three are about applications.** `RunningApps` answers who is
 /// *running* and is a main-thread-only AppKit read behind a snapshot;
-/// `WorkspaceAppLister` answers the same question this does but over a
-/// different set of directories, and backs it with a LaunchServices lookup.
-/// Four questions, four answers, and the reason they are not one type is that
-/// the answers differ.
+/// `WorkspaceAppLister` answers the same question this does, over the same
+/// directories (`PropertyListFile.installedBundleIDs`), and backs it with a
+/// LaunchServices lookup.
 ///
-/// **What this one does not have is that LaunchServices backstop.** The depth-2
-/// walk below covers the case its own comment names — a vendor folder like
-/// `/Applications/Adobe Photoshop 2026/` — but not the other case
+/// **What this one does not have is that LaunchServices backstop.** The
+/// shared walk covers a vendor folder like `/Applications/Adobe Photoshop 2026/`,
+/// but not the other case
 /// `OrphanDetector.isOrphan` records: a helper nested inside another
 /// application's bundle, under `Contents/`, which is in no applications
 /// directory at any depth. Uninstaller pays for that lookup because it once
 /// offered such bundles for deletion while their apps were installed and
 /// running. This module trashes on the same kind of judgement.
-/// An empty `CFBundleIdentifier` is inserted and harmless here, unlike Uninstaller's filter.
 public struct WorkspaceInstalledApps: InstalledAppsPort {
-    private let searchDirs: [URL]
+    private let home: String
 
     public init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
-        searchDirs = [
-            URL(fileURLWithPath: "/Applications"),
-            URL(fileURLWithPath: "/Applications/Utilities"),
-            URL(fileURLWithPath: "/System/Applications"),
-            home.appendingPathComponent("Applications"),
-        ]
+        self.home = home.path
     }
 
     public func installedBundleIDs() -> Set<String> {
-        var ids: Set<String> = []
-        for dir in searchDirs { collect(dir, depth: 0, into: &ids) }
-        return ids
-    }
-
-    /// Vendors nest their apps (/Applications/Adobe Photoshop 2026/…app), and
-    /// missing those bundles made their settings look ownerless.
-    private func collect(_ dir: URL, depth: Int, into ids: inout Set<String>) {
-        guard depth <= 2 else { return }
-        let items = (try? FileManager.default.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
-        for item in items {
-            // One `Info.plist` per application, over four directories two levels
-            // deep — a bulk read of file contents, so the pool goes inside the
-            // iteration (ARCHITECTURE.md § Module pattern).
-            autoreleasepool {
-                if item.pathExtension == "app" {
-                    let info = item.appendingPathComponent("Contents/Info.plist")
-                    if let id = NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String {
-                        ids.insert(id)
-                    }
-                } else if (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
-                    collect(item, depth: depth + 1, into: &ids)
-                }
-            }
-        }
+        PropertyListFile.installedBundleIDs(home: home)
     }
 }
 

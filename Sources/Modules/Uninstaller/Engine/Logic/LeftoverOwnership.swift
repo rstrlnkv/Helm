@@ -26,10 +26,11 @@ import Foundation
 ///   product somebody has installed and may be running. Anything naming an
 ///   installed id other than this one belongs to that one.
 /// - **Not an app the listing cannot see.** The rule above is answered from
-///   `installedBundleIDs()`, which is `contentsOfDirectory` over four folders
-///   matching `*.app` at the top level: `/Applications/Adobe Acrobat DC/Adobe
-///   Acrobat.app` is not in it, nor is any helper nested inside another bundle.
-///   So the vendor's *other* product is invisible to the rule written to
+///   `installedBundleIDs()`, which is `PropertyListFile.installedBundleIDs` over
+///   four roots, `.app` bundles down to two levels: `/Applications/Adobe Acrobat DC/Adobe
+///   Acrobat.app` is in it, but not any helper nested inside another bundle,
+///   nor an app deeper than level 2.
+///   So a vendor's *other* product kept there is invisible to the rule written to
 ///   protect it, and its container, caches, scripts and LaunchAgent are claimed
 ///   as this app's leftovers — pre-ticked, because a glob hit is never
 ///   `matchedByName`. `OrphanDetector` was given `isKnownToSystem` for exactly

@@ -92,8 +92,8 @@ enum Installer {
         return items.first { $0.pathExtension == "app" }
     }
 
-    private static func info(ofBundleAt app: URL) -> NSDictionary? {
-        NSDictionary(contentsOf: app.appendingPathComponent("Contents/Info.plist"))
+    private static func info(ofBundleAt app: URL) -> [String: Any]? {
+        PropertyListFile.infoPlist(ofBundleAt: app)
     }
 
     private static func version(ofBundleAt app: URL) -> String? {

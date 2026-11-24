@@ -6,7 +6,7 @@ its boundary.
 
 A path a pattern produced is a candidate rather than a finding, and glob results
 are filtered against the installed set two ways at once:
-`AppLister.installedBundleIDs()` reads the directory listing and
+`AppLister.installedBundleIDs()` reads the directory listing (`PropertyListFile.installedBundleIDs`, `Sources/HelmRuntime/PropertyListFile.swift`: `/Applications`, `~/Applications`, `/System/Applications`, `.app` bundles at levels 0 to 2, every `Info.plist` through the one capped reader; the same set Leftovers uses, and wider than the four folders `AppRemovability.folders` offers for removal) and
 `AppLister.isKnownToSystem` asks LaunchServices, which sees what a listing cannot.
 The exact candidates built from the bundle id go through the same filter, via
 `AppLister.installedPaths(forBundleID:)`, because their hazard is different. The two
