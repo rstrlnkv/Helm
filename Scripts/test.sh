@@ -8,7 +8,7 @@ set -euo pipefail
 # --filter 'A|B|C'` where every alternative matches nothing prints `warning:
 # No matching test cases were run` and this script fails on that too — but
 # where only SOME alternatives match, it exits 0 with no warning at all
-# (measured: `--filter 'TheMapNamesRealDirectoriesTests|NoSuchTestsAtAll'`
+# (measured: `--filter 'EveryPointerArrivesTests|NoSuchTestsAtAll'`
 # -> EXIT=0, zero warnings, "Executed 1 test"). A mistyped guard name in a
 # family run is then silently not run. This script fails non-zero and names
 # the alternative, on Gradle's `failOnNoMatchingTests` model. `swift test`
@@ -78,7 +78,7 @@ set -euo pipefail
 # — and is reported on its own line instead, failing closed rather than
 # passing an alternative nothing here actually checked. Swift Testing
 # bundles read `--filter` differently again: `--filter
-# '(?<=\.)TheMapNamesRealDirectoriesTests'` still ran the XCTest case but
+# '(?<=\.)EveryPointerArrivesTests'` still ran the XCTest case but
 # `swift test` itself exited 1, the log's `Note: Some test targets reported
 # failures:` naming every Swift Testing bundle — that exit is read here
 # through `$STATUS` regardless of its cause, which this script has not
@@ -89,7 +89,7 @@ set -euo pipefail
 # as something else entirely, an escape it does not recognise standing for
 # its literal letter and a character class collapsing to the characters
 # written inside it (measured: `MapNamesExists\z` and
-# `TheMap[\w]amesRealDirectoriesTests` each ran their case under `swift
+# `EveryPointer[\w]rrivesTests` each ran their case under `swift
 # test` and counted 0 selected cases here). This checker cannot tell that
 # count apart from a genuine typo or an unrelated `--skip`, so all three
 # land in the same "ran no test case" message below rather than one of them
@@ -133,7 +133,7 @@ done
 # carries one as two patterns split on that byte, and the empty side of
 # such a split matches every line it is asked about, so a misspelled
 # alternative followed by a newline then counts as a match instead of a
-# miss (measured: `TheMapNamesRealDirectoriesTests|` followed by a newline
+# miss (measured: `EveryPointerArrivesTests|` followed by a newline
 # and `NoSuchTestsAtAll` counted every selected case and printed PASS).
 # Refuse any --filter value carrying one — in either the `--filter X` or
 # `--filter=X` form, and on any occurrence — before swift test runs at all,
@@ -293,7 +293,7 @@ fi
 
 # swift test's own --filter matches a regular expression against
 # <target>.<class>/<method> (measured: --filter
-# 'DocumentsNameTheTreeTests/testTheReaderRecognisesEveryFileLineShape' selects
+# 'EveryPointerArrivesTests/testTheHubLinksExactlyThePagesOnDisk' selects
 # exactly that one case, and a bare class name or a partial name matches by
 # substring the same way). Sequentially the log spells a run case with a
 # space where the filter wants a slash — `Test Case '-[Target.Class

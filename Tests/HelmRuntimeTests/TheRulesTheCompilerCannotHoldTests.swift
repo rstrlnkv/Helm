@@ -271,8 +271,8 @@ final class TheRulesTheCompilerCannotHoldTests: XCTestCase {
             }
         }
         XCTAssertEqual(senders.sorted(), proof.keys.sorted(),
-                       "a new removal sender needs its own second-press test: add it to Architecture/Removal.md "
-                       + "§ One removal at a time and to this table")
+                       "a new removal sender needs its own second-press test: add it to this table and to "
+                       + "Architecture/Removal.md § One removal at a time")
         for (file, name) in proof {
             XCTAssertFalse(try hits("class \(name)", under: "Tests").isEmpty,
                            "\(file) is held by \(name), which is no longer a test class")

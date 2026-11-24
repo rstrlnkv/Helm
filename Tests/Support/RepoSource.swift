@@ -78,18 +78,6 @@ public enum RepoSource {
         }
     }
 
-    /// The first place a `CLAUDE.local.md` entry of any kind exists (a file, or a
-    /// symlink even a dangling one), judged without `rules(from:)`: whether a
-    /// check may skip must not depend on the reader that could be broken. A nil
-    /// from `rules(from:)` while this is non-nil is a failure naming this path.
-    public static func rulesEntry(from start: URL = root) -> URL? {
-        let fm = FileManager.default
-        return rulesPaths(from: start).first {
-            (try? fm.attributesOfItem(atPath: $0.path)) != nil
-                || (try? fm.destinationOfSymbolicLink(atPath: $0.path)) != nil
-        }
-    }
-
     /// Where the rules may be: the root, then the main checkout's root, read from
     /// the `.git` file's `gitdir` and its `commondir` (no process launched).
     private static func rulesPaths(from start: URL) -> [URL] {

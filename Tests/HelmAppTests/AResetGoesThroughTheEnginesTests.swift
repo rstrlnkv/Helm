@@ -3,6 +3,7 @@
 
 import XCTest
 import HelmContract
+import HelmTestSupport
 @testable import HelmApp
 import HelmRuntime
 

@@ -6,9 +6,7 @@ whether it logs at all and `LogDestination` where it lives (`LogDestination.rela
 whatever was saved, and a beta build stays silent until its owner turns on the «Write a
 log file» item of the «More actions» menu in the Log page's header row.
 
-What the installed build says about itself is read from that file rather than assumed: the
-lines tagged "permissions" (`Sources/HelmApp/PermissionAudit.swift`) state which grants it
-actually holds, which no setting on screen can tell you.
+The lines tagged "permissions" (`Sources/HelmApp/PermissionAudit.swift`) state which grants the installed build actually holds.
 
 A failure that cannot be triaged is recorded rather than logged: `HelmLog.warn`, `.error`
 and `HelmLog.failure` capture where they were called from, and `HelmLog.failure` unwraps
@@ -18,29 +16,25 @@ the error through `HelmFailure.describe`; `info` does not capture (the doc comme
 `Redact` is what goes into the file in place of a name — a VPN connection, a bundle id, a
 package: names that say whose machine it is and what its owner does with it. A bundle id
 names a person's habits, so the app-cleanup modules write `Redact.app` and not the path
-alone. The tag is a salted FNV-1a rather than a hash of the bare name, because a keyless
-hash of a name drawn from a small public list is an index into that list; the salt is per
+alone. The tag is a salted FNV-1a, because a keyless
+hash of a name from a small public list is an index into that list; the salt is per
 install, in a `0600` file beside the log.
 
 `Redact.path` is not a tag: it writes only the home folder as `~`, and the folders and file
 names of a person's own documents (Autopilot, Disk, Duplicates) stay in the line. Two
 exceptions are tagged: a scan root outside home (`LogRoot.label`) and a software leaf
-(`Redact.path(_:leaf:)`, Uninstaller and Leftovers). That is the owner's decision of
-11.11.2026, and the Log page's note says it (`logRedactionNote`).
+(`Redact.path(_:leaf:)`, Uninstaller and Leftovers). That is the owner's choice, and the Log page's note says it (`logRedactionNote`).
 
-Two things follow the file rather than the process. The one-time purge records that it
-has run in a file beside the log rather than in `UserDefaults`, which is namespaced per
-process: a latch belongs to what it guards, not to whoever asks, and any binary linking
-`HelmRuntime` ran the purge again against the one real log. And a test runner writes into
+The one-time purge records that it has run in a file beside the log rather than in `UserDefaults`, which is namespaced per
+process: a latch belongs to what it guards. A test runner writes into
 a folder of its own (`LogDestination.directory(home:temporary:underTest:)`), because the
 rollover, the purge latch and the salt all belong beside whatever file is real; whether
 this is a test runner is answered once, by `TestProcess.isRunning`.
 
 A line is logged for a refusal and never for an absence. A VPN credential cache that macOS
 will not hand to a new build is a refusal, logged with its status
-(`Sources/Modules/VPN/Engine/SystemPorts.swift`); "no cached credentials" had folded it
-with absence, and an investigation went looking for a purge that had run hours earlier.
-A line reporting on the state of the
+(`Sources/Modules/VPN/Engine/SystemPorts.swift`), where "no cached credentials" would fold it
+with absence. A line reporting on the state of the
 world is run against an ordinary machine and its silences counted before it ships; if the
 answer is "rarely", the design is wrong however good the filter is.
 
@@ -51,8 +45,7 @@ running *now*. `HelmActivity.phase(_:_:)` closes the phase on return, on throw a
 cancellation. `begin`/`end` is the pair for a body the closure cannot take. It is used
 only with a `defer` on the very next line, and only where the phase is the whole body of
 an asynchronous function, because a `defer` ends at the end of the function and so is the
-end of the phase only there; the balance-by-hand the phase call replaces caused
-cancel-path defects. One documented exception: Homebrew's `homebrew.operation` is begun in `beginBusy` and ended in `endBusy`,
+end of the phase only there. One documented exception: Homebrew's `homebrew.operation` is begun in `beginBusy` and ended in `endBusy`,
 because the operation outlives one async body. The label goes on the shared path rather than at each call site, as
 `HelmTrash` does with `"\(module).trash"` (ARCHITECTURE.md § Removal), so every module
 deleting through `HelmTrash` carries the name and a new one cannot forget to.
@@ -60,16 +53,14 @@ deleting through `HelmTrash` carries the name and a new one cannot forget to.
 `ModuleHost.disable`, so an interval nobody closed cannot go on naming a module that has
 been dropped.
 
-The labels are not listed in prose. What exists is what
+The labels are not listed in prose; what exists is what
 `command grep -rnE 'HelmActivity\.(phase|begin)\(|(operationPhase|phaseLabel) =|\.trash"' Sources`
 finds: the literal labels, and the three held as values (`"\(module).trash"` in
 `HelmTrash`, `operationPhase` in `HomebrewEngine`, `phaseLabel` in Homebrew's
 `SystemPorts`). The host's `scan.<id>` phase (`ScanCoordinator`) is outside
 `sweep(module:)`, which matches the module id and a dot; the phase call closes it when
-the walk returns, so no sweep is needed for it.
-An empty registry renders as `no phases running`, which is what the registry knows and no
-statement about the app: the SwiftUI render, a VPN refresh, the update check and the trash
-sweep all run outside it (`HelmActivity.describe`).
+the walk returns.
+An empty registry renders as `no phases running`, which says nothing about the app (`HelmActivity.describe` names what runs outside it).
 
 ## The memory trail
 
@@ -80,9 +71,9 @@ explains, and `FootprintTracker` holds the accounting and the threshold. The sec
 overload, `memory(_:grewBy:)`, reports a bounded scope from two readings around it and has
 no threshold (`ScopeCost`).
 
-`MemoryFootprint.current()` is the *process* cost. A **per-object** cost is read from
-the allocator's own books — `malloc_zone_statistics`' `size_in_use`. Every walk with a
-budget carries its ceiling as a file rather than as a paragraph, per entry or per item:
+`MemoryFootprint.current()` is the *process* cost; a **per-object** cost is read from
+the allocator's own books, `malloc_zone_statistics`' `size_in_use`. Every walk with a
+budget carries its ceiling as a file, per entry or per item:
 `Tests/Modules/Leftovers/EngineTests/AScanKeepsWhatItFoundTests.swift`,
 `Tests/Modules/Duplicates/EngineTests/WalkFootprintTests.swift`; the streamed digest of
 an update carries a process ceiling over one large file instead, run only with
@@ -90,8 +81,7 @@ an update carries a process ceiling over one large file instead, run only with
 
 A call is judged by the requests it made and never
 by a high-water sampled from those books, which are the whole process's. A memory peak is never attributed to a neighbouring log line; the
-same signature is looked for in a run where the suspect was idle, and the log that raised
-the suspicion usually holds the run that settles it. Bulk phases carry both the named
+same signature is looked for in a run where the suspect was idle. Bulk phases carry both the named
 interval and the memory reading or stay out of the trail, and the trail never says the app
 is idle (ARCHITECTURE.md § The activity registry).
 
@@ -99,14 +89,13 @@ is idle (ARCHITECTURE.md § The activity registry).
 
 `Sources/HelmApp/LogView.swift` is the same lines readable while they are being written,
 on every build. It computes nothing about the file: one `write`, one format, and the pane
-is a window onto it. Its controls live in the header row of the settings window's card rather than
-in a band of the page (`LogView.headerContent`), so the place a person is sent to when
-they report a problem is the one named after it.
+is a window onto it. Its controls live in the header row of the settings window's card (`LogView.headerContent`).
+Under Helm Dev logging is always on, so the pane never shows the "Turn on before reporting a problem. The file lives in …" note; that is by design (`Sources/HelmApp/LogView.swift`, `AppBuild.isDev`).
 
 Each launch is **a card** (under a filter, one with nothing to show has none), and what a
 launch is comes out of the lines themselves, in pure functions in
 `Sources/HelmApp/LogSessions.swift` and not in the view, so a fixture can be handed to them.
-Nothing is dropped or reordered on the way: the cards joined are the tail. Which of them the
+Nothing is dropped or reordered on the way: the cards joined are the tail; which of them the
 page draws is a separate matter, below. The head of the tail, which draws «Earlier launch»,
 is found by a part of those words in the page's language, and a day span across midnight is
 written like the day headings in Chinese and Japanese too (a template, not the long style).
@@ -120,47 +109,39 @@ minute rather than once a line. It seeds from this process's log files and their
 predecessor on disk, so the pane is not limited to what this process happened to write.
 It decodes the bytes it read rather than validating them: a window that starts inside a
 multi-byte character leaves bytes that are not UTF-8 only in the first fragment, which is
-dropped, and a last line torn inside one is kept, so one cut character never costs the file.
+dropped, so one cut character never costs the file.
 The launch words («Helm … started», «logging enabled», «logging disabled», «terminating») are
 spelled once, in `LogLine` (`HelmLog.swift`), which `HelmLog.start`, `setEnabled` and
 `terminating()` write through; `LogSeed` recognises them from the same words, and
 `LogSessions` only decides where a launch ends.
 
-The pane follows the newest line by its identity rather than by the tail's count — the
-count is the limit for ever once the tail is full. While Follow is lit and the view is at
+The pane follows the newest line by its identity rather than by the tail's count, which is the
+limit for ever once the tail is full. While Follow is lit and the view is at
 the end the scroll view holds it (`defaultScrollAnchor`), and `LogReaderPlace` asks for
 the end again when it has been missed; a card's rows are plain up to `LogView.lazyAbove`
 and lazy above it, so the height of a large card is an estimate until its rows are drawn.
 A reader who is not at the end is held by the line at the top of the view and not by the
 scroll offset (`LogReaderPlace`), with one known exception, a line taller than the room
-below it, which the hold itself moves; a reader inside a larger card is held no better
-than the lazy estimate allows.
+below it; a reader inside a larger card is held no better than the lazy estimate allows.
 
-Which launches are drawn is bounded, because a stack lays out every row it is given: the
-rows laid out at open are those of the newest launches, not of the whole tail. At open the
+Which launches are drawn is bounded, because a stack lays out every row it is given. At open the
 page draws the newest launch and, before it, the nearest older launches, whole, while those
 older ones hold fewer than `LogView.drawnAtOpen` rows between them
 (`LogPresentation.drawn(rowsBefore:)`; a launch is never split). The figure is a threshold
-reached or passed, so the last launch added may take the older ones well past it, and a log
-of many launches each under `LogView.lazyAbove` draws fewer than `drawnAtOpen` plus twice
+reached or passed, so a log of many launches each under `LogView.lazyAbove` draws fewer than `drawnAtOpen` plus twice
 `lazyAbove` rows at open: a bound that depends on both figures and is not tight. The newest
 launch is outside the count and is drawn whole, because it is the only one that grows: a
-line entering it cannot move the cut. A line that opens a new launch can, since the launch
-that was the newest is counted from then on, and the oldest launches drawn may leave the
+line entering it cannot move the cut. A line that opens a new launch can, and the oldest launches drawn may leave the
 page from above.
 
 A reader who comes to rest within a view's height of the top of what is drawn, with a
 remembered line or with Follow lit at the end holding the view, asks for earlier launches
-(`LogReaderPlace.drawEarlier`; it is made at rest only, never from a scroll). An ask draws
+(`LogReaderPlace.drawEarlier`; at rest only, never from a scroll). An ask draws
 at least one launch more whenever one is not drawn: the page keeps a count of doublings of
 `drawnAtOpen` and the ask raises it to the nearest count that adds a launch
-(`LogView.earlierAfterAsk`), building the presentation once for it. What is drawn never
-shrinks because of an ask. Once every launch is drawn an ask writes no state, so the page is
-not redrawn and the toolbar not declared again. A tail at its cap is wholly drawn after
-as many doublings of `drawnAtOpen` as it takes to reach `HelmLog.tailLimit`, so at most that many
-asks write anything; the next finds nothing to draw. A launch that is not drawn is not in the content and takes no height, so
-the place of a drawn line is still a measurement where its rows are plain (a card over
-`lazyAbove` rows is lazy and its height an estimate), and the hold above is as exact as it
-was.
-«Copy log» and the footer's counts are
+(`LogView.earlierAfterAsk`). What is drawn never
+shrinks because of an ask, and once every launch is drawn an ask writes no state. A tail at its cap is wholly drawn after
+as many doublings as it takes to reach `HelmLog.tailLimit`, so at most that many
+asks write anything. A launch that is not drawn takes no height, so
+the hold above is as exact as it was. «Copy log» and the footer's counts are
 over the whole presentation, not over the cards drawn.

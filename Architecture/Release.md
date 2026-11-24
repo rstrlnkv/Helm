@@ -3,42 +3,29 @@
 The number is `MAJOR.MINOR.PATCH`. It lives in one place,
 `Resources/HelmApp/Info.plist` under `CFBundleShortVersionString`, and
 `/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/HelmApp/Info.plist`
-is what the tree currently says it is. `CFBundleVersion` in that file is a placeholder:
-`Scripts/package-app.sh` computes the build number (the `BUILD_NO` assignment) as `git rev-list --count HEAD`
-(`--no-replace-objects` and `-c core.commitGraph=false` alongside it, so neither a
-replacement ref nor a forged or stale commit-graph cache can shorten the history it
-walks), after refusing a checkout whose history cannot be trusted — none at all; a
-shallow clone, which exits 0 having counted only the commits it fetched; a tree that is
-not git's own top level, one whose own `.git` an ancestor's `core.worktree` can stand in
-for, or one steered by a `GIT_DIR`/`GIT_WORK_TREE` from the environment; or a history a
-graft or a replacement ref has given a shorter parent chain — rather than substituting a
-number. The gate announces what it computed (`==> Build number: N`) right after, before
-the compile it guards, and `Scripts/package-app.sh` (the step that sets `CFBundleVersion`) writes the same number into the
-plist *of the assembled bundle*, so the tree's copy and a shipped bundle's copy disagree
-by design.
+is what the tree says. `CFBundleVersion` in that file is a placeholder:
+`Scripts/package-app.sh` computes the build number (the `BUILD_NO` assignment) as `git rev-list --count HEAD`,
+after refusing a checkout whose history cannot be trusted (none at all, a shallow clone, a tree that is not git's
+own top level, one steered by `GIT_DIR`/`GIT_WORK_TREE`, or a history a graft or replacement ref has shortened),
+rather than substituting a number; the script's own comments hold each refusal's reason. The gate announces the
+number (`==> Build number: N`) before the compile it guards and writes it into the plist *of the assembled
+bundle*, so the tree's copy and a shipped bundle's copy disagree by design.
 
 `make-zip.sh` and `make-dmg.sh` print the staged bundle's channel on a line of its own (`==> Channel: BETA`, read from its `HelmChannel` key; the version appears only in the zipping or building line and the `sha256` line): a release build checks that line against the tag's channel before publishing, and a release from anything but its own branch sets `HELM_CHANNEL` explicitly.
 
-A release tag is `vMAJOR.MINOR.PATCH`; a prerelease tag cut before 2026-11-14 is
-`vMAJOR.MINOR.PATCH-dev.N`. Since 2026-11-14 (versioning standard, rule 6) a build is tagged `vX.Y.Z.DEV.<build>` or
-`vX.Y.Z.BETA.<build>`; the `-dev.N` form stays on every tag cut before that date.
-`git tag --list 'v*' --sort=v:refname` is the list and `git tag --list 'v*' | wc -l` the
-count. In the old form (a tag after a `-`) `-dev` is the only suffix the scheme has:
-`UpdateVersion.prereleaseOrdinal` reads the trailing number of the suffix and nothing
-else, so `-dev.2` and `-beta.2` are indistinguishable to it. The new form names its
-channel (`DEV`/`BETA`) and `UpdateVersion.buildTag` reads it.
+A release tag is `vMAJOR.MINOR.PATCH`; a build is tagged `vX.Y.Z.DEV.<build>` or `vX.Y.Z.BETA.<build>`
+(versioning standard, rule 6). `git tag --list 'v*' --sort=v:refname` is the list. The old `-dev.N` form stays on
+every earlier tag: `UpdateVersion.prereleaseOrdinal` reads only the trailing number of such a suffix, so `-dev.2`
+and `-beta.2` are indistinguishable to it, while `UpdateVersion.buildTag` reads the channel the new form names.
 
 MAJOR marks a milestone — a new architecture, a breaking redesign. MINOR is a new
 capability or a reworking of an existing one. PATCH is a fix, and it is also the step of
 a **numbered line**: one MINOR's worth of work cut into releases that ship one at a time.
 A MINOR bump resets PATCH to zero, a MAJOR bump resets both. What makes a line a line
-rather than a licence to call any feature a patch is that the whole series — which
-releases, in what order, where it ends — is written down before the first of them ships.
+is that the whole series (which releases, in what order, where it ends) is written down before the first ships.
 `CHANGELOG.md` names the line in one italic line under the first section heading it
 ships, and uses the same single italic line where a version never shipped a build, to say
-where its work went out (`0.11.0`, `0.10.0` and `0.8.0` do); that italic line is the only
-prose a section there gets, and `command grep -c '^\*[^*]' CHANGELOG.md` counts both uses
-against `command grep -c '^## ' CHANGELOG.md` version headings.
+where its work went out; that italic line is the only prose a section there gets.
 
 While the number is `0.x`, MINOR is the lane the work runs in. `1.0.0` is reserved for a
 Developer ID and notarization — the build opening without `xattr` — plus a settled module
@@ -53,19 +40,16 @@ else from the branch (`beta` BETA, `main` STABLE, any other DEV; a detached HEAD
 
 Two releases carrying one version are invisible to the updater: `UpdateVersion.isNewer`
 requires a strictly greater version, so a release without a bump reaches nobody, and
-nothing published can pull a user back to an earlier build — there is no rollback, and
-that is the shape of the comparison rather than a missing feature. The one exception is
-a tag of the form `vX.Y.Z.DEV.<build>` / `vX.Y.Z.BETA.<build>` (versioning.md rule 6,
-from 2026-11-14; tags before that keep `-dev.N`): on an equal `X.Y.Z`, with the running
-build known, the tag is newer only when its `<build>` is greater than that build,
-whatever suffix the running version has. The running build is `CFBundleVersion`, which
-`Scripts/package-app.sh` writes as `git rev-list --count HEAD` in this tree; a tag's
-`<build>` must be that same number for the build it was cut from to go unoffered. So the
-tag's `<build>` is the number the packaged app carries (read it from the built bundle's
-`CFBundleVersion`), not the three-branch count `git rev-list --count origin/dev
-origin/beta origin/main HEAD` of versioning.md rule 2: that count can be larger, and a
-tag cut with it is newer than the app built from it, which then offers its own tag. With
-the build unknown, a running `-dev.N` is offered the tag and a bare `X.Y.Z` is not.
+nothing published can pull a user back to an earlier build; that is the shape of the
+comparison, not a missing feature. The one exception is a build tag
+(`vX.Y.Z.DEV.<build>` / `vX.Y.Z.BETA.<build>`): on an equal `X.Y.Z`, with the running
+build known, it is newer only when its `<build>` is greater than that build, whatever suffix
+the running version has. The running build is `CFBundleVersion`, which `Scripts/package-app.sh`
+writes as `git rev-list --count HEAD` in this tree; a tag's `<build>` must be that same number
+(read it from the built bundle's `CFBundleVersion`), not the three-branch count of
+versioning.md rule 2, which can be larger, and a tag cut with it is newer than the app built
+from it, which then offers its own tag. With the build unknown, a running `-dev.N` is offered
+the tag and a bare `X.Y.Z` is not.
 
 There are two channels, `beta` and `dev`, and `UpdateCheck.Channel` is where they and
 the reason for the name `beta` live. In the app the switch is About → Update channel,
@@ -79,9 +63,8 @@ round is the only round with evidence in it to triage against `helm.log`. A bare
 does not supersede a `vX.Y.Z.DEV.<build>` or `vX.Y.Z.BETA.<build>` of the same `X.Y.Z`:
 `UpdateVersion.isNewer` finds the two cores equal and answers false, and
 `UpdateVersion.ranksAbove` puts a build tag above a bare tag of one core. Only a higher
-`X.Y.Z` is offered over a running build tag. (For tags cut before 2026-11-14 the old
-arrangement holds: a `-dev.N` prerelease sorts below its own `vX.Y.Z`, which supersedes
-every `-dev.N` before it.) Two consequences of that arrangement look like faults and are
+`X.Y.Z` is offered over a running build tag (a `-dev.N` prerelease sorts below its own
+`vX.Y.Z`). Two consequences of that arrangement look like faults and are
 not. A release published with `--prerelease` is invisible to the Beta channel, because
 `releases/latest` skips every prerelease — so the flag, or its absence, is what decides
 reachability rather than presentation. And in the window between a beta shipping and the
@@ -95,42 +78,37 @@ silent install; the dmg is the manual drag-install path.
 
 `Scripts/package-app.sh` builds with
 `swift build -c release --product HelmApp --explicit-target-dependency-import-check error` and the same for
-`HelmLaunchpadHelper`, one line each (given two `--product` flags SwiftPM honours only the last, and the
-old single line left `HelmApp` unbuilt after an edit; `ReleaseBuildsTheProductTests` and
-`TheBoundariesTheBuildCannotHoldTests` refuse a line with two `--product` flags), assembles and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for
+`HelmLaunchpadHelper`, one line each (SwiftPM honours only the last of two `--product` flags;
+`ReleaseBuildsTheProductTests` and `TheBoundariesTheBuildCannotHoldTests` refuse such a line), assembles and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for
 inspection. Only the signed copy under `$TMPDIR` is installed: it is the bundle the
 script signed and verified, while `.build/` holds an unsigned one with no usable
 identity at all. `Scripts/make-dmg.sh` and
-`Scripts/make-zip.sh` package that signed bundle and refuse one that does not verify,
-or one signed with a local identity; both source `Scripts/staged-bundle.sh` for that
-check and the version read (it is sourced, not run by hand, and `package-app.sh` does not source it).
+`Scripts/make-zip.sh` package that signed bundle and refuse one that does not verify
+or is signed with a local identity; both source `Scripts/staged-bundle.sh` for that
+check and the version read (sourced, not run by hand).
 `Scripts/package-dev.sh` builds through `Scripts/package-app.sh` and installs **Helm Dev**
-beside the real app; its header says why a separate bundle. `--no-launch` (or `HELM_DEV_NO_LAUNCH=1`) installs without opening it, because a launch writes state and a later step needs the installed bundle untouched; the script also waits up to about 10 s for the running Helm Dev to exit and refuses, leaving the installed copy alone, if it does not. Helm Dev is the crew's copy, with its own bundle identifier and defaults domain, and every intermediate build runs there; the owner's copy is built only from work he has accepted. The release scripts are
+beside the real app; its header says why a separate bundle. `--no-launch` (or `HELM_DEV_NO_LAUNCH=1`) installs without opening it, because a launch writes state; the script refuses, leaving the installed copy alone, if a running Helm Dev does not exit. Helm Dev is the crew's copy, with its own bundle identifier and defaults domain, and every intermediate build runs there; the owner's copy is built only from work he has accepted. The release scripts are
 `Scripts/package-app.sh`, `Scripts/make-dmg.sh`, `Scripts/make-zip.sh` and
-`Scripts/package-dev.sh`; `Scripts/design` runs inside `Scripts/make-dmg.sh` and
-`Scripts/flags` writes resources the tree commits, so neither is a release step run by
-hand, and `Scripts/test.sh` ships nothing.
+`Scripts/package-dev.sh`; `Scripts/design` runs inside `Scripts/make-dmg.sh` and `Scripts/flags` writes resources the
+tree commits, so neither is a release step, and `Scripts/test.sh` ships nothing.
 
 The push comes before the release is created, never after: the release is tagged against
 the remote HEAD, so an unpushed commit puts the tag on the wrong one. A bad dev build is
 undone by publishing the next dev number with the reverted code and its digest lines,
 never by deleting or re-tagging a release people may have downloaded. A prerelease user
 who switches to Beta sees the About card say the build is newer than the channel
-(`UpdateCheck.Outcome.ahead`), because Beta reads the last non-prerelease tag, which is
-lower than what they are running, until the next beta passes them.
+(`UpdateCheck.Outcome.ahead`): Beta reads the last non-prerelease tag, lower than what they run.
 
 Before a release the tree is built from a fresh `git clone`: the manifest is refused whole
 when a declared test path does not exist, so an untracked test directory makes `swift
 test` work in one checkout and on nobody else's, and the working copy is not evidence.
-A fresh machine also needs Xcode's Metal toolchain, a separate download (`xcodebuild -downloadComponent MetalToolchain`):
-without it the Launchpad's `.metal` file does not compile and the build fails.
+A fresh machine also needs Xcode's Metal toolchain (`xcodebuild -downloadComponent MetalToolchain`), or the Launchpad's `.metal` file does not compile.
 
 ## Signing and grants
 
-The checkout stays out from under a file provider (iCloud Drive, Dropbox and the like) and
-is signed from the staged path `Scripts/package-app.sh` prints, never in place: a provider
-stamps `com.apple.FinderInfo` onto the directories it manages faster than `xattr -c`
-clears it, and `codesign` refuses a bundle carrying it. An unsigned bundle has no cdhash
+The checkout stays out from under a file provider (iCloud Drive, Dropbox) and is signed from the
+staged path `Scripts/package-app.sh` prints, never in place: a provider stamps `com.apple.FinderInfo`
+onto its directories faster than `xattr -c` clears it, and `codesign` refuses a bundle carrying it. An unsigned bundle has no cdhash
 for TCC to hang Full Disk Access on, so the permission comes loose on every rebuild. A
 passing strict signature verification says the bundle is valid and not that it is the
 same program TCC granted.
@@ -141,22 +119,19 @@ ad-hoc — `Scripts/make-zip.sh` and `Scripts/make-dmg.sh` refuse anything else.
 bundle carries no Team ID and macOS ties a granted permission to the exact binary. A
 cdhash is a hash of contents, so every rebuild is a different program to TCC while the
 checkbox in System Settings stays ticked. A grant therefore survives relaunch and
-reboot — the installed binary's cdhash changes only when it is replaced — and every
-reinstall costs every toggle again. `AppBuild` (`Sources/HelmRuntime/AppBuild.swift`)
+reboot, and every reinstall costs every toggle again. `AppBuild` (`Sources/HelmRuntime/AppBuild.swift`)
 is where the app asks what copy of itself it is; its doc comments say why a version
 string cannot answer what the cdhash answers.
 
-Screen & System Audio Recording is the third grant, and like Accessibility it is read without
-touching a file: `PermissionCheck.currentScreenRecording` asks CGPreflightScreenCaptureAccess,
-which never prompts. A process that has been refused is not shown the system's own
-prompt again, so the capture port asks once per installation and Helm sends the person
-to the pane from the first refusal. It is tied to the cdhash like the others, and it
-does not survive an ad-hoc rebuild either.
+Screen & System Audio Recording is the third grant, read without touching a file:
+`PermissionCheck.currentScreenRecording` asks CGPreflightScreenCaptureAccess, which never prompts. A
+refused process is not shown the system prompt again, so the capture port asks once per installation
+and Helm sends the person to the pane from the first refusal. It is tied to the cdhash like the others.
 
 A stable signing identity is the only real fix, and the same purchase is what
 an `SMAppService` helper and notarization each need.
 
-The Launchpad's Dock helper (`Helm Launchpad.app`, § The Dock icon in `Architecture/Launchpad.md`) is built with Helm (`swift build -c release --product HelmLaunchpadHelper`, a line of its own), staged into `Contents/Helpers` by `Scripts/package-app.sh` with its own plist (`Resources/HelmLaunchpadHelper/Info.plist`; the version is Helm's, read from the staged plist, the build number written as Helm's) and its own icon (`Resources/Icon/LaunchpadHelper.icon`, a second `actool` call) and its shown names (`Resources/HelmLaunchpadHelper/<lang>.lproj`, copied whole). **Signing goes inside out** (`Scripts/staged-bundle.sh` checks that both signatures are ad-hoc before a zip or an image is made): the helper first, then the bundle that holds it, and the strict deep verification covers both. `Scripts/rewrite-as-dev.sh` makes Helm Dev from a staged bundle (ids, names, scheme, the helper's parent and link) and signs again in the same order, because editing a plist breaks the seal; `Scripts/package-dev.sh` calls it. The update swap replaces the bundle at its own path, so a pinned helper keeps pointing at the right place after an update; a Helm that is moved by hand leaves the pin stale until the person drags the icon again. The release is ad-hoc signed and not notarized, so a download shows Gatekeeper's prompt for Helm and a second one for the nested helper the first time its Dock icon is clicked; that is accepted until a Developer ID signs both.
+The Launchpad's Dock helper (`Helm Launchpad.app`, `Architecture/Launchpad.md` § The Dock icon) is built with Helm (`swift build -c release --product HelmLaunchpadHelper`, a line of its own) and staged into `Contents/Helpers` by `Scripts/package-app.sh` with its own plist (`Resources/HelmLaunchpadHelper/Info.plist`; the version and build number are Helm's), its own icon (`Resources/Icon/LaunchpadHelper.icon`) and its shown names (`Resources/HelmLaunchpadHelper/<lang>.lproj`). **Signing goes inside out** (`Scripts/staged-bundle.sh` checks that both signatures are ad-hoc before a zip or an image is made): the helper first, then the bundle that holds it, and the strict deep verification covers both. `Scripts/rewrite-as-dev.sh` makes Helm Dev from a staged bundle and signs again in the same order, because editing a plist breaks the seal; `Scripts/package-dev.sh` calls it. The update swap replaces the bundle at its own path, so a pinned helper keeps pointing at the right place; a Helm moved by hand leaves the pin stale until the icon is dragged again. The release is not notarized, so Gatekeeper prompts for Helm and again for the nested helper at the first click of its Dock icon, until a Developer ID signs both.
 
 ## The updater
 
@@ -166,12 +141,11 @@ The Launchpad's Dock helper (`Helm Launchpad.app`, § The Dock icon in `Architec
 swap and the note a failure is reported by at the next launch, in the log and, whether
 logging is on or off, as a sentence on the About page's updates card
 (`UpdateService.unfinishedUpdate`). Their doc comments hold
-the reasons: why the app downloads the zip itself, why the old bundle is moved aside
-before the copy, and why the note is written before the app quits.
+the reasons for the download, the move-aside before the copy and the note written before the app quits.
 
-Nothing installs without a published digest. The updater strips quarantine on purpose and
-the app is ad-hoc signed, so `codesign --verify` proves nothing — any ad-hoc signature
-passes, and TLS protects the transport rather than the contents. No digest for this exact
+Nothing installs without a published digest: the updater strips quarantine on purpose and
+the app is ad-hoc signed, so `codesign --verify` proves nothing (any ad-hoc signature
+passes) and TLS protects the transport, not the contents. No digest for this exact
 asset name opens the release page with the reason stated, and a digest that disagrees
 refuses the install outright (`ReleaseDigest`, `Sources/HelmRuntime/ReleaseDigest.swift`),
 and the unpacked bundle's own version is re-read as well, so a mislabelled asset cannot
@@ -183,8 +157,8 @@ is the installed one's. The unzip and the digest run off the main actor
 hand the files to the swap script removes them.
 
 `UpdateService` takes the two things outside the process as ports, a feed that answers one
-GitHub request and the store the `updateChannel` key is kept in (still the bare key in
-`UserDefaults.standard`, app-wide, not a module setting); a test names both at every
+GitHub request and the store the `updateChannel` key is kept in (the bare key in
+`UserDefaults.standard`, app-wide); a test names both at every
 construction. An answer that comes back for a channel the person has since left is dropped,
 and only a manual check clears the spinner, and only while it is the newest manual check.
 
@@ -192,9 +166,8 @@ and only a manual check clears the spinner, and only while it is the newest manu
 
 `CHANGELOG.md` at the root of the tree is the canonical English record and is not
 bundled — nothing in `Scripts/package-app.sh` or `Package.swift` names it.
-`Sources/HelmAppStrings/ChangelogData.swift` is the same list inside the app; the two have
-drifted about which versions exist before, and `TheChangelogAndTheAppsListAgreeTests`
-now holds them to the same releases and dates. A version heading in
+`Sources/HelmAppStrings/ChangelogData.swift` is the same list inside the app; the two are
+kept in step by `TheChangelogAndTheAppsListAgreeTests`, which holds them to the same releases and dates. A version heading in
 the file is `## X.Y.Z — YYYY-MM-DD`, one line per change with `**NEW**` / `**UPD**` /
 `**FIX**` first, newest version first. `command grep -c '^### ' CHANGELOG.md` prints zero:
 the file carries no sub-headings at all.
@@ -212,8 +185,7 @@ is generated at build time by `Scripts/design/make-dmg-background.swift` and the
 lives in `Scripts/dmg-settings.py`; the two hold the same slot coordinates seen from
 opposite sides, and each says so in its own comment. The reasons for the three drawings,
 the ring radius and the chevron's place, the dev mark, and why `dmgbuild` writes the
-window instead of Finder are in those two files and the header comments of
-`Scripts/make-dmg.sh`. `dmgbuild` is installed from `Scripts/dmg-requirements.txt`, every
+window instead of Finder are in those two files and the header comments of `Scripts/make-dmg.sh`. `dmgbuild` is installed from `Scripts/dmg-requirements.txt`, every
 version pinned with its hashes, and the environment is rebuilt when that file's sha256
 changes.
 
@@ -225,9 +197,7 @@ complaint.
 A disk image is judged by mounting it and never by reading the script, which always
 finishes and always prints something that looks like a result. The mounted volume's Finder
 settings file is well over the size of an untouched one when the settings took; a file of
-an untouched one's size is the tell that Finder wrote a default and the settings were
-lost; the volume carries the custom-icon flag; and a
+an untouched one's size means Finder wrote a default; the volume carries the custom-icon flag; and a
 strict signature verification still passes on the app *inside* the image. A new background
 is judged against a composite of the real icons and their real labels and not against the
-empty artwork, because Finder writes the item's name under the icon and the first bezel ran
-straight through the word.
+empty artwork, because Finder writes the item's name under the icon.

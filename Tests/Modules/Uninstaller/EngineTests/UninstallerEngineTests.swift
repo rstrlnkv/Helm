@@ -5,7 +5,7 @@ import HelmTestSupport
 final class UninstallerOrphanScanTests: XCTestCase {
     /// Only bundle-id-shaped entries with no installed app are reported, grouped by id.
     func testScanOrphansGroupsByBundleID() async {
-        var fs = FakeFS(existing: [
+        let fs = FakeFS(existing: [
             "/Users/x/Library/Caches/com.gone.app": 500,
             "/Users/x/Library/Preferences/com.gone.app.plist": 20,
             "/Users/x/Library/Caches/com.acme.tool": 100,
@@ -38,7 +38,7 @@ final class UninstallerOrphanScanTests: XCTestCase {
             func installedApps() -> [InstalledApp] { [] }
             func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
         }
-        var fs = FakeFS(existing: [:])
+        let fs = FakeFS(existing: [:])
         fs.listings = [
             "/Users/x/Library/Caches": ["com.gone.app"],
             "/Users/x/Library/Preferences": ["com.gone.app.plist"],

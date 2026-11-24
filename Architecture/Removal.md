@@ -17,13 +17,12 @@ Helm refusing before anything was attempted. `TrashFailure` classifies from the 
 error code first; the shape of the path decides only an `.app` with an active system
 extension and a 513 under `/Library/Containers/` or `/Library/Group Containers/`.
 
-A folder's size never comes from `totalFileAllocatedSize`, which is zero for a directory
-on APFS (`FileWeight`); the folder is walked. What a removal returns counts a clone
+A folder's size never comes from `totalFileAllocatedSize` (`FileWeight` holds why); the folder is walked. What a removal returns counts a clone
 family once (`Sources/HelmRuntime/CloneShare.swift`), and a file whose family id cannot
 be read counts as its own, since under-reporting is the safer error. The engine's own
 gate has the last word on what is deleted, because the engine takes a list of strings
-and deletes them: an empty display name once claimed `~/Library/Application Support`
-itself, so a scope never widens without a test naming the new path
+and deletes them (an empty display name would claim `~/Library/Application Support`
+itself), so a scope never widens without a test naming the new path
 (`Tests/HelmRuntimeTests/RemovableScopeTests.swift`,
 `Tests/HelmRuntimeTests/UserFileScopeTests.swift`).
 
@@ -35,12 +34,11 @@ another module's removal of one app (`AppRemovalService.remove`, Architecture/Un
 calls `removeApp` through `work` under the same `busy` flag, and its
 Leftovers tab and Trash offer call the model's `uvm.trashPaths`; Duplicates, Disk and
 Leftovers call their engine's `trash` through `work` — and a second press while the first is in flight is not a second
-removal, because the files it would name are already gone: what a repeat can
-only be is a refusal, and the reply that lands second overwrites the model's report
-of the one that landed first. That refusal has to live in the model and not only in a
+removal: the files it would name are already gone, so a repeat can
+only be a refusal, and the reply that lands second overwrites the model's report
+of the one that landed first. That refusal lives in the model and not only in a
 dimmed control, because a control's disabled state lags the redraw and never reaches a
-row's own context menu, which draws from the same data. The model refuses; the page
-dims. Both, or neither is reliable. `DiskViewModel.toggleBasket` declining while `busy`
+row's own context menu. The model refuses; the page dims. `DiskViewModel.toggleBasket` declining while `busy`
 is the same guard read from the basket's own door, and so are Disk's `newScan` («Choose another…») and `rescan` («Scan again», which also declines while a walk runs); Duplicates' `toggleBasket`, `keep`, `choose` and
 `restoreRecommendation` decline too, and their controls dim.
 

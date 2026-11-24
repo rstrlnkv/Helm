@@ -10,24 +10,19 @@ seal disagrees decodes to `[]`, so none of its rules runs, and `AutopilotEngine.
 carries the verdict as `refusal`, which the page reads to draw a card saying the
 rules could not be read.
 
-`SealedRules` reads the record through `StoredRuleSet`, rule by rule. A rule this
-build cannot decode (a newer Helm wrote it) is not applied and is kept as the bytes it
-was: `status.unapplied` carries it, the log says once per change of count how many,
-with no names, and the readable rules run. A save re-reads the stored record under
-`decisionLock` and writes the new folders with those unapplied rules, removed-folder
-stubs and unknown members put back, so a Dev, Beta, Dev round trip loses nothing.
-A record that cannot be parsed at all, with the seal fitting, is the refusal
-`unreadable`: nothing runs, and a save is refused so that the record is not written
-over. Its banner has no button. The way out is Reset, or a newer Helm that reads the
-record; Discard stays `tampered`'s alone, so nothing in this build deletes a record
-it cannot read.
+`SealedRules` reads the record rule by rule through `StoredRuleSet` (its doc comment holds why). A rule this
+build cannot decode (a newer Helm wrote it) is not applied and is kept as the bytes it was: `status.unapplied`
+carries it, the log says once per change of count how many, with no names, and a save writes it back with
+removed-folder stubs and unknown members. A record that cannot be parsed at all, with the seal fitting, is the
+refusal `unreadable`: nothing runs, a save is refused so that the record is not written over, and the banner has no
+button. The way out is Reset or a newer Helm; Discard stays `tampered`'s alone, so nothing in this build deletes a
+record it cannot read.
 
-Discard rules, Clear and Discard history each ask first (owner decision 13): the button calls
-`ask`, which sets `pendingDiscard` (`.rules`, `.history`, `.refusedHistory`), a `confirmationDialog`
-on the page puts the question with the button's own verb and Cancel, and only `confirmDiscard()` (given what the
-button read on the press, since the dialog may clear `pendingDiscard` first)
-reaches `dropRefusedRules` or `dropHistory`. The rules question says the whole record goes, unapplied
-rules and rules of removed folders included. `DiscardingAsksFirstTests` holds it.
+Discard rules, Clear and Discard history each ask first (owner decision 13): the button calls `ask`, which sets
+`pendingDiscard` (`.rules`, `.history`, `.refusedHistory`), a `confirmationDialog` puts the question with the
+button's own verb and Cancel, and only `confirmDiscard()` (given what the button read on the press, since the dialog
+may clear `pendingDiscard` first) reaches `dropRefusedRules` or `dropHistory`. The rules question says the whole
+record goes, unapplied rules and rules of removed folders included. `DiscardingAsksFirstTests` holds it.
 
 The page draws the unapplied rules apart (owner decision 4), from the `status.unapplied` the
 model reads in the same turn as the folders: under each live folder's rules, and, for a folder
@@ -44,12 +39,11 @@ prints nothing. The reasons are on the doc comments of `RuleAction.swift` and
 A stamp that will not stick is logged and tolerated, which is survivable only
 because sorting, moving and tagging recognise a file already where the rule would
 put it, and renaming tells "already done" from "do it again" by inspecting the name
-against `RenameShape.swift`. `{counter}` in a rename pattern is the lowest number from 001 to 999 that no same-extension file in the folder wears, case folded (`CounterBook.swift`): one listing per folder and one parse per folder, pattern and extension, per pass, each number marked used as it is handed out, and the dry run goes through the same book as `RuleRunner`. Every number worn is the refusal `counterNumbersUsedUp`, a folder that cannot be listed is `folderUnreadable`; neither guesses. The shape reads `{counter}` as any run of three or more digits, so a second sweep over `photo-001`, `photo-002` renames nothing (and `invoice-2024` counts as already shaped by `invoice-{counter}`, on purpose).
+`{counter}` in a rename pattern is the lowest number from 001 to 999 that no same-extension file in the folder wears, case folded (`CounterBook.swift`, whose doc comment holds the one-listing-per-pass rule; the dry run goes through the same book as `RuleRunner`). Every number worn is the refusal `counterNumbersUsedUp`, a folder that cannot be listed is `folderUnreadable`; neither guesses. The shape reads `{counter}` as any run of three or more digits, so a second sweep over `photo-001`, `photo-002` renames nothing (and `invoice-2024` counts as already shaped by `invoice-{counter}`, on purpose).
 
 Which volumes cannot keep the stamp is not every removable one: a filesystem that
 refuses extended attributes, or an AppleDouble `._name` sidecar something drops,
-on the `/Volumes` that `WatchScope` admits. exFAT is not among them: on macOS 27.2 an
-`hdiutil create -fs ExFAT` image took `xattr -w` and kept it, in a `._name` sidecar.
+on the `/Volumes` that `WatchScope` admits. exFAT is not among them: it takes `xattr -w` and keeps it, in a `._name` sidecar.
 
 Three triggers reach the runner (`sweep`, `watch`, `runNow`) and none covers the others;
 each names itself while it runs, and so does `preview`, the editor's dry run, which decides
@@ -78,22 +72,19 @@ The device id of a stored file identity keeps its unsigned bit pattern on purpos
 `AutopilotViewModel` is built with the engine by the descriptor's `makeModule` and held by
 the host for the life of the module, so it asks the engine nothing when it is built: the
 page calls `appear()` at every mount, which reads the folders, their status and the
-history, as a page that owned its model did at each opening. The model calls the engine
-through its `AutopilotWork` port, which the engine conforms to, and every answer is a
-return. The reads and writes of the rule set and the history run off the cooperative
-pool (`offTheCooperativePool` in `AutopilotEngine.swift`), never on main and never on the
-engine's own queue: the rule set's verdict asks the keychain for the seal key, which on an
-ad-hoc build is a modal authorization prompt after every rebuild rather than an answer
-(`SealedRules.swift`), and on main that prompt would hold the thread that draws until somebody
-answers it, as the app's own settings seal once did (`SealKeyCache.swift`) (no guard); and the status and the clearing of the history take
-that queue synchronously inside; a dry run, a Run now and both returns run
-on that queue, serialised with the hourly sweep and the FSEvents leg. Run now refuses a
-folder that is switched off in the engine, not only at the button. The gates are below
-these calls and are not reached around.
+history. The model calls the engine through its `AutopilotWork` port, which the engine conforms to, and every answer is a
+return. The reads and writes of the rule set and the history run off the cooperative pool (`offTheCooperativePool`
+in `AutopilotEngine.swift`), never on main and never on the engine's own queue: the rule set's verdict asks the
+keychain for the seal key, which on an ad-hoc build is a modal authorization prompt after every rebuild
+(`SealedRules.swift`, `SealKeyCache.swift`), and on main it would hold the thread that draws until somebody
+answers it (no guard). The status and the clearing of the history take that queue synchronously inside; a dry
+run, a Run now and both returns run on that queue, serialised with the hourly sweep and the FSEvents leg. Run now
+refuses a folder that is switched off in the engine, not only at the button. The gates are below these calls and
+are not reached around.
 
 Saves are one chain in the model (`lastSave` in `AutopilotViewModel.swift`): each waits for the
 one before it, because independent Tasks on the global queue raced for the engine's lock and
-an older list could land last. `TheLaterSaveLandsLastTests` holds it (past defect).
+an older list could land last. `TheLaterSaveLandsLastTests` holds it.
 
 The one thing the engine says unasked, that a pass went into the history, is not a call of
 the model's. The engine is built with a `historyChanged` closure, called only after the
@@ -110,7 +101,7 @@ Words: `Sources/Modules/Autopilot/UI/Localizable.xcstrings`; shared words throug
 
 ## The states of the Autopilot page
 
-The page id is the module id, `autopilot`, and a state is shot with its file `autopilot-<state>-<light|dark>[-<ru|de>].png` (the language is always passed: without it Helm Dev speaks the Mac's language):
+The page id is the module id, `autopilot`, and a state is shot with its file `autopilot-<state>-<light|dark>[-<ru|de>].png` (always pass the language, or Helm Dev speaks the Mac's):
 
     bash Scripts/shoot.sh autopilot \
       [--press "<name>" [--nth <n>]]... \
@@ -118,7 +109,7 @@ The page id is the module id, `autopilot`, and a state is shot with its file `au
       --arg module.app.interfaceLanguage <en|ru|de> \
       --name <state>-<light|dark>[-<ru|de>] --out <dir>
 
-No state is shot from Helm Dev with a saved rule: Helm Dev keeps its own accounts (`dev-rule-seal`, `dev-rule-seq` under `com.helm.autopilot`, chosen by the bundle identifier in `RuleKeychain.swift`), so a rule saved there no longer raises the person's installed Helm's `rule-seq`; nothing here has proved that on a running Helm Dev, and no rule is saved in it. The states with folders, a report and a history are shot on a bench over a fake `AutopilotWork`, a harness of the crew outside the tree that scripts `empty`, `folders`, `report` and `history` only, and a second one, over a fake `AutopilotWork` whose `readStatus` answers a refused store, that draws the refused-rules banner alone; Helm Dev shows only the states that need no rule. The sealed-rules refusals are held by `ARefusedRuleSetIsNotAnEmptyPageTests` and, for the history, `AHistoryNotHelmsPutsNothingBackTests`.
+No state is shot from Helm Dev with a saved rule: Helm Dev keeps its own accounts (`dev-rule-seal`, `dev-rule-seq` under `com.helm.autopilot`, chosen by the bundle identifier in `RuleKeychain.swift`), and nothing here has proved that a rule saved there leaves the installed Helm's `rule-seq` alone. The states with folders, a report and a history are shot on a bench over a fake `AutopilotWork`, a harness of the crew outside the tree that scripts `empty`, `folders`, `report` and `history` only, and a second one whose `readStatus` answers a refused store, that draws the refused-rules banner alone. The sealed-rules refusals are held by `ARefusedRuleSetIsNotAnEmptyPageTests` and, for the history, `AHistoryNotHelmsPutsNothingBackTests`.
 
 | state | the page shows | reached by |
 |---|---|---|
@@ -127,16 +118,16 @@ No state is shot from Helm Dev with a saved rule: Helm Dev keeps its own account
 | `rules-tampered` | `HelmBanner` "The rules stored on this Mac…" with Discard and start again | the banner bench's `tampered`, which needs no forged plist; `ARefusedRuleSetIsNotAnEmptyPageTests` |
 | `rules-unreadable` | `HelmBanner` "Helm cannot read the key…", no button | not shot; same test |
 | `rules-not-read` | `HelmBanner` "Helm could not read the stored rules…", no button | not shot; `AnUnreadableRuleSetIsRefusedNotEmptiedTests` holds the engine half, `ARefusedRuleSetIsNotAnEmptyPageTests` the screen |
-| `rules-newer-helm` | under a folder's rules, and in a group headed by a removed folder's path and "Folder removed": each unapplied rule's name and "Created in a newer version of Helm; this version cannot apply it.", no controls | not shot: the bench scripts `empty`, `folders`, `report` and `history` only |
+| `rules-newer-helm` | under a folder's rules, and in a group headed by a removed folder's path and "Folder removed": each unapplied rule's name and "Created in a newer version of Helm; this version cannot apply it.", no controls | not shot (bench) |
 | `folders` | toolbar (first-match note, Add folder…, the menu while offered); per folder: switch, path, Run now, "…"; rule rows (switch, name, one-line summary, edit, up, down); "No rules yet"; New rule; the history card | the bench's `folders` |
-| `folder-missing` / `folder-unreadable` / `not-watching` | a `HelmBanner` under the folder's header | not shot: the bench scripts `empty`, `folders`, `report` and `history` only |
+| `folder-missing` / `folder-unreadable` / `not-watching` | a `HelmBanner` under the folder's header | not shot (bench) |
 | `report` | the report at the foot: the sentence, Put back N, Turn off "…", Done | the bench's `report` |
 | `history` | "Last 30 days", file-count badge, problems, a pass header with Put back N, rows (file, verb and detail, "back where it was" badge, rule name), notes | the bench's `history` |
-| `history-empty-<everyRuleOff\|nothingYet>` | the card's sentence | not shot: the bench scripts `empty`, `folders`, `report` and `history` only |
+| `history-empty-<everyRuleOff\|nothingYet>` | the card's sentence | not shot (bench) |
 | `history-refused` | `HelmBanner` "The record of what Autopilot did was not written by Helm…" with the discard button | not shot; `AHistoryNotHelmsPutsNothingBackTests` holds the engine half |
-| `editor-new` | the sheet: plate and name, the folder line, When (all/any, Add condition) with "Nothing in this folder matches yet" where a condition would be, Then, What would happen ("Nothing in this folder matches yet"), the footer with the switch disabled | not shot: the bench scripts `empty`, `folders`, `report` and `history` only |
-| `editor-dry-run` | the rows card, the count, "Another rule takes these files" | not shot: the bench scripts `empty`, `folders`, `report` and `history` only; it needs a rule with a condition the folder's files meet, below a rule that takes some of them |
+| `editor-new` | the sheet: plate and name, the folder line, When (all/any, Add condition) with "Nothing in this folder matches yet" where a condition would be, Then, What would happen ("Nothing in this folder matches yet"), the footer with the switch disabled | not shot (bench) |
+| `editor-dry-run` | the rows card, the count, "Another rule takes these files" | not shot (bench); it needs a rule with a condition the folder's files meet, below a rule that takes some of them |
 | `editor-preset` | Choose…, the "Once saved…" note | Helm Dev with `CFFIXED_USER_HOME` on a scratch folder, then "Show the rules to start with" and a preset: a preset's folder is the person's Downloads, Desktop, etc., and opening it runs a dry run there (`RuleEditor.swift`), so without the scratch home it is not shot |
 | `worst` | de: the refused rules' sentence takes two lines beside its one-line button; the empty page's sentence takes four lines over two buttons on one row; the editor's condition and action rows hold one line each. en, the most the bench scripts: two folders, three rules, a long folder path on one line, five files in the history. `folders`, `report` and `history` in another language, a rule name or a path too long for its row, many rules: not rendered, the bench that scripts them speaks English and its fixtures are fixed | the banner bench's `tampered` with its language argument; `--arg module.app.interfaceLanguage de` on `empty`; the editor from "Show the rules to start with" with `CFFIXED_USER_HOME` on a scratch folder; the bench's `folders` |
 
-Motion: rules and folders added, removed or moved inside the list animate on `HelmMotion.interface`, and the switch between the empty page and the folders cross-fades on it; the report appears and leaves at once: a button arrives after its sentence, and every opening slide tried drew the sentence over it; history passes arrive as a cut: a List row's height is the table's; in the editor the rename hint and the "Once saved…" note open and close on `HelmMotion.disclosure`, and conditions arrive as a cut; the editor sheet's opening is AppKit's. All held by recording only, no guard. The out-of-reach banner opens and closes on `HelmMotion.disclosure` too (`chooseFolder()` in `RuleEditor.swift`), not recorded: it is reached only from a preset's editor, which the crew opens only on a scratch home. Increase Contrast: no guard.
+Motion: rules and folders added, removed or moved inside the list animate on `HelmMotion.interface`, and the switch between the empty page and the folders cross-fades on it; the report appears and leaves at once (every opening slide tried drew the sentence over its button); history passes and editor conditions arrive as a cut (a List row's height is the table's); the editor's rename hint and "Once saved…" note open and close on `HelmMotion.disclosure`; the editor sheet's opening is AppKit's. All held by recording only, no guard. The out-of-reach banner opens and closes on `HelmMotion.disclosure` too (`chooseFolder()` in `RuleEditor.swift`), not recorded: it is reached only from a preset's editor. Increase Contrast: no guard.
