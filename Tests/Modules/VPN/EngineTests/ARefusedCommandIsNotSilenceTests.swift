@@ -6,30 +6,11 @@ import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
 
-/// `scutil --nc start` reports failure by printing a line and exiting **0**,
-/// and both call sites threw that line away — `_ = runner.run(args)`.
-///
-/// Measured on macOS 27, on the Mac this was written on:
-///
-/// ```
-/// $ scutil --nc stop "NBCom VPN"      # a real service
-/// $ echo $?
-/// 0                                  # …and no output at all
-/// $ scutil --nc start "no-such-vpn-name"
-/// No service
-/// $ echo $?
-/// 0
-/// ```
-///
-/// So a configuration renamed or deleted in System Settings — or a per-app rule
-/// left pointing at one — failed in complete silence: no log line, nothing on
-/// screen, and a tunnel that simply never came up.
-///
-/// The sibling path had already learned this. `UnreadableListTests` exists
-/// because `--nc list` answering nothing looked exactly like a Mac with no VPN.
-/// The list was fixed; the two commands were not.
-///
-/// Past defect: commit 34a0e9fc, «fix(vpn): a refused connect is not silence».
+/// `scutil --nc start` and `stop` report failure by printing a line and exiting
+/// **0** (`scutil --nc start "no-such-vpn-name"` prints `No service`, exit 0; a
+/// stop that worked prints nothing). The line is read, so a configuration
+/// renamed or deleted in System Settings, or a rule left pointing at one, does
+/// not fail in silence. `UnreadableListTests` holds the same for `--nc list`.
 final class ARefusedCommandIsNotSilenceTests: XCTestCase {
 
     // MARK: - The reading
@@ -47,9 +28,8 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
         XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: "no service"), name: "Office"), .noSuchService)
     }
 
-    /// Anything else is kept verbatim rather than mapped to «failed». The set
-    /// of things this tool can print is not ours to enumerate, and an unknown
-    /// message is worth more in the trail than a word we chose.
+    /// Anything else is kept verbatim rather than mapped to «failed»: what the
+    /// tool can print is not ours to enumerate.
     func testAnythingElseIsCarriedThrough() {
         XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: "Some future complaint"), name: "Office"),
                        .refused("Some future complaint"))
@@ -64,8 +44,7 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
                   work: .inline)
     }
 
-    /// The control. An ordinary connect leaves nothing to report — otherwise
-    /// every assertion below passes on a module that reports constantly.
+    /// The control: an ordinary connect leaves nothing to report.
     func testAnOrdinaryConnectReportsNothing() {
         let runner = FakeRunner()
         runner.reply = ""
@@ -109,9 +88,8 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
         XCTAssertNil(e.lastFailure)
     }
 
-    /// The log carries the fact and not the name. Every other line this module
-    /// writes goes through `Redact.vpn`, because the diagnostic file leaves the
-    /// machine and the screen does not.
+    /// The log carries the fact and not the name: the diagnostic file leaves
+    /// the machine and the screen does not.
     func testTheLogDoesNotNameTheConfiguration() {
         tailTheLog()
 

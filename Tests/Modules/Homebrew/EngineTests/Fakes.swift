@@ -3,13 +3,11 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
-// The Homebrew engine's fakes, in one place. A fake keeps its port's states only, and the
-// port it stands in for is named at the construction (`brewEngine`'s own parameters, or
-// `runner:`, `privileged:`) (Architecture/TestsAndMeasurement.md § Fakes). In the tests that run by
-// default there is one `ProcessRunner` fake, `ScriptedRunner`: a test keeps its scenario in what it
-// passes at construction (answers, the diagnostics stream, what a streamed child does, hooks
-// for acting mid-call), not in a private class beside it.
-// `NoPrivileges` answers with a fixed stand-in value (declined) that no test asserts.
+// The Homebrew engine's fakes. A fake keeps its port's states only, and the port it stands in
+// for is named at the construction (`brewEngine`'s own parameters, or `runner:`, `privileged:`)
+// (Architecture/TestsAndMeasurement.md § Fakes). `ScriptedRunner` is the one `ProcessRunner`
+// fake: a test keeps its scenario in what it passes at construction, not in a private class
+// beside it.
 
 /// The password dialog answered no: nothing ran.
 struct NoPrivileges: PrivilegedRunner {
@@ -21,8 +19,8 @@ struct FixedLocator: BrewLocator {
 }
 
 /// Homebrew is not installed, or was uninstalled in a terminal beside this
-/// window — `FSBrewLocator` re-reads the disk at every call, so this is an
-/// ordinary answer and not a broken fixture.
+/// window: an ordinary answer, since `FSBrewLocator` re-reads the disk at
+/// every call.
 struct NoBrew: BrewLocator {
     func brewPath() -> String? { nil }
 }
@@ -42,9 +40,8 @@ func brewEngine(_ runner: ProcessRunner,
                    tools: ToolsAlreadyInstalled(), ticker: NoWaitTicker())
 }
 
-/// Kept only for the optional files that still conform to it (`ACaskIsNeverAskedWhatUsesItTests`,
-/// `AnInfoQueryIsAboutOnePackageTests`, `ABatchThatAskedEveryNameDidNotGiveUpTests`,
-/// `ASearchThatMatchesEverythingStillGetsItsDescriptionsTests`). New fakes use `ScriptedRunner`.
+/// A `ProcessRunner` that implements only the queries: the diagnostics stream is
+/// empty and a streamed child exits 0 at once. New fakes use `ScriptedRunner`.
 protocol QueryOnlyRunner: ProcessRunner {}
 
 extension QueryOnlyRunner {
@@ -61,7 +58,6 @@ extension QueryOnlyRunner {
     }
 }
 
-/// The name `ASizeIsMeasuredNotGuessedTests` (optional) is written against.
 typealias IdleRunner = ScriptedRunner
 
 /// One canned answer: the words an argument list must contain for this answer to
@@ -251,10 +247,9 @@ final class ScriptedRunner: ProcessRunner, @unchecked Sendable {
 }
 
 /// What the news says now, read through its replay. A sentinel emitted before
-/// reading marks where the replay ends, so the read is deterministic; it has a
-/// slot of its own each time, because an earlier call's sentinel is still in the
-/// replay and only this call's ends the read. Pass the `tape` subscribed before
-/// the act to see every item sent since, not only the replayed latest.
+/// reading marks where the replay ends, with a slot of its own each time, since
+/// an earlier call's sentinel is still in the replay. Pass the `tape`
+/// subscribed before the act to see every item sent since, not only the latest.
 func replay(_ news: EngineNews<HomebrewNews>, from tape: AsyncStream<HomebrewNews>? = nil) async -> [HomebrewNews] {
     let sentinel = "test.sentinel.\(UUID().uuidString)"
     news.say(.line(sentinel), slot: sentinel)
@@ -273,9 +268,7 @@ extension Array where Element == HomebrewNews {
     var sawBusy: Bool { contains { if case .busy = $0 { return true }; return false } }
 }
 
-/// The last `opState` the news holds, read through its replay: a sentinel
-/// emitted before subscribing marks where the replay ends, so the read is
-/// deterministic.
+/// The last `opState` the news holds, read through its replay.
 func lastOpState(_ news: EngineNews<HomebrewNews>) async -> OpState? {
     await replay(news).states.last
 }

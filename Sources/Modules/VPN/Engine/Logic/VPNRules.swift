@@ -12,11 +12,10 @@ public struct VPNAppRule: Codable, Equatable {
     var disconnectOnQuit: Bool
     /// What the app the person picked is **signed** as.
     ///
-    /// The rule used to be a bundle identifier and nothing else, which is a string
-    /// in a plist anybody can write: a bundle carrying a mapped identifier could
-    /// launch and quit and take somebody's tunnel down. `VPNRuleTrust` is what
-    /// reads this; it is optional because rules written before it existed have no
-    /// identity, and that is a state with its own answer rather than a default.
+    /// A bundle identifier alone is a string in a plist anybody can write: a
+    /// bundle carrying a mapped identifier could launch and quit and take
+    /// somebody's tunnel down. `VPNRuleTrust` reads this; it is optional because
+    /// a rule may carry no identity, and that is a state with its own answer.
     var identity: CodeIdentity?
 
     init(vpnName: String, connectOnLaunch: Bool = true, disconnectOnQuit: Bool = true,
@@ -51,7 +50,7 @@ public struct VPNAppRule: Codable, Equatable {
 
 /// Pure encode/decode/validation of the per-app auto-VPN rules
 /// (bundleID → rule). The JSON goes through `VPNSettings.rulesJSON`, which is
-/// where the key lives; `DefaultsKey`, named here for a while, never existed.
+/// where the key lives.
 public enum VPNRules {
     public static func encode(_ rules: [String: VPNAppRule]) -> String {
         guard let data = try? JSONEncoder().encode(rules),
@@ -60,7 +59,7 @@ public enum VPNRules {
     }
 
     /// Decodes the current format; a legacy `[bundleID: vpnName]` string map
-    /// (the first release of the rules) migrates with both behaviors enabled.
+    /// migrates with both behaviors enabled.
     public static func decode(_ json: String) -> [String: VPNAppRule] {
         guard let data = json.data(using: .utf8) else { return [:] }
         if let rules = try? JSONDecoder().decode([String: VPNAppRule].self, from: data) {
@@ -75,11 +74,9 @@ public enum VPNRules {
     /// The rules after somebody picked apps in the panel, which is the only place
     /// an identity is recorded.
     ///
-    /// **Picking an app that already has a rule is how a rule from before
-    /// identities existed is repaired.** It used to be ignored outright (`where
-    /// rules[bundleID] == nil`), so choosing the app again could not repair such a
-    /// rule.
-    /// The identity is written and every choice the person made is left as it was.
+    /// **Picking an app that already has a rule is how a rule with no identity
+    /// is repaired.** The identity is written and every choice the person made
+    /// is left as it was.
     ///
     /// A bundle whose signature could not be read at all gets no rule: a rule that
     /// can never fire is worse than no rule, because it looks like one that does.

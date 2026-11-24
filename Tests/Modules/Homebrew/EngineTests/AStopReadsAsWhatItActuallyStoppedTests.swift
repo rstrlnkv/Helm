@@ -20,7 +20,6 @@ import HelmRuntime
 ///   run reports non-zero, and nothing is left in the temporary folder.
 ///
 /// Nothing here reaches the network, root or the real installer.
-/// Kept: guards the defect fixed in 4b5e0df9 feat(settings): … a Health page of its own.
 final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
 
     // MARK: - The page and the log
@@ -122,12 +121,11 @@ final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
     }
 
     /// **A Stop at every moment of the wrapper's life, against an installer
-    /// that cannot be stopped once it has run its first line.** Every outcome
-    /// must be one of two: the installer ran and the wrapper reports its 0, or
-    /// the installer never ran and the wrapper reports non-zero — and the
-    /// temporary folder is empty either way. A 143 over an installer that ran
-    /// is the Stop claiming an install it did not stop; a 0 over one that did
-    /// not run is an install reported that never happened.
+    /// that cannot be stopped once it has run its first line.** Either the
+    /// installer ran and the wrapper reports its 0, or it never ran and the
+    /// wrapper reports non-zero, and the temporary folder is empty either way. A
+    /// 143 over an installer that ran claims a stop that did not happen; a 0
+    /// over one that did not run reports an install that never happened.
     func testEveryStopEitherLetTheInstallerFinishOrKeptItFromRunning() throws {
         let g = try ground("stop-sweep-success",
                            installer: "trap '' TERM\ntouch $MARK\necho installed\nexit 0")

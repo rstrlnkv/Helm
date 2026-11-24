@@ -10,12 +10,10 @@ import Module_Duplicates_Engine
 /// flight is shown, and `appear()` asks the keychain nothing; saving a chosen
 /// folder or policy still does, which `stop` does not refuse.
 ///
-/// The host calls the descriptor's `stop(_:)` before the engine's `deactivate()`:
-/// on the person's switch and on quit. A page still on screen (or a task already
-/// queued) may press a control after that; a search, a removal or a background
-/// scan sent to a deactivated engine is work nobody asked the module to do any
-/// more. Each press below is counted at the fake, and the count before `stop()` is
-/// the control that proves the fake would have counted it.
+/// The host calls the descriptor's `stop(_:)` before the engine's `deactivate()`,
+/// on the person's switch and on quit; a page still on screen or a queued task
+/// may press a control after that. Each press below is counted at the fake, and
+/// the count before `stop()` proves the fake would have counted it.
 @MainActor
 final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
 
@@ -95,10 +93,8 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
     }
 
     /// The search `stop()` drops can never answer, so nothing else would take
-    /// the phase off «Searching»: a model stopped mid-search kept saying so, and
-    /// a page that outlived the stop (or a switch back on, which builds a new
-    /// model but not a new page) drew a search nobody was running. Nothing
-    /// visible changes today, because a stopped model is never drawn.
+    /// the phase off «Searching»: a page that outlived the stop would draw a
+    /// search nobody is running.
     func testAStoppedModelIsNotLeftSearching() async {
         let work = AnsweringWork(groups: [keepAndExtra()], answering: .park)
         let dvm = duplicatesModel(over: work)

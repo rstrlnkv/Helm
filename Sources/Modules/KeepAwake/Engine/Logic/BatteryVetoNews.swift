@@ -53,13 +53,11 @@ enum BatteryVetoNews {
     /// is asked at the first moment there is something to say — and only ever
     /// once, because that is all macOS allows.
     ///
-    /// The conversation itself is `NoticeChannel.tell`'s, in `HelmRuntime` —
-    /// read the permission, ask once if macOS has never been asked, post if it
-    /// may — since the scan and sweep channels ask macOS the same question in
-    /// the same order. What stays here is the reason above, and the line below:
-    /// a silence because macOS refuses and a silence because the module was
-    /// switched off while the prompt stood are different facts, and only the
-    /// first is worth saying.
+    /// The conversation itself is `NoticeChannel.tell`'s, in `HelmRuntime`.
+    /// What stays here is the reason above, and the line below: a silence
+    /// because macOS refuses and a silence because the module was switched off
+    /// while the prompt stood are different facts, and only the first is worth
+    /// saying.
     static func tell(_ port: AutomationNoticePort, _ words: NoticeText) async {
         switch await NoticeChannel.tell(port, words) {
         case .notAllowed:

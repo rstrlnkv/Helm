@@ -8,39 +8,31 @@ import HelmRuntime
     /// from, and what the module itself ends in `stop(_:)`.
     associatedtype Model: AnyObject
     static var id: ModuleID { get }
-    /// **Computed on every read, never stored.** `ModuleMetadata` is a struct of
-    /// finished strings, so a `static let` calls `L()` once — the first time
-    /// anything in the process touches the descriptor — and keeps that language
-    /// until the app is restarted. All nine were declared that way, and the
-    /// sidebar, the page headers, the welcome steps and the panel all draw the
-    /// module's name from here: switching language in Settings redrew the pages
-    /// under names that did not change, which is the one thing the in-app picker
-    /// exists to avoid. `AModuleNamesItselfInTodaysLanguageTests` fails per
-    /// module on a stored one.
+    /// **Computed on every read, never stored.** `ModuleMetadata` is finished
+    /// strings, so a `static let` would keep the language of the first read
+    /// until a restart, and the sidebar, page headers, welcome steps and panel
+    /// would keep old names after a language switch.
+    /// `AModuleNamesItselfInTodaysLanguageTests` fails per module on a stored one.
     static var metadata: ModuleMetadata { get }
     static var category: ModuleCategory { get }
     /// The colour this module is known by.
     ///
-    /// Deliberately not defaulted. A default would let a module ship without a
-    /// colour of its own and inherit one silently — which is the defect this
-    /// replaces, where a colour per category gave four «files» modules one
-    /// blue. The compiler asking is better than a test noticing.
+    /// Deliberately not defaulted: a default would let a module ship without a
+    /// colour of its own and share one silently. The compiler asking is better
+    /// than a test noticing.
     static var tint: ModuleTint { get }
     /// The shape this module is known by, beside its colour.
     ///
-    /// Deliberately not defaulted, for the reason `tint` is not: a default would
-    /// let a module ship without a shape of its own and share another's, and the
-    /// compiler asking is better than a test noticing.
+    /// Deliberately not defaulted, for the reason `tint` is not.
     static var glyph: ShellGlyph { get }
     /// The engine for this module and the model drawn from it, built together
     /// (the host owns the lifecycle). `store` is the module's namespaced store.
     ///
     /// **And nothing else.** It builds objects; it does not start anything and
-    /// does not touch the machine — `activate()` is where a module reaches the
+    /// does not touch the machine: `activate()` is where a module reaches the
     /// system, and `attachMenuBarPresence()` is where it appears in the menu
-    /// bar. Keyboard's used to do the third of those inside the first, so a
-    /// measurement that built an engine against a configured store put a status
-    /// item on somebody's Mac.
+    /// bar. An engine built against a configured store, as a measurement does,
+    /// must not put anything on somebody's Mac.
     func makeModule(store: NamespacedStore) -> ModuleParts<Model>
     /// The model's own deactivation: the host calls it on the person's switch
     /// and on quit, before the engine's `deactivate()`, and never on a refused
@@ -55,12 +47,11 @@ import HelmRuntime
     /// is "no such door now" (stopped, or not this module), never an empty service.
     func appRemoval(_ model: Model) -> (any AppRemovalService)?
     /// A presence in the menu bar this module owns outright, apart from Helm's
-    /// own status item — Keyboard's language indicator is the only one today.
+    /// own status item, such as Keyboard's language indicator.
     ///
     /// Called by the host when the module starts running and undone when it
     /// stops, so «this module is live» and «this module is in the menu bar» are
-    /// one fact. Both default to nothing: a module with no presence of its own
-    /// says so by not overriding them.
+    /// one fact. Both default to nothing.
     func attachMenuBarPresence()
     func detachMenuBarPresence()
     func menuBar(_ model: Model) -> MenuBarContribution?
@@ -68,27 +59,18 @@ import HelmRuntime
     /// Whether this module is doing something right now — for the badge beside
     /// its name in the page header.
     ///
-    /// Nil by default, and nil is the honest answer for most modules: «active»
-    /// has to mean something the module can actually say. `statusAppearance`
-    /// is not that answer, however tempting — it reports a *claim on the
-    /// menu-bar icon*, so Disk in the middle of a scan returns `.inactive` and
-    /// a badge drawn from it would tell the person their scan was not running.
-    /// A module answers this when it has a running/not-running of its own, and
-    /// gets no badge until it does.
+    /// Nil by default: «active» has to mean something the module can say.
+    /// `statusAppearance` is not that answer: it reports a claim on the
+    /// menu-bar icon, so Disk in the middle of a scan returns `.inactive`, and a
+    /// badge drawn from it would say the scan was not running.
     func activity(_ model: Model) -> ModuleActivity?
     /// The permissions this module needs **as it is configured right now**.
     ///
-    /// `metadata.permissions` answers a different question — what a module
-    /// would use if everything in it were switched on — and that is the right
-    /// answer for a settings table listing what a module is capable of. It is
-    /// the wrong one for asking. Keep Awake declares `.accessibility` because
-    /// its pointer nudge posts synthetic events; the nudge ships off, so a
-    /// first launch put a modal in front of somebody offering the widest input
-    /// grant macOS has, for a switch they had never touched. And because this
-    /// bundle is ad-hoc signed, every update drops the grant and asks again.
-    ///
-    /// Defaults to the declared list, so a module that has nothing conditional
-    /// says nothing new.
+    /// `metadata.permissions` is what a module would use with everything
+    /// switched on, right for a table of what it can do and wrong for asking:
+    /// Keep Awake declares `.accessibility` for a pointer nudge that ships off,
+    /// and asking for it at first launch would offer the widest input grant
+    /// macOS has for a switch nobody touched. Defaults to the declared list.
     func currentPermissions() -> [ModulePermission]
     /// Desired host status-icon appearance for the model's current state. Default = inactive (white ring).
     func statusAppearance(_ model: Model) -> StatusAppearance
@@ -97,7 +79,7 @@ import HelmRuntime
     ///
     /// A module whose icon or badge follows its own view state keeps that state
     /// out of the host's reach, so the host cannot watch a shared object for it.
-    /// The default is nil, which means "the host has nothing to watch here".
+    /// Nil means the host has nothing to watch here.
     func statusChanges(_ model: Model) -> AnyPublisher<Void, Never>?
     /// The global shortcuts this module owns. Default: none.
     ///
@@ -111,10 +93,9 @@ import HelmRuntime
     /// has nothing worth saying at that size.
     ///
     /// A size is a different question, not a smaller answer: 1×1 says how
-    /// much, 2×1 says how much and what to do about it, 2×N says why it is
-    /// that much. A module that only knows the middle answer says so by
-    /// returning nil for the other two, and the panel clamps somebody's stored
-    /// choice to what is actually offered rather than dropping the widget.
+    /// much, 2×1 how much and what to do about it, 2×N why it is that much. A
+    /// module returns nil for a size it has no answer for, and the panel clamps
+    /// a stored choice to what is offered rather than dropping the widget.
     func panelWidget(_ size: PanelWidgetSize, _ model: Model) -> AnyView?
     /// Which sizes the above answers for. See the default.
     func panelWidgetSizes(_ model: Model) -> Set<PanelWidgetSize>
@@ -133,21 +114,17 @@ public extension ModuleDescriptor {
     static var hotkeys: [ModuleHotkey] { [] }
     func hotkeyPressed(_ hotkey: ModuleHotkey, _ model: Model) {}
 
-    /// Every module already draws one panel tile the width of the card, and
-    /// that is exactly `wide`. So the default answers `wide` with the tile it
-    /// already has and nil for the rest — the panel becomes a grid of
-    /// one-size widgets on the day this lands, identical to what it was, and
-    /// each module grows its other two sizes when somebody writes them. No
-    /// flag day, and no nine-module commit before anything can be seen.
+    /// Every module draws one panel tile the width of the card, which is
+    /// `wide`, so the default answers `wide` with that tile and nil for the
+    /// rest. A module overrides it when it has the other sizes.
     func panelWidget(_ size: PanelWidgetSize, _ model: Model) -> AnyView? {
         guard size == .wide else { return nil }
         return menuBar(model)?.panelTile
     }
 
     /// Probed from `panelWidget`, so a module that overrides one gets the
-    /// other for free. Worth overriding only where building the view is
-    /// expensive enough to matter — answering this is asked once per layout
-    /// pass and building a widget is not.
+    /// other for free. Override it only where building the view is expensive:
+    /// this is asked once per layout pass.
     func panelWidgetSizes(_ model: Model) -> Set<PanelWidgetSize> {
         Set(PanelWidgetSize.allCases.filter { panelWidget($0, model) != nil })
     }
@@ -184,10 +161,9 @@ public struct ModuleParts<Model: AnyObject> {
 
 /// What a module says about itself in its page header.
 ///
-/// Two cases and no third: this is not a place for progress or counts. v3
-/// draws the first as a green badge and the second as quiet text, because
-/// «not active» is the ordinary state and a badge for it would be a mark on
-/// every page that means nothing.
+/// Two cases and no third: this is not a place for progress or counts. The
+/// first is a green badge, the second quiet text, because «not active» is the
+/// ordinary state and a badge for it would mean nothing.
 public enum ModuleActivity: Equatable, Sendable {
     case active
     case idle

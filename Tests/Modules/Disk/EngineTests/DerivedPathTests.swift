@@ -4,16 +4,10 @@ import XCTest
 
 /// The paths the UI receives, pinned against the paths the scan was fed.
 ///
-/// `DiskNode` used to carry the full path beside the name on every node, which
-/// on a 1.5M-node tree measured 437.6 MB against 92 MB for the name alone. The
-/// path is now composed during the traversals that need it — the snapshot, the
-/// advisor, the ring — so the string a person sees, and the string that reaches
-/// `RemovableScope` when they trash a row, is built rather than stored.
-///
-/// That makes path composition a correctness question and not a formatting one.
-/// These tests say nothing about *how* the path is obtained: they feed known
-/// paths in and require the same strings back out, so they held before the
-/// storage was removed and have to hold after.
+/// `DiskNode` stores the name alone; the path is composed in the traversals that
+/// need it (the snapshot, the advisor, the ring), so the string a person sees,
+/// and the one the removal gate judges, is built rather than stored. These tests
+/// feed known paths in and require the same strings back out.
 final class DerivedPathTests: XCTestCase {
 
     /// Every path in the tree, in traversal order, duplicates kept.
@@ -24,11 +18,9 @@ final class DerivedPathTests: XCTestCase {
 
     // MARK: - The volume root
 
-    /// `/` is the case `ScanPath` was written for: joining a child onto it with
-    /// a plain `+ "/" +` yields `//Users`, and every descendant inherits the
-    /// doubled slash until comparisons against absolute paths stop matching.
-    /// Composing paths on the way down is exactly where that mistake gets made
-    /// again, so the root of a real volume is the first thing pinned.
+    /// `/` is the case `ScanPath` exists for: a plain `+ "/" +` yields
+    /// `//Users`, and every descendant inherits the doubled slash until
+    /// comparisons against absolute paths stop matching.
     func testScanningTheVolumeRootProducesNoDoubledSlash() {
         let builder = TreeBuilder(root: "/", foldThreshold: 1_000)
         builder.addFile(path: "/Users/ann/фильм.mkv", bytes: 2_000_000, fileID: 1)
@@ -77,12 +69,9 @@ final class DerivedPathTests: XCTestCase {
 
     // MARK: - The folded bucket
 
-    /// The bucket is invented, so its path is composed from a name a person can
-    /// also type. `DiskEntry.id` depends on that: it disambiguates the bucket
-    /// from a real file called `…` by appending a NUL, which is only needed
-    /// *because* the two paths are equal. If composition ever gave the bucket a
-    /// different string, the collision would disappear and so would the reason
-    /// for the NUL — quietly.
+    /// The bucket's path is composed from a name a person can also type, so it
+    /// equals a real file called `…`; `DiskEntry.id` tells them apart by
+    /// appending a NUL.
     func testTheInventedBucketGetsThePathARealFileOfThatNameWouldHave() {
         let builder = TreeBuilder(root: "/r", foldThreshold: 1_000)
         builder.addFile(path: "/r/…", bytes: 100_000, fileID: 1)   // a real file
@@ -96,11 +85,8 @@ final class DerivedPathTests: XCTestCase {
                        "a folded file has no row of its own: \(all)")
     }
 
-    /// The bucket directly inside a volume root, which is where the two rules
-    /// above meet: the parent path already ends in `/`, so this is the one place
-    /// the tree composes a path against a trailing slash. It is also the case
-    /// that makes the rest of this suite bite — the other paths are strings the
-    /// scan was handed, and only this one is arithmetic.
+    /// The bucket directly inside a volume root: the parent path already ends in
+    /// `/`, the one place the tree composes a path against a trailing slash.
     func testTheBucketAtTheVolumeRootDoesNotDoubleTheSlash() {
         let builder = TreeBuilder(root: "/", foldThreshold: 1_000)
         builder.addFile(path: "/tiny.txt", bytes: 10, fileID: 1)

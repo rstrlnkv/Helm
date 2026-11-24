@@ -93,7 +93,7 @@ final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
                        file: file, line: line)
     }
 
-    // MARK: M068: an edit that makes no picture
+    // MARK: An edit that makes no picture
 
     func testAnEditOnADisplayThePictureIsNotOnIsSaidInTheLogAndOnTheToast() async throws {
         let s = try scene()

@@ -4,24 +4,18 @@ import HelmRuntime
 /// The sudoers rule that lets Keep Awake run `pmset disablesleep`, and the
 /// exact command root is asked to run to put it there.
 ///
-/// Pure text, so the shape of what root does is a unit test rather than a
-/// comment. It was a comment before, and the comment was wrong: the rule was
-/// staged in `$TMPDIR` and only its *path* was handed to the privileged shell.
-/// The path stands in `ps auxww` for as long as the password prompt is up —
-/// seconds to minutes, not a race — `visudo -cf` checks syntax and not
-/// authorship, and `install` copies whatever is at that path when it runs. Any
-/// process running as this user could swap the file for
-/// `<user> ALL=(ALL) NOPASSWD: ALL`, pass the check and be handed permanent
-/// passwordless root. The content travels now; no user-writable path is named.
+/// Pure text, so the shape of what root does is a unit test. Root is handed
+/// the content, never a user-writable path: a staged path stands in `ps auxww`
+/// for as long as the password prompt is up, `visudo -cf` checks syntax and not
+/// authorship, and any process running as this user could swap the file for
+/// `<user> ALL=(ALL) NOPASSWD: ALL` and be handed permanent passwordless root.
 public enum SudoersRule {
     /// Where sudo reads the rule from. `/etc/sudoers.d` is root-owned, so every
     /// file this command touches is one only root can write.
     ///
     /// `public` because the screen that asks for the password names it: the row
     /// says where the grant lands and the explanation behind it carries the
-    /// `sudo rm` that takes it away by hand. That is one path spelled on both
-    /// sides of a target boundary if it is typed twice, and a command naming a
-    /// file this engine stopped writing is worse than no command at all.
+    /// `sudo rm` that takes it away by hand, so the path is spelled once.
     ///
     /// Helm Dev has a file of its own, so switching the lid option on and off
     /// there never creates, finds or withdraws the real Helm's grant.
@@ -63,33 +57,28 @@ public enum SudoersRule {
 
     /// What `sudo` is handed, word for word — and therefore what the rule has to
     /// spell, word for word, because `sudo` matches a command spec argument by
-    /// argument. Written out twice (here as text for root, in `PmsetClamshellPort`
-    /// as an argument vector) it is a name only one side ever changes, and the
-    /// drift is not an error anywhere: it is a call that quietly starts asking
-    /// for a password again.
+    /// argument. Spelled once for the rule and for `PmsetClamshellPort`'s
+    /// argument vector: a drift between them is no error anywhere, only a call
+    /// that quietly starts asking for a password again.
     static func disableSleepArguments(on: Bool) -> [String] {
         [pmsetPath, "disablesleep", on ? "1" : "0"]
     }
 
     static let removeArguments = current.removeArguments
 
-    /// The file, line by line. As narrow as it was — the two exact commands the
-    /// module runs — plus the one that takes the file away again.
+    /// The file, line by line: the two exact commands the module runs, plus
+    /// the one that takes the file away again.
     ///
     /// **The withdrawal is what gives the grant a lifetime.** `sudoers` has no
-    /// expiry and no conditionals, so until this line existed the only thing
-    /// that could remove the rule was an administrator dialog, which needs
-    /// somebody at the screen; dragging `Helm.app` to the Trash runs no code, so
-    /// the grant stayed for the life of the machine naming an app that was gone.
+    /// expiry and no conditionals, and dragging `Helm.app` to the Trash runs no
+    /// code, so without it only an administrator dialog could remove the rule.
     /// It is not a widening: the one thing it permits is deleting this very
     /// file, so the worst anything can do with it is take a privilege away.
     ///
-    /// Two shapes deliberately not taken. Pointing the rule at a script *inside
-    /// the bundle* would let deleting the app disarm the grant — and
-    /// `/Applications` is writable by an admin without a password, so replacing
-    /// that script buys permanent passwordless root: a leak turned into an
-    /// escalation. A root-owned helper outside the bundle is not removed by
-    /// dragging the app to the Trash either, so it answers nothing.
+    /// Not a script *inside the bundle*: `/Applications` is writable by an
+    /// admin without a password, so replacing that script would buy permanent
+    /// passwordless root. Not a root-owned helper outside the bundle either: the
+    /// Trash does not remove it, so it answers nothing.
     ///
     /// The header is for whoever finds this file years from now with no Helm on
     /// the Mac. `#` opens a comment in sudoers **except** for `#include` and
@@ -111,9 +100,8 @@ public enum SudoersRule {
     }
 
     /// One rule line: this account, root, no password, and nothing but these
-    /// commands. Written out per line it was the same twelve characters of
-    /// `ALL=(root) NOPASSWD:` twice, which is the part of this file that must
-    /// not be retyped.
+    /// commands. `ALL=(root) NOPASSWD:` is the part of this file that must not
+    /// be retyped.
     private static func grant(_ user: String, _ commands: [String]) -> String {
         "\(user) ALL=(root) NOPASSWD: " + commands.joined(separator: ", ")
     }
@@ -146,9 +134,9 @@ public enum SudoersRule {
             + " || { /bin/rm -f \(staging); exit 1; }"
     }
 
-    /// The withdrawal for the case the grant cannot cover it: a rule installed
-    /// by a version of Helm from before the `rm` line existed, or one written by
-    /// something else entirely. This is the one that costs a password.
+    /// The withdrawal for a rule the grant cannot cover — one with no `rm`
+    /// line of its own, or one written by something else entirely. This is the
+    /// one that costs a password.
     static func removeCommand(paths: Paths = current) -> String { spec(paths.removeArguments) }
 
     /// Single quotes, with the one character that can end them turned into a

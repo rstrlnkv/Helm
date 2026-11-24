@@ -4,12 +4,8 @@ import HelmRuntime
 
 /// The duplicate finder, as a module of its own.
 ///
-/// It began inside Disk, sharing that module's scan and its basket, because
-/// the folder it searched was whatever the ring was showing. That coupling was
-/// the feature's whole shape: you could not look for duplicates anywhere you
-/// had not first drawn a ring. Standing on its own, it takes a folder
-/// directly — which is what someone looking for duplicates actually wants —
-/// and Disk goes back to answering one question.
+/// It takes a folder directly, which is what someone looking for duplicates
+/// wants, rather than whatever Disk's ring is showing.
 public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///
@@ -36,10 +32,9 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// - Parameter trashing: the move itself, `HelmTrash.moveToTrash` in the app,
     ///   the parameter `HelmTrash.remove` already takes and for the same reason.
     ///   No default: a construction that forgot it would move whatever it was
-    ///   handed into the Trash of whoever runs it. What this engine reports as
-    ///   freed is arithmetic over a *clone family*, and the only fixture that can
-    ///   exercise it is a real `clonefile` pair — so the test that proves the
-    ///   figure must be able to run without moving anybody's file to the Trash.
+    ///   handed into the Trash of whoever runs it. The freed figure is clone
+    ///   family arithmetic, provable only on a real `clonefile` pair, so its
+    ///   test must run without moving anybody's file to the Trash.
     public convenience init(store: NamespacedStore? = nil,
                             settings: SettingGuard = DuplicatesSettings.guardOfScanSettings,
                             trashing: @escaping @Sendable (URL) throws -> Void) {
@@ -110,23 +105,18 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// a partial answer to "what is duplicated" is a wrong answer rather than a
     /// smaller right one.
     ///
-    /// **Written twice until now** — once for the page and once for the timer —
-    /// differing only in whether progress is reported and whether digests are
-    /// carried over. What the two copies shared was the box dance, and that is
-    /// the part that must not drift: `FinderBox`'s own comment records what a
-    /// slot cleared by the wrong search cost, which was a Stop button that
-    /// reached nothing and a `deactivate()` that left the hashing running.
+    /// **One place for both callers**, the page and the timer, which differ
+    /// only in whether progress is reported and whether digests are carried
+    /// over. The box handling is the part that must not drift (`FinderBox`).
     ///
     /// **What it could not look at travels with what it found.** The two counts
     /// are read off the scanner the moment its walk returns, here, where the
     /// instance that did the walking is still in hand — a hole nobody is told
-    /// about reads as a clean folder, which was this module's whole answer in the
-    /// case where it is most likely to be wrong.
+    /// about reads as a clean folder.
     ///
     /// **`unattended` has no default here**, and that is the point of naming it:
     /// the two callers below differ in exactly this, and a parameter one of them
-    /// could forget is how the timer's walk came to reach `~/Library` in the
-    /// first place.
+    /// could forget would let the timer's walk reach `~/Library`.
     private func run(under path: String, by rule: KeepRule, cache: HashCache?,
                      unattended: Bool,
                      onProgress: (@Sendable (DuplicateProgress) -> Void)?)
@@ -155,8 +145,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     ///
     /// The policy is the caller's, because the person at the open page may be
     /// looking at one they have just changed and not yet stored. No default: a
-    /// search that quietly keeps `standard` while the page says otherwise is the
-    /// two-pipelines defect wearing a parameter list.
+    /// search that quietly kept `standard` would follow one rule while the page
+    /// explains another.
     public func find(under path: String, keeping policy: KeepPolicy,
                      progress: (@Sendable (DuplicateProgress) -> Void)?)
     async -> DuplicateFindings? {
@@ -164,12 +154,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                   unattended: false, onProgress: progress)
     }
 
-    /// The policy the module was left set to, judged against its seal.
-    ///
-    /// The reading itself is `DuplicatesSettings.keepPolicy` and lives there
-    /// because the page reads it too — what is in force is one question, and the
-    /// screen that shows it and the scan that applies it must not answer it
-    /// twice.
+    /// The policy the module was left set to, judged against its seal. The
+    /// reading is `DuplicatesSettings.keepPolicy`, which the page shares.
     func storedKeepPolicy() -> KeepPolicy {
         DuplicatesSettings.keepPolicy(in: store, guardedBy: settings)
     }
@@ -181,6 +167,9 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             .appendingPathComponent("hashes.json")
     }
 
+    /// The digests the last background scan left. Nil when there is no file
+    /// yet, when it cannot be read, or when it does not decode; the caller
+    /// starts from an empty map in every case.
     static func loadCache() -> HashCache? {
         guard let data = try? Data(contentsOf: cacheURL()) else { return nil }
         return try? JSONDecoder().decode(HashCache.self, from: data)
@@ -188,13 +177,10 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
 
     /// A refusal here costs the whole prize of the sweep that just ran.
     ///
-    /// The digests are what makes the *next* sweep quick — it is the one part of
-    /// this module that reads every candidate file end to end — so a cache that
-    /// never lands means the next run hashes, again, everything this one just
-    /// hashed, and the run after that as well. Nothing about the report is
-    /// wrong, which is why it would never be noticed: the module is simply
-    /// always as slow as its first run. Said out loud so the log answers the
-    /// question somebody eventually asks.
+    /// The digests are what makes the *next* sweep quick, so a cache that never
+    /// lands means every run hashes everything again. Nothing about the report
+    /// is wrong, which is why it would never be noticed: the module is simply
+    /// always as slow as its first run. Said out loud so the log answers that.
     static func saveCache(_ cache: HashCache) {
         if !PrivateFile.writeMakingTheFolder(cache, at: cacheURL()) {
             HelmLog.shared.warn(moduleID, "the digest cache could not be saved — the next sweep "
@@ -204,8 +190,9 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
 
     /// The same search the page runs, started by the timer instead of a person.
     ///
-    /// **Nil rather than an empty report** whenever it cannot answer honestly: a
-    /// refused root, or a walk that was cancelled. An empty report means "we
+    /// **Nil rather than an empty report** whenever it cannot answer honestly:
+    /// no folder stored, a stored folder whose seal is broken, a refused root,
+    /// or a walk that was cancelled. An empty report means "we
     /// looked and there was nothing", and a coordinator that could not tell the
     /// two apart would record «проверено, чисто» about a folder nobody read.
     ///
@@ -215,14 +202,11 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// the gate that exists for precisely this difference.
     public func backgroundScan() async -> ScanReport? {
         // The walk uses what the gate returned, never what was stored. Judging
-        // one spelling and walking another is how `$HOME/link/.` got past a
-        // check that had already approved a different path.
+        // one spelling and walking another would let `$HOME/link/.` past a
+        // check that had approved a different path.
         //
-        // **The stored root is not evidence of anything on its own.** It is a
-        // plain string in a plist any process running as this user can rewrite,
-        // and here it decides how far a reader reaches with nobody at the desk.
-        // `ScanRoot` below bounds where it may point; the seal says whether Helm
-        // is the one who put it there.
+        // The seal says whether Helm is the one who stored the root; `ScanRoot`
+        // below bounds where it may point.
         let stored: String
         switch DuplicatesSettings.stored(DuplicatesSettings.folderKey, in: store, guardedBy: settings) {
         case .unset:
@@ -246,9 +230,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         let cache = Self.loadCache() ?? HashCache()
         // Unattended, which is not only "no progress to report": the walk stops
         // at the subtrees of the home a reader nobody is watching has no
-        // business in. `ScanRoot.resolve` above bounds where it may *begin*, and
-        // the home — which it allows, because the home is the commonest search
-        // root there is — has `~/Library` one step inside it.
+        // business in (Architecture/Duplicates.md § Duplicates).
         guard let found = await run(under: root, by: KeepRule(storedKeepPolicy()),
                                     cache: cache, unattended: true,
                                     onProgress: nil) else { return nil }
@@ -269,7 +251,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // (`CloneShare.reclaimable`) taken one extra further each time, so a
         // figure summed from the items (`ScanChange.appearedBytes`, the
         // notification's) is the group's `wasted` and a clone is not counted in
-        // full. The journal's lists from before this carry each copy's own size.
+        // full.
         let items = groups.flatMap { group -> [ScanItem] in
             var freed = 0
             return group.copies.dropFirst().enumerated().map { index, copy in
@@ -291,12 +273,9 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// about, so there is no entrance that removes on the strength of the scan
     /// alone.
     ///
-    /// **Every pair is read again here**, immediately before anything moves.
-    /// The offer on screen is always older than the press that acts on it —
-    /// minutes when a person ran the search, a day when the timer did, longer
-    /// still once a cached digest stands in for a file. A pair that stopped
-    /// matching is refused with `changedSinceScan` and nothing is attempted;
-    /// `DuplicateVerification` says why it can stop matching.
+    /// **Every pair is read again here**, immediately before anything moves. A
+    /// pair that stopped matching is refused with `changedSinceScan` and nothing
+    /// is attempted; `DuplicateVerification` says why it can stop matching.
     ///
     /// The scope gate still runs, and first: what may be deleted at all is a
     /// different question from whether this particular deletion still makes
@@ -324,12 +303,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         let slot = removalBox.start(stop)
         defer { slot.finish() }
         return await offTheCooperativePool {
-            // The batch against itself, before the batch against the disk: a
-            // plan that takes a copy another plan is keeping passes both of the
-            // gates below — `UserFileScope` judges a path and
-            // `DuplicateVerification` judges a pair, and each half of
-            // `[a→keep b, b→keep a]` is a valid path and a valid pair. Refused
-            // here it costs nothing; found later it would have cost the content.
+            // The batch against itself, before the batch against the disk
+            // (`KeptCopies` says why the gates below cannot see it).
             let (honoured, contradicted) = KeptCopies.partition(plans)
             var byPath: [String: DuplicatePlan] = [:]
             for plan in honoured { byPath[plan.remove] = plan }
@@ -337,17 +312,12 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
 
             var allowed: [String] = []
             var stale: [String] = []
-            // Apart from `stale`, because the verdicts are two facts: a pair
-            // that stopped matching *moved on*, a pair that could not be read
-            // is wherever it was — a permission withdrawn, a volume gone, or
-            // the survivor unreadable. Folded together, the person was told
-            // «this is not where Helm found it» about a file that is exactly
-            // there, and the actionable half — check the access — was hidden.
+            // Apart from `stale`, because the verdicts are two facts
+            // (`refusals` says which).
             var unreadable: [String] = []
             // Its own phase, beside the `duplicates.trash` one `HelmTrash.remove`
-            // opens below: the re-reading is where the minutes go, and it ran
-            // namelessly — a spike in the memory trail had no operation named
-            // against it.
+            // opens below: the re-reading is where the minutes go, and a spike
+            // in the memory trail needs an operation named against it.
             let stopped = HelmActivity.phase("duplicates.verify") { () -> Bool in
                 // Before the phase ends, as `HelmTrash` takes it: the line names
                 // what else runs beside the label it excludes.
@@ -394,15 +364,14 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             }
             // Every copy that stays, named for the batch's clone accounting: a
             // marked copy that shares its blocks with a copy that is not going
-            // gives the disk nothing back, and it is this module — where the
-            // survivor is never in the batch — that the seed exists for.
+            // gives the disk nothing back, and in this module the survivor is
+            // never in the batch.
             //
             // **Not merely the survivors.** `DuplicateGroup.reclaimable`, which
             // is what the bar above the press promises, counts a family as held
             // by *any* copy that is not marked; a clone the person left unticked
             // holds its family exactly as a survivor does, and seeded from the
-            // plans alone the banner charged its twin in full — one screen
-            // promising 0 and reporting 4 MB about the same two files. `staying`
+            // plans alone the banner would charge its twin in full. `staying`
             // is that fact, and it comes from the page because nothing here can
             // work it out: `HelmTrash`'s own doc says there is no reverse lookup
             // from a clone family to its members.
@@ -436,8 +405,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// The three are apart because they are three facts. A pair that stopped
     /// matching *moved on*; a pair that could not be read is wherever it was — a
     /// permission withdrawn, a volume gone, or the survivor unreadable — and
-    /// folded together, the person was told «this is not where Helm found it»
-    /// about a file that is exactly there, while the actionable half was hidden.
+    /// folded together, the person would be told «this is not where Helm found
+    /// it» about a file that is exactly there, with the actionable half hidden.
     ///
     /// A contradiction — a plan taking a copy the same batch is keeping — wears
     /// `changedSinceScan`, the closest true thing an existing reason says:
@@ -470,12 +439,11 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
 
 /// What a search answers with: the groups, and what the walk could not look at.
 ///
-/// **A bare array had nowhere to put the second half.** The scanner counts the
-/// directories it was refused, the files whose digest it could not take and the
-/// application libraries it declined to enter, and all three ended in the log —
-/// so the page drew «Every large file under this folder is one of a kind» over a
-/// tree that had been refused at every door. `DuplicatesEmpty` is the rule that
-/// reads these.
+/// The scanner counts the directories it was refused, the files whose digest
+/// it could not take and the application libraries it declined to enter;
+/// without them the page would draw «Every large file under this folder is one
+/// of a kind» over a tree refused at every door. `DuplicatesEmpty` is the rule
+/// that reads these.
 ///
 /// The counts and not the paths: whose folder was in the way is nobody's
 /// business but the reader's, and a count is what the sentence needs.
@@ -498,9 +466,8 @@ public struct DuplicateFindings: Equatable, Sendable {
 /// What `trash` answers with: everything `HelmTrash.Result` says,
 /// plus whether the person stopped it first.
 ///
-/// It was a bare typealias of the result until the removal learned to stop.
 /// A stopped removal is a fourth outcome — not a success, not a refusal, not
-/// silence — and folding it to zeroes drew nothing at all, which reads as
+/// silence — and folded to zeroes it would draw nothing at all, which reads as
 /// «press it again». `cancelled` rides beside the counts rather than replacing
 /// them, so the refusals found before the stop are still reported.
 public struct DuplicateRemoval: Equatable, Sendable {
@@ -542,13 +509,11 @@ public struct DuplicatePlan: Equatable, Sendable {
 
 /// Serial box around an in-flight job, so cancel can reach it.
 ///
-/// A job leaving clears the slot it was given and no other. The search's box
-/// used to clear itself outright: a superseded search returning — cancelled,
-/// and after its replacement had already started — emptied the box behind the
-/// search that had taken its place, and from then on Stop reached nothing and
-/// `deactivate()` left the hashing running. The removal's stop flag sits in
-/// the same shape for the same reason, which is why the box is generic rather
-/// than written twice.
+/// A job leaving clears the slot it was given and no other. A superseded
+/// search returns after its replacement has started; clearing the box outright
+/// would empty it behind the new search, so Stop would reach nothing and
+/// `deactivate()` would leave the hashing running. The removal's stop flag
+/// needs the same shape, which is why the box is generic.
 final class InFlightBox<Job: AnyObject>: @unchecked Sendable {
     /// A serial queue rather than a lock: the callers are async, and an NSLock
     /// cannot be taken across a suspension point.

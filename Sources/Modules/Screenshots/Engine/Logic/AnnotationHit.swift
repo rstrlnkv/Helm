@@ -18,7 +18,6 @@ enum AnnotationHit {
     static func takesByArea(_ annotation: Annotation) -> Bool { annotation.isFilled || annotation.tool == .blur || annotation.tool == .text || annotation.tool == .emoji
             || annotation.tool == .magnifier }
 
-    /// Whether `point` is on `annotation`.
     static func hits(_ annotation: Annotation, at point: CGPoint) -> Bool {
         guard point.x.isFinite, point.y.isFinite, annotation.isUsable else { return false }
         let stroke = annotation.stroke

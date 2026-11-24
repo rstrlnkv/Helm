@@ -10,9 +10,8 @@ import HelmRuntime
 public enum RuleCondition: Codable, Equatable, Sendable {
     case name(TextComparison, String)
     /// The name without its extension. A second condition rather than a changed
-    /// `.name`, because a rule saying "name contains .pdf" works today and
-    /// turning it into one that never fires is a break with no error and no
-    /// message — an Autopilot that simply stops tidying.
+    /// `.name`, because a stored rule saying "name contains .pdf" must keep
+    /// firing: a silent break is an Autopilot that simply stops tidying.
     case baseName(TextComparison, String)
     /// Lowercase, no dots. A file matches if its own extension is in the list.
     case fileExtension([String])
@@ -37,12 +36,10 @@ extension RuleCondition {
     /// which is the one thing this module must not draw.
     ///
     /// **Here and not in `storable`.** Every launch reads the stored rules
-    /// through `storable`, so stripping the dot there would change what a rule
-    /// already on somebody's Mac does: a condition inert since the day it was
-    /// written would begin moving or trashing files, unattended, because Helm
-    /// was updated. A rule may come to match *less* on its own — that is what
-    /// this module's repairs do — and it comes to match more only with somebody
-    /// typing it.
+    /// through `storable`, so stripping the dot there would make an inert
+    /// stored condition begin moving or trashing files, unattended. A rule may
+    /// come to match *less* on its own; it comes to match more only with
+    /// somebody typing it.
     ///
     /// A dot on its own is not an extension and is dropped with the empties, so
     /// the field cannot produce the entry that would match every file.
@@ -79,16 +76,13 @@ extension RuleCondition {
     /// A number this condition can be stored with.
     ///
     /// `JSONEncoder` refuses a non-finite `Double`, and the rules are one JSON
-    /// value: a single `1e999` in one condition of one rule made saving throw,
-    /// which took *every folder* with it. The number is clamped rather than the
-    /// save abandoned — losing somebody's other folders to a typo in this one
-    /// is a far worse answer than storing a bound they will see on the screen.
+    /// value, so a single `1e999` would make saving throw and take *every
+    /// folder* with it. Clamping keeps the save.
     ///
     /// This brings a number into the range `JSONEncoder` will take. It does not
-    /// decide whether the number is one anybody would mean — `accepts` does
-    /// that, and `storable` drops what it cannot repair. The two were once
-    /// claimed to be the same rule and were not: clamping a negative gives `0`,
-    /// and "larger than 0 MB" is true of every file in the folder.
+    /// decide whether the number is one anybody would mean: `accepts` does
+    /// that, and `storable` drops what it cannot repair (clamping a negative
+    /// gives `0`, and "larger than 0 MB" is true of every file in the folder).
     /// Non-finite takes the upper bound, and the choice is written here rather
     /// than inside the clamp: `clampedIfFinite` refuses ±∞ and NaN precisely
     /// because sending them to *a* bound is safe under one comparison and
@@ -97,12 +91,8 @@ extension RuleCondition {
         value.clampedIfFinite(to: lowerBound...upperBound) ?? upperBound
     }
 
-    /// What the editor's field will take. The comment above `clamp` says the
-    /// two rules are the same, and they had already drifted: `clamp` admitted
-    /// `0` and the field refused it, `clamp` admitted the upper bound and the
-    /// field refused that too. Stated once here instead, so the sentence stays
-    /// true. `0` is still refused at the keyboard — "larger than 0 MB" is a
-    /// condition that matches every file, which is not a rule anybody means.
+    /// What the editor's field will take, stated once. `0` is refused:
+    /// "larger than 0 MB" matches every file, which is not a rule anybody means.
     public static func accepts(_ value: Double) -> Bool {
         value.isFinite && value > lowerBound && value <= upperBound
     }
@@ -144,17 +134,13 @@ extension RuleCondition {
     /// The same condition, or nothing when the number it carries is not one
     /// the editor would let anybody type.
     ///
-    /// Clamping was the wrong repair and in the wrong direction. `clamp`
-    /// brought a negative or a `0` up to `0`, which as "larger than 0 MB"
-    /// matches **every file in the folder** — and a rule whose action is Trash
-    /// then runs on all of them, on a timer, unattended. The failure mode of a
-    /// corrupted number is "matches everything", so the safe repair is
-    /// "matches nothing": the condition is dropped, and `RuleMatcher` already
-    /// refuses a rule left with none, for this exact reason.
+    /// Not clamped: a negative clamped to `0` reads as "larger than 0 MB" and
+    /// matches **every file in the folder**, and a Trash rule would then run on
+    /// all of them, unattended. The safe repair of a corrupted number is
+    /// "matches nothing": the condition is dropped, and `RuleMatcher` refuses a
+    /// rule left with none.
     ///
-    /// Numbers are still brought into range where they are merely out of it —
-    /// `JSONEncoder` refuses a non-finite `Double`, and the rules are one JSON
-    /// value, so a single `1e999` used to discard every folder somebody had.
+    /// Numbers merely out of range are still brought into it (`clamp`).
     var storable: RuleCondition? {
         func repaired(_ value: Double) -> Double? {
             // Non-finite first, and dropped rather than clamped. `clamp` sends
@@ -169,13 +155,9 @@ extension RuleCondition {
         }
         // **Every case named, and no `default`.** The three that carry a number
         // are repaired; the six that carry text or a kind have nothing to
-        // repair and say so by name. A `default: return self` stood here, and
-        // of all the places in this app to swallow an unhandled case this was
-        // the worst one: a tenth condition carrying a `Double` would fall
-        // through it unrepaired, and the paragraph three lines above records
-        // what that costs — a single `1e999` makes `JSONEncoder` throw, the
-        // rules are one JSON value, and the save takes *every folder* the
-        // person has with it. Adding such a case is now a build error.
+        // repair and say so by name. A tenth condition carrying a `Double` must
+        // be a build error here, not a value that reaches `JSONEncoder`
+        // unrepaired.
         switch self {
         case let .size(comparison, megabytes):
             return repaired(megabytes).map { .size(comparison, megabytes: $0) }

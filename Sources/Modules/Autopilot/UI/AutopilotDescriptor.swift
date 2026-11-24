@@ -8,15 +8,11 @@ import SwiftUI
     public typealias Model = AutopilotViewModel
 
     public static let id = ModuleID(AutopilotEngine.moduleID)
-    /// **The one module that has something to hand over on a first launch.**
-    /// Every other one either works the moment it is switched on or waits for a
-    /// gesture; this one does nothing at all until somebody writes a rule, and a
-    /// tour that left them at «Autopilot: folders that keep themselves in order»
-    /// has described a feature and delivered none of it. The offer is the way to
-    /// the page that shows the five rules they can have without writing one —
-    /// worded as going there (`tourOffer`) and not as showing the rules, because
-    /// the tour cannot know whether the page still has them to show: it does
-    /// only while there is no rule at all.
+    /// **The one module that has something to hand over on a first launch.** It
+    /// does nothing until somebody writes a rule, so the tour offers the way to
+    /// the page that shows the five rules they can have without writing one.
+    /// Worded as going there (`tourOffer`), not as showing the rules: the page
+    /// has them only while there is no rule at all, and the tour cannot know.
     public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: ApStr.moduleName, summary: ApStr.summary,
         sfSymbol: symbol, permissions: [.fullDisk],
@@ -37,10 +33,8 @@ import SwiftUI
     private func productionEngine(store: NamespacedStore,
                                   historyChanged: @escaping @Sendable () -> Void) -> AutopilotEngine {
         // The sweep runs hourly with nobody at the desk and it trashes files,
-        // which makes it the one thing this module does that a person is owed
-        // out loud. The sentence comes from here, because `L()` is `HelmUI`'s
-        // and the engine cannot see it — the shape Keep Awake's battery veto
-        // already has.
+        // so a person is owed a notice. The sentence comes from here because
+        // `L()` is `HelmUI`'s and the engine cannot see it.
         AutopilotEngine(store: store,
                         sweepNotice: SweepNotifier(
                             port: SystemAutomationNotice(area: AutopilotEngine.moduleID),
@@ -70,12 +64,9 @@ import SwiftUI
     /// on the person's switch and on quit.
     public func stop(_ model: AutopilotViewModel) { model.stop() }
 
-    /// A row in the utilities list, not a tile.
-    ///
-    /// It had a widget for a while — the count of watched folders, the words
-    /// put right today — and both are numbers without a question behind them:
-    /// nobody opens a menu bar to find out how many folders are watched. A tile
-    /// has to earn its 90 pt, and this one was earning it by existing.
+    /// A row in the utilities list, not a tile: what a tile could show, the
+    /// folders watched or the files put right today, answers no question anyone
+    /// opens a menu bar to ask.
     public func menuBar(_ model: AutopilotViewModel) -> MenuBarContribution? { .utility }
 
     public func settingsPage(_ model: AutopilotViewModel) -> AnyView {

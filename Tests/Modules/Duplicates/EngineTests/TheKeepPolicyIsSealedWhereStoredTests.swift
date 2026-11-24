@@ -7,8 +7,8 @@ import XCTest
 /// which of somebody's identical files is the spare one — and it lives in
 /// `com.helm.app.plist`, which any process running as this user can rewrite.
 ///
-/// **It refuses in a different direction from the folder beside it**, and that
-/// is the decision this file records. The folder says *where* an unattended
+/// **It refuses in a different direction from the folder beside it.** The
+/// folder says *where* an unattended
 /// reader walks, so a value Helm did not write stops the walk. This one only
 /// says which of two identical files is offered for deletion: taking the whole
 /// feature away to defend a preference is refusing in the unsafe direction, so a
@@ -61,7 +61,7 @@ final class TheKeepPolicyIsSealedWhereStoredTests: XCTestCase {
     /// The door `.adopt` leaves open is spent on the first read, whatever is
     /// stored. A getter that answers with its default before touching the guard
     /// leaves an installation sitting one unsealed value away from adopting a
-    /// stranger's for ever — `AppSettings.disabledScans` shipped exactly that.
+    /// stranger's for ever.
     func testTheKeyIsEstablishedOnTheFirstReadEvenWithNothingStored() {
         let keys = SealKeyProbe(firstUse: true)
 
@@ -93,11 +93,9 @@ final class TheKeepPolicyIsSealedWhereStoredTests: XCTestCase {
         seal(KeepPolicy.byPlace.rawValue, with: keys)
         store.set(KeepPolicy.byDate.rawValue, for: key)   // …and now it is forged
 
-        // **The forged value is the one that is not the default**, and it has to
-        // be: planting `byPlace` here would assert that the answer is `byPlace`,
-        // which a reader that skipped the seal entirely also satisfies. Measured
-        // — the mutation that reads the file unchecked passed this case the
-        // first time it was written.
+        // **The forged value is the one that is not the default**: planting
+        // `byPlace` here would assert that the answer is `byPlace`, which a
+        // reader that skipped the seal entirely also satisfies.
         XCTAssertEqual(engine(keys).storedKeepPolicy(), .standard)
     }
 
@@ -121,13 +119,11 @@ final class TheKeepPolicyIsSealedWhereStoredTests: XCTestCase {
     // MARK: - And a broken seal does not stop the scan
 
     /// The direction of the refusal, asserted where it can be seen: the folder is
-    /// Helm's own, the policy is not, and the scan still happens. Refusing to
-    /// look for duplicates at all because a *preference* was tampered with takes
-    /// the feature away to defend the thing that matters least about it.
+    /// Helm's own, the policy is not, and the scan still happens.
     ///
     /// The fixture is in the home directory because `ScanRoot` refuses a root
-    /// outside it — one in `/var/folders` would come back nil for the right
-    /// reason and prove nothing about this one.
+    /// outside it — one in `/var/folders` would come back nil for that reason
+    /// and prove nothing about this one.
     func testABrokenPolicySealStillScans() async throws {
         let fixture = URL(fileURLWithPath: NSHomeDirectory())
             .appendingPathComponent(".helm-keep-policy-test-\(UUID().uuidString)")

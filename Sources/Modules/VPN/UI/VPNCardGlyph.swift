@@ -6,17 +6,13 @@ import Module_VPN_Engine
 /// The mark on a connection's button, for each of the three verbs the card can
 /// offer.
 ///
-/// **A power key, and one exception.** Connecting and disconnecting are the two
-/// directions of one act — the Mac's own power key is the same key both ways —
-/// so both wear `power`, and which direction it is comes from the row it sits
-/// in: the dot, the ring and the status word all say it already. Abandoning a
-/// handshake is not that act, and it takes `xmark`: there is no connection to
-/// switch off yet, which is the same reasoning `VPNCardAction` uses to give it
-/// its own word.
+/// **A power key, and one exception.** Connecting and disconnecting are two
+/// directions of one act, so both wear `power`; the row's dot and status word
+/// say which. Abandoning a handshake takes `xmark`: there is no connection to
+/// switch off yet (`VPNCardAction` gives it its own word for the same reason).
 ///
-/// The word has not gone anywhere. It is the button's tooltip and the name
-/// VoiceOver reads (`VPNStr.cardWord`), so the control is named in the two
-/// places a glyph-faced control has to be named.
+/// The word is the button's tooltip and the name VoiceOver reads
+/// (`VPNStr.cardWord`).
 enum VPNCardGlyph {
     /// A symbol name is a string, and a string can be wrong: a misspelling
     /// draws nothing at all and looks like a button that lost its face.

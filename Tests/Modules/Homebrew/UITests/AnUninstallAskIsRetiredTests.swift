@@ -13,14 +13,11 @@ private func pair(_ runner: ProcessRunner) -> (HomebrewEngine, HomebrewViewModel
 
 /// An answer that arrives after the press it belonged to is over says nothing.
 ///
-/// The press is asynchronous and nothing on the page is disabled while the query
-/// is out — the page's own `disabled` tracks long operations, not queries. So two
-/// presses put two queries in flight, and with no token the last continuation to
-/// resume wins: cancel the dialog that opened for the second package and the
-/// first one's answer raises a dialog nobody asked for, over the app's only
-/// irreversible deletion; or the title and the list swap under someone reading
-/// them. `LatestRequest` is what `search(_:)` in the same view model already
-/// uses, for the reason written out there.
+/// Nothing on the page is disabled while the query is out, so two presses put
+/// two queries in flight. The first one's answer must not raise a dialog nobody
+/// asked for over the app's only irreversible deletion, nor swap the title and
+/// the list under someone reading them. `LatestRequest` retires it, as for
+/// `search(_:)`.
 @MainActor
 final class ALateReadingCannotRaiseADialogTests: XCTestCase {
 
@@ -50,10 +47,8 @@ final class ALateReadingCannotRaiseADialogTests: XCTestCase {
         withExtendedLifetime(engine) {}
     }
 
-    /// The same two presses, and then the person closes the dialog. Nothing is
-    /// on screen and nothing may put anything there: a confirmation for an
-    /// irreversible deletion that opens by itself is the worst shape this can
-    /// take.
+    /// The same two presses, then the person closes the dialog: nothing may
+    /// reopen a confirmation for an irreversible deletion by itself.
     func testALateAnswerDoesNotReopenAClosedDialog() async {
         let runner = FakeBrew(uses: ["openssl@3": "aria2\nnode\n"], park: "openssl@3")
         let (engine, vm) = pair(runner)
@@ -72,30 +67,16 @@ final class ALateReadingCannotRaiseADialogTests: XCTestCase {
 
 /// **Leaving the page must retire an uninstall ask that is still out.**
 ///
-/// `ALateReadingCannotRaiseADialogTests` says the sentence this class proves the
-/// other half of: «a confirmation for an irreversible deletion that opens by
-/// itself is the worst shape this can take». There it is a second press and a
-/// cancel that retire the first query. Neither of those is the case here.
+/// The press launches an unstructured `Task` not tied to the view, and the
+/// answer can take the whole query deadline (`defaultQueryTimeout`) when another
+/// `brew` holds the lock. Meanwhile the person can switch modules or close the
+/// Settings window, and `.helmIdlesOffScreen()` unmounts the page.
 ///
-/// The press launches an unstructured `Task` that is not tied to the view's
-/// lifetime, and the answer it waits for can take the whole query deadline —
-/// `defaultQueryTimeout` in `Sources/Modules/Homebrew/Engine/SystemPorts.swift`,
-/// 90 s, reached whenever another `brew` holds the lock. In that window the
-/// person can switch modules in the sidebar or close the Settings window, and
-/// both hosting controllers carry `.helmIdlesOffScreen()`, so either unmounts
-/// the page.
-///
-/// `pendingUninstall` used to be the page's `@State` and died with the subtree.
-/// It lives on `HomebrewViewModel` now, and the descriptor builds that once per
-/// enable, so it outlives the page — so the answer lands on a live view model
-/// with no page mounted, sets `pendingUninstall`, and nothing clears it. The
-/// dialog's `isPresented` is derived from that property alone: the next visit to
-/// Homebrew raises a confirmation nobody asked for, over a dependents reading
-/// taken arbitrarily long ago.
-///
-/// `LatestRequest` does not cover this on its own. It retires work on a later
-/// press and on a cancel; leaving the page is neither, and only the page knows
-/// it has gone.
+/// `pendingUninstall` lives on `HomebrewViewModel`, which outlives the page, and
+/// the dialog's `isPresented` is derived from it alone. An answer landing with no
+/// page mounted must not leave it set, or the next visit raises a confirmation
+/// nobody asked for over a stale dependents reading. `LatestRequest` retires
+/// work on a later press and on a cancel; only the page knows it has gone.
 @MainActor
 final class LeavingThePageRetiresAnUninstallAskTests: XCTestCase {
 
@@ -127,34 +108,18 @@ final class LeavingThePageRetiresAnUninstallAskTests: XCTestCase {
 
 /// **Moving off the package must retire an uninstall ask that is still out.**
 ///
-/// The third class in this family, and the one that covers the gestures the
-/// other two do not. `ALateReadingCannotRaiseADialogTests` retires an ask with
-/// a second press and with a cancel; `LeavingThePageRetiresAnUninstallAskTests`
-/// retires it by unmounting the page. All three exist for one sentence: «a
-/// confirmation for an irreversible deletion that opens by itself is the worst
-/// shape this can take».
-///
-/// `askToUninstall` is asynchronous, and the `brew uses --installed` behind it
-/// can be out for the whole query deadline — `defaultQueryTimeout` in
-/// `Sources/Modules/Homebrew/Engine/SystemPorts.swift`, 90 s, reached whenever
-/// another `brew` holds the lock. In that window the person can move off the
-/// package three ways without pressing Cancel and without leaving the page:
+/// `askToUninstall` is asynchronous and its `brew uses --installed` can be out
+/// for the whole query deadline. Meanwhile the person can move off the package
+/// without pressing Cancel and without leaving the page:
 ///
 /// - **deselecting** in the list, which is `select(nil)`;
 /// - **another row**, which is `List(selection:)`'s setter, `select(id)`;
 /// - **another segment**, which is the segmented picker writing `segment`.
 ///
-/// None of the three is a second press and none is a cancel, so `LatestRequest`
-/// does not cover them; none unmounts the page, so `.onDisappear` does not
-/// either. The answer landed afterwards and raised the modal confirmation over
-/// whatever the person had moved to — a list, a different package, a different
-/// segment.
-///
-/// The subject of the ask is the *pair* `(segment, selection[segment])`: it is
-/// raised from the package `packageDetail` is drawing, and `packageDetail`
-/// reads both. So both fields retire it, which is two write points rather than
-/// three gestures — the picker's binding writes `segment` and never goes
-/// through `select(_:)`.
+/// None is a second press, a cancel or an unmount. The subject of the ask is the
+/// *pair* `(segment, selection[segment])`, which `packageDetail` reads, so a
+/// write to either field retires it; the picker's binding writes `segment` and
+/// never goes through `select(_:)`.
 @MainActor
 final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
 
@@ -183,10 +148,8 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
 
     // MARK: - The ask does land when nothing moves
 
-    /// Assert the subject happened before asserting an absence: without this
-    /// the three cases below would pass against an `askToUninstall` that raises
-    /// nothing at all, which is the default in a test process the moment
-    /// anything upstream of the query stops answering.
+    /// The subject happened: without this the cases below would pass against an
+    /// `askToUninstall` that raises nothing at all.
     func testTheAskStillLandsWhenTheSelectionDoesNotMove() async {
         let runner = self.runner()
         let (engine, vm) = pair(runner)
@@ -259,11 +222,9 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
 
 /// The reading is taken for the press it belongs to, and it does not outlive it.
 ///
-/// Two packages, asked one after the other: the second dialog must never carry
-/// the first one's dependents. This is the stored-reading question the tree asks
-/// everywhere — what happened between the reading and the act — and here the act
-/// is a person reading a sentence and deciding.
-/// Kept: guards M217 (backlog, Homebrew; fixed 2026-11-11): both doors to `brew uninstall` read the dependents first and draw one note.
+/// Two packages asked one after the other: the second dialog never carries the
+/// first one's dependents. Both doors to `brew uninstall` read the dependents
+/// first and draw one note.
 @MainActor
 final class UninstallNamesWhatStillNeedsItTests: XCTestCase {
 

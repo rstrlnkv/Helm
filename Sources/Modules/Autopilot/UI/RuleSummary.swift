@@ -74,8 +74,7 @@ enum RuleSummary {
     ///
     /// `Int(value)` traps on ±∞ and on anything past `Int.max`, and this string
     /// is drawn on the settings page: a rule with `1e30` in a plist would trap on
-    /// every opening and leave no way to delete it. `Int(exactly:)` asks instead
-    /// of assuming.
+    /// every opening and leave no way to delete it.
     static func number(_ value: Double) -> String {
         guard value.isFinite else { return "—" }
         if let whole = Int(exactly: value.rounded()), value == value.rounded() {

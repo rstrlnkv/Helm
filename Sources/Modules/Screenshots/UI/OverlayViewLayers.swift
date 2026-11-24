@@ -5,15 +5,13 @@ import Module_Screenshots_Engine
 extension OverlayView {
     /// One shape layer per annotation, each a **direct child of the view's layer**, between the picture
     /// and the dim, in the annotations' own order. Not inside a clipping parent: a layer's
-    /// `compositingFilter` blends with what is beneath it in the same parent only, so a marker nested in
-    /// a clip came out olive over black text where the export multiplies to black. The selection is the
-    /// clip all the same, by geometry — the outline of the stroke, intersected with the selection's
-    /// rectangle, filled — and the dim's hole is what leaves it undimmed.
+    /// `compositingFilter` blends with what is beneath it in the same parent only, so a nested marker would
+    /// not multiply over the picture as the export does. The selection is the clip all the same, by geometry —
+    /// the outline of the stroke, intersected with the selection's rectangle, filled.
     ///
     /// **A layer is built once and kept while its annotation is equal to the one it was built from.**
-    /// Stroking and intersecting an `Annotation.maxPoints` path is expected to cost milliseconds (an estimate, not a
-    /// measurement) and the scene is applied on every pointer event, so only what changed is rebuilt: the draft, the object being moved or resized, the
-    /// one recoloured. The cache is by `Annotation.id` and is dropped with the selection's rectangle.
+    /// Stroking and intersecting an `Annotation.maxPoints` path is costly and the scene is applied on every pointer
+    /// event, so only what changed is rebuilt. The cache is by `Annotation.id` and is dropped with the selection's rectangle.
     func drawLayers(_ scene: OverlayScene) {
         guard scene.editing, let selection = scene.selection else {
             for shape in drawnShapes { shape.removeFromSuperlayer() }
@@ -138,7 +136,7 @@ extension OverlayView {
             guard let kept = draftGrain else { return nil }
             (pixels, alpha) = (kept.mask.pixels, kept.alpha)
         } else {
-            // Released: the draft's own grain, cut to the stroke's box, and no longer kept whole.
+            // Released: the draft's own grain, cut to the stroke's box.
             let box = PencilGrain.box(for: annotation.points, width: stroke.width, scale: frozen.scale, pixels: display)
             let grain = box.flatMap { draftGrain?.mask.cut(to: $0) }
                 ?? PencilGrain.mask(for: annotation.points, width: stroke.width, scale: frozen.scale, pixels: display)

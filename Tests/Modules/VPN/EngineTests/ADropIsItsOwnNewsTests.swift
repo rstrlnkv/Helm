@@ -7,14 +7,10 @@ import HelmRuntime
 
 /// A tunnel that fell over is not a rule doing what it was told.
 ///
-/// The two shared `VPNAutomation.Kind.disconnected` for the life of the module,
-/// which meant they shared a volume: somebody who set the rules to fire in
-/// silence — reasonably, since they arranged them — was also asking not to be
-/// told when the tunnel went down underneath them and their Mac started sending
-/// in clear. Splitting the kind is only half of it; the settings have to be able
-/// to differ, and the colour must not.
-///
-/// Past defect: commit 50c4088b, «feat(vpn): a tunnel that falls over is its own news, and the page lines up».
+/// Somebody who sets the rules to fire in silence is not asking to be left
+/// untold when the tunnel goes down under them and the Mac sends in clear. So a
+/// drop has its own kind and its own notice setting, and shares the ring colour
+/// of a tunnel going down.
 final class ADropIsItsOwnNewsTests: XCTestCase {
     private var settings: VPNSettings!
 
@@ -23,10 +19,9 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
         settings = VPNSettings.inMemory()
     }
 
-    /// The default, so the split changes nothing for somebody who never opens
-    /// the page. `.system` would be the louder default and would be a lie:
-    /// macOS grants the banner permission only when asked, and this module asks
-    /// only when a person picks that mode.
+    /// Both default to the menu bar. `.system` would be a lie: macOS grants the
+    /// banner permission only when asked, and this module asks only when a
+    /// person picks that mode.
     func testBothStartWhereTheOneSettingUsedTo() {
         XCTAssertEqual(settings.notice, .menuBar)
         XCTAssertEqual(settings.dropNotice, .menuBar)
@@ -38,12 +33,9 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
         settings.store.set(VPNNotice.system.rawValue, for: VPNSettings.dropNoticeKey)
 
         XCTAssertEqual(settings.notice(for: .connected), .silent)
-        // **This used to read `.silent`, on the argument that a quit rule is a
-        // rule.** It is a rule nobody asked for at that moment, and a quit can be
-        // provoked by anything running as this user — so a teardown took the quiet
-        // channel while the person had asked to be told loudly about losing a
-        // tunnel. `VPNNotice.mode` gives it the louder of the two; `VPNNoticeTests`
-        // holds the rule and the controls that keep it from being «always loud».
+        // A quit rule's teardown is one nobody asked for at that moment, and any
+        // process of this user can provoke a quit, so `VPNNotice.mode` gives it
+        // the louder of the two (`VPNNoticeTests`).
         XCTAssertEqual(settings.notice(for: .disconnected), .system,
                        "a teardown Helm performed was announced more quietly than the fall it "
                        + "looks like from outside")
@@ -73,9 +65,8 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
     }
 
     /// Three kinds of news, **two colours**. The ring says which way the tunnel
-    /// went, and there are two ways — so a drop turns it in whatever the person
-    /// chose for a tunnel going down, not in a default nobody set. Deriving the
-    /// key from `rawValue` would have opened a third one silently.
+    /// went, so a drop turns it in the colour chosen for a tunnel going down.
+    /// A key derived from `rawValue` would open a third one nobody set.
     func testADropTurnsTheRingInTheColourChosenForATunnelGoingDown() {
         settings.store.set("purple", for: VPNSettings.spinTintKey(.disconnected))
 

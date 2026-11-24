@@ -7,9 +7,9 @@ import Module_VPN_Engine
 /// model; per-app automation rules are seeded from the `NamespacedStore` into
 /// local `@State` and written through the model (`saveRules`) on every change.
 struct VPNSettingsPage: View {
-    /// The three the per-app rules half reads, which lives in `VPNAppRules.swift`
-    /// — `private` is per file, and one `@State` of the rules seeded and written
-    /// back in one place is the point of keeping them here.
+    /// The three the per-app rules half reads, which lives in
+    /// `VPNAppRules.swift`; kept here so the rules are seeded and written back
+    /// in one place.
     @ObservedObject var vm: VPNViewModel
     @State var rules: [String: VPNAppRule]
 
@@ -19,26 +19,22 @@ struct VPNSettingsPage: View {
     private let spinTintConnected: String
     private let spinTintDisconnected: String
     /// Whether the grid is showing everything or only its first six. Not
-    /// stored: it is a state of this visit to the page, and a person who left
-    /// it expanded three weeks ago is not asking for a screenful of cards now.
+    /// stored: it is a state of this visit to the page.
     @State private var showAllConnections = false
-    /// Which tunnel the strip is about, by name. **Not stored**, for the reason
-    /// the flag above is not: it is a state of this visit, and somebody who left
-    /// it on a tunnel three weeks ago is not asking for that tunnel now. Nil
-    /// means «the first», which is the one carrying the traffic — and a name
-    /// whose tunnel has dropped means the same, because the list is rewritten
-    /// under this whenever the network moves (`VPNTunnelChoice.chosen`).
+    /// Which tunnel the strip is about, by name. **Not stored**, like the flag
+    /// above. Nil means «the first», the one carrying the traffic, and so does
+    /// a name whose tunnel has dropped (`VPNTunnelChoice.chosen`).
     @State private var selectedTunnel: String?
     /// The per-connection overrides, seeded from the store and written through
-    /// the model on every change — the same shape the rules have, for the same reason.
+    /// the model on every change, like the rules.
     @State private var noticeBook: VPNNoticeBook
 
     init(vm: VPNViewModel, store: NamespacedStore) {
         self.vm = vm
         // From the store rather than from `vm`, which is main-actor isolated
-        // while this initializer is not. Nothing here may reach macOS's
-        // notification centre: `UNUserNotificationCenter.current()` ends a test
-        // run outright, and this page is constructed in one.
+        // while this initializer is not. Nothing here may reach
+        // `UNUserNotificationCenter.current()`: it ends a test run, and tests
+        // build this page.
         let settings = VPNSettings(store: store)
         _rules = State(initialValue: VPNRules.decode(settings.rulesJSON))
         self.notice = settings.notice
@@ -58,39 +54,35 @@ struct VPNSettingsPage: View {
 
     /// **The hero, then the heading, then the connections.**
     ///
-    /// All three ride on one section's header, which is what puts the hero
-    /// above the page's first card rather than inside it — the same
-    /// construction `LayoutSettingsPage.heroAndTitle` uses, and for the same
-    /// reason: a grouped `Form` draws a section's header outside its card, and
-    /// a hero is not a row.
+    /// All three ride on one section's header, which puts the hero above the
+    /// page's first card rather than inside it: a grouped `Form` draws a
+    /// header outside its card, and a hero is not a row. Built like
+    /// `LayoutSettingsPage.heroAndTitle`.
     private var heroAndTitle: some View {
         VStack(alignment: .leading, spacing: 0) {
             VPNTunnelHero(vm.tunnels, selected: $selectedTunnel,
                           measuring: vm.measuring) { vm.measureSpeed($0) }
                 // **Out to the cards' own column.** A grouped `Form` insets a
-                // section header further than the section's card, and the hero
-                // draws a surface: left in, it and the connection cards would be
-                // two card systems on one page. The same line `connectionsList` carries below, for the same
-                // reason; the hero puts its *words* back in by the same amount.
+                // header further than its card; left in, the hero and the
+                // connection cards would be two card systems. The hero puts its
+                // *words* back in by the same amount.
                 .padding(.horizontal, -HelmLayout.groupedHeaderOutset)
-                // The gap under the hero, paid here because a grouped `Form`
-                // spaces its sections by their footers, and a block riding on a
-                // header has no footer of its own to be spaced by.
+                // The gap under the hero: a block riding on a header has no
+                // footer to be spaced by.
                 .padding(.bottom, HelmSpace.s7)
             HelmSectionTitle(VPNStr.connections())
             connectionsList
-                // The gap the form itself puts under a heading. Every other
-                // section on this page gets it for free, because the form draws
-                // their cards; this block draws its own, so it pays for it.
+                // The gap the form puts under a heading; this block draws its
+                // own cards, so it pays for it.
                 .padding(.top, HelmLayout.groupedHeaderGap)
         }
     }
 
     /// **The two sentences that close the page, and they close it.**
     ///
-    /// Between the connections grid and the tunnel strip they would cut apart
-    /// the two things on this page that belong together. macOS puts a sentence
-    /// of this kind *under* the group it qualifies, and there is one group.
+    /// Between the grid and the hero they would cut apart two things that
+    /// belong together; macOS puts such a sentence *under* the group it
+    /// qualifies.
     private var closingNotes: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s4) {
             Text(VPNStr.connectionsHint)
@@ -111,10 +103,8 @@ struct VPNSettingsPage: View {
             HelmBanner(VPNStr.failure(failure), symbol: "exclamationmark.triangle.fill")
         }
         // **Every locked configuration, not only the ones no rule speaks for.**
-        // The rules are behind a door on their card: a rule's own row is invisible
-        // until somebody opens the popover, so a banner removed for the ones a
-        // rule covers would leave a configuration that cannot connect saying so
-        // nowhere. One sentence per configuration, on the page.
+        // A rule's own row is hidden behind its card's popover, so this banner
+        // is the only place the page says the configuration cannot connect.
         ForEach(vm.secretsBehindAPrompt, id: \.self) { name in
             HelmBanner(VPNStr.secretNeedsAPress(name), symbol: "key.slash.fill")
         }
@@ -129,29 +119,23 @@ struct VPNSettingsPage: View {
 
     private var vpnForm: some View {
         Form {
-            // **One section.** The rules and the notices are two popovers on the
-            // card that owns them, so what is left is the configurations, the one
-            // thing that cannot be said anywhere else, and the two sentences
-            // that qualify them.
-            // **The news is rows.** A refusal, a configuration whose secret
-            // nobody has pressed for, a rule pointing at a tunnel that is gone —
-            // each is a filled field, and a row is where a grouped `Form` gives
-            // it the same geometry as everything else on the page.
+            // **One section.** The rules and the notices are popovers on their
+            // card, so what is left is the configurations and the sentences
+            // that qualify them. **The news is rows**: a grouped `Form` gives
+            // a row the same geometry as everything else on the page.
             Section {
                 news
             } header: {
                 heroAndTitle
             } footer: {
-                // The two sentences that qualify the connections, under the
-                // group they qualify.
+                // Under the group they qualify.
                 if hasConnections { closingNotes }
             }
         }
         .formStyle(.grouped)
         .helmIdlesOffScreen()
-        // The model asks the engine nothing in `init`; the host keeps it while
-        // the module is on, and `stop(_:)` closes it — so without these the page
-        // would show whatever the system said when the module came on.
+        // The model asks the engine nothing in `init`, so without these the
+        // page would show what the system said when the module came on.
         .task {
             vm.refresh()
             await vm.refreshBannerAuthorization()
@@ -167,14 +151,10 @@ struct VPNSettingsPage: View {
     /// The cards on screen: what is up first, and only as many as the grid
     /// draws before somebody asks for the rest.
     ///
-    /// Both halves are somebody else's question — `VPNConnectionOrder` is the
-    /// engine's, `VPNGridLayout.shown` is the grid's — so this is the two of
-    /// them applied in the one order they can be applied in: cap the list after
-    /// it is sorted, never before.
+    /// `VPNConnectionOrder` and `VPNGridLayout.shown` applied in the one order
+    /// they can be: cap the list after it is sorted, never before.
     /// Not `private`: `TheGridShowsWhatMattersFirstTests` asks the page itself
-    /// rather than re-deriving the two rules beside it, which is the shape of
-    /// test that agrees with the page by construction and with the screen by
-    /// coincidence.
+    /// rather than re-deriving the two rules beside it.
     var shownConnections: [VPNConnection] {
         let ordered = VPNConnectionOrder.upFirst(vm.connections)
         return Array(ordered.prefix(VPNGridLayout.shown(ordered.count,
@@ -184,10 +164,8 @@ struct VPNSettingsPage: View {
     @ViewBuilder
     private var connectionsList: some View {
         if vm.connections.isEmpty {
-            // A destination, not a shrug. The module cannot create a
-            // configuration — `scutil --nc` has no `create` — so the one thing
-            // this screen can do for somebody with no VPN is take them where
-            // they are made.
+            // A destination: the module cannot create a configuration (no
+            // `scutil --nc create`), so it takes the person where they are made.
             HelmEmptyState(symbol: "lock.shield",
                            tint: VPNDescriptor.tint.colour,
                            title: VPNStr.noVPNsSystem,
@@ -198,9 +176,6 @@ struct VPNSettingsPage: View {
             }
         } else {
             // **The columns, their least and their ceiling are `VPNGridLayout`'s.**
-            // A column count taken from the width leaves columns empty on a
-            // Mac with two VPNs; one taken from the count alone makes a card the
-            // size of a paragraph of one connection.
             let total = vm.connections.count
             let columns = VPNGridLayout.columns(for: total)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: VPNGridLayout.cardMinimum,
@@ -209,28 +184,20 @@ struct VPNSettingsPage: View {
                                      count: columns),
                       alignment: .leading,
                       spacing: HelmSpace.s5) {
-                // What is up first (`VPNConnectionOrder`), because from here on
-                // the page hides the tail: in `scutil`'s own order the connected
-                // tunnel can be the ninth, and a cap without an order would put
-                // the one card this page is for behind a button.
+                // Up first (`VPNConnectionOrder`): in `scutil`'s order the
+                // connected tunnel can be the ninth, and the cap would hide it.
                 ForEach(shownConnections) { connection in
                     connectionCard(connection)
                 }
             }
-            // Back out to the section cards' own edge. These are cards, and the
-            // headings and captions around them are text: the text belongs at
-            // the header inset, level with what the rows below say, and the
-            // cards belong level with the cards below.
+            // Back out to the section cards' own edge: cards sit level with
+            // cards, text at the header inset.
             .padding(.horizontal, -HelmLayout.groupedHeaderOutset)
             if total > VPNGridLayout.collapsedLimit {
-                // A row of the list it lengthens, in the accent: a bordered
-                // chip in a column of cards reads as a control that belongs to
-                // something else.
-                // `interface`, not `disclosure`. The disclosure token belongs to
-                // a height that is measured and clipped — the panel's accordion,
-                // Keep Awake's ⋯ block — and nothing here is measured: the cards
-                // are mounted and unmounted, so this is the token's other case,
-                // «toggling a filter», which is what the button does.
+                // A row of the list it lengthens, in the accent: a bordered chip
+                // in a column of cards reads as belonging to something else.
+                // `interface`, not `disclosure`: nothing here is measured and
+                // clipped, the cards are mounted and unmounted.
                 Button {
                     withAnimation(HelmMotion.interface) { showAllConnections.toggle() }
                 } label: {
@@ -246,9 +213,8 @@ struct VPNSettingsPage: View {
 
     /// One configuration, as a card with two doors.
     ///
-    /// Everything it needs is handed to it: the page owns the rules table and
-    /// the notice book, the card owns only what is open. `VPNConnectionCard`
-    /// carries the reasoning for the doors themselves.
+    /// The page owns the rules table and the notice book; the card owns only
+    /// what is open (`VPNConnectionCard`).
     private func connectionCard(_ c: VPNConnection) -> some View {
         let book = noticeBook
         let shown = book.shown(for: c.id, rules: notice, drop: dropNotice)

@@ -12,20 +12,10 @@ import CoreGraphics
 /// | bar: back, path, three controls         |  640 pt |
 /// | bar with the scan statement as well     |  788 pt |
 ///
-/// The settings window is 1211 pt wide by default and 1207 at its minimum
-/// (`SettingsWindow`), and the card takes the window less the sidebar and a 4 pt
-/// inset (`ShellGeometry.cardFrame`). At the default sidebar of 200 the detail
-/// pane is 1007 pt, or 1003 at the minimum, and the full bar (788) fits in both.
-/// The window no longer gives the layout a pane too narrow for it; the layout
-/// still adapts to the width it is handed.
-///
-/// Leaving the scan statement out of the bar for good would pay for the narrow
-/// case with the wide one: on a large window the bar would hold a path on the
-/// left, three controls on the right and a void between them.
-///
-/// So the layout adapts instead of compromising. Nothing is dropped that there
-/// is room for, and what goes first is what costs most for what it adds: the
-/// sentence about the measurement.
+/// The settings window's pane (`SettingsWindow`, `ShellGeometry.cardFrame`)
+/// fits the full bar; the layout still adapts to the width it is handed.
+/// Nothing is dropped that there is room for, and what goes first is what costs
+/// most for what it adds: the sentence about the measurement.
 struct DiskLayout {
     let availableWidth: CGFloat
 
@@ -48,12 +38,9 @@ struct DiskLayout {
     /// took, which changes nothing about what the numbers mean.
     enum ScanStatement: Equatable { case stopped, measured, scanned }
 
-    /// **A warning is not a thing to drop when the window is small.** Behind
-    /// `showsScanStatement` alone, all three sentences would go below 800 pt of
-    /// pane — which the pane never is: it is 1003 or 1007 pt, so 800 pt is never
-    /// reached — and a stopped tree would be drawn in full with
-    /// nothing saying its figures are floors. The `stoppedHint` that explains it
-    /// hangs on the same `Text`, so a screen reader would lose it too.
+    /// **A warning is not a thing to drop when the window is small**: behind
+    /// `showsScanStatement` alone, a narrow pane would draw a stopped tree with
+    /// nothing saying its figures are floors.
     ///
     /// Stopped comes first because it is the only one of the three that makes the
     /// sizes beside it untrue as totals.

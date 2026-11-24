@@ -6,21 +6,12 @@ import HelmRuntime
 
 /// What a tick does while a removal is still in flight.
 ///
-/// The basket is what the reply is about: `emptyBasket` sends the paths, waits,
-/// and then writes `basket = []`. So a row ticked in between was **accepted and
-/// then discarded** — never sent, never refused, never mentioned. Small in bytes
-/// and exactly the wrong shape in trust, in a flow whose whole subject is
-/// deletion: the app quietly un-picks what somebody picked.
+/// `emptyBasket` sends the paths, waits, and then writes `basket = []`, so a
+/// row ticked in between would be dropped without being sent, refused or
+/// mentioned. `toggleBasket` therefore refuses while `busy` is set, and the page
+/// dims (Architecture/Removal.md § One removal at a time).
 ///
-/// A test of `emptyBasket` alone cannot see it: `toggleBasket` does not set
-/// `busy`, `emptyBasket`, which does, is the other method. (Architecture/Removal.md § One removal at a
-/// time) states the rule this breaks in a sentence about both halves: «The model
-/// refuses; the page dims. Both, or neither is reliable.»
-///
-/// Every case here needs a removal that is *running*, which is a state
-/// a fake that answers on the spot cannot be in; `HeldWork.holdTrash()` puts it
-/// there. A fake that answers on the spot releases the gate before the call it is gating returns,
-/// so a test built on one passes whether or not the guard exists.
+/// Every case needs a removal that is running; `HeldWork.holdTrash()` holds one.
 @MainActor
 final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
 
@@ -52,9 +43,7 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
 
     // MARK: - The model refuses
 
-    /// The finding. Before the guard the model accepted the second row — basket
-    /// 2 — and the reply then emptied the basket over it: the folder is still on
-    /// the ring and nothing ever asked for it.
+    /// A row ticked mid-removal is refused, not taken in and then emptied away.
     func testARowTickedWhileARemovalRunsIsNotTakenAndThrownAway() async {
         let work = HeldWork()
         let dvm = await removing(work)
@@ -70,9 +59,8 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
         await waitUntil("the removal is over") { !dvm.busy }
     }
 
-    /// The same guard from the other side, and it is not a lesser case: the bar's
-    /// menu unticks by calling the same method, so a row taken *out* mid-flight
-    /// leaves the person told that something they had just withdrawn was removed.
+    /// The same guard from the other side: the bar's menu unticks through the
+    /// same method, and a row taken out mid-flight would be reported removed.
     func testARowUntickedWhileARemovalRunsStaysInTheBatchItWasSentIn() async {
         let work = HeldWork()
         let dvm = await removing(work)
@@ -85,9 +73,8 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
         await waitUntil("the removal is over") { !dvm.busy }
     }
 
-    /// The control, and the reason the two above are about a removal rather than
-    /// about the basket: once the answer is in, the basket is a basket again.
-    /// Without this a guard of «never» would pass both of them.
+    /// The control: once the answer is in, the basket takes ticks again, so a
+    /// guard of «never» would fail here.
     func testTheBasketTakesRowsAgainOnceTheReplyLands() async {
         let work = HeldWork()
         let dvm = await removing(work)
@@ -118,9 +105,8 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
         await waitUntil("the removal is over") { !dvm.busy }
     }
 
-    /// And the batch is the one that was sent: nothing added in the meantime got
-    /// in, and nothing removed got out. Read off `HeldWork.trashRequests` rather than
-    /// off the basket, because the batch handed to `trash` is what the engine acts on.
+    /// The batch is the one that was sent: nothing added in the meantime got in,
+    /// nothing removed got out. Read off `HeldWork.trashRequests`, what the engine acts on.
     func testTheEngineIsHandedExactlyWhatWasTickedWhenThePressHappened() async {
         let work = HeldWork()
         let dvm = await removing(work)

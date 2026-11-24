@@ -3,21 +3,15 @@ import Foundation
 /// What the line under «Stay awake with the lid closed» says, as a case rather
 /// than a string.
 ///
-/// The row had two notes and four states. It said «sleep is off for the whole
-/// Mac» while the lid was holding, and what the administrator password buys the
-/// rest of the time — a ternary in the page's body, with nowhere for the two
-/// states in which something was *attempted and did not work*:
+/// Four states, two of them something *attempted that did not work*:
 ///
 /// - **macOS refused.** `reallyEngage` reads `setDisableSleep(true)`, and
 ///   `sudo -n` fails whenever the NOPASSWD rule is not what Helm wrote — removed
 ///   by an admin, edited by a migration, tidied out of `/etc/sudoers.d`. The
-///   engine logs it and holds `active` false, and the row then described what the
-///   password would buy, as though nothing had been tried. That is somebody being
-///   told a lid is safe to close.
+///   engine holds `active` false; a row describing what the password would buy
+///   would tell somebody a lid is safe to close.
 /// - **The rule outlived the feature.** Switching the option off asks for the
-///   grant back; a declined dialog is an answer, and the rule stays. Its `Bool`
-///   was discarded, so the only record was a log line accusing something else of
-///   having written a rule Helm wrote itself.
+///   grant back; a declined dialog is an answer, and the rule stays.
 public enum LidRowNote: Equatable, Sendable {
     /// macOS was asked to turn sleep off and said no.
     case refused

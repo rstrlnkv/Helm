@@ -11,7 +11,7 @@ extension View {
     /// state at its last body, and a copy kept in `@State` behind an `==` would hold the old ones
     /// (`LogView`'s Copy captures `page.lines`).
     ///
-    /// The empty part of the row drags the window, since there is no title bar under it any more.
+    /// The empty part of the row drags the window, since there is no title bar under it.
     ///
     /// **The row has no right-click menu of its own**: it lies in the window's title bar zone, where a SwiftUI
     /// `.contextMenu` is never reached; the window pops one up (`HeaderBarMenu`) over the band
@@ -122,16 +122,12 @@ struct HeaderRoleKey: LayoutValueKey {
     static let defaultValue = HeaderRole.run
 }
 
-/// **The row's parts: the name's side, the tab strip, and the runs (the actions, then the search) — the strip centred on
-/// the card's row, giving way to either neighbour.** `shift` is how far the card's centre lies right of this
-/// layout's own (the row's insets are not equal, `CardHeader`), so the strip's centre is the card's, not the padded
-/// area's. It never overlaps: it keeps `nameGap` after the name's side and `HelmHeaderActions.gap` before the runs.
-/// **The run's width is the room of every declared action, hidden or not** (`HelmHeaderActions`), so on Homebrew
-/// the strip sits ~40 pt left of centre where an action is hidden on that tab; ignoring the hidden slot would make
-/// the strip jump between that page's tabs.
-///
-/// **At the narrowest the row is what the old stack made**: name, `nameGap` (36: 12, the old stack's spacer's least 12, 12), strip,
-/// `gap`, run — the sum `SettingsWindow.minSize` is measured against — because both limits close on the strip there.
+/// **The row's parts: the name's side, the tab strip, and the runs (the actions, then the search) — the strip centred
+/// on the card's row, giving way to either neighbour** (Architecture/ThePageHeader.md § The row's geometry). `shift`
+/// is how far the card's centre lies right of this layout's own, since the row's insets are not equal (`CardHeader`).
+/// The run's width is the room of every declared action, hidden or not, so the strip does not jump between one
+/// page's tabs. At the narrowest both limits close on the strip: name, `nameGap`, strip, `gap`, run, the sum
+/// `SettingsWindow.minSize` is measured against.
 struct HeaderRowLayout: Layout {
     let shift: CGFloat
     static let nameGap = CGFloat(36)

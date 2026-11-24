@@ -7,14 +7,9 @@ import HelmTestSupport
 /// an assertion about somebody's Mac, and the scan draws it identically whether
 /// it read the whole tree or was refused every directory in it.
 ///
-/// The counts existed and went to the log only: `unreadablePaths` from the
+/// So the finding carries the counts to the page: `unreadablePaths` from the
 /// enumerator's error handler, the digest failures from the hashing passes, and
-/// the application libraries the walk steps over by policy. `find` answered a
-/// bare array and there was nowhere in that type to put them, so the page could
-/// not have known. Leftovers had exactly this and it was repaired four commits
-/// ago; this is the same repair.
-///
-/// Guards a past defect: f0e00ef3 fix(duplicates): the banner counts what the disk gives back, and the page reaches the screen at all.
+/// the application libraries the walk steps over by policy.
 final class AScanThatCouldNotLookIsNotAllClearTests: XCTestCase {
 
     // MARK: - The rule

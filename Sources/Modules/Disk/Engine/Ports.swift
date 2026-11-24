@@ -37,10 +37,9 @@ public struct VolumeReadout: Equatable, Sendable {
     ///
     /// Reasons that collapse into `.fallback`: the important-usage key is
     /// unreadable (`nil`), or it reads 0 while the plain key reads above zero.
-    /// Measured on macOS 27.2: exFAT, FAT and any volume mounted `-nobrowse`
-    /// answer the important key with 0, not nil, while the plain key holds the
-    /// real figure; on HFS+ and APFS the two keys came within kilobytes of each
-    /// other, and no direction is claimed. So a zero important reading is
+    /// exFAT, FAT and any volume mounted `-nobrowse` answer the important key
+    /// with 0, not nil, while the plain key holds the real figure. So a zero
+    /// important reading is
     /// believed only when the plain one is zero, negative or unreadable too
     /// (`(plainFree ?? 0) <= 0`), which is a disk that is really full. Bounded
     /// to `0...total` when the total is known, because the values come from the

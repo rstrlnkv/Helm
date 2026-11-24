@@ -8,9 +8,8 @@ import XCTest
 /// scan refuses a folder whose MAC is missing or does not match.
 ///
 /// `chooseFolder` is a modal panel and cannot be pressed in a test; `use(folder:)`
-/// is everything after the panel. Before this test nothing in the tree ran that
-/// write, so dropping the seal, or writing it under another key, stayed green
-/// while every background scan came back «not Helm's own».
+/// is everything after the panel. A dropped seal, or one under another key,
+/// leaves every background scan «not Helm's own».
 @MainActor
 final class AFolderTheOpenPanelGivesIsSealedTests: XCTestCase {
 

@@ -5,10 +5,9 @@ import Foundation
 
 /// Whether this installation has seen the tour.
 ///
-/// A revision, not a flag. Nobody holds this key at 0.8.0, so a fresh install
-/// and an upgrade both answer yes exactly once — which is the intent: people
-/// upgrading have had Autopilot and Duplicates arrive without ever being told
-/// what they are. A later tour bumps `revision` deliberately, or does not run.
+/// A revision, not a flag: a fresh install and an upgrade from before the tour
+/// both answer yes exactly once, so people upgrading learn about modules that
+/// arrived without a word. A later tour bumps `revision` deliberately.
 public enum WelcomeGate {
     /// The key in the app's own namespace. Read and written in one place.
     public static let storeKey = "welcomeSeenRevision"

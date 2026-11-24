@@ -10,7 +10,7 @@ import HelmRuntime
 /// so a record is meaningful only where the same display is still there.
 ///
 /// Read from a property list any process running as the user can write, so
-/// every number is judged: a value that is not a finite number is no record, a
+/// every number is judged: a value that is not a finite number is no record, an
 /// extent below a point is no record, and a coordinate is held to a ceiling so
 /// the arithmetic after it cannot meet `Double.greatestFiniteMagnitude`. And the
 /// record is a *reading* made at one moment on one desk: `landing(in:)` asks

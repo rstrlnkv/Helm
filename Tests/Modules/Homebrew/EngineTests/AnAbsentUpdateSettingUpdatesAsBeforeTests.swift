@@ -2,8 +2,8 @@ import XCTest
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
-/// Kept: guards the stored `module.homebrew.updateBeforeChecking`. A Mac that never wrote it must
-/// still run `brew outdated` with brew's own refresh, the bytes it ran with before the setting existed.
+/// The stored `module.homebrew.updateBeforeChecking`: a Mac that never wrote it runs
+/// `brew outdated` with brew's own refresh.
 final class AnAbsentUpdateSettingUpdatesAsBeforeTests: XCTestCase {
     private let key = "module.homebrew.updateBeforeChecking"
 

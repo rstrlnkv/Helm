@@ -11,9 +11,8 @@ import HelmTestSupport
 /// volume — which is exactly the case that matters.
 final class RuleStampTests: XCTestCase {
 
-    /// The marks are keyed now, so a test asks its questions under the same key
-    /// the engine beside it uses — `StampMarkTests` is where the key's own
-    /// properties live.
+    /// The marks are keyed, so a test asks under the key the engine beside it
+    /// uses; `StampMarkTests` holds the key's own properties.
     private let stamp = RuleStamp(key: TestRuleKey.material)
     private var directory: URL!
 

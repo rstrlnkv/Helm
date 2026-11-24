@@ -9,15 +9,10 @@ import HelmRuntime
 /// **A `scutil --nc show` that failed or timed out is not «this configuration
 /// keeps no secret».**
 ///
-/// `KeychainCredentials.credentials` answered `.notNeeded` for both, so a connect
-/// that needed the secret went to `--nc start` without it; `--nc start` answers
-/// nothing either way, so a rule connect then recorded and announced «connected»
-/// with no tunnel behind it. Owner decision 2026-11-11 (defects page row
-/// `vpn-show-unreadable`): a separate `VPNCredentialRead.unreadable` that neither
-/// starts nor announces the connect.
-///
-/// An unattended rule announcing a tunnel that is not there is work done while
-/// nobody watches, so this class is kept.
+/// It is `VPNCredentialRead.unreadable`, which neither starts nor announces the
+/// connect. `--nc start` answers nothing either way, so a connect that went on
+/// without the secret would record and announce «connected» with no tunnel
+/// behind it: an unattended rule doing work nobody watches.
 final class AnUnreadableConfigurationIsNotAConnectTests: XCTestCase {
 
     private let header = "Available network connection services:"

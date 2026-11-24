@@ -7,7 +7,7 @@ import XCTest
 /// The scanner in `StoredRuleSet` walks the sealed record by hand, and the
 /// record is a plist value any process can write. A scanner that recursed, or
 /// indexed past the end, would take the whole app down at launch, before the
-/// seal is even consulted. Past defect class: a crash on malformed input.
+/// seal is even consulted.
 final class TheStoredRuleScannerHoldsOnHostileBytesTests: XCTestCase {
 
     private let head = #"[{"id":"f","path":"/p","enabled":true,"rules":[],"depth":1"#

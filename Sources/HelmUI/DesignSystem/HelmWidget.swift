@@ -7,9 +7,8 @@ import SwiftUI
 /// these are not one view with a scale factor: they are the pieces each of the
 /// three answers is built from, and a module picks the ones its answer needs.
 ///
-/// Written once here because every module would otherwise invent its own
-/// heading, and the panel's whole claim is that its tiles are the same object
-/// seen at three magnifications.
+/// Written once here, so the panel's tiles are the same object seen at three
+/// magnifications rather than each module's own heading.
 public struct HelmWidgetHeader: View {
     private let symbol: String
     private let tint: Color
@@ -46,16 +45,9 @@ public struct HelmWidgetHeader: View {
             .accessibilityHidden(true)
     }
 
-    /// 1×1: the name goes **under** the plate, as it does in a small widget on
-    /// iOS.
-    ///
-    /// In a row it had 70 pt — 134 of tile less the card's padding, the plate,
-    /// the gap and the spacer — and 58 with a trailing mark. Measured against
-    /// `.headline` in eight languages, that truncates the module's own name in
-    /// 14 of 40 pairs: «Автоп…», «Кла…». In edit mode the corner controls take
-    /// another 14 and even «Не спать» became «Не с…» — a mode meant to show you
-    /// your arrangement was changing what the tiles said. Stacked, the name has
-    /// the tile's whole width.
+    /// 1×1: the name goes **under** the plate, as in a small widget on iOS. In
+    /// a row the name has too little width to survive translation, and edit
+    /// mode's corner controls take more: stacked, it has the tile's whole width.
     private var stacked: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
@@ -71,17 +63,14 @@ public struct HelmWidgetHeader: View {
     }
 
     private var inARow: some View {
-        // 26 and 13 semibold, which is what the two tiles this app shipped with
-        // have always used. The widgets written since used 18 and a medium 13,
-        // so a panel holding both had two sizes of the same plate one card
-        // apart — the sort of difference nobody can name and everybody sees.
+        // 26 and 13 semibold, one size for the plate in every tile, so two
+        // widgets a card apart never show two sizes of it.
         HStack(spacing: 10) {
             badge
             VStack(alignment: .leading, spacing: 1) {
                 Text(name)
-                    // `HelmText.sectionHeading`, not `.headline`: the same
-                    // 13 pt, one weight apart. `.headline` resolves to
-                    // SF Bold and the app's own token at that size is semibold.
+                    // `HelmText.sectionHeading`, not `.headline`, which
+                    // resolves to bold at the same 13 pt.
                     .font(HelmText.sectionHeading)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -106,12 +95,8 @@ public struct HelmWidgetFigure: View {
     private let label: String
     private let small: Bool
 
-    /// The size decides, not the call site.
-    ///
-    /// Three widgets passed `small: size == .compact` and two passed nothing,
-    /// so a 1×1 row held an 18 pt digit beside an 11 pt one — 34% apart, in the
-    /// same grid. A parameter that every caller has to remember to compute is a
-    /// parameter that half of them will not.
+    /// The size decides, not the call site: a parameter every caller must
+    /// remember to compute is one half of them will not.
     public init(_ value: String, _ label: String, _ size: PanelWidgetSize) {
         self.value = value; self.label = label; self.small = size == .compact
     }

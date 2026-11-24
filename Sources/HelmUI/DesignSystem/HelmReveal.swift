@@ -3,28 +3,19 @@ import Foundation
 
 /// Show a path in Finder.
 ///
-/// Nine places offer this — beside a removal failure, in Autopilot's history, on
-/// a leftover, on a row of a disk scan, on the log file — and eight of them were
-/// one bare `NSWorkspace.shared.activateFileViewerSelecting([url])`, which has
-/// two problems the ninth had already found and fixed for itself:
+/// The button sits beside paths that are often already gone: files that failed
+/// to move, files Autopilot moved elsewhere, leftovers deleted a moment ago.
 ///
-/// - **Selecting a file Finder cannot see does nothing.** No window, no error,
-///   no Finder in front. That is not an edge case here: the button sits next to
-///   files that failed to move, files Autopilot moved somewhere else, and
-///   leftovers deleted a moment ago in another window — so the most likely
-///   moment for someone to press it is the moment the path is already gone. The
-///   enclosing folder is revealed instead, which is the honest answer to
-///   "show me" — *opened* when it is a plain folder, *selected* when it is a
-///   bundle, because `NSWorkspace.open` on a `.app` launches it and on a
-///   `.photoslibrary` mounts it. A disk scan lists the top-level children of a
-///   bundle, so a stale row inside one is reachable and this is not theoretical.
-/// - **Finder does not always come forward.** `activateFileViewerSelecting`
-///   selects in a window that may be behind the settings window it was pressed
-///   in, so the reveal happens where nobody can see it.
+/// - **Selecting a file Finder cannot see does nothing**: no window, no error.
+///   The enclosing folder is revealed instead, *opened* when it is a plain
+///   folder and *selected* when it is a bundle, because `NSWorkspace.open`
+///   launches a `.app` and mounts a `.photoslibrary`. A disk scan lists the
+///   children of a bundle, so a stale row inside one is reachable.
+/// - **Finder does not always come forward**: `activateFileViewerSelecting`
+///   may select in a window behind the settings window.
 ///
-/// The decision is separate from the doing, and takes the existence check as a
-/// parameter, because "which of the two things happens" is the part worth a test
-/// and the part that was missing in eight places.
+/// The decision is separate from the doing and takes the existence check as a
+/// parameter, so which of the two things happens can be tested.
 public enum HelmReveal {
 
     /// What Finder is asked to do.
@@ -38,21 +29,17 @@ public enum HelmReveal {
         case open(URL)
     }
 
-    /// `nil` reveals nothing. Two call sites guarded a `String?` by hand and the
-    /// rest did not, and an empty path is worse than harmless:
+    /// `nil` reveals nothing. An empty path is not harmless:
     /// `URL(fileURLWithPath: "")` is the process's current directory, so the
     /// fallback would open a folder nobody asked about.
     ///
     /// `traits` answers whether the enclosing folder is a directory and whether
     /// it is a package, so the bundle decision is testable without a real `.app`.
-    /// It returns `nil` for a folder that is not there — an unmounted volume,
-    /// most often — and then there is nothing to reveal.
+    /// It returns `nil` for a folder that is not there (most often an unmounted
+    /// volume), and then there is nothing to reveal.
     ///
-    /// **This is also the answer to "will the button do anything".** `nil` here
-    /// is the whole of "nothing can be shown", it is pure, and it can be asked
-    /// *before* the button is drawn — which is worth more than a report after
-    /// somebody has pressed one. `inFinder` used to return a `Bool` for that
-    /// purpose and no caller ever read it.
+    /// This is also the answer to «will the button do anything», pure and
+    /// available before the button is drawn.
     static func target(
         for path: String,
         exists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) },
@@ -79,18 +66,10 @@ public enum HelmReveal {
 
     /// Reveal `path`, and bring Finder forward whichever way it went.
     ///
-    /// It answers nothing, because it has nothing to answer with. This returned
-    /// a `Bool` documented as "whether anything could be shown, so a caller can
-    /// say so" — and all ten call sites dropped it, with `@discardableResult`
-    /// there to make sure no build ever mentioned that. The half of it that
-    /// could be true is `target(for:)`'s, and that one is pure, tested, and
-    /// available before the button is drawn; the half that was measured here
-    /// could not be, because `activateFileViewerSelecting` reports nothing at
-    /// all, so the selecting arm answered `true` by writing `true`.
-    ///
-    /// Finder is activated by name rather than by `NSWorkspace.shared.open`ing
-    /// it: activating the running instance raises the window that was just
-    /// opened, and asking to open Finder again does not.
+    /// It returns nothing: `activateFileViewerSelecting` reports nothing, so
+    /// «could anything be shown» is `target(for:)`'s answer, asked before the
+    /// button is drawn. Finder is activated by its running instance rather than
+    /// opened again, which raises the window that was just opened.
     @MainActor public static func inFinder(_ path: String) {
         switch target(for: path) {
         case .select(let url):

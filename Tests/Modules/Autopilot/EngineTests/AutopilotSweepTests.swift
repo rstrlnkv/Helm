@@ -8,10 +8,8 @@ import HelmTestSupport
 ///
 /// The unit tests below this level each hold one piece still: the matcher gets
 /// facts, the runner gets a plan and a path. A sweep is the only place the two
-/// meet, and it is where the path a plan refers to is *reconstructed* rather
-/// than carried — `AutopilotEngine.sweep` joins the watched folder to
-/// `plan.facts.name`, and `FileFacts` only ever holds a last path component.
-/// Everything here is about that join.
+/// meet, and the path a plan is run at must be the file it was decided about
+/// (`plan.facts.path`), not a name joined back onto the watched folder.
 ///
 /// The invariant these lean on is deliberately structural: which file exists
 /// after a sweep, and whether a second sweep changes anything. A count or a
@@ -54,17 +52,13 @@ final class AutopilotSweepTests: XCTestCase {
 
     /// The one that loses somebody's file.
     ///
-    /// A watched folder at depth 2 offers its rules the files in its subfolders,
-    /// and each of those facts carries only a last path component. The sweep
-    /// then rebuilds the path as `folder + name`, which for a file one level
-    /// down names a *different* file — the one at the top level with the same
-    /// name, if there is one.
-    ///
-    /// So the rule below ("larger than 2 MB → trash") is decided against the
-    /// 3 MB `sub/big.bin` and executed against the 10-byte `big.bin`, which no
-    /// rule matched and which the dry run never mentioned. Same names on two
-    /// levels is not exotic: `sub/` here stands for any `Screenshots/`,
-    /// `Invoices/2025/`, or the very subfolder a sort rule made a sweep ago.
+    /// A watched folder at depth 2 offers its rules the files in its subfolders.
+    /// Rebuilt as `folder + name`, the path of a file one level down names a
+    /// *different* file: the one at the top level with the same name. The rule
+    /// below ("larger than 2 MB → trash") is decided against the 3 MB
+    /// `sub/big.bin` and must not be executed against the 10-byte `big.bin`,
+    /// which no rule matched. Same names on two levels is not exotic: `sub/`
+    /// stands for any `Screenshots/`, `Invoices/2025/`, or a sort rule's bucket.
     func testASweepBelowTheTopLevelActsOnTheFileItPlanned() throws {
         try write("big.bin", in: root, bytes: 10)
         try write("sub/big.bin", in: root, bytes: 3_000_000)
@@ -81,11 +75,9 @@ final class AutopilotSweepTests: XCTestCase {
                        "the file the rule actually matched was never touched")
     }
 
-    /// The same join with nothing to collide with, which is the ordinary case:
-    /// a file one level down is looked for at `folder + name`, is not there, and
-    /// the sweep reports it `missing`. So a watched folder set to any depth
-    /// above 1 runs no rules at all below its top level, while the dry run beside
-    /// the switch promises that it will.
+    /// The same join with nothing to collide with, the ordinary case: looked for
+    /// at `folder + name`, a file one level down is `missing`, and no rule would
+    /// run below the top level while the dry run promises it will.
     func testARuleReachesTheFilesTheDryRunPromised() throws {
         try write("sub/report.pdf", in: root, bytes: 8)
 
@@ -100,15 +92,14 @@ final class AutopilotSweepTests: XCTestCase {
 
     // MARK: - Twice
 
-    /// Guarantee 3, stated as the only thing that can actually be observed: a
-    /// sweep run twice over an unchanged folder leaves it exactly as the first
-    /// one did.
+    /// A sweep run twice over an unchanged folder leaves it exactly as the
+    /// first one did.
     ///
     /// A rename whose result collides is where this breaks. `free(_:)` numbers
-    /// the arriving file — `a.pdf` becomes `b 2.pdf` when `b.pdf` is taken — but
-    /// `run` stamps `b.pdf`, the name the *pattern* produced. So the file that
-    /// moved carries no mark, the next sweep renames it again to `b 3.pdf`, and
-    /// the folder grows a file an hour, forever.
+    /// the arriving file (`a.pdf` becomes `b 2.pdf` when `b.pdf` is taken), so
+    /// the stamp goes on the name it landed at, not the one the *pattern*
+    /// produced; otherwise the next sweep renames it again to `b 3.pdf`, and the
+    /// folder grows a file an hour.
     func testASecondSweepOverAnUnchangedFolderChangesNothing() throws {
         try write("a.pdf", in: root, bytes: 4)
         try write("b.pdf", in: root, bytes: 99)
@@ -123,19 +114,17 @@ final class AutopilotSweepTests: XCTestCase {
                        "a second sweep acted again on a file the first one had already renamed")
     }
 
-    /// The same invariant for the action that already works, so a fix to the
-    /// rename path cannot quietly break the move path on its way past.
+    /// The same invariant for the move, so a change to the rename path cannot
+    /// quietly break the move path on its way past.
     ///
-    /// Green for a reason it does not name, and worth saying out loud: at depth
-    /// 1 the sorted file sits at enumerator level 2 and the second sweep never
-    /// reads it. Delete the `RuleStamp.isStamped` guard from `RuleRunner.run`
-    /// and this still passes; so does breaking the sort's own idempotence. The
-    /// two below are the ones that mean it.
-    ///
-    /// The tests that do fail without the stamp are the tagging one and the
-    /// renaming one — `testASecondSweepAddsNothingBecauseNothingHappened` and
-    /// `testASecondSweepOverAnUnchangedFolderChangesNothing`. Sorting no longer
-    /// needs it, which is the point of the bucket check rather than a gap.
+    /// Green for a reason it does not name: at depth 1 the sorted file sits at
+    /// enumerator level 2 and the second sweep never reads it. Delete the
+    /// `RuleStamp.isStamped` guard from `RuleRunner.run` and this still passes;
+    /// so does breaking the sort's own idempotence. The two below are the ones
+    /// that mean it. Without the stamp the tagging and renaming tests fail
+    /// (`testASecondSweepAddsNothingBecauseNothingHappened`,
+    /// `testASecondSweepOverAnUnchangedFolderChangesNothing`); sorting does not
+    /// need it, by the bucket check.
     func testASecondSweepDoesNotMoveAgain() throws {
         try write("a.pdf", in: root, bytes: 4)
         try write("b.pdf", in: root, bytes: 4)
@@ -178,15 +167,10 @@ final class AutopilotSweepTests: XCTestCase {
     /// And the same again with the mark taken off, which is what every sweep
     /// looks like on a volume that will not hold one.
     ///
-    /// `RuleRunner.note` logs a stamp that would not stick and acts anyway,
-    /// because refusing the file would make a volume without extended
-    /// attributes a volume where no rule works. The sentence that makes that
-    /// survivable is that the action is idempotent on an unchanged file — so
-    /// this is that sentence, tested. Reachable wherever the attribute does not
-    /// survive: a filesystem that refuses it, or an AppleDouble `._name`
-    /// sidecar dropped in transit, on the `/Volumes` `WatchScope` admits on
-    /// purpose. (Not exFAT, which this used to name: it keeps the stamp —
-    /// ARCHITECTURE.md § Autopilot.)
+    /// `RuleRunner.note` logs a stamp that would not stick and acts anyway, which
+    /// is survivable only because the action is idempotent on an unchanged file;
+    /// this tests that. Which volumes cannot keep the stamp:
+    /// Architecture/Autopilot.md § Autopilot.
     func testAnUnstampableVolumeDoesNotBuryTheFileDeeperEverySweep() throws {
         try write("a.pdf", in: root, bytes: 4)
 
@@ -243,14 +227,13 @@ final class AutopilotSweepTests: XCTestCase {
 
     // MARK: - Saving
 
-    /// `AutopilotEngine.folders`'s setter encodes with `try?` and returns on
-    /// failure, so anything JSON will not take discards the whole list — every
-    /// folder and every rule — without a word to anyone.
+    /// A value JSON will not take must not discard the whole list, every folder
+    /// and every rule, without a word to anyone.
     ///
     /// A non-finite `Double` is the reachable case: `ConditionRow.numberField`
     /// accepts any string `Double.init` parses and that is greater than zero,
-    /// and `Double("1e999")` is `+∞`. One typo in a size field and the rules of
-    /// every *other* watched folder stop being saved.
+    /// and `Double("1e999")` is `+∞`. One typo in a size field must not stop the
+    /// rules of every *other* watched folder being saved.
     func testSavingAFolderDoesNotSilentlyDiscardTheList() {
         let kept = WatchedFolder(id: "kept", path: "/Users/x/Downloads", rules: [
             rule("g", [.fileExtension(["pdf"])], .addTag("t")),
@@ -273,11 +256,11 @@ final class AutopilotSweepTests: XCTestCase {
     }
 }
 
-/// Autopilot is the one module that acts with nobody watching, and until now it
-/// left no record a person could read: the log carries counts and redacted
-/// paths, which answers "did anything happen" and never "what happened to my
-/// file". These are about the record, over a real sweep, because a history that
-/// is only tested against a fabricated outcome is a history of the test.
+/// Autopilot is the one module that acts with nobody watching. The log carries
+/// counts and redacted paths, which answers "did anything happen" and never
+/// "what happened to my file"; the history answers that. These are about the
+/// record over a real sweep, because a history only tested against a
+/// fabricated outcome is a history of the test.
 extension AutopilotSweepTests {
 
     func testASweepWritesDownWhatItDid() throws {

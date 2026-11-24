@@ -23,8 +23,7 @@ class SweepNoticeRig: XCTestCase {
 
     override func setUpWithError() throws {
         // A real folder inside a temporary home: `WatchScope` refuses anything
-        // outside one, and a test exempted from that gate is a test of another
-        // program.
+        // outside one.
         home = scratchDirectory("home")
         root = home.appendingPathComponent("helm-sweep-notice-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -59,10 +58,9 @@ class SweepNoticeRig: XCTestCase {
 
 /// The hourly sentinel, and the one thing it does that cannot be taken back.
 ///
-/// Autopilot trashes files with nobody at the desk and the whole account of it
-/// was a line in a log file, while the banner port was spent on the two modules
-/// that touch no files at all. This drives the real leg — the timer's sweep —
-/// over a real folder, because the rule that decides is tested next door and
+/// Autopilot trashes files with nobody at the desk, so a sweep that binned
+/// something says so beyond the log. This drives the real leg — the timer's
+/// sweep — over a real folder: the rule that decides is tested next door, and
 /// what is left to get wrong here is a prompt that outlives the module.
 final class TheSweepTellsSomebodyWhatItBinnedTests: SweepNoticeRig {
 

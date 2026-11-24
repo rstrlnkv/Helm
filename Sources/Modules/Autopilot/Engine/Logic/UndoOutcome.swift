@@ -25,8 +25,7 @@ public enum UndoOutcome: Equatable, Sendable {
 /// Ten of them, and each is a different thing to tell somebody: waiting helps
 /// with none, but "the folder you took it from is gone" and "that is not the
 /// file any more" ask for different next moves. The `rawValue` is storage and
-/// nothing else — every one of these is spoken in the reader's language from
-/// the day it ships.
+/// nothing else; every one is spoken in the reader's language.
 public enum UndoRefusal: String, CaseIterable, Equatable, Sendable {
     /// Nothing is at the path the record says the file went to.
     case notThere
@@ -55,9 +54,8 @@ public enum UndoRefusal: String, CaseIterable, Equatable, Sendable {
     /// cleared, because every field a return acts on comes out of it.
     case historyRefused
     /// The record does not say who the file was, so there is no way to check
-    /// that the thing at that path is the thing Helm acted on. Every record
-    /// written before this build is in this state, and so is every refusal and
-    /// failure — they moved nothing, so there is nothing to identify.
+    /// that the thing at that path is the thing Helm acted on. Every refusal
+    /// and failure is in this state: they moved nothing.
     case noIdentity
 }
 

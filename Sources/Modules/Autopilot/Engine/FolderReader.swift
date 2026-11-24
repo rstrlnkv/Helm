@@ -2,11 +2,8 @@ import Foundation
 import HelmRuntime
 import UniformTypeIdentifiers
 
-/// The one place that turns files into `FileFacts`.
-///
-/// Everything above it is arithmetic on those facts; keeping the reading in one
-/// small type is what makes that true. It also means the answer to "what does a
-/// rule know about a file" is a single file to read.
+/// The one place that turns files into `FileFacts`; everything above it is
+/// arithmetic on those facts.
 struct FolderReader: Sendable {
 
     /// How an entry's on-disk weight is read. A seam, because what a test has
@@ -57,12 +54,10 @@ struct FolderReader: Sendable {
     /// page then all say. A missing folder is a rename or a moved disk; a refused
     /// one is the permission the module's own note is about.
     ///
-    /// **Read through descriptors, not through paths.** The walk this replaced
-    /// was `FileManager`'s enumerator, which opens each subfolder by the path it
-    /// listed it under; a subfolder swapped for a link into `~/Library` after it
-    /// was listed and before it was entered was read as the protected folder, and
-    /// put back, left the names of what it held in the history and the log as
-    /// `.missing` refusals. Here the root is opened once and every level is
+    /// **Read through descriptors, not through paths.** A walk that opens each
+    /// subfolder by path would read a subfolder swapped for a link into
+    /// `~/Library` as the protected folder, and leave the names of what it held
+    /// in the history and the log. Here the root is opened once and every level is
     /// opened *relative to its parent's descriptor* with `O_NOFOLLOW`, so what is
     /// listed is the directory that was opened and nothing a path leads to later;
     /// a link in its place is refused by the open (`ELOOP`) and the level is
@@ -102,8 +97,7 @@ struct FolderReader: Sendable {
 
     /// One directory's entries at `level`, then each subdirectory the depth
     /// allows. Hidden entries are not there, a package is one thing, a directory
-    /// at the limit is offered and not entered — the three `FileManager`'s
-    /// enumerator options and `prunes` used to answer.
+    /// at the limit is offered and not entered.
     private func walk(_ fd: Int32, at path: String, level: Int, depth: Int, now: Date,
                       into found: inout [FileFacts]) {
         // A depth below one reads nothing, and the ceiling is the descriptors'.
@@ -187,23 +181,15 @@ struct FolderReader: Sendable {
 
     /// Whether a rule may be offered this file at all.
     ///
-    /// **The sweep and the watcher used to answer this differently, and a rule
-    /// meant two things depending on which one ran.** `reading(in:)` reads through
-    /// `walk`, which leaves hidden entries out and treats a package as one thing,
-    /// so an `.app` is one thing and a dotfile is not there; the FSEvents leg
-    /// asked for the facts of whatever path it was handed, and an FSEvents stream
-    /// is recursive whether or not anybody asked. With «Include subfolders» on —
-    /// the ⋯ menu writes depth 8 — a resource inside an application bundle
-    /// somebody unarchived into Downloads was a live target, and the dry run
-    /// could not warn them: the dry run reads through the walk that skips
-    /// packages.
+    /// **The watcher asks what the sweep's walk asks**, so a rule means one
+    /// thing whichever trigger runs it. An FSEvents stream is recursive whether
+    /// or not anybody asked, and without this a resource inside an unarchived
+    /// application bundle would be a live target the dry run never shows.
     ///
-    /// The three questions are the walk's three — depth, hidden, package — in the
-    /// same order, and `TheWatcherAndTheSweepAskOneQuestionTests` pins the two
-    /// answers to each other over a real tree at three depths; an agreement
-    /// proven by a test is what makes them one question rather than a sentence
-    /// saying they are. The depth is the folder's capped at `deepest`, as the
-    /// walk caps it, so a stored depth past 64 admits nothing the sweep never reads.
+    /// The three questions are the walk's three (depth, hidden, package) in the
+    /// same order; `TheWatcherAndTheSweepAskOneQuestionTests` pins the two
+    /// answers to each other. The depth is the folder's capped at `deepest`, as
+    /// the walk caps it.
     func admits(_ url: URL, under folder: WatchedFolder) -> Bool {
         let file = url.standardizedFileURL
         var root = URL(fileURLWithPath: folder.path).standardizedFileURL
@@ -250,14 +236,10 @@ struct FolderReader: Sendable {
             name: url.lastPathComponent,
             path: url.path,
             kind: isDirectory ? .folder : kind(of: values.contentType),
-            // Not `fileSize`: a package has none — `URLResourceValues` calls a
-            // `.app` a package rather than a directory, so it slipped past the
-            // size rule's directory guard and answered zero. "Smaller than 1 MB
-            // → Trash" then matched every application in the folder, hourly,
-            // unattended. A *plain* folder is the opposite trade: the walk
-            // `FileWeight` makes of one is the module's whole time budget, and
-            // the only reader of `bytes` refuses a directory outright — so the
-            // number is never computed rather than computed and thrown away.
+            // Not `fileSize`: a package has none, and a zero would let "smaller
+            // than 1 MB → Trash" match every application in the folder. A
+            // *plain* folder is never weighed: `FileWeight` walks it in full,
+            // and the only reader of `bytes` refuses a directory outright.
             bytes: isDirectory ? 0 : weigh(url),
             // `addedToDirectoryDate` is what "date added" means in the Finder
             // and it is what a Downloads rule is asking about; a file copied in

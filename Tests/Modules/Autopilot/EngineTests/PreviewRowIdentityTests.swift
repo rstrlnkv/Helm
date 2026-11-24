@@ -7,17 +7,14 @@ import HelmTestSupport
 /// The dry run is the one screen that has to be exhaustive: it is the promise
 /// the person reads before letting a rule loose on a folder unattended.
 ///
-/// `PreviewRow` is `Identifiable` by `name` — the file's last path component,
-/// with nothing in front of it. Two files called `report.pdf`, one in
-/// `Invoices/` and one in `Receipts/`, are two rows with one identity, and the
-/// editor draws them with `ForEach(rvm.preview)`. SwiftUI given a duplicate id
-/// does not draw both.
+/// `PreviewRow` must not be `Identifiable` by `name`, the last path component
+/// alone. Two files called `report.pdf`, one in `Invoices/` and one in
+/// `Receipts/`, would be two rows with one identity, and SwiftUI given a
+/// duplicate id in `ForEach(rvm.preview)` does not draw both.
 ///
 /// Same names in different folders is the ordinary case for a folder watched
 /// deeper than one level: `report.pdf`, `IMG_0001.JPG`, `invoice.pdf`,
 /// `index.html`, `Icon`.
-///
-/// Past defect: fixed in 6dec5f2f.
 final class PreviewRowIdentityTests: XCTestCase {
 
     private var home: URL!

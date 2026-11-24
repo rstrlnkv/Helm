@@ -3,21 +3,14 @@ import HelmRuntime
 
 /// What the panel holds: tabs, their widgets, and the size each one takes.
 ///
-/// **Tabs from the first commit, even though the tab bar is the last thing
-/// built.** A layout stored as a flat list would need a format migration the
-/// day tabs arrive, and this codebase has paid for one of those already —
-/// `moduleOrder` to `sidebarLayout`, with the migration still sitting in the
-/// store. One tab costs a pair of braces now and nothing later. The bar itself
-/// appears only from the second tab, so until somebody makes one there is
-/// nothing on screen to say a tab exists.
+/// Stored as tabs even with one tab, so a second tab needs no format
+/// migration. The tab bar appears only from the second tab, so until somebody
+/// makes one nothing on screen says a tab exists.
 public struct PanelLayout: Equatable, Codable, Sendable {
 
     public struct Tab: Equatable, Codable, Sendable, Identifiable {
-        /// What a new tab is marked with, in the order they are handed out.
-        ///
-        /// The picker's first category rather than a list of its own: two lists
-        /// of symbols is two lists to keep in step, and the one somebody sees
-        /// when they go looking should be the one they were given from.
+        /// What a new tab is marked with, in the order they are handed out: the
+        /// picker's first category, so there is one list of symbols to keep.
         static var glyphs: [String] { HelmGlyphCatalogue.categories[0].symbols }
 
         public var id: String
@@ -28,8 +21,7 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         /// The name the person gave it. `nil` means the seeded one.
         public var name: String?
         public var widgets: [Slot]
-        /// An SF Symbol name. Optional because a tab made before glyphs existed
-        /// has none.
+        /// An SF Symbol name. Optional because an older stored tab has none.
         public var glyph: String?
 
         init(id: String, seed: String? = nil, name: String? = nil,
@@ -41,11 +33,9 @@ public struct PanelLayout: Equatable, Codable, Sendable {
 
     /// One widget in one tab.
     ///
-    /// `widget` is an id, not a module id — though today every widget is its
-    /// module's only one and the two strings are equal. The panel already has
-    /// one widget planned that belongs to no module (the permissions notice,
-    /// which arrives by itself and leaves with the grant), and a field that
-    /// means «module» would have to be widened for it. One string either way.
+    /// `widget` is a widget id, not a module id, even where the two strings
+    /// are equal: a widget that belongs to no module, such as a permissions
+    /// notice, fits the same field.
     public struct Slot: Equatable, Codable, Sendable {
         public var widget: String
         public var size: PanelWidgetSize
@@ -55,13 +45,10 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         }
 
         /// A size this build has never heard of reads as `wide`, rather than
-        /// failing the decode.
-        ///
-        /// Synthesised `Decodable` throws on an unknown raw value, and the
-        /// throw is not local: `JSONDecoder` gives up on the whole document, so
-        /// one slot written by a newer build would empty the entire panel and
-        /// the next save would make it permanent. A downgrade should cost the
-        /// person a widget's proportions, not their arrangement.
+        /// failing the decode. Synthesised `Decodable` throws on an unknown raw
+        /// value and `JSONDecoder` then gives up on the whole document, so one
+        /// slot from a newer build would empty the panel and the next save would
+        /// make it permanent.
         public init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             widget = try container.decode(String.self, forKey: .widget)
@@ -72,19 +59,14 @@ public struct PanelLayout: Equatable, Codable, Sendable {
 
     public var tabs: [Tab]
 
-    /// Modules the person does not want **as a widget**.
+    /// Modules the person does not want **as a widget**. They are still in the
+    /// panel, in the utilities drawer, which holds everything that is not a
+    /// tile; that is the difference from `hidden`.
     ///
-    /// They are still in the panel — they fall to the utilities drawer, which
-    /// holds everything that is not a tile. That is the whole difference
-    /// between this list and `hidden`, and it took somebody saying «I want to
-    /// take the keyboard widget off but keep it in the utilities» to notice
-    /// that one list was answering two questions.
-    ///
-    /// **Without it, removing a widget was undone by the next read.**
-    /// `reconciled` adds any id this build can draw that the layout does not
-    /// hold — which is how a module that arrives with an update joins the panel
-    /// — and a widget somebody has just removed is exactly that. So it came
-    /// back on the next launch, and the panel looked like it had forgotten.
+    /// Remembered because `reconciled` adds any id this build can draw that the
+    /// layout does not hold, which is how a new module joins the panel, and a
+    /// widget just removed is exactly that: without this list it comes back on
+    /// the next launch.
     var dismissed: [String]
 
     /// Modules the person does not want in the panel **at all** — no tile, no
@@ -97,12 +79,9 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         self.hidden = hidden
     }
 
-    /// A layout written before `dismissed` existed decodes with none.
-    ///
-    /// Synthesised `Decodable` does not use a property's default value — it
-    /// throws on the missing key, and `JSONDecoder` gives up on the whole
-    /// document — so every panel arranged before this build would have read as
-    /// no panel at all.
+    /// A stored layout without `dismissed` or `hidden` decodes with none.
+    /// Synthesised `Decodable` throws on a missing key instead of using the
+    /// default, and `JSONDecoder` then gives up on the whole document.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         tabs = try container.decode([Tab].self, forKey: .tabs)
@@ -115,10 +94,9 @@ public struct PanelLayout: Equatable, Codable, Sendable {
 
     // MARK: - Seeding
 
-    /// One tab holding everything offered, at `wide` — which is exactly the
-    /// panel Helm has always drawn, in the order the person arranged.
-    /// `sizes` is what each widget is worth at rest. Everything not named is
-    /// full width, which is what a module with a control needs.
+    /// One tab holding everything offered, in the order the person arranged.
+    /// `sizes` is what each widget is worth at rest; everything not named is
+    /// `wide`, which is what a module with a control needs.
     public static func seeded(from widgets: [String],
                               sizes: [String: PanelWidgetSize] = [:]) -> PanelLayout {
         PanelLayout(tabs: [Tab(id: "seed.main", seed: "main", name: nil,
@@ -130,23 +108,16 @@ public struct PanelLayout: Equatable, Codable, Sendable {
 
     /// The layout as it must be before anything draws it.
     ///
-    /// Two rules, and the second is where this parts company with
-    /// `SidebarLayout.reconciled`:
-    ///
     /// - **No widget twice.** A half-written save is reachable, and a widget
     ///   held in two places would draw in two places.
-    /// - **An unknown widget is kept, not dropped.** The sidebar's membership
-    ///   is the registry's to decide, so anything not in the registry is
-    ///   wrong there. The panel's membership is the *person's* — they put
-    ///   these here — so an id this build cannot draw is a module that is
-    ///   switched off, or one that a downgrade has temporarily taken away.
-    ///   Dropping it would mean an update could empty somebody's panel and
-    ///   the next save would make that permanent. It is skipped at the draw
-    ///   instead, which is a decision about pixels rather than about storage.
+    /// - **An unknown widget is kept, not dropped**, unlike in
+    ///   `SidebarLayout.reconciled`. The panel's membership is the person's, so
+    ///   an id this build cannot draw is a module switched off or taken away by
+    ///   a downgrade. Dropping it would let an update empty somebody's panel
+    ///   for good; it is skipped at the draw instead.
     ///
-    /// `arriving` is what to add: ids offered by this build that the layout has
-    /// never seen. They go to the end of the first tab — the one somebody
-    /// looking at the panel is already on.
+    /// `arriving` is the ids offered by this build that the layout has never
+    /// seen. They go to the end of the first tab.
     public func reconciled(arriving: [String]) -> PanelLayout {
         var seen = Set<String>()
         var tabs = self.tabs.map { tab -> Tab in
@@ -177,8 +148,7 @@ public struct PanelLayout: Equatable, Codable, Sendable {
     /// Moves a widget to `index` within `tab`.
     ///
     /// Removed from wherever it was *first*, so a move inside one tab is the
-    /// same call as a move between two and neither can leave a copy behind —
-    /// the mistake the sidebar's own move was written to avoid.
+    /// same call as a move between two and neither can leave a copy behind.
     public func moving(_ widget: String, toTab tab: Int, at index: Int) -> PanelLayout {
         guard let from = placement(of: widget), tabs.indices.contains(tab) else { return self }
         var copy = self
@@ -187,14 +157,8 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         return copy
     }
 
-    /// Any offered size, including 1×1 straight to 2×N.
-    ///
-    /// There used to be a refusal here: only a full-width widget could grow
-    /// downwards, because a tall narrow one opens a hole beside it that nothing
-    /// fills without masonry. The reasoning is sound about a *narrow* tall tile
-    /// — and `tall` is full width by definition, so the case it guarded cannot
-    /// arise. What it did instead was make one chip in three do nothing when
-    /// pressed, with the explanation in a bar the tile had scrolled away from.
+    /// Any offered size, including 1×1 straight to 2×N: `tall` is full width,
+    /// so it never leaves a hole beside it.
     public func resizing(_ widget: String, to size: PanelWidgetSize) -> PanelLayout {
         guard let at = placement(of: widget) else { return self }
         var copy = self
@@ -219,8 +183,7 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         guard tabs.indices.contains(tab) else { return self }
         var next = removing(widget)
         // Promoting answers both refusals at once: it is a tile again, so it is
-        // neither «not a tile» nor «not here». Otherwise a widget added from
-        // the drawer would be one somebody had to add again after every update.
+        // neither «not a tile» nor «not here», and the next update keeps it.
         next.dismissed.removeAll { $0 == widget }
         next.hidden.removeAll { $0 == widget }
         next.tabs[tab].widgets.append(Slot(widget: widget, size: .wide))
@@ -255,12 +218,9 @@ public struct PanelLayout: Equatable, Codable, Sendable {
     /// panel is a grid and nothing on screen says a tab exists.
     public var showsTabBar: Bool { tabs.count > 1 }
 
-    /// A tab whose id is already taken is not added.
-    ///
-    /// `ForEach` keyed on that id draws one row for two tabs and puts the
-    /// second one's widgets somewhere nobody can reach — which is what a panel
-    /// with a duplicate looks like: a tab that vanished. Found by a probe that
-    /// had run twice against the same store.
+    /// A tab whose id is already taken is not added: `ForEach` keyed on the id
+    /// would draw one row for two tabs and leave the second one's widgets
+    /// where nobody can reach them.
     public func addingTab(id: String) -> PanelLayout {
         guard !tabs.contains(where: { $0.id == id }) else { return self }
         var copy = self
@@ -288,15 +248,9 @@ public struct PanelLayout: Equatable, Codable, Sendable {
     }
 
     /// Closing a tab hands its widgets to the neighbour rather than dropping
-    /// them.
-    ///
-    /// Somebody arranged those; «close» is about the tab, and taking six
-    /// widgets with it is a second, larger action nobody asked for. The
-    /// neighbour is the tab to the left, or the one to the right if this was
-    /// the first — the one that is about to be looked at either way.
-    ///
-    /// The last tab cannot be closed: a panel with no tabs has nowhere to put
-    /// anything.
+    /// them: «close» is about the tab, not the widgets somebody arranged. The
+    /// neighbour is the tab to the left, or to the right for the first tab.
+    /// The last tab cannot be closed.
     public func removingTab(_ id: String) -> PanelLayout {
         guard tabs.count > 1, let index = tabs.firstIndex(where: { $0.id == id })
         else { return self }

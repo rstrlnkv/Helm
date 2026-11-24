@@ -3,16 +3,10 @@ import HelmTestSupport
 
 /// A key written twice in one string catalog, which nothing else can see.
 ///
-/// A JSON reader keeps the **last** entry of a repeated key and says nothing, and the build passes the
-/// file (`SwiftPM` ran it: exit 0). `ModuleCatalogs` reads the same collapsed dictionary and finds every
-/// symbol present, and English shows nothing at all. Which of the two translations shipped was decided
-/// by which one was further down the file. The `.strings` files had eight of them for exactly this
-/// reason: `General`, `Media`, `Network`, `Paused`, `Show`, `Show Quit button`, `Show Settings button`
-/// and `System`, each re-added by a later feature under a translation written for something else.
-///
-/// So this reads the catalogs as **text**, which is the one way to see an entry the loader has already
-/// thrown away. **A duplicate key is the rule of different English for a second meaning, wearing a
-/// disguise**: two entries under one key are two meanings somebody translated separately.
+/// A JSON reader keeps the **last** entry of a repeated key and says nothing, the build passes the file,
+/// and `ModuleCatalogs` reads the same collapsed dictionary: which translation ships is decided by which
+/// one sits further down. So this reads the catalogs as **text**, the one way to see an entry the loader
+/// has already thrown away. Two entries under one key are two meanings somebody translated separately.
 ///
 /// Guards the class *one English per meaning*: no key written twice in a catalog, and one English text
 /// is one word across every catalog (a second meaning takes a different English).

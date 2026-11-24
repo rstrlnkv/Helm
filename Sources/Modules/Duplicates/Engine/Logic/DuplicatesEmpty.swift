@@ -2,17 +2,14 @@ import Foundation
 
 /// Why the result screen has no groups on it — or nothing, when it has some.
 ///
-/// **The page asserted rather than reported.** «No duplicates here. Every large
-/// file under this folder is one of a kind» is a claim about somebody's Mac, and
-/// it was drawn identically whether the walk read the whole tree or was refused
-/// every directory in it. The scanner knew better and told the log:
-/// `unreadablePaths` from the directories the walk was refused, and one count per file
-/// whose digest could not be taken. `find` answered a bare array, and there was
-/// nowhere in that type to put either.
+/// «No duplicates here. Every large file under this folder is one of a kind» is
+/// a claim about somebody's Mac, true only if the walk read the whole tree. So
+/// the screen is told what was left out: the directories the walk was refused
+/// (`unreadablePaths`) and the files whose digest could not be taken.
 ///
 /// Here rather than in the view, and over counts rather than over the groups,
 /// because it is the module's rule about what its screen means. Leftovers keeps
-/// `LeftoversEmpty` for the same reason and it is the same repair.
+/// `LeftoversEmpty` for the same reason.
 public enum DuplicatesEmpty {
 
     /// Three, and two of them are holes.

@@ -56,11 +56,9 @@ enum RenamePattern {
         // A rename that has already been applied must not apply again, and a
         // file the pattern already describes is one it has been applied to.
         // Renaming is the one action here that is not idempotent, so this is
-        // what makes it safe to run unstamped — `RuleRunner` tolerates a stamp
-        // that will not stick, and its own `target.path != url.path` is this
-        // same test for the single pattern `{name}`. Every other shape walked
-        // past it: the second sweep feeds the first sweep's output back into
-        // `{name}` and gets something longer, once an hour, forever.
+        // what makes it safe to run unstamped (`RuleRunner` tolerates a stamp
+        // that will not stick). Otherwise the next sweep feeds this output back
+        // into `{name}` and gets something longer, once an hour, forever.
         guard !RenameShape(resolved: resolved).matches(stem) else { return facts.name }
 
         // The extension is the file's own, never the pattern's: a rule that
@@ -126,11 +124,9 @@ enum SortBucket {
     /// it that way. The shape is not spelled a second time here, so a change to
     /// `month`'s format cannot leave the two disagreeing.
     ///
-    /// Reading alone is too generous, and measured rather than assumed:
-    /// `date(from:)` takes `2026-7`, which `string(from:)` writes back as
-    /// `2026-07`. (It refuses `2026-13` on its own — non-lenient, so nothing
-    /// rolls over into January.) A folder the scheme could not have made is
-    /// somebody else's folder.
+    /// Reading alone is too generous: `date(from:)` takes `2026-7`, which
+    /// `string(from:)` writes back as `2026-07`. A folder the scheme could not
+    /// have made is somebody else's folder.
     private static func isMonth(_ name: String) -> Bool {
         guard let date = month.date(from: name) else { return false }
         return month.string(from: date) == name

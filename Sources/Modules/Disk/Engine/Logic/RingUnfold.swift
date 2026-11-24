@@ -1,14 +1,10 @@
 import Foundation
 import HelmRuntime
 
-/// The angular transform that turns one wedge into the whole ring.
+/// The angular transform that turns one wedge into the whole ring, so a drill
+/// says "you are now inside this".
 ///
-/// Drilling used to be a cross-fade between two scaled rings: the old ring grew
-/// and faded, the new one appeared from nothing. Nothing connected the wedge
-/// the user clicked to the ring they ended up looking at, so the gesture said
-/// "something changed" rather than "you are now inside this".
-///
-/// Here the clicked wedge widens until it *is* the ring, its own children slide
+/// The clicked wedge widens until it *is* the ring, its own children slide
 /// inward to take its place, and everything else spreads out past the edge and
 /// goes. Reversed, it is the way back: the ring narrows into the wedge it came
 /// from, inside its parent.
@@ -41,16 +37,11 @@ public enum RingUnfold {
     /// Where an arc sits partway between the layout it is in and the layout it
     /// is becoming.
     ///
-    /// The transform above answers "where does this angle go while the wedge
-    /// widens", which is the right question for everything that is leaving the
-    /// screen and the wrong one for everything that is staying: the arcs that
-    /// stay have a destination, and it is not the one the transform arrives at.
-    /// Folding into "other" is decided against the parent's total in the layout
-    /// being left and against the folder's own total in the layout being
-    /// entered, so the transform ended five arcs short of the circle where the
-    /// destination had three that filled it. Interpolating to the destination
-    /// makes the last frame of the animation equal to the first frame after it,
-    /// which is the only definition of "not a jump" that holds.
+    /// The transform above is right for everything leaving the screen and wrong
+    /// for what stays: folding into "other" is decided against the parent's
+    /// total in the layout being left and the folder's own total in the layout
+    /// being entered, so the two disagree. Interpolating to the destination
+    /// makes the last frame of the animation equal to the first frame after it.
     public static func toward(_ from: Double, _ to: Double, progress t: Double) -> Double {
         from + (to - from) * t.clamped(to: 0...1)
     }

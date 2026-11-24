@@ -6,20 +6,11 @@ import XCTest
 /// Opening the page **deletes** the saved scan when the folder it measured has
 /// gone.
 ///
-/// That is the right thing for the app to do — `restoreLastScan` says why: a
-/// memory of a folder that no longer exists restores a breadcrumb, a "Scan
-/// again" button and an empty screen, with no way out that looks like one. It is
-/// recorded here for the other reason: it is the branch that makes
-/// `TheSuiteDoesNotReadTheUsersLastScanTests` a hazard rather than a turn of
-/// phrase. While `DiskDescriptor.makeModule` builds the model with the default
-/// `ScanStore()`, every test that renders Disk's settings page would run this
-/// branch against wherever that store resolves, and one deleted folder is all it takes.
-///
-/// A claim that a suite "could delete a file" is worth nothing until the delete
-/// is watched happening, so this watches it — and asserts the fixture was
-/// restored at all first, because a page that restored nothing clears nothing
-/// and would pass this for free.
-/// Past defect: fixed in commit ab5ee725.
+/// `restoreLastScan` says why the app does it. It is held here because it is
+/// the branch that makes `TheSuiteDoesNotReadTheUsersLastScanTests` necessary:
+/// a test rendering Disk's page with the default `ScanStore()` would run it
+/// against wherever that store resolves. The test asserts the fixture was
+/// restored first, since a page that restored nothing clears nothing.
 @MainActor
 final class AVanishedRootClearsTheCacheTests: XCTestCase {
 

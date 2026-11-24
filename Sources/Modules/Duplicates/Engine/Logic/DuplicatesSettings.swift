@@ -10,20 +10,16 @@ import HelmRuntime
 /// It lives in the engine target because the reader is the engine — the UI
 /// writes through the same value, and a seal written by one and checked by the
 /// other has to come from one place or it is two keys with one name.
+///
 /// **One guard over every scan setting this module stores, not one per
-/// setting.** It was `guardOfFolder` while the folder was the only sealed value
-/// here; the keep policy is the second, and a second `SettingGuard` beside it
-/// would be a second keychain item for one question.
+/// setting.** A second `SettingGuard` would be a second keychain item for one
+/// question.
 ///
 /// **The item, and the cache in front of it, are `SettingsSealKey.overScanSettings`.**
-/// Every read here — the engine's on each background scan, the page's when it
-/// opens — is a `SecItemCopyMatching` without a cache, and on an ad-hoc signed
-/// bundle that is a modal authorization dialog rather than data
-/// (ARCHITECTURE.md § Sealed settings). The cache was built here *and* in
-/// `AppSettings.scanGuard`, over one item, which is two round trips and a
-/// second dialog for anyone who answers the first with "Allow"; one instance
-/// now serves both, and the three strings that address the item are recorded
-/// beside it.
+/// An uncached read is a `SecItemCopyMatching`, and on an ad-hoc signed bundle
+/// that is a modal authorization dialog rather than data
+/// (Architecture/StoredSettings.md § Sealed settings). `AppSettings.scanGuard`
+/// reads the same item through the same instance, so one answer serves both.
 public enum DuplicatesSettings {
     public static let guardOfScanSettings = SettingGuard(keys: SettingsSealKey.overScanSettings)
 
@@ -34,20 +30,17 @@ public enum DuplicatesSettings {
     /// — the reader simply gets the default for ever.
     static let keepPolicyKey = "keepPolicy"
 
-    /// Where the sealed folder is stored, in the module's own namespace.
-    ///
-    /// One spelling for a name two targets use, for the reason the keep policy's
-    /// has: the page writes it and the engine reads it, and a key only one side
-    /// changes leaves the reader with «no folder chosen» for ever.
+    /// Where the sealed folder is stored, in the module's own namespace. One
+    /// spelling, for the keep policy key's reason: a key only one side changes
+    /// leaves the reader with «no folder chosen» for ever.
     public static let folderKey = "folder"
 
     /// The policy this Mac is set to, judged against its seal.
     ///
     /// **One reading for both targets.** The engine applies it and the page
     /// shows it, and a second implementation of "what is in force" is how a
-    /// screen comes to say `by date` while every search runs `by place` — the
-    /// defect this module has already paid for once, when two pipelines held two
-    /// survivor rules. The page therefore does not read the plist itself.
+    /// screen comes to say `by date` while every search runs `by place`. The
+    /// page therefore does not read the plist itself.
     ///
     /// **A broken seal is the default, not a refusal.** The other sealed setting
     /// here — the folder — decides *where* an unattended reader walks, so a
@@ -59,20 +52,17 @@ public enum DuplicatesSettings {
     /// **The key is established on the first read, whatever is stored.** A
     /// getter that answers with its default before touching the guard leaves the
     /// `.adopt` door open for ever, and the first value anybody plants would be
-    /// adopted and sealed as Helm's own — `AppSettings.disabledScans` shipped
-    /// exactly that (ARCHITECTURE.md § Sealed settings).
+    /// adopted and sealed as Helm's own (Architecture/StoredSettings.md § Sealed settings).
     static func keepPolicy(in store: NamespacedStore?,
                                   guardedBy settings: SettingGuard) -> KeepPolicy {
         switch stored(keepPolicyKey, in: store, guardedBy: settings) {
         case .unset:
-            // Spend the adoption door here, on the read that answers with a
-            // default — that is what «on first use» means, and a getter that
-            // returns before touching the guard never spends it.
+            // Spend the adoption door on this read, as the doc comment says.
             settings.establishKey()
             return .standard
         case .notHelmsOwn:
             // The engine's constant, not the word again: a module's id is written
-            // down once (ARCHITECTURE.md § The boundaries),
+            // down once (Architecture/ModulePattern.md § The boundaries),
             // and this file is in the engine's target.
             HelmLog.shared.warn(DuplicatesEngine.moduleID,
                                 "the stored keep policy is not Helm's own; "
@@ -90,12 +80,11 @@ public enum DuplicatesSettings {
     ///
     /// **The reading above cannot be done from the thread that draws.** Verifying
     /// the seal needs the key, the key comes from the login keychain, and on an
-    /// ad-hoc build a keychain read is a modal authorization dialog — measured
-    /// one target over as `HelmApp_2026-08-19-235500_MacBook.hang`, 19,09 s of a
-    /// settings window that could not answer a mouse-up. `DuplicatesViewModel` is
-    /// `@MainActor` and read the policy inside its own `init`, which is the same
-    /// door: a `@State` initial value, a window's construction and a page's view
-    /// model are all «an `init`», and the first of them is named (ARCHITECTURE.md § Sealed settings).
+    /// ad-hoc build a keychain read is a modal authorization dialog, and the
+    /// settings window cannot answer a mouse-up while it waits.
+    /// `DuplicatesViewModel` is `@MainActor`, so it may not read the policy in
+    /// any `init`: a `@State` initial value, a window's construction and a
+    /// page's view model are all «an `init`» (Architecture/StoredSettings.md § Sealed settings).
     ///
     /// Nil is **«not yet»**, a third answer beside the two the seal gives, and it
     /// is deliberately not `.standard`: a caller that folded it into the default
@@ -119,7 +108,7 @@ public enum DuplicatesSettings {
     /// The seal can come back nil — a keychain that cannot be reached — and the
     /// value is written anyway. Refusing to save what somebody asked for because a
     /// background reader might distrust it later is failing at the wrong end
-    /// (ARCHITECTURE.md § Sealed settings).
+    /// (Architecture/StoredSettings.md § Sealed settings).
     public static func setKeepPolicy(_ policy: KeepPolicy, in store: NamespacedStore,
                                      guardedBy settings: SettingGuard) {
         setSealed(policy.rawValue, for: keepPolicyKey, in: store, guardedBy: settings)
@@ -133,7 +122,7 @@ public enum DuplicatesSettings {
     }
 
     /// **One lock over read-judge-adopt and over saving**
-    /// (ARCHITECTURE.md § Sealed settings). `stored` reads a value and its MAC as
+    /// (Architecture/StoredSettings.md § Sealed settings). `stored` reads a value and its MAC as
     /// a pair and may write a MAC for the value it read; a save that lands
     /// between that read and that write would leave the new value beside a MAC
     /// sealed over the old one, which the next reader refuses. So `stored` holds

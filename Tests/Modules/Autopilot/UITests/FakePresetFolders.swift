@@ -3,12 +3,10 @@ import Foundation
 
 /// A stand-in for the two folders `FileManager` is asked about.
 ///
-/// The twin of the engine tests' file of the same name, and separate for the
-/// only reason two test targets ever duplicate anything here: test plumbing is
-/// shared through `HelmTestSupport`, which may reach `HelmRuntime` and no
-/// module — so a stand-in for a *module's* port has nowhere else to live. Keep
-/// the two in step; the engine's copy carries the paragraph on why the port can
-/// answer nothing at all.
+/// The twin of the engine tests' file of the same name: `HelmTestSupport` may
+/// reach no module, so a stand-in for a *module's* port has nowhere shared to
+/// live. Keep the two in step; the engine's copy says why the port can answer
+/// nothing at all.
 struct FakePresetFolders: PresetFolderPort {
     var paths: [PresetFolder: String]
 

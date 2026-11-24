@@ -91,8 +91,7 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
 
     // MARK: - The rule set from before
 
-    /// The measurement: v1 saved, the person edits to v2, the old pair is written
-    /// back — and the engine reported the v1 rules with no refusal at all.
+    /// v1 saved, edited to v2, the old pair written back: v1 is refused.
     func testAnOlderSealedRuleSetIsNotRun() throws {
         try writeAFile()
         let helm = engine()
@@ -126,9 +125,9 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
         XCTAssertNotNil(helm.status.refusal)
     }
 
-    /// A refused rule set is not overwritten, whichever refusal it is — the
-    /// lesson of the empty page, applied to the one state that is *not*
-    /// tampering. What is in the file is a rule set the person once had.
+    /// A refused rule set is not overwritten, whichever refusal it is, this one
+    /// included though it is *not* tampering: what is in the file is a rule set
+    /// the person once had.
     func testARolledBackRuleSetIsNotWrittenOver() throws {
         let helm = engine()
         helm.folders = emptyingRules(in: root, id: "f")
@@ -146,13 +145,12 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
 
     // MARK: - The upgrade
 
-    /// Every Mac that has run Autopilot has a sealed rule set with no number
-    /// beside it and no mark to compare it against. Refusing those would be a
-    /// build that throws away the rules of everyone who installs it.
+    /// A rule set an older build sealed has no number beside it and no mark to
+    /// compare it against. Refusing those would throw away the rules of everyone
+    /// who installs this build.
     func testARuleSetSealedByAnOlderBuildStillRuns() throws {
         try writeAFile()
-        // Exactly what the previous build wrote: the payload, and a MAC over the
-        // payload alone.
+        // What an older build wrote: the payload, and a MAC over it alone.
         let data = try JSONEncoder().encode(emptyingRules(in: root, id: "f"))
         backing.raw[payloadKey] = data
         backing.raw[macKey] = SettingSeal.mac(for: data, key: TestRuleKey.material)

@@ -2,15 +2,9 @@ import XCTest
 @testable import Module_Duplicates_Engine
 
 /// The one thing the pipeline decides that nobody can check by looking: which
-/// copy is offered for deletion.
-///
-/// A count-based test covered it — but through assertions that cannot
-/// see what they claim to check. It asserted a count of 2 and that
-/// `/realcopy` is in there; it never asked which
-/// of the two linked names came with it, which is the only part that decides
+/// copy is offered for deletion. A count cannot see it; the assertions name
+/// the paths, because which of two linked names comes along is what decides
 /// what gets trashed.
-///
-/// Guards a past defect: 6dec5f2f fix: eight defects a second agent pass turned up.
 final class DuplicatesOrderTests: XCTestCase {
 
     private func file(_ path: String, id: UInt64, added: Int) -> FileFacts {
@@ -30,10 +24,9 @@ final class DuplicatesOrderTests: XCTestCase {
     /// been written to in between. Nothing the module answers may depend on it —
     /// least of all which file the screen offers to delete.
     ///
-    /// It does. `sizeGroups` collapses hard links by keeping the *first* entry
-    /// it meets for an inode, and the entry it keeps carries its own date added.
-    /// Two names for one file have two different "date added" values, so which
-    /// name the walk reached first decides the group's dates, and therefore its
+    /// `sizeGroups` collapses hard links to one entry per inode, and two names
+    /// for one file have two different "date added" values; were the kept entry
+    /// whichever the walk reached first, walk order would decide the group's
     /// survivor.
     func testTheSameFilesInADifferentWalkOrderGiveTheSameAnswer() {
         // /h/new.bin and /h/old.bin are one file with two names (inode 7).

@@ -32,7 +32,7 @@ struct ShotToastView: View {
     ///
     /// Everything stands against the lower trailing corner, where the newest shot is in every shape. The row is as
     /// wide as `ShotShelf.width`; past `ShotShelf.visible` shots it is cut at its ends (`rowMask`), and only then
-    /// is there a mask at all: the single shot and a group that fits are drawn as they always were.
+    /// is there a mask at all.
     @ViewBuilder private func shelf(_ shots: [ShotToastModel.Shot]) -> some View {
         if shots.count > ShotShelf.visible {
             sheets(shots).mask { rowMask(count: shots.count, clips: model.unfolded) }
@@ -90,13 +90,12 @@ struct ShotToastView: View {
 
     /// How far the counter and «N more» stand out of the picture's corner, 10 pt.
     private static let labelOut: CGFloat = 10
-    /// How far «N more» stands out of the picture's left edge, not 10 pt (`labelOut`, which it keeps
-    /// upward): the far shot's ring is 3 pt wider than its slot, and at 10 the capsule's left cap lay 6.5 pt past the
-    /// row's cut, `rowOverhang`, and was cut flat; at 3 it lies 0.5 pt inside it.
+    /// How far «N more» stands out of the picture's left edge, less than `labelOut` (which it keeps upward): the far
+    /// shot's ring is 3 pt wider than its slot, and the capsule's left cap must stay inside the row's cut, `rowOverhang`.
     private static let moreOut: CGFloat = 3
     /// How far past the row's end it is still drawn: room for «N more», which stands `moreOut` out of the farthest
     /// whole shot, and short of the ring of the hidden shot beyond it, which begins
-    /// `ShotShelf.gap` less the ring's extra width, 10 pt, from the shown one: at 12 its last 2 pt were drawn.
+    /// `ShotShelf.gap` less the ring's extra width, 10 pt, from the shown one.
     private static let rowOverhang: CGFloat = 9
 
     /// What of the row is drawn. The end toward the oldest shot is cut while there are shots past it, the end toward

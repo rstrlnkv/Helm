@@ -23,16 +23,11 @@ public enum HelmTabNumbers {
 /// (`HeaderTabLabels`, `HelmHeaderChoices`).
 ///
 /// Under `.flat` a plate of `HelmSurface.barPlate` holds the tabs and the pick is `HelmSurface.barPick`. Under
-/// `.liquidGlass` the strip is one `GlassEffectContainer`: a glass capsule for the track and, for the pick, a glass
-/// capsule of its own, `.interactive()` and tinted with a little of the label colour (lighter than the track in Dark,
-/// darker in Light, as the system's toolbar segmented control draws it). **The settings window does not draw this
-/// strip under Glass**: there the tabs are a real `NSToolbar` item, the system's own `NSSegmentedControl`
-/// (`HelmTabsRelay`, `SettingsToolbar`); outside a toolbar that control draws a solid accent-blue pick in an active
-/// window, so it was rejected for any other place. This glass strip is what a view with no `helmTabsSink` gets: the
-/// Launchpad's panel, a borderless panel that cannot carry a toolbar, and the fixtures. The pick slides to a
-/// pressed tab, inside `HelmMotion.interface` and only where `HelmMotion.moves` says so; a tab the page itself
-/// selects (a page switch, an Uninstaller step) moves it without travel. The selection the page owns is written
-/// outside the animation, so the page below is not swapped inside it.
+/// `.liquidGlass` this strip is one `GlassEffectContainer` with a glass capsule for the track and one for the pick,
+/// tinted as the system's toolbar control draws it. The settings window shows a real toolbar item instead, so this
+/// glass strip is for a view with no `helmTabsSink` (Architecture/ThePageHeader.md § Glass tabs). The pick slides to
+/// a pressed tab only where `HelmMotion.moves` says so; a tab the page selects itself moves it without travel. The
+/// page's selection is written outside the animation, so the page below is not swapped inside it.
 public struct HelmHeaderTabs: View {
     let tabs: [HelmHeaderTab]
     let selection: Binding<String>

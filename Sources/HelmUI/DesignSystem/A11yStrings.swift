@@ -4,15 +4,12 @@ import SwiftUI
 /// What the app says to a reader who is not looking at it: names for controls
 /// that show only an icon, and — at the bottom — the one way it speaks unasked.
 ///
-/// `.help()` fills `accessibilityHelp`, which is a hint — it does not name the
-/// control. Without a label these read as "button" in the rotor and in the item
-/// chooser, so a row with a remove button and an actions menu offered VoiceOver
-/// two anonymous buttons and no way to tell them apart.
+/// `.help()` fills `accessibilityHelp`, which is a hint and does not name the
+/// control: without a label an icon-only control reads as "button", and two of
+/// them on one row cannot be told apart.
 ///
-/// They live in `HelmUI` because the same controls appear across seven modules
-/// and the host app, and a label that differs per module is the same defect in
-/// a nicer costume. No count here: it was "four controls in four modules" when
-/// it was written and is neither now, which is what a number in a comment does.
+/// They live in `HelmUI` because the same controls appear across modules and
+/// the host, and a label that differs per module is the same defect.
 public enum HelmA11y {
     public static var moveUp: String { L(.moveUp) }
     public static var moveDown: String { L(.moveDown) }
@@ -25,21 +22,15 @@ public enum HelmA11y {
     /// información», «Mais informações», 「詳しい情報」, 「更多信息」.
     static var moreInfo: String { L(.moreInfo) }
 
-    /// The search field, which had no name at all. The header row's field (`HelmHeaderSearch`) sets this word.
+    /// The search field's name. The header row's field (`HelmHeaderSearch`) sets it.
     ///
-    /// **A placeholder is not a name**, and this one is the house rule read from
-    /// the other end: «Search formulae and casks» disappears the moment there is
-    /// a value, so the field was anonymous exactly while somebody was using it.
-    /// AppKit does not promote it either — measured on a bare `NSSearchField`,
-    /// `accessibilityLabel()` is nil with the field empty **and** nil with a word
-    /// typed into it, so the label is ours to set.
+    /// A placeholder is not a name: it disappears the moment there is a value,
+    /// and AppKit does not promote it (`accessibilityLabel()` of a bare
+    /// `NSSearchField` is nil, empty or not), so the label is ours to set.
     ///
-    /// **The word is «Search» and nothing longer.** VoiceOver already says the
-    /// role — "search field" — so a label spelling the role again reads as
-    /// "search field search field". A second key reading «Search» is
-    /// refused: `testOneEnglishTextIsOneWordAcrossEveryCatalog` fails on
-    /// one English text under two symbols, and the eight translations of that
-    /// one word are the word macOS itself uses for this control in each of them.
+    /// The word is «Search» and nothing longer: VoiceOver already says "search
+    /// field", so a label spelling the role again reads it twice. One English
+    /// text is one key (`testOneEnglishTextIsOneWordAcrossEveryCatalog`).
     static var searchField: String { L(.search) }
 
     /// Where a row stands in a column of buttons, which VoiceOver does not say by itself ("1 of 5"). The
@@ -60,69 +51,44 @@ public enum HelmA11y {
         L(.rowPositionAfter(String(n), String(m), note), language: language)
     }
 
-    /// Whether a disclosure is open. SwiftUI has no trait for it on macOS — the
-    /// rotor gets `.isButton` and nothing else — so the state has to be said,
-    /// and a control whose whole purpose is to open and close must say it.
+    /// Whether a disclosure is open. SwiftUI has no trait for it on macOS, so
+    /// the state has to be said. One pair for the whole app, so a person never
+    /// hears one state under two names.
     ///
-    /// **One pair for the whole app** — the panel, the settings row's ⓘ, the
-    /// Keep Awake tile and the Homebrew health page all say it through this,
-    /// because a second pair with its own words would have a person hearing one
-    /// state under two names.
-    ///
-    /// Read out of the system's own tables rather than translated: the words
-    /// are the stand-alone `expanded` and `collapsed` entries of
+    /// Read out of the system's own tables rather than translated: the
+    /// stand-alone `expanded` and `collapsed` entries of
     /// `/System/Library/PrivateFrameworks/ScreenReader.framework/Versions/A/Resources/SCRGeneral.loctable`,
     /// which VoiceOver itself draws from; zh is `zh_CN` and pt is `pt_BR`. The
-    /// table's spellings are kept as they stand: French says *condensé* for
-    /// collapsed, Japanese 下位項目が折りたたまれました, and Russian spells it
-    /// without the ё it is normally written with.
+    /// table's spellings are kept as they stand (French *condensé*, Russian
+    /// without the ё). Japanese is the exception: its stand-alone `expanded` is
+    /// a typography term, so it keeps 表示されました from `expanded. %@`.
     ///
-    /// **Lower case in every language.** The value is read inside a sentence
-    /// (`PanelChrome` joins it to a count with a comma) as often as alone, and
-    /// speech does not hear case. The table is lower case itself except French,
-    /// whose stand-alone entries are capitalised while its `expanded. %@` is not.
-    ///
-    /// Japanese `expanded` is the exception to «the stand-alone entry»: there it
-    /// reads 字間広く, wide letter spacing, paired with `condensed`, a typography
-    /// term. The table's own phrases for an opened row — `row %lu expanded` and
-    /// `expanded. %@` — say 表示されました, so that is what Japanese keeps.
+    /// Lower case in every language: the value is read inside a sentence
+    /// (`PanelChrome` joins it to a count) as often as alone.
     public static func expanded(_ isExpanded: Bool) -> String {
         isExpanded ? L(.expanded) : L(.collapsed)
     }
 
     /// Calendar's own last item in this menu. The seven translations are its
     /// words, read out of `Calendar.app`'s `Localizable.loctable` under the key
-    /// `Other…`: «Другой…» in Russian, where a translator reaching for the
-    /// dictionary writes «Свой цвет…».
+    /// `Other…`, not a translator's guess.
     ///
-    /// **The English is deliberately longer than Calendar's.** Calendar draws
-    /// «Other…» and this draws «Other colour…», because one English text is one
-    /// word (`testOneEnglishTextIsOneWordAcrossEveryCatalog`) and `Other…` is
-    /// already spoken for — the fourth answer to «for how
-    /// long» in KeepAwake is the same macOS word for a *time*. Two of the eight
-    /// then disagree with this one: Russian says «Другое…» of a time and
-    /// «Другой…» of a colour, Portuguese «Outro…» against «Outra…», and
-    /// German's non-breaking space before the ellipsis is in both. One key
-    /// would have picked whichever of the two shipped first and been wrong in
-    /// the other menu, in the two languages that draw a distinction English
-    /// has lost.
+    /// The English is longer than Calendar's «Other…», because one English text
+    /// is one word (`testOneEnglishTextIsOneWordAcrossEveryCatalog`) and
+    /// `Other…` already names a time in Keep Awake. The two differ where a
+    /// language has gender: Russian «Другое…» of a time and «Другой…» of a
+    /// colour, Portuguese «Outro…» against «Outra…».
     ///
-    /// The wrong tables, both tried: `CalendarUI.framework` carries an `Other…`
-    /// of its own, and it is a third item again — its Spanish is «Otra…» and
-    /// its Portuguese «Outro…», neither of which agrees with *el color* or *a
-    /// cor*. The colour *names* are in `CalendarFoundation.framework`; see
-    /// `PaletteColor.label`.
+    /// Not `CalendarUI.framework`'s `Other…`, which is a third item whose
+    /// Spanish and Portuguese agree with neither. The colour names are in
+    /// `CalendarFoundation.framework`; see `PaletteColor.label`.
     public static var otherColour: String { L(.otherColour) }
 
     /// Said once, out loud, for a change nobody pressed a button to cause.
     ///
     /// A sighted reader sees a notice grow into a page; VoiceOver does not,
-    /// because nothing moved focus and nothing the reader is on has changed its
-    /// value. The state that needs this is the one where the app stops doing what
-    /// it was asked and the only account of it is a new field on screen.
-    ///
-    /// A function rather than an announcement inlined at the call site, so the
-    /// one call is nameable and so a second surface cannot spell it differently.
+    /// because nothing moved focus and nothing the reader is on changed its
+    /// value. One function, so a second surface cannot spell it differently.
     public static func announce(_ text: String) {
         AccessibilityNotification.Announcement(text).post()
     }
@@ -132,10 +98,8 @@ extension View {
     /// Speaks `text` once, each time it becomes a new non-nil value.
     ///
     /// For a verdict that grows into a banner without moving focus or changing
-    /// the value of anything a VoiceOver reader is on — a removal report, a
-    /// return's report — so it is not silent to them. Disk and Autopilot each
-    /// spelled the same `onChange` around `HelmA11y.announce`; this is the one
-    /// place it lives now.
+    /// the value of anything a VoiceOver reader is on, such as a removal report,
+    /// so it is not silent to them.
     public func helmAnnounces(_ text: String?) -> some View {
         onChange(of: text) { _, new in
             if let new { HelmA11y.announce(new) }

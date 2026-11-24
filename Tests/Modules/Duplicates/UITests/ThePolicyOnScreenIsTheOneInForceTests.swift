@@ -18,10 +18,8 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
 
     private var store: NamespacedStore!
     private var keys: SealKeyProbe!
-    /// The page's guard, wired the way the module wires it: behind
-    /// `SealKeyCache`, because what the page reads it reads only once the key is
-    /// in hand and a port that keeps nothing is never in hand
-    /// (`ThePageNeverWaitsForTheKeychainTests`).
+    /// The page's guard, behind `SealKeyCache` as in the module: the page reads
+    /// only once the key is in hand (`ThePageNeverWaitsForTheKeychainTests`).
     private var settings: SettingGuard!
 
     override func setUp() async throws {
@@ -32,10 +30,9 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
 
     /// The page with its first load finished.
     ///
-    /// **Awaited, not raced.** The policy arrives from a task `appear()` starts
-    /// and the model holds, because reading it goes to the keychain and this page is built on
-    /// the thread that draws; a test that read `policy` on the next line would be
-    /// asserting about a page mid-load rather than about what is in force.
+    /// **Awaited, not raced.** The policy arrives from a task `appear()` starts,
+    /// because reading it goes to the keychain; reading `policy` on the next line
+    /// would assert about a page mid-load.
     private func model(_ work: any DuplicatesWork = AnsweringWork(groups: [])) async
     -> DuplicatesViewModel {
         let dvm = DuplicatesViewModel(work: work, store: store, settings: settings, chooseFolder: { nil })
@@ -79,11 +76,9 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
     /// The page and the engine must not disagree about a forged setting — the
     /// screen would then be the only place claiming the forged value is in force.
     ///
-    /// **The forged value is the one that is not the default**, and it has to be:
-    /// forging `byPlace` asserts that the answer is `byPlace`, which a page that
-    /// reads the plist unchecked also satisfies. Measured — that shape passed
-    /// with the seal skipped, exactly as `TheKeepPolicyIsSealedWhereStoredTests`
-    /// records one target down.
+    /// **The forged value is the one that is not the default**: forging `byPlace`
+    /// asserts that the answer is `byPlace`, which a page that reads the plist
+    /// unchecked also satisfies.
     func testAForgedPolicyIsNotWhatThePageShows() async {
         // Sealed through the same call the page makes, so what is planted here is
         // what a person choosing `by place` would have left behind.

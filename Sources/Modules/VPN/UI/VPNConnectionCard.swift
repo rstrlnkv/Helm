@@ -9,14 +9,11 @@ import Module_VPN_Engine
 /// One configuration, with two doors: the applications that raise it, and how
 /// loudly it speaks.
 ///
-/// **Its own view because a popover needs somewhere to live.** The page draws
-/// these in a grid and a `.popover` is presented from `@State`; a card built by
-/// a function on the page would have had to keep «which card is open» on the
-/// page, which is a second thing to keep in step with the card that is asking.
+/// **Its own view because a popover needs somewhere to live**: `.popover` is
+/// presented from `@State`, and a card built by a function would keep «which
+/// card is open» on the page.
 ///
-/// **The two doors are one height by construction.** `doorHeight` is the least
-/// either label takes, so a door holding four icons and a door holding one glyph
-/// cannot come out different sizes.
+/// **The two doors are one height by construction** (`doorHeight`).
 struct VPNConnectionCard: View {
     let connection: VPNConnection
     /// Who raises this tunnel, already capped (`VPNTenants`).
@@ -28,14 +25,13 @@ struct VPNConnectionCard: View {
     let refusals: [String: VPNRuleTrust.Verdict]
     /// Whether this tunnel is up **and** Helm's own doing.
     let heldByHelm: Bool
-    /// What this configuration announces, resolved through `VPNNoticeBook` —
-    /// so a card with no entry of its own shows what it inherits.
+    /// What this configuration announces, resolved through `VPNNoticeBook`, so
+    /// a card with no entry of its own shows what it inherits.
     let notice: VPNNotice
     let dropNotice: VPNNotice
     let spin: Bool
-    /// The colour the ring turns for this configuration, per direction —
-    /// resolved through the book like everything else here, so a card nobody has
-    /// given a colour shows the one it inherits.
+    /// The colour the ring turns for this configuration, per direction,
+    /// resolved through the book the same way.
     let tintUp: String
     let tintDown: String
     /// What macOS last said about banners. **Not a `Bool`**: «nobody has asked
@@ -51,12 +47,9 @@ struct VPNConnectionCard: View {
     let setTiming: (String, VPNAppRule.Timing) -> Void
     let move: (String, String) -> Void
     let remove: (String) -> Void
-    // `@MainActor @Sendable` on these three and not on their neighbours: they
-    // are the ones handed straight to `Binding(get:set:)`, whose `set` is
-    // `@isolated(any) @Sendable`, and an ordinary function value converted to
-    // it warns. The one call site already writes these as closure literals in a
-    // main-actor context, so the literals simply adopt the stricter type and
-    // nothing at either end changes.
+    // `@MainActor @Sendable` on these three only: they go straight to
+    // `Binding(get:set:)`, whose `set` is `@isolated(any) @Sendable`, and an
+    // ordinary function value converted to it warns.
     let setNotice: @MainActor @Sendable (VPNNotice) -> Void
     let setDropNotice: @MainActor @Sendable (VPNNotice) -> Void
     let setSpin: @MainActor @Sendable (Bool) -> Void
@@ -70,8 +63,8 @@ struct VPNConnectionCard: View {
     private static let appIcon: CGFloat = 22
     /// The verb button's circle.
     private static let verbCircle: CGFloat = 28
-    /// One height for both doors' labels — the app icon's, the tallest thing
-    /// either holds; see the type's own note.
+    /// One height for both doors' labels: the app icon's, the tallest thing
+    /// either holds.
     private static let doorHeight = appIcon
     /// The least an application's name is given in the rules popover.
     private static let nameMinimum: CGFloat = 100
@@ -80,32 +73,25 @@ struct VPNConnectionCard: View {
     /// The least a mode or timing pop-up takes (`HelmPickerWidth`).
     private static let pickerMinimum: CGFloat = 150
     /// **The picture beside one question**, at the proportion every notice
-    /// preview is drawn at (104 : 66). A picture that grows with the popover is
-    /// a picture that takes the room the question needs.
+    /// preview is drawn at (104 : 66), so it does not take the question's room.
     static let noticeThumbnail = CGSize(width: 104, height: 66)
 
     /// The width both mode pop-ups take, in one language.
     ///
     /// **`fittingSymbolled`, because the items carry a glyph** (`VPNNoticeGlyph`)
-    /// and the plain arithmetic is a whole symbol column short; a pop-up
-    /// narrower than its own words does not say what it is set to.
+    /// and plain arithmetic is a symbol column short.
     ///
-    /// Language-taking: a width read through `AppLanguage.current` is this
-    /// machine's width eight times over. The terse languages keep the minimum.
+    /// Language-taking, so a test can measure all eight.
     static func modeWidth(language: AppLanguage = AppLanguage.current) -> CGFloat {
         HelmPickerWidth.fittingSymbolled(
             VPNNotice.allCases.map { VPNStr.noticeOption($0, language: language) },
             minimum: pickerMinimum)
     }
-    /// **The timing pop-up's own width, and the popover's from it.** A typed
-    /// width truncates the longer languages' labels into a control that does not
-    /// say what it is set to. `HelmPickerWidth` answers what the labels need; the
-    /// popover is then wide enough to hold a row of them, with `nameMinimum` left
-    /// for the application's name.
-    ///
-    /// The two popovers are one width: they hold the same kind of thing — a set of
-    /// settings about one configuration — and two widths would read as two
-    /// unrelated windows.
+    /// **The timing pop-up's own width, and the popover's from it.**
+    /// `HelmPickerWidth` answers what the labels need, so no language
+    /// truncates; the popover holds a row of them with `nameMinimum` left for
+    /// the application's name. Both popovers are one width: two widths would
+    /// read as two unrelated windows.
     private static var timingWidth: CGFloat {
         HelmPickerWidth.fitting(VPNAppRule.Timing.allCases.map { VPNStr.ruleTiming($0) },
                                 minimum: pickerMinimum)
@@ -115,9 +101,7 @@ struct VPNConnectionCard: View {
         HelmSpace.s5 * 2 + appIcon + HelmSpace.s4 + nameMinimum + HelmSpace.s4 + timingWidth
             + HelmSpace.s4 + menuWidth
     }
-    /// The tallest the rules popover grows before it scrolls. Somebody with
-    /// eighteen rules on one tunnel gets a list, not a popover taller than the
-    /// window it comes out of.
+    /// The tallest the rules popover grows before it scrolls.
     private static let rulesCeiling: CGFloat = 360
 
     var body: some View {
@@ -133,11 +117,9 @@ struct VPNConnectionCard: View {
 
     // MARK: - What the card says without being opened
 
-    /// **`isConnected`, not `isUp`.** The dot and the button's colour are the
-    /// page's answer to "which one is up", and `VPNStatus.isConnected`'s own doc
-    /// comment says why: `isUp` includes `.connecting`, and a green mark on
-    /// a tunnel three seconds into a handshake says the Mac is protected while
-    /// it is not.
+    /// **`isConnected`, not `isUp`**: `isUp` includes `.connecting`, and a
+    /// green mark three seconds into a handshake says the Mac is protected
+    /// while it is not (`VPNStatus.isConnected`).
     static func lit(_ connection: VPNConnection) -> Bool { connection.status.isConnected }
 
     private var header: some View {
@@ -251,17 +233,14 @@ struct VPNConnectionCard: View {
 
     // MARK: - The rules popover
 
-    /// Not `private`, deliberately: a popover is a window macOS orders in, so the
-    /// offscreen bench cannot photograph one through the door. A bench that wants
-    /// to look at this mounts it directly — the same view the door presents, not a
-    /// copy of it, which is the difference between measuring the screen and
-    /// measuring a mock-up.
+    /// Not `private`: a popover is a window macOS orders in, so the bench
+    /// cannot photograph one through the door and mounts this same view
+    /// directly.
     var rulesPopover: some View {
         VStack(alignment: .leading, spacing: 0) {
             popoverTitle(VPNStr.rulesFor(connection.name))
-            // **Every rule, not the four the door wears.** The cap is a choice for
-            // the closed card; here there is room, and «and 7 more» behind a door
-            // somebody just opened is the door refusing to open.
+            // **Every rule, not the four the door wears**: «and 7 more» behind
+            // a door somebody just opened is the door refusing to open.
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(strip.all.enumerated()), id: \.offset) { index, bundleID in
@@ -350,10 +329,8 @@ struct VPNConnectionCard: View {
 
     // MARK: - The notices popover
 
-    /// **Two questions, two pictures, one right edge.** The picture is the one
-    /// showing the mode its question is *set to*, beside the control that sets
-    /// it; the other modes are words in the pop-up, which is where macOS puts a
-    /// choice of three.
+    /// **Two questions, two pictures, one right edge.** Each picture shows the
+    /// mode its question is *set to*; the other modes are words in the pop-up.
     private var noticesPopover: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
             popoverTitle(VPNStr.noticesFor(connection.name))
@@ -361,21 +338,16 @@ struct VPNConnectionCard: View {
             noticeChoice(VPNStr.noticeRuleLabel, selection: notice, set: setNotice)
             noticeChoice(VPNStr.noticeDropLabel, selection: dropNotice, set: setDropNotice)
 
-            // **Once for the popover, and both questions are in it.** A mode
-            // macOS refuses looks exactly like one it allows; asked per question,
-            // the same sentence would stand twice, which `permissionMissing`
-            // exists to prevent.
+            // **Once for the popover, for both questions**, so the same
+            // sentence never stands twice (`permissionMissing`).
             if VPNNotice.permissionMissing(among: [notice, dropNotice],
                                            authorization: bannerAuthorization) {
                 HelmPermissionNote(text: VPNStr.noticeDenied,
                                    openSettings: PermissionCheck.openNotificationSettings)
             }
             Divider()
-            // `HelmSettingRow`, which is a label on the left and its control
-            // flush right — the rhythm this popover shares with every settings
-            // card, and the reason the palettes stop where the pop-ups stop. A
-            // long label such as «Когда правило подключает VPN» takes two lines
-            // of the row's label column, which is what the shape asks for.
+            // `HelmSettingRow`: a label on the left and its control flush
+            // right, the rhythm of every settings card.
             HelmSettingRow(VPNStr.spinLabel) {
                 Toggle("", isOn: Binding(get: { spin }, set: setSpin))
                     .labelsHidden()
@@ -383,11 +355,9 @@ struct VPNConnectionCard: View {
                     .controlSize(.small)
                     .accessibilityLabel(VPNStr.spinLabel)
             }
-            // **The two colours, under the switch that makes them mean
-            // anything.** Disabled rather than taken away while the ring is
-            // off: a row that loses its tallest control makes the popover
-            // shorter on a setting that has nothing to do with its height,
-            // which is the answer Keep Awake reached for the same pair.
+            // **The two colours, under the switch that gives them meaning.**
+            // Disabled rather than removed while the ring is off, so the
+            // popover's height does not change with an unrelated setting.
             HelmSettingRow(VPNStr.spinConnected) {
                 HelmPaletteSwatches(VPNStr.spinConnected, selection: tintUp) {
                     setTint(.connected, $0)
@@ -400,18 +370,16 @@ struct VPNConnectionCard: View {
                 }
                 .disabled(!spin)
             }
-            // The cost of the two quiet settings meeting, said where they meet:
-            // this card's ring off and this card's notice silent is a rule that
-            // fires with no sign at all.
+            // This card's ring off and its notice silent is a rule that fires
+            // with no sign at all.
             if !spin, notice == .silent {
                 Text(VPNStr.spinSilentWarning)
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmSignal.warning(increased: traits.increasedContrast))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            // A step below the note under a control (`HelmText.rowDetail`): this
-            // one is under the whole popover and has to sit below every label in
-            // it without competing with any of them.
+            // A step below `HelmText.rowDetail`: this note is under the whole
+            // popover and must not compete with any label in it.
             Text(VPNStr.onlyThisConnection)
                 .font(HelmText.smallPrint).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
@@ -440,13 +408,9 @@ struct VPNConnectionCard: View {
                     }
                 }
                 .labelsHidden()
-                // **A named width, not `fixedSize`.** A pop-up sizes to its
-                // widest *item*, so both would be one column wide anyway; what
-                // the frame buys is a number with a name, `modeWidth`.
-                //
-                // Trailing, for the reason the rules row gives: a pop-up hugs
-                // its title inside the width it is given, and centred in it the
-                // two would end inside the margin every other control reaches.
+                // **A named width, not `fixedSize`**: a pop-up sizes to its
+                // widest item anyway; the frame gives the number a name. Trailing,
+                // because a pop-up hugs its title inside its width.
                 .frame(width: Self.modeWidth(), alignment: .trailing)
                 .accessibilityLabel(title)
             }

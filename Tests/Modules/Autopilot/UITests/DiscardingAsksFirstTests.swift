@@ -4,8 +4,8 @@ import XCTest
 @testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
-/// **Deleting a record asks first.** «Discard rules», «Clear» and «Discard history»
-/// each used to act on the press; the press now only calls `ask`, which sets `pendingDiscard`, and
+/// **Deleting a record asks first.** A press of «Discard rules», «Clear» or «Discard history»
+/// only calls `ask`, which sets `pendingDiscard`, and
 /// `confirmDiscard()` is the one door to `dropRefusedRules` and `dropHistory`.
 ///
 /// Held for the class a wrong build puts in front of somebody's data: a button

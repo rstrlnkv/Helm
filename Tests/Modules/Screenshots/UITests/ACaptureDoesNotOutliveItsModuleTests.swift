@@ -8,8 +8,7 @@ import XCTest
 
 /// **A capture the module was switched off under does nothing afterwards.**
 ///
-/// The freeze is the one long wait in a capture — some hundred milliseconds of
-/// ScreenCaptureKit on three displays — and the module's switch can be turned
+/// The freeze is the one long wait in a capture, and the module's switch can be turned
 /// in it. The model's `stop()` then calls `CaptureController.cancel`, which cancels the press and
 /// closes an overlay that does not exist yet, and the model lets the controller go;
 /// the task that was waiting on the freeze still holds the controller and

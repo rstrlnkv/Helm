@@ -5,36 +5,24 @@ import HelmContract
 
 /// **The reading that drew the button is older than the press.**
 ///
-/// `DoctorFixCandidate.judging(_:installed:)` runs on the page's side, against
-/// the installed list the page was holding when `brew doctor` answered. That
-/// answer is minutes old by the time somebody has read the issue, and a day old
-/// if the window was left open — and in between, `periphery` is uninstalled in
-/// a terminal, or by Helm's own Installed tab two segments away. The argv the
-/// page still carries then names a package that is not on this Mac.
+/// `DoctorFixCandidate.judging(_:installed:)` runs on the page's side against
+/// the installed list held when `brew doctor` answered, which may be a day old
+/// by the press; meanwhile `periphery` may have been uninstalled in a terminal
+/// or on the Installed tab. So the argv through the door is a *candidate*:
+/// `HomebrewEngine.runDoctorFix` reads the installed list at the press and
+/// judges again. The page's judgement decides what to draw; this one, what runs.
 ///
-/// So the argv arriving through the door is a *candidate*, never a verdict:
-/// `HomebrewEngine.runDoctorFix` reads the installed list at the press and puts
-/// it through `DoctorFix.judge` again. The UI's judgement decides what to draw;
-/// this one decides what to run.
-///
-/// **Every absence here is asserted beside a presence.** A test that only
-/// checks "no child launched" passes for every wrong reason there is — a fake
-/// with no brew path, a gate left shut by the previous case, a typo in the
-/// command name — so each refusal below is measured against a run of the *same
-/// engine with the same fake* that did launch. The one that matters most,
-/// `testTheSamePressRunsAndThenRefusesWhenTheNameLeavesTheCellar`, is one
-/// engine pressed twice with nothing changed but the Cellar.
+/// **Every absence here is asserted beside a presence**: each refusal is
+/// measured against a run of the same engine with the same fake that did
+/// launch, so a missing brew path or a gate left shut cannot pass for it.
 final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
 
-    /// What `brew list --versions` answers for a Cellar holding `installed`. The Cellar
-    /// can change between two calls, because that is the whole subject: the runner's
-    /// `answers` are read on every run, so a test can uninstall something the way a
-    /// terminal does by setting them again.
+    /// What `brew list --versions` answers for a Cellar holding `installed`. A
+    /// test changes the Cellar between two calls by setting `answers` again.
     ///
-    /// The runner holds its children (`streams: .hold`): a fake that calls `onExit`
-    /// synchronously releases the busy gate before the call it gates has returned, and
-    /// a test built on one passes with the gate deleted. `finishAll` is how an
-    /// operation ends here.
+    /// The runner holds its children (`streams: .hold`): a fake that calls
+    /// `onExit` synchronously releases the busy gate before the gated call
+    /// returns, and a test on it passes with the gate deleted.
     private func cellar(_ installed: [String]) -> [BrewAnswer] {
         // `brew list --versions` prints "<name> <version>"; the formula half answers
         // with everything and the cask half with nothing, so the engine's two
@@ -47,9 +35,8 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     private let refusingList = [BrewAnswer(["list"], 1, "")]
 
     /// Every port named at construction, the marker included: a defaulted one
-    /// would be this Mac's own (ARCHITECTURE.md § Fakes).
-    /// Everything the engine put on the news, read back through the replay:
-    /// with the fakes synchronous, whatever was emitted is already there.
+    /// would be this Mac's own (Architecture/TestsAndMeasurement.md § Fakes).
+    /// What the engine put on the news is read back through the replay.
     private func states(_ news: EngineNews<HomebrewNews>) async -> [OpState] { await replay(news).states }
 
     // MARK: - The race this design exists for
@@ -57,11 +44,10 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// **One engine, one argv, two presses, and nothing between them but the
     /// Cellar.**
     ///
-    /// The first press is the control and it is not decoration: without it, the
-    /// second half of this test would pass against an engine that refuses every
-    /// fix, against one that cannot find brew, and against one whose command
-    /// name is misspelled. With it, the only difference between a run and a
-    /// refusal is the list `brew list` answered a line before the act.
+    /// The first press is the control: without it the second half would pass
+    /// against an engine that refuses every fix or cannot find brew. With it,
+    /// the only difference between a run and a refusal is the list `brew list`
+    /// answered a line before the act.
     func testTheSamePressRunsAndThenRefusesWhenTheNameLeavesTheCellar() async {
         let runner = ScriptedRunner(streams: .hold, answers: cellar(["periphery", "wget"]))
         let news = EngineNews<HomebrewNews>()
@@ -116,10 +102,9 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
         XCTAssertEqual(refusals.count, 1, "the refusal was silent")
     }
 
-    /// **Nothing through this door is trusted to have been judged.** No page draws a
-    /// button for `untap`, for an `uninstall` carrying two names, or for one
-    /// carrying a flag — but `perform(_:)` is public, and the engine is the gate
-    /// rather than the page.
+    /// **Nothing through this door is trusted to have been judged.** No page draws
+    /// a button for `untap`, two names or a flag, but `perform(_:)` is public, and
+    /// the engine is the gate.
     func testAnArgvNoPageEverDrewIsRefused() {
         let never = [
             ["untap", "sozercan/homebrew-repo"],   // off `DoctorFix.Allowed` entirely
@@ -138,9 +123,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
             XCTAssertEqual(runner.streamed, [],
                            "\(argv) reached a child: \(runner.streamed)")
         }
-        // The control for the whole sweep: the same fixture, the one argv the
-        // judge does admit. Without this, deleting `runDoctorFix`'s body would
-        // leave every case above green.
+        // The control for the whole sweep: the one argv the judge admits.
         let runner = ScriptedRunner(streams: .hold, answers: cellar(["periphery", "wget"]))
         brewEngine(runner).runDoctorFix(["uninstall", "periphery"])
         XCTAssertEqual(runner.streamed, [["uninstall", "--", "periphery"]],

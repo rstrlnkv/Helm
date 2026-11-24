@@ -8,7 +8,7 @@ import HelmRuntime
 /// `FileWeight`, and the report `HelmTrash` builds out of them.
 final class CacheContentsRemovalTests: XCTestCase {
     /// Above `DiskAdvisor`'s 100 MB floor, so the advice under test is the one
-    /// the app would really produce. Measured at 29 ms to write.
+    /// the app would really produce.
     private let childBytes = 36_000_000
     private let children = ["Firefox", "Adobe", "Spotify"]
 
@@ -43,8 +43,8 @@ final class CacheContentsRemovalTests: XCTestCase {
         }
     }
 
-    /// **The hazard is real.** Without this the two tests below would pass with
-    /// the container perfectly trashable and prove nothing at all.
+    /// The hazard is real: without it the two tests below would pass with the
+    /// container trashable.
     func testTheContainerItselfIsRefused() {
         let result = HelmTrash.remove(allowed: [cachesPath], module: "disk",
                                       trashing: move(refusing: [cachesPath]))
@@ -76,9 +76,9 @@ final class CacheContentsRemovalTests: XCTestCase {
         }
     }
 
-    /// Partial is the normal outcome here — a running application holds its own
-    /// cache open — so the report has to name what stayed, not sum it into the
-    /// count. One refusal, by path, with the reason macOS gave.
+    /// Partial is the normal outcome, since a running application holds its own
+    /// cache open: the report names what stayed, by path and reason, and does
+    /// not sum it into the count.
     func testAChildHeldByARunningAppIsNamedInTheReport() throws {
         let held = cachesPath + "/Spotify"
         let advice = try cacheAdvice()

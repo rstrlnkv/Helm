@@ -4,14 +4,9 @@ import XCTest
 
 /// A file inside an application bundle is never offered as a duplicate.
 ///
-/// **The promise was in prose and in a flag, and had no test under it.** The
-/// walk's own documentation has said "package interiors are not entered —
-/// offering half of an .app bundle as a duplicate invites breaking the app"
-/// since it was written, and what enforced it was `.skipsPackageDescendants`
-/// passed to `FileManager.enumerator`. When the walk moved to `BulkWalk` that
-/// flag went with the enumerator, and nothing in the suite noticed: the whole
-/// interior of every application under a scanned folder would have been offered
-/// for deletion, with a green suite.
+/// Offering half of an .app bundle as a duplicate invites breaking the app. The
+/// walk's flag for package interiors is easy to lose in a change of walker, so
+/// the promise is held here rather than in prose.
 ///
 /// The sibling file next door covers the other half — an application *library*
 /// this Mac has never registered a type for, which is judged by name because

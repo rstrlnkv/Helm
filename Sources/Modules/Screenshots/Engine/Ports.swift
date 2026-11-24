@@ -166,8 +166,8 @@ enum PrivateKind: Sendable, Equatable {
 
 /// One match inside a line, and where it is: `box` is in Vision's normalised coordinates of the picture that
 /// was read, the origin at its **lower** left, each side a fraction of the picture's.
-/// The engine acts alike on every kind (each is one blur), so `kind` is the reading's account of what was found and
-/// is read by the tests and the benchmark, not by a branch in `Sources`; it stays for the next one that must tell them apart.
+/// The engine acts alike on every kind (each is one blur), so `kind` is the reading's account of what was found,
+/// read by no branch in `Sources`.
 /// **A find that wraps over two lines is one match on its first line only** (see `VisionTextReader`).
 struct PrivateMatch: Sendable, Equatable {
     let kind: PrivateKind
@@ -219,8 +219,7 @@ public struct RawSetting: @unchecked Sendable {
 ///
 /// None is ever written: `com.apple.screencapture` is where macOS keeps the
 /// save folder, `com.apple.symbolichotkeys` is where it keeps which of its
-/// own shortcuts are ticked, and the global domain holds the interface-sound switch. Changing a system shortcut is the person's act in
-/// System Settings; Helm opens the pane and says what to untick.
+/// own shortcuts are ticked, and the global domain holds the interface-sound switch.
 public protocol CapturePreferences: Sendable {
     /// `location`, raw. **Every reason it may be empty is `nil`:** the key is
     /// absent, which is the ordinary state, and nothing distinguishes that from

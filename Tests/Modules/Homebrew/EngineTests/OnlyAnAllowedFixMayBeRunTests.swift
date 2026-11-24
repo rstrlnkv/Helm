@@ -1,19 +1,15 @@
 import XCTest
 @testable import Module_Homebrew_Engine
 
-/// `DoctorFix.judge` — the one place that decides whether a command `brew
+/// `DoctorFix.judge`, the one place that decides whether a command `brew
 /// doctor` printed may ever be handed to a process.
 ///
-/// Every case here is written so that it goes red when the rule is loosened in
-/// the direction it guards. The loosenings were planted one at a time and each
-/// case was watched to fail; the report beside this work names them. A case
-/// that cannot fail is not a guard, and this file is the security surface of
-/// the whole «Состояние» design.
+/// Every case goes red when the rule is loosened in the direction it guards;
+/// this file is the security surface of the whole Health tab.
 final class OnlyAnAllowedFixMayBeRunTests: XCTestCase {
 
-    /// What this Mac actually had installed when the fixture output was
-    /// captured, plus two neighbours — so "is in the installed list" is
-    /// exercised against a list with more than one entry in it.
+    /// This Mac's installed list at the capture, plus two neighbours, so "is in
+    /// the installed list" is tried against more than one entry.
     private let installed = ["periphery", "git", "python@3.12"]
 
     // MARK: - The one entry, from the front
@@ -25,16 +21,15 @@ final class OnlyAnAllowedFixMayBeRunTests: XCTestCase {
                        "judge repeats the argv it was given; it does not rewrite one")
     }
 
-    /// `cleanup` is no entry: no page offers it (defect M031), so the bare
-    /// command is refused like any other the list does not name.
+    /// `cleanup` is no entry: no page offers it, so the bare command is
+    /// refused like any other the list does not name.
     func testCleanupIsCopyOnly() {
         XCTAssertEqual(DoctorFix.judge(["cleanup"], installed: installed).kind, .copyOnly)
     }
 
-    /// A name with the characters a real Homebrew name carries — `@`, a digit,
-    /// a dot — is still runnable when it is installed. Without this the
-    /// character rule could be tightened to letters alone and nothing would say
-    /// so until somebody with `python@3.12` opened the page.
+    /// A name with the characters a real Homebrew name carries (`@`, a digit, a
+    /// dot) is runnable when installed, so the character rule cannot shrink to
+    /// letters alone unnoticed.
     func testAnInstalledNameCarryingAtAndADotIsRunnable() {
         XCTAssertEqual(DoctorFix.judge(["uninstall", "python@3.12"], installed: installed).kind,
                        .runnable)
@@ -82,9 +77,8 @@ final class OnlyAnAllowedFixMayBeRunTests: XCTestCase {
                        .copyOnly)
     }
 
-    /// Held by two rules at once — the character rule refuses a leading `-`,
-    /// and the match is argument-exact — so it takes both being loosened
-    /// together to make it red.
+    /// Held by two rules at once (the character rule refuses a leading `-`, and
+    /// the match is argument-exact), so both must loosen to make it red.
     func testCleanupWithAPruneArgumentIsCopyOnly() {
         XCTAssertEqual(DoctorFix.judge(["cleanup", "--prune=all"], installed: installed).kind,
                        .copyOnly)
@@ -96,11 +90,9 @@ final class OnlyAnAllowedFixMayBeRunTests: XCTestCase {
 
     // MARK: - `brew` is not part of an argv this judge accepts
 
-    /// Decided, and written in the file's doc comment: `judge` is handed the
-    /// subcommand and its operands, exactly the shape the module's own launch
-    /// sites pass to the brew executable. An argv that still carries `brew` at
-    /// the front has not been parsed, and stripping it would be a
-    /// normalisation — the judge does none.
+    /// `judge` is handed the subcommand and its operands, the shape the
+    /// module's own launch sites pass to brew. An argv still carrying `brew` at
+    /// the front has not been parsed, and the judge does no normalisation.
     func testAnArgvStillCarryingBrewAtTheFrontIsCopyOnly() {
         XCTAssertEqual(DoctorFix.judge(["brew", "cleanup"], installed: installed).kind, .copyOnly)
         XCTAssertEqual(DoctorFix.judge(["brew", "uninstall", "periphery"],
@@ -127,11 +119,9 @@ final class OnlyAnAllowedFixMayBeRunTests: XCTestCase {
 
     // MARK: - A hostile element, one character per case
     //
-    // Each of these passes the name through the installed list as well — the
-    // installed list is itself a list parsed out of another tool's output, so
-    // "it is in the installed list" is not proof that a string is a name. That
-    // is what makes each case able to fail: remove the character rule and the
-    // exact match alone lets every one of them through.
+    // Each name also passes the installed list, itself parsed out of another
+    // tool's output, so "it is in the installed list" is no proof of a name.
+    // Without the character rule, the exact match alone lets every one through.
 
     func testASemicolonInANameIsCopyOnly() {
         let name = "periphery;rm"
@@ -178,15 +168,13 @@ final class OnlyAnAllowedFixMayBeRunTests: XCTestCase {
     // MARK: - The list itself
 
     /// The hand-written list, named entry by entry. A second entry cannot be
-    /// added without this failing, which is the point: the checklist a new
-    /// entry has to pass is written in `DoctorFix.swift` beside the list, and
-    /// this is what sends its author to read it.
+    /// added without this failing, which sends its author to the checklist
+    /// beside the list in `DoctorFix.swift`.
     func testTheAllowlistHoldsExactlyThisOneEntry() {
         XCTAssertEqual(DoctorFix.Allowed.allCases, [.uninstallAnInstalledPackage])
     }
 
-    /// The entry admits its own command and nothing else — so it cannot be
-    /// quietly widened.
+    /// The entry admits its own command and nothing else.
     func testTheEntryAdmitsOnlyItsOwnCommand() {
         XCTAssertTrue(DoctorFix.Allowed.uninstallAnInstalledPackage
             .admits(["uninstall", "periphery"], installed: installed))

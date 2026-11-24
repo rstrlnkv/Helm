@@ -42,10 +42,9 @@ final class AutopilotLaunchTests: XCTestCase {
 
     // MARK: - Construction
 
-    /// The defect, at its site. `AutopilotEngine.init` read the key so that the
-    /// keychain item would exist from the first launch of the sealing build;
-    /// `activate` reads the rule set — and therefore the key — a moment later
-    /// anyway, so the eager read bought nothing and cost the whole launch.
+    /// Building the engine does not ask for the key: `activate` reads the rule
+    /// set, and with it the key, a moment later, so a read in `init` would buy
+    /// nothing and cost the whole launch.
     func testConstructingTheEngineDoesNotConsultTheKeyPort() {
         let keys = TestRuleKey()
 
@@ -57,15 +56,13 @@ final class AutopilotLaunchTests: XCTestCase {
 
     // MARK: - What the eager read was protecting
 
-    /// The reason `init` read the key, kept. The keychain item's absence is the
-    /// only evidence that this installation predates sealing, so it has to start
-    /// existing at the first launch — otherwise a machine with no rules stays in
-    /// migration and a rule set planted a month later is adopted as one that
-    /// predates the seal.
+    /// The keychain item's absence is the only evidence that this installation
+    /// predates sealing, so it has to start existing at the first launch;
+    /// otherwise a machine with no rules stays in migration and a rule set
+    /// planted a month later is adopted as one that predates the seal.
     ///
-    /// `activate` is what makes that true now. Asserted the only way that means
-    /// anything: plant an emptying rule set afterwards and check the file is
-    /// still there.
+    /// `activate` makes that true. Asserted the only way that means anything:
+    /// plant an emptying rule set afterwards and check the file is still there.
     func testTheFirstLaunchLeavesMigrationEvenWithNoRulesToRead() throws {
         try Data("private".utf8).write(to: root.appendingPathComponent("statement.pdf"))
         let helm = engine(TestRuleKey())

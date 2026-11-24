@@ -6,10 +6,10 @@ import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
 
-/// **A rule for an unsigned or unrecorded app looked like a working one.** The
-/// refusal reached only `helm.log`, so an unattended rule that never fired showed
-/// in the rules popover as a rule that did. The engine now publishes the reason
-/// per rule (`StatePayload.ruleRefusals`), from the expression `judge` consults.
+/// **A rule for an unsigned or unrecorded app does not look like a working one.**
+/// The engine publishes the reason per rule (`StatePayload.ruleRefusals`), from
+/// the expression `judge` consults, so the rules popover shows a rule that will
+/// not fire, not only `helm.log`.
 final class ARuleThatWillNotFireSaysSoTests: XCTestCase {
 
     private let bundleID = "com.example.app"

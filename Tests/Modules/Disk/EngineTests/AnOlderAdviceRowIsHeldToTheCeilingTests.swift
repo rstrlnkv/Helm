@@ -2,15 +2,14 @@ import Foundation
 import XCTest
 @testable import Module_Disk_Engine
 
-/// **An advice figure from a saved file is held to `0...DiskEntry.byteCeiling` in
-/// the older form as in the current one.**
+/// An advice figure from a saved file is held to `0...DiskEntry.byteCeiling` in
+/// the older form as in the current one.
 ///
-/// A row written before `targets` existed has only `bytes`; it decodes as one
-/// target built through `Target(path:bytes:)`. That figure reaches the deletion
-/// total (`DiskRemovalPlan.question`), so `Int.max` must not pass the ceiling and a
-/// negative figure must not understate the sum. Both directions are tested: the
-/// top and the bottom are different failures. The documents are JSON that omits
-/// the key, never a re-encoded value of today's type.
+/// A row with only `bytes` and no `targets` decodes as one target built through
+/// `Target(path:bytes:)`. That figure reaches the deletion total
+/// (`DiskRemovalPlan.question`), so `Int.max` must not pass the ceiling and a
+/// negative figure must not understate the sum. The documents are JSON that
+/// omits the key, never a re-encoded value of today's type.
 final class AnOlderAdviceRowIsHeldToTheCeilingTests: XCTestCase {
 
     private func older(_ bytes: String) -> Data {

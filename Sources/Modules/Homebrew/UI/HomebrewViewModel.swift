@@ -78,28 +78,22 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// `HomebrewNews.brew`; the seed applies only while this is false.
     private var statusRead = false
     @Published private(set) var installed: [BrewPackage] = []
-    /// What happened to the last `brew list` — which is three things and not
-    /// two. This was a `Bool`, and the state it could not hold is a refusal:
-    /// the flag stayed down for ever and the page spun over it (`ListReading`).
+    /// What happened to the last `brew list`: not asked, waiting, answered or
+    /// refused (`ListReading`). A refusal is a state of its own, or the page
+    /// would spin over it for ever.
     @Published private(set) var installedReading: ListReading = .notAsked
     /// Whether there is an installed list to speak from, for the readers that
     /// only need that much — the status line's counts and the fix judge.
-    /// Derived rather than stored beside the reading: two fields are two
-    /// accounts of one answer, and the one that goes stale is the one a page
-    /// reads.
+    /// Derived, so it cannot go stale beside the reading.
     var loadedInstalled: Bool { installedReading == .answered }
     @Published private(set) var outdated: [OutdatedPackage] = []
     /// `installedReading`'s twin for `brew outdated`.
     @Published private(set) var outdatedReading: ListReading = .notAsked
     @Published private(set) var searchHits: [SearchHit] = []
-    /// `installedReading`'s twin for `brew search` — **and the one the page had
-    /// nothing at all for.** A search is two `brew search` runs, measured at
-    /// about nine seconds, and for those nine seconds the results pane said
-    /// «Ничего не найдено.»: the answer to the question, drawn while it was
-    /// still being asked and pixel-identical to a true zero and to a refusal.
-    /// `HelmWord.searching` was translated into all eight languages and drawn
-    /// nowhere, because the branch that would have drawn it was unreachable by
-    /// construction.
+    /// `installedReading`'s twin for `brew search`. A search is two `brew
+    /// search` runs and takes seconds; without this the pane would say
+    /// «nothing found» while still asking, identical to a true zero and to a
+    /// refusal.
     @Published private(set) var searchReading: ListReading = .notAsked
     /// The last of what `brew` said, not all of it. 1000 is `LogTail`'s bound
     /// and this is the same problem: a running record somebody reads the end of.
@@ -130,8 +124,8 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// The uninstall a person is being asked about, and what the Cellar said
     /// still needs it. They move together: the names are read for *this* press
     /// and are cleared with it, so a second dialog can never draw the first
-    /// one's answer. It lives here rather than in the page's `@State` because
-    /// the reading is asked of the engine and arrives after the press.
+    /// one's answer. Held here, not in the page's `@State`, because the reading
+    /// arrives after the press.
     @Published private(set) var pendingUninstall: BrewPackage?
     @Published private(set) var dependentsOfPending: DependentsReading = .notAsked
     /// Package descriptions keyed by "f:name" / "c:name", fetched in batches
@@ -145,29 +139,19 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// Those three are one value on purpose: the page's second tier is drawn
     /// from an answer or not drawn at all. The engine folds a refusal, a
     /// missing brew and a document this build cannot read into the same nil
-    /// (`HomebrewEngine.info`) — and none of the three has measured anything, so
-    /// a `PackageInfo` of empty fields standing in for "not answered" would be
-    /// the page stating facts about a Cellar nobody read. The first tier —
-    /// name, version, description, action — is a function of the lists this
-    /// object already holds and never waits on this.
-    ///
-    /// Internal rather than `public`, for the reason `segment` gives: nothing
-    /// outside `Module_Homebrew_UI` reads it, and `public` in this tree means
-    /// "another target uses this".
+    /// (`HomebrewEngine.info`), and a `PackageInfo` of empty fields would state
+    /// facts about a Cellar nobody read. The first tier — name, version,
+    /// description, action — comes from the lists and never waits on this.
     @Published private(set) var info: PackageInfo?
 
     /// How much disk **the package selected now** occupies — or that a walk for
     /// it is out right now, or that there is nothing to say.
     ///
-    /// **Three states rather than an optional, and the middle one is the whole
-    /// reason.** `brew info` carries no size in either direction, so this is a
-    /// walk of the package's own Cellar directory and it lands after the rest of
-    /// the inspector — the one wait in the tier long enough that arriving with
-    /// no warning reads as a row appearing out of nowhere. An `Int?` could not
-    /// say that: «nothing is selected», «a walk is out» and «the walk answered
-    /// nothing» were one nil, so the page could not tell a measurement that is
-    /// happening from one that is not. `SizeReading` carries the difference;
-    /// this field is where it is known.
+    /// **Three states rather than an optional.** `brew info` carries no size,
+    /// so this is a walk of the package's Cellar directory that lands after the
+    /// rest of the inspector. An `Int?` would fold «nothing is selected», «a
+    /// walk is out» and «the walk answered nothing» into one nil, and the page
+    /// could not show a measurement that is happening.
     ///
     /// `.measuring` is written immediately before the ask goes out and only for
     /// a package `brew info` said is installed, so it can never stand over a
@@ -182,13 +166,8 @@ private final class SharedLatestRequest: @unchecked Sendable {
     @Published private(set) var size: SizeReading = .notMeasured
 
     /// Which ask an answer belongs to, so an older one is dropped rather than
-    /// drawn over a newer package.
-    ///
-    /// The third `LatestRequest` in this file, for the third reading that
-    /// arrives after the screen may have moved. Clicking down a list of fifty
-    /// rows leaves fifty `brew info` runs out behind a 90 s deadline, and
-    /// whichever answered last used to be the one on screen — under whatever
-    /// heading the person had reached by then.
+    /// drawn over a newer package. Clicking down a list leaves one `brew info`
+    /// run out per row, and they answer in any order.
     private var infoAsks = LatestRequest()
 
     /// The ask in flight. Held so a superseded one can be dropped rather than
@@ -196,31 +175,13 @@ private final class SharedLatestRequest: @unchecked Sendable {
     private(set) var infoAsk: Task<Void, Never>?
 
     /// Which list the page is showing, and therefore which selection below
-    /// applies. Internal, not `public` — nothing outside this target reads
-    /// it (`public` here means "another target uses this").
+    /// applies.
     enum Segment: String, Hashable, CaseIterable, Sendable {
-        /// **Three cases, not four.** `.search` was removed 2026-09-24, the
-        /// owner's decision: search moved onto a field every tab carries
-        /// rather than staying a tab of its own. Deleted outright rather than
-        /// retired in place — the "keep a name in the standing documents only
-        /// while the tree has it" rule is about *documents*, and the parallel
-        /// rule for a stored `enum` case ("retire a stored case rather than
-        /// removing it") is about a value that might already be sitting in a
-        /// property list somewhere: nothing stores a `Segment` outside this
-        /// file — `AppStorage`, `UserDefaults`, `SceneStorage` and
-        /// `NamespacedStore` all came back empty against
-        /// `Sources/Modules/Homebrew` — so there is no encoded `"search"`
-        /// anywhere for a case to go on decoding.
+        /// Nothing stores a `Segment`, so a case may be removed outright.
         case installed, updates, health
 
-        /// The word on the picker, beside the case it names.
-        ///
-        /// **The list of segments and the list of labels are one list.** The
-        /// picker used to spell three `Text(…).tag(…)` rows by hand, so a case
-        /// added to this enum drew no row at all: the segment existed, every
-        /// `switch` in the page had an arm for it, and there was no way to
-        /// reach it. A `switch` with no `default:` makes forgetting a label a
-        /// build error instead.
+        /// The word on the picker, beside the case it names. A `switch` with no
+        /// `default:` makes a case without a label a build error.
         var label: String {
             switch self {
             case .installed: return HbStr.segInstalled
@@ -249,17 +210,11 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// has to run, on top of the pause that starts it after typing.
     ///
     /// **Through the pause, never a direct `ask(_:)`.** The tab just entered
-    /// has not necessarily loaded yet — `loadIfNeeded` never asks `brew
-    /// outdated`, and the page's own `refresh(segment)` for the tab this
-    /// `didSet` is about has not run a single `await` at the point this line
-    /// executes — so asking at once read an unloaded list's emptiness as "the
-    /// word matches nothing" and sent `brew search` for a package this Mac
-    /// had all along. Measured: switching to Обновления with «node» already
-    /// typed and `[node]` behind `brew outdated` asked brew before that query
-    /// had even been sent. Scheduling the same pause `queryMoved` uses gives
-    /// the tab's own refresh (and every later one — the pause is restarted
-    /// from `refreshInstalled`/`refreshOutdated` too) the chance to land before `searchAfterPause`
-    /// re-reads the list it is about.
+    /// may not have loaded yet (`loadIfNeeded` never asks `brew outdated`), and
+    /// an unloaded list's emptiness is not "the word matches nothing". The
+    /// pause gives the tab's own refresh the chance to land before
+    /// `searchAfterPause` re-reads the list; `refreshInstalled` and
+    /// `refreshOutdated` restart it too.
     @Published var segment: Segment = .installed {
         didSet {
             guard segment != oldValue else { return }
@@ -289,31 +244,23 @@ private final class SharedLatestRequest: @unchecked Sendable {
 
     // MARK: - The search field, on every tab
 
-    /// **The header row's search field, on all three tabs.** Moved
-    /// here from the page's `@State` 2026-09-24, so the query survives leaving
-    /// and returning to the page: hiding or occluding the window unmounts the
-    /// page and its `@State` is lost, so the field would be written back as "". Kept here
-    /// instead, that visible change is a cost the owner judges rather than an
-    /// engineering slip.
+    /// **The header row's search field, on all three tabs.** Held here and not
+    /// in the page's `@State`, so the query survives the page being unmounted
+    /// when the window hides.
     @Published var query = "" {
         didSet { if query != oldValue { queryMoved() } }
     }
 
     /// The pause between the last keystroke and an automatic search for a
-    /// word the local filter found nothing for — the owner's decision,
-    /// 2026-09-22 ("сам, после паузы").
+    /// word the local filter found nothing for (the owner's choice).
     static let searchPause: Duration = .milliseconds(700)
-    /// Not `let`: a test shortens this rather than waiting out the owner's
-    /// real number.
+    /// Not `let`: a test shortens this.
     var searchPause = HomebrewViewModel.searchPause
 
-    /// The shortest word that starts an automatic search on its own.
-    /// Measured on this Mac 2026-09-24 with
-    /// `HOMEBREW_NO_AUTO_UPDATE=1 brew search --formula|--cask -- <q>`: `a`
-    /// alone answers 3575 formula hits and 4750 cask hits — a `brew desc`
-    /// batch over thousands of names for one keystroke — where `py` answers
-    /// 128 and 36. Two characters is a batch a person can wait through; one
-    /// still reaches brew on a Return press, which carries no floor.
+    /// The shortest word that starts an automatic search on its own. One
+    /// letter matches thousands of packages, a `brew desc` batch over all of
+    /// them for one keystroke; two narrow it to a batch a person can wait
+    /// through. Return carries no floor.
     static let shortestAutomaticQuery = 2
 
     /// The word `searchHits`/`searchReading` belong to, or nil before
@@ -352,12 +299,8 @@ private final class SharedLatestRequest: @unchecked Sendable {
             _ = searches.take()
             searchReading = .notAsked
             searchedQuery = nil
-            // **Retires a queued word too, not only the pause and the held
-            // answer.** `ask(_:)` re-reads the field before running a word it
-            // dequeues, so this line is not what keeps a stale ask from firing
-            // — it is what keeps the queue from naming a word the field no
-            // longer holds at all, which is the same "clear on the way out"
-            // this method already does for `searchedQuery`.
+            // `ask(_:)` re-reads the field before running a dequeued word;
+            // this keeps the queue from naming a word the field no longer holds.
             queuedSearch = nil
             return
         }
@@ -404,20 +347,11 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// spend a second `brew search` just because the tab moved.
     ///
     /// **An unread or still-loading tab is never "empty".** `shownInstalled`
-    /// and `shownOutdated` both read `[]`
-    /// before their list has ever answered — the same `[]` a genuinely empty
-    /// answer leaves — so reading emptiness alone asked brew for a word this
-    /// Mac had all along, on the first visit to a tab whose own refresh
-    /// (`loadIfNeeded` never asks `brew outdated`, and the manager's `refresh`
-    /// for the tab this `didSet`/pause is about has not landed yet) simply
-    /// has not finished. Measured: switching to Обновления with «node»
-    /// already typed and `[node]` behind `brew outdated` asked brew before
-    /// that query had even been sent, and a cold `brew outdated` runs 7.4 s
-    /// (`SystemPorts.swift` probe) — long enough that the 700 ms pause always
-    /// elapses first. Guarding here rather than skipping the call costs
-    /// nothing: both of `refreshInstalled`/`refreshOutdated` call
-    /// `scheduleAutomaticSearch` again on completion, so the tab's first real answer re-asks this same
-    /// question with a reading that is no longer `.notAsked`/`.waiting`.
+    /// and `shownOutdated` read `[]` before their list has answered, the same
+    /// `[]` a genuinely empty answer leaves, and a cold `brew outdated` outlasts
+    /// the pause. `refreshInstalled` and `refreshOutdated` call
+    /// `scheduleAutomaticSearch` again on completion, so the tab's first real
+    /// answer re-asks this question.
     private func ownListShowsNothing(for q: String) -> Bool {
         guard q.count >= Self.shortestAutomaticQuery, q != searchedQuery else { return false }
         switch segment {
@@ -428,12 +362,9 @@ private final class SharedLatestRequest: @unchecked Sendable {
             guard outdatedReading != .notAsked, outdatedReading != .waiting else { return false }
             return shownOutdated.isEmpty
         case .health:
-            // Nothing is offered here even when the filter finds nothing: the
-            // "Available to install" section is not drawn under Состояние (a
-            // search for a package is not a question about this Mac's health),
-            // so a `brew search` asked from here would be paid for and never
-            // shown. The word is still in the field when the person moves to a
-            // tab that does draw it, and the pause starts there.
+            // The "Available to install" section is not drawn on Health, so a
+            // `brew search` from here would never be shown. The pause starts
+            // when the person moves to a tab that draws it.
             return false
         }
     }
@@ -473,29 +404,18 @@ private final class SharedLatestRequest: @unchecked Sendable {
             guard let self else { return }
             await self.search(q)
             self.searchOut = false
-            // **The queue is a payload, and this is the hop it crosses.** The
-            // word queued in was what the field held when a chain was already
-            // out; the field is a reading, and asked again here rather than
-            // trusted from before `await self.search(q)` above — erasing it,
-            // or typing something that now matches locally, must not spend a
-            // `brew search` for a word nobody is looking at any more.
+            // The queued word is a payload; the field is a reading, asked again
+            // after the `await`, so a word erased or typed over spends no
+            // `brew search`.
             if let queued = self.queuedSearch {
                 self.queuedSearch = nil
                 if ListFilter.needle(self.query) == queued {
                     self.ask(queued)
                 } else if self.searchedQuery == queued {
-                    // **Dropping the word has to undo what queuing claimed for
-                    // it.** The queue branch above sets `searchedQuery`/
-                    // `searchReading` to `.waiting` before an ask for it ever
-                    // exists, so a word dropped here without being asked left
-                    // both fields pointing at a question nobody will put —
-                    // `AvailableSection.of` then drew "Searching…" for as long
-                    // as the person kept that word in the field, and neither
-                    // `ownListShowsNothing` (blocked by `q != searchedQuery`)
-                    // nor `searchNow` (blocked by `.waiting`) had a door back
-                    // in. The guard on `searchedQuery == queued` is because a
-                    // second `ask` chain could have claimed the field in
-                    // between — nothing here may clear a claim it did not make.
+                    // Dropping the word undoes what queuing claimed for it
+                    // (`searchedQuery`, `.waiting`), or "Searching…" stands
+                    // over a question nobody will put and no door leads back
+                    // in. Only if no later chain has claimed the field since.
                     self.searchedQuery = nil
                     self.searchReading = .notAsked
                     self.rearmSearch()
@@ -507,30 +427,17 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// The page has stopped describing the package an uninstall was asked
     /// about, so the ask is retired — including one still out at the engine.
     ///
-    /// **The subject of an ask is the pair `(segment, selection[segment])`**,
-    /// because that pair is what `packageDetail` draws and the Uninstall button
-    /// is raised from what it drew. Three gestures move off a package without
-    /// pressing Cancel and without leaving the page — Back on the narrow
-    /// screen, a click on another row, and the segmented picker — and none of
-    /// the three is a later press, so `LatestRequest` does not retire the query
-    /// on its own and the answer arrived to raise an irreversible
-    /// deletion's question over a list, a different package or a different segment
-    /// (`MovingOffThePackageRetiresAnUninstallAskTests`). Both fields observe
-    /// this rather than each gesture: the two are the only writers of the pair,
-    /// and a fourth gesture cannot forget to call it.
+    /// **The subject is the pair `(segment, selection[segment])`**, because
+    /// that pair is what `packageDetail` draws and the Uninstall button is
+    /// raised from it. Back, a click on another row and the segmented picker
+    /// all move off a package without a press that `LatestRequest` would see,
+    /// so the fields that write the pair call this, not each gesture
+    /// (`MovingOffThePackageRetiresAnUninstallAskTests`).
     ///
-    /// Unconditional once the value has actually moved, and that is the point:
-    /// a query still in flight has set nothing yet, so a guard on
-    /// `pendingUninstall != nil` would pass over exactly the case this exists
-    /// for. `cancelUninstall` retires the token as well as the dialog.
-    ///
-    /// The second reader of this pair is the `brew info` fill, and it is here
-    /// for the same reason the retirement is: the subject moves through two
-    /// write points and three gestures, and a fill hung off `select(_:)` alone
-    /// would leave the segmented picker landing on a remembered selection with
-    /// the *previous* segment's package described under it. Both halves of
-    /// "stop describing the old package" and "start describing the new one"
-    /// happen at the one place the pair is known to have moved.
+    /// Unconditional once the value has moved: a query still in flight has set
+    /// nothing yet, so a guard on `pendingUninstall != nil` would miss it.
+    /// `cancelUninstall` retires the token as well as the dialog. The `brew
+    /// info` fill hangs here for the same reason.
     private func subjectMoved() {
         cancelUninstall()
         refillInfo()
@@ -540,23 +447,13 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// the page is describing now — or about nothing, when nothing is selected.
     ///
     /// **Cleared before the ask, unconditionally.** The facts belong to the
-    /// package that was selected when they were read; keeping them across a
-    /// move draws openssl@3's licence and homepage under the heading wget for
-    /// as long as the new query takes. A refusal leaves it cleared, which is
-    /// the same sentence said by a different route.
+    /// package they were read for; kept across a move, they stand under the
+    /// next package's heading while its query runs.
     private func refillInfo() {
         infoAsk?.cancel()
         info = nil
-        // And the figure beside it, for the reason the facts are cleared: a
-        // size belongs to the package it was walked for, and openssl@3's
-        // 41 MB left standing under the heading wget is a measurement of the
-        // wrong thing — the most believable kind of wrong, because it is a
-        // real figure about *something*.
-        //
-        // All the way back to `.notMeasured`, never to `.measuring`: at this
-        // line nothing has been asked for the new package yet, and «counting»
-        // over a walk that has not been started is the same false promise as a
-        // figure nobody measured.
+        // The size too, and to `.notMeasured`, not `.measuring`: nothing has
+        // been asked for the new package yet.
         size = .notMeasured
         let mine = infoAsks.take()
         guard let ref = selectedPackage else { infoAsk = nil; return }
@@ -569,11 +466,8 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// cannot disagree about which package is on screen.
     private var selectedPackage: PackageRef? {
         guard let id = selected else { return nil }
-        // The two package tabs fall back to the "Available to install"
-        // section under them, since search is a field on every tab rather than
-        // a list of its own. Состояние has no section and no selection: its
-        // findings open in place (`HomebrewHealthPage`), so nothing there names
-        // a package for `brew info` to be asked about.
+        // The package tabs fall back to the "Available to install" section
+        // under them; Health has neither section nor selection.
         let own: PackageRef?
         switch segment {
         case .installed:
@@ -588,59 +482,33 @@ private final class SharedLatestRequest: @unchecked Sendable {
 
     /// Asks, then assigns only if this is still the ask the page is waiting on.
     ///
-    /// The token, not a comparison of names: every move of the subject takes a
-    /// token, so `isLatest` answers "is the page still describing the package
-    /// this was asked about" in one reading, including the case where the
-    /// person moved away and came back — a second ask is out, and this one's
-    /// answer is not the one to draw.
+    /// The token, not a comparison of names: a person who moved away and came
+    /// back has a second ask out, and this one's answer is not the one to draw.
     private func loadInfo(_ ref: PackageRef, token: Int) async {
         let answer = await door?.readInfo(about: ref)
         guard infoAsks.isLatest(token) else { return }
-        // Assigned including nil: a refusal is what the page must show nothing
-        // for, and this is the line that says so.
+        // Assigned including nil: a refusal draws nothing.
         info = answer
 
-        // **Then the walk, on the same token and never before this line.** The
-        // size is the one fact in the inspector that nothing can tell us — it
-        // is a walk of a directory (`HomebrewEngine.size`) — so it is asked
-        // after the tier it joins has been drawn, and only for a package that
-        // is actually on this Mac: a search hit has no keg, and asking about
-        // one would spend a walk to learn that.
-        //
-        // The version comes from the answer above rather than from the list,
-        // because it is the version the engine remembers the figure against —
-        // reading it from anywhere else would let a figure be filed under a
-        // number `brew info` never said.
+        // **Then the walk (`HomebrewEngine.size`), on the same token,** after
+        // the tier it joins is drawn, and only for an installed package: a
+        // search hit has no keg. The version is the one `brew info` said,
+        // the one the engine files the figure against.
         guard let version = answer?.installedVersion, !version.isEmpty else { return }
-        // **Said before the ask, and it is the ask that earns it.** This line
-        // and the one under it are one gesture: the row says a walk is running
-        // exactly while a walk is running, so there is no state in which the
-        // page claims to be counting and nothing is. A package with no installed
-        // version never reaches here, which is why a search hit gets no row
-        // instead of a promise about a keg that does not exist.
+        // `.measuring` is set only right before a walk goes out.
         size = .measuring
         let measured = await door?.measure(ref, version: version)
-        // The same token, asked again: the walk is the longest wait in the
-        // inspector, so the screen is likelier to have moved under it than
-        // under anything else here. Returning here leaves nothing behind —
-        // whatever moved the subject already wrote `.notMeasured`, and this
-        // answer belongs to a package nobody is looking at.
+        // Asked again: whatever moved the subject already wrote `.notMeasured`.
         guard infoAsks.isLatest(token) else { return }
-        // A refusal is `.notMeasured` and not a lingering «counting»: the walk
-        // is over, there is no figure, and the row goes rather than sitting
-        // there for ever saying something is still happening.
+        // A refusal is `.notMeasured`, not a lingering «counting».
         size = measured.map(SizeReading.measured) ?? .notMeasured
     }
 
     /// Drops `segment`'s selection when its package is no longer in `ids`.
     ///
     /// One segment per call, at the assignment that just replaced *that*
-    /// list — a reconcile run against a list that did not change is a silent
-    /// way to lose a selection. A list is replaced under a standing
-    /// selection for the most ordinary reasons: an uninstall in a terminal,
-    /// an upgrade finishing, a second search. A selection that survives its
-    /// package leaves the inspector describing something that is gone, with
-    /// buttons that would act on it.
+    /// list. A selection that survives its package leaves the inspector
+    /// describing something that is gone, with buttons that would act on it.
     private func reconcile(_ segment: Segment, against ids: Set<String>) {
         guard let id = selection[segment], !ids.contains(id) else { return }
         selection[segment] = nil
@@ -659,17 +527,11 @@ private final class SharedLatestRequest: @unchecked Sendable {
         return own.union(shownHits.map(\.id))
     }
 
-    /// **A row a query has just hidden is a row that has to stop being
-    /// selected.** `reconcile(_:against:)` runs when a list is *replaced*;
-    /// this runs when the *filter* moves instead, and it is the one that
-    /// keeps `askToUninstall` from raising its dialog — an
-    /// irreversible deletion — over a row the list no longer shows. Dropping
-    /// the selection runs `subjectMoved()` through `selection`'s own
-    /// `didSet`, which is what retires an ask still out at the engine.
-    ///
-    /// Erasing the query does not bring a dropped selection back — a cost the
-    /// owner judges, not an oversight: the row it named is not guaranteed to
-    /// still be the same one once everything is showing again.
+    /// **A row a query has just hidden stops being selected,** so
+    /// `askToUninstall` cannot raise its dialog over a row the list no longer
+    /// shows. `reconcile(_:against:)` runs when a list is replaced; this, when
+    /// the filter moves. `selection`'s `didSet` retires an ask still out.
+    /// Erasing the query does not bring a dropped selection back.
     private func reconcileVisible() {
         guard let id = selection[segment], !visibleIDs.contains(id) else { return }
         selection[segment] = nil
@@ -678,8 +540,7 @@ private final class SharedLatestRequest: @unchecked Sendable {
     // MARK: - What each tab actually shows
 
     /// `installed`, filtered by `query` against the name and — once it has
-    /// loaded — the description. Derived rather than stored: two fields are
-    /// two accounts of one answer.
+    /// loaded — the description.
     var shownInstalled: [BrewPackage] {
         PackageStanding.matching(ListFilter.needle(query), installed, descriptions: descriptions)
     }
@@ -692,14 +553,9 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// of the time: no query, nothing asked yet, or an answer that belongs to
     /// a word the person has since typed over.
     ///
-    /// **Fed the already-excluded hits, not the raw answer.** `available:`
-    /// used to be `searchHits` itself, so a word every hit for which was
-    /// already on this Mac (Return on an installed package's own name is the
-    /// ordinary way there) read `.found` — an "Available to install" heading
-    /// with nothing under it, once `shownHits` below had taken the installed
-    /// ones back out. `.answered` empties `available` and answers
-    /// `.nothingFound`, and only `.nothingFound` earns the heading its
-    /// sentence.
+    /// **Fed the already-excluded hits, not the raw answer,** so a word whose
+    /// every hit is installed reads `.nothingFound`, not a `.found` heading
+    /// with nothing under it.
     var section: AvailableSection? {
         AvailableSection.of(query: query, searchedQuery: searchedQuery, reading: searchReading,
                             available: PackageStanding.notInstalled(searchHits, installed: installed))
@@ -708,22 +564,14 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// The hits the section actually draws — `searchHits` with what is
     /// already on this Mac filtered out, **by id and never by name**: `docker`
     /// is both a formula and a cask, and an installed formula must not hide an
-    /// offered cask of the same name. Computed rather than stored, so
-    /// installing a hit drops it from here the moment `refreshAfterOp` re-reads
-    /// the Cellar, while the hit keeps its id — on Установленные it then
-    /// appears in the list above, still selected.
-    ///
-    /// `section == .found` rather than `section != nil`: the section can be
-    /// `.searching`, `.nothingFound` or `.unanswerable` too, none of which has
-    /// a row to draw, and computing the same exclusion twice is cheaper than a
-    /// third state carrying it.
+    /// offered cask of the same name. Computed, so an installed hit leaves
+    /// here when `refreshAfterOp` re-reads the Cellar and keeps its id: on
+    /// Installed it appears in the list above, still selected.
     var shownHits: [SearchHit] {
         section == .found ? PackageStanding.notInstalled(searchHits, installed: installed) : []
     }
 
-    /// Built once by `HomebrewDescriptor.makeModule`, so it lives as long as the
-    /// module is switched on and the page reads it instead of owning it. Its init
-    /// asks the engine for nothing but its stream.
+    /// Architecture/Homebrew.md § The model.
     ///
     /// - Parameter updateBeforeChecking: the setting the Updates tab's row shows and
     ///   writes; the engine of the same module reads it at each `outdated`. Read here,
@@ -735,9 +583,7 @@ private final class SharedLatestRequest: @unchecked Sendable {
         events = StreamFollower(work.stream(), owner: self) { $0.handle($1) }
     }
 
-    /// The host calls this before the engine's `deactivate()`: the model hears
-    /// nothing more and asks nothing more, so an operation the engine ends on
-    /// the way out is not followed by a re-read of a module going off.
+    /// The host calls this before the engine's `deactivate()` (Architecture/Homebrew.md § The model).
     ///
     /// The three tokens are retired as well, because a nil from a closed door
     /// must not read as an answer: `askToUninstall` with nil raises the dialog
@@ -754,25 +600,15 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// What the page asks for on appear — and it asks whether brew is there
     /// every time.
     ///
-    /// **Whether Homebrew is installed is not a property of this process.** It
-    /// is a file on disk that `FSBrewLocator` re-reads at every call, and it
-    /// changes under the app for the most ordinary reasons there are: somebody
-    /// follows brew.sh in a terminal, or runs Homebrew's own uninstaller, with
-    /// this window open beside it. A `loadedStatus` flag latched by the first
-    /// visit meant brew appearing was noticed never and brew vanishing was
-    /// noticed never, for the life of the process — `HomebrewSettingsPage.body`
-    /// branches on `status.installed` and on nothing else, and the only other
-    /// path that re-read the status was `refreshAfterOp`, which needs an
-    /// operation to have run: the one thing you cannot do from the install
-    /// screen you are stuck on.
+    /// **Whether Homebrew is installed is not a property of this process.**
+    /// It is a file `FSBrewLocator` re-reads at every call, and somebody may
+    /// install or uninstall brew in a terminal with this window open. Asking
+    /// the locator is two `isExecutableFile` calls, so it is asked every time.
     ///
-    /// The guard stays where it was earned, on the *expensive* half. Asking the
-    /// locator is two `isExecutableFile` calls; asking brew is `brew list
-    /// --versions` twice and a `brew desc` batch over every package installed.
-    /// And the packages belong to *a* brew, not to the app: a Homebrew
-    /// uninstalled and installed again between two visits — or moved from
-    /// `/usr/local` to `/opt/homebrew` — is a new Cellar, and the rows of the
-    /// one that is gone each carry an Uninstall button the engine now refuses.
+    /// The guard sits on the expensive half: `brew list --versions` twice and
+    /// a `brew desc` batch. The packages belong to *a* brew: one reinstalled
+    /// or moved between visits is a new Cellar, and the old rows would carry
+    /// Uninstall buttons the engine refuses.
     func loadIfNeeded() async {
         await refreshStatus()
         guard status.installed, !loadedInstalled || listedBrew != status.brewPath else { return }
@@ -790,23 +626,12 @@ private final class SharedLatestRequest: @unchecked Sendable {
         switch item {
         case .line(let line):
             say(line)
-            // Bounded, the way `LogTail` is. Nothing trimmed this: it is
-            // cleared by pressing Clear and by starting the install of Homebrew, so on the
-            // ordinary path — upgrade, upgrade again, search — it only grew,
-            // for as long as the module is on. The engine keeps stderr on purpose because a console
-            // should show what the tool says, and a `brew` command passes 64 KB
-            // of deprecation warnings without trying. Each line is also a view:
-            // the page renders a `ForEach` over the whole array and follows
-            // every new line, so the cost is paid twice.
-            //
-            // From the front, which is what a terminal's scrollback does: the
-            // end is the half a person is reading. (`say` does it, so the
-            // lines the model writes itself are bounded by the same rule.)
+            // Bounded from the front by `say`, the way `LogTail` is: only Clear
+            // and the Homebrew install empty it, stderr is kept, and every
+            // line is also a view.
         case .brew(let path):
-            // Only a seed, and only while nothing has been read:
-            // `loadIfNeeded` reads the status at every visit, and that reading is
-            // the truth, `interruptedOp` included. A seed that came after it
-            // would wipe it.
+            // Only a seed, and only while nothing has been read
+            // (Architecture/Homebrew.md § The model).
             if !statusRead { status = BrewStatus(installed: path != nil, brewPath: path) }
         case .busy:
             say(HbStr.anotherOperationRunning())
@@ -815,10 +640,8 @@ private final class SharedLatestRequest: @unchecked Sendable {
             // the two states.
             if let line = Self.consoleLine(from: op, to: s) { say(line) }
             op = s
-            // `.failed` as well as `.done`: a failed operation is not a no-op on
-            // the machine. `brew upgrade` walks the outdated list and exits
-            // non-zero when one package fails to build — everything before it is
-            // already upgraded, so the pre-operation lists are stale either way.
+            // `.failed` as well as `.done`: `brew upgrade` exits non-zero when
+            // one package fails, with everything before it already upgraded.
             if s.phase == .done || s.phase == .failed { Task { await self.refreshAfterOp() } }
         }
     }
@@ -827,13 +650,10 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// engine does not have: it names the state (`OpState.waiting`) and the words
     /// are the page's, in the person's language.
     ///
-    /// Entering the wait says what Apple's window is and where the person's part
-    /// is; leaving it into ordinary running says the tools are there; leaving it
-    /// by the person's Stop says that Helm has stopped waiting — the entering
-    /// line promised that Helm carries on by itself, and the console is not
-    /// cleared by a stop, so that promise would stay on screen under «Stopped».
-    /// Any other step — a failure, a stop of an operation that was not waiting,
-    /// a second identical state — says nothing here.
+    /// Entering the wait, leaving it into running, and leaving it by the
+    /// person's Stop each earn a line; the last because the entering line
+    /// promised Helm carries on by itself, and a stop does not clear the
+    /// console. Any other step says nothing.
     static func consoleLine(from old: OpState, to new: OpState,
                             language: AppLanguage = AppLanguage.current) -> String? {
         if old.waiting == nil, new.waiting == .commandLineTools, new.phase == .running {
@@ -848,49 +668,22 @@ private final class SharedLatestRequest: @unchecked Sendable {
         return nil
     }
 
-    /// The status too, and it is not a nicety: installing Homebrew is one of
-    /// the operations that ends here, and `status.installed` is the only thing
-    /// `HomebrewSettingsPage.body` branches on. Refreshing the package lists
-    /// but not the status left somebody who had just installed Homebrew looking
-    /// at the install screen, with the only way forward being to close Settings
-    /// and open it again. Now that the view model outlives the page, closing
-    /// Settings no longer papers over it either.
+    /// The status too: installing Homebrew ends here, and `status.installed`
+    /// is the only thing `HomebrewSettingsPage.body` branches on.
     private func refreshAfterOp() async {
         await refreshStatus()
         await refreshInstalled()
         await refreshOutdated()
-        // And what `brew doctor` said, but **only if it has ever been asked**.
-        // An operation changes the machine the findings are about — running a
-        // fix is the clearest case, since the issue it answers is the one that
-        // should now be gone — so a kept reading is the page offering a fix for
-        // something already fixed. `brew doctor` is the slowest query in the
-        // module, though, and asking it after every install on behalf of
-        // somebody who has never opened this segment is a minute of `brew` for
-        // an answer nobody is waiting for; `.notAsked` is exactly that person.
+        // What `brew doctor` said, **only if it has ever been asked**: an
+        // operation (a fix above all) changes what the findings are about, but
+        // it is the slowest query, and `.notAsked` is nobody waiting.
         if doctor != .notAsked { await refreshDoctor() }
-        // And what `brew config` said, on the same terms and for the same
-        // reason: `installBrew` is one of the operations that ends here and it
-        // rewrites every line of that document, while `upgrade` of Homebrew
-        // itself moves the version and the checkout. Only when it has ever been
-        // read — a person who has never opened this segment is not waiting for
-        // an answer, and this is a `brew` run per operation.
+        // `brew config` on the same terms: `installBrew` and an upgrade of
+        // Homebrew rewrite it.
         if config != nil { await refreshConfig() }
-        // And what `brew info` said, which an upgrade rewrites: the first tier
-        // takes its version from the list above, so a kept answer left the
-        // heading reading 3.7.0 with the row under it still saying 3.6.4 — one
-        // screen carrying two accounts of one package. Last, so the ask goes
-        // out against the selection the reconciles above have settled on.
-        //
-        // **And the Cellar walk that now hangs off it, deliberately.** This
-        // line runs after every finished operation, so a directory walk is paid
-        // here too — one package's Cellar directory, and only while something
-        // is selected. That is the cost worth paying rather than avoiding: an
-        // install, an upgrade and a `brew doctor` fix each rewrite the very keg
-        // the figure was walked from, so a kept figure is the second account of
-        // one package this comment already exists about. The engine drops every
-        // remembered figure at the same moment (`HomebrewEngine.size`), so this
-        // ask really does re-measure rather than read back what the operation
-        // invalidated.
+        // `brew info` and the Cellar walk, which an operation rewrites; last,
+        // against the selection the reconciles above settled on. The engine
+        // drops its remembered sizes at the same moment (`HomebrewEngine.size`).
         refillInfo()
     }
 
@@ -908,37 +701,23 @@ private final class SharedLatestRequest: @unchecked Sendable {
             say(HbStr.interruptedAtQuit(label))
         }
     }
-    /// No `?? []` on any list reply: an empty reply is "the module could not
-    /// answer" — a hung brew cut off at the runner's deadline — and it used to
-    /// replace a real package list with "No packages installed." The last
-    /// answer stays; the log names the outcome; Refresh stays live for a retry.
+    /// No `?? []` on any list reply: nil is "the module could not answer",
+    /// and the last answer stays (Architecture/Homebrew.md § Homebrew).
     func refreshInstalled() async {
         installedReading = .waiting
         guard let answer = await door?.readInstalled()
         else {
-            // The last answer stays, and so does the reading that describes it:
-            // rows on screen are an answer somebody got, and a refusal on top of
-            // them is a thing for the log rather than a sentence over a list
-            // that is still true. With nothing behind it there is nothing to
-            // keep, and the pane says so instead of waiting for ever.
+            // Rows on screen keep their reading; with nothing behind them the
+            // pane says it could not answer instead of waiting for ever.
             installedReading = installed.isEmpty ? .unanswerable : .answered
-            // **A refusal is a reading too, and `ownListShowsNothing` gates on
-            // this reading leaving `.waiting`.** A word typed while this list
-            // was still `.waiting` armed no pause at all (the guard reads
-            // "unread or still-loading" as "not empty" on purpose), and only a
-            // later, *successful* refresh used to open that door — so a Mac
-            // whose `brew list` had just failed never asked `brew search` for
-            // anything typed during the wait, not now and not on the next
-            // keystroke either, since nothing re-reads a reading that never
-            // changes.
+            // A refusal is a reading too: a word typed during `.waiting` armed
+            // no pause, and nothing else re-arms it.
             rearmSearch()
             return
         }
         installed = answer
-        // `shownHits` as well as the answer's own ids: a hit offered under
-        // the section is not in `installed` yet, and dropping its selection
-        // every time this list is re-read is the same defect `reconcileVisible`
-        // exists to leave alone — the section did not move.
+        // `shownHits` as well: a hit selected in the section is not in
+        // `installed`, and the section did not move.
         reconcile(.installed, against: Set(answer.map(\.id)).union(shownHits.map(\.id)))
         installedReading = .answered
         listedBrew = status.brewPath
@@ -949,13 +728,9 @@ private final class SharedLatestRequest: @unchecked Sendable {
     }
     /// What `brew doctor` said, and **which of the three things it said**.
     ///
-    /// A named reason per outcome rather than one array read three ways, for
-    /// the rule the port's own doc comment carries: "no issues" and "the
-    /// question could not be put" are the same empty array and must never be
-    /// the same sentence on screen. A machine nobody could examine is not a
-    /// healthy machine, and «Nothing to fix» over a refused query is the app
-    /// telling somebody their Mac is fine on the strength of a `brew` that
-    /// never answered.
+    /// A named reason per outcome: "no issues" and "could not be asked" must
+    /// never be the same sentence. A machine nobody could examine is not a
+    /// healthy one.
     @Published private(set) var doctor: DoctorReading = .notAsked
 
     /// What `brew config` last answered — the lines the configuration card
@@ -964,35 +739,22 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// `loadIfNeeded` does not ask, the segment's own refresh does.
     @Published private(set) var config: BrewConfig?
 
-    /// Those lines as the three groups the configuration card draws. Computed
-    /// rather than stored beside `config`: two fields are two accounts of one
-    /// answer, and the one that goes stale is the one a page reads.
+    /// Those lines as the three groups the configuration card draws.
     var configGroups: [ConfigGroup] { ConfigGroup.grouping(config?.lines ?? []) }
 
     /// What `brew config` says about this Homebrew and this Mac.
     ///
-    /// **A refusal keeps the last answer**, which is the opposite of
-    /// `refreshDoctor` one method down and deliberate: a `brew doctor` reading
-    /// *is* the claim about the machine's health, so stale findings under a
-    /// failed reading state that those are still what is wrong. A configuration
-    /// makes no such claim — it is the module's own `installed`/`outdated` rule
-    /// ("no `?? []` on any list reply"), where the last answer is still a true
-    /// thing about a machine that has almost certainly not moved.
+    /// **A refusal keeps the last answer**, the lists' rule. `refreshDoctor`
+    /// does the opposite because its findings are a claim about health; a
+    /// configuration makes none.
     func refreshConfig() async {
         guard let answer = await door?.readConfig() else { return }
         config = answer
     }
 
-    /// **A refusal replaces the issues rather than keeping them.** The installed
-    /// and outdated lists keep their last answer when a query is refused, because a
-    /// stale package list is still a list of packages and the page says nothing
-    /// about it either way. This one is different in kind: the list *is* the
-    /// claim about the machine's health, and holding two issues on screen under
-    /// a reading that failed states that those two are still what is wrong. The
-    /// honest answer is that nothing is known right now, and the page says so.
-    /// Internal, not `public`: nothing outside `Module_Homebrew_UI` calls it,
-    /// and `public` in this tree means "another target uses this". Its public
-    /// neighbours predate that rule being applied to this file.
+    /// **A refusal replaces the issues rather than keeping them.** Unlike the
+    /// package lists, the findings *are* the claim about the machine's health,
+    /// and kept under a failed reading they say those are still what is wrong.
     ///
     /// **One reading is out at a time.** A press while one is out asks for one more
     /// when it lands and returns: ten presses are at most two `brew doctor` children,
@@ -1012,41 +774,30 @@ private final class SharedLatestRequest: @unchecked Sendable {
     private var doctorAgain = false
 
     private func readDoctorOnce() async {
-        // **The installed list first, because the verdict is about it.**
-        // `DoctorFixCandidate.judging` decides `.runnable` against what is on
-        // this Mac, and opening this segment on a fresh launch finds that list
-        // unread — every `uninstall` fix would then read `.copyOnly` because the page has
-        // no Cellar rather than because the name is not in it. A list that
-        // refuses with no rows behind it leaves `loadedInstalled` false and every `uninstall` fix copy-only, which
-        // is the safe direction and the honest one: Helm withholds the button it
-        // has no reading to justify.
+        // **The installed list first, because the verdict is about it**
+        // (`DoctorFixCandidate.judging`). A refused list leaves every
+        // `uninstall` fix copy-only: no button without a reading to justify it.
         if !loadedInstalled { await refreshInstalled() }
         guard let answer = await door?.readDoctor() else {
             doctor = .refused
             return
         }
-        // The parser always answers `fix: nil` — a command read out of a tool's
-        // output is data until it has been judged — so this is where a body
-        // becomes a candidate and the candidate gets a verdict. The verdict
-        // decides what is *drawn*; `HomebrewEngine.runDoctorFix` takes its own
-        // against a list read at the press, which is what decides what runs.
+        // The parser answers `fix: nil`; here a body is judged. This verdict
+        // decides what is drawn; `HomebrewEngine.runDoctorFix` judges again at
+        // the press, and that decides what runs.
         let installedNames = installed.map(\.name)
         doctor = .examined(answer.map { DoctorFixCandidate.judging($0, installed: installedNames) })
     }
 
     /// The fix a person is being asked about, or nil because nothing is being
-    /// asked. Beside `pendingUninstall` and for its reason: the page's own
-    /// `@State` would answer nobody, and which press raised which question is
-    /// the whole of what a test has to be able to see.
+    /// asked. Held here, as `pendingUninstall` is, so a test can see which
+    /// press raised which question.
     @Published private(set) var pendingFix: DoctorFix?
 
     /// The press on Run, which is not the same thing as running it.
     ///
-    /// `FixAsk` decides which question is raised: anything that takes a
-    /// package off this Mac raises the question the
-    /// Uninstall button has raised since somebody noticed it removed an
-    /// application on a single click. The judgement is `FixAsk.of`'s and not
-    /// this method's, so a test reads it without a `body` in the way.
+    /// `FixAsk.of` decides which question is raised: anything that takes a
+    /// package off this Mac raises the Uninstall button's question.
     ///
     /// An `uninstall <name>` fix reads what depends on the package first, through
     /// `askAboutRemoving` — the same reading, and the same list under the same
@@ -1061,11 +812,10 @@ private final class SharedLatestRequest: @unchecked Sendable {
         }
     }
 
-    /// Closes the question without running anything. Called by the dialog's
-    /// Cancel and by the page going away, for `cancelUninstall`'s reason: this
-    /// object outlives the page, and a question left standing is one the next
-    /// visit opens with. Also abandons a dependents read still out and clears
-    /// the list, as `cancelUninstall` does; `confirmFix` relies on both.
+    /// Closes the question without running anything, on Cancel and when the
+    /// page goes away (this object outlives the page). Also abandons a
+    /// dependents read still out and clears the list; `confirmFix` relies on
+    /// both.
     func cancelFix() {
         _ = uninstallAsks.take()
         pendingFix = nil
@@ -1082,17 +832,12 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// Sends one `brew doctor` fix to the engine, which judges it again before
     /// it runs anything.
     ///
-    /// **Private: `askToRunFix` is the door.** It was the page's own call site,
-    /// so a fix that removes a package for good went on a single click while
-    /// every other irreversible deletion in Helm asked first.
+    /// **Private: `askToRunFix` is the door,** so a fix that removes a package
+    /// is asked first like every other irreversible deletion.
     ///
-    /// The argv goes to the engine as it was drawn, and that is deliberate:
-    /// this side does not re-read the Cellar and does not re-judge, because a
-    /// second judgement here would be a second one against the same stale
-    /// reading. `HomebrewEngine.runDoctorFix` reads the installed list at the
-    /// press and refuses anything `DoctorFix.judge` will not admit — including
-    /// the case this design exists for, a package uninstalled in a terminal
-    /// between the draw and the press.
+    /// The argv goes as drawn: a second judgement here would use the same
+    /// stale reading. `HomebrewEngine.runDoctorFix` reads the installed list at
+    /// the press and refuses what `DoctorFix.judge` will not admit.
     private func runDoctorFix(_ fix: DoctorFix) {
         door?.perform(.doctorFix(argv: fix.argv))
     }
@@ -1102,59 +847,41 @@ private final class SharedLatestRequest: @unchecked Sendable {
         guard let answer = await door?.readOutdated()
         else {
             outdatedReading = outdated.isEmpty ? .unanswerable : .answered
-            // `refreshInstalled`'s own reason: a refusal is a reading, and
-            // nothing else re-opens the pause for a word typed while this
-            // list sat `.waiting`.
+            // `refreshInstalled`'s reason: a refusal is a reading.
             rearmSearch()
             return
         }
         outdated = answer
-        // `shownHits` unioned in for `refreshInstalled`'s own reason: a hit
-        // selected under this segment is not in `outdated` and must not be
-        // reconciled away every time this list is re-read.
+        // `shownHits` unioned in for `refreshInstalled`'s reason.
         reconcile(.updates, against: Set(answer.map(\.id)).union(shownHits.map(\.id)))
         outdatedReading = .answered
         reconcileVisible()
         rearmSearch()
     }
-    /// `loadedInstalled`'s twin, derived from `outdatedReading` for the same
-    /// reason. `loadIfNeeded` deliberately never asks `brew outdated`, so this
-    /// is false on every launch until somebody opens the segment.
+    /// `loadedInstalled`'s twin. `loadIfNeeded` never asks `brew outdated`,
+    /// so this is false until somebody opens the segment.
     var loadedOutdated: Bool { outdatedReading == .answered }
 
     /// Which search the hits belong to, so an older answer cannot land on a
     /// newer one — and so a search nobody is waiting for any more stops
     /// spending `brew` runs on descriptions.
     ///
-    /// **A counter rather than a latch**, for the reason `LatestRequest` gives:
-    /// the second search exists because the person typed something else, and
-    /// refusing it would leave the screen showing the results of a word they
-    /// have moved on from. What has to be dropped is the older *answer*.
-    ///
-    /// Duplicates and Leftovers had this and Homebrew did not, which is what
-    /// made a Return key expensive: `search` runs two `brew search` calls in
-    /// sequence — measured at about nine seconds — and then a `brew desc` per
-    /// kind, and the page put every press on its own unbounded `Task`. Ten
-    /// presses were ten of those at once; the crash report that started this
-    /// shows ten threads inside one `brew` call and nine more waiting on a
-    /// pipe, with the twenty-first launch the one that raised.
+    /// **A counter rather than a latch**, for the reason `LatestRequest`
+    /// gives: what has to be dropped is the older *answer*, not the newer
+    /// search. The bound on searches out is `ask(_:)`'s.
     private let searches = SharedLatestRequest()
 
     func search(_ q: String) async {
         let mine = searches.take()
-        // **The old hits go before the new query is sent.** They belong to the
-        // word that was typed over, and holding them for as long as this takes
-        // is the results of one search drawn under another — which is also
-        // what left the busy sentence with nothing to stand over.
+        // **The old hits go before the new query is sent:** they belong to
+        // the word that was typed over.
         searchedQuery = q
         searchHits = []
         reconcileVisible()
         searchReading = .waiting
         guard let hits = await door?.find(q)
         else {
-            // Only for the press still being waited on: a refusal for a word
-            // the person has typed over must not put its sentence over a newer
-            // search's results.
+            // Only for the press still being waited on.
             if searches.isLatest(mine) { searchReading = .unanswerable }
             return
         }
@@ -1171,10 +898,8 @@ private final class SharedLatestRequest: @unchecked Sendable {
 
     /// Only what is not held yet, one `brew desc` call per kind.
     ///
-    /// Every key here goes through `BrewKey`. The prefix used to be written out
-    /// at each of these five places and at the three row identities, and the two
-    /// halves have to agree exactly: a description stored under a key no row
-    /// asks for is a row with no description and nothing in any log.
+    /// Every key goes through `BrewKey`, the same as the row identities: a
+    /// description under a key no row asks for is silently lost.
     /// `token` is the search these names came from, or nil for a list that
     /// belongs to no search — the installed packages, which nothing supersedes.
     ///
@@ -1209,22 +934,15 @@ private final class SharedLatestRequest: @unchecked Sendable {
     }
     /// Which press the dialog belongs to, so an older query cannot raise one.
     ///
-    /// The same counter `search` keeps, for the reason `LatestRequest` gives,
-    /// and here the act it guards is an irreversible deletion.
-    /// Nothing is disabled while this query is out — the page's `disabled`
-    /// tracks long operations, not queries — so two presses put two queries in
-    /// flight, and without this the last continuation to resume wins: the answer for a
-    /// package pressed and abandoned would raise its own confirmation dialog, or
-    /// swap the title and the list under somebody reading them.
+    /// Nothing is disabled while this query is out, so two presses put two
+    /// queries in flight; without this the answer for an abandoned press
+    /// could raise its own dialog, or swap the list under somebody reading it.
     private var uninstallAsks = LatestRequest()
 
     /// Asks the Cellar what still needs this package, then raises the dialog.
     ///
-    /// The reading is taken here, one press before the act, because that is the
-    /// last moment at which it is true: the answer is about a Cellar that a
-    /// terminal beside this window can change. A refusal — brew hung, brew gone
-    /// — reads `.unread` and the dialog says so;
-    /// it must not invent a reassurance out of a query that never answered.
+    /// Read one press before the act, the last moment it is true. A refusal
+    /// reads `.unread` and the dialog says so, rather than reassure.
     func askToUninstall(_ pkg: BrewPackage) async {
         await askAboutRemoving(PackageRef(name: pkg.name, isCask: pkg.isCask)) { self.pendingUninstall = pkg }
     }
@@ -1237,19 +955,15 @@ private final class SharedLatestRequest: @unchecked Sendable {
         guard !closed else { return }
         let mine = uninstallAsks.take()
         let answer = await door?.readDependents(of: ref)
-        // Both halves or neither, and only for the press still being waited on:
-        // the package named in the title and the names under it are one reading
-        // of one Cellar, and a dialog carrying two presses' worth is a sentence
-        // about a package that is not the one about to be deleted.
+        // Both halves or neither, and only for the press still being waited on.
         guard uninstallAsks.isLatest(mine) else { return }
         dependentsOfPending = answer.map(DependentsReading.read) ?? .unread
         raise()
     }
 
     /// Closes the dialog and abandons whatever reading is still out — a token
-    /// taken and dropped, which is how `LatestRequest` retires work in flight.
-    /// Without that line a query for an earlier press comes back to a screen
-    /// with nothing on it and puts a confirmation there by itself.
+    /// taken and dropped, so an earlier press's query cannot raise a dialog
+    /// by itself.
     func cancelUninstall() {
         _ = uninstallAsks.take()
         pendingUninstall = nil
@@ -1259,14 +973,8 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// Sends the uninstall the dialog was raised for, and clears the reading
     /// with it.
     ///
-    /// One of two doors in this target to `brew uninstall`, the other being
-    /// `confirmFix` for an `uninstall <name>` fix. A row's button asks
-    /// (`askToUninstall`, which reads what depends on the package) and this is
-    /// the press on the dialog it raised, so through this door the deletion
-    /// cannot be reached without the sentence saying what it takes with it; the
-    /// fix's dialog asks too, through the same `askAboutRemoving`. The
-    /// `uninstall(_:)` that used to sit beside it was a third, unconfirmed
-    /// one, with no caller left outside this type.
+    /// One of two doors to `brew uninstall`, the other `confirmFix`; both are
+    /// reached only through a dialog `askAboutRemoving` raised.
     func confirmUninstall() {
         guard let pkg = pendingUninstall else { return }
         cancelUninstall()

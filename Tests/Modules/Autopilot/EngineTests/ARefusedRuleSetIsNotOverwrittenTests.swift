@@ -7,11 +7,9 @@ import XCTest
 ///
 /// `AutopilotSealTests` proves the seal refuses a rule set something else wrote.
 /// This is about the moment after that: `folders` answers `[]`, the page draws
-/// its "no folders yet" empty state, and the next ordinary gesture — «Add
-/// folder…» — hands the engine a list of one, which `save` wrote over the
-/// person's real rules and sealed with Helm's own key. Measured before this
-/// existed: a payload of two folders and two rules became one folder and none,
-/// with the warning cleared by the same call.
+/// its "no folders yet" empty state, and the next ordinary gesture, «Add
+/// folder…», hands the engine a list of one. Written, it would replace the
+/// person's real rules, sealed with Helm's own key, and clear the warning.
 ///
 /// The rules are not recoverable — one plist key, one payload, no copy — and the
 /// person it happens to is the one whose rules were tampered with, which is the
@@ -19,14 +17,12 @@ import XCTest
 ///
 /// **Every assertion here is about the payload that is still on disk**, decoded
 /// back into rules and named, rather than about its size: a byte count can be
-/// satisfied by a write that landed and happened to be the same length, and the
-/// question is whether the person's rules are still there.
+/// satisfied by a write that landed and happened to be the same length.
 final class ARefusedRuleSetIsNotOverwrittenTests: SealedRulesRig {
 
     private var payloadKey: String { "module.\(namespace!).folders" }
 
-    /// The rules the person wrote: two folders, two rules, the shape the survey
-    /// measured.
+    /// The rules the person wrote: two folders, two rules.
     private func theirRules() -> [WatchedFolder] {
         [WatchedFolder(id: "downloads", path: root.path, enabled: true, rules: [
             Rule(id: "invoices", name: "Invoices", enabled: true, match: .all,
@@ -60,17 +56,14 @@ final class ARefusedRuleSetIsNotOverwrittenTests: SealedRulesRig {
     }
 
     /// One byte of the payload rewritten, as any process running as the user can
-    /// rewrite the plist. The rules stay readable — this is the audit's case,
-    /// where the person's rules are still in the file and only the seal has
-    /// stopped fitting.
+    /// rewrite the plist. The rules stay readable: the person's rules are still
+    /// in the file and only the seal has stopped fitting.
     ///
-    /// **Inside a value the person wrote, and named rather than found.** This
-    /// flipped the first `I` in the payload, which is a byte whose *meaning*
-    /// changes with the JSON key order — and `JSONEncoder` writes a synthesized
-    /// `Codable`'s keys in hash order, which Swift seeds per process. So one run
-    /// in three struck `sortIntoSubfolder`, the rules stopped decoding, and the
-    /// assertion that the person's rules survived read the undecodable payload as
-    /// no rules at all.
+    /// **Inside a value the person wrote, and named rather than found.** A byte
+    /// found by position changes meaning with the JSON key order, and
+    /// `JSONEncoder` writes a synthesized `Codable`'s keys in hash order, seeded
+    /// per process: it could strike a key, stop the rules decoding, and have the
+    /// survival assertion read that as no rules at all.
     private func tamper() throws {
         let data = try XCTUnwrap(backing.raw[payloadKey] as? Data)
         let text = try XCTUnwrap(String(bytes: data, encoding: .utf8))

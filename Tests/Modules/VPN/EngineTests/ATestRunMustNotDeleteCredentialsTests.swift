@@ -5,24 +5,18 @@ import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
 
-/// **`swift test` used to try to delete the user's real VPN credentials, and its
-/// latch could never record that it had tried.**
+/// **A test run never deletes the user's VPN credentials.**
 ///
-/// `VPNDescriptor.makeModule` builds `VPNSystemPorts()` unconditionally, which
-/// constructs `KeychainCredentials`, whose `init` purged every `com.helm.vpn`
-/// item — and tests call `makeModule` for every descriptor there is. The
-/// latch was `UserDefaults.standard`, which is the *calling process's* domain, so
-/// the test domain never carried it and the purge was retried on every run.
-///
-/// That is verbatim the lesson (ARCHITECTURE.md § Diagnostics log) records after a
-/// per-process latch let a test target wipe the real `helm.log`: **a latch belongs
-/// to what it guards, not to whoever asks.** Both halves are fixed
-/// here — the latch is a file beside Helm's own state, and the purge asks first
-/// whether this process is the app at all.
+/// `VPNDescriptor.makeModule` builds `VPNSystemPorts()`, which constructs
+/// `KeychainCredentials`, and tests call `makeModule` for every descriptor. So
+/// the purge asks first whether this process is the app at all, and its latch is
+/// a file beside Helm's own state, not the calling process's `UserDefaults`
+/// domain: a latch belongs to what it guards, not to whoever asks
+/// (Architecture/DiagnosticsLog.md § Diagnostics log).
 final class ATestRunMustNotDeleteCredentialsTests: XCTestCase {
 
-    /// The half that stands even with the latch missing, which is the case a test
-    /// runner is always in.
+    /// The half that stands with the latch missing, as it always is for a test
+    /// runner.
     func testAProcessThatIsNotTheAppNeverPurges() {
         XCTAssertFalse(CredentialCachePurge.shouldRun(bundledApp: false, recorded: false),
                        "a test runner, a script or any other binary linking this module was "
@@ -39,8 +33,7 @@ final class ATestRunMustNotDeleteCredentialsTests: XCTestCase {
     }
 
     /// The wiring, asked of this very process: the suite is not a bundled app, so
-    /// the decision here and now must be «do not run». Without this the rule above
-    /// could be perfect and read by nobody.
+    /// the decision here must be «do not run».
     func testThisSuiteWouldNotPurgeAnything() {
         XCTAssertFalse(AppBuild.isBundledApp,
                        "precondition: the suite is being asked whether it is the app and says "
@@ -57,9 +50,8 @@ final class ATestRunMustNotDeleteCredentialsTests: XCTestCase {
         XCTAssertEqual(sent, 0, "a suite run sent a delete to the keychain")
     }
 
-    /// And the latch is not a preference: a file, so that "once" is a fact about
-    /// the installation rather than about whoever asked. Asserted on the path
-    /// rather than on the file's existence — whether the app has already purged on
+    /// The latch is a file, so «once» is a fact about the installation. Asserted
+    /// on the path, not on the file's existence: whether the app has purged on
     /// this Mac is not this suite's business.
     func testTheLatchIsAFileBesideHelmsOwnState() {
         XCTAssertTrue(CredentialCachePurge.markerURL.path

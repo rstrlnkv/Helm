@@ -18,15 +18,12 @@ public final class ScanStore: @unchecked Sendable {
     /// `Disk` under `HelmSupport.directory`: a per-process temporary directory under
     /// `swift test`, Application Support's `Helm` folder in the app.
     ///
-    /// **This file is an index of every file name on somebody's volume**, and
-    /// without the question every test that renders Disk's page read theirs:
-    /// `DiskViewModel` takes its store as a defaulted argument, so a model built
-    /// by `DiskDescriptor.makeModule`, which passes no store, restores whatever
-    /// that file holds once the page calls `appear()`, off the cooperative pool, racing
-    /// the render's settle loop. `restoreLastScan` also calls `clear()`
-    /// when the saved root has gone, so a suite run could *delete* their cache
-    /// and not only read it. `TheSuiteDoesNotReadTheUsersLastScanTests` carries
-    /// what it cost the ratchets, in layers and in seconds.
+    /// **This file is an index of every file name on somebody's volume.** A
+    /// model built by `DiskDescriptor.makeModule` passes no store, so it restores
+    /// whatever this file holds once the page calls `appear()`, and
+    /// `restoreLastScan` calls `clear()` when the saved root has gone: a test
+    /// run must neither read nor delete the person's own
+    /// (`TheSuiteDoesNotReadTheUsersLastScanTests`).
     ///
     /// Resolved once, as `HelmSupport.directory` is.
     private static let defaultDirectory: URL =
@@ -43,20 +40,13 @@ public final class ScanStore: @unchecked Sendable {
     /// dropped either.
     ///
     /// **This is the file the module reopens on**, so a refusal here is a whole
-    /// measurement lost: the next launch draws the tree from an older save, or
-    /// draws the empty ring and a minute-long progress bar, and the person who
-    /// waited out the walk is never told their walk was not kept. The label
-    /// beside the ring does not lie about it — `completedAt` comes from the
-    /// *file* on a restore, so it says the older time — which is exactly why
-    /// nothing on the screen would ever mention it.
+    /// measurement lost, and nothing on the screen would say so: the next
+    /// launch draws an older save, labelled with the older time.
     ///
-    /// It reports to the log rather than upward. There is nobody upward:
-    /// `saveDetached` is the app's only caller and it is a fire-and-forget task with no
-    /// continuation, by construction and for a good reason — the encode is 81 ms
-    /// of a full index of the volume and it used to run on the main actor. The
-    /// log is a surface the person can open (`LogView` shows the tail live), so
-    /// a refusal reaches somebody without a new sentence in eight languages
-    /// claiming a failure they cannot act on.
+    /// It reports to the log rather than upward, because there is nobody
+    /// upward: `saveDetached` is the app's only caller, a fire-and-forget task
+    /// that keeps the encode off the main actor. The log is a surface the
+    /// person can open, and the failure is not one they can act on.
     func save(_ result: ScanResult, at date: Date = Date()) {
         if !PrivateFile.writeMakingTheFolder(Cached(result: result, savedAt: date), at: fileURL) {
             HelmLog.shared.warn(DiskEngine.moduleID,
@@ -81,10 +71,8 @@ public final class ScanStore: @unchecked Sendable {
 
     /// The same read, off whatever actor asked for it.
     ///
-    /// The file is a full index of the volume — measured here at 7 MB and
-    /// 42 000 nodes, which is 95 ms to decode and 81 ms to encode. Both used to
-    /// happen on the main actor, so opening Disk Space froze for a tenth of a
-    /// second and every scan and every basket emptying froze again.
+    /// The file is a full index of the volume, and decoding it takes about a
+    /// tenth of a second, which on the main actor freezes the page.
     public func loadDetached() async -> Cached? {
         await offTheCooperativePool { self.load() }
     }

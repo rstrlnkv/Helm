@@ -9,15 +9,12 @@ import HelmTestSupport
 /// «a folder cannot be moved inside itself» — so the answer is a refusal and
 /// the file system is never asked.
 ///
-/// The guard compares the bucket's path with the walked item's path as
-/// strings. The walk hands back the root's symlinks resolved (`/private/var/…`
-/// for `/var/…`), and a rule's destination is stored as it was spelled, so the
-/// two spellings of one folder pass the guard and reach `moveItem`, which
-/// fails with EINVAL — a «failed» row in the history on every sweep, for
-/// ever, about a folder nobody asked to move. On disk: a scratch home under
-/// `/var/folders`, whose `/private` spelling is a real second spelling.
-///
-/// Past defect: fixed in 4ce355a9.
+/// The walk hands back the root's symlinks resolved (`/private/var/…` for
+/// `/var/…`), and a rule's destination is stored as it was spelled. Compared as
+/// strings, the two spellings of one folder pass the guard and reach `moveItem`,
+/// which fails with EINVAL: a «failed» row in the history on every sweep, for
+/// ever. On disk: a scratch home under `/var/folders`, whose `/private` spelling
+/// is a real second spelling.
 final class ARuleNeverMovesItsOwnBucketIntoItselfTests: XCTestCase {
 
     private var home: URL!

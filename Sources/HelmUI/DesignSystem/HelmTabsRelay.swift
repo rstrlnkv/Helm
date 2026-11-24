@@ -1,13 +1,8 @@
 import SwiftUI
 
-// **How the page's tabs reach a window's toolbar.** Under Liquid Glass the settings window shows its page tabs as an
-// `NSToolbar` item (`SettingsToolbar`, HelmApp), so they get the toolbar's press-and-hold lens (the track is the strip's own glass). The
-// toolbar is an AppKit object and the declaration is closures cut from the page's state at its last body, so the
-// declaration is *relayed*: the card's header row (`CardHeader`) mounts `HelmTabsRelay`, which hands it to the
-// `HelmTabsSink` the window put in the environment; and a clear placeholder, `HelmTabsSlot`, stands in the row where
-// the strip is, so `HeaderRowLayout` keeps centring it on the card and giving way, and reports where it is for the
-// toolbar to put its item there. No sink (the Launchpad's panel, a fixture) or Flat: the row draws the tabs itself
-// (`HelmHeaderTabs`).
+// How the page's tabs reach a window's toolbar under Liquid Glass: the declaration is closures cut from the
+// page's state, so the card's header row relays it to the window's sink and keeps a clear placeholder where the
+// strip stands (Architecture/ThePageHeader.md § How the page reaches the toolbar).
 
 /// What the toolbar needs to draw the page's tabs and to answer a press.
 public struct HelmTabsDeclaration {
@@ -84,11 +79,10 @@ public enum HelmTabsMetrics {
         style == .iconsAndText ? (glyph + HelmTabNumbers.glyphGap + word(tab)) / 2 : word(tab) / 2
     }
 
-    /// What the control keeps free either side of its segments once it stands in a toolbar item: measured on
-    /// macOS 27.3, 2026-11-23, with a bordered item (Homebrew page, Russian, `.text`: a 316 pt run of segments gave a
-    /// 334 pt `fittingSize`). Not readable off a control outside the toolbar, which reads the plain sum, so no test of
-    /// an offscreen control can hold it: the shots can.
-    /// Without it a width of the segments alone left the first label on the track's edge and the last pill past the other end.
+    /// What the control keeps free either side of its segments once it stands in a bordered toolbar item, read off
+    /// a real toolbar (a 316 pt run of segments gave a 334 pt `fittingSize`). A control outside the toolbar reads
+    /// the plain sum, so no offscreen test can hold it; the shots can. Without it the first label sits on the
+    /// track's edge and the last pill runs past the other end.
     public static let trackInset = CGFloat(9)
 
     /// The `.flat` tab's width from its own label: padding either side of the word, the glyph, or both, and the room a
@@ -115,10 +109,8 @@ public enum HelmTabsMetrics {
 
     /// Every segment's width, so no word is cut and the dots stand where the segments are. A segment owns its tab and
     /// half of each gap beside it, the first and the last also the plate, less the `trackInset` the control keeps free
-    /// at its two ends: so a middle segment is centred on its `.flat` tab, and the first and the last
-    /// centres stand 3.75 pt further in than their tabs' (the segment starts `trackInset` in, the tab `plate` in),
-    /// as near as the control allows. The sum is
-    /// `total - 2 * trackInset`.
+    /// at its two ends: a middle segment is centred on its `.flat` tab, and the end ones as near as the control
+    /// allows. The sum is `total - 2 * trackInset`.
     public static func widths(_ tabs: [HelmHeaderTab], _ style: HeaderTabLabels) -> [CGFloat] {
         let last = tabs.count - 1
         return tabWidths(tabs, style).enumerated().map { index, tab in

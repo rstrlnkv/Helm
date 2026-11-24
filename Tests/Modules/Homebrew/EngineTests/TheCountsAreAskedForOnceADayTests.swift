@@ -3,13 +3,11 @@ import HelmTestSupport
 @testable import Module_Homebrew_Engine
 
 /// **`activate()` runs at launch for every module that is switched on**, so the
-/// gate is the whole difference between two public documents a day and two on
-/// every launch — and a person who opens Helm six times in a morning is not
-/// unusual.
+/// gate is the difference between two public documents a day and two on every
+/// launch.
 ///
-/// The clock is the cache file's own modification date. Nothing else is kept:
-/// a separate "last refreshed" note would be a second fact to keep true, and
-/// the file is already stamped by the write that made it.
+/// The clock is the cache file's own modification date: a separate "last
+/// refreshed" note would be a second fact to keep true.
 final class TheCountsAreAskedForOnceADayTests: XCTestCase {
 
     private func madeOn(_ directory: URL, _ wire: PopularityWire) -> FilePopularityStore {
@@ -55,9 +53,8 @@ final class TheCountsAreAskedForOnceADayTests: XCTestCase {
         await store.refreshIfDue()
 
         XCTAssertEqual(wire.asked.count, 2)
-        // One call, both halves — a search ranks two result lists against one
-        // reading or against two, and there is no way to tell afterwards which
-        // it had.
+        // One call, both halves: afterwards nothing tells whether a search ranked
+        // against one reading or two.
         let readings = store.readings()
         XCTAssertEqual(readings.formulae.counts, ["helm": 1000])
         XCTAssertEqual(readings.casks.counts, ["figma": 99])
@@ -87,14 +84,12 @@ final class TheCountsAreAskedForOnceADayTests: XCTestCase {
     }
 
     /// **A tag is a claim about a body this Mac still has.** With the document
-    /// gone and the tag left behind, offering it earns a 304 — "what you have
-    /// is current" — about nothing at all, and the readings would stay empty
-    /// with the store believing itself up to date.
+    /// gone, offering the tag earns a 304 about nothing, and the readings stay
+    /// empty with the store believing itself current.
     ///
-    /// The gate has two halves and this case holds one of them: the file is
-    /// missing. `…CannotBeRead` below holds the other, and it has to be a case
-    /// of its own — with the file deleted the first half alone already closes
-    /// the gate, so this one passes with the second half taken out.
+    /// The gate has two halves; this case holds "the file is missing", and
+    /// `…CannotBeRead` below holds the other, which needs a case of its own
+    /// because a deleted file already closes the gate.
     func testATagIsNotOfferedWhenTheDocumentItDescribesIsGone() async throws {
         let directory = scratchDirectory("counts-orphan-tag")
         try cache(FilePopularityStore.casks, in: directory, counts: ["figma": 40], age: 0)
@@ -110,10 +105,9 @@ final class TheCountsAreAskedForOnceADayTests: XCTestCase {
         XCTAssertEqual(store.readings().formulae.counts, ["helm": 1000])
     }
 
-    /// The other half of the same gate: the document is still on this Mac, and
-    /// a power failure cut it off mid-write. The tag describes bytes nobody can
-    /// read into a reading, so offering it buys a 304 over an empty store — the
-    /// state that never recovers on its own.
+    /// The other half: the document is on this Mac but was cut off mid-write.
+    /// Offering its tag buys a 304 over an empty store, which never recovers on
+    /// its own.
     func testATagIsNotOfferedWhenTheDocumentItDescribesCannotBeRead() async throws {
         let directory = scratchDirectory("counts-unreadable-doc")
         let file = directory.appendingPathComponent(FilePopularityStore.formulae.file)

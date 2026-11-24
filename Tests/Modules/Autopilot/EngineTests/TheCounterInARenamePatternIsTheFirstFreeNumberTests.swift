@@ -3,11 +3,8 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Autopilot_Engine
 
-/// M017: `{counter}` was always `001`, because nothing passed a number to
-/// `RenamePattern.apply` while the rule editor's hint promised it was replaced.
-///
-/// Decision (2026-11-11): `{counter}` is the first free number in the folder the
-/// file lands in, `001`, and when that name is taken there `002`, `003`... A
+/// `{counter}` is the first free number in the folder the file lands in:
+/// `001`, and when that name is taken there `002`, `003`... A
 /// later sweep over the result must rename nothing: renaming is the one action
 /// that is not idempotent, and it runs unattended on a person's files.
 ///
@@ -106,7 +103,7 @@ final class TheCounterInARenamePatternIsTheFirstFreeNumberTests: XCTestCase {
         XCTAssertEqual(try listing(root), after)
     }
 
-    /// Control: a pattern without the token is what it is today.
+    /// Control: a pattern without the token renames once and then holds.
     func testAPatternWithoutACounterIsUnchanged() throws {
         let (home, root) = try folder()
         try put(["a.txt"], in: root)

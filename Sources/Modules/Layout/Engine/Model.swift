@@ -36,9 +36,7 @@ public struct ConversionEvent: Equatable, Sendable {
 /// How far back a figure reaches.
 ///
 /// **The windows slide; they do not follow the calendar.** «This month» on the
-/// first of the month is a figure that collapses overnight through nothing the
-/// reader did — the same complaint the day counter it replaced was written for,
-/// one scale down.
+/// first of the month would collapse overnight through nothing the reader did.
 /// Only `today` is a calendar day, because «today» means that and nothing else.
 ///
 /// One type for the engine and the page: the segment somebody presses and the
@@ -79,11 +77,9 @@ public struct ConversionTotals: Equatable, Sendable {
     /// Words put right on each of the last fourteen days, oldest first, with
     /// a zero for every day nothing happened on.
     ///
-    /// What the 2×N tile draws. A figure says how many; only the shape of the
-    /// days says why it is that many — and the zeros are the half that carries
-    /// it, or a week off and a week of work draw the same picture. Safe to
-    /// carry with a default because this payload never outlives the build that
-    /// wrote it: it goes engine → UI in one process, and is on disk nowhere.
+    /// What the 2×N tile draws. The zeros carry the shape, or a week off and a
+    /// week of work draw the same picture. Safe to carry with a default because
+    /// this payload goes engine → UI in one process and is on disk nowhere.
     public let recent: [Int]
 
     /// The pair for a period — so the page switches with a value rather than a
@@ -133,8 +129,7 @@ public struct LayoutState: Equatable, Sendable {
     /// Installed layouts macOS has no spelling dictionary for, by source id.
     ///
     /// Empty on most Macs. When it is not, «Fix as I type» is dead for every
-    /// pair that includes one of these and nothing on the page said so — the
-    /// switch stayed on and the badge stayed green. The ids travel rather than
+    /// pair that includes one of these, and the page has to say so. The ids travel rather than
     /// the names: naming an input source is the UI's job (`InputSourceInfo`),
     /// and the engine may not import `HelmUI`.
     public let noDictionary: [String]

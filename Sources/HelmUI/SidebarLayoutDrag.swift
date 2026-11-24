@@ -47,18 +47,15 @@ extension SidebarLayout {
     private func droppingModule(_ module: String, at flatIndex: Int) -> SidebarLayout {
         let rows = flattened
         // Above the first heading there is no section. Clamping into the first
-        // one beats refusing: the indicator was already drawn there, and a drop
-        // that does nothing where the list promised something is the list
-        // lying about itself.
+        // one beats refusing: the indicator was drawn there, and a drop that
+        // does nothing where the list promised something is the list lying.
         let owner = sectionOwning(flatIndex, in: rows)
         guard let sectionID = owner ?? sections.first?.id else { return self }
 
         var before: String?
         if owner == nil {
-            // Clamped from above the first heading. The indicator was at the
-            // very top of the list, so the module goes to the front of the
-            // first section — appending it would drop it as far as possible
-            // from where the person aimed.
+            // Clamped from above the first heading, so the module goes to the
+            // front of the first section, where the person aimed.
             before = sections.first?.modules.first { $0 != module }
         } else if flatIndex < rows.count,
                   case .module(let next, let itsSection) = rows[flatIndex],
@@ -73,11 +70,8 @@ extension SidebarLayout {
 
     /// The section a drop at `flatIndex` belongs to.
     ///
-    /// The row immediately above the indicator always names one — a heading
-    /// names its own section and a module names the section holding it — so
-    /// this looks one row up and no further. It was written as a search
-    /// backwards, which was a loop that could never take a second turn and read
-    /// as if it might.
+    /// The row immediately above the indicator always names one: a heading
+    /// names its own section and a module the section holding it.
     private func sectionOwning(_ flatIndex: Int, in rows: [Row]) -> String? {
         let above = min(flatIndex, rows.count) - 1
         guard above >= 0 else { return nil }
@@ -91,11 +85,10 @@ extension SidebarLayout {
 
     private func droppingSection(_ section: String, at flatIndex: Int) -> SidebarLayout {
         let rows = flattened
-        // A heading dropped among another section's modules lands *before* that
-        // section rather than splitting it in half: a section inside a section
-        // is not a thing this layout can hold, and the person dragged a group.
-        // The modules travel with it, because leaving them behind would file
-        // them under a heading that no longer describes them.
+        // A heading dropped among another section's modules lands before that
+        // section rather than splitting it: a section cannot hold a section.
+        // Its modules travel with it, or they would be filed under a heading
+        // that no longer describes them.
         guard flatIndex < rows.count else { return movingSection(section, before: nil) }
         let target: String?
         switch rows[flatIndex] {

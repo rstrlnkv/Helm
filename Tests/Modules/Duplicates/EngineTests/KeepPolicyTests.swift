@@ -5,12 +5,10 @@ import XCTest
 /// The two beliefs about what an extra copy *is*, and the one fact underneath
 /// both of them.
 ///
-/// Measured on a live engine before this existed: a file downloaded into
-/// `~/Downloads` and then filed into `~/Pictures` came back with the download
-/// as the copy that stays, because it arrived first — so Helm offered to delete
-/// the copy somebody had deliberately put away. Дата решала, а не тайбрейк: on
-/// APFS two copies never share a date added (0,29 ms apart on parallel `cp`),
-/// so the depth rung below it was never reached.
+/// On APFS two copies practically never share a date added, so a date rung
+/// decides before depth is reached: by date, a file downloaded into
+/// `~/Downloads` and then filed into `~/Pictures` keeps the download; by place,
+/// it keeps the copy somebody deliberately put away.
 final class KeepPolicyTests: XCTestCase {
 
     // MARK: - The stored spelling
@@ -108,9 +106,8 @@ final class KeepPolicyTests: XCTestCase {
     private let inTransit = "/Users/r/Downloads/photo.jpg"
     private let filedDeepAndLater = "/Users/r/Pictures/2019/Trips/photo.jpg"
 
-    /// The measurement that started this: the download arrived first and is
-    /// shallower, and under «по месту» it still loses to the copy somebody put
-    /// away.
+    /// The download arrived first and is shallower, and under `byPlace` it
+    /// still loses to the copy somebody put away.
     func testUnderThePlacePolicyTheFiledCopyStaysHoweverEarlyTheDownloadArrived() {
         let ordered = SurvivingCopy.order([file(inTransit, added: day(10)),
                                            file(filedDeepAndLater, added: day(500))],
@@ -155,9 +152,7 @@ final class KeepPolicyTests: XCTestCase {
     // MARK: - An unknown date is neutral
 
     /// A volume that does not record when a file was added reports nothing, and
-    /// nothing is not evidence either way. It used to be a win for the copy we
-    /// knew something about — which handed the whole decision to a fact the
-    /// filesystem happened to keep, and skipped every rung below it.
+    /// nothing is not a win for the copy we know something about.
     func testAnUnknownDateIsTakenOutOfTheLadderBeforeTheDateItIsMissingFrom() {
         for policy in KeepPolicy.allCases {
             let copies = [file("/Users/r/Documents/Archive/2019/deep.jpg", added: day(10)),
@@ -225,13 +220,8 @@ final class KeepPolicyTests: XCTestCase {
     // MARK: - Which copy stays: the order the policy hands back
     //
     // Which copy stays is the one decision in this module that costs something to
-    // get wrong: the rest are baskets in one click.
-    //
-    // It used to be the alphabetically first path, which is not a belief about
-    // anything — it just happened to be how the list was sorted for display. So
-    // `~/Desktop/photo.jpg` beat `~/Documents/Archive/2019/photo.jpg`, because D
-    // sorts before A, and Helm offered to delete the filed copy and keep the
-    // clutter. The page said so plainly, which only moved the work onto the reader.
+    // get wrong: the rest are baskets in one click. The alphabet is the last
+    // rung, never the first: it is not a belief about anything.
     //
     // **What the policy owns and what this section owns.** The tests above cover
     // the two ladders and the tier they rest on; these are the rungs each policy
@@ -291,20 +281,12 @@ final class KeepPolicyTests: XCTestCase {
 
     // MARK: - When the date is not there
 
-    /// **This test asserted the opposite twice, and the second time its fixture
-    /// could not tell.** It first read a blank date as a *loss* for the copy it
-    /// was missing from, so one blank settled a group outright and every rung
-    /// below — where the file sits, how deep it is — was never asked. It was then
-    /// rewritten as «silence settles nothing, the ladder carries on», and the
-    /// copy without a date was also the shallower one: green whether the missing
-    /// date decided or the depth below it did.
-    ///
-    /// Neither reading is the rule. `KeepReason.undated` is a rung of its own,
-    /// above the date it is missing from, and the copy nothing records the
-    /// arrival of is the copy that stays — because what this module does with the
-    /// rest is offer them for the Trash. Which rung answered is a separate
-    /// question from which copy stays, so it is asked separately: `reason` names
-    /// it, and it is what the group header says out loud.
+    /// A blank date is neither a loss nor silence. `KeepReason.undated` is a
+    /// rung of its own, above the date it is missing from, and the copy nothing
+    /// records the arrival of is the copy that stays — because what this module
+    /// does with the rest is offer them for the Trash. This fixture's dateless
+    /// copy is also the shallower one, so which rung answered is asked
+    /// separately: `reason` names it, and it is what the group header says.
     func testAnUnknownDateIsARungOfItsOwnAndTheCopyItIsMissingFromStays() {
         let copies = [sizedFile("/Users/r/Documents/Archive/z.jpg", added: day(400)),
                       sizedFile("/Users/r/Documents/a.jpg")]

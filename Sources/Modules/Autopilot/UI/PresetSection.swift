@@ -6,28 +6,25 @@ import SwiftUI
 /// Five rules somebody can have without writing one, as a menu.
 ///
 /// **An item is a button that shows, not a switch that does.** A switch here
-/// would be the one gesture in this module that starts unattended work on
-/// somebody's files without their having seen what it does to them — which is
-/// the whole discipline the dry run exists for, one level up. So an item opens
-/// the ordinary editor on an unsaved draft: everything is visible and editable,
-/// Done is the ordinary save, and Cancel leaves no folder and no rule.
+/// would start unattended work on somebody's files before they saw what it
+/// does, which the dry run exists to prevent. So an item opens the ordinary
+/// editor on an unsaved draft: Done is the ordinary save, and Cancel leaves no
+/// folder and no rule.
 ///
 /// **Grouped by folder, because the item is where a folder is first named.** A
 /// preset's folder is `FileManager`'s answer rather than a panel's, so the menu
 /// says which one in a heading and the editor repeats it on its first line.
-/// Groups keep the order the folders first appear in, so the order the engine
-/// offers them in is kept inside each.
+/// Groups keep the order the folders first appear in, and the engine's inside.
 ///
 /// Where it is drawn is the page's business (`AutopilotSettingsPage.presets`):
 /// beside «Add folder…» and nowhere else, and not at all once there is a rule
 /// or nothing left to offer.
 struct PresetSection: View {
     let presets: [OfferedPreset]
-    /// Disabled while macOS is withholding the access. Every one of these
-    /// folders reads as empty without it, so a dry run would show nothing and the
-    /// rule would look like one that matches nothing; the page's own
-    /// `HelmPermissionNote` already says why, and a second sentence beside the
-    /// button would read as a second permission.
+    /// Disabled while macOS withholds the access: every one of these folders
+    /// then reads as empty, so a dry run would show nothing. The page's own
+    /// `HelmPermissionNote` says why; a second sentence here would read as a
+    /// second permission.
     let diskAccess: PermissionState
     let open: (OfferedPreset) -> Void
     /// The home directory macOS's own folder names are measured against.
@@ -61,10 +58,8 @@ struct PresetSection: View {
 extension OfferedPreset {
     /// The rule this preset is, under the name this language gives it.
     ///
-    /// **One place, so the item and the rule cannot say different things.** The
-    /// menu draws this name and the editor saves this rule; built separately they
-    /// would be two calls to keep in step, and the item is where somebody decides
-    /// whether to press.
+    /// **One place, so the item and the rule cannot say different things**: the
+    /// menu draws this name and the editor saves this rule.
     var draft: Rule { preset.rule(named: ApStr.presetName(preset.kind), in: folder.path) }
 
     /// What the menu calls the folder: macOS's own name for it, and the last

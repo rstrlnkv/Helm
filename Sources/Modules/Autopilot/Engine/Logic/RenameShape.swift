@@ -4,14 +4,11 @@ import Foundation
 /// `{date}` already resolved and `{name}` and `{counter}` left as holes.
 ///
 /// It exists to answer whether a rename has already happened. `RuleStamp` is the
-/// general answer to that, and `RuleRunner.note` tolerates a stamp that will not
-/// stick — a volume that refuses extended attributes, or an AppleDouble `._name`
-/// sidecar that something along the way dropped. `WatchScope` admits `/Volumes`
-/// on purpose, so those volumes are reachable. Unstamped, the sweep an hour
-/// later asks the pattern again, `{name}` takes the previous run's output as its
-/// input, and a pattern that adds anything at all adds it once an hour until the
-/// name passes the 255-byte limit on a path component and the rule fails on that
-/// file for good.
+/// general answer, but `RuleRunner.note` tolerates a stamp that will not stick
+/// (a volume without extended attributes, a dropped `._name` sidecar).
+/// Unstamped, the next sweep feeds the previous output into `{name}`, and a
+/// pattern that adds anything adds it once an hour until the name passes the
+/// 255-byte limit and the rule fails on that file for good.
 ///
 /// A prefix test would cover `{date}-{name}` and miss `{name} {date}`,
 /// `{name}{counter}` and anything that puts the file's name in the middle. The

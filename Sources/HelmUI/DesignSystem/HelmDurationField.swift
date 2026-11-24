@@ -3,29 +3,20 @@ import SwiftUI
 /// A length of time, entered the way Clock enters one.
 ///
 /// The shape is macOS's own timer: a column per unit, its abbreviation in small
-/// quiet type above the figure, the figures large and light and separated by a
-/// colon. It replaces a single «minutes» box, which asked somebody who wanted
-/// two hours to type `120` — arithmetic the app can do and the person should
-/// not have to, and a box that reads the same whether it holds 90 or 900.
+/// quiet type above the figure, the figures large and light, separated by a
+/// colon, so nobody who wants two hours has to type `120`.
 ///
-/// **Hours and minutes, not hours-minutes-seconds.** Clock shows three because
-/// Clock can count in seconds; this module's session is `startSession(minutes:)`
-/// all the way down to the stored deadline, so a seconds column would take a
-/// number and round it away. A field that accepts what it cannot keep is the
-/// same defect as a label that names a control that does not exist.
+/// **Hours and minutes, not seconds**: the session is
+/// `startSession(minutes:)` down to the stored deadline, so a seconds column
+/// would take a number and round it away.
 ///
-/// The unit labels are the caller's, not this file's: they belong to whichever
-/// module is drawing, and Helm already carries them (`"h"` / `"m"`) with the
-/// same values macOS's own Clock uses — `hour_abbr` and `min_abbr` in
-/// `Clock.app/Contents/Resources/Localizable.loctable` read `ч` / `мин` in
-/// Russian and `Std.` / `Min.` in German, which is exactly what those two keys
-/// already say.
+/// The unit labels are the caller's (`"h"` / `"m"`), with the same values as
+/// Clock's own `hour_abbr` and `min_abbr`.
 struct HelmDurationField: View {
     /// Splitting a duration and putting it back together, with the ceiling
     /// applied once.
     ///
-    /// Out here as a nested type rather than inline in the body because it is
-    /// the part that can be wrong in a way nobody sees: a person types `90`
+    /// The part that can be wrong in a way nobody sees: a person types `90`
     /// into the minutes column and means an hour and a half, and every path
     /// that carries their number has to agree about that.
     enum Parts {
@@ -36,13 +27,11 @@ struct HelmDurationField: View {
             return (total / 60, total % 60)
         }
 
-        /// …and back. **The minutes column is not capped at 59.** Somebody who
-        /// types `90` there has said an hour and a half, and refusing it would
-        /// be the field correcting a person who was not wrong; the sum carries
-        /// into the hours on the next redraw. What *is* enforced is the module's
-        /// own ceiling, once, at the end — the same one `startSession` clamps
-        /// to, so a number this field accepts cannot be a session the engine
-        /// then quietly shortens.
+        /// …and back. **The minutes column is not capped at 59**: `90` means an
+        /// hour and a half, and the sum carries into the hours on the next
+        /// redraw. What is enforced is the module's own ceiling, once, at the
+        /// end, the one `startSession` clamps to, so the engine never quietly
+        /// shortens a session this field accepted.
         static func total(hours: Int, minutes: Int, ceiling: Int) -> Int {
             guard hours >= 0, minutes >= 0 else { return 0 }
             // Multiplied inside the ceiling rather than after it: `hours * 60`
@@ -83,9 +72,7 @@ struct HelmDurationField: View {
         HStack(spacing: 6) {
             column(hourLabel, text: $hourText, field: .hours)
             // The colon carries a hidden label of its own, so it sits in the
-            // *digits* row rather than being baseline-aligned with the unit
-            // captions above them. Photographed without it: the colon floated
-            // level with «ч» and «мин», a third of the way up the field.
+            // digits row rather than level with the unit captions above.
             VStack(spacing: 2) {
                 Text(hourLabel).font(.system(size: 11, weight: .semibold)).hidden()
                 Text(":")
@@ -131,14 +118,10 @@ struct HelmDurationField: View {
     /// cannot drift apart when the type size is next touched.
     private var fieldHeight: CGFloat { 52 }
 
-    /// One font for the same three, for the same reason — it was spelled twice
-    /// in this file, once at the colon and once at the boxes.
-    ///
-    /// **`HelmText.heroFont`, one step down.** This is the number the countdown
-    /// is about to become, and it should not arrive in a different voice from
-    /// it; tabular digits for the same reason the hero's figure has them. 34 is
-    /// on no step of the scale — it goes 22 · 40, and 22 halves the field — so
-    /// it is an exception to the scale rather than swept into a screen redrawn.
+    /// One font for the same three. `HelmText.heroFont` one step down, with
+    /// tabular digits: this is the number the countdown is about to become,
+    /// and it should not arrive in another voice. 34 is off the scale, which
+    /// goes 22 · 40, because 22 halves the field.
     private static let digitFont = Font.system(size: 34, weight: .light).monospacedDigit()
 
     private func digits(_ text: String) -> Int {

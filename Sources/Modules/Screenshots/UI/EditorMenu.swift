@@ -31,8 +31,8 @@ enum EditorMenu {
         return EditorKeys.toolKeys.first { $0.tool == tool }?.letter.lowercased() ?? ""
     }
 
-    /// The image an item draws beside its title. Returning nil drops every item image at once; it was not drawn
-    /// beside a checked item in the overlay's measurement, which is why this is one place.
+    /// The image an item draws beside its title. Returning nil drops every item image at once: AppKit may draw
+    /// none beside a checked item over the overlay, which is why this is one place.
     static func image(symbol: String) -> NSImage? {
         let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         image?.isTemplate = true

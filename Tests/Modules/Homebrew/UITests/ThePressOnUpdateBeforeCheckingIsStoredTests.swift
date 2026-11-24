@@ -3,9 +3,8 @@ import HelmRuntime
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
-/// Kept: guards the stored `module.homebrew.updateBeforeChecking`. A press on the Updates tab's
-/// toggle must reach the store the engine reads at its next `outdated`, and a model built over a
-/// stored value must show it.
+/// A press on the Updates tab's toggle reaches the store the engine reads at its next
+/// `outdated`, and a model built over a stored value shows it.
 @MainActor
 final class ThePressOnUpdateBeforeCheckingIsStoredTests: XCTestCase {
     private let key = "module.homebrew.updateBeforeChecking"

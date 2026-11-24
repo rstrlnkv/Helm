@@ -6,17 +6,13 @@ import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
 
-/// The attack, end to end, through the engine: launch a bundle carrying a mapped
-/// `CFBundleIdentifier`, quit it, and watch the tunnel go down.
+/// A bundle carrying a mapped `CFBundleIdentifier` cannot raise the tunnel, and
+/// its quit cannot take it down.
 ///
-/// It is written against the engine rather than against `VPNRuleTrust` because the
-/// pure rule can be perfect and reach nothing: the identity is checked at
-/// **launch**, and the quit is refused by consequence — `VPNAutoConnectCore` only
-/// undoes launches it recorded. That is one gate rather than two, and it is the
-/// only place a check is possible at all, since at quit time there is no longer a
-/// bundle to read.
-///
-/// Past defect: commit 1fe5e099, «fix(vpn): a rule is bound to a signature, and a forged plist stops summoning dialogs».
+/// Written against the engine, not `VPNRuleTrust`, because the identity is
+/// checked at **launch** and the quit is refused by consequence:
+/// `VPNAutoConnectCore` only undoes launches it recorded. At quit time there is
+/// no bundle left to read.
 final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
 
     private let bundleID = "com.example.app"
@@ -33,11 +29,9 @@ final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
     /// quit is supposed to undo.
     ///
     /// **The caller must keep what this returns.** `apps.startObserving`'s closure
-    /// holds the engine weakly, so an engine nobody retains is deallocated the
-    /// moment this returns and `fire()` reaches nothing — every assertion about
-    /// something *not* happening would then pass with the whole gate deleted. It
-    /// cost one debugging round here, which is the trap a check that cannot
-    /// fail describes: assert first that the subject happened.
+    /// holds the engine weakly, so an engine nobody retains is gone at once and
+    /// `fire()` reaches nothing: every assertion that something did *not* happen
+    /// would pass with the whole gate deleted.
     private func holding(_ apps: FakeApps, _ runner: FakeRunner,
                          identity: CodeIdentity?) -> VPNEngine {
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
@@ -78,7 +72,7 @@ final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
     }
 
     /// The forged bundle on its own: it launches, nothing happens, it quits,
-    /// nothing happens. This is the whole finding.
+    /// nothing happens.
     func testAForgedLaunchRaisesNothingAndItsQuitTakesNothingDown() {
         let apps = FakeApps()
         let runner = FakeRunner()
@@ -119,9 +113,8 @@ final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
                        "…and quitting it no longer takes it down")
     }
 
-    /// A rule stored before identities existed refuses, and says so in the log —
-    /// a rule that has quietly stopped firing is the failure (ARCHITECTURE.md §
-    /// VPN) is about.
+    /// A rule with no recorded identity refuses, and says so in the log: a rule
+    /// that quietly stops firing is the failure (Architecture/VPN.md § VPN).
     func testARuleWithNoRecordedIdentityRefusesAndSaysSo() {
         tailTheLog()
 
@@ -143,12 +136,10 @@ final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
         XCTAssertNil(engine.lastAutomation)
     }
 
-    /// The seeding path at launch is the same gate. `activate()` replays
-    /// `appLaunched` for everything already running, and a gate on only the live
-    /// route would let a forged bundle that was started *before* Helm through.
-    ///
-    /// Both directions in one test, because the assertion that matters is an
-    /// absence: with the real identity the same seeding does raise the tunnel.
+    /// The seeding at launch is the same gate: `activate()` replays
+    /// `appLaunched` for everything already running, so a forged bundle started
+    /// *before* Helm is refused too. Both directions in one test, because the
+    /// assertion that matters is an absence.
     func testTheLaunchSeedingIsGatedToo() {
         for (identity, expected) in [(real, 1), (forged, 0)] {
             let apps = FakeApps()

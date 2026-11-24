@@ -8,15 +8,14 @@ import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **«Copy All» with one shot's file gone puts every shot that is still found on the board in one write, and tells the
-/// person which shot is missing; it does not refuse the whole copy.** The owner's decision of 2026-11-11 (option 3:
-/// the pile keeps no full picture of a written shot, so a gone file cannot be copied, and is said). The scene is the
-/// app's own over real files in a scratch folder; the file is removed or moved on disk before the press.
+/// person which shot is missing; it does not refuse the whole copy.** The pile keeps no full picture of a written
+/// shot, so a gone file cannot be copied, and is said. The scene is the app's own over real files in a scratch folder;
+/// the file is removed or moved on disk before the press.
 ///
-/// Written against API that does not exist yet, and red by compile error until it does:
-/// `CaptureRefusal.filesGone([Int])`, the zero-based places, in the list `ShotToast.sources()` hands the session, of the
-/// shots whose file was not found; `ScStr.refusal(_:)` words it. The wording is not asserted, the kind and the places are.
+/// `CaptureRefusal.filesGone([Int])` carries the zero-based places, in the list `ShotToast.sources()` hands the session,
+/// of the shots whose file was not found. The wording is not asserted, the kind and the places are.
 ///
-/// Total failure of the subject prints: a board with nothing on it (the whole-copy refusal of today), a board with all
+/// Total failure of the subject prints: a board with nothing on it (a whole-copy refusal), a board with all
 /// three (a gone file read from nowhere), the missing shot named as another place, nothing told.
 /// Mutant, red here: `Sources/Modules/Screenshots/Engine/CaptureSession.swift`: `delivery.refusals.append(.filesGone(encoded.gone))` -> `_ = encoded.gone`.
 @MainActor

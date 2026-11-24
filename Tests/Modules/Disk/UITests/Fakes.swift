@@ -8,13 +8,10 @@ import XCTest
 // The two engines this module's page tests are written against, and the waits
 // that go with them.
 //
-// **They are two on purpose.** `AnsweringWork` answers on the spot;
-// `HeldWork` parks every scan until a test releases it. A fake that answers
-// synchronously releases a gate before the call it is gating returns,
-// so a test of a busy gate passes with the gate deleted — which is why
-// `DiskScanRaceTests` and `StopKeepsWhatItMeasuredTests` need the parking one
-// and cannot be served by the immediate one. Merging them would take the
-// mid-walk state out of the language these tests are written in.
+// They are two on purpose. `AnsweringWork` answers on the spot; `HeldWork`
+// parks every scan until a test releases it. A fake that answers synchronously
+// releases a gate before the call it gates returns, so a test of a busy gate
+// would pass with the gate deleted: the race and mid-walk tests need `HeldWork`.
 
 // MARK: - A mount somebody can post
 
@@ -135,15 +132,9 @@ final class HeldWork: DiskWork, @unchecked Sendable {
         return await withCheckedContinuation { c in lock.withLock { heldTrash.append(c) } }
     }
 
-    /// Hold the removal open until `releaseTrash()`.
-    ///
-    /// **A fake that answers a removal on the spot cannot express a removal that
-    /// is running**, and everything the page does *during* one — the button that
-    /// should be dim, the row that should not be tickable — is then a state no
-    /// test could write down whatever anybody wrote. It is off by default
-    /// because the other files here are about what the model holds afterwards,
-    /// and a batch that never comes back would hang those instead of failing
-    /// them.
+    /// Hold the removal open until `releaseTrash()`, so a test can see the page
+    /// while a removal runs. Off by default: a batch that never comes back would
+    /// hang the tests about what the model holds afterwards.
     func holdTrash() {
         lock.withLock { holdsTrash = true }
     }
@@ -206,11 +197,8 @@ func folder(_ path: String, bytes: Int, children: [DiskEntry] = []) -> DiskEntry
 }
 
 /// Waits for the scan to park inside `HeldWork`, bounded by wall-clock time,
-/// and fails naming what never happened. Yielding a fixed number of times is a
-/// guess about scheduling; this is the condition the test depends on.
-///
-/// `@MainActor`, as every caller is: the test reads on the actor the view
-/// model's own tasks run on.
+/// and fails naming what never happened. `@MainActor`: the test reads on the
+/// actor the view model's own tasks run on.
 @MainActor
 func untilParked(_ work: HeldWork, count: Int, file: StaticString = #filePath,
                  line: UInt = #line) async {
@@ -257,10 +245,9 @@ extension XCTestCase {
 
     func heldModel(_ work: HeldWork) -> (DiskViewModel, ScanStore) {
         // A store of its own: the module's real one is the person's last scan,
-        // and a harness must leave nothing behind. `scratchDirectory` owns the
-        // teardown, and it *drains* — a one-shot `removeItem` beside it was the
-        // very race that helper exists to close, and a save arriving from the view
-        // model's own fire-and-forget task is what needs it.
+        // and a harness must leave nothing behind. `scratchDirectory` drains on
+        // teardown, so a save from the view model's fire-and-forget task lands
+        // before the folder goes.
         let store = ScanStore(directory: scratchDirectory("disk-held"))
         return (DiskViewModel(work: work, store: store), store)
     }

@@ -5,21 +5,17 @@ import XCTest
 /// The gate's first question is «is this absolute», and it has to be asked
 /// before anything resolves the path.
 ///
-/// Both sibling gates open with it and both explain it in the same words:
-/// `UserFileScope.isRemovable` and `ScanRoot.resolve` guard first and
-/// canonicalize second, because every resolver builds a
-/// `URL(fileURLWithPath:)` — which resolves a relative path against the
-/// **process's working directory** and hands back something absolute. Resolve
-/// first and the gate is handed an answer instead of a question.
+/// Every resolver builds a `URL(fileURLWithPath:)`, which resolves a relative
+/// path against the **process's working directory** and hands back something
+/// absolute: resolve first and the gate is handed an answer instead of a
+/// question. `UserFileScope.isRemovable` and `ScanRoot.resolve` guard first for
+/// the same reason.
 ///
-/// `WatchScope` went straight to `URL(fileURLWithPath: rawPath)`, so a rule
-/// whose destination was `relative/path` — or the empty string, which is what a
-/// truncated or forged plist degrades into — was judged as a folder under the
-/// working directory. It is latent rather than live: a bundle launched by
-/// LaunchServices or launchd has `/` for a working directory, and there
-/// everything relative falls outside the home and is refused. It bites the
-/// developer loop, where the binary is started from a shell sitting in the
-/// home. A gate must not depend on how the program was launched.
+/// A destination of `relative/path`, or the empty string a truncated or forged
+/// plist degrades into, would be judged as a folder under the working directory.
+/// Launched by LaunchServices or launchd that is `/`, and it is refused; started
+/// from a shell sitting in the home, it would pass. A gate must not depend on
+/// how the program was launched.
 ///
 /// **The working directory is read rather than changed.** The home is a
 /// parameter of the gate, so passing the *parent* of the working directory

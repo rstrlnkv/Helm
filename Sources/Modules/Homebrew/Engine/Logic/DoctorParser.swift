@@ -1,9 +1,8 @@
 import Foundation
 
-/// Parses `brew doctor`'s answer — printed entirely to standard error, one
-/// tool run captured by `ProcessRunner.runCapturingDiagnostics` (its doc
-/// comment carries the measurement: 1 byte of stdout against 1194 of stderr,
-/// exit 1, this machine, 2026-09-14) — into the issues it names.
+/// Parses `brew doctor`'s answer, printed entirely to standard error and
+/// captured by `ProcessRunner.runCapturingDiagnostics`, into the issues it
+/// names.
 ///
 /// A block begins at a line starting `Warning:` or `Error:`. The title is **brew's
 /// first sentence**, not its first physical line: brew hard-wraps its heredocs,
@@ -22,26 +21,23 @@ import Foundation
 /// remediation, each free to hold a blank line (`Diagnostic::Finding#to_s`),
 /// so `Unexpected dylibs:` with its files, the tools that exist at both PATH
 /// entries and `Run `brew link` on these:` with its names all arrive as an
-/// unindented line behind a blank one. An earlier rule ended the body there, and the very list
-/// a person would act on never reached the screen.
+/// unindented line behind a blank one; ending the body there would drop the
+/// very list a person would act on.
 ///
 /// The frame is what the scan refuses to cross: the aside to the reader —
 /// "Please note that these warnings are just used to help…" — which
 /// `cmd/doctor.rb` prints once, before its first warning, and the
 /// support-tier message `brew doctor` prints on standard output after its last
 /// finding, merged into the same capture and about the configuration, not about
-/// that finding. The scan does not lean on where brew puts either: it stops at a
-/// frame line wherever one lands, so a block is never given a trailing
-/// paragraph that is not its own.
+/// that finding. The scan stops at a frame line wherever one lands, so a block
+/// is never given a trailing paragraph that is not its own.
 ///
 /// `brew` prints an identical block once per affected tap or cask in a single
 /// run; those collapse to one issue, in first-seen order.
 enum DoctorParser {
-    /// nil for empty input — the tool said nothing at all, which this module
-    /// must not read as "doctor ran and found a clean machine": that reading
-    /// is exactly what a silently-refused query would also produce. An empty
-    /// array is the honest answer for real output that named no
-    /// `Warning:`/`Error:` line at all.
+    /// nil for empty input: silence is what a refused query also produces, and
+    /// must not read as a clean machine. An empty array for real output that
+    /// named no `Warning:`/`Error:` line.
     static func parse(_ text: String) -> [DoctorIssue]? {
         guard !text.isEmpty else { return nil }
 
@@ -125,9 +121,8 @@ enum DoctorParser {
         line.range(of: #"\.rb:\d+:in "#, options: .regularExpression) != nil
     }
 
-    /// Body lines are kept verbatim — no trimming of a line's own content —
-    /// because a body line naming a path is somebody's path and this module
-    /// does not re-spell it. Only the blank lines at the end are dropped.
+    /// Body lines are kept verbatim: a path in one is somebody's path, not
+    /// re-spelled. Only the blank lines at the end are dropped.
     private static func body(of lines: [String]) -> String {
         var kept = Array(lines.prefix { !isFrame($0) })
         while let last = kept.last, last.trimmingCharacters(in: .whitespaces).isEmpty {

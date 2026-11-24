@@ -1,21 +1,13 @@
 import Foundation
 
 /// Apple's Command Line Tools as this module needs to know them: whether they
-/// are on the Mac, and what one tick of the wait for them concludes. Pure — no
-/// file, no process, no clock — so every rule below has a test that costs
-/// nobody a download.
-///
-/// **Why the module waits at all.** Homebrew's `install.sh` installs the tools
-/// itself only when it can ask `sudo` for a ticket on a terminal, and Helm runs
-/// it with neither. So on a Mac without them Helm files Apple's own request
-/// (`xcode-select --install`), Apple's window does the download, and this waits
-/// for `git` to appear before the one root step and the installer run.
+/// are on the Mac, and what one tick of the wait for them concludes. Pure (no
+/// file, no process, no clock), so every rule below has a test that costs
+/// nobody a download. Why the module waits: `HomebrewEngine.installBrew`.
 enum CommandLineTools {
 
-    /// The `git` Apple's tools put at a fixed path. Its presence is the whole
-    /// definition of "the tools are installed" here, because `git` is what the
-    /// installer's own check for a usable one (`USABLE_GIT` in `install.sh`)
-    /// asks for.
+    /// The `git` Apple's tools put at a fixed path: what `install.sh`'s own
+    /// check (`USABLE_GIT`) asks for, so its presence defines "installed".
     static let git = "/Library/Developer/CommandLineTools/usr/bin/git"
 
     /// The `git` inside a developer directory `xcode-select -p` printed, or nil
@@ -32,13 +24,9 @@ enum CommandLineTools {
     }
 
     /// Helm's own reading of whether `git` is there: the fixed path first, then
-    /// wherever `xcode-select -p` points. It is not the script's test:
-    /// `install.sh` finds `git` on the `PATH` (`find_tool`) and then under the
-    /// developer directory `xcode-select --print-path` names, and looks at the
-    /// fixed path only to decide whether to install the tools itself
-    /// (`should_install_command_line_tools`). `selected` is lazy so that the
-    /// process runs only when the fixed `git` is not there — the ordinary Mac
-    /// with the tools starts nothing at all.
+    /// wherever `xcode-select -p` points. Not the script's own test, which also
+    /// searches the `PATH`. `selected` is lazy, so the ordinary Mac with the
+    /// tools starts no process at all.
     static func present(isExecutable: (String) -> Bool, selected: () -> String?) -> Bool {
         if isExecutable(git) { return true }
         guard let printed = selected(), let other = git(inDeveloperDirectory: printed) else { return false }
@@ -68,7 +56,7 @@ enum CommandLineTools {
 
     /// Ticks without ever seeing the installer before the wait says so, once.
     /// At the engine's two-second tick that is a minute: past the time a window
-    /// takes to open, and early enough for a dev round to read the line.
+    /// takes to open.
     static let neverSeenAfter = 30
 
     /// The verdict of one tick.
@@ -78,13 +66,11 @@ enum CommandLineTools {
     /// 2. The installer is running: remember it, keep waiting.
     /// 3. It is not running but has been seen: `closedWithoutTools`.
     /// 4. It has never been seen: keep waiting. **An absence is not a failure
-    ///    when no presence was ever read.** The identity the reading looks for
-    ///    is a bundle id that was measured on one macOS and not the one a
-    ///    person may run, and a miss must degrade to a wait that ends at Stop
-    ///    waiting rather than to a false «Failed» over a window still open.
+    ///    when no presence was ever read.** The bundle id may be wrong on
+    ///    another macOS, and a miss must degrade to a wait that ends at Stop,
+    ///    not a false «Failed» over a window still open.
     /// 5. After `neverSeenAfter` ticks of that, `sayNeverSeen` is true exactly
-    ///    once, and the engine logs it — the line a dev round finds the wrong
-    ///    identity by.
+    ///    once, and the engine logs it: the line a wrong identity shows by.
     static func next(_ wait: Wait, toolsPresent: Bool, installerRunning: Bool)
     -> (wait: Wait, verdict: Verdict, sayNeverSeen: Bool) {
         var wait = wait

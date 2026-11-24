@@ -15,12 +15,11 @@ import HelmRuntime
 /// case — several rules stamping the same file over time — from depending on
 /// how many attributes a filesystem will hold.
 ///
-/// **What the attribute holds is a `StampMark`, not the rule's id.** The
-/// attribute is on somebody's file and any process running as the user can
-/// write it; the id was a UUID out of a plist the same process can read. So the
-/// mark is keyed, which is why this is a value with a key in it rather than the
-/// namespace it used to be — and a file whose mark does not verify is simply
+/// **What the attribute holds is a `StampMark`, not the rule's id.** Any
+/// process running as the user can write the attribute and read the rule ids,
+/// so the mark is keyed. A file whose mark does not verify is simply
 /// unstamped, which costs a rule one more turn at it and nothing else.
+
 struct RuleStamp: Sendable {
     static let attribute = "com.helm.autopilot.stamp"
 

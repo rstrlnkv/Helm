@@ -4,13 +4,10 @@ import XCTest
 @testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
-/// **Past defect: the older list could be the one stored.** Each gesture sent its
-/// list in a Task of its own, `offTheCooperativePool` runs those on the global
-/// concurrent queue, and so two quick edits raced for the engine's lock: the
-/// earlier full-list snapshot could land last and the later edit reverted after a
-/// reload. Saves now form one chain, each waiting for the one before.
+/// **The later of two quick edits is the list stored**: saves form one chain,
+/// each waiting for the one before (Architecture/Autopilot.md § How Autopilot's model reaches its engine).
 ///
-/// The old format is untouched, only the order of writes; its guard is
+/// The stored format is untouched, only the order of writes; its guard is
 /// `RuleOverwriteTests`.
 @MainActor
 final class TheLaterSaveLandsLastTests: XCTestCase {

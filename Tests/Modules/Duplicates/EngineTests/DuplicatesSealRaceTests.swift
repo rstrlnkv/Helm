@@ -10,8 +10,6 @@ import XCTest
 /// value it read. A save between that read and that write leaves the new value
 /// beside a MAC sealed over the old one, and the next background scan refuses
 /// the folder the person just chose. Shaped like `AutopilotSealRaceTests`.
-///
-/// **Past defect:** two writers over one value-and-MAC pair, with no order.
 final class DuplicatesSealRaceTests: XCTestCase {
 
     private let rounds = 5_000

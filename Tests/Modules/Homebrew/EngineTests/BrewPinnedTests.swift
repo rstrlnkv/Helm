@@ -3,15 +3,11 @@ import XCTest
 
 /// A pinned formula is in `brew outdated` and cannot be upgraded.
 ///
-/// Pinning is how somebody says "leave this version alone" — usually because
-/// the new one broke something. brew still reports it as outdated, and the
-/// parser dropped the `pinned` field, so the row offered an Upgrade button that
-/// `brew upgrade` answers with "…is pinned". A button that cannot work is worse
-/// than no button: it says the app does not know what the Mac is doing.
+/// Pinning is how somebody says "leave this version alone". brew still reports
+/// a pinned formula as outdated, and `brew upgrade` answers it with "…is
+/// pinned", so its row must not offer an Upgrade button that cannot work.
 ///
-/// The shape below is `brew outdated --json=v2` as Homebrew 6 writes it,
-/// checked against the real command on this machine.
-/// Kept: guards the defect fixed in 63e9bcfe fix: three more from the suspicions list.
+/// The shape below is `brew outdated --json=v2` as Homebrew writes it.
 final class BrewPinnedTests: XCTestCase {
 
     /// `parse` answers nil for a document it cannot read, and a `?? []` here

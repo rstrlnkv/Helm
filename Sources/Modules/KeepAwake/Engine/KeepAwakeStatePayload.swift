@@ -2,16 +2,12 @@ import Foundation
 
 /// The state every Keep Awake surface draws, and the one declaration of it.
 ///
-/// Out of `KeepAwakeEngine` and still `KeepAwakeEngine.StatePayload`: an
-/// extension keeps the name every reader already spells while taking the payload
-/// out of the middle of the session logic. The name is the point — the same type,
-/// not a copy — because the defect its own comment records is what happens when a
-/// payload is declared twice.
+/// An extension, so the payload keeps the name `KeepAwakeEngine.StatePayload`
+/// while living outside the session logic.
 extension KeepAwakeEngine {
     /// Public because the model reads it from `stream()`. Declared a second
-    /// time over there it would be two declarations of one fact, and a field
-    /// added to one and not the other would compile and leave the screen on its
-    /// defaults.
+    /// time over there, a field added to one and not the other would compile and
+    /// leave the screen on its defaults.
     public struct StatePayload: Sendable, Equatable {
         public let isActive: Bool
         public let conditions: Set<ActiveCondition>

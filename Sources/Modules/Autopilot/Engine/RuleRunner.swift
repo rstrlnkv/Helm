@@ -7,33 +7,26 @@ public enum RuleOutcome: Equatable, Sendable {
     case moved(to: String)
     case renamed(to: String)
     case tagged(String)
-    /// Where the Trash put it, which is not the path it had: the Trash renames
-    /// what it takes when the name is occupied. Asked for so that the one
-    /// action nobody could undo has somewhere to be put back from. Empty when
-    /// macOS took the file and would not say where, which is a removal the
-    /// module can report and cannot reverse.
+    /// Where the Trash put it, which can differ from the path it had: the
+    /// Trash renames what it takes when the name is occupied. It is what a
+    /// return puts back from. Empty when macOS took the file and would not say
+    /// where: a removal the module can report and cannot reverse.
     case trashed(to: String)
     /// The rule had already had its turn at this file.
     case alreadyDone
     case refused(Refusal)
-    /// The file is the person's own — the gate passed it — and what the action
-    /// would have done with it is not: a destination or a bucket outside the
-    /// allowed folders, a folder asked to go inside itself, a Trash the shared
-    /// gate will not empty into.
+    /// The file is the person's own (the gate passed it), and where the action
+    /// would put it is not: a destination or bucket outside the allowed folders,
+    /// a folder asked inside itself, a Trash the shared gate will not empty into.
     ///
-    /// **Not `.refused(.outOfScope)`, which is the file itself being somewhere no
-    /// rule may reach.** That one is written down without a name, because a name
-    /// there can be a protected file's; this one names it, because the file was
-    /// just judged to be the person's own and «which of my files did not go» is
-    /// what the page is for. Both are stored as the same reason and read as the
-    /// same sentence — the difference is the subject.
+    /// **Not `.refused(.outOfScope)`**, the file itself out of reach, which
+    /// carries no name because it can be a protected file's. Both read the same.
     case targetOutOfScope
     case failed(String)
 
     public enum Refusal: String, CaseIterable, Equatable, Sendable {
-        /// The file is not somewhere a rule may reach — the one thing a refusal for
-        /// scope can mean *here*. Its record carries no name and no path
-        /// (`RuleOutcome.targetOutOfScope` is the other half).
+        /// The file is not somewhere a rule may reach. Its record carries no name
+        /// and no path (`RuleOutcome.targetOutOfScope` is the other half).
         case outOfScope
         /// A rename pattern the filesystem should not be asked to take.
         case badPattern
@@ -44,9 +37,8 @@ public enum RuleOutcome: Equatable, Sendable {
         /// used is unknown: no guess, no rename.
         case folderUnreadable
         case missing
-        /// Where the path leads changed between the gate and the act — a
-        /// symlinked ancestor was swapped in the window, so the gate approved
-        /// one place and the move would have taken another.
+        /// Where the path leads changed between the gate and the act: a
+        /// symlinked ancestor was swapped in the window.
         case changedSinceCheck
     }
 }
@@ -54,15 +46,12 @@ public enum RuleOutcome: Equatable, Sendable {
 /// The plan, performed. One file at a time, and every path through it either
 /// does exactly one thing or does nothing and says why.
 struct RuleRunner: Sendable {
-    /// Which home `WatchScope` measures against. Injected so a test can put its
-    /// fixtures somewhere real without writing into the person's own folders —
-    /// the gate is the same gate, asked about a different home.
+    /// Which home `WatchScope` measures against; injected so a test's fixtures
+    /// face the same gate outside the person's own folders.
     private let home: String
     /// Where a path leads, read at the gate and again at the act. A seam because
     /// the window between those two readings cannot be raced reliably in a test
-    /// — see `TheActTakesWhatTheGateApprovedTests`, which answers
-    /// the first reading from the real filesystem and swaps the disk underneath
-    /// the second.
+    /// (`TheActTakesWhatTheGateApprovedTests`).
     private let ancestry: @Sendable (String) -> PathCanonical.AncestryIdentity?
     /// The move to the Trash, answering where the file landed. A seam so a test
     /// moves into a scratch folder and the person's own Trash is never touched.
@@ -78,29 +67,21 @@ struct RuleRunner: Sendable {
         self.trashing = trashing
     }
 
-    /// `key` is the seal key, which is what makes a stamp Helm's own rather than
-    /// anybody's — see `StampMark`. Nil is a key that could not be read, and it
-    /// means the marks on a file cannot be checked or written: the plan is
-    /// carried out and the rule gets another turn at the same file next sweep,
-    /// which is what an unstampable volume already looks like. Unreachable from
-    /// the module's own triggers, which have no rules to run without a key.
+    /// `key` is the seal key, which makes a stamp Helm's own (`StampMark`). Nil,
+    /// a key that could not be read, means stamps cannot be checked or written:
+    /// the plan runs, and the rule gets another turn next sweep, as on an
+    /// unstampable volume.
     ///
-    /// `counters` is the pass's `{counter}` numbering, shared by every file of
-    /// one sweep; alone, a call is a pass of one.
+    /// `counters` is the pass's `{counter}` numbering; alone, a call is a pass of one.
     func run(_ plan: RulePlan, at path: String, key: Data?,
              counters: CounterBook = CounterBook()) -> RuleOutcome {
-        // The file itself has to be somewhere a rule may reach, whatever the
-        // rule says — the rules are JSON in a plist any process can write, so
-        // this is the only place the question is settled. `WatchScope` rather
-        // than `UserFileScope`: the shared gate answers "may this be trashed
-        // without breaking the machine", which says yes to `~/Library/Messages`
-        // and to `~/Library/LaunchAgents`.
+        // The file itself must be somewhere a rule may reach, whatever the rule
+        // says: the rules are JSON in a plist any process can write. `WatchScope`,
+        // not `UserFileScope`, which says yes to `~/Library/Messages` and
+        // `~/Library/LaunchAgents`.
         //
-        // **First, before anything asks the disk about the path.** A file gone
-        // between the plan and this call is `.missing`, and that record carries
-        // the file's name; for a path the gate refuses it is a leak of what a
-        // protected folder held, reached when a watched folder was swapped for a
-        // link. Out of scope is the answer whether or not the file is there.
+        // **First, before anything asks the disk about the path**: a `.missing`
+        // record carries the file's name, which would leak what a protected folder held.
         guard WatchScope.allows(path, home: home) else { return .refused(.outOfScope) }
         guard FileManager.default.fileExists(atPath: path) else { return .refused(.missing) }
         let stamp = key.map(RuleStamp.init(key:))
@@ -122,19 +103,16 @@ struct RuleRunner: Sendable {
         case .tagged:
             note(path, plan, stamp)
         case .trashed:
-            // Nothing to stamp: the file is in the Trash, and stamping the path
-            // it used to have logged a warning naming a file on every single
-            // successful deletion.
+            // Nothing to stamp: the file is in the Trash, and stamping its old
+            // path would log a warning naming a file on every deletion.
             break
         }
         return outcome
     }
 
-    /// A stamp that will not stick is logged and shrugged off. Refusing the
-    /// file instead would make a volume without extended attributes a volume
-    /// where no rule works; acting anyway and not recording it is how a rule
-    /// loops. Between those, the loop is the one the sweep can survive: it
-    /// re-runs an idempotent action on an unchanged file.
+    /// A stamp that will not stick is logged and shrugged off: refusing the file
+    /// would make a volume without extended attributes one where no rule works
+    /// (Architecture/Autopilot.md § Autopilot).
     private func note(_ path: String, _ plan: RulePlan, _ stamp: RuleStamp?) {
         guard stamp?.stamp(path, by: plan.rule.id) != true else { return }
         HelmLog.shared.warn(AutopilotEngine.moduleID, "could not stamp \(Redact.path(path))")
@@ -151,19 +129,11 @@ struct RuleRunner: Sendable {
         case let .sortIntoSubfolder(scheme):
             let bucket = SortBucket.name(for: plan.facts, scheme: scheme)
             let here = url.deletingLastPathComponent()
-            // A file already in its bucket has arrived. The bucket used to be
-            // hung off the parent unconditionally, so `Images/a.jpg` was
-            // offered `Images/Images/`, and the only thing standing between
-            // that and a file buried a level deeper every hour was the stamp
-            // — which `note` explicitly tolerates the loss of, on any volume
-            // that will not keep an extended attribute or whose AppleDouble
-            // sidecar something drops (ARCHITECTURE.md § Autopilot; exFAT,
-            // which used to be named here, keeps it).
-            //
-            // Compared without case, because `images` and `Images` are one
-            // folder on the volume Helm ships to: there the descent lands the
-            // file back beside itself, `free` reads its own name as taken, and
-            // the loop becomes `a 2.jpg`, `a 2 2.jpg` instead.
+            // A file already in its bucket has arrived; otherwise `Images/a.jpg`
+            // is offered `Images/Images/`, and only the stamp, whose loss `note`
+            // tolerates, would stop it sinking a level every hour
+            // (Architecture/Autopilot.md § Autopilot). Caseless: `images` and
+            // `Images` are one folder on the volume Helm ships to.
             let sorted = here.lastPathComponent
                 .compare(bucket, options: .caseInsensitive) == .orderedSame
             return move(url, into: sorted ? here : here.appendingPathComponent(bucket),
@@ -197,11 +167,9 @@ struct RuleRunner: Sendable {
         // `a 2.pdf`, then `a 2 2.pdf`, one file per sweep forever.
         guard target.path != url.path else { return .alreadyDone }
         do {
-            // The name reported is the name that landed. They differ exactly
-            // in the collision case — which is the case the stamp exists for,
-            // so reporting the pattern's name stamped the bystander it
-            // collided with and left the moved file unmarked to be renamed
-            // again next sweep.
+            // The name reported is the name that landed. They differ in the
+            // collision case, where the pattern's name is the bystander's, and
+            // stamping that would leave the moved file to be renamed again.
             let landed = free(target, moving: url)
             guard leadsWhereItLed(url.path, approved) else {
                 return .refused(.changedSinceCheck)
@@ -214,25 +182,17 @@ struct RuleRunner: Sendable {
     }
 
     private func tag(_ tag: String, on url: URL) -> RuleOutcome {
-        // Tagging follows a symlink and writes to its target, which is a
-        // metadata write outside the gate the resolved path would have
-        // failed. `WatchScope` resolves, so this only has to refuse the
-        // case where the two disagree.
-        //
-        // Which is also why this arm takes no `leadsWhereItLed`: refusing
-        // every path that resolves to something other than its own spelling
-        // is the stronger question, it is asked here rather than at the
-        // gate, and an ancestor swapped in the window fails it — see
-        // `TheActTakesWhatTheGateApprovedTests`.
+        // Tagging follows a symlink and writes to its target, outside the gate.
+        // Refusing every path that resolves other than it is spelled is stronger
+        // than `leadsWhereItLed`, and a swapped ancestor fails it too
+        // (`TheActTakesWhatTheGateApprovedTests`).
         guard url.resolvingSymlinksInPath().path == url.standardizedFileURL.path
         else { return .refused(.outOfScope) }
         do {
             var values = URLResourceValues()
             var tags = (try url.resourceValues(forKeys: [.tagNamesKey])).tagNames ?? []
             // **A tag that was already there is not this rule's doing**, and
-            // saying it was is how an undo takes a label off somebody's file.
-            // This used to answer `.tagged(tag)` — true of the file, false of
-            // the run — which cost nothing while nothing could be put back.
+            // saying it was would let an undo take a label off somebody's file.
             guard !tags.contains(tag) else { return .alreadyDone }
             tags.append(tag)
             values.tagNames = tags
@@ -246,10 +206,8 @@ struct RuleRunner: Sendable {
 
     private func trash(at path: String,
                        approved: PathCanonical.AncestryIdentity?) -> RuleOutcome {
-        // The engine has the last word on deletion, as everywhere else —
-        // and both gates have to say yes: `WatchScope` that a rule may
-        // reach here at all, `UserFileScope` that trashing it will not
-        // break the machine.
+        // Both gates must say yes: `WatchScope` that a rule may reach here,
+        // `UserFileScope` that trashing it will not break the machine.
         let (allowed, _) = UserFileScope.partition([path])
         guard !allowed.isEmpty else { return .targetOutOfScope }
         // The recheck of where the path leads is the entry's own, the last thing
@@ -271,24 +229,12 @@ struct RuleRunner: Sendable {
 
     /// Whether `path` still leads where it led when the gate approved it.
     ///
-    /// **The gate and the act resolve the path twice, and a swap between them
-    /// belongs to whoever can write in the folder.** `WatchScope.allows`
-    /// resolves symlinked ancestors at check time; `moveItem`, `trashItem` and
-    /// `setResourceValues` each resolve them again when they run, and in
-    /// between sit a `fileExists`, a `createDirectory` and the collision loop.
-    /// Measured on the real runner: 1642 of 20,000 attempts carried a file out
-    /// of a folder `WatchScope` had refused — and out is the direction that
-    /// matters, because Helm holds Full Disk Access and the swapper need not.
-    ///
-    /// Device and inode of the resolved parent, which is the same recheck
-    /// `HelmTrash.removeOne` makes before it moves. **It narrows and does
-    /// not close**, for the reason `HelmTrash.remove` states: one stat chain
-    /// still separates this from the syscall's own resolve. What it takes away is every wide
-    /// part — everything this runner does between the gate and the act is now
-    /// behind it.
-    ///
-    /// A parent that has *gone* counts as changed. The act would fail in any
-    /// case, and refusing says which.
+    /// `WatchScope.allows` resolves symlinked ancestors at check time, and
+    /// `moveItem`, `trashItem` and `setResourceValues` resolve them again; a
+    /// swap between can carry a file out of a refused folder with Helm's Full
+    /// Disk Access. Device and inode of the resolved parent, as
+    /// `HelmTrash.removeOne` checks. **It narrows and does not close**
+    /// (`HelmTrash.remove` says why). A parent that has gone counts as changed.
     private func leadsWhereItLed(_ path: String,
                                  _ approved: PathCanonical.AncestryIdentity?) -> Bool {
         ancestry(path) == approved
@@ -300,28 +246,16 @@ struct RuleRunner: Sendable {
         // into the rule — a rule is a decision made once and executed forever,
         // so the check cannot live in the editor.
         guard WatchScope.allows(folder.path, home: home) else { return .targetOutOfScope }
-        // A folder cannot be moved inside itself. Reachable without malice: a
-        // sorting rule whose conditions eventually match a folder will one day
-        // be handed the bucket folder it made itself, and `moveItem` would then
-        // fail with EINVAL on every sweep, forever, logging as it went.
-        //
-        // Asked the way the gate asks, of where both lead: the walk hands back
-        // the root's own links resolved (`/private/var/…`) and the destination is
-        // spelled as the person's panel gave it (`/var/…`), so two spellings of
-        // one folder passed a comparison of strings and reached `moveItem`, which
-        // answered EINVAL on every sweep for ever.
+        // A folder cannot be moved inside itself; a sorting rule that matches
+        // folders will one day be handed its own bucket. Asked of where both
+        // lead, as the gate asks: the walk answers `/private/var/…` and the
+        // panel gave `/var/…`.
         guard !WatchScope.isWithin(folder.path, url.path)
         else { return .targetOutOfScope }
-        // The file is already there, so there is nothing to do and — this is
-        // the part that bites — something to avoid doing. `free` would read the
-        // file's own name as taken, by the file itself, and number the arrival:
-        // `photo.jpg` moved into its own folder becomes `photo 2.jpg`, and
-        // `photo 2 2.jpg` the sweep after that. Reachable with one wrong choice
-        // in the panel: "every image goes to ~/Downloads", pointed at
-        // ~/Downloads. `rename` has said this since it was written; this path
-        // was left leaning on the stamp, which `note` tolerates the loss of.
-        // Standardized for the trailing slash a typed path carries, and
-        // caseless for the same reason `free` is.
+        // Already there: `free` would read the file's own name as taken and
+        // number it every sweep, and the stamp's loss is tolerated. Reachable by
+        // pointing "every image goes to ~/Downloads" at ~/Downloads.
+        // Standardized for a typed trailing slash, and caseless.
         let here = url.deletingLastPathComponent().standardizedFileURL.path
         guard here.compare(folder.standardizedFileURL.path,
                            options: .caseInsensitive) != .orderedSame
@@ -329,14 +263,9 @@ struct RuleRunner: Sendable {
         do {
             // A rule that names a folder is asking for that folder to exist.
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            // Asked again now that the folder is there: `createDirectory` is
-            // content with a symlink that already points somewhere, so a link
-            // swapped in over the destination between the gate above and this
-            // line is a folder the gate never judged. This is also what makes
-            // the reading below a reference and not a guess — a destination
-            // that did not exist when the gate ran has no identity to compare
-            // against, and taking it before creation would refuse every first
-            // arrival into a bucket.
+            // Asked again now the folder exists: `createDirectory` accepts a
+            // symlink already in place, so a link swapped over the destination
+            // is a folder the gate never judged.
             guard WatchScope.allows(folder.path, home: home) else {
                 return .targetOutOfScope
             }
@@ -357,15 +286,9 @@ struct RuleRunner: Sendable {
         }
     }
 
-    /// A name nothing else is holding — `moving` excepted, which is the file
-    /// being renamed. The numbering itself is `FreeName`, shared with the
-    /// return, which numbers a file coming back for the same reason.
-    ///
-    /// On a case-insensitive volume `report.pdf` and `REPORT.pdf` are one name,
-    /// so asking for the second found the first "taken" — by the very file
-    /// being renamed — and produced `REPORT 2.pdf`. The person asked for
-    /// capitals, not for a second file. That exception belongs to the rename
-    /// and stays here.
+    /// A name nothing else holds, `moving` excepted: on a case-insensitive
+    /// volume a rename to capitals would find its own file taken and produce
+    /// `REPORT 2.pdf`. The numbering is `FreeName`, shared with the return.
     private func free(_ url: URL, moving from: URL? = nil) -> URL {
         if let from, url.path.compare(from.path, options: .caseInsensitive) == .orderedSame {
             return url

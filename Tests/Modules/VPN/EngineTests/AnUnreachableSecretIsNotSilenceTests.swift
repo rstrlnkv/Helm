@@ -7,32 +7,17 @@ import HelmContract
 
 /// **A rule that cannot reach its secret must say so, and must stop trying.**
 ///
-/// Two correct changes met and produced the one outcome this app may not produce.
-/// `CredentialCachePurge` empties Helm's own cache once — the items it removes
-/// carry an access list that let any process running as this user read the secret
-/// — and `credentials(for:promptingAllowed:)` refuses the System keychain for an
-/// automatic connect, because a forged rule could otherwise summon an
-/// authorization dialog at a moment of its own choosing. Empty cache plus no
-/// prompt is **no secret at all**, and the only account of it was a log line:
+/// `CredentialCachePurge` empties Helm's own cache once, and an automatic
+/// connect may not prompt for the System keychain (a forged rule could summon
+/// the dialog at a moment of its choosing). Empty cache plus no prompt is **no
+/// secret at all**, and a log line alone would leave every retry running a
+/// `--nc start` that cannot work, each announcing a connection nobody has.
 ///
-/// ```
-/// 00:18:01 [vpn] connect vpn#dca3 (auto)
-/// 00:18:01 [vpn] no cached credentials for vpn#dca3; an automatic connect does
-///                not ask the System keychain
-/// ```
-///
-/// — three times in an hour, each one running a `--nc start` that could not work,
-/// each one announcing a connection nobody had.
-///
-/// The security fix is not weakened anywhere below: the prompt is still refused
-/// for `auto: true`. What changes is that the refusal is a **state** rather than a
-/// silence, and that the port stops folding «this configuration keeps no secret»
-/// (IKEv2, WireGuard) into the same nil as «there is one and Helm may not read
-/// it» — without that separation the notice would be drawn under every automatic
-/// connect on the machine, which is a warning that is always true is not a
-/// warning.
-///
-/// Past defect: commit ed04d30c, «fix(vpn): a rule that cannot reach its secret says so, once, on the screen».
+/// The prompt stays refused for `auto: true`. The refusal is a **state**
+/// (`VPNSecretBook`, `secretsBehindAPrompt`), and the port keeps «this
+/// configuration keeps no secret» (IKEv2, WireGuard) apart from «there is one and
+/// Helm may not read it», or the notice would be drawn under every automatic
+/// connect, and a warning that is always true is not a warning.
 final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
 
     private let header = "Available network connection services:"
@@ -61,9 +46,8 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
 
     // MARK: - The book, on its own
 
-    /// Only one of the three answers is news, and the other two are the reverse
-    /// channel: a read that produced a secret, and a configuration that keeps
-    /// none, both mean there is nothing to tell anybody.
+    /// Only one of the three answers is news: a read that produced a secret, and
+    /// a configuration that keeps none, both leave nothing to tell.
     func testOnlyASecretBehindAPromptEntersTheBook() {
         var book = VPNSecretBook()
         XCTAssertFalse(book.names.contains("Office"), "precondition: it starts empty")
@@ -92,9 +76,8 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
                        "a configuration that keeps no secret was left in a book about secrets")
     }
 
-    /// The list is the other reverse channel: a tunnel that is up needed nothing
-    /// from Helm after all, and one that has been deleted in System Settings is
-    /// not something to draw a sentence about.
+    /// The list clears the book too: a tunnel that is up needed nothing from
+    /// Helm, and one deleted in System Settings is not worth a sentence.
     func testTheListClearsWhatTheBookCanNoLongerBeAbout() {
         func book(_ connections: [VPNConnection]) -> VPNSecretBook {
             var book = VPNSecretBook()
@@ -119,7 +102,7 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
 
     // MARK: - The engine, and its state
 
-    /// The state the user's log had and the screen did not.
+    /// The unreachable secret reaches the published state, not only the log.
     func testAnAutomaticConnectPutsTheUnreachableSecretOnTheWire() async {
         let creds = FakeCreds()
         creds.behindAPrompt["Office"] = VPNCredentials(user: "u", password: "p", secret: "s")
@@ -139,10 +122,9 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
                        "the engine knew and no screen could")
     }
 
-    /// **The control, and the reason the port had to stop answering nil to two
-    /// questions.** An IKEv2 configuration keeps no secret Helm supplies, and an
-    /// automatic connect of one is the ordinary case on this Mac — a notice drawn
-    /// there would be drawn always, for everybody, and would mean nothing.
+    /// **The control.** An IKEv2 configuration keeps no secret Helm supplies,
+    /// and its automatic connect is the ordinary case: a notice there would be
+    /// drawn always and mean nothing.
     func testAConfigurationThatKeepsNoSecretIsNeverNamed() {
         let creds = FakeCreds()   // neither tier has anything for «Office»
         let runner = FakeRunner()
@@ -156,9 +138,8 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
                        "precondition: the connect that needs no secret still ran")
     }
 
-    /// Finding three: three attempts in an hour, three `--nc start`s that could
-    /// not work. The first one is spent — Helm cannot know the tool needs the
-    /// secret until it has tried — and the ones after it are refused.
+    /// The first attempt is spent, since Helm cannot know the tool needs the
+    /// secret until it has tried; the ones after it are refused.
     func testASecondAutomaticAttemptRunsNoStartItAlreadyKnowsCannotWork() {
         let creds = FakeCreds()
         creds.behindAPrompt["Office"] = VPNCredentials(secret: "s")
@@ -178,9 +159,8 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
                        "and the state that explains the refusal went away with it")
     }
 
-    /// A press of Connect is the gesture the prompt sits behind, and the read it
-    /// performs is what fills Helm's cache — so it is also the one thing that can
-    /// clear this. The fake's own cache is what the real port would have written.
+    /// A press of Connect is the gesture the prompt sits behind, and its read
+    /// fills Helm's cache, so it is what clears this.
     func testTheSecretBecomingReadableClearsTheBook() {
         let creds = FakeCreds()
         creds.behindAPrompt["Office"] = VPNCredentials(secret: "s")
@@ -192,7 +172,7 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
 
         // The press itself, and nothing arranged behind it: the fake reads its
         // System tier only where a prompt is allowed and caches what it read,
-        // which is what the real port does and what makes one press enough.
+        // as the real port does.
         engine.connect("Office", auto: false)
 
         XCTAssertEqual(engine.secretsBehindAPrompt, [],
@@ -202,9 +182,8 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
                        "the secret a person asked for never reached the system")
     }
 
-    /// The other way it stops being true, and the one Helm is not told about:
-    /// the tunnel came up regardless — somebody raised it in System Settings, or
-    /// this configuration never needed Helm's secret in the first place.
+    /// The tunnel coming up regardless clears it too: somebody raised it in
+    /// System Settings, or it never needed Helm's secret.
     func testATunnelThatCameUpClearsTheBookByItself() {
         let creds = FakeCreds()
         creds.behindAPrompt["Office"] = VPNCredentials(secret: "s")
@@ -222,12 +201,9 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
                        "the page went on asking for a press against a tunnel that is up")
     }
 
-    /// **And it must not announce what it could not do.** `--nc start` answers
-    /// nothing whether it worked or not, so a start Helm knowingly under-supplied
-    /// used to light the ring and put «Office» in the menu bar — one screen saying
-    /// the Mac is behind a tunnel while another says the rule could not fire. The
-    /// same harm `VPNAutomation.Kind.dropped` exists to warn about, manufactured
-    /// by the app.
+    /// **It must not announce what it could not do.** A start Helm knowingly
+    /// under-supplied must not light the ring or put «Office» in the menu bar
+    /// while another screen says the rule could not fire.
     func testNoConnectionIsAnnouncedForASecretHelmCouldNotSupply() {
         let creds = FakeCreds()
         creds.behindAPrompt["Office"] = VPNCredentials(secret: "s")
@@ -244,8 +220,7 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
                       + "has to be able to take this down")
     }
 
-    /// The control for the assertion above: an automatic connect Helm *could*
-    /// supply is announced exactly as before.
+    /// The control: an automatic connect Helm *could* supply is announced.
     func testAConnectionItCouldSupplyIsStillAnnounced() {
         let creds = FakeCreds()
         creds.map["Office"] = VPNCredentials(secret: "s")

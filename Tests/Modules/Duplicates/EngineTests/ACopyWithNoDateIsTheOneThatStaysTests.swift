@@ -1,23 +1,18 @@
 import XCTest
 @testable import Module_Duplicates_Engine
 
-/// **What the repair for the walk-order cycle decided, said out loud.**
+/// **A copy with no date stays: `KeepReason.undated`, a rung above `.date`.**
 ///
-/// `TheSurvivorDoesNotDependOnWalkOrderTests` holds the defect: `.date`
-/// separated two known dates and was silent where one was missing, which is not
-/// an ordering, so three copies with one dateless among them kept whichever copy
-/// the walk handed over first. The repair is `KeepReason.undated`, a rung above
-/// the date it is missing from — and a rung is a claim about somebody's files
-/// and a sentence in their language, neither of which the permutation test can
-/// see.
+/// A `.date` rung silent where one date is missing is not an ordering, and
+/// walk order would then pick the survivor
+/// (`TheSurvivorDoesNotDependOnWalkOrderTests`). A rung is a claim about
+/// somebody's files and a sentence in their language, which the permutation
+/// test cannot see.
 ///
-/// One thing it fixes in place. **The undated copy stays whatever is below the
-/// rung**, which the fixtures already in the suite could not show: in
-/// `KeepPolicyTests` the dateless copy is also the
-/// shallower one, so its cases were green whether the undated rung decided or the
-/// depth rung did — they ask `SurvivingCopy.reason` now, which tells the two
-/// apart on the fixture they already had. This file keeps the other half: a
-/// dateless copy with every rung below it *against* it.
+/// **The undated copy stays whatever is below the rung.** In `KeepPolicyTests`
+/// the dateless copy is also the shallower one, so those cases ask
+/// `SurvivingCopy.reason`; this file keeps the other half: a dateless copy with
+/// every rung below it *against* it.
 ///
 /// `TransitFolders(roots: [])` so the `.place` rung is silent for every path
 /// here and nothing depends on where this Mac keeps Downloads.
@@ -53,7 +48,7 @@ final class ACopyWithNoDateIsTheOneThatStaysTests: XCTestCase {
     /// date are alike on this rung, so it says nothing and the ladder carries on
     /// to the shorter path.
     ///
-    /// Without it the repair could be «the deeper copy wins» or «the second copy
+    /// Without it the rule could be «the deeper copy wins» or «the second copy
     /// wins» and the test above would not notice.
     func testTwoCopiesWithoutDatesAreAlikeOnThisRung() {
         for policy in KeepPolicy.allCases {
@@ -68,7 +63,7 @@ final class ACopyWithNoDateIsTheOneThatStaysTests: XCTestCase {
     }
 
     /// **The control that keeps the date.** Two known dates are still the earlier
-    /// copy's win, which is the rung the new one sits above rather than replaces.
+    /// copy's win: the undated rung sits above it rather than replacing it.
     func testTwoKnownDatesAreStillDecidedByTheDate() {
         for policy in KeepPolicy.allCases {
             let dated = [facts("/Users/r/Archive/a.jpg", added: day(400)),

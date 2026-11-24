@@ -3,8 +3,7 @@ import SwiftUI
 /// The app's mark in its bezel over the wordmark and a tagline — what the About page introduces itself with.
 ///
 /// The bezel turns only while `active`: motion here means work, not decoration. No halo behind the mark:
-/// `HelmAppMark` casts its own shadow, and a radial gradient on top of it was a second light source with a
-/// visible rim where its ramp ended.
+/// `HelmAppMark` casts its own shadow, and a radial gradient would be a second light source with a visible rim.
 public struct HelmAppHero<Badge: View>: View {
     private let active: Bool
     private let tagline: String
@@ -30,15 +29,9 @@ public struct HelmAppHero<Badge: View>: View {
             }
             .frame(height: 186)
             VStack(spacing: 5) {
-                // The badges hang off the wordmark instead of sharing a row with it. In an HStack the pair is
-                // centred together, so the name sat left of centre by half the badges' width — under a mark
-                // and above a tagline that are both centred on the column, which is where the eye reads the
-                // axis from. As an overlay they take no width, so "Helm" is centred on the same line
-                // everything else is.
-                //
-                // Measured on the rendered pixels, not judged (by a script that is not in the tree): in
-                // the 380 pt column the row put the word 42.2 pt left of the axis; the overlay puts it at
-                // 189.8 against a centre of 190.
+                // The badges hang off the wordmark instead of sharing a row with it: in an HStack the pair is
+                // centred together, which puts the name off the axis the mark and the tagline are centred on.
+                // As an overlay they take no width, so "Helm" is centred on the same line as everything else.
                 Text(verbatim: "Helm")
                     .font(.system(size: 34, weight: .semibold))
                     .tracking(-0.4)
@@ -47,9 +40,8 @@ public struct HelmAppHero<Badge: View>: View {
                             .fixedSize()
                             // The overlay's own leading edge, placed 7 pt past the end of the word.
                             .alignmentGuide(.trailing) { $0[.leading] - 7 }
-                            // The top of the capsule on the top of the H. Not a guess: at 34 pt semibold the cap
-                            // starts exactly 9.00 pt below the line box's top, measured off the rendered pixels
-                            // (by the same script, not in the tree).
+                            // The top of the capsule on the top of the H: at 34 pt semibold the cap starts 9 pt
+                            // below the line box's top, measured off rendered pixels.
                             .alignmentGuide(.top) { $0[.top] - 9 }
                     }
                     .accessibilityElement(children: .combine)
@@ -70,11 +62,10 @@ private struct HelmBezel: View {
     /// When the current turn began — the angle is a **function of time**, not a
     /// value being animated towards.
     ///
-    /// It was the latter, and that is why stopping rewound the wheel: with
-    /// `repeatForever` the model sits at 360 while the dial is somewhere inside
-    /// the turn, so retargeting to 0 runs backwards from wherever it happens to
-    /// be. Driven from a clock there is no target to retarget — the stop reads
-    /// the angle actually reached and coasts forward from there.
+    /// With `repeatForever` the model sits at 360 while the dial is somewhere
+    /// inside the turn, so a stop by retargeting runs backwards. Driven from a
+    /// clock there is no target: the stop reads the angle reached and coasts
+    /// forward from there.
     @State private var since: Date?
 
     private static let secondsPerTurn: Double = 6

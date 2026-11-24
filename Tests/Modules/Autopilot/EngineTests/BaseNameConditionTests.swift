@@ -8,8 +8,8 @@ import XCTest
 /// Extension as a separate field one row up. Hazel, which everybody has in
 /// mind, strips the extension for Name and offers Full name separately.
 ///
-/// The fix is a second condition rather than a changed one: somebody's rule
-/// saying "name contains .pdf" works today, and quietly turning it into a rule
+/// This is a second condition rather than a changed one: somebody's rule
+/// saying "name contains .pdf" works, and quietly turning it into a rule
 /// that never fires is the worst kind of break — no error, no message, and an
 /// Autopilot that simply stops tidying.
 final class BaseNameConditionTests: XCTestCase {

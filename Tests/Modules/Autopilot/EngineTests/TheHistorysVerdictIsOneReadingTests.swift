@@ -7,13 +7,10 @@ import HelmTestSupport
 /// A backing store in which one read can be made to happen **later** than the
 /// line above it, and in which a write can be waited for.
 ///
-/// `HoldingStore` next door holds a read and answers it with the value the store
-/// had when it *arrived*, which is what a decision taken on a stale snapshot
-/// looks like. This is the other half of the same subject and it needs the
-/// opposite: the value as it stands when the read finally runs, because what is
-/// being modelled is a thread descheduled *between* two reads — the first
-/// already taken, the second not yet — which is the only thing a scheduler ever
-/// does to a pair of statements with no lock across them.
+/// Unlike `HoldingStore`, which answers a held read with the value the store
+/// had when it *arrived*, this answers with the value as it stands when the
+/// read finally runs: a thread descheduled *between* two reads, which is all a
+/// scheduler does to a pair of statements with no lock across them.
 ///
 /// One shot, and no other read is delayed: everything else runs at full speed,
 /// which is what lets a writer overtake the parked reader when nothing stops it.
@@ -74,39 +71,18 @@ private final class LateReadStore: KeyValueStore, @unchecked Sendable {
     }
 }
 
-/// **Whose history this is, is two reads, and nothing holds them together.**
+/// **Whose history this is, is two reads, and one reading must hold them
+/// together.** `AutopilotEngine.write(_:)` writes the seal first, then the
+/// history it signs, so a process dying between them leaves a mismatched pair,
+/// which refuses. A reader that took the payload before that write and the
+/// seal after it would hold **Helm's new seal over Helm's old history**, which
+/// does not verify.
 ///
-/// `AutopilotEngine.historyRefused` is
-///
-/// ```swift
-/// !rules.historyIsHelms(queue.sync { store.data(ActionHistory.storeKey) })
-/// ```
-///
-/// — the payload under the engine's queue, and then the seal over it read inside
-/// `SealedRules.historyIsHelms`, on the caller's own thread, with the queue long
-/// since let go. Between those two reads sits every write the module makes to
-/// the same pair, and `AutopilotEngine.write(_:)` makes them in this order:
-///
-/// ```swift
-/// guard let data = ActionHistory.encode(history), rules.seal(history: data) else { return false }
-/// store.set(data, for: ActionHistory.storeKey)
-/// ```
-///
-/// The seal first, then the history it signs — chosen so that a process dying
-/// between them leaves a mismatched pair, which refuses. That is right for a
-/// crash and it is exactly what makes the split read dangerous: a reader that
-/// took the payload before the write and the seal after it holds **Helm's new
-/// seal over Helm's old history**, which does not verify.
-///
-/// What that costs is not a wrong number on a screen. `historyRefused` is the
-/// claim «the stored history was not written by Helm» — the module's forgery
-/// signal — and it is answered inside `AutopilotEngine.readStatus`, which the
-/// page asks on every load, off the cooperative pool. The writer it races is the
-/// FSEvents leg and the hourly sweep, both on the engine's own queue, both
-/// unattended. What the page then draws is the card that says somebody rewrote
-/// the record, with every return switched off, and it stays until the page is
-/// loaded again. The rules were given `decisionLock` for exactly this
-/// (`AutopilotSealRaceTests`); the history was not.
+/// `historyRefused` is the claim «the stored history was not written by Helm»,
+/// asked by `AutopilotEngine.readStatus` on every page load while the FSEvents
+/// leg and the hourly sweep write unattended on the engine's queue. A split
+/// read draws the card that says somebody rewrote the record, with every
+/// return switched off, until the page is loaded again.
 ///
 /// **Nothing here is timing-dependent.** The interleaving is arranged, not
 /// raced: the reader is parked between its two reads, the writer is watched
@@ -159,8 +135,8 @@ final class TheHistorysVerdictIsOneReadingTests: XCTestCase {
         return url
     }
 
-    /// The defect. A history Helm wrote, read while Helm's own unattended leg is
-    /// writing the next record into it, reports itself as somebody else's.
+    /// A history Helm wrote, read while Helm's own unattended leg is writing the
+    /// next record into it, is not reported as somebody else's.
     func testAHistoryHelmIsWritingIsNotReportedAsSomebodyElses() throws {
         let helm = engine()
         helm.folders = [watching()]
@@ -211,12 +187,9 @@ final class TheHistorysVerdictIsOneReadingTests: XCTestCase {
             """)
     }
 
-    /// And the pair itself, so the finding above cannot be an accident of one
-    /// ordering: two halves of Helm's own history that were never written
-    /// together do not verify, whichever of them is the stale one.
-    ///
-    /// If they did, `historyRefused` would be blind to the interleaving and the
-    /// test above would be about nothing.
+    /// Two halves of Helm's own history that were never written together do not
+    /// verify, whichever is the stale one; otherwise `historyRefused` would be
+    /// blind to the interleaving and the test above would be about nothing.
     func testTheSealAndTheHistoryItSignsAreJudgedAsOnePair() throws {
         let helm = engine()
         helm.folders = [watching()]

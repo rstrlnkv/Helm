@@ -3,22 +3,15 @@ import HelmTestSupport
 @testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
-/// The two orders of events the ring never survived: a snapshot from a scan the
-/// screen is not showing, and an answer to a scan the user has already
-/// withdrawn.
+/// Two orders of events the ring must survive: a snapshot from a scan the
+/// screen is not showing, and an answer to a scan the person has withdrawn.
 ///
-/// Both are reachable through one gesture. Drilling into a folder the walk has
-/// not reached yet issues a *second* scan while the first is still walking, and
-/// drilling is not gated on `live` — so from the moment the first partial draws
-/// the ring, a click on its rim starts a scan beside the volume's. The
-/// volume's walk has a sink of its own for what it says, and a folder
-/// measurement asks for none; the model drops what a scan says once the screen
-/// no longer belongs to it.
+/// A withdrawn scan may still be walking beside the one on screen. Each walk's
+/// updates go to its own sink, and the model drops what a scan says once the
+/// screen no longer belongs to it.
 ///
-/// The work is hand-cranked: every scan parks until the test releases it, and
-/// updates are pushed by hand through the sink that scan was given, so the
-/// interleaving is chosen rather than raced.
-/// Past defect: fixed in commit 9f48f0ea.
+/// Every scan parks until the test releases it and updates are pushed by hand,
+/// so the interleaving is chosen rather than raced.
 @MainActor
 final class DiskScanRaceTests: XCTestCase {
 
@@ -108,8 +101,7 @@ final class DiskScanRaceTests: XCTestCase {
                        "a withdrawn measurement's answer was grafted into the tree on screen")
     }
 
-    /// And its own scan's snapshots still arrive — the gate must not close the
-    /// door it exists to keep open.
+    /// The shown scan's own snapshots still draw the ring.
     func testTheShownScansPartialsStillDrawTheRing() async {
         let work = HeldWork()
         let dvm = model(work)
@@ -132,12 +124,9 @@ final class DiskScanRaceTests: XCTestCase {
         await grace()
     }
 
-    /// The gesture the whole tangle starts from: an arc at the rim of a tree
-    /// that is still being walked. A folder with no children there is not "as
-    /// deep as the scan went", it is "not walked yet" — and the walk that is
-    /// running will bring it in. A second walk of the same folder competes with
-    /// the first for the same disk and has its answer thrown away by the next
-    /// snapshot.
+    /// A rim folder with no children in a tree still being walked is not yet
+    /// walked, and the running walk will bring it in. A second walk of it would
+    /// compete for the same disk and be overwritten by the next snapshot.
     func testDrillingIntoAnUnwalkedFolderStartsNoSecondScanWhileTheFirstRuns() async {
         let work = HeldWork()
         let dvm = model(work)

@@ -5,42 +5,20 @@ import HelmTestSupport
 @testable import Module_Autopilot_Engine
 
 /// **The number that says which rule set this is comes out of the plist, and it
-/// goes back into the plist.**
+/// goes back into the plist.** `SealedRules.seal` stores
+/// `RuleSeal.next(after:mark:)` as `Int(next)`, and `Int.init(_: UInt64)` traps
+/// above `Int.max`.
 ///
-/// `SealedRules.seal` computes it with `RuleSeal.next(after:mark:)` and stores it
-/// with `store.set(Int(next), for: RuleSeal.sequenceKey)`. The round trip is
-/// `UInt64 → Int`, and `Int.init(_: UInt64)` is the *trapping* conversion: for
-/// anything above `Int.max` it is `Fatal error: Not enough bits to represent the
-/// passed value`, measured on this toolchain (Swift 6.4) rather than reasoned
-/// about.
+/// The plist is writable by any process running as the user, and an `NSNumber`
+/// casts to `Int` by value, so a planted `foldersSeq` of `Int.max` arrives
+/// whole. The seal does not stop it: with the `folders` key removed there is
+/// nothing to judge, and `RuleSeal.mayOverwrite(nil)` is `true` by design. A
+/// number past `Int.max` would crash Helm on the next save, and on every save
+/// after, since the value stays in the file.
 ///
-/// Which makes the reachable half the question, and it is reachable with no
-/// permission at all. `storedSequence` is `store.int("foldersSeq", default: 0)`
-/// over `com.helm.app.plist` — the same file the module's own documentation
-/// calls "writable by any process running as this user" — and an `NSNumber`
-/// casts to `Int` by value, so `<integer>9223372036854775807</integer>` arrives
-/// as `Int.max`. `next` then answers `Int.max + 1`.
-///
-/// The seal does not stand in the way of it. A planted number breaks the MAC
-/// over a *stored* rule set, so that save is refused — but with the `folders`
-/// key removed there is nothing to judge, `RuleSeal.mayOverwrite(nil)` is `true`
-/// by design, and the write runs straight through to the conversion:
-///
-/// ```
-/// defaults delete com.helm.app module.autopilot.folders
-/// defaults write  com.helm.app module.autopilot.foldersSeq -int 9223372036854775807
-/// ```
-///
-/// The next rule anybody saves takes Helm down, and the value is still in the
-/// file afterwards, so it takes Helm down again. That is the whole of the
-/// finding: a crash loop on the one gesture that configures the module,
-/// available to anything that can write a preference.
-///
-/// **These assert the arithmetic and never call the trap**, which is the only
-/// shape available: a test that reached `store.set(Int(next))` would abort the
-/// bundle and take the other 370 cases with it, and XCTest cannot catch a Swift
-/// trap. `Int(exactly:)` asks the same question the conversion asks and answers
-/// `nil` instead of dying.
+/// **These assert the arithmetic and never call the trap**: a test that reached
+/// the conversion would abort the bundle, and XCTest cannot catch a Swift trap.
+/// `Int(exactly:)` asks the same question and answers `nil` instead of dying.
 final class TheNextNumberFitsItsStoreTests: XCTestCase {
 
     /// Every number the plist can hand `storedSequence` back, at the two ends
@@ -64,12 +42,9 @@ final class TheNextNumberFitsItsStoreTests: XCTestCase {
         }
     }
 
-    /// And the same question asked of the other half of the answer.
-    ///
-    /// `next` is one above **both** what the plist says and what the mark says,
-    /// so the mark is a second way in. It comes from the keychain, whose item is
-    /// meant to name only Helm — this is the belt behind that, and it costs one
-    /// line.
+    /// The mark is the other way in: `next` is one above **both** the plist's
+    /// number and the mark, and the mark comes from a keychain item meant to
+    /// name only Helm. This is the belt behind that.
     func testTheNumberIsStorableWhateverTheMarkSays() {
         for mark in plantable {
             let next = RuleSeal.next(after: 0, mark: .at(mark))

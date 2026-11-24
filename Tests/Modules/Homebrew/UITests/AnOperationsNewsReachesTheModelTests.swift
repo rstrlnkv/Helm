@@ -17,7 +17,6 @@ import HelmUI
 /// reader. What it holds: a line lost or reordered, an ending that re-reads
 /// nothing, a re-read for a state that is not an ending, or a seed that
 /// overwrites a status the engine has already answered.
-/// Kept: the only test that the model's loop reads the stream in order and re-reads the machine after an ending; `TheHomebrewStreamCarriesTheOperationTests` stops at the engine.
 @MainActor
 final class AnOperationsNewsReachesTheModelTests: XCTestCase {
 

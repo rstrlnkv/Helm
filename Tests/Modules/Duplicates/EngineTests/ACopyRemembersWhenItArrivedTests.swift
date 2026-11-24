@@ -5,15 +5,11 @@ import HelmTestSupport
 /// A copy carries the date it arrived in its folder, the same one
 /// `SurvivingCopy` reads.
 ///
-/// The walk already asks for it — `addedToDirectoryDate`, in the one
-/// `resourceValues` read every candidate goes through — and it reached
-/// `FileFacts` and stopped there. Carrying it into the group is what lets the
-/// page re-decide which copy stays without hashing the folder again, since
-/// re-deciding needs the dates and nothing else.
+/// The walk reads `addedToDirectoryDate` in the one `resourceValues` read every
+/// candidate goes through. Carrying it into the group lets the page re-decide
+/// which copy stays without hashing the folder again.
 ///
 /// It is `Date?`: a volume that does not record it has no date to carry.
-///
-/// Guards a past defect: 245d09e6 feat(duplicates): a group's identity outlives its order, and a copy remembers when it arrived.
 final class ACopyRemembersWhenItArrivedTests: XCTestCase {
 
     /// The assembly point the scanner goes through: what the walk read must
@@ -42,12 +38,9 @@ final class ACopyRemembersWhenItArrivedTests: XCTestCase {
     }
 }
 
-/// And the same date through the scanner the engine actually calls — the half
-/// that has been wired wrong before: `SurvivingCopy` reached
-/// the pipeline the unit tests drove and not `DuplicateScanner.find`, and the page explained
-/// one rule while the app followed another.
-///
-/// Guards a past defect: 245d09e6 feat(duplicates): a group's identity outlives its order, and a copy remembers when it arrived.
+/// And the same date through the scanner the engine actually calls, not only
+/// the pipeline the unit tests drive: otherwise the page could explain one rule
+/// while the app follows another.
 final class TheScannerCarriesTheDateItReadTests: XCTestCase {
     private var root: URL!
 

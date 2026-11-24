@@ -4,17 +4,12 @@
 import XCTest
 @testable import Module_VPN_Engine
 
-/// **A refusal has a verb, and this value carried none.**
+/// **A refusal has a verb.**
 ///
-/// `VPNFailure` held a name and a reason, so a `--nc stop` the tool would not
-/// perform reached the page as the only sentence the page could draw: «macOS
-/// refused to connect «Office»» — read by the person who had just asked to bring
-/// that tunnel *down*, about a tunnel that is still up and still carrying
-/// everything this Mac sends. The same class of sentence
-/// `VPNAutomation.Kind.dropped` exists to warn about, produced by the app itself,
-/// and invisible to every test because the value had no verb in it to be wrong.
-///
-/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity».
+/// A `--nc stop` the tool would not perform must not reach the page as «macOS
+/// refused to connect «Office»», read by the person who just asked to bring
+/// that tunnel *down*, about a tunnel still up and carrying everything this Mac
+/// sends.
 final class ARefusalRemembersItsVerbTests: XCTestCase {
 
     private let uuid = "11111111-1111-1111-1111-111111111111"
@@ -43,8 +38,7 @@ final class ARefusalRemembersItsVerbTests: XCTestCase {
                        + "page tells them Helm could not connect it")
     }
 
-    /// The control, without which the assertion above could be bought by a module
-    /// that reports every command as a stop.
+    /// The control: not every command is reported as a stop.
     func testAConnectTheToolRefusedIsStillRecordedAsAConnect() {
         let e = engine(runner(refusing: "cannot start Office: resource busy"))
 

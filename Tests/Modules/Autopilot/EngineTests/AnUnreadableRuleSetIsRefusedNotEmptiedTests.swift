@@ -7,8 +7,8 @@ import HelmTestSupport
 /// A sealed record this build cannot parse is refused and kept, not read as no
 /// rules.
 ///
-/// Guards: owner decision 4. A record that decoded to `[]` drew the empty page,
-/// and the first folder added wrote over it. The seal fits here, so this is not
+/// Guards: owner decision 4. Read as `[]`, it would draw the empty page, and the
+/// first folder added would write over it. The seal fits here, so this is not
 /// `tampered` and Discard is not offered: the way out is Reset, or a newer Helm.
 final class AnUnreadableRuleSetIsRefusedNotEmptiedTests: XCTestCase {
 

@@ -8,10 +8,8 @@ import IOKit.ps
 /// «Keep awake with an external display» is a rule about being docked, and a
 /// Mac mini has no notion of docked: every display it has is external, so the
 /// rule is unconditionally true there and amounts to «never sleep». «Stop on
-/// low battery» is a guard on a battery a Mac Studio does not have. Both were
-/// drawn on every Mac, and on a desktop the first one lied about applying while
-/// the second could never fire. The first goes by having a lid, the second by
-/// having a battery.
+/// low battery» is a guard on a battery a Mac Studio does not have. The first
+/// goes by having a lid, the second by having a battery.
 ///
 /// **These are hardware facts, not readings of the current state.** A laptop
 /// with the lid shut reports only external displays, so a rule hidden on what

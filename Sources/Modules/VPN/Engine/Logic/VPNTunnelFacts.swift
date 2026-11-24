@@ -8,14 +8,8 @@ import Foundation
 /// **Absent is a state, not a zero.** Helm can be launched after a tunnel came
 /// up, in which case nobody saw the moment and there is no duration to show; the
 /// tile is removed rather than drawn as «—», which would read as a measurement
-/// of nothing. The same distinction the credential read makes one file over
-/// (`VPNCredentialRead`): a nil that means two things is a nil that says nothing.
-///
-/// That held for two of the four and not for the counters, which were
-/// non-optional — so an interface the kernel had no counters for could only be
-/// passed as `0`, and «nobody could read this» drew as a tunnel that has carried
-/// nothing. A header claiming a state the type cannot hold is the shape this
-/// repository keeps finding; all four can be absent now.
+/// of nothing. All four readings can be absent, the counters included: an
+/// unreadable counter passed as `0` would draw as a tunnel that carried nothing.
 public struct VPNTunnelFacts: Equatable, Sendable {
     /// How long the tunnel has been up, or nil when the moment was not seen.
     public let uptime: TimeInterval?
@@ -33,39 +27,24 @@ public struct VPNTunnelFacts: Equatable, Sendable {
     /// After this long a reading is no longer offered as live: the link it
     /// measured is a minute of somebody's traffic away from the one on screen.
     ///
-    /// A named threshold because the test that proves the rule has to read the
-    /// same number the rule does, and because the rule it replaced could not
-    /// fail: `speedAge` is non-nil whenever `speed` is, so `(speedAge ?? 0) > 0`
-    /// called a reading taken a microsecond ago stale and
-    /// `var speedIsStale: Bool { true }` passed the whole suite.
+    /// Named because the test that proves the rule has to read the same number
+    /// the rule does.
     static let speedGoesStaleAfter: TimeInterval = 60
 
-    /// Whether the figure on screen may still stand as the link's speed now.
+    /// Whether the figure on screen may no longer stand as the link's speed now.
     /// True with no measurement at all, so the tile never draws a bare dash and
-    /// leaves the reader to guess — and true for a negative age, which is the
-    /// clock-skew case `init` already refuses for `since`: a figure stamped in
-    /// the future has no age to show.
-    ///
-    /// **That last sentence is why this is not the property a note reads.**
-    /// «Stale» and «has an age to draw» are different questions and the skewed
-    /// stamp answers them oppositely; `speedShowsItsAge` is the second one.
+    /// leaves the reader to guess — and true for a negative age, the clock-skew
+    /// case `init` already refuses for `since`. Whether an age can be drawn is
+    /// `speedShowsItsAge`.
     var speedIsStale: Bool {
         guard let speedAge else { return true }
         return speedAge < 0 || speedAge > Self.speedGoesStaleAfter
     }
 
     /// Whether the figure has an age that can be *drawn* beside it — which is
-    /// not the same question as `speedIsStale`, and reading the one for the
-    /// other printed a forecast.
-    ///
-    /// `speedIsStale` answers «may this figure stand as the link's speed now»,
-    /// and a stamp ahead of the clock answers that `false` as surely as an
-    /// hour-old one does. But its only reader took the `true` as «show the age»
-    /// and drew the relative age of a future date: «через 5 мин.», "in
-    /// 5 min." — a time still to come under a figure taken in the past. The
-    /// property's own doc comment had already decided the opposite — «a figure
-    /// stamped in the future has no age to show» — so the rule was written down
-    /// and then read backwards one target over.
+    /// not the same question as `speedIsStale`. A stamp ahead of the clock is
+    /// stale too, and drawing its age would print a time still to come, "in
+    /// 5 min.", under a figure taken in the past.
     ///
     /// Nothing is drawn for that reading rather than something invented, which
     /// is what `HelmExpectedWait.Claim.at` does with the same input: «a negative

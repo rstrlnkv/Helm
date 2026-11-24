@@ -29,12 +29,10 @@ enum DupStr {
     static func searching(language: AppLanguage = AppLanguage.current) -> String {
         L(.readingFiles, language: language)
     }
-    /// The one sentence a busy screen draws: the tick when there is one, the
-    /// plain «reading» when there is not — true of a search and of a removal's
-    /// verification alike, since both are files being read in full.
-    ///
-    /// A function rather than an expression inside the page: the page draws it
-    /// in two places.
+    /// The one sentence a busy screen draws, in two places: the tick when there
+    /// is one, the plain «reading» when there is not. True of a search and of a
+    /// removal's verification alike, since both read files in full.
+
     static func busyLine(_ progress: DuplicateProgress?,
                          language: AppLanguage = AppLanguage.current) -> String {
         guard let progress, progress.candidates > 0 else {
@@ -50,11 +48,10 @@ enum DupStr {
     static func removalStopped(language: AppLanguage = AppLanguage.current) -> String {
         L(.removalStopped, language: language)
     }
-    /// The named outcome of a stopped search — drawn as the start screen's
-    /// message, because a cancelled search lands on the start phase and the
-    /// screen otherwise reads as if nothing had happened. It covers the engine
-    /// giving up as well as the person pressing Stop: either way the folder
-    /// was not read to the end, which is the half the person acts on.
+    /// The named outcome of a stopped search, drawn as the start screen's
+    /// message. It covers the engine giving up as well as the person pressing
+    /// Stop: either way the folder was not read to the end, which is the half
+    /// the person acts on.
     static func searchStopped(language: AppLanguage = AppLanguage.current) -> String {
         L(.searchStopped, language: language)
     }
@@ -65,25 +62,20 @@ enum DupStr {
         let (a, b) = (Count(done, language: language), Count(total, language: language))
         return L(.progressLine(a, b), language: language)
     }
-    /// Takes the language, as `found` above does and for the same reason: the
-    /// suite runs in this machine's language, so a sentence that reads
-    /// `AppLanguage.current` is checked in one language eight times. This one is
-    /// compared against its two neighbours below, and a comparison where only
-    /// one side moves is a check that cannot fail — measured: with the refusal
-    /// folded back into this sentence, every language still read Russian here.
+    /// Takes the language, as `found` does: the suite runs in this machine's
+    /// language, and this sentence is compared against its two neighbours
+    /// below, so a comparison where only one side moves could not fail.
     static func none(language: AppLanguage = AppLanguage.current) -> String {
         L(.noDuplicatesHere, language: language)
     }
     /// The message over an empty result, one per reason there is no list.
     ///
-    /// **The message, not a note under «No duplicates here».** A headline with a
-    /// footnote invites the reader to trust the headline, and that headline is
-    /// exactly the claim a walk that was refused cannot back — the same choice
-    /// `LfStr.emptyMessage` records, and the same repair.
+    /// The message, not a note under «No duplicates here»: a headline with a
+    /// footnote invites trust in the headline, which is the claim a refused walk
+    /// cannot back. `LfStr.emptyMessage` makes the same choice.
     ///
-    /// Exhaustive over the enum, with no `default`: a fourth reason would
-    /// otherwise be drawn as the all-clear, which is the defect the type exists
-    /// for.
+    /// Exhaustive, with no `default`, so a fourth reason cannot draw as the
+    /// all-clear.
     static func emptyMessage(_ nothing: DuplicatesEmpty.Reason,
                              language: AppLanguage = AppLanguage.current) -> String {
         switch nothing {
@@ -102,26 +94,21 @@ enum DupStr {
         L(.librariesNotOpened, language: language)
     }
     static var floorNote: String { L(.filesFromOneMB) }
-    /// What the extra copies give back, not a promise about free space.
-    /// An APFS clone, which is what Finder's Duplicate makes, shares its blocks
-    /// with the original, and the copies go to the Trash on the same volume.
-    /// `wasted` counts what the disk actually gives back — a cloned copy
-    /// returns nothing — and the figure says so. It names the Trash: the copies land there first, and the space arrives when
-    /// it is emptied, which is the rule Disk keeps too.
-    /// Built from `onceEmptied` below rather than spelling the tail again —
-    /// `VPNStr.secretNeedsAPress`'s construction: the total line and the group
-    /// headers say the same sentence because it is the same sentence, not
-    /// because somebody keeps two tables in step.
+    /// What the extra copies give back, not a promise about free space. An APFS
+    /// clone (what Finder's Duplicate makes) shares its blocks with the
+    /// original, so `wasted` counts what the disk actually returns. It names the
+    /// Trash: the copies land there first, on the same volume, and the space
+    /// arrives when it is emptied, as in Disk. Built from `onceEmptied` below,
+    /// so the total line and the group headers say one sentence from one table.
     static func found(_ groups: Int, _ wasted: String,
                       language: AppLanguage = AppLanguage.current) -> String {
         let n = Count(groups, language: language)
         let tail = onceEmptied(wasted, language: language)
         return L(.found(n, tail), language: language)
     }
-    /// «\(size) once the Trash is emptied» — the tail of `found` above, on its
+    /// «\(size) once the Trash is emptied», the tail of `found` above, on its
     /// own for the group headers: each group says what removing its extras
-    /// returns, through the same words as the page's total — two spellings of one
-    /// tail is how `movedToTrash` drifted.
+    /// returns in the same words as the page's total.
     static func onceEmptied(_ size: String,
                             language: AppLanguage = AppLanguage.current) -> String {
         L(.onceEmptied(size), language: language)
@@ -137,13 +124,9 @@ enum DupStr {
     /// And the way back, in the header of a group that has been chosen.
     static var restoreRecommendation: String { L(.restoreTheRecommendation) }
 
-    /// Why this group's first copy is the one that stays.
-    ///
-    /// Says what actually decided it, in every group's header, rather than one
-    /// sentence for every rung.
-    ///
-    /// Exhaustive, with no `default`: a rung added to `KeepReason` is a build
-    /// error here, not a header that quietly says the wrong rung.
+    /// Why this group's first copy is the one that stays: what actually decided
+    /// it, in every group's header. Exhaustive, with no `default`: a rung added
+    /// to `KeepReason` is a build error here, not a header naming the wrong rung.
     static func keptBecause(_ grounds: KeepGrounds,
                             language: AppLanguage = AppLanguage.current) -> String {
         switch grounds {
@@ -151,19 +134,16 @@ enum DupStr {
         // folder, and the tier is the thing being explained rather than a word
         // to reuse.
         case .rung(.place): return L(.keptByFolder, language: language)
-        // Said as the absence it is. «Arrived first» is what this case would
-        // borrow if the missing date were folded into the rung below it, and
-        // nothing on this Mac knows when the kept copy arrived — which is the
-        // whole reason it is the one that stays.
+        // Said as the absence it is, never as «arrived first»: nothing on this
+        // Mac knows when the kept copy arrived, which is why it stays.
         case .rung(.undated): return L(.keptNoDateRecorded, language: language)
         case .rung(.date): return L(.keptArrivedFirst, language: language)
         // Said as the fact it is. «By depth» is the rule's word for it and means
         // nothing on a screen; the shorter path is what somebody can look at.
         case .rung(.depth): return L(.keptTheShorterPath, language: language)
         // A coin toss, and it has to look like one: two copies alike in every
-        // way the rule can see were separated by the alphabet. «By name» sold
-        // that tie-break as a criterion; «first alphabetically» says the coin
-        // it actually is.
+        // way the rule can see were separated by the alphabet. «By name» would
+        // sell the tie-break as a criterion.
         case .rung(.name): return L(.keptFirstAlphabetically, language: language)
         case .byHand: return L(.keptYourChoice, language: language)
         }
@@ -206,20 +186,17 @@ enum DupStr {
     /// «the one in “Downloads” or “Desktop”», with the folders named the way
     /// this Mac names them.
     ///
-    /// **macOS spells its own folders**, and it is not a translation Helm gets
-    /// to make: Finder says «Загрузки»,「デスクトップ」and, in Portuguese, `Mesa`
-    /// — a ninth translation of a name the system already has is how one folder
-    /// comes to have two names on one screen. The paths come from
-    /// `TransitFolders.named`, so the sentence cannot describe a tier the rule
-    /// no longer has.
+    /// macOS spells its own folders, and that is not a translation Helm makes:
+    /// Finder says «Загрузки»,「デスクトップ」and, in Portuguese, `Mesa`; a
+    /// translation of Helm's own would give one folder two names on one screen.
+    /// The paths come from `TransitFolders.named`, so the sentence cannot
+    /// describe a tier the rule does not have.
     ///
-    /// Quoted, because they are names: the alternative is declining them, and
-    /// «в Загрузки» is what interpolating a nominative folder name into a
-    /// Russian preposition produces. `Quoted` is the house's marks per language,
-    /// French's unbreakable spaces and all.
-    ///
-    /// The names go in as arguments of the catalog's `theOneInTransit`, already
-    /// quoted, so the word order around them is the catalog's.
+    /// Quoted, because they are names: unquoted, a nominative folder name in a
+    /// Russian preposition reads «в Загрузки». `Quoted` is the house's marks per
+    /// language, French's unbreakable spaces and all. The names go in, already
+    /// quoted, as arguments of the catalog's `theOneInTransit`, so the word
+    /// order around them is the catalog's.
     private static func theOneInTransit(language: AppLanguage) -> String {
         let folders = TransitFolders.named.map { path in
             SystemFolderNames.display(path: path, home: NSHomeDirectory(),

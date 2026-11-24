@@ -3,28 +3,19 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_UI
 
-/// «Search again» during a removal is the second way out of a destructive act,
-/// and it was never gated.
+/// «Search again» during a removal is refused, like Clear the marks
+/// (`ClearSelectionIsNotAWayOutOfRemovalTests`).
 ///
-/// `ClearSelectionIsNotAWayOutOfRemovalTests` records the first one: the basket
-/// emptied on screen while the request was already out with those paths in it,
-/// so «Moved to the Trash — 9 GB» arrived about a selection the person had just
-/// cleared. `clearBasket` grew a `guard !busy` and the page dims the button.
+/// `search()` empties the groups, the basket and the removal report. The
+/// toolbar's Search button is drawn for `phase != .searching`, which during a
+/// removal is `.result`, so it is live for the whole removal — minutes here,
+/// because `DuplicatesEngine.trash` verifies every pair before anything moves.
 ///
-/// `search()` does the same three things and has neither. Its first four lines
-/// are `phase = .searching`, `groups = []`, `basket = []`, `clearRemovalReport()`
-/// — and nothing in it asks whether a removal is in flight. The toolbar's Search
-/// button is drawn for `phase != .searching`, which during a removal is `.result`,
-/// so it is live and undimmed for the whole window; and in this module that
-/// window is minutes, because `DuplicatesEngine.trash` verifies every pair
-/// before anything moves.
-///
-/// Two things go with the basket. The count and the marks, which is the same
-/// harm the clear button had. And **the way out**: the page draws its busy row —
-/// the removal's tick and the Stop button — inside `basketBar`, which is drawn
-/// only for a non-empty basket, a report or a marks note. `search()` takes all
-/// three away in one press, so a removal a person has started goes on running
-/// with no control anywhere on screen that reaches it.
+/// Two things would go with the basket: the count and the marks the request is
+/// out with, and **the way out** — the page draws the removal's tick and the
+/// Stop button inside `basketBar`, which is drawn only for a non-empty basket,
+/// a report or a marks note, so a removal would run on with no control on
+/// screen that reaches it.
 ///
 /// Parked, never answered on the spot: a removal that returns before the press
 /// under test is a window nothing can be inside, and every assertion here would
@@ -33,9 +24,8 @@ import XCTest
 final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
 
 
-    /// The same claim `clearBasket` makes, in the control beside it: the request
-    /// is out with those paths in it, so nothing on screen may say they are no
-    /// longer marked.
+    /// The request is out with those paths in it, so nothing on screen may say
+    /// they are unmarked.
     func testSearchingWhileTheFilesAreGoingKeepsTheSelectionTheRequestIsOutWith() async {
         let (dvm, work) = await removalInFlight()
         XCTAssertEqual(work.parkedCount, 1, "precondition: the removal is really in flight")

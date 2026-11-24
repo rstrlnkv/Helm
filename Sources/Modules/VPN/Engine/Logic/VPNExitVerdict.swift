@@ -13,9 +13,8 @@ import Foundation
 /// nobody checked.
 public enum VPNExitVerdict: Equatable, Sendable {
     /// The default route is the tunnel, and this is the **two-letter region
-    /// code** the exit answered — `NL`, not «Netherlands». It was spelled
-    /// `country:` while holding a code, which is the kind of name a reader
-    /// believes: the place is named in the app's own language by
+    /// code** the exit answered — `NL`, not «Netherlands». The place is named
+    /// in the app's own language by
     /// `VPNStr.country(_:)`, out of `Locale`, so no third party gets to write a
     /// country's name into Helm's window. Nil when the check could not be made
     /// or did not answer.
@@ -32,9 +31,9 @@ public enum VPNExitVerdict: Equatable, Sendable {
     ///
     /// One predicate for two readers a target apart: the engine refuses a speed
     /// command naming a tunnel this is false of, and the page draws a sentence
-    /// where the button would be for the same tunnel. Spelled twice they can
-    /// disagree, and the disagreement is a twenty-second subprocess measuring
-    /// one tunnel and reporting its figure under another's name — `networkQuality`
+    /// where the button would be for the same tunnel. Spelled twice they could
+    /// disagree, and a run would measure one tunnel and report its figure under
+    /// another's name — `networkQuality`
     /// cannot be bound to an interface (`NetworkQualitySpeed`), so an unbound run
     /// follows the default route whatever the switcher is showing.
     ///

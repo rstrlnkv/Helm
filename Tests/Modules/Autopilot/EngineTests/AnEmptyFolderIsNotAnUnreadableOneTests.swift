@@ -5,19 +5,12 @@ import HelmTestSupport
 @testable import Module_Autopilot_Engine
 
 /// **An empty folder, a folder Helm may not read and a folder that is no longer
-/// there were one report.**
+/// there are three reports, not one.**
 ///
-/// Measured before this existed: `examined 0 acted 0 refused 0 failed 0` for all
-/// three, an identical dry run, and a page drawing the path with a live switch
-/// beside it and nothing else. That is the commonest way this module dies — a
-/// watched folder is renamed, or the Downloads prompt is declined once, and
-/// Autopilot stops tidying behind a screen that looks exactly like a screen where
-/// nothing needed tidying. The module's own `needsAccess` string describes the
-/// defect instead of fixing it.
-///
-/// The reader answers which of the three it was, so everything above it can.
-///
-/// Past defect: fixed in 6009a76e.
+/// Reported alike, a renamed watched folder or a Downloads prompt declined once
+/// stops Autopilot behind a screen that looks exactly like one where nothing
+/// needed tidying: the commonest way this module dies. The reader answers which
+/// of the three it was, so everything above it can.
 final class AnEmptyFolderIsNotAnUnreadableOneTests: XCTestCase {
 
     private var home: URL!
@@ -29,9 +22,8 @@ final class AnEmptyFolderIsNotAnUnreadableOneTests: XCTestCase {
 
     /// **Handed back inside the test, not in `tearDown`.** `scratchDirectory`
     /// registers a teardown *block*, and XCTest runs those before the teardown
-    /// method — so a directory left at 0 was still unreadable when the scratch
-    /// cleanup tried to walk it, and the run ended with the harness reporting
-    /// that it had left a home directory behind.
+    /// method, so a directory left at 0 is still unreadable when the scratch
+    /// cleanup walks it, and the harness reports a home directory left behind.
     private func lock(_ url: URL) throws {
         try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: url.path)
         addTeardownBlock {
@@ -94,8 +86,7 @@ final class AnEmptyFolderIsNotAnUnreadableOneTests: XCTestCase {
 
     // MARK: - What the sweep reports
 
-    /// The report carries it, so the page can draw the difference the survey
-    /// measured as one identical banner three times over.
+    /// The report carries it, so the page can draw the difference.
     func testTheSweepReportCarriesWhichOfTheThreeItWas() throws {
         let empty = try directory("empty")
         let gone = home.appendingPathComponent("gone")
@@ -123,9 +114,9 @@ final class AnEmptyFolderIsNotAnUnreadableOneTests: XCTestCase {
         XCTAssertEqual(status.folders[gone.path], .missing)
     }
 
-    /// **The channel `FolderWatcher.watch` grew two commits before this module
-    /// was audited, and this engine threw it away.** A stream that never started
-    /// left the switch saying «on» over a folder nothing was looking at.
+    /// Whether anything is watching is `FolderWatcher.watch`'s own answer: a
+    /// stream that never started would leave the switch saying «on» over a
+    /// folder nothing is looking at.
     func testWhetherAnythingIsWatchingIsAskedOfTheWatcher() async throws {
         let watched = try directory("watched")
         let engine = engine()

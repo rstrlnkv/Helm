@@ -7,7 +7,6 @@ import HelmRuntime
 // beside `FakeHomebrewWork`. A fake keeps its port's states only, and every
 // construction names the port it stands in for (`runner:`, `privileged:`)
 // (Architecture/TestsAndMeasurement.md § Fakes).
-// `NoPrivileges` answers with a fixed stand-in value (declined) that no test asserts.
 
 /// The password dialog answered no: nothing ran.
 struct NoPrivileges: PrivilegedRunner {
@@ -18,14 +17,11 @@ struct FixedLocator: BrewLocator {
     func brewPath() -> String? { "/opt/homebrew/bin/brew" }
 }
 
-/// A fake that answers questions only: the two stubs it would otherwise repeat,
-/// given once, **and only to a fake that asks for them by conforming**. The port
-/// gives `runCapturingDiagnostics` no default on purpose (`Ports.swift`: a silent
-/// fallback would make the one query that needs the other stream untestable), so
-/// a fake about `doctor` or about streaming conforms to `ProcessRunner` and writes
+/// A fake that answers questions only, given the two stubs **by conforming**. The
+/// port gives `runCapturingDiagnostics` no default on purpose (`Ports.swift`), so a
+/// fake about `doctor` or about streaming conforms to `ProcessRunner` and writes
 /// its own. This one answers `runCapturingDiagnostics` with status 0 and nothing
-/// (not `doctor`: no fake here needs to answer on the diagnostics stream) and ends
-/// every streamed child at once.
+/// and ends every streamed child at once.
 protocol QueryOnlyRunner: ProcessRunner {}
 
 extension QueryOnlyRunner {
@@ -48,11 +44,9 @@ extension QueryOnlyRunner {
 /// its handle is kept, because a Stop that races a stream already over proves nothing.
 /// `park` holds the query it names inside the tool until `release()`, after `parked`
 /// has been fulfilled on the runner's own thread, so the test knows the query is in
-/// flight rather than hoping. A real semaphore and not a cooperative yield: a yield
-/// buys a turn on the pool and no wall-clock time, so it cannot hold one query open
-/// across a second press, a departure or a gesture.
-/// `runCapturingDiagnostics` answers status 0 and nothing (not `doctor`: no test here
-/// needs the diagnostics stream).
+/// flight. A real semaphore, because a cooperative yield buys no wall-clock time and
+/// cannot hold a query open across a second press, a departure or a gesture.
+/// `runCapturingDiagnostics` answers status 0 and nothing.
 final class FakeBrew: ProcessRunner, @unchecked Sendable {
     struct Call: Equatable {
         let kind: String

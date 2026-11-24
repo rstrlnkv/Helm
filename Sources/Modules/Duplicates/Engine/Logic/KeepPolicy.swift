@@ -4,15 +4,12 @@ import HelmRuntime
 /// What the person believes an extra copy *is*.
 ///
 /// «The oldest copy is the original» is a belief, and it is said here. Held in
-/// silence it is wrong: measured on a live engine, a file downloaded into
-/// `~/Downloads` and then filed into `~/Pictures` comes back with the download
-/// as the copy that stays, so Helm offers to delete the one somebody has
-/// deliberately put away. No tiebreak mends it: on APFS two copies never share
-/// a date added (0,29 ms apart on parallel `cp`), so the rungs below the date
-/// are never reached and «the original» means «whoever got to a folder first».
+/// silence it is wrong: a file downloaded into `~/Downloads` and then filed into
+/// `~/Pictures` would keep the download and offer the filed one for the Trash.
+/// No tiebreak mends it: on APFS two copies practically never share a date
+/// added, so the rungs below the date are not reached.
 ///
-/// Two beliefs, and no third «as it was»: an order nobody chose is not a policy,
-/// it is the state this type exists to end.
+/// Two beliefs, and no third «as it was»: an order nobody chose is not a policy.
 ///
 /// **The raw values are stored data.** They reach `com.helm.app.plist` and are
 /// sealed there, so renaming one silently reverts somebody's setting to the
@@ -24,8 +21,7 @@ public enum KeepPolicy: String, CaseIterable, Sendable {
     /// tier the older copy stays.
     case byPlace = "place"
 
-    /// When the copy arrived decides, wherever it sits — the belief the module
-    /// held silently, now one of two and said out loud.
+    /// When the copy arrived decides, wherever it sits.
     case byDate = "date"
 
     /// What a Mac that has never been asked gets.
@@ -39,16 +35,14 @@ public enum KeepPolicy: String, CaseIterable, Sendable {
     /// **One ladder, read by both the ordering and the reason it reports.**
     /// Which copy stays and why it stays are the same question asked twice, and
     /// a second spelling of the order is how a screen comes to explain one rule
-    /// while the app follows another — this module has already paid for that
-    /// once, when `SurvivingCopy` replaced the alphabetical rule in one of the
-    /// two pipelines.
+    /// while the app follows another.
+    ///
     /// **`.undated` sits immediately above `.date` in both, and that is what makes
     /// the ladder an order at all.** A rung has to separate every pair in a class
     /// or none of them: `.date` separates two known dates and says nothing about a
     /// pair where one date is missing, so with a dateless copy in the group the
-    /// three pairwise readings closed a cycle and which copy stayed was decided by
-    /// the order the walk built the array in
-    /// (`TheSurvivorDoesNotDependOnWalkOrderTests`). `.undated` takes the missing
+    /// three pairwise readings would close a cycle and the walk order would
+    /// decide (`TheSurvivorDoesNotDependOnWalkOrderTests`). `.undated` takes the missing
     /// date out first, so by the time `.date` is asked the two copies either both
     /// have one or neither does.
     var ladder: [KeepReason] {
@@ -78,9 +72,9 @@ public enum KeepReason: String, Sendable {
     /// **Silence is not evidence, and it is not a loss either.** A volume that
     /// does not record when a file was added reports nothing, and this module's
     /// act is deletion: the copy it cannot date is the copy it must not offer for
-    /// the Trash. Read the other way round — a blank date as a loss — one such
-    /// copy on an external volume was ticked in every group it appeared in, which
-    /// is the defect `KeepPolicyTests` records.
+    /// the Trash. Read the other way round, a blank date as a loss, one such
+    /// copy on an external volume would be ticked in every group it appears in
+    /// (`KeepPolicyTests`).
     ///
     /// A rung of its own rather than a `nil` folded into `.date`, for two reasons
     /// that are one: a rung that is silent about some pairs and not others is not
@@ -115,8 +109,8 @@ public struct TransitFolders: Sendable {
     /// **Both spellings of every root, and that is the point.** A moved
     /// Downloads is a link to somewhere else with a link left behind:
     /// `FileManager` answers with the link, and the walk — which never follows
-    /// one — answers with the real path. `ScanRoot.resolve` records what judging
-    /// only one of the two cost.
+    /// one — answers with the real path. `ScanRoot.resolve` says what judging
+    /// only one of the two misses.
     ///
     /// Resolved once here rather than per candidate: a file's own path comes out
     /// of the walk already real, and asking the filesystem again for each of a
@@ -135,15 +129,12 @@ public struct TransitFolders: Sendable {
 
     /// Where this Mac lands what arrives.
     ///
-    /// **It does not ask `TestProcess.isRunning`, and that is the answer rather
-    /// than the omission.** Every other site that resolves one of the person's
-    /// own folders redirects under the suite, because it is about to *write*
-    /// there — the log and the scan journal both land in `$TMPDIR` instead.
-    /// Nothing here is a destination: `create: false`, no read of any content,
-    /// and what comes back is compared against a path as a string. Substituting
-    /// it under test would cost the one thing worth having, which is that
-    /// `testTheSystemTierIsTheFoldersMacOSNames` asks this Mac where Downloads
-    /// really is rather than asking a fixture what it was told.
+    /// **It does not ask `TestProcess.isRunning`, on purpose.** Other sites that
+    /// resolve the person's folders redirect under the suite because they are
+    /// about to *write* there. Nothing here is a destination: `create: false`,
+    /// no content read, and the answer is compared as a string. Substituting it
+    /// would lose what `testTheSystemTierIsTheFoldersMacOSNames` asks: where
+    /// this Mac really keeps Downloads.
     public static let system = TransitFolders(roots: named + [dropBox])
 
     /// The transit folders worth naming to a person, in the order a sentence

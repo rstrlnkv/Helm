@@ -7,27 +7,19 @@ import SwiftUI
 /// tabs were measured to follow it, the others are assumed.
 ///
 /// **One reader.** `system` is the one place Helm asks the workspace for them;
-/// the static accessors that AppKit code and not-yet-rebuilt pages still use
-/// (`HelmSignal.warning`, `ModuleTint.colour`, `HelmMotion.reduceMotion`, `OverlayInk`) read
-/// it too, and a kit view reads them through `HelmTraits`.
+/// the static accessors AppKit code uses (`HelmSignal.warning`,
+/// `ModuleTint.colour`, `HelmMotion.reduceMotion`, `OverlayInk`) read it too,
+/// and a kit view reads them through `HelmTraits`.
 ///
-/// Apple's guidance on a colour you define yourself is three variants, not two:
-/// "supply light and dark variants, **and an increased contrast option for each
-/// variant** that provides a significantly higher amount of visual
-/// differentiation". A system colour carries those variants already —
-/// `ModuleTint` and `HelmSignal`'s light values are the price of not using one,
-/// because the system palette fails the light appearance and both types exist to
-/// fix that.
+/// Apple asks a colour you define yourself for light and dark variants and an
+/// increased-contrast option for each; `ModuleTint` and `HelmSignal` define
+/// their own because the system palette fails the light appearance.
 ///
-/// **Why a flag and not an appearance.** `HelmSignal` and `ModuleTint` both
-/// answer the light/dark question inside an `NSColor(name:)` handler, from the
-/// appearance the drawing is happening in, and the obvious extension is to ask
-/// the same handler for the high-contrast appearance. It does not work on
-/// macOS 26: measured here, `bestMatch(from:)` returns `NSAppearanceNameAqua`
-/// while the drawing appearance **is** `NSAppearanceNameAccessibilityAqua`, and
-/// it does so whichever order the names are given in. The appearance carries the
-/// setting and will not say so, so the workspace flag is the only channel there
-/// is.
+/// **A flag, not an appearance**: asked inside an `NSColor(name:)` handler,
+/// `bestMatch(from:)` returns `NSAppearanceNameAqua` while the drawing
+/// appearance is `NSAppearanceNameAccessibilityAqua`, whatever order the names
+/// are given in. The appearance carries the setting and will not say so, so
+/// the workspace flag is the only channel there is.
 public struct HelmAccessibility: Equatable, Sendable {
     public var increasedContrast: Bool
     public var reducedTransparency: Bool

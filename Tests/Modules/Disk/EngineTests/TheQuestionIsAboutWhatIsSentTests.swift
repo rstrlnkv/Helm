@@ -1,21 +1,12 @@
 import XCTest
 @testable import Module_Disk_Engine
 
-/// The confirmation is the only place this module asks for consent, and it was
-/// describing a different act.
-///
-/// Measured en and ru with one cache row in the basket: the dialog said «Move 1
-/// item (120 MB) to the Trash?» and named `…/Library/Caches`, while the press
-/// sent **four** paths — the folder's children — and left the folder itself
-/// exactly where it was. Three things wrong at once: the count (1 against 4, and
-/// against several hundred on a real `~/Library/Caches`), the path named, and a
-/// refusal list that could come back naming files the question never mentioned.
-///
-/// So the question is asked of the plan. `DiskRemovalPlan.targets` is already
-/// what gets sent; the count, the size and the names now come from the same
-/// computation, which is what makes them unable to drift apart.
+/// The confirmation is the only place this module asks for consent, so it
+/// describes what the press sends. A cache row sends the folder's children and
+/// leaves the folder, so the count, the size and the names come from
+/// `DiskRemovalPlan.targets`, the same computation that is sent.
 final class TheQuestionIsAboutWhatIsSentTests: XCTestCase {
-    /// The defect itself: one row, four removals. The row's own figure is larger
+    /// One row, four removals. The row's own figure is larger
     /// than the contents (the folder also holds the folded bucket of small
     /// files), so the size has to come from the advice and not from the row.
     func testACacheRowIsAskedAboutAsItsContents() {
@@ -41,8 +32,7 @@ final class TheQuestionIsAboutWhatIsSentTests: XCTestCase {
                        "and it is not in the list of names either: \(question.named())")
     }
 
-    /// A row picked off the ring has no advice behind it and is its own target —
-    /// the ordinary case, which must read exactly as it did.
+    /// A row picked off the ring has no advice behind it and is its own target.
     func testARowPickedOffTheRingIsItsOwnQuestion() {
         let picked = "/Users/test/Movies/raw.mov"
         let question = DiskRemovalPlan.question(basket: [entry(picked, 700)],
@@ -53,7 +43,7 @@ final class TheQuestionIsAboutWhatIsSentTests: XCTestCase {
         XCTAssertEqual(question.bytes, 700)
     }
 
-    /// The question and the act are one computation, not two that agree today.
+    /// The question and the act are one computation.
     func testTheQuestionNamesExactlyWhatWillBeSent() {
         let advice = cacheAdvice([("Firefox", 40), ("Adobe", 30)])
         let basket = [entry(caches, 70), entry("/Users/test/Movies/raw.mov", 700)]

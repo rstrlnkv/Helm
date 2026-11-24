@@ -3,15 +3,11 @@ import SwiftUI
 /// **The three stored choices about the settings window's header row that the row itself draws by: whether the
 /// page's name wears its plate, how its tabs are labelled, and whether its search rests as a magnifier.**
 ///
-/// Their keys and raw values are the ones of the toolbar's day, so a Mac that chose any before reads the
-/// same choice after (`ObsoleteDefaults` no longer purges them).
+/// The keys and raw values are deployed data and do not change. Not sealed: nothing unattended reads any
+/// (`AppSettings.pageBarStyle`, `AppSettings.tabLabels`, `AppSettings.alwaysCollapseSearch`).
 ///
-/// **Not sealed:** nothing unattended reads any (`AppSettings.pageBarStyle`, `AppSettings.tabLabels`,
-/// `AppSettings.alwaysCollapseSearch`).
-///
-/// - `moduleName` — "With Icon": the plate, then the name; today's row.
-/// - `windowTitle` — "Without Icon": the name alone. The status after the name stays (the owner's decision;
-///   the toolbar's `windowTitle` dropped it).
+/// - `moduleName` — "With Icon": the plate, then the name.
+/// - `windowTitle` — "Without Icon": the name alone. The status after the name stays (the owner's decision).
 public enum PageBarStyle: String, CaseIterable, Sendable {
     case windowTitle, moduleName
 
@@ -29,8 +25,7 @@ public enum PageBarStyle: String, CaseIterable, Sendable {
 /// - `icons` — a glyph per tab, the word in the tooltip and to VoiceOver.
 /// - `iconsAndText` — a glyph beside each word.
 ///
-/// A fourth, `iconsNamingSelected`, lived for a day and was cut on 2026-09-18: it is not a case and reads
-/// back as `text`, as does anything `init(stored:)` does not know.
+/// A stored value this build does not know, such as the retired `iconsNamingSelected`, reads back as `text`.
 public enum HeaderTabLabels: String, CaseIterable, Sendable {
     case text, icons, iconsAndText
 
@@ -56,7 +51,7 @@ public struct HelmHeaderChoices: Equatable, Sendable {
         self.collapseSearch = collapseSearch
     }
 
-    /// What a view mounted with nobody having set a choice gets: the row as it was drawn before the choices existed.
+    /// What a view mounted with nobody having set a choice gets.
     public static let standard = HelmHeaderChoices(pageBar: .moduleName, tabLabels: .text, collapseSearch: false)
 }
 

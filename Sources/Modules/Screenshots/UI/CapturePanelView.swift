@@ -28,8 +28,7 @@ struct CapturePanelView: View {
     /// The timer cell is as wide before the seconds are shown in it as after, so the timer does not change the panel's width.
     static let timerWidth: CGFloat = 66
     /// SF Symbols at the light weight, sized by their ink (the drawn pixels, not the image's frame with its margins),
-    /// measured on an `NSImage` bitmap: at 24 pt a screen, a window and an area are 28 x 22 pt of ink; at 21 the gear
-    /// is 22 x 22 and the stopwatch 21 x 23.
+    /// so the modes, the gear and the stopwatch read as one size.
     private static let glyph = Font.system(size: 24, weight: .light)
     private static let smallGlyph = Font.system(size: 21, weight: .light)
     /// The timer's seconds, its chevron and the ring's seconds: no rung of `HelmText` is these faces, 12 and 8 are no size of it and 13 has no medium.

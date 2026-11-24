@@ -1,17 +1,15 @@
 import XCTest
 @testable import Module_Homebrew_Engine
 
-/// Three traps, all silent, all measured against the real documents on
-/// 2026-09-13.
+/// Three traps, all silent, all read off the real documents.
 ///
-/// The cask document's top-level key is `"formulae"` — not `"casks"` — so a
-/// decoder that reads the obvious key returns an empty dictionary and throws
+/// The cask document's top-level key is `"formulae"`, not `"casks"`, so a
+/// decoder reading the obvious key returns an empty dictionary and throws
 /// nothing. The count is a string with thousands separators, so `Int(_:)` on it
 /// answers nil for exactly the packages that matter most. And a document this
-/// parser does not recognise has to answer nil rather than an empty map, or a
-/// broken endpoint reads as "nobody installs anything" and quietly re-sorts
-/// every search result by nothing at all.
-/// Kept: the only test of the three silent traps in the install-counts document (key, separators, unknown shape); `ARefusedFetchKeepsTheLastCountsTests` drives the fetch, not the parser.
+/// parser does not recognise answers nil rather than an empty map, or a broken
+/// endpoint reads as "nobody installs anything" and re-sorts every search
+/// result by nothing at all.
 final class InstallCountsParserTests: XCTestCase {
 
     private func data(_ s: String) -> Data { Data(s.utf8) }

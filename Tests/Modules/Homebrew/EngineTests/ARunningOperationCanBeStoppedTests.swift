@@ -3,11 +3,10 @@ import XCTest
 import HelmContract
 @testable import Module_Homebrew_Engine
 
-/// A long operation used to have exactly one exit: the child's own EOF. A brew
-/// hung on the network, another brew's lock, or an installer waiting for input
-/// meant the busy gate never released — the module was dead until the app
-/// restarted, spinner running. Operations are not bounded by a clock (an
-/// install may honestly take an hour); they are stopped by hand.
+/// A brew hung on the network or on another brew's lock, or an installer
+/// waiting for input, never reaches its own EOF, and the busy gate would never
+/// release. Operations are not bounded by a clock (an install may honestly take
+/// an hour); they are stopped by hand.
 ///
 /// The runner must not answer on its own: a stream that exits synchronously
 /// would finish before there is anything to stop.

@@ -39,9 +39,8 @@ import Module_Disk_Engine
         await parts.model.backgroundScan()
     }
 
-    /// Not a utility any more. It has two figures worth a glance — how much
-    /// room is left and out of how much — and both cost a volume-attributes
-    /// read rather than a walk.
+    /// Two figures worth a glance, how much room is left and out of how much,
+    /// both a volume-attributes read rather than a walk.
     public func menuBar(_ model: DiskViewModel) -> MenuBarContribution? {
         MenuBarContribution(panelTile: AnyView(DiskWidget(model: model, size: .wide)))
     }
@@ -50,9 +49,8 @@ import Module_Disk_Engine
     /// 2×N lists the other volumes, because the space somebody is looking for
     /// is often on one of them.
     public func panelWidget(_ size: PanelWidgetSize, _ model: DiskViewModel) -> AnyView? {
-        // 2×N is «why that number is that number», and on a Mac with one
-        // volume there is no why — the tall card added a list of the other
-        // volumes and there were none, so it was 2×1 with a taller frame.
+        // 2×N lists the other volumes, so a Mac with one volume is not offered
+        // it: it would be 2×1 with a taller frame.
         if size == .tall, model.volumes.count < 2 { return nil }
         return AnyView(DiskWidget(model: model, size: size))
     }

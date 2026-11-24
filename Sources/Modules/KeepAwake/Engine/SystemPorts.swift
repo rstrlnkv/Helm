@@ -14,18 +14,14 @@ final class IOKitSleepAssertions: SleepAssertions {
     private var hasSystemAssertion = false
     private var hasDisplayAssertion = false
 
-    /// The backstop, for the same reason `IOPSPowerInfo` below has one and
-    /// `CGKeyTap` now does: `deactivate()` is the ordinary route and covers the
-    /// module being switched off, and it is not the only way this object is let
-    /// go. An assertion nobody gives back is held until the process exits — so
-    /// dropping the engine any other way left a Mac that would not sleep, with
-    /// the settings page saying Keep Awake was off.
+    /// The backstop: `deactivate()` is the ordinary route, and it is not the
+    /// only way this object is let go. An assertion nobody gives back is held
+    /// until the process exits — a Mac that will not sleep, with the settings
+    /// page saying Keep Awake is off.
     deinit { release() }
 
-    /// - Returns: whether everything asked for is now held. The `IOReturn` was
-    ///   read only to decide whether to keep the id, and thrown away as an
-    ///   *answer*: a refusal here is a Mac that sleeps while every surface says
-    ///   Helm is holding it awake.
+    /// - Returns: whether everything asked for is now held. A refusal here is a
+    ///   Mac that sleeps while every surface says Helm is holding it awake.
     func preventSleep(display: Bool) -> Bool {
         if !hasSystemAssertion, let id = take("PreventUserIdleSystemSleep", "Helm: keep the Mac awake") {
             systemAssertionID = id
@@ -37,13 +33,9 @@ final class IOKitSleepAssertions: SleepAssertions {
             displayAssertionID = id
             hasDisplayAssertion = true
         }
-        // **The call makes the world match its argument.** It used to only ever
-        // add: `display: false` created nothing and released nothing, so an
-        // assertion taken when the setting was on stayed up after it went off,
-        // and the display never slept. Nothing was broken by that only because
-        // `reconcileActiveSettings` releases everything first and re-applies —
-        // a pair somebody has to remember to balance, in the module whose worst
-        // failure is a Mac that will not sleep.
+        // **The call makes the world match its argument**, so `display: false`
+        // gives back a display assertion taken while the setting was on. No
+        // caller has to remember to release first.
         if !display, hasDisplayAssertion {
             give(&displayAssertionID)
             hasDisplayAssertion = false
@@ -117,26 +109,21 @@ final class IOPSPowerInfo: PowerInfoPort {
     private var runLoopSource: CFRunLoopSource?
     private var onChange: (@Sendable () -> Void)?
 
-    /// The reading itself moved to `PowerSource` in `HelmRuntime` when
-    /// background scans needed it too — a second IOKit read written in the
-    /// coordinator is the duplication that target exists to stop.
+    /// The reading itself is `PowerSource`'s, in `HelmRuntime`, shared with the
+    /// background scans. This port is what lets Keep Awake's tests hand the
+    /// engine any battery, and its notification half has no equivalent in
+    /// `PowerSource`.
     ///
-    /// This port stays. It is what lets Keep Awake's tests hand the engine a
-    /// battery that does whatever the test needs, and the notification half
-    /// below has no equivalent in `PowerSource`: a scan asks once a minute and
-    /// has nothing to subscribe to.
-    ///
-    /// Nil still means "IOKit would not answer", and the battery guard still
-    /// reads that as no reading at all rather than as a flat battery.
+    /// Nil means "IOKit would not answer", and the battery guard reads that as
+    /// no reading at all rather than as a flat battery.
     func snapshot() -> (onBattery: Bool, percent: Int)? {
         guard let reading = PowerSource.current() else { return nil }
         return (onBattery: reading.onBattery, percent: reading.percent)
     }
 
     /// The other question, which `snapshot()` cannot answer — the protocol has
-    /// why. An independent read rather than a fold of the battery reading: this
-    /// used to be `PowerSource.isOnMains`, whose nil-means-mains fold belongs to
-    /// the background scan and was silently deciding this module's questions too.
+    /// why. Not `PowerSource.isOnMains`: its nil-means-mains fold belongs to the
+    /// background scan, and this module fails toward sleep instead.
     func supply() -> PowerSource.Supply? { PowerSource.supply() }
 
     func startObserving(_ onChange: @escaping @Sendable () -> Void) {
@@ -176,13 +163,10 @@ final class IOPSPowerInfo: PowerInfoPort {
 // MARK: - ScreenParamsObserver
 
 final class ScreenParamsObserver: DisplayObserverPort {
-    /// Held so it can be taken back out — the same reason `WorkspaceAppPort`
-    /// twenty lines below holds its own, and for the same defect: every enable
-    /// of the module left another block registered for the life of the
-    /// process. `[weak self]` is not the answer here, because the block
-    /// captures the caller's closure and not this object, so nothing decayed;
-    /// the observers simply accumulated and the display callback ran once per
-    /// enable, quietly.
+    /// Held so it can be taken back out; otherwise every enable of the module
+    /// leaves another block registered for the life of the process.
+    /// `[weak self]` would not help: the block captures the caller's closure,
+    /// not this object.
     private var token: NSObjectProtocol?
 
     deinit { stopObserving() }
@@ -207,16 +191,14 @@ final class ScreenParamsObserver: DisplayObserverPort {
 // MARK: - WorkspaceAppPort
 
 final class WorkspaceAppPort: AppRunningPort {
-    /// Held so the observers can be taken back out. Without this, switching
-    /// the module off and on stacked another pair each time — the same defect
-    /// `LayoutEngine.deactivate` documents.
+    /// Held so the observers can be taken back out; otherwise switching the
+    /// module off and on stacks another pair each time.
     private(set) var tokens: [NSObjectProtocol] = []
 
     deinit { stopObserving() }
 
-    /// Through `RunningApps` for the same reason the VPN port is: this one is
-    /// only ever reached from the main thread today, and "only ever, today" is
-    /// exactly what was true of the other one.
+    /// Through `RunningApps`, the one reader of running apps
+    /// (`Architecture/RunningOtherPrograms.md § Running applications`).
     func runningBundleIDs() -> Set<String> { RunningApps.shared.bundleIDs() }
 
     func startObserving(_ onChange: @escaping @Sendable () -> Void) {
@@ -283,7 +265,7 @@ final class PmsetClamshellPort: ClamshellPort {
 
     /// The two arguments are the seam a test reads the port through: which
     /// command each half sends to root and how the outcome is read cannot be
-    /// seen from outside otherwise, and swapping them stayed green.
+    /// seen from outside otherwise.
     init(sudoersPath: String = SudoersRule.installedPath,
                 privileged: @escaping @Sendable (String) -> PrivilegedOutcome = { PrivilegedRun.run($0) },
                 pmset: @escaping @Sendable () -> HelmProcess.Result = { HelmProcess.run(PmsetClamshellPort.pmsetPath, ["-g"]) }) {
@@ -298,10 +280,7 @@ final class PmsetClamshellPort: ClamshellPort {
     }
 
     /// The words come from `SudoersRule`, because the rule has to spell the same
-    /// ones: `sudo` matches a command spec argument for argument, so two
-    /// spellings of this call are a name only one side ever changes — and the
-    /// drift is an error nowhere, it is a call that quietly starts asking for a
-    /// password again.
+    /// ones (`SudoersRule.disableSleepArguments`).
     func setDisableSleep(_ on: Bool) -> Bool {
         withoutPassword(SudoersRule.disableSleepArguments(on: on)) == 0
     }
@@ -316,9 +295,7 @@ final class PmsetClamshellPort: ClamshellPort {
     }
 
     /// Existence, not contents: the file is installed 0440 root:wheel, so
-    /// reading it as the user always fails. Answering "not installed" every time
-    /// meant the admin prompt came back every session, and the removal added
-    /// alongside it could never run at all.
+    /// reading it as the user always fails.
     func isSudoersInstalled() -> Bool {
         FileManager.default.fileExists(atPath: sudoersPath)
     }
@@ -339,20 +316,16 @@ final class PmsetClamshellPort: ClamshellPort {
                 done(false)
                 return
             }
-            // The rule text goes to root, never a path root should read it from.
-            // Staging it in $TMPDIR and passing the path meant root installed
-            // whatever was at that path at the moment `install` ran, and the
-            // path stood in `ps auxww` for the whole life of the password
-            // prompt (`SudoersRule` has the rest). Everything now happens
-            // inside root-owned /etc/sudoers.d.
+            // The rule text goes to root, never a path root should read it from
+            // (`SudoersRule` has why). Everything happens inside root-owned
+            // /etc/sudoers.d.
             done(privileged(SudoersRule.installCommand(user: user)) == .done)
         }
     }
 
     /// Takes the rule back out with the rule's own grant. A permanent grant of
     /// passwordless root for a setting the user has switched off is a grant no
-    /// one asked to keep — and Helm's predecessor left one behind on this very
-    /// machine.
+    /// one asked to keep.
     ///
     /// **The verdict is the second `fileExists`, not sudo's exit status.** The
     /// question is whether the file is gone, and a reading taken before the act
@@ -363,9 +336,9 @@ final class PmsetClamshellPort: ClamshellPort {
         return !isSudoersInstalled()
     }
 
-    /// The withdrawal for a rule that cannot make it itself: one from before the
-    /// `rm` line existed, or one somebody else wrote. This is the one that puts
-    /// the administrator dialog on screen, so only a gesture may reach it.
+    /// The withdrawal for a rule that cannot make it itself: one with no `rm`
+    /// line, or one somebody else wrote. This is the one that puts the
+    /// administrator dialog on screen, so only a gesture may reach it.
     func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         let privileged = privileged, sudoersPath = sudoersPath
         DispatchQueue.global(qos: .userInitiated).async {

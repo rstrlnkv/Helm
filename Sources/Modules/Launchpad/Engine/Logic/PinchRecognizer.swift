@@ -10,8 +10,8 @@ public enum PinchOutcome: Equatable, Sendable {
     case complete, revert
 }
 
-/// What a hand did to the window, frame by frame: it began a scrub (`progress` 0 to 1, where 1 is what the old one-shot
-/// pinch needed), moved it, and ended it. At most one event comes from one frame.
+/// What a hand did to the window, frame by frame: it began a scrub (`progress` 0 to 1), moved it, and ended it.
+/// At most one event comes from one frame.
 public enum PinchEvent: Equatable, Sendable {
     case began(PinchDirection, progress: Double)
     case moved(Double)

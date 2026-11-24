@@ -3,18 +3,13 @@ import XCTest
 
 /// Grafting a measured folder in, then finding it again.
 ///
-/// These two units are used one after the other — the view model splices the
-/// fresh subtree, rebuilds the focus by path, and then asks for the chain down
-/// to the folder the user clicked. The splice and the chain are tested here, and
-/// what matters is that a node put in by one is reachable by the other, and
-/// that the shapes the whole-disk scan produces are among them.
-/// Past defect: fixed in commit 6c7f39b5.
+/// The view model splices the fresh subtree, rebuilds the focus by path, and
+/// asks for the chain down to the clicked folder: a node put in by the splice
+/// must be reachable by the chain, including in the shapes a whole-disk scan
+/// produces.
 final class DiskSpliceReachabilityTests: XCTestCase {
-    /// The whole-disk scan is rooted at "/", where every other path arithmetic
-    /// bug in this codebase has started: joining a child onto "/" with a plain
-    /// `+ "/" +` gives "//Users", and the prefix test then matches nothing at
-    /// all — the graft would silently do nothing on the one scan people
-    /// actually run.
+    /// The whole-disk scan is rooted at "/": a plain `+ "/" +` gives "//Users",
+    /// the prefix test then matches nothing, and the graft does nothing.
     func testGraftingIntoARootOfSlash() {
         let tree = entry("/", 10, [
             entry("/Users", 6, [entry("/Users/me", 6, [entry("/Users/me/Code")])]),
@@ -37,8 +32,7 @@ final class DiskSpliceReachabilityTests: XCTestCase {
         XCTAssertEqual(DiskTreeSplice.replacing("/a", with: entry("/a", 42), in: tree).bytes, 42)
     }
 
-    /// A direct child of "/" is the shallowest graft there is, and the one the
-    /// special case for "/" is easiest to get wrong on.
+    /// A direct child of "/", the shallowest graft there is.
     func testGraftingADirectChildOfSlash() {
         let tree = entry("/", 10, [entry("/Applications"), entry("/System")])
         let result = DiskTreeSplice.replacing("/Applications",
@@ -67,8 +61,8 @@ final class DiskSpliceReachabilityTests: XCTestCase {
 
     /// The sequence the view model performs: splice, rebuild the focus from the
     /// paths it was holding, then walk down to the folder that was clicked.
-    /// The entries in the focus are values copied out of a tree that has just
-    /// been replaced, so every step has to go back through paths.
+    /// The focus holds values copied out of the replaced tree, so every step
+    /// goes back through paths.
     func testTheFocusSurvivesTheGraft() {
         let tree = entry("/", 10, [
             entry("/Users", 6, [entry("/Users/me", 6, [entry("/Users/me/Code", 1)])]),

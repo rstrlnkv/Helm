@@ -2,13 +2,10 @@ import Foundation
 
 /// How a package is named once, everywhere.
 ///
-/// A formula and a cask can share a name — `docker` is both — so neither the
-/// row identity nor the description cache can be keyed by the name alone. The
-/// prefixed form was written out eight times across the module: three
-/// `Identifiable` conformances, the description lookup, and four more inside
-/// the batch that fills it. Nothing tied them together, and the failure of a
-/// disagreement is silent — descriptions arrive under keys the rows do not ask
-/// for, so every row simply has no description and no error is raised anywhere.
+/// A formula and a cask can share a name (`docker` is both), so neither the
+/// row identity nor the description cache can be keyed by the name alone. Every
+/// spelling of the key goes through here: a disagreement is silent, with
+/// descriptions filed under keys the rows never ask for.
 public enum BrewKey {
     public static func of(name: String, isCask: Bool) -> String {
         (isCask ? "c:" : "f:") + name
@@ -31,16 +28,12 @@ public struct PackageRef: Equatable, Sendable {
 public enum HomebrewAct: Equatable, Sendable {
     case install(PackageRef), uninstall(PackageRef)
     case upgrade(name: String), upgradeAll
-    /// The argv itself — `["uninstall", "periphery"]` — and the engine **judges
-    /// it again** before running it, against the installed list it reads at that
-    /// moment. The UI's own judgement decides what to draw and nothing else:
-    /// between the draw and the press a terminal can uninstall the very package
-    /// the button names (`HomebrewEngine.runDoctorFix`).
+    /// The argv itself (`["uninstall", "periphery"]`), which the engine
+    /// **judges again** before running it (`HomebrewEngine.runDoctorFix`).
     case doctorFix(argv: [String])
     case installBrew
-    /// End the running long operation, if any. The only way out of a brew that
-    /// will not finish — operations have no deadline, because an install may
-    /// honestly take an hour.
+    /// End the running long operation, if any: operations have no deadline,
+    /// because an install may honestly take an hour.
     case stop
 }
 
@@ -54,10 +47,7 @@ public enum HomebrewNews: Equatable, Sendable {
     /// Where the operation is now: running, done or failed.
     case state(OpState)
     /// Where brew is, said once when the module is switched on: `nil` is no brew.
-    /// A reading of the locator only, so it names nothing about the Cellar and
-    /// takes nothing off the marker (`HomebrewEngine.status`). It exists so the page's
-    /// first frame can be the right page, not the install screen until `readStatus`
-    /// has answered; whether it lands in time in the app is unproved
+    /// A reading of the locator only; it takes nothing off the marker
     /// (ARCHITECTURE.md § The model).
     case brew(path: String?)
 }
@@ -120,11 +110,9 @@ public struct BrewStatus: Equatable, Sendable {
 
 /// What `brew info --json=v2` knows about one package.
 ///
-/// A formula and a cask disagree about shape in three places — the install
-/// facts, the name, the licence — which is why `BrewInfoParser` reads the
-/// document by hand rather than through a synthesized decode: see that file's
-/// doc comment for why a struct here does not save the work it looks like it
-/// would.
+/// A formula and a cask disagree about shape in three places (the install
+/// facts, the name, the licence), which is why `BrewInfoParser` reads the
+/// document by hand.
 public struct PackageInfo: Equatable, Sendable {
     public let name: String
     public let isCask: Bool
@@ -136,10 +124,8 @@ public struct PackageInfo: Equatable, Sendable {
     /// What Homebrew would install right now — a formula's `versions.stable`,
     /// a cask's `version`. nil when the document names neither.
     ///
-    /// The only version a package that is **not** installed has: the lists the
-    /// page draws its first tier from carry a version for an installed package
-    /// and an outdated one, and `brew search` answers with names alone, so a
-    /// search hit has no version anywhere else in this module.
+    /// The only version a package that is **not** installed has: `brew search`
+    /// answers with names alone.
     public let latestVersion: String?
     public let installedVersion: String?
     public let installedAt: Date?
@@ -172,39 +158,26 @@ public enum OpPhase: String, Sendable { case idle, running, done, failed }
 
 /// Why a failed operation failed, when the engine knows more than an exit code.
 ///
-/// A named outcome, never silence: each of these used to be a bare `return` (a
-/// press that did nothing, visibly forever) or an exit code indistinguishable
-/// from a build failure. The engine names the reason; the UI owns the words, so
-/// the eight languages live where `L()` can reach them.
+/// A named outcome, never silence or a bare exit code. The engine names the
+/// reason; the UI owns the words, so the languages live where `L()` reaches.
 public enum OpFailureReason: String, Sendable, CaseIterable {
     /// brew vanished between `status()` and the press — Homebrew's own
     /// uninstaller ran in a terminal while Helm's window sat open.
     case brewMissing
     /// The person pressed Stop; the exit code is the signal, not a defect.
-    /// (A timed-out *query* never comes through here: queries answer nil, or
-    /// `descriptions` an empty dictionary, and the log names the outcome — an
-    /// operation state about no operation would loop the view model's
-    /// refresh-on-failure.)
+    /// (A timed-out *query* never comes through here: an operation state about
+    /// no operation would loop the view model's refresh-on-failure.)
     case stopped
-    /// A `brew doctor` fix the engine re-judged and would not run.
-    ///
-    /// The ordinary cause is the race this design exists for: the page drew a
-    /// button for `uninstall <name>` and the name left the Cellar before the
-    /// press — a terminal, or Helm's own uninstall of it. It also covers an
-    /// argv no entry on `DoctorFix.Allowed` admits, and a Cellar the engine
-    /// could not read at all, which is not a Cellar the name is in. A refusal
-    /// is an outcome and it is named: a press that answered nothing at all is
-    /// the defect this case exists against.
+    /// A `brew doctor` fix the engine re-judged and would not run: the name
+    /// left the Cellar before the press, the argv is not on
+    /// `DoctorFix.Allowed`, or the Cellar could not be read.
     case fixRefused
     /// Homebrew's installer needs Apple's Command Line Tools and they never
-    /// arrived: the person closed Apple's window without installing (Cancel,
-    /// Disagree, Stop, a network failure on Apple's side), or the request was
-    /// refused and the tools are still not there. Nothing was changed on the
-    /// Mac; pressing Install Homebrew again asks again.
+    /// arrived: Apple's window was closed without installing, or the request
+    /// was refused. Nothing was changed; Install Homebrew asks again.
     case toolsNotInstalled
-    /// The administrator dialog was answered no. A person's answer, not a
-    /// defect — apart from `prefixNotPrepared`, which is root being asked and
-    /// the script failing.
+    /// The administrator dialog was answered no: a person's answer, not a
+    /// defect.
     case authorizationDeclined
     /// Root was asked to create and hand over `/opt/homebrew` and the script
     /// failed. The exit code is on the state.
@@ -253,18 +226,16 @@ public enum DoctorSeverity: String, Sendable {
 
 /// One block from `brew doctor`'s answer, produced by `DoctorParser.parse`.
 ///
-/// `fix` is left nil by the parser — a command parsed out of a tool's output
+/// `fix` is left nil by the parser: a command parsed out of a tool's output
 /// is data, not an instruction, and judging one runnable is `DoctorFix.judge`'s
-/// job alone (the module's security surface for this feature), not something
-/// this struct or its parser may decide on construction.
+/// job alone.
 public struct DoctorIssue: Equatable, Sendable, Identifiable {
     public let severity: DoctorSeverity
     public let title: String
     public let body: String
     public let fix: DoctorFix?
     /// Built from content rather than position: two blocks with the same text
-    /// are the same issue, which is exactly the case `DoctorParser` collapses
-    /// before this is ever read.
+    /// are the same issue, which `DoctorParser` collapses.
     public var id: String { severity.rawValue + "\u{0}" + title + "\u{0}" + body }
     init(severity: DoctorSeverity, title: String, body: String, fix: DoctorFix? = nil) {
         self.severity = severity; self.title = title; self.body = body; self.fix = fix
@@ -274,11 +245,9 @@ public struct DoctorIssue: Equatable, Sendable, Identifiable {
 /// Which heading one `brew config` line is drawn under.
 ///
 /// **Ours, not Homebrew's.** `brew config` prints one flat list of
-/// `key: value` lines with no headings anywhere in it; the three groups are
-/// Helm's reading of that list, which is why their names are translated where
-/// the keys beside them never are. The mapping from key to group is
-/// `BrewConfigParser.sections` — hand-written, beside the parser, with a test
-/// naming every key this Mac produced.
+/// `key: value` lines with no headings; the three groups are Helm's reading,
+/// which is why their names are translated and the keys never are. The
+/// mapping is `BrewConfigParser.sections`.
 public enum ConfigSection: String, Sendable, CaseIterable {
     /// Homebrew's own installation: its version, its prefix, its checkout, the
     /// Ruby it vendors.
@@ -297,14 +266,12 @@ public enum ConfigSection: String, Sendable, CaseIterable {
 /// a translated key would name something a person could not then look up.
 public struct ConfigLine: Equatable, Sendable, Identifiable {
     public let key: String
-    /// Everything after the **first** `: ` — values carry colons of their own
-    /// (`https://github.com/Homebrew/brew`, `4.0.6 => /opt/homebrew/…/ruby`),
-    /// so a split on every separator loses the end of five of the eighteen.
+    /// Everything after the **first** `: `: values carry colons of their own
+    /// (`https://github.com/Homebrew/brew`, `4.0.6 => /opt/homebrew/…/ruby`).
     public let value: String
     public let section: ConfigSection
-    /// The key, because `brew config` prints each key once. Nothing selects a
-    /// line — the *group* is what the health list holds a row for — but the
-    /// conformance is what lets a `ForEach` draw them without an index.
+    /// The key, because `brew config` prints each key once; it lets a
+    /// `ForEach` draw the lines without an index.
     public var id: String { key }
     init(key: String, value: String, section: ConfigSection) {
         self.key = key; self.value = value; self.section = section
@@ -314,12 +281,10 @@ public struct ConfigLine: Equatable, Sendable, Identifiable {
 /// What `brew config` answered: the reading, **and the document it was read
 /// from**.
 ///
-/// Both, because two different things ask for them. The lines are a reading —
-/// regrouped under headings this app invented, and short of whatever the parser
-/// could not make a `key: value` of. `text` is the document, byte for byte as
-/// brew printed it, and it is what «Copy for a bug report» puts on the
-/// pasteboard: a bug report asks for what the tool said, not for Helm's reading
-/// of it: a parse is a reading and never the document.
+/// The lines are a reading, regrouped under Helm's headings and short of what
+/// the parser could not read. `text` is the document byte for byte, and it is
+/// what «Copy for a bug report» copies: a bug report asks for what the tool
+/// said, not for Helm's reading of it.
 public struct BrewConfig: Equatable, Sendable {
     public let lines: [ConfigLine]
     public let text: String

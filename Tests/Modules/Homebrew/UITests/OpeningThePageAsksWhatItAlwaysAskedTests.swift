@@ -32,7 +32,6 @@ private struct FixtureBrew: BrewLocator {
     func brewPath() -> String? { "/opt/fixture/bin/brew" }
 }
 
-/// Kept: the only test of what the first open and a return visit run through the real model and engine (`outdated` runs `brew update` first).
 @MainActor
 final class OpeningThePageAsksWhatItAlwaysAskedTests: XCTestCase {
 

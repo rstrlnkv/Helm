@@ -225,8 +225,8 @@ extension CaptureOverlay {
     /// Whether Crop is on, for a test and for nobody else.
     var isCropping: Bool { crop != nil }
 
-    /// A turn of the trackpad's rotate gesture, in degrees, counter-clockwise as AppKit reports it, while the ruler is on the picture. Whether the
-    /// non-activating panel is sent the gesture at all is not known; the ⌥-drag turns the strip without it.
+    /// A turn of the trackpad's rotate gesture, in degrees, counter-clockwise as AppKit reports it, while the ruler is on the picture.
+    /// The ⌥-drag turns the strip without it.
     func rotateRuler(by degrees: CGFloat, phase: NSEvent.Phase) {
         guard var strip = ruler, edit != nil else { return }
         if phase.contains(.ended) || phase.contains(.cancelled) { rulerTurn = nil; return }
@@ -281,9 +281,8 @@ extension CaptureOverlay {
         render()
     }
 
-    /// The input ends: the field goes, and its text is placed where the line began in the style picked now (`AnnotationEditing.place`:
-    /// one undo step, and none for an empty or blank text). Return, Esc, a press elsewhere, a palette action but a colour, a step or an opacity, an exit and
-    /// the panel losing key all come here; `close` drops the record without placing the text.
+    /// The input ends: the field goes, and its text is placed where the line began in the style picked now
+    /// (Architecture/ScreenshotsEditor.md § The blur and the text).
     func endTyping() {
         guard let held = typing else { return }
         typing = nil

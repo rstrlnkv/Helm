@@ -1,13 +1,8 @@
 import SwiftUI
 
-// **What a settings page may put in the header row of the card, said once here so
-// every module page says it the same way.** The row is drawn by `helmCardHeader`
-// (`HelmCardHeader.swift`) from `HelmHeaderContentKey`, a preference: the page and the row
-// live in one hosting view, so what a page declares travels up to the row and no object
-// in another target has to be reached.
-//
-// A module's UI target imports `HelmUI` and never `HelmApp` — so this file is where a
-// page-facing name has to live.
+// What a settings page may put in the header row of the card
+// (Architecture/ThePageHeader.md § What a page declares). A module's UI target
+// imports `HelmUI` and never `HelmApp`, so the page-facing names live here.
 
 /// One tab a page declares for the header row's tab strip, said as data
 /// rather than as a view, since a module's UI target cannot build
@@ -16,16 +11,13 @@ public struct HelmHeaderTab {
     /// Stable, and the value a segment's selection is compared against — not
     /// an index, which a tab list that ever reorders would silently mis-read.
     public let id: String
-    /// Localised already: every string that reaches a person in this app is
-    /// looked up once, at the page; `HelmHeaderTabs` draws `title` and speaks it to
-    /// VoiceOver as it is given and looks nothing up.
+    /// Localised already: `HelmHeaderTabs` draws and speaks it as given.
     public let title: String
     /// The SF Symbol the tab draws when the row's tabs are labelled by glyphs (`HeaderTabLabels`): alone, with the
     /// word in the tooltip, or beside the word (`HelmHeaderTabs`). Required, so no page has a tab without one.
     public let symbol: String
-    /// **A dot on the tab: this tab has something to say that the page below it does not shout.** False for every
-    /// tab that has nothing, so the pages that never say it draw as before. The tabs draw the dot beside the word
-    /// (`HelmHeaderTabs`). The page switches it by the same reading its own rows say the thing from, or the dot and the tab say different things.
+    /// **A dot on the tab: this tab has something to say that the page below it does not shout.** The page
+    /// sets it from the same reading its own rows say the thing from, or the dot and the tab disagree.
     public let needsAttention: Bool
     /// What the dot says, localised already, for VoiceOver (the tab's accessibility value); nil is the dot alone.
     public let attentionNote: String?
@@ -40,10 +32,8 @@ public struct HelmHeaderTab {
     }
 }
 
-/// One item in a `.menu`-kind `HelmHeaderAction`'s own submenu — a check
-/// beside a title, with a press of its own rather than the action's single
-/// `perform`: Leftovers' kind filter is the first caller, one checkmark per
-/// `StaleKind`.
+/// One item in a `.menu`-kind `HelmHeaderAction`'s submenu: a check beside a
+/// title, with a press of its own (Leftovers' kind filter, one per `StaleKind`).
 public struct HelmHeaderMenuItem {
     let id: String
     public let title: String
@@ -87,13 +77,10 @@ public struct HelmHeaderToggleFace: Equatable, Sendable {
 
 /// One button in the header row's run of actions (`HelmHeaderActions`).
 public struct HelmHeaderAction {
-    /// **What the action draws as and what pressing it does — one shape, not
-    /// three optionals a caller could set inconsistently.** A plain button
-    /// runs `perform` on a press; a toggle also carries its own current
-    /// state, read back into the glyph's tint; a menu has no single
-    /// `perform` at all, only the items inside it, each with its own — so a
-    /// menu that is also a toggle, or a toggle with a submenu, cannot be
-    /// written down.
+    /// What the action draws as and what pressing it does, as one shape rather
+    /// than three optionals: a button runs `perform`, a toggle also carries its
+    /// state, a menu has only its items' presses. A toggle with a submenu
+    /// cannot be written down.
     enum Kind {
         case button(() -> Void)
         case toggle(isOn: Bool, () -> Void)
@@ -105,30 +92,20 @@ public struct HelmHeaderAction {
     /// control has no other name.
     public let title: String
     let symbol: String
-    /// **Dimmed while it stays in the row, and inapplicable *there* rather
-    /// than inapplicable everywhere.** An action a page shows on only some of
-    /// its own tabs is out of the row's visible set on the rest
-    /// (`isVisible`), and on the tab where it belongs it is dimmed
-    /// until it can act.
+    /// Dimmed while it stays in the row: an action shown on only some tabs is
+    /// out of the visible set on the rest (`isVisible`), and dimmed on its own
+    /// tab until it can act.
     let isEnabled: Bool
-    /// **Whether this action belongs on the tab currently showing at all.**
-    /// `true` for an action every tab offers (Homebrew's Refresh); `false`
-    /// does not draw a button for it — the row still
-    /// reserves its width from the *declared* set regardless, which is
-    /// what keeps every other button still when this one appears or
-    /// disappears (`HelmHeaderActions`).
+    /// Whether this action belongs on the tab now showing. `false` draws no
+    /// button, but the row still reserves its width from the declared set, so
+    /// the other buttons stay put when it comes and goes (`HelmHeaderActions`).
     let isVisible: Bool
-    /// Spinning in the row while `true` — `.helmSteadySpin`, which
-    /// already honours Reduce Motion (`HelmMotion.swift`). Only the plain
-    /// `.button` initializer below takes this as a parameter: a toggle's own
-    /// state is what its glyph already reports, and a menu has no one glyph
-    /// whose state a spin would report on either, so both initializers below
-    /// leave it `false` and there is no way to write a spinning toggle or
-    /// menu down at all outside this target.
+    /// Spinning in the row while `true`, through `.helmSteadySpin`, which
+    /// honours Reduce Motion. Only the plain button takes it: a toggle's glyph
+    /// already reports its state, and a menu has no one glyph to spin.
     let isBusy: Bool
     let kind: Kind
-    /// Set only by the toggle initializer that takes one; nil for every other
-    /// action, which draws exactly as it did before there was a face.
+    /// Set only by the toggle initializer that takes one; nil for every other action.
     let toggleFace: HelmHeaderToggleFace?
 }
 
@@ -186,9 +163,7 @@ public struct HelmHeaderContent {
     /// rather than folded into one, for the reason a lone `Binding` never
     /// says whether there is anything to select from.
     public var selectedTab: Binding<String>?
-    /// **Dims the whole tab strip** — Uninstaller's during its review step, so
-    /// far the one caller — rather than any one tab: per-tab disabling was
-    /// never asked for, so there is nothing here to disable a tab by.
+    /// Dims the whole tab strip (Uninstaller's review step), not one tab.
     var tabsEnabled: Bool
     public var actions: [HelmHeaderAction]
     var search: HelmHeaderQuery?
@@ -233,12 +208,10 @@ struct HelmHeaderContentKey: PreferenceKey {
 }
 
 extension View {
-    /// **The one way a page's header content reaches the window.**
-    ///
-    /// **Now a preference, read by the header row in the card** (`helmCardHeader`, `HelmCardHeader.swift`):
-    /// the page sits in the same hosting view as the row, so what it declares travels up the tree and the row
-    /// reads it with `overlayPreferenceValue`, which asks nothing of the value — a `perform` closure is never
-    /// `Equatable`.
+    /// **The one way a page's header content reaches the window**: a preference
+    /// the card's header row (`helmCardHeader`) reads with
+    /// `overlayPreferenceValue`, which asks nothing of the value; a `perform`
+    /// closure is never `Equatable`.
     public func helmHeaderContent(_ content: HelmHeaderContent?) -> some View {
         preference(key: HelmHeaderContentKey.self, value: content)
             .preference(key: HelmPageHeaderFactsKey.self,

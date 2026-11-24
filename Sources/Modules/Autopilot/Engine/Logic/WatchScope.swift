@@ -35,16 +35,10 @@ public enum WatchScope {
 
     public static func allows(_ rawPath: String,
                               home: String = NSHomeDirectory()) -> Bool {
-        // Absolute first, before any resolution — the same opening guard, for
-        // the same reason, as `UserFileScope.isRemovable` and
-        // `ScanRoot.resolve`. `canonical` below builds a
-        // `URL(fileURLWithPath:)`, which resolves a relative path against the
-        // **process's working directory** and hands back something absolute, so
-        // canonicalizing first answers the question this guard is asking:
-        // measured with the working directory inside the home, `relative/path`
-        // and `""` were both allowed, and with it at `/` both were refused. A
-        // bundle launched by LaunchServices or launchd has `/`, which is why
-        // this was latent rather than live — and a gate whose verdict depends on
+        // Absolute first, before any resolution, as in
+        // `UserFileScope.isRemovable` and `ScanRoot.resolve`. `canonical` builds
+        // a `URL(fileURLWithPath:)`, which resolves a relative path against the
+        // **process's working directory**, and a gate whose verdict depends on
         // how the program was started is not a gate.
         let standardized = (rawPath as NSString).standardizingPath
         guard standardized.hasPrefix("/"), standardized != "/" else { return false }
@@ -84,9 +78,8 @@ public enum WatchScope {
     /// the gate judges where a path *leads*, so `/private/var/…`, a link to the
     /// folder and another case of one component are a single directory to it, and
     /// a comparison of the strings would call them two. Paths that are not
-    /// absolute are compared as they are spelled — `canonical` would resolve
-    /// them against the working directory, which is how the gate's own opening
-    /// guard came to exist.
+    /// absolute are compared as they are spelled, since `canonical` would
+    /// resolve them against the working directory.
     public static func sameFolder(_ a: String, _ b: String) -> Bool {
         let a = (a as NSString).standardizingPath, b = (b as NSString).standardizingPath
         guard a.hasPrefix("/"), b.hasPrefix("/") else { return a == b }
@@ -113,15 +106,10 @@ public enum WatchScope {
     /// `resolvingSymlinksInPath` gives up on the *whole* path the moment one
     /// component is missing: it stops following links and stops fixing case for
     /// the components that do exist, not merely for the missing tail. A rule's
-    /// destination is precisely the path that does not exist — "a rule that
-    /// names a folder is asking for that folder to exist" — so the gate was
-    /// reading destinations exactly as the plist spelled them, and the plist is
-    /// writable by any process running as the user.
-    ///
-    /// What that cost: `~/library/Application Support/Sorted` passed the home
-    /// test, missed `~/Library/` on case alone, and was allowed; the runner's
-    /// `createDirectory(withIntermediateDirectories:)` then put it inside the
-    /// real `~/Library` on a case-insensitive volume.
+    /// destination is often a path that does not exist yet, and read as spelled,
+    /// `~/library/Application Support/Sorted` would miss `~/Library/` on case
+    /// alone and be created inside the real `~/Library`.
+
     ///
     /// So the deepest ancestor that does exist is resolved and the missing tail
     /// is put back on it.

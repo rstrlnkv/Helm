@@ -11,17 +11,6 @@ import XCTest
 /// a threshold loose enough to survive two different Macs is loose enough to
 /// survive the bug. The reading has to be a difference between two runs of the
 /// same code over the same tree.
-///
-/// The original home-directory measurement stays on record, because it is what
-/// answered the suspicion this file began as: 365 615 entries, 12 667 kept,
-/// 8,5 MB grown — 24 bytes an entry, so the walk with no `autoreleasepool` was
-/// *not* the DiskScanner defect one framework call further out, and a pool here
-/// would have been added on the strength of the story rather than of a reading.
-/// That measurement was taken of a `FileManager` enumeration, and
-/// `testAResourceValuesLoopWithNoPoolCostsItsTreeAndNothingMore` holds it: the
-/// loop under the first case is `BulkWalk.walk` now, which carries the pools the
-/// rule asks for, and its threshold is what says the promotion did not put the
-/// cost back.
 final class WalkFootprintTests: XCTestCase {
 
     /// Small files below the size floor, so the walk looks at every one and
@@ -55,8 +44,7 @@ final class WalkFootprintTests: XCTestCase {
         _ = DuplicateScanner().walk(root.path, onProgress: nil)
 
         // The allocator's books, not `phys_footprint`: a walk of this size
-        // retaining every entry grows `size_in_use` by 190 bytes an entry and
-        // grows the footprint by nothing at all — the reading was taken.
+        // retaining every entry grows `size_in_use` and leaves the footprint flat.
         let before = AllocatorBooks.allocatedBytes()
         let files = DuplicateScanner().walk(root.path, onProgress: nil)
         let after = AllocatorBooks.allocatedBytes()
@@ -74,17 +62,10 @@ final class WalkFootprintTests: XCTestCase {
                      + "(%.0f bytes/entry)",
                      Self.looked, files.count, Double(after - before) / 1_048_576, perEntry))
 
-        // **The threshold sits between two measurements of this fixture**, taken
-        // three times each on the machine this was written on:
-        //
-        //     the walk as it is:                  0,0 MB grown, 3 bytes/entry
-        //     keeping what it only looked at:     2,0 MB grown, 261 bytes/entry
-        //
-        // 100 fails on the defect by a factor of two and a half and passes the
-        // healthy walk by thirty. The defect planted for the readings was the
-        // size floor deleted — every entry's `FileFacts` retained — which is the
-        // smallest way the walk can start scaling with the tree instead of with
-        // its answer.
+        // **The threshold sits between two readings of this fixture**: the walk
+        // as it is grows a few bytes an entry, and the walk with its size floor
+        // deleted — every entry's `FileFacts` retained, the smallest way it can
+        // start scaling with the tree — grows a few hundred.
         XCTAssertLessThan(perEntry, 100, """
             the walk is scaling with what it looked at rather than with the files it \
             kept — every entry is carrying something out of the loop. The loop is \
@@ -128,9 +109,9 @@ final class WalkFootprintTests: XCTestCase {
         let perEntry = Double(after - before) / Double(Self.looked)
         print(String(format: "resourceValues loop, %d entries: allocator grew %.1f MB (%.0f bytes/entry)",
                      Self.looked, Double(after - before) / 1_048_576, perEntry))
-        // Three runs alone read 0,0 MB grown, 3 bytes/entry; the same loop
-        // keeping every `URLResourceValues` it read grew 2,9 MB, 379 bytes/entry.
-        // 100 is the first case's ceiling, so the two loops are held to one figure.
+        // Alone the loop grows a few bytes an entry; keeping every
+        // `URLResourceValues` it read grows hundreds. 100 is the first case's
+        // ceiling, so the two loops are held to one figure.
         XCTAssertLessThan(perEntry, 100, """
             a resourceValues loop with no pool grew \(after - before) bytes over \(Self.looked) \
             entries (\(perEntry) bytes/entry) — the rule that says it needs none is no longer true.

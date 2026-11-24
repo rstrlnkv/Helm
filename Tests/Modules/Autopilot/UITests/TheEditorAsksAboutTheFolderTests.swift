@@ -7,9 +7,9 @@ import XCTest
 ///
 /// The engine's half is `ADryRunIsOfTheFolderNotOfOneRuleTests`: a folder read
 /// top to bottom, first match wins, every row naming the rule that takes it.
-/// This is what the page does with that — it sends the folder rather than one
+/// This is what the page does with that: it sends the folder rather than one
 /// rule out of it, and it draws the rows another rule takes apart from its own,
-/// because a list where they are one is the same promise the old preview made.
+/// or the list would promise this rule files it will never get.
 @MainActor
 final class TheEditorAsksAboutTheFolderTests: XCTestCase {
 
@@ -66,9 +66,8 @@ final class TheEditorAsksAboutTheFolderTests: XCTestCase {
         XCTAssertEqual(model.previewByOtherRules.map(\.name), ["notes.pdf"])
     }
 
-    /// The measured case: every file goes to the rule above, and the editor has
-    /// nothing of its own to show. It used to show two rows and name where they
-    /// would go.
+    /// Every file goes to the rule above, and the editor has nothing of its own
+    /// to show.
     func testARuleThatGetsNothingShowsNothingOfItsOwn() async {
         let broad = rule("all", enabled: true)
         let mine = rule("mine")

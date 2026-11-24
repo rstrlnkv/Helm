@@ -5,10 +5,9 @@ import Foundation
 
 /// Everything the tour can do outside itself.
 ///
-/// One value rather than five arguments carried through two initialisers. The
-/// window's `show` was already at six and warned about; a fifth closure would
-/// have made it seven, and every one of them is the same kind of thing — a
-/// question the tour cannot answer and a change it cannot make.
+/// One value rather than a closure per question: each is a question the tour
+/// cannot answer or a change it cannot make, and the window's `show` would
+/// otherwise carry them all.
 ///
 /// Every field has a default, so a preview or a test names only the one it is
 /// about. The defaults are the harmless answers: every module on, no login
@@ -17,9 +16,9 @@ public struct WelcomeActions {
     var isModuleEnabled: (String) -> Bool
     var setModuleEnabled: (String, Bool) -> Void
     var isLaunchAtLogin: () -> Bool
-    /// Answers with what the login item **is** afterwards, not with what it was
-    /// asked to be: registration can be refused, and a tour switch that stays
-    /// where the finger left it is the same lie the settings page had.
+    /// Answers with what the login item **is** afterwards, not what it was
+    /// asked to be: registration can be refused, and a switch that stays where
+    /// the finger left it would be lying.
     var setLaunchAtLogin: (Bool) -> Bool
     /// Take somebody to that module's page, which is where whatever it offered
     /// to set up actually is.

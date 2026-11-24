@@ -2,9 +2,7 @@ import XCTest
 @testable import Module_Disk_Engine
 
 /// The inputs a tester reaches for first: nothing, one, enormous, negative,
-/// duplicated, and named in a way that breaks string handling. Every crash
-/// this module has shipped came from a value someone assumed could not occur —
-/// a negative device id, a path joined onto "/", a folder with no bytes.
+/// duplicated, and named in a way that breaks string handling.
 final class AdversarialInputTests: XCTestCase {
     // MARK: - Tree building
 
@@ -24,7 +22,7 @@ final class AdversarialInputTests: XCTestCase {
         let root = builder.build()
         XCTAssertEqual(root.bytes, 60)
         // Asked of the snapshot rather than the node: the path is composed on the
-        // way out now, so the string worth checking is the one the UI receives.
+        // way out, so the string worth checking is the one the UI receives.
         let entry = DiskEntry(root, depth: 2, path: "/r")
         XCTAssertTrue(entry.children.allSatisfy { $0.path.hasPrefix("/r/") },
                       "\(entry.children.map(\.path))")

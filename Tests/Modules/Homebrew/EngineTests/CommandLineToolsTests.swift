@@ -2,9 +2,8 @@ import XCTest
 @testable import Module_Homebrew_Engine
 
 /// The pure half of the wait for Apple's tools: whether they are on the Mac,
-/// and what one tick concludes. Nothing here starts a process or reads a disk —
+/// and what one tick concludes. Nothing here starts a process or reads a disk;
 /// the engine's side of the wait is `InstallWaitsForApplesToolsTests`.
-/// Kept: the only test of the wait for Apple's tools (`present`, `next`); no other class asserts a tick rule, so deleting it leaves the install wait unguarded.
 final class CommandLineToolsTests: XCTestCase {
 
     // MARK: - Reading

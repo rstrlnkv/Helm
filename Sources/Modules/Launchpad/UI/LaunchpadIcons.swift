@@ -15,8 +15,8 @@ import os
 ///
 /// **A redraw never evicts what it asked.** The bound is sized for what the live pages can ask at once, but a bound that is ever too
 /// small must not make a loop: an arrival evicts only an entry not asked since the last `onArrival` was said, so each redraw's asks
-/// stay until the next one, and what a redraw asks is drawn at most once more. (An `NSCache` evicts as it likes, which is how a page of
-/// full folders drew icons, evicted them for the next ones, and asked again for ever.) A drawing that answers nothing is remembered as
+/// stay until the next one, and what a redraw asks is drawn at most once more. (An `NSCache` evicts as it likes, so a page of full
+/// folders would evict its own icons and ask again for ever.) A drawing that answers nothing is remembered as
 /// failed until the next `invalidate`, and its slot stays empty, so no pass asks it again.
 ///
 /// **A result may not outlive what asked for it.** `removeAll` (the window is down) and a new scale or grid bump `generation`, empty the

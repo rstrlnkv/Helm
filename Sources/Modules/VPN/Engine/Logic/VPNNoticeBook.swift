@@ -10,23 +10,15 @@ import Foundation
 /// notice, a drop's notice, the ring — are single values an installed build
 /// already holds, and every card reads them until somebody changes that card
 /// (a card's choice writes only its own book entry, see
-/// `VPNSettings.noticeBook`).
-/// Moving them into per-connection records would take a one-time migration
-/// keyed to whichever configuration happened to be first, and this repository
-/// has paid for one-time writes before: they run twice, or never, and the
-/// evidence arrives weeks later. There is nothing to migrate here, so nothing
-/// can go wrong in the migration.
+/// `VPNSettings.noticeBook`). Per-connection records would need a one-time
+/// migration, and one-time writes run twice or never; this needs none.
 ///
-/// **Keyed by the configuration's id, never its name.** The module learned this
-/// the expensive way on the rules: a name is what somebody types in System
-/// Settings and can retype, and `VPNTenants.orphaned` exists because of it.
-/// `scutil --nc list` gives each service a UUID, `VPNConnection.id` carries it,
-/// and a rename costs nothing here.
+/// **Keyed by the configuration's id, never its name.** A name is what somebody
+/// types in System Settings and can retype (`VPNTenants.orphaned`);
+/// `VPNConnection.id` carries the service's UUID, so a rename costs nothing here.
 ///
-/// **Nothing prunes it.** `scutil` can answer with a short list or none at all —
-/// a refusal, a Mac mid-boot — and dropping every entry that did not match the
-/// current answer would throw away a person's choices on the strength of one bad
-/// read.
+/// **Nothing prunes it** (Architecture/VPN.md): one short or empty read would
+/// throw away a person's choices.
 public struct VPNNoticeBook: Equatable, Codable {
 
     /// One configuration's overrides. Every field is optional, and `nil` is the
@@ -43,12 +35,10 @@ public struct VPNNoticeBook: Equatable, Codable {
         var tintUp: String?
         var tintDown: String?
 
-        /// **Every field optional is the mechanism, and it is also what lets an
-        /// older document decode.** Swift synthesises `decodeIfPresent` for an
-        /// optional property, so a book written before these two fields existed
-        /// reads back with them `nil` — which means inherit. A non-optional
-        /// field with a default would have thrown instead, and `JSONDecoder`
-        /// gives up on the whole document rather than the one key (ARCHITECTURE.md § A value read back whole).
+        /// **Every field optional is the mechanism, and it is also what lets a
+        /// document missing a field decode**, with that field `nil` — inherit.
+        /// A non-optional field would throw, and `JSONDecoder` gives up on the
+        /// whole document (Architecture/StateAndLifetime.md § A value read back whole).
         var isEmpty: Bool {
             notice == nil && drop == nil && spin == nil
                 && tintUp == nil && tintDown == nil

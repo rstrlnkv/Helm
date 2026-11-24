@@ -3,22 +3,17 @@ import Foundation
 /// Is this pair still what the scan said it was?
 ///
 /// **Why anything asks.** The offer on screen is always older than the press
-/// that acts on it. Today that gap is minutes — a scan at 14:00, «Освободить»
-/// at 14:05 — and the engine trashes on the strength of the older reading. A
-/// background scan widens the gap to a day, and a hash cache widens it again by
-/// letting yesterday's digest stand in for today's file.
+/// that acts on it: minutes after a search, a day after a background scan, and
+/// longer when a hash cache lets an old digest stand in for today's file.
 ///
-/// The cost of being wrong here is not an inaccurate figure. Two files declared
-/// identical when they are no longer identical means one of them goes to the
-/// Trash and its contents are not preserved anywhere else. So the pair is read
-/// again, from disk, immediately before anything moves — a handful of files
-/// rather than the 70 GB a full search reads.
+/// Being wrong here does not cost a figure. If two files are called identical
+/// when they no longer are, one goes to the Trash and its contents exist
+/// nowhere else. So the pair is read again from disk just before anything
+/// moves: a handful of files, not a whole search.
 ///
-/// **No cache from before the press, ever, on this path.** That is the whole
-/// point: a digest older than the offer is exactly what this exists to
-/// distrust. The one memo `Batch` keeps — the survivor's reading, taken from
-/// disk inside the same removal — is bounded by the press itself; its comment
-/// says why that is not the cache this rule refuses.
+/// **No cache from before the press, ever, on this path.** A digest older than
+/// the offer is exactly what this exists to distrust. The one memo `Batch`
+/// keeps is bounded by the press itself; its comment says why.
 enum DuplicateVerification {
 
     enum Verdict: Equatable, Sendable {
@@ -42,24 +37,18 @@ enum DuplicateVerification {
 
     /// One removal's verifications, with the survivor read once per batch.
     ///
-    /// A group of N copies names the same survivor N−1 times, and reading it
-    /// fresh for every pair re-hashed one unchanging file N−1 times — tens of
-    /// seconds on a real video group, for readings that could only ever agree
-    /// with each other.
+    /// A group of N copies names the same survivor N−1 times; reading it fresh
+    /// for every pair would hash one unchanging file N−1 times.
     ///
     /// **What is memoised, and why it does not weaken the check.** Only the
-    /// *surviving* copy's reading — inode, size, digest — and only for the life
+    /// *surviving* copy's reading (inode, size, digest), and only for the life
     /// of one `Batch`, which one `trash` call creates and drops. The copy being
-    /// removed is never memoised: it is read from disk on every call, and in
-    /// full whenever its inode and size leave the pair able to be identical.
-    /// That is the guarantee the module advertises, and it is about the file
-    /// whose contents are about to stop existing anywhere else. The survivor stays on disk
-    /// whatever happens, so the freshness its reading needs is "within the
-    /// operation the person pressed the button for" — the memo's first pair
-    /// reads it from disk inside this same removal, before the last pair
-    /// asks. The cache the enum's doc comment refuses is the *scan's*
-    /// — a digest older than the offer, standing in for a file nobody re-read —
-    /// and nothing here outlives the press.
+    /// removed is read from disk on every call, in full whenever its inode and
+    /// size leave the pair able to be identical: its contents are the ones
+    /// about to stop existing. The survivor stays on disk whatever happens, so
+    /// its reading needs to be fresh only within the press, and the first pair
+    /// reads it from disk inside this same removal. The cache the enum refuses
+    /// is the *scan's*, and nothing here outlives the press.
     ///
     /// `@unchecked Sendable` because the engine's default `verifying` closure
     /// is `@Sendable` and captures one: the memo is mutated from the one serial

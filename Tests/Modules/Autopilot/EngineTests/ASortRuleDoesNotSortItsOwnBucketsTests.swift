@@ -4,22 +4,17 @@ import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
-/// **A sorting rule was handed the folders it had made itself.**
+/// **A sorting rule does not count the buckets of its own scheme as items.**
 ///
-/// From the owner's log: a rule sorting by kind puts every directory into
-/// `Folders/`, and `Folders/` is a directory. Every hour the rule planned to
-/// move `~/Downloads/Folders` inside itself, `RuleRunner.move` refused it
-/// `outOfScope` — correctly, a folder cannot be moved into itself — and the
-/// refusal was logged and written into the history again, forever. The gate was
-/// right; the rule was aiming at its own bucket.
+/// A rule sorting by kind puts every directory into `Folders/`, and `Folders/`
+/// is a directory. Counted as an item, every hour the rule would plan to move
+/// `~/Downloads/Folders` inside itself, `RuleRunner.move` would rightly refuse
+/// it `outOfScope`, and the refusal would fill the log and the history.
 ///
-/// So a sorting rule does not count the buckets of its own scheme as items. Not
-/// a refusal: a refusal is a thing that was going to happen and could not, and
-/// this was never going to happen. It is decided in `RulePlan`, the one value
-/// the dry run shows and the runner executes, so both agree without being asked
-/// to.
-///
-/// Past defect: fixed in 4b379093.
+/// Not a refusal: a refusal is a thing that was going to happen and could not,
+/// and this was never going to happen. It is decided in `RulePlan`, the one
+/// value the dry run shows and the runner executes, so both agree without being
+/// asked to.
 final class ASortRuleDoesNotSortItsOwnBucketsTests: XCTestCase {
 
     private let day = Date(timeIntervalSince1970: 1_800_000_000)
@@ -128,11 +123,9 @@ final class ASortRuleDoesNotSortItsOwnBucketsTests: XCTestCase {
     }
 }
 
-/// The same thing over a real folder, because the refusal in the owner's log
-/// was a whole sweep's — and because the dry run and the sweep read one value,
-/// which is only worth saying if something asks them both.
-///
-/// Past defect: fixed in 4b379093.
+/// The same thing over a real folder, because the refusal is a whole sweep's,
+/// and because the dry run and the sweep read one value, which is only worth
+/// saying if something asks them both.
 final class ASweepDoesNotOfferItsOwnBucketTests: XCTestCase {
 
     private var home: URL!
@@ -146,7 +139,7 @@ final class ASweepDoesNotOfferItsOwnBucketTests: XCTestCase {
         engine = AutopilotEngine.scratch(home: home.path)
     }
 
-    /// Every directory into `Folders/` — the rule from the log.
+    /// Every directory into `Folders/`.
     private func watched() -> WatchedFolder {
         WatchedFolder(id: "f", path: root.path, enabled: true, rules: [
             Rule(id: "r", name: "Folders", enabled: true, match: .all,

@@ -1,29 +1,16 @@
 import XCTest
 @testable import Module_Autopilot_Engine
 
-/// Two answers to "which numbers may a condition carry".
-///
-/// `accepts` was added today so the editor's field and the storage bound would
-/// stop drifting — its own comment says so, and says why `0` must be refused:
-/// "larger than 0 MB" is a condition that matches every file, which is not a
-/// rule anybody means. `clamp`, which is what actually decides what reaches the
-/// engine, was left alone and still admits `0` — and turns every negative into
-/// one.
-///
-/// `clamp`'s comment claims the two are the same rule and names the way in:
-/// "a value arriving from a hand-edited plist ends up where a typed one would".
-/// A rule with `"megabytes": -1` in the store is `larger than 0 MB` in the
-/// engine, on a timer, with nobody looking — which is the shape of the defect
-/// `FileWeight` was written for last week.
+/// Two answers to "which numbers may a condition carry": `accepts`, the
+/// editor's field, and `storable`, what reaches the engine. They agree, because
+/// "larger than 0 MB" matches every file, and a hand-edited `"megabytes": -1`
+/// would otherwise run that on a timer with nobody looking.
 final class RuleNumberBoundsTests: XCTestCase {
 
-    /// The sentence, as an assertion, about the thing that reaches the engine.
-    ///
-    /// `clamp` brings a number into the range `JSONEncoder` will take and does
-    /// not claim to match the field — a negative clamps to `0`, which the field
-    /// refuses. `storable` is where the field's rule is applied, and it drops a
-    /// condition it cannot repair rather than storing one that matches every
-    /// file in the folder.
+    /// What storage produces is what the field would take. `clamp` only brings a
+    /// number into the range `JSONEncoder` takes (a negative clamps to `0`, which
+    /// the field refuses); `storable` applies the field's rule and drops a
+    /// condition it cannot repair rather than storing one that matches every file.
     func testWhatStorageProducesIsWhatTheFieldWouldTake() {
         let hostile: [Double] = [-1e9, -1, 0, 0.5, 1, 1e9, 1e10, .infinity, -.infinity, .nan]
         for value in hostile {
@@ -42,8 +29,8 @@ final class RuleNumberBoundsTests: XCTestCase {
         }
     }
 
-    /// And what that costs. A size rule that reached storage as `0` is true of
-    /// every file in the watched folder, whatever the action beside it is.
+    /// A size rule that reached storage as `0` would be true of every file in
+    /// the watched folder, whatever the action beside it.
     func testASizeConditionCannotBeStoredInAFormThatMatchesEverything() {
         let condition = RuleCondition.size(.largerThan, megabytes: -1).storable
         let file = FileFacts(name: "notes.txt", path: "/Users/x/Downloads/notes.txt",
@@ -51,8 +38,8 @@ final class RuleNumberBoundsTests: XCTestCase {
                              added: Date(timeIntervalSince1970: 0),
                              modified: Date(timeIntervalSince1970: 0),
                              now: Date(timeIntervalSince1970: 0))
-        // `storable` now drops such a condition rather than repairing it, so
-        // the rule is left with none — and `RuleMatcher` refuses those.
+        // `storable` drops such a condition rather than repairing it, so the
+        // rule is left with none — and `RuleMatcher` refuses those.
         let rule = Rule(id: "r", name: "Big files", enabled: true,
                         conditions: [condition].compactMap { $0 }, action: .trash)
 
@@ -62,7 +49,7 @@ final class RuleNumberBoundsTests: XCTestCase {
         XCTAssertNil(condition, "an unusable number is dropped, not brought up to zero")
     }
 
-    /// The guard on the other side, so a fix cannot be bought by refusing
+    /// The guard on the other side, so the bound cannot be met by refusing
     /// everything: an ordinary number survives storage unchanged.
     func testAnOrdinaryNumberIsStoredAsItself() {
         XCTAssertEqual(RuleCondition.clamp(30), 30)

@@ -3,12 +3,11 @@ import XCTest
 
 /// The history has one job: answer "what happened to my file" a week later.
 ///
-/// `ActionRecord.of` already knows that an outcome which repeats on every sweep
-/// must not be written down — `.alreadyDone` returns nil, and the reason given
-/// is that "recording that would bury the day's real work under it". A refusal
-/// and a failure repeat on exactly the same schedule and for exactly the same
-/// reason: nothing about the file changed, so the next sweep decides the same
-/// thing. Neither is filtered, and 500 rows is not many hours of that.
+/// An outcome that repeats on every sweep must not bury the day's real work:
+/// `ActionRecord.of` returns nil for `.alreadyDone`. A refusal and a failure
+/// repeat on the same schedule for the same reason (nothing about the file
+/// changed, so the next sweep decides the same thing), and 500 rows of them
+/// would be gone in a few weeks of hourly sweeps.
 final class ActionHistoryFloodTests: XCTestCase {
 
     private func hour(_ n: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(n) * 3_600) }
@@ -49,8 +48,8 @@ final class ActionHistoryFloodTests: XCTestCase {
                       + "file refusing, the only thing Autopilot actually did is gone")
     }
 
-    /// The same defect where the page states it first: the headline over the
-    /// list. One file was moved inside the window, so a summary of that window
+    /// Where the page states it first: the headline over the list. One file
+    /// was moved inside the window, so a summary of that window
     /// that says nothing was moved is wrong about the month.
     func testTheSummaryStillKnowsAFileWasMoved() {
         let now = hour(30 * 24)

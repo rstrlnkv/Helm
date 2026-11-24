@@ -5,7 +5,7 @@ import XCTest
 
 /// **Each tool keeps its own colour; only the fill stays everybody's.**
 ///
-/// The colour was one `editorInk` for every tool, so a pick with the Pen recoloured the Marker. The colour is now kept like the
+/// A pick with the Pen must not recolour the Marker. The colour is kept like the
 /// thickness and the opacity (`EachToolKeepsItsOwnThicknessAndOpacityTests`): one record per tool, read by walking the tools
 /// there are and asking the record about each, never by walking the record. The record is a table from the tool's raw value to
 /// three numbers, under `Key.editorInkByTool`, whose value is spelled out once below: a deployed key is never re-keyed. Where the test can say "a tool's colour is no other tool's"

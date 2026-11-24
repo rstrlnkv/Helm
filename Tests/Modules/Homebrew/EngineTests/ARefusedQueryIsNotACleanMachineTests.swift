@@ -3,41 +3,23 @@ import XCTest
 import HelmContract
 @testable import Module_Homebrew_Engine
 
-/// **A tool's refusal read as a success.**
+/// **A tool's refusal is not an empty answer.**
 ///
-/// `ATimedOutQueryIsANamedRefusalTests` pinned one way a query can fail to
-/// answer — the runner's own deadline — and the engine handles that one: the
-/// status is compared against `HelmProcess.timedOutStatus` and the query
-/// answers nil. It is the *only* status the query path looks at. Every other
-/// exit code is dropped on the floor and whatever came back on stdout is handed
-/// to a parser, so a `brew` that refused with an empty stdout becomes an empty
-/// list, which the page draws as a fact about the machine:
+/// A `brew` that exits non-zero with an empty stdout must answer nil, not a
+/// parsed empty list the page draws as a fact about the machine:
 ///
 ///   * `listInstalled` → "No packages installed." over a full Cellar;
-///   * `outdated` → "Everything is up to date." over thirty held-back updates,
-///     and «Updates: 0» in the status line.
+///   * `outdated` → "Everything is up to date." over held-back updates, and
+///     «Updates: 0» in the status line.
 ///
-/// A refusal is not hypothetical: `brew` exits non-zero whenever the trouble is
-/// about the tool rather than about the question — a broken tap, a Ruby error, a
-/// Cellar it cannot read, another brew holding the lock, which is a state this
-/// module reaches by *itself* since a child brew survives the app
-/// (`AQuitMidOperationIsReportedTests`). Those causes are named from what brew
-/// documents, not measured here; what *was* measured on this Mac is in the last
-/// test. Either way the sentence explaining a refusal goes to stderr, and
-/// `HelmProcess` sends stderr to `nullDevice` — so the exit code is the only
-/// thing left that knows anything went wrong.
+/// `brew` exits non-zero when the trouble is about the tool: a broken tap, a
+/// Ruby error, an unreadable Cellar, another brew holding the lock (which this
+/// module reaches by itself, since a child brew survives the app). Its sentence
+/// goes to stderr, which `HelmProcess` discards, so the exit code is all that is
+/// left. Nil means "could not answer": the view model keeps its list and Refresh
+/// stays live.
 ///
-/// The module already has a word for "could not answer" and it is nil: the
-/// view model keeps the list it had, Refresh stays live.
-/// These tests ask for that word
-/// where today there is a confident empty list.
-///
-/// **`search` is deliberately excluded, and the last test says why.** Measured
-/// against the Homebrew on this Mac (6.0.18): `brew search --formula -- <no
-/// match>` exits **1** with empty stdout — a non-zero exit is how brew spells
-/// "nothing found" for that one subcommand, so nil-ing every non-zero exit
-/// would turn every fruitless search into "the module could not answer".
-/// Kept: guards the defect fixed in 7006109b fix(homebrew): four refusals the module read as good news.
+/// **`search` is excluded, and the last test says why.**
 final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
 
     // MARK: - The installed list
@@ -53,9 +35,8 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
             """)
     }
 
-    /// The half that is easy to miss: two children, and only the second one
-    /// refuses. Today the formulae are kept and every cask silently disappears
-    /// from the page — a worse answer than nothing, because it looks complete.
+    /// Two children, and only the second refuses: the formulae must not be kept
+    /// while every cask silently disappears, a list that looks complete.
     func testACaskListRefusedDoesNotSilentlyDropEveryCask() {
         let runner = ScriptedRunner(answers: [BrewAnswer(["list", "--formula"], 0, "wget 1.25.0\n"),
                                  BrewAnswer(["list", "--cask"], 1, "")])
@@ -68,8 +49,8 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
             """)
     }
 
-    /// The control that keeps the fix honest: a machine with nothing installed
-    /// is `brew` exiting **0** with no output, and that is still an answer.
+    /// The control: a machine with nothing installed is `brew` exiting **0**
+    /// with no output, and that is still an answer.
     func testAMachineWithNothingInstalledStillAnswers() {
         let answer = brewEngine(ScriptedRunner(answers: [BrewAnswer(["list"], 0, "")])).listInstalled()
         XCTAssertNotNil(answer, "an honestly empty Cellar was reported as unreadable")
@@ -103,12 +84,9 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
     }
 
     /// **Every field of `--json=v2`'s root is optional, so any JSON object at
-    /// all decodes to "nothing is outdated".** A newer brew that renames or
-    /// re-nests the arrays exits 0, prints a document this decoder reads
-    /// perfectly, and the module reports a machine with no updates for ever —
-    /// no throw, no log, nothing to notice. The shape below is the same data
-    /// under a name from a hypothetical v3; what matters is that it carries
-    /// outdated packages and this parser sees none.
+    /// all would decode to "nothing is outdated".** A newer brew that renames
+    /// the arrays exits 0 and prints a readable document; the shape below is the
+    /// same data under a hypothetical v3 name, and must not read as up to date.
     func testJSONFromANewerBrewIsNotAnUpToDateMachine() {
         let payload = """
         {"outdated":{"formulae":[{"name":"deno","installed_versions":["2.9.3"],\
@@ -122,18 +100,16 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
             """)
     }
 
-    /// Bytes that stop mid-document — a child killed mid-write, a pipe cut.
-    /// `JSONDecoder` gives up on the whole document, and `try?` turns that into
-    /// an empty list.
+    /// Bytes that stop mid-document, a child killed mid-write: `JSONDecoder`
+    /// gives up on the whole document, and that is no empty list.
     func testATruncatedAnswerIsNotAnUpToDateMachine() {
         let payload = #"{"formulae":[{"name":"deno","installed_versions":["2.9.3"]"#
         let answer = brewEngine(ScriptedRunner(answers: [BrewAnswer(["outdated"], 0, payload)])).outdated()
         XCTAssertNil(answer, "a truncated JSON document was read as a machine with no updates")
     }
 
-    /// The control on the other side: `{"formulae":[],"casks":[]}` is exactly
-    /// what brew prints when everything really is current, and it must stay an
-    /// answer rather than becoming a refusal.
+    /// The control: `{"formulae":[],"casks":[]}` is what brew prints when
+    /// everything is current, and it stays an answer.
     func testAnHonestlyCurrentMachineStillAnswers() {
         let payload = #"{"formulae":[],"casks":[]}"#
         let answer = brewEngine(ScriptedRunner(answers: [BrewAnswer(["outdated"], 0, payload)])).outdated()
@@ -143,15 +119,14 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
 
     // MARK: - Why search is not in this family
 
-    /// Measured, not assumed (Homebrew 6.0.18, this Mac):
+    /// Measured against a real brew:
     ///
     ///     $ brew search --formula -- zzqqxxnope ; echo $?
     ///     1                       ← and nothing on stdout
     ///
-    /// So for `search` a non-zero exit is brew's way of saying "no matches",
-    /// and an empty list is the honest answer. This test exists so that a fix
-    /// for the two above cannot be «nil on any non-zero status», which would
-    /// turn every search that finds nothing into a module that cannot answer.
+    /// For `search` a non-zero exit is brew's "no matches", and an empty list is
+    /// the honest answer. The rule for the two above therefore cannot be «nil on
+    /// any non-zero status».
     func testASearchThatFoundNothingIsStillAnAnswer() {
         let runner = ScriptedRunner(answers: [BrewAnswer(["search"], 1, "")])
         let answer = brewEngine(runner).search("zzqqxxnope")

@@ -5,9 +5,6 @@ import AppKit
 /// exists, so the panel is made key at the mouse's coming up, not at its going down. Never key for another window's
 /// click, nor when AppKit passes key on from a window that closed, nor with no event under way. Folded or single it
 /// never takes key: a click on a thumbnail must not take the person's typing from the app they are in.
-///
-/// That `makeKey` from a mouse-up on a non-activating panel gives it the keys while another app stays active is
-/// not measured.
 final class ShotPanel: BorderlessPanel {
     var isUnfolded: () -> Bool = { false }
 

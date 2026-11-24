@@ -2,12 +2,6 @@ import Foundation
 
 /// What the top of the page is showing, and therefore what it offers to do.
 ///
-/// The page used to open with three metric cells — `OFF · — · 0` before
-/// anything is configured — and not one control that could start or stop a
-/// session: the screen that reported the state was the only screen that could
-/// not change it. Two of those three cells were unreadable figures, which the
-/// house's own rule says are not drawn at all.
-///
 /// Four states rather than a `Bool` and some optionals, because each one wants
 /// different verbs: nothing running offers durations; a countdown offers more
 /// time and an end; a session with no deadline offers only an end; a session
@@ -41,11 +35,10 @@ public enum SessionHero: Equatable, Sendable {
     /// Whether what is holding the Mac is a session somebody started — the
     /// engine's `manualOn`, read back off the state it published.
     ///
-    /// Answered here rather than by whoever draws, because a session is exactly
-    /// what the first press of a two-step Stop ends (`StopPress`): with none
-    /// running there is no first step left to take, and the button is the
-    /// second one. Exhaustive on purpose — a fifth state would be a build error
-    /// here rather than a button quietly reading as the wrong step.
+    /// A session is exactly what the first press of a two-step Stop ends
+    /// (`StopPress`): with none running, the button is the second step.
+    /// Exhaustive on purpose — a fifth state is a build error here rather than
+    /// a button quietly reading as the wrong step.
     public var sessionRunning: Bool {
         switch self {
         case .idle, .automatic: return false
@@ -60,14 +53,10 @@ public enum SessionHero: Equatable, Sendable {
     /// is a list where a reason was wanted. `allCases` order decides which,
     /// so the answer does not change between two runs on one machine.
     ///
-    /// Three answers, not two. It used to be an optional condition, and `nil`
-    /// folded together the two cases that differ most: «nothing is holding this
-    /// Mac, so it goes to sleep» and «a rule is holding it and this timer is
-    /// about to pause that rule». The second is the whole point of «The timer
-    /// pauses the automation rules when it finishes» — and with that switch on,
-    /// the one state where it matters was the one state the page said nothing
-    /// in, because the note degenerated to «Timer until 16:03» and stopped
-    /// there.
+    /// Three answers, not an optional: «nothing is holding this Mac, so it
+    /// goes to sleep» and «a rule is holding it and this timer is about to
+    /// pause that rule» differ most, and the second is the whole point of «The
+    /// timer pauses the automation rules when it finishes».
     public enum AfterTimer: Equatable, Sendable {
         /// No rule applies; the session simply ends.
         case nothing

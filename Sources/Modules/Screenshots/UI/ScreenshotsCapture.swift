@@ -42,10 +42,8 @@ import Module_Screenshots_Engine
     /// and the running app sleeps.
     private let tick: (Duration) async throws -> Void
 
-    /// `session`, `presentOverlay`, `presentBar`, `toast` and `tick` are seams for a test,
-    /// which builds a session over fake ports, counts the presentations and holds
-    /// the countdown still; the running app passes the session `ScreenshotsWork` made and
-    /// gets the real ones for the rest.
+    /// `session`, `presentOverlay`, `presentBar`, `toast` and `tick` are seams for a test;
+    /// the running app passes the session `ScreenshotsWork` made and gets the real ones for the rest.
     init(store: NamespacedStore, session: CaptureSession,
          presentOverlay: @escaping (CaptureOverlay) -> Bool = { $0.present() },
          presentBar: @escaping (CapturePanel) -> Void = { $0.show() },
@@ -294,10 +292,8 @@ import Module_Screenshots_Engine
         }
     }
 
-    /// `picked`: the overlay was the panel's. With no timer the panel closes at the pick and the shot is delivered as the
-    /// overlay's result says (an area is cut from its freeze, a window is asked for by its id and cut from the freeze
-    /// only where the system gives none). With a timer the overlay goes at once and the panel stays with its ring until
-    /// the last second, when it closes and the shot is taken from the screen as it is then (`timedShot`).
+    /// `picked`: the overlay was the panel's. With a timer the shot is taken by `timedShot` after the ring
+    /// (Architecture/Screenshots.md § The capture panel).
     private func overlayFinished(_ result: OverlayResult, freeze: Freeze, picked: Bool = false,
                                  editing: ShotEdit? = nil) {
         if picked {
@@ -400,13 +396,9 @@ import Module_Screenshots_Engine
         toast.showRefusal(.captureFailed)
     }
 
-    /// What takes a picked target from the screen as it is **after** the countdown, or nil for a result that is no target.
-    /// A window is asked for again by its id, as at a click; the freeze of the pick stays for the cut a window that has
-    /// gone is saved from (a window closed during the wait is saved as it looked at the pick). An area is a rectangle of
-    /// one display, so the screen is frozen again and the same rectangle is cut from the same display, found by its UUID
-    /// as `RememberedSelection` does (by id where the system gave none). **A display that is gone, or no longer holds the
-    /// whole rectangle, is a refusal (`displayGone`), never a smaller picture than was drawn.** The old freeze is not
-    /// held through the wait.
+    /// What takes a picked target from the screen as it is **after** the countdown, or nil for a result that is no target
+    /// (Architecture/Screenshots.md § The capture panel). A display found by its UUID as `RememberedSelection` does (by id where the
+    /// system gave none); one that cannot hold the whole rectangle is `displayGone`. The old freeze is not held through the wait.
     private func timedShot(of result: OverlayResult, freeze: Freeze) -> (() async -> Void)? {
         switch result {
         case .window(let id, let shadow):
@@ -448,12 +440,7 @@ import Module_Screenshots_Engine
     // MARK: - The seam
 
     /// Where a finished picture is delivered: copied and/or saved, the shutter, the
-    /// thumbnail. A window or a whole display arrives here straight from the overlay
-    /// and asks for both; an area is **not** picked here any more — its seam is
-    /// `OverlayResult.edited`, which composes the editor's layers over the crop and
-    /// then calls this with the two things its exit asked for (Return asks for both
-    /// and so behaves as this always did, ⌘C only copies, ⌘S only saves). The
-    /// full-screen shortcut never came through here: it has no editor.
+    /// thumbnail. Which exit asks for what is Architecture/ScreenshotsEditor.md § Leaving the editor.
     ///
     /// `editing` marks the exit of an editor opened from the thumbnail: **a save then replaces that shot's file**,
     /// and the order of that replacement is the session's (`CaptureSession.deliver(…replacing:)`), not this

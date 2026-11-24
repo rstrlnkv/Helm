@@ -5,38 +5,20 @@ import Foundation
 import XCTest
 @testable import Module_VPN_Engine
 
-/// **`VPNDropSettle` deferred the announcement and not the forgetting.**
+/// **A blip that heals costs Helm neither the announcement nor the tunnel.**
 ///
-/// `refreshNow` does two things with a tunnel that is missing from `--nc list`:
-/// it strikes the configuration out of `_cameUp` and its name out of
-/// `_autoConnected` — «what Helm raised and is holding» — and it records the
-/// fall in `fellAt` so the verdict can be taken later. The settle window was
-/// added to the second half only. The first half still runs on the **first**
-/// read that sees the tunnel down, which is exactly the read the window exists
-/// to distrust: `ADropThatHealedIsNotAnnouncedTests` documents a
-/// NetworkExtension tunnel re-handshaking on a Wi-Fi change and coming back in
-/// three seconds, measured twice in two days of the owner's log.
-///
-/// So the blip is not announced — and it costs Helm the tunnel anyway. After it
-/// heals, `_cameUp` and `_autoConnected` are empty while the tunnel is up and
-/// Helm raised it, and nothing ever puts them back: the loop that re-adopts a
-/// connected tunnel is gated on `_autoConnected.contains(name)`, which the same
-/// read has just cleared. Everything downstream reads off those two books, so
-/// what the blip actually takes away is the **next** drop — the one this
-/// module's only interrupting notice exists for, and the one the person needs
-/// because they are now sending in clear having last been told they were not.
-///
-/// The three-second blip is the cheap case. Any tunnel that re-handshakes once
-/// spends the rest of the session unwatched.
-///
-/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
+/// `refreshNow` does two things with a tunnel missing from `--nc list`: it
+/// strikes it out of `_cameUp` and `_autoConnected` («what Helm raised and is
+/// holding») and records the fall in `fellAt` for the verdict. Both halves wait
+/// for `VPNDropSettle`: a NetworkExtension tunnel re-handshakes on a Wi-Fi change
+/// and is back in seconds (`ADropThatHealedIsNotAnnouncedTests`). Struck on the
+/// first read, the books stay empty after it heals, because the loop that
+/// re-adopts a connected tunnel is gated on `_autoConnected.contains(name)`, and
+/// the next real drop, the one this module interrupts for, is never announced.
 final class ABlipDoesNotCostHelmItsTunnelTests: XCTestCase {
 
-    /// Down for three seconds, up again — the measured blip — and Helm still
-    /// holds the tunnel afterwards.
-    ///
-    /// This is the mechanism, asserted where it lives. The test below is the
-    /// harm.
+    /// Down for three seconds, up again, and Helm still holds the tunnel
+    /// afterwards. This is the mechanism; the test below is the harm.
     func testAHealedBlipLeavesHelmStillHoldingTheTunnel() {
         let runner = FakeRunner()
         let clock = TestClock()
@@ -60,11 +42,7 @@ final class ABlipDoesNotCostHelmItsTunnelTests: XCTestCase {
     /// **The harm.** A blip that healed leaves the tunnel unwatched, so the loss
     /// that follows is never reported at all.
     ///
-    /// The second fall is a real one — down, and still down a whole window
-    /// later. Announced from a clean session (`ADropThatHealedIsNotAnnounced\
-    /// Tests.testATunnelThatStaysDownIsAnnouncedOnceTheWindowHasPassed`), and
-    /// silent here, with nothing between the two but a re-handshake the module
-    /// went out of its way not to announce.
+    /// The second fall is a real one: down, and still down a whole window later.
     func testTheRealDropAfterAHealedBlipIsStillAnnounced() throws {
         let runner = FakeRunner()
         let clock = TestClock()
@@ -96,14 +74,12 @@ final class ABlipDoesNotCostHelmItsTunnelTests: XCTestCase {
         XCTAssertEqual(firing.name, "work")
     }
 
-    /// **The boundary the brief names: a drop that heals exactly at the
-    /// deadline.**
+    /// **A drop that heals exactly at the deadline is healed.**
     ///
-    /// `VPNDropSettle.verdict` answers `.healed` for a tunnel that is up at any
-    /// age, and the engine schedules its one wake-up for exactly
-    /// `VPNDropSettle.window` after the fall — so the read that decides is the
-    /// one taken at the deadline itself, with the tunnel back. Up must win the
-    /// tie, or the notice fires on the very blip it was written to swallow.
+    /// The engine's one wake-up comes exactly `VPNDropSettle.window` after the
+    /// fall, so the read that decides is taken at the deadline itself. Up must
+    /// win the tie, or the notice fires on the very blip it was written to
+    /// swallow.
     func testATunnelBackAtTheDeadlineIsHealedRatherThanAnnounced() {
         let runner = FakeRunner()
         let clock = TestClock()

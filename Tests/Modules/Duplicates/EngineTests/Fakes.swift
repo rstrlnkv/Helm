@@ -10,13 +10,8 @@ import XCTest
 /// A verification mid-read: each call announces itself and then waits for the
 /// test, so the interleaving is chosen rather than raced. A check that answers
 /// on the spot is over before Stop can be pressed, so every assertion about
-/// «while it runs» would pass with the guard deleted.
-///
-/// The verdict is the caller's, because it was the only difference between the
-/// two copies of this class — `ParkedVerify` answering `.identical` and
-/// `ParkedUnreadableVerify` answering `.unreadable`, each private to its own
-/// file. A comment in the second called it «the same class with the other
-/// verdict», which is the note such a duplication is.
+/// «while it runs» would pass with the guard deleted. The verdict is the
+/// caller's.
 final class ParkedVerify: @unchecked Sendable {
     private let count = LockedCount()
     private let gate = DispatchSemaphore(value: 0)

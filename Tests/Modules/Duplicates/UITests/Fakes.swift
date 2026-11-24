@@ -14,8 +14,6 @@ import XCTest
 // synchronously is over before the code under test is reached, so nothing about
 // a search *in flight* — a cancellation, an older answer landing after a newer
 // one, a page that goes away mid-search — can be written down against it.
-// Merging the two would make `DuplicateSearchRaceTests` vacuous rather than
-// shorter.
 
 extension DuplicateGroup {
     /// A group where every copy occupies the same amount.
@@ -61,13 +59,9 @@ final class AnsweringWork: DuplicatesWork, @unchecked Sendable {
     private var overrides: [Call: Answer] = [:]
     private var seen: [Call] = []
     private var searched: [KeepPolicy] = []
-    /// The removals that reached the work: a plan names the copy that goes and
-    /// the copy it duplicates, and «the survivor was never sent» is a claim about
-    /// the payload rather than about the call.
-    ///
-    /// With the list of what stays: what a removal frees is arithmetic over the
-    /// copies that *stay*, and a fake that dropped that list could not tell a page
-    /// that names them from one that leaves the engine to guess.
+    /// The removals that reached the work, each with the list of what stays: «the
+    /// survivor was never sent» is a claim about the payload, and what a removal
+    /// frees is arithmetic over the copies that *stay*.
     private var planned: [(plans: [DuplicatePlan], staying: [String])] = []
     private var held: [(call: Call, continuation: CheckedContinuation<Void, Never>)] = []
 
@@ -95,7 +89,7 @@ final class AnsweringWork: DuplicatesWork, @unchecked Sendable {
 
     /// The engine answering again, or holding what it is asked. A port that can
     /// change while the app runs hands that state back rather than being fixed at
-    /// init (ARCHITECTURE.md § Ports and logic).
+    /// init (Architecture/ModulePattern.md § Ports and logic).
     func answers(_ next: Answer) { lock.withLock { answer = next } }
 
     /// The same, for one call only.
@@ -171,8 +165,7 @@ final class AnsweringWork: DuplicatesWork, @unchecked Sendable {
 // MARK: - Parks every search until released
 
 /// Parks every `find` until the test releases it, so the interleaving is chosen
-/// rather than raced. An assertion that holds only for a lucky delay is not a
-/// test.
+/// rather than raced.
 final class HeldWork: DuplicatesWork, @unchecked Sendable {
     private let lock = NSLock()
     private var parked: [CheckedContinuation<DuplicateFindings?, Never>] = []
@@ -241,8 +234,7 @@ func keepAndExtra(_ more: String...) -> DuplicateGroup {
 
 /// **In memory, never `UserDefaults.standard`.** The real store is the person's
 /// remembered folder; the runner's domain is `com.apple.dt.xctest.tool`, shared
-/// with every package tested on this machine, and 3028 keys had accumulated
-/// there before these tests stopped writing to it.
+/// with every package tested on this machine.
 ///
 /// The default folder is one nothing walks: a search that parks never reaches
 /// it, so only the fixtures that let a search finish name a real path.
@@ -255,20 +247,15 @@ func duplicatesStore(folder: String = "/some/folder") -> NamespacedStore {
 /// A view model over `work`, with a folder remembered, that has appeared as the
 /// page does.
 ///
-/// **The one place the seal key is injected, and it is not the person's.** The
-/// view model reads the keep policy through the same guard the engine reads it
-/// with, so a fixture left on the default would have every test in this target
-/// reach into the login keychain for `com.helm.app / settings-seal` and create
-/// it where it is absent. The machine is a boundary of its own, and a test does
-/// not write to it.
+/// **The one place the seal key is injected, and it is not the person's.** A
+/// fixture left on the default would have every test in this target reach into
+/// the login keychain for `com.helm.app / settings-seal` and create it where it
+/// is absent.
 ///
 /// **Behind `SealKeyCache`, because the page reads through `keyIfWarm()`.** A
-/// bare `SealKeyProbe` takes `SealKeyPort`'s default `keyIfWarm() -> nil`, so
-/// `SettingGuard.isWarm` is false for ever and `keepPolicyIfWarm` never answers
-/// — a keychain permanently mid-answer, which is a state the real one is never
-/// permanently in, and it made «the page opened on what is stored» unwritable
-/// through the shared fixture. The cache is what turns the one round trip
-/// `firstLoad` makes into a warm read, exactly as
+/// bare `SealKeyProbe` never goes warm, so `keepPolicyIfWarm` never answers
+/// (`TheSharedPageOpensOnWhatIsStoredTests`). The cache turns the one round
+/// trip `firstLoad` makes into a warm read, as
 /// `DuplicatesSettings.guardOfScanSettings` does in the app.
 /// - Parameter store: for the tests that have to put something in it first — a
 ///   sealed keep policy is written before the page exists, the way an earlier
@@ -316,10 +303,9 @@ func heldModel(_ work: HeldWork) -> DuplicatesViewModel {
     duplicatesModel(over: work, folder: "/some/folder")
 }
 
-/// A removal of `path` held open by a parked trash, which is the only way to be
-/// inside the window at all: a work that answers on the spot is over before
-/// anything can be pressed, and a test written against one would pass with the
-/// guard deleted. Returns the task so a test can wait for the removal's end.
+/// A removal of `path` held open by a parked trash, the only way to be inside
+/// the window: a work that answers on the spot is over before anything can be
+/// pressed. Returns the task so a test can wait for the removal's end.
 @MainActor @discardableResult
 func parkRemoval(marking path: String, in dvm: DuplicatesViewModel, over work: AnsweringWork,
                  file: StaticString = #filePath, line: UInt = #line) async -> Task<Void, Never> {

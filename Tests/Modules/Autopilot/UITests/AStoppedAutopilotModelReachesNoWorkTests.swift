@@ -11,7 +11,7 @@ import HelmTestSupport
 /// its init reads the rule store, and with it the keychain key, at every launch of
 /// a person who never opened Autopilot; a model that still answers a press after
 /// stop acts on the person's files (a sweep, a return) for a module they switched
-/// off. Defect class kept: the model does work at construction, or after stop.
+/// off. Guards: the model does work at construction, or after stop.
 ///
 /// Every absence is paired with a control on the same fake: the fake counts the
 /// same call while the model lives, so «nothing was called» cannot be a harness

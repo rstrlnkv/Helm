@@ -6,8 +6,6 @@ import XCTest
 /// nothing happened — 24 lines a day about nothing drown the trail — and a
 /// person's Run now is always answered, because a button that leaves no line
 /// cannot be told apart from a button that did not run.
-///
-/// Past defect: fixed in 79d2fc9e.
 final class SweepAnnouncementTests: XCTestCase {
 
     private func report(acted: Int = 0, refused: Int = 0, failed: Int = 0,
@@ -33,7 +31,7 @@ final class SweepAnnouncementTests: XCTestCase {
         XCTAssertTrue(line.contains("run now"), "nothing says a person asked for this: \(line)")
     }
 
-    // MARK: - The hourly sentinel: conditional, as it always was
+    // MARK: - The hourly sentinel: conditional
 
     func testAnHourlySweepThatDidNothingSaysNothing() {
         XCTAssertNil(SweepAnnouncement.line(for: report(examined: 12), manual: false),
@@ -45,7 +43,7 @@ final class SweepAnnouncementTests: XCTestCase {
         let line = try XCTUnwrap(SweepAnnouncement.line(for: report(acted: 3, refused: 1,
                                                                     failed: 1, examined: 7),
                                                         manual: false))
-        // The exact wording the log has always carried, so nothing greps differently.
+        // The exact wording, so whatever greps the log still finds it.
         XCTAssertEqual(line, "swept 7, acted 3, refused 1, failed 1")
     }
 

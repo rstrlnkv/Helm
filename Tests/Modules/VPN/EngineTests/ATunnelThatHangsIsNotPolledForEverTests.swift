@@ -5,26 +5,16 @@ import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
 
-/// The one thing between a tunnel that hangs and `scutil` being run for ever.
+/// The bound between a tunnel that hangs and `scutil` being run for ever.
 ///
-/// A connect schedules `pollUntilSettled`, which re-reads the list while
-/// anything is transitioning and stops at `maxPollAttempts`. Nothing tested any
-/// of it, and it could not be tested: `FakeRunner.listOutput` was a single
-/// constant, so the tool's answer never changed as a consequence of the command
-/// it had just been given, and «the tunnel came up on the third read» — which is
-/// what the real tool does, and the only reason the poll exists — was a state no
-/// test could write down. So the bound had no guard, and a `connecting` that
-/// never resolves is exactly the state this module already knows can last for
-/// good: `VPNCardAction` has a comment about it.
-///
-/// `listScript` is that repair, and these two tests are what it buys.
-///
-/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity».
+/// A connect schedules `pollUntilSettled`, which re-reads the list until the
+/// tunnel has settled into what was asked for and stops at `maxPollAttempts`.
+/// `FakeRunner.listScript` lets the tool's answer change read by read, as the
+/// real tool's does while a tunnel comes up.
 final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
 
-    /// `.inline`, like every other engine test here: the work queue runs the
-    /// poll's body straight through instead of after 0.7 s, so the whole poll
-    /// happens inside `connect` and its length is a number this test can read.
+    /// `.inline`: the poll's body runs straight through instead of after 0.7 s,
+    /// so the whole poll happens inside `connect` and its length can be read.
     private func engine(_ runner: FakeRunner) -> VPNEngine {
         VPNEngine(settings: VPNSettings.inMemory(),
                   runner: runner, apps: FakeApps(),
@@ -34,11 +24,9 @@ final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
 
     /// A server that never answers: the list says `Connecting` for ever.
     ///
-    /// The bound is asserted as a bound rather than as its exact value — 25 is a
-    /// judgement about IKEv2 handshakes and may be re-judged — but it is asserted
-    /// from **both** sides, because a poll that gives up at once is the defect
-    /// this loop replaced (a single 0.6 s re-read left the spinner stuck) and a
-    /// poll with no ceiling runs a subprocess until the app quits.
+    /// Asserted as a bound rather than its exact value, from **both** sides: a
+    /// poll that gives up at once leaves the spinner stuck, and a poll with no
+    /// ceiling runs a subprocess until the app quits.
     func testAConnectingTunnelIsPolledAndThenGivenUpOn() {
         let runner = FakeRunner()
         runner.listScript = [scutilListRow("Connecting")]
@@ -71,25 +59,11 @@ final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
                           + "\(runner.listReadCount) reads")
     }
 
-    /// **And the sequence the real tool actually produces, which ends the poll on
-    /// the first attempt.**
-    ///
-    /// `refreshNow`'s own comment says it: «the refresh that follows a connect
-    /// usually still reports the old status». `pollUntilSettled` reads that first
-    /// answer, asks `needsPoll` — is anything *transitioning* — is told no,
-    /// because `Disconnected` is not a transition, and stops. So the 25 attempts
-    /// that `maxPollAttempts`' comment says «cover slow IKEv2 handshakes» are
-    /// never spent on one: a slow handshake is precisely the case that reads
-    /// `Disconnected` first.
-    ///
-    /// What is left holding the page up to date is `DynamicStoreNetworkWatch` —
-    /// and its own failure path logs «no network-state session; the connection
-    /// list will only be re-read when Helm is asked». On that Mac the card stays
-    /// on «Disconnected» after a connect that worked, which is the same wrong
-    /// answer, in the same place, that the watcher was added to fix.
-    ///
-    /// Left red for the engineer: the exit condition wants to be «has it settled
-    /// into what was asked for», not «is something moving right now».
+    /// **The sequence the real tool produces: the old status first.** The read
+    /// after a connect usually still says `Disconnected`, which is not a
+    /// transition, so a poll that stopped when nothing was moving would never
+    /// wait for a slow handshake. The exit condition is «settled into what was
+    /// asked for».
     func testAConnectIsFollowedUpEvenWhenTheToolHasNotCaughtUpYet() {
         let runner = FakeRunner()
         runner.listScript = [scutilListRow("Disconnected"),   // the tool has not caught up yet
@@ -107,17 +81,10 @@ final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
                        + "comes up, and the only state the poll exists for")
     }
 
-    /// **This one cannot fail today, and it is here anyway — as a constraint on
-    /// the repair above, not as evidence about the present.**
-    ///
-    /// It passes because the poll stops after one read *whatever* happened, which
-    /// is the defect the test above is about. Proven so: it survived both
-    /// mutations that turned the other three red — the ceiling raised to 500 and
-    /// `needsPoll` forced to `false`. What it is for is the obvious wrong fix: an
-    /// exit condition of «keep reading until the tunnel is up» would spend all 25
-    /// attempts and 17 s of subprocesses on a name `scutil` has already said does
-    /// not exist. The precondition below *is* live, so this cannot rot into
-    /// passing on a module that has stopped reading refusals at all.
+    /// **Only a command the tool accepted is followed.** «Keep reading until the
+    /// tunnel is up» would spend every attempt on a name `scutil` has already
+    /// said does not exist. The precondition keeps this from passing on a module
+    /// that has stopped reading refusals.
     func testARefusedConnectIsNotPolledAsIfItHadStarted() {
         let runner = FakeRunner()
         runner.listScript = [scutilListRow("Disconnected")]

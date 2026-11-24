@@ -9,12 +9,11 @@ import HelmTestSupport
 ///
 /// `plan(for:)` asks `WatchScope` before `admits`, `fileExists` and
 /// `facts(of:)`. The runner's gate behind it refuses the same path, so what the
-/// first gate buys is not a different outcome but the absence of a read: a gate
-/// moved below `facts(of:)` refuses exactly the same files and records exactly
-/// the same nothing, while the metadata of a protected file has already been
-/// taken. The only place that read is visible from outside is the reader's
-/// `weigh` seam, which `facts(of:)` asks for every file it reads — so the seam
-/// records every path it is handed and the protected one must not be among them.
+/// first gate buys is not a different outcome but the absence of a read: below
+/// `facts(of:)` it would refuse the same files after the metadata of a protected
+/// file was taken. That read shows only at the reader's `weigh` seam, which
+/// `facts(of:)` asks for every file it reads, so the seam records every path it
+/// is handed and the protected one must not be among them.
 ///
 /// The shape is the one `AFolderReachedThroughALinkIsNotReadTests` builds:
 /// `~/Stuff` is a link to `~/Library`, the watched folder is `~/Stuff/Inbox`,

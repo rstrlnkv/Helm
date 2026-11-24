@@ -10,38 +10,14 @@ import XCTest
 
 /// **A measurement that refused must not take the last one with it.**
 ///
-/// Three places in this tree write the rule down and one of them is the code
-/// that breaks it.
-///
-/// `VPNEngine.lastSpeed`: «The last measurement taken on each tunnel … **What
-/// drops it is that tunnel going**, below» — and «below» is `forgetWhatIsGone`,
-/// which drops the entry when the tunnel is no longer up. That is the whole
-/// list of things that may drop a reading.
-///
-/// `HelmMeasuringSlot`, the card written for this state today: «When the run
-/// ends the ink comes back, and whatever number is there then — the new one,
-/// **or the old one if the tool refused** — arrives into a card brightening.»
-/// The demotion to `HelmText.quiet` is *designed* around the old figure still
-/// being there when the run ends, «because it is still the only reading the
-/// person has».
-///
-/// `VPNTunnelStrip`: the button reads «Measure again» while a figure is there
-/// and «Measure speed» when there is none, so the loss is visible in two places
-/// at once — the tile falls back to a dash and the button forgets it has ever
-/// been pressed.
-///
-/// What actually runs is `lastSpeed[id] = reading ?? nil`, and assigning nil to
-/// a `Dictionary` subscript **removes the key**. So the ordinary ending of a run
-/// on a link the tool could not characterise — the `-1009` this module's own
-/// `NetworkQualitySpeed` comment measured on 2026-08-18, a tool killed at its
-/// deadline, a half-written JSON `VPNSpeedReading.parse` refuses — erases the
-/// figure the person was reading a second earlier.
-///
-/// This is «a reading older than the act» read from the other end: nothing went
-/// stale, something that was still true was thrown away by an ending that had no
-/// news of its own.
-///
-/// Past defect: commit 97fd0d2e, «fix: four readings that said the opposite of what they knew».
+/// Only the tunnel going drops a reading (`VPNEngine.lastSpeed`,
+/// `forgetWhatIsGone`). `HelmMeasuringSlot` demotes the old figure to quiet ink
+/// for the run because it is still the only reading the person has, and
+/// `VPNTunnelStrip` reads «Measure again» while a figure is there. A run the
+/// tool could not characterise (a `-1009`, a tool killed at its deadline, a
+/// half-written JSON `VPNSpeedReading.parse` refuses) has no news of its own,
+/// so it must not erase the figure: assigning nil through a `Dictionary`
+/// subscript would remove the key.
 final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
 
     private let header = "Available network connection services:"
@@ -53,14 +29,10 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
             .joined(separator: "\n")
     }
 
-    /// One tunnel, up, carrying the default route — so the engine accepts a
-    /// measurement on it rather than refusing by name. Every port named; three
-    /// of the defaults reach the network or run a subprocess for twenty seconds
-    /// (`NoTestTakesAProductionPortTests`).
-    ///
-    /// **A quiet link**, counters that never move: with traffic on it
-    /// the byte counters move between emissions and every payload differs, so a
-    /// figure could survive on screen by luck of some other field having changed.
+    /// One tunnel, up, carrying the default route, so the engine accepts a
+    /// measurement on it. Every port named (`NoTestTakesAProductionPortTests`).
+    /// **A quiet link**: moving counters would make every payload differ, and a
+    /// figure could survive on screen by luck.
     private func oneTunnel(_ speed: FakeSpeed)
         -> (engine: VPNEngine, news: EngineNews<VPNEngine.StatePayload>) {
         let runner = FakeRunner(list: list())
@@ -104,9 +76,8 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
         let (engine, news) = oneTunnel(speed)
         defer { speed.release(); engine.deactivate() }
 
-        // **The precondition, and it is a real one.** An assertion that a figure
-        // survived is green when no figure ever arrived, which is the default in
-        // a module whose speed port has never answered.
+        // An assertion that a figure survived is green when no figure ever
+        // arrived, so the first reading must reach the page.
         await waitForState(news, "the first reading reached the page",
                            until: { $0.tunnels.first?.speed != nil },
                            during: { engine.measureSpeed("routed") })
@@ -117,11 +88,9 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
         XCTAssertEqual(first?.tunnels.first?.measuring, false,
                        "precondition: the first run has not ended, so the second cannot start")
 
-        // A second run that the tool refuses — a `-1009`, a deadline, half a JSON
-        // document. **It holds its thread**, the way the real tool holds one for
-        // twenty seconds: a fake that answered instantly would be past the
-        // measuring state before the stream could be read, and the two ends of the
-        // run would be one event (ARCHITECTURE.md § Fakes).
+        // A second run that the tool refuses. **It holds its thread**, as the
+        // real tool does, or the two ends of the run would be one event
+        // (Architecture/TestsAndMeasurement.md § Fakes).
         speed.answer = nil
         speed.blocksUntilReleased = true
         await waitForState(news, "the second run is in flight",

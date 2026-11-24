@@ -19,7 +19,7 @@ struct EditorPopover: View {
     /// The room under the last slider.
     private static let marksRoom = HelmSpace.s6 + HelmSpace.s3
 
-    /// The ink of the words, the marks and the percent, a literal primary colour with an opacity, for the reason `PopoverCard` gives. Measured on the shots, dark over a white picture: 5.03:1 at worst for the words, 4.92:1 for a mark.
+    /// The ink of the words, the marks and the percent, a literal primary colour with an opacity, for the reason `PopoverCard` gives.
     private static let ink = Color.primary.opacity(0.76)
 
     var body: some View { card.popoverCard(height: height, open: model.popoverOpen) }

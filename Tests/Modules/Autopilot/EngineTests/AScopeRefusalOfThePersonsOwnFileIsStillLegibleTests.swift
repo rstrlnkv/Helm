@@ -10,14 +10,12 @@ import HelmTestSupport
 /// passed by the root check and by `WatchScope` — whose *destination* is the
 /// part the gate refused: a bucket folder somebody later replaced with a link
 /// into iCloud Drive's `~/Library/Mobile Documents`, or anywhere else outside
-/// the allowed folders. Nothing about such a file is a secret — its name is
-/// what the history holds for every file the same rule moved yesterday.
+/// the allowed folders. Nothing about such a file is a secret: its name is
+/// what the history holds for every other file the same rule moved.
 ///
 /// What the history makes of that sweep is what these hold: one row per file
 /// the sweep refused, each naming the file, and the pass still named after the
 /// folder it swept. On disk, with the real engine.
-///
-/// Past defect: fixed in 4ce355a9.
 final class AScopeRefusalOfThePersonsOwnFileIsStillLegibleTests: XCTestCase {
 
     private var home: URL!
@@ -46,8 +44,7 @@ final class AScopeRefusalOfThePersonsOwnFileIsStillLegibleTests: XCTestCase {
     }
 
     /// Three photos refused for their destination: the sweep says three, and
-    /// the history — the only place a person can find out *which* — says one
-    /// row with no name at all.
+    /// the history, the only place a person can find out *which*, names each.
     func testEachRefusedFileOfThePersonsOwnFolderIsARowWithItsName() throws {
         for name in ["beach.jpg", "dog.jpg", "cake.jpg"] {
             try write("Downloads/\(name)", in: home)

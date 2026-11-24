@@ -4,17 +4,11 @@ import Foundation
 /// the bar: the bar's two lines, the sentence a finished removal ends on, and a
 /// row's mark and unmark.
 ///
-/// **Disk and Duplicates draw the same bar**, down to the double spaces around
-/// the middle dot in the menu, and both assembled its two lines inside the view:
-/// the heading went through `L()` and the punctuation around it did not, so
-/// every language got an ASCII colon and a Latin middle dot. `DupStr.found`
-/// three lines away from one of them sets `・` for Japanese.
+/// Disk and Duplicates draw the same bar, so its words, punctuation included,
+/// are one sentence (`basketLine`) in the kit: a colon and a middle dot are the
+/// language's, not ASCII's, and a fix in one module is a fix in both.
 ///
-/// Here rather than in either module for the reason `HelmConfirm.trash` is here
-/// — four modules ask that one — and so that a fix in one module is a fix in
-/// both. The heading and the punctuation are one sentence, the `basketLine` key both modules already read.
-///
-/// `language` is explicit, defaulting to the app's, for the same reason
+/// `language` is explicit, defaulting to the app's, for the reason
 /// `HelmConfirm.trash` takes it: the eight tables cannot be tested otherwise.
 public enum HelmBasket {
 

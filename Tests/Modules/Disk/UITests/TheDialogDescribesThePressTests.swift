@@ -50,9 +50,7 @@ final class TheDialogDescribesThePressTests: XCTestCase {
                        "the dialog named the folder macOS will not part with: \(named)")
     }
 
-    /// The two halves in one round: what the sentence said, and what left. A
-    /// dialog that describes a different act is only visible when both are read
-    /// together.
+    /// The two halves in one round: what the sentence said, and what left.
     func testTheBatchSentIsTheBatchDescribed() async {
         let (dvm, work) = await scannedWithTheCacheRowTicked()
         let question = dvm.removalQuestion

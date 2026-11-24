@@ -10,9 +10,8 @@ extension Notification.Name {
 
 /// Records one global shortcut into a module's store.
 ///
-/// Keyed rather than fixed: a module may have more than one shortcut, and
-/// Keep Awake's single `hotkey*` keys were the reason this was written twice.
-/// The three keys are `<prefix>KeyCode`, `<prefix>Modifiers`, `<prefix>Label`.
+/// Keyed by a prefix, because a module may have more than one shortcut: the
+/// three keys are `<prefix>KeyCode`, `<prefix>Modifiers`, `<prefix>Label`.
 @MainActor public final class HelmHotkeyRecorder: ObservableObject {
     @Published public private(set) var label: String
     @Published private(set) var recording = false
@@ -22,12 +21,10 @@ extension Notification.Name {
     private var monitor: Any?
 
     /// `fallbackLabel` is the label of the shortcut the module ships with, for a
-    /// store in which **nothing has ever been recorded**. A key that is absent
-    /// and a key that was cleared are different answers — `clear()` writes `-1`,
-    /// an untouched store holds nothing — so a person who cleared the shortcut
-    /// keeps the empty row they asked for, and a person who never touched it
-    /// sees the one that is live. `HotkeyManager` makes the same distinction when
-    /// it registers, from the same `HotkeyFallback`.
+    /// store in which **nothing has ever been recorded**. Absent and cleared are
+    /// different answers (`clear()` writes `-1`), so a person who cleared the
+    /// shortcut keeps the empty row they asked for. `HotkeyManager` makes the
+    /// same distinction from the same `HotkeyFallback`.
     public init(store: NamespacedStore, prefix: String, fallbackLabel: String? = nil) {
         self.store = store
         self.prefix = prefix
@@ -51,13 +48,11 @@ extension Notification.Name {
 
     /// The recorder currently armed, anywhere in the app.
     ///
-    /// A page can hold more than one — the keyboard page has held two since
-    /// 0.7.1 — and arming the second used to leave the first armed as well. A
-    /// mouse click is not a `keyDown`, so the first monitor never saw the
-    /// click that armed its neighbour: one keystroke landed in both, or a
-    /// monitor sat there swallowing every keypress in the window with nothing
-    /// on screen to explain it. Weak, so a recorder whose page has gone does
-    /// not keep itself alive.
+    /// A page can hold more than one, and a mouse click that arms the second is
+    /// not a `keyDown` the first monitor sees: without this, one keystroke
+    /// lands in both, or a monitor swallows every keypress in the window with
+    /// nothing on screen to explain it. Weak, so a recorder whose page has gone
+    /// does not keep itself alive.
     private static weak var armed: HelmHotkeyRecorder?
 
     func startRecording() {
@@ -66,10 +61,9 @@ extension Notification.Name {
         recording = true
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
-            // Escape leaves. Without this the monitor swallows every keystroke
-            // including Escape and Tab, and someone who started recording from
-            // the keyboard could only get out with the mouse — or by assigning
-            // a shortcut they never wanted.
+            // Escape leaves: the monitor swallows every other keystroke, Tab
+            // included, so without this the only way out is the mouse or a
+            // shortcut nobody wanted.
             if event.keyCode == UInt16(kVK_Escape) {
                 self.stop()
                 return nil
@@ -94,13 +88,11 @@ extension Notification.Name {
         NotificationCenter.default.post(name: .helmHotkeyChanged, object: nil)
     }
 
-    /// Writes a combination without recording it: the three keys, and the
-    /// host told. The one door for a caller that **knows** the combination —
-    /// "Use ⇧⌘3 and ⇧⌘4" — because the recorder's own monitor is a *local* one, and a
-    /// combination macOS still holds is expected to be handled by the system
-    /// before it reaches a local monitor, so the very shortcut a person wants to
-    /// record would be the one they cannot press. Expected from how macOS treats
-    /// its own shortcuts; not measured here.
+    /// Writes a combination without recording it: the three keys, and the host
+    /// told. The door for a caller that knows the combination («Use ⇧⌘3 and
+    /// ⇧⌘4»), because the recorder's monitor is local, and a combination macOS
+    /// still holds is expected to be handled by the system first, so it could
+    /// not be pressed into the recorder. Expected, not measured here.
     public func assign(keyCode: Int, carbonModifiers: Int, label: String) {
         let keys = HotkeyStoreKeys(prefix: prefix)
         store.set(keyCode, for: keys.keyCode)
@@ -149,10 +141,8 @@ extension HelmHotkeyRecorder {
 
 /// One row: what the shortcut does, what it is, and how to change it.
 ///
-/// It also says when macOS refused the combination. A shortcut another app has
-/// already taken registers as nothing at all, and a row that shows `⌥⌘K` for a
-/// combination that does nothing is the switch-that-looks-like-it-works defect
-/// in another costume.
+/// It also says when macOS refused the combination: a shortcut another app has
+/// taken registers as nothing, and a row showing it would look like it works.
 public struct HelmHotkeyRow: View {
     @Environment(\.helmTraits) private var traits
 
@@ -161,11 +151,10 @@ public struct HelmHotkeyRow: View {
     private let taken: Bool
     private let note: String?
 
-    /// `note` replaces the row's own «taken» sentence with a more exact one when
-    /// the caller knows *who* holds the combination: the registration answers
-    /// success for a combination macOS itself holds, so «another app uses this»
-    /// is not something the row could ever say about a system shortcut, and the
-    /// person needs the name of the box to untick.
+    /// `note` replaces the row's own «taken» sentence when the caller knows who
+    /// holds the combination: registration succeeds for a combination macOS
+    /// itself holds, so the row could never say so, and the person needs the
+    /// name of the box to untick.
     public init(_ title: String, recorder: HelmHotkeyRecorder, taken: Bool, note: String? = nil) {
         self.title = title
         self.recorder = recorder
@@ -193,10 +182,8 @@ public struct HelmHotkeyRow: View {
                         recorder.stop()
                     } else {
                         recorder.startRecording()
-                        // The row's text swaps to «Press keys…», but nothing a
-                        // reader is on changed its value — and from here every
-                        // keystroke is swallowed, which unannounced is a
-                        // keyboard that just stopped working.
+                        // Nothing a reader is on changed its value, and from
+                        // here every keystroke is swallowed, so it is said.
                         HelmA11y.announce(Self.pressKeys)
                     }
                 }

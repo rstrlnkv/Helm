@@ -5,24 +5,16 @@ import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
 /// The policy arrives from the keychain **after** the page is up, and the list
-/// it lands on is not re-decided.
+/// it lands on is re-decided. A page that kept the old order under the new
+/// belief would say `by date` over a list ordered `by place`.
 ///
-/// `policy` is assigned in exactly two places. `choose(_:)` — the popup — stores
-/// it, seals it and calls `rearrange()`. `readTheStoredPolicy()` — the tail of
-/// `firstLoad` — assigns it and stops there. So a page that already has a list
-/// on it when the keychain finally answers keeps the old order under the new
-/// belief, which is this module's own named defect: «the screen said `by date`
-/// while every search ran `by place`».
-///
-/// **The window is the keychain's, and it is the reason `firstLoad` exists at
-/// all.** The bundle is ad-hoc signed, so `SecItemCopyMatching` is a modal
-/// authorization dialog rather than data — `HelmApp_2026-08-19-235500_MacBook.hang`,
-/// 19,09 s. That dialog belongs to SecurityAgent and the read is on a detached
-/// task, so Helm's own window is live behind it: the folder is remembered, the
-/// prominent «Search now» button is right there, and a small folder answers in
-/// under a second. The reply's own guard cannot help — it compares the policy
-/// the *request* carried against `policy`, and at that moment they are still the
-/// same value.
+/// **The window is the keychain's.** On an ad-hoc signed bundle
+/// `SecItemCopyMatching` is a modal authorization dialog that belongs to
+/// SecurityAgent, and the read is on a detached task, so Helm's own window is
+/// live behind it: the folder is remembered, «Search now» is right there, and a
+/// small folder answers in under a second. The reply's own guard cannot help —
+/// it compares the policy the *request* carried against `policy`, and at that
+/// moment they are still the same value.
 ///
 /// Held on a gate rather than answered on the spot, because a keychain that
 /// replies instantly is over before the search can be started and every
@@ -35,11 +27,9 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
     /// one stays; by date the download does.
     ///
     /// **Ordered by the policy the request will carry, through `SurvivingCopy`
-    /// itself.** A search reply is ordered by the engine, and the engine orders
-    /// it by the policy it was sent — `AnsweringWork` answers one fixed
-    /// arrangement whatever the request says, so a fixture that hands over some
-    /// other order is answering for an engine that does not exist, and every
-    /// assertion about the list being in step would then be about the fixture.
+    /// itself.** The engine orders a reply by the policy it was sent, while
+    /// `AnsweringWork` answers one fixed arrangement whatever the request says;
+    /// any other order would make the assertions about the fixture.
     private func group(orderedBy policy: KeepPolicy) -> DuplicateGroup {
         let day = Date(timeIntervalSince1970: 1_700_000_000)
         let copies: [DuplicateGroup.Copy] = [
@@ -51,8 +41,7 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
 
     /// The invariant the whole page rests on: the first copy of a group is the
     /// one that stays, and the popup above it says which copy that is. Asked of
-    /// the model's own published values, so it is the question the header, the
-    /// badge, the checkboxes and `emptyBasket` all read.
+    /// the model's own published values, which every control reads.
     private func firstRowIsWhatThePolicyKeeps(_ dvm: DuplicatesViewModel) -> Bool {
         dvm.groups.allSatisfy { group in
             SurvivingCopy.order(group.copies, by: KeepRule(dvm.policy)).first?.path
@@ -80,10 +69,9 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
         return dvm
     }
 
-    /// The control, and it has to pass: with the keychain answering before the
-    /// search, the page searches `by date`, the engine answers in that order and
-    /// the two are in step. A failure below is about the late arrival and not
-    /// about the fixture.
+    /// The control: with the keychain answering before the search, the page
+    /// searches `by date`, the engine answers in that order and the two are in
+    /// step, so a failure below is about the late arrival.
     func testAPolicyInHandBeforeTheSearchIsInStepWithTheList() async {
         let gate = DispatchSemaphore(value: 0)
         let work = AnsweringWork(groups: [group(orderedBy: .byDate)])
@@ -117,8 +105,7 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
         XCTAssertEqual(dvm.groups.first?.paths.first, filed,
                        "precondition: the list is in the order `by place` asked for")
 
-        // The keychain answers at last, twenty seconds into a page that has been
-        // live throughout.
+        // The keychain answers at last, into a page that has been live throughout.
         gate.signal()
         await dvm.firstLoad?.value
 

@@ -8,11 +8,9 @@ import XCTest
 ///
 /// `WatchScope` judges where a path *leads*, so a link to Downloads and the
 /// `/private` spelling of it are one directory to the gate and two strings to a
-/// comparison. The offer then called the watched folder new, took a second
-/// `WatchedFolder` for it and, on Done, swept it — which runs the person's own
-/// rules over everything in it on behalf of a preset.
-///
-/// Past defect: fixed in 4ce355a9.
+/// comparison. Compared as strings, the offer calls the watched folder new, takes
+/// a second `WatchedFolder` for it and, on Done, sweeps it: the person's own
+/// rules run over everything in it on behalf of a preset.
 final class APresetOfferComparesFoldersThroughTheGateTests: XCTestCase {
 
     private var home: URL!

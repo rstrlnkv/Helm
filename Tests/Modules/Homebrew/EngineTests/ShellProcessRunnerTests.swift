@@ -5,10 +5,8 @@ import XCTest
 /// The port every fast Homebrew query goes through.
 ///
 /// `listInstalled`, `outdated`, `descriptions` and `search` all call
-/// `ShellProcessRunner.run` and parse what comes back. It answers on a dispatch
-/// queue of the system's own, so whatever happens here happens to the
-/// Homebrew page.
-/// Kept: guards the defect fixed in 6dec5f2f fix: eight defects a second agent pass turned up (a chatty stderr stalled every fast query).
+/// `ShellProcessRunner.run` and parse what comes back, so whatever happens here
+/// happens to the Homebrew page.
 final class ShellProcessRunnerTests: XCTestCase {
 
     /// Runs `body` on a background queue and fails rather than hanging the
@@ -21,25 +19,20 @@ final class ShellProcessRunnerTests: XCTestCase {
         return done.wait(timeout: .now() + seconds) == .success
     }
 
-    /// The trap: a tool that says a lot on stderr.
+    /// A tool that says a lot on stderr.
     ///
-    /// `run` delegates to `HelmProcess.run`, which sets `standardError` to a
-    /// fresh `Pipe()` and never reads it. A pipe holds about 64 KB. Past that
-    /// the child blocks in `write(2)` on stderr — so it never exits, never
-    /// closes stdout, and the `readDataToEndOfFile()` on stdout never returns.
-    /// Two processes waiting on each other, which is the exact hazard
-    /// `HelmProcess`'s own header describes for the stdout side and fixes there
-    /// by reading before waiting. The stderr side has no reader at all.
+    /// A pipe holds about 64 KB. A stderr nobody reads blocks the child in
+    /// `write(2)`, so it never exits, never closes stdout, and the read of
+    /// stdout never returns: two processes waiting on each other, the hazard
+    /// `HelmProcess`'s header describes for the stdout side.
     ///
-    /// `brew` is a tool that says a lot on stderr: a deprecation warning per
-    /// formula from `outdated`, an `Error: No available formula with the name…`
-    /// per missing name from the `desc` call the page makes with the whole
-    /// installed list, a git failure from `search` against a cold tap. None of
-    /// them is exotic and any of them past 64 KB parks the queue for the life
-    /// of the process. The page shows its spinner and never stops.
+    /// `brew` says a lot on stderr: a deprecation warning per formula from
+    /// `outdated`, an `Error: No available formula…` per missing name from
+    /// `desc`, a git failure from `search` against a cold tap. Past 64 KB any of
+    /// them would park the queue and leave the page's spinner running.
     ///
     /// The child kills itself after five seconds so this test reports rather
-    /// than hangs; nothing rescues the real app.
+    /// than hangs.
     func testAChattyStderrDoesNotStallTheRun() {
         // ~200 KB on stderr, comfortably past a pipe's capacity, then one line
         // on stdout. Shell built-ins only: an extra process would hold the

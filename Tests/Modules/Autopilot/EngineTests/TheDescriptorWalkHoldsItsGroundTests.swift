@@ -8,11 +8,9 @@ import HelmTestSupport
 /// opened relative to its parent with `O_NOFOLLOW`, the gate asked of the path
 /// each descriptor reports, and a ceiling on how deep it goes.
 ///
-/// Each of those is a belt the engine's own filter stands behind, so none of them
-/// can be seen through a sweep — the filter drops what a broken walk would have
-/// read, and the module's tests stayed green with the walk's gates, its
-/// `O_NOFOLLOW`, its ceiling and every `close` taken out. These ask the reader
-/// itself, which is where each of them lives.
+/// Each of those is a belt the engine's own filter stands behind, so none of
+/// them can be seen through a sweep: the filter drops what a broken walk would
+/// have read. These ask the reader itself, which is where each of them lives.
 final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
 
     private var home: URL!
@@ -202,12 +200,11 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
             atPath: home.appendingPathComponent("Downloads/Invoices/Invoice-1.pdf").path))
     }
 
-    // MARK: - A history written before the split
+    // MARK: - One stored reason for both scope refusals
 
-    /// A build before `targetOutOfScope` wrote every scope refusal with the
-    /// file's name and `outOfScope`. That history still decodes, still names its
-    /// file, still reads as the scope sentence — and the new destination refusal
-    /// is stored as the very same reason, so the page cannot tell them apart.
+    /// A destination refusal (`targetOutOfScope`) is stored as `outOfScope` with
+    /// the file's name, the same as a source refusal, so a record that knows only
+    /// `outOfScope` decodes, names its file and reads as the scope sentence.
     func testAnOldRecordOfAScopeRefusalStillReadsAsOne() throws {
         let old = """
         [{"at":780000000,"rule":"Sort","file":"invoice.pdf","path":"/Users/x/Downloads/invoice.pdf",\

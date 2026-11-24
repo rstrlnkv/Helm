@@ -16,18 +16,15 @@ public enum EscapeOutcome: Sendable, Equatable {
 /// A value like `SelectionDrag`: every rule is a function of what was done, and
 /// none of it reads a keyboard or a clock.
 ///
-/// **Undo is a list of snapshots of the layer list**, so an edit in place — a move, a
-/// resize, a recolour, a delete — is a step like a new layer is, and every layer keeps its
-/// `id` through all of them. A drag is one step: the list before it is what is kept, and
-/// only when it differs from the list after.
+/// Undo is a list of snapshots of the layer list (Architecture/ScreenshotsEditor.md § The editor and its layers),
+/// and every layer keeps its `id` through them. A drag is one step, kept only when the list after it differs.
 public struct AnnotationEditing: Sendable {
     /// The travel, in points, under which a press that ends is a click and not a drawing.
     static let clickTravel: CGFloat = 3
     /// How many steps undo (and redo) keep. A step is a whole list of layers, and a move of a
-    /// full pencil copies its points: a pencil of `Annotation.maxPoints` points is 16 KB of `CGPoint`s
-    /// by arithmetic, so 200 steps over a dozen of them come to a few tens of megabytes at the very
-    /// most (an estimate, not a measurement), and nobody walks back further than that in one
-    /// picture. The oldest goes.
+    /// full pencil copies its points: a pencil of `Annotation.maxPoints` points is 16 KB of `CGPoint`s,
+    /// so 200 steps over a dozen of them come to a few tens of megabytes at most, and nobody walks
+    /// back further than that in one picture. The oldest goes.
     static let historyLimit = 200
 
     /// Where a layer may be: the selection, in display-local points. It changes only through
@@ -339,7 +336,6 @@ public struct AnnotationEditing: Sendable {
         return CGPoint(x: min(max(x, bounds.minX), bounds.maxX), y: min(max(y, bounds.minY), bounds.maxY))
     }
 
-    /// One step on the way back: the list as it was, and no future.
     private mutating func record(_ before: [Annotation]) {
         Self.keep(before, in: &past)
         future.removeAll()
@@ -393,7 +389,6 @@ public struct AnnotationEditing: Sendable {
         keepSelection()
     }
 
-    /// A selected object that the list no longer has is no longer selected.
     private mutating func keepSelection() {
         if selected == nil { selectedID = nil }
     }
@@ -416,7 +411,6 @@ public struct AnnotationEditing: Sendable {
         editSelected { var style = $0.style; style.thickness = step; return $0.restyled(style) }
     }
 
-    /// Only the boxes are filled or not; the other tools have no such choice.
     public mutating func setFilled(_ filled: Bool) {
         editSelected {
             guard $0.tool == .rectangle || $0.tool == .ellipse else { return $0 }

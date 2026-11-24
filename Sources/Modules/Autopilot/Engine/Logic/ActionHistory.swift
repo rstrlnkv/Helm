@@ -1,17 +1,10 @@
 import Foundation
 import HelmRuntime
 
-/// One thing Autopilot did to one file.
-///
-/// The names are here, whole, in the module's own store on the machine it
-/// happened on — save a scope refusal's, whose record carries neither. `HelmLog`
-/// carries a path through `Redact.path`, which shortens only the home folder to
-/// `~` and leaves the file name in, which is by decision (11.11.2026): the
-/// log keeps file names and says so on the Log page; only the refusal for a
-/// source file outside the allowed folders is logged without one (by rule id),
-/// while a target outside them is logged with its path. A history
-/// that reads "moved a file, moved a file, trashed a file" answers none of the
-/// questions somebody actually has.
+/// One thing Autopilot did to one file, with its names whole (except a scope
+/// refusal's), in the module's own store: "moved a file, trashed a file"
+/// answers nobody's question. The log keeps names too; only a source outside
+/// the allowed folders is logged by rule id instead.
 public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
     public enum Kind: String, Codable, Equatable, Sendable {
         case moved, renamed, tagged, trashed, refused, failed
@@ -23,78 +16,47 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
     public let rule: String
     /// The file's name, shown as the row's subject.
     public let file: String
-    /// Where it was. Not shown — the row reads better without it — but it is
-    /// what makes two files one record or two.
-    ///
-    /// `PreviewRow` was given the same treatment this morning and for the same
-    /// reason; this is its sibling and it was missed. Two files called
-    /// `report.pdf` in two folders, refused by one rule, collapsed into a
-    /// single record and the newer *deleted* the older — worse than the
-    /// preview, where the cost was a row not drawn. Optional for decoding: a
-    /// history written before today has no such key.
+    /// Where it was. Not shown, but without it two `report.pdf`s in two
+    /// folders, refused by one rule, would collapse into one record.
+    /// `PreviewRow` keys the same way. Decodes to `file` when absent.
     public let path: String
     public let kind: Kind
     /// Where it went, what it was renamed to, which tag, or why it was refused.
     /// Empty for the actions that need no second half — a trashed file went to
     /// the Trash and saying so twice is noise.
     public let detail: String
-    /// Where the file is now, in full.
-    ///
-    /// This section's whole job is "where did that go", and neither of the other
-    /// two fields could answer it: `detail` is the destination's parent folder
-    /// *name*, which reads well and opens nothing, and `path` is where the file
-    /// was — after a move, a path nothing is at.
-    ///
-    /// Empty when the module does not know where the file ended up: macOS took
-    /// a file to the Trash and did not say where it put it, and a refusal or a
-    /// failure may or may not have left the file where it stood.
-    /// An offer that silently does nothing is worse than no offer.
+    /// Where the file is now, in full: what "where did that go" opens, since
+    /// `detail` is only the parent folder's name. Empty, and nothing offered,
+    /// when the module does not know: macOS did not say where the Trash put it,
+    /// or a refusal or failure may or may not have left it where it stood.
     public let destination: String
 
-    /// Which pass this record belongs to — one value for a whole sweep of one
-    /// folder, and one for a whole batch of filesystem events.
-    ///
-    /// The page groups by it, because "put back the twelve files that arrived
-    /// at 14:22" is the gesture somebody actually wants and "put back every
-    /// file this rule ever moved" is one nobody should be offered. Optional
-    /// like every field below it: a history written before this build has no
-    /// such key, and those records simply have no group.
+    /// Which pass this belongs to: one value per sweep of a folder or batch of
+    /// events. The page groups by it, because "put back the twelve files that
+    /// arrived at 14:22" is the gesture people want. Optional like every field
+    /// below it: a record stored without one has no group.
     let run: String?
-    /// The rule's id, beside the name the row shows.
-    ///
-    /// Names are not unique — two rules in one folder may be called the same
-    /// thing — and the mark a return re-writes is keyed by the id. Without it a
-    /// return could stamp the file for the wrong rule, which is the same as not
-    /// stamping it at all.
+    /// The rule's id, beside the name the row shows: names are not unique, and
+    /// the mark a return re-writes is keyed by the id.
     public let ruleID: String?
-    /// Who the file at `destination` was when the action ended.
-    ///
-    /// The reason a return moves the file Helm moved rather than whatever is
-    /// sitting at that path now — a name is a place, and something else can be
-    /// standing in it an hour later. Two halves rather than one struct because
-    /// this is stored data, and two Optional numbers is the shape a plist and a
-    /// JSON document both already hold.
+    /// Who the file at `destination` was when the action ended, so a return
+    /// moves the file Helm moved and not whatever stands at that name now. Two
+    /// Optional numbers because a plist and a JSON document both hold that shape.
     let device: UInt64?
     let inode: UInt64?
-    /// When this action was put back, if it has been.
-    ///
-    /// Without it the second press moves a different file: the row still says
-    /// "moved to Invoices", the file is no longer there, and the path it names
-    /// now holds whatever arrived next.
+    /// When this action was put back, if it has been. Without it a second press
+    /// moves whatever arrived at the named path next.
     public let undoneAt: Date?
 
     /// The path to reveal, or nothing to offer.
     public var revealPath: String? { destination.isEmpty ? nil : destination }
 
-    /// Whether this row may be offered a return, decided from the record's own
-    /// shape and nothing else.
+    /// Whether this row may be offered a return, from the record's shape alone.
     ///
-    /// **No stat here on purpose.** The page draws up to five hundred of these
-    /// and the verdict is asked for once per row; whether the file is still
-    /// there, still itself and still somewhere a rule may reach is the undo's
-    /// own business, answered after the press. What this settles is the shape:
-    /// a record with nowhere to go back from, no identity to check it against
-    /// or no rule to re-mark it for could only ever refuse.
+    /// **No stat on purpose**: the page asks this of up to five hundred rows;
+    /// whether the file is still there and itself is the undo's business after
+    /// the press. A record with nowhere to go back from, no identity or no rule
+    /// could only ever refuse.
     public var undoable: Bool {
         undoneAt == nil && !destination.isEmpty && !path.isEmpty
             && device != nil && inode != nil && ruleID != nil
@@ -111,10 +73,8 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
     public var id: String { "\(at.timeIntervalSince1970)-\(path)-\(kind.rawValue)" }
 
     /// Whether another record of this kind about this file says the same thing.
-    ///
-    /// An action happened once and each one is worth its own row. A refusal or
-    /// a failure is a *state* — the same file, the same reason, every sweep —
-    /// and a hundred rows of it say no more than one does.
+    /// An action is worth its own row; a refusal or failure is a *state* that
+    /// repeats every sweep.
     var repeatable: Bool { kind == .refused || kind == .failed }
 
     func isRepeat(of other: ActionRecord) -> Bool {
@@ -148,14 +108,10 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
         kind = try c.decode(Kind.self, forKey: .kind)
         detail = try c.decode(String.self, forKey: .detail)
         path = try c.decodeIfPresent(String.self, forKey: .path) ?? file
-        // Missing in every history written before this build, the same way
-        // `path` is missing from the ones written before that.
+        // Missing from older histories, like `path`.
         destination = try c.decodeIfPresent(String.self, forKey: .destination) ?? ""
-        // **A stored default would not have done this.** The synthesised
-        // decoder requires the key whatever a property's initial value is, and
-        // `JSONDecoder` then abandons the whole document rather than the one
-        // field — so a history written by yesterday's build would decode to
-        // nothing at all, which is the section going blank on upgrade.
+        // **A stored default would not do this**: the synthesised decoder
+        // requires every key, and `JSONDecoder` would abandon the whole document.
         run = try c.decodeIfPresent(String.self, forKey: .run)
         ruleID = try c.decodeIfPresent(String.self, forKey: .ruleID)
         device = try c.decodeIfPresent(UInt64.self, forKey: .device)
@@ -167,21 +123,16 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
 /// What Autopilot did, over the last thirty days.
 public enum ActionHistory {
 
-    /// Where the history lives in the module's own namespace.
-    ///
-    /// Here rather than on the engine, because the engine is not the only
-    /// reader any more: the seal is written and thrown away beside the payload,
-    /// and a key spelled in two places is one that only one of them renames.
+    /// Where the history lives. Here rather than on the engine, because the seal
+    /// is written and cleared beside it, and a key spelled twice is renamed once.
     static let storeKey = "history"
 
     /// Thirty days, because that is the promise the page makes. Anything older
     /// is a file somebody has long since stopped looking for.
     static let window: TimeInterval = 30 * 86_400
 
-    /// A busy Downloads folder acts hundreds of times a day, and this shares a
-    /// store with the rules. Unbounded, the history would eventually be the
-    /// reason the rules stop saving — which would be Autopilot breaking itself
-    /// by keeping too good a record.
+    /// A busy Downloads acts hundreds of times a day, and this shares a store
+    /// with the rules: unbounded, the history would one day stop the rules saving.
     static let limit = 500
 
     public struct Summary: Equatable, Sendable {
@@ -195,26 +146,17 @@ public enum ActionHistory {
     static func recording(_ record: ActionRecord,
                                  into history: [ActionRecord],
                                  now: Date = Date()) -> [ActionRecord] {
-        // A refusal repeats. Nothing about the file changed, nothing is
-        // stamped, so the next sweep decides the same thing about it an hour
-        // later — one symlink pointing outside home is 24 identical rows a day,
-        // 720 in the window, and the cap then evicts the one move that actually
-        // happened. `.alreadyDone` is already dropped for this reason; a
-        // refusal is the same event wearing a different name.
-        //
-        // The newest of a repeat is what a person wants ("it is still failing"),
-        // so the old one goes and the new one leads.
+        // A refusal repeats every sweep, since nothing changed or was stamped:
+        // one symlink pointing outside home is 24 rows a day, and the cap would
+        // evict the one real move. The newest leads ("it is still failing").
         let deduped = record.repeatable
             ? history.filter { !$0.isRepeat(of: record) }
             : history
         return Array(within([record] + deduped, now: now).prefix(limit))
     }
 
-    /// Everything inside the window, newest first.
-    ///
-    /// Applied on the way out as well as on the way in: a store written before
-    /// a clock change, or by a build that pruned differently, must not put a
-    /// stale row on the page.
+    /// Everything inside the window, newest first. Applied on the way out too,
+    /// so a store written before a clock change puts no stale row on the page.
     static func within(_ history: [ActionRecord], now: Date = Date()) -> [ActionRecord] {
         let oldest = now.addingTimeInterval(-window)
         return history
@@ -252,32 +194,21 @@ public enum ActionHistory {
 
 extension ActionRecord {
 
-    /// What to remember about one plan and how it turned out, or nothing.
+    /// What to remember about one plan and its outcome, or nothing: one reading
+    /// for the sweep and the watcher alike.
     ///
-    /// Both the sweep and the watcher take the same six outcomes apart, and
-    /// they used to do it twice — the watcher's copy logged nothing at all for
-    /// a successful action until that was fixed. One reading of an outcome
-    /// means the record cannot say one thing on the timer and another when a
-    /// file arrives.
-    ///
-    /// `identify` is a seam with the real reading behind it. **Identity is who
-    /// is at the destination**, one rule for all four actions and no branching:
-    /// the destination is where the file ended up, so "is this still the file
-    /// Helm acted on" has one form — and an outcome that left the file where it
-    /// stood has no destination, so it is not asked at all.
+    /// **Identity is who is at the destination**, for all four actions: that is
+    /// where the file ended up. An outcome that left the file where it stood has
+    /// no destination and is not asked. `identify` is a seam.
     static func of(_ plan: RulePlan, _ outcome: RuleOutcome, at: Date = Date(),
                    run: String? = nil,
                    identify: (String) -> PathCanonical.FileIdentity? = {
                        PathCanonical.identity(of: $0)
                    }) -> ActionRecord? {
-        // **A refusal for scope writes down neither the name nor the path.**
-        // The history sits in a property list any process running as the user
-        // reads without a grant, and a file refused for lying outside the
-        // allowed folders is by definition somewhere the person did not mean a
-        // rule to go — often somewhere macOS protects, reached through a link.
-        // Its name and path would be the one thing this record could leak. The
-        // row reads as the reason and the rule only (an empty subject); the
-        // per-rule repeat collapse keeps it one row rather than one per file.
+        // **A refusal for scope records neither name nor path**: the history is
+        // a plist any process running as the user reads, and such a file is
+        // often somewhere macOS protects, reached through a link. The row is the
+        // reason and rule only; the repeat collapse keeps it one row.
         if case .refused(.outOfScope) = outcome {
             return ActionRecord(at: at, rule: plan.rule.name, file: "", kind: .refused,
                                 detail: RuleOutcome.Refusal.outOfScope.rawValue, path: "",
@@ -292,36 +223,27 @@ extension ActionRecord {
         }
         switch outcome {
         case let .moved(destination):
-            // The folder it landed in, not the whole path: the page is a
-            // report, and "→ /Users/r/Documents/Invoices/march.pdf" is the
-            // file's new name spelled out at length. The whole path is kept
-            // beside it, because the row also has to be able to *open* it.
+            // The folder it landed in, not the whole path, which the page would
+            // spell out at length; the whole path is kept beside it to *open* it.
             let folder = URL(fileURLWithPath: destination).deletingLastPathComponent()
                 .lastPathComponent
             return make(.moved, folder.isEmpty ? destination : folder, destination)
         case let .renamed(name):
-            // A rename never leaves the folder, and the name reported is the
-            // one that landed — including the numbered form a collision makes.
-            // `FileFacts.path` defaults to empty, and an empty parent would
-            // make `/name`: a path at the root of the volume, which is not
-            // where the file is and may well be something else.
+            // The name reported is the one that landed, numbered or not.
+            // `FileFacts.path` defaults to empty, and an empty parent would make
+            // `/name`, a path at the root of the volume.
             let folder = (plan.facts.path as NSString).deletingLastPathComponent
             return make(.renamed, name, folder.isEmpty ? "" : folder + "/" + name)
         case let .tagged(tag): return make(.tagged, tag, plan.facts.path)
-        // Where the Trash put it is not `path` — it renames what it takes when
-        // the name is occupied — so the resulting URL is asked for and kept.
-        // The most dangerous thing the module does was the one action with
-        // nowhere to put the file back to. A refusal or a failure still has no
-        // destination: the file is probably still where it stood, and probably
-        // is not something to open a window on.
+        // Where the Trash put it is not `path` (it renames what it takes when
+        // the name is occupied), so the resulting URL is kept: it is where a
+        // return puts the file back from. A refusal or a failure has no
+        // destination: the file is probably still where it stood.
         case let .trashed(to: bin): return make(.trashed, "", bin)
         case let .refused(reason): return make(.refused, reason.rawValue, "")
-        // The file is the person's own and in plain sight, and the part that was
-        // refused is what the action aimed at — so the row names the file, as the
-        // row of every other refusal about it does. Stored as the same reason a
-        // record from an earlier build holds, because it reads as the same
-        // sentence and a word nothing older knows would fall through to a bare
-        // verb on the page.
+        // The file is the person's own and in plain sight, so the row names it.
+        // Stored as `.outOfScope`: it reads as the same sentence, and a new word
+        // would fall through to a bare verb on an older page.
         case .targetOutOfScope:
             return make(.refused, RuleOutcome.Refusal.outOfScope.rawValue, "")
         case let .failed(description): return make(.failed, description, "")

@@ -35,12 +35,11 @@ class KeepPolicyCacheRig: XCTestCase {
 /// readers is the thread that draws.**
 ///
 /// The engine reads the policy from its own actor and can afford to wait; the
-/// page reads it from `@MainActor init`, where the wait is a modal authorization
-/// dialog on every ad-hoc build — 19,09 s of one in
-/// `HelmApp_2026-08-19-235500_MacBook.hang`, one target over. So there is a
-/// second way to ask that answers «not yet» instead of waiting, in the same file
-/// that answers «what is in force»: the screen and the sweep still read one
-/// implementation, and only the *waiting* is the caller's choice.
+/// page reads it on the main actor, where the wait is a modal authorization
+/// dialog on every ad-hoc build. So a second way to ask answers «not yet»
+/// instead of waiting, in the same file that answers «what is in force»: the
+/// screen and the sweep read one implementation, and only the *waiting* is the
+/// caller's choice.
 ///
 /// Nil is a third answer, kept apart from a broken seal on purpose. Folding them
 /// would be the same reading twice over: a slow keychain reported as a forged

@@ -18,21 +18,16 @@ public struct FSBrewLocator: BrewLocator {
 
 /// Splits streamed bytes into whole lines, thread-safely.
 ///
-/// **Bytes, not text.** This used to decode each chunk with
-/// `String(data:encoding:.utf8)` and `return` on nil. `availableData` splits on
-/// byte boundaries, not character boundaries, so a multi-byte character
-/// straddling two reads leaves the first chunk ending mid-sequence — and the
-/// whole chunk went, not the one character. Everything ahead of the split was
-/// plain ASCII and perfectly decodable, and it went too. Reachable with any
-/// non-ASCII output past one read, which `brew` produces on every successful
-/// install.
+/// **Bytes, not text.** `availableData` splits on byte boundaries, so a
+/// multi-byte character can straddle two reads, and a failable decode of the
+/// chunk would lose the whole chunk. `brew` prints non-ASCII on every
+/// successful install.
 ///
 /// So the split happens on the newline *byte* and only complete lines are
-/// decoded; an unfinished character simply stays in the buffer with the rest of
-/// its unfinished line. `String(decoding:as:)` rather than the failable
-/// initialiser, because bytes that are not UTF-8 at all are still somebody's
-/// log: they come through as replacement characters instead of taking the lines
-/// around them with them.
+/// decoded; an unfinished character stays in the buffer with its line.
+/// `String(decoding:as:)`, not the failable initialiser: bytes that are not
+/// UTF-8 at all come through as replacement characters instead of taking the
+/// lines around them.
 final class LineBuffer: @unchecked Sendable {
     private static let newline: UInt8 = 0x0A
     private let onLine: @Sendable (String) -> Void
@@ -68,12 +63,10 @@ public struct ShellProcessRunner: ProcessRunner {
     /// `run`, `runData` and `runCapturingDiagnostics` serve the read-only queries
     /// (list, outdated, desc, search, uses, info, config, doctor); the long
     /// operations stream and are stopped by hand, never by a clock.
-    /// Measured on the owner's log before choosing: warm queries answer in
-    /// 0.3–0.6 s, and a cold `brew outdated` — which goes to the network —
-    /// took 7.4 s (helm.log, 2026-08-15 16:09:35→42). Ninety seconds clears the
-    /// slowest measured query more than tenfold and still ends a hung brew —
-    /// another brew's lock never released, a stalled network read — inside the
-    /// same sitting, with the Refresh button live again.
+    /// Warm queries answer in well under a second and a cold `brew outdated`,
+    /// which goes to the network, in seconds. Ninety seconds clears that more
+    /// than tenfold and still ends a hung brew (another brew's lock, a stalled
+    /// network read) inside the same sitting.
     static let defaultQueryTimeout: TimeInterval = 90
 
     private let queryTimeout: TimeInterval
@@ -86,16 +79,9 @@ public struct ShellProcessRunner: ProcessRunner {
         ProcessInfo.processInfo.environment.merging(extra) { _, new in new }
     }
 
-    /// The port stays — it is what makes the engine testable — but the body is
-    /// `HelmProcess`, like every other module's.
-    ///
-    /// Two things were different here, and both were wrong in the same
-    /// direction. This copy merged stderr into stdout, and all four of its
-    /// callers parse what they get: `BrewListParser` takes the first word of
-    /// every line as a package name, so a version-support warning from `brew`
-    /// became a row with an Uninstall button beside it. And it waited with
-    /// `waitUntilExit`, the 50 ms run-loop poll `HelmProcess` was written to
-    /// remove, paid twice per query.
+    /// The body is `HelmProcess`, like every other module's. Stderr is dropped:
+    /// `BrewListParser` takes the first word of every line as a package name,
+    /// so a warning from `brew` would become a row with an Uninstall button.
     ///
     /// `stream` keeps stderr: a console should show what the tool says. It is
     /// output that gets parsed that must not carry diagnostics.
@@ -104,26 +90,17 @@ public struct ShellProcessRunner: ProcessRunner {
         return (result.status, result.output)
     }
 
-    /// The bytes without the String round-trip — `HelmProcess.runData`'s doc
-    /// comment carries the measured difference.
+    /// The bytes without the String round-trip (`HelmProcess.runData`).
     public func runData(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: Data) {
         let r = HelmProcess.runData(launchPath, args, env: env, timeout: queryTimeout)
         return (r.status, r.output)
     }
 
     /// `brew doctor` prints its entire answer on standard error and nothing on
-    /// standard output — measured on this Mac, 2026-09-14, Homebrew 7.0.1:
-    /// 1 byte of stdout against 1,194 of stderr, exit status 1. `run` above
-    /// sends stderr to the null device *on purpose*, for every one of this
-    /// module's other queries: a tap's deprecation warning would otherwise
-    /// become a package name to `BrewListParser`, which reads the first word
-    /// of every line. Measured for the neighbours, so the exception stays
-    /// one: `brew config` is 557 bytes of stdout and 0 of stderr; `brew info
-    /// --json=v2` is 4,327 and 0; `brew uses --installed` is 63 and 277 —
-    /// that last one being exactly why the null device is right everywhere
-    /// else. `doctor` is the one query whose whole answer is on the wrong
-    /// stream, so it gets the one method that goes and gets it, rather than a
-    /// change to `run` that would break every other parser here.
+    /// standard output. `run` drops stderr on purpose for every other query
+    /// (`brew uses` warns there), so `doctor` gets the one method that goes
+    /// and gets it, rather than a change to `run` that would break every other
+    /// parser here.
     ///
     /// **A merged read, through `HelmProcess`.** The same launch guard, launch
     /// slot, deadline (TERM, then KILL after a grace) and read-before-wait as
@@ -135,21 +112,15 @@ public struct ShellProcessRunner: ProcessRunner {
         return (r.status, String(decoding: r.output, as: UTF8.self))
     }
 
-    /// **The exit is reported at end of pipe, not at end of process.** These are
-    /// two different moments and the process is the earlier one: the child
-    /// exits, the termination callback fires, and whatever it had written that
-    /// the reader had not picked up yet is still sitting in the pipe. Clearing
-    /// the readability handler there threw that away — so the tail of a
-    /// `brew install`, which is the part that says where it put things, was
-    /// missing from the console whenever the reader ran behind the writer. It
-    /// always does: `onLine` hops to the main actor and redraws a console.
-    /// Measured at 5000 lines with a 2 ms consumer, five runs out of five lost
-    /// between 396 and 4200 of them.
+    /// **The exit is reported at end of pipe, not at end of process.** When the
+    /// child exits, what the reader has not picked up is still in the pipe, and
+    /// the reader always runs behind: `onLine` hops to the main actor and
+    /// redraws a console. Ending at the process would lose the tail of a
+    /// `brew install`, the part that says where it put things.
     ///
-    /// Reading to the end first is the same order `HelmProcess.run` uses, and
-    /// for the same reason. EOF arrives only when every writer has closed, so
-    /// by then the child has finished; the wait below is immediate rather than
-    /// a poll.
+    /// Reading to the end first is the order `HelmProcess.run` uses. EOF
+    /// arrives only when every writer has closed, so the wait below is
+    /// immediate rather than a poll.
     @discardableResult
     public func stream(_ launchPath: String, _ args: [String], env: [String: String],
                        onLine: @escaping @Sendable (String) -> Void,
@@ -188,11 +159,9 @@ public struct ShellProcessRunner: ProcessRunner {
             }
             buffer.feed(d)
         }
-        // `HelmProcess.start`, never `try p.run()`. The operations that reach
-        // this line are the ones that change the machine: a launch `NSTask`
-        // *raises* on takes the whole app down, because the exception has no
-        // Swift frame to land on. `run` and `runData` moved
-        // behind that door when it was written and this one did not.
+        // `HelmProcess.start`, never `try p.run()`: a launch `NSTask` *raises*
+        // on takes the whole app down, because the exception has no Swift
+        // frame to land on.
         guard HelmProcess.start(p, path: launchPath) else {
             // No child, so no EOF is ever coming — the page would keep its
             // spinner forever waiting for one.
@@ -200,8 +169,7 @@ public struct ShellProcessRunner: ProcessRunner {
             onExit(-1)
             return NoProcess()
         }
-        // The handle retains the `Process`: it used to be a local nobody kept,
-        // leaving the running child with no way to be addressed again.
+        // The handle retains the `Process`, so the child stays addressable.
         return LiveProcess(p, reach: reach)
     }
 }
@@ -211,28 +179,21 @@ public struct ShellProcessRunner: ProcessRunner {
 /// exit still arrives through the pipe's EOF, the same way an honest exit does.
 ///
 /// **`.wholeGroup` signals the group, and only a group this child leads.**
-/// `Process` makes the child its own group leader (measured on this Mac: group
-/// id equal to pid), so `killpg(pid)` reaches the child and everything it
-/// started that has not left the group; the leader's id is checked first,
-/// because a group id that is not the child's own is somebody else's, and then
-/// this falls back to `Process.terminate()`.
+/// `Process` makes the child its own group leader, so `killpg(pid)` reaches the
+/// child and everything it started that has not left the group. A group id
+/// that is not the child's own is somebody else's; then this falls back to
+/// `Process.terminate()`.
 ///
-/// **`.process` is `Process.terminate()` and nothing more — which on this Mac
-/// already reaches the child's group** (`StopReach` has the measurement). The
-/// two reaches differ in the leader check and in the repeats, not in whom the
-/// first signal reaches; a `kill(pid)` for `.process` would leave a member of
-/// the group alive after the Stop (measured), which for a brew operation is the
-/// `curl` or `git` it started (expected, not run against a real brew).
+/// **`.process` is `Process.terminate()` and nothing more, which already
+/// reaches the child's group** (`StopReach`). The two reaches differ in the
+/// leader check and the repeats; a `kill(pid)` for `.process` would leave the
+/// `curl` or `git` a brew operation started alive after the Stop.
 ///
 /// **The group is signalled again while the leader is still there.** A shell
-/// that forks a program at the instant the group is signalled can create it
-/// just after the signal was delivered, and the signal never sees it: measured
-/// on this Mac with the installer's wrapper and a single `killpg`, 2 of 100 Stops at random moments
-/// across its first 18 ms left the download or the installer running. The
-/// shell notices its own TERM at the next command boundary, so it forks
-/// nothing further, and a second signal a moment later finds that one program.
-/// It stops as soon as the leader is gone, and asks nothing of a leader that
-/// answers the first.
+/// forking at the instant of the signal creates a program the signal never
+/// sees. The shell notices its own TERM at the next command boundary and forks
+/// nothing further, so a second signal a moment later finds that program. The
+/// repeats stop as soon as the leader is gone.
 private struct LiveProcess: RunningProcess, @unchecked Sendable {
     let process: Process
     let reach: StopReach
@@ -269,11 +230,9 @@ private struct LiveProcess: RunningProcess, @unchecked Sendable {
 
 public struct OSAPrivilegedRunner: PrivilegedRunner {
     init() {}
-    /// Through `PrivilegedRun`, which is what makes a cancelled dialog
-    /// readable: this used to run `osascript` bare, so the `(-128)` that says
-    /// «the person pressed Cancel» went to the standard error `HelmProcess`
-    /// discards, and every cancel read as a failed `mkdir`. The escaping stays
-    /// in `AppleScript`, reached through it.
+    /// Through `PrivilegedRun`, which reads the `(-128)` of a cancelled dialog
+    /// off standard error, so a cancel is not a failed `mkdir`. The escaping
+    /// stays in `AppleScript`, reached through it.
     public func runAdmin(_ script: String) -> PrivilegedOutcome {
         PrivilegedRun.run(script)
     }
@@ -289,14 +248,13 @@ public struct OSAPrivilegedRunner: PrivilegedRunner {
 public struct SystemCommandLineTools: CommandLineToolsPort {
     /// The bundle id of Apple's installer, read out of the `Info.plist` of
     /// `/System/Library/CoreServices/Install Command Line Developer Tools.app`
-    /// on macOS 27.2 — **not read on 26**, which is where the owner's virtual
-    /// machine runs. That app is `LSUIElement`: no Dock icon, but it is in the
-    /// running list. A wrong identity here degrades to a wait that ends at Stop
-    /// waiting (`CommandLineTools.next`, rule 4), and the log says so once.
+    /// on macOS 27 and unread on 26. That app is `LSUIElement`: no Dock icon,
+    /// but it is in the running list. A wrong identity degrades to a wait that
+    /// ends at Stop (`CommandLineTools.next`, rule 4), and the log says so once.
     private static let installerBundleID = "com.apple.dt.CommandLineTools.installondemand"
 
-    /// The request is only filed; whether it asks for a password on 26 was not
-    /// measured, so the deadline leaves room for one.
+    /// The request is only filed, but it may ask for a password, so the
+    /// deadline leaves room for one.
     private static let requestDeadline: TimeInterval = 30
     private static let selectDeadline: TimeInterval = 10
 
@@ -319,10 +277,8 @@ public struct SystemCommandLineTools: CommandLineToolsPort {
         return result.status == 0 ? .filed : .refused(result.status)
     }
 
-    /// The snapshot `RunningApps` keeps is refreshed on the main thread and
-    /// nowhere else, and nothing in this module refreshes it — so the reading
-    /// hops there, which is the door for the running-application
-    /// list (ARCHITECTURE.md § Running applications). AppKit itself does not come into this module.
+    /// `RunningApps` is refreshed on the main thread only, so the reading hops
+    /// there (ARCHITECTURE.md § Running applications). AppKit itself does not come into this module.
     public func installerIsRunning() -> Bool {
         let ids = Thread.isMainThread
             ? RunningApps.shared.bundleIDs()
@@ -345,11 +301,9 @@ public struct DispatchWaitTicker: WaitTicker {
 
 /// The marker as a file, so it survives the quit it exists to report.
 ///
-/// The label an operation writes is a brew command with a package name in it —
-/// a fact about the person's machine, so the file goes through `PrivateFile`
-/// like every other file that names somebody's things. It lives in Helm's own
-/// Application Support folder, which `HelmSupport.directory` already redirects
-/// into scratch under a test runner.
+/// The label names a package, a fact about the person's machine, so the file
+/// goes through `PrivateFile`. `HelmSupport.directory` redirects it into
+/// scratch under a test runner.
 public struct FileOpMarker: OpMarker {
     private let url: URL
 
@@ -357,11 +311,9 @@ public struct FileOpMarker: OpMarker {
         url = directory.appendingPathComponent("homebrew-operation")
     }
 
-    /// A marker that does not land is the calm the protocol above exists to
-    /// prevent: brew goes on changing the Cellar after Helm quits, and the next
-    /// launch has nothing to report it with. Nothing can be done about it here —
-    /// the write is the whole mechanism — so it is said, and the label is not,
-    /// because the label is a brew command with a package name in it.
+    /// A marker that does not land leaves the next launch nothing to report a
+    /// quit with. Nothing can be done here, so it is said; the label is not,
+    /// because it names a package.
     public func write(_ label: String) {
         if !PrivateFile.writeMakingTheFolder(Data(label.utf8), at: url) {
             HelmLog.shared.warn(HomebrewEngine.moduleID,
@@ -385,51 +337,38 @@ public struct FileOpMarker: OpMarker {
 
 /// Homebrew's published install counts, cached in Helm's own folder.
 ///
-/// Two whole public documents, fetched at most once a day. Nothing this ask
-/// puts on the wire names this Mac, this person, or what was searched — no
-/// query, no package name, nothing about what is installed here, and every
-/// header that could carry such a thing is pinned to a fixed value on the
-/// session (see `session`, which carries the measurement). The ETag is stored
-/// beside each file, so a daily ask can be a 304 with no body at all.
+/// Two whole public documents, fetched at most once a day
+/// (ARCHITECTURE.md § Install counts). Every header that could name this Mac
+/// is pinned on the session (`session`). The ETag is stored beside each file, so a daily ask
+/// can be a 304 with no body.
 ///
-/// **Can be, not is.** Measured against the live endpoint on 2026-09-14: GitHub
-/// Pages answers with `W/"<mtime>-<size>"` and its nodes hold the same document
-/// with mtimes a second apart, so the same stored tag earned a 304 from one node
-/// and a 200 from the next, about half the time each. That costs nothing but the
-/// document — a 200 rewrites the same bytes and the newer tag — and the gate
-/// above it is what keeps the ask to one a day either way.
+/// **Can be, not is.** GitHub Pages answers `W/"<mtime>-<size>"` and its nodes
+/// hold the same document with mtimes a second apart, so the same tag earns a
+/// 304 from one node and a 200 from the next. A 200 costs only the document,
+/// and the daily gate holds either way.
 ///
-/// **Everything here fails towards today's behaviour.** An unreadable file, a
-/// refused fetch, a document this build cannot parse: each leaves the readings
-/// as they were and search goes on ordering results the way it does now. The
-/// one way to get that wrong is to record a refusal as an *empty* reading —
-/// `[:]` is a well-formed answer meaning nobody installs anything — which is
-/// why `PopularityRefresh.answer` names its refusals rather than handing back
-/// an optional two things could mean.
+/// **Everything here fails towards the unranked search.** An unreadable file,
+/// a refused fetch, an unparseable document: each leaves the readings as they
+/// were. A refusal must never be recorded as an *empty* reading (`[:]` means
+/// nobody installs anything), which is why `PopularityRefresh.answer` names
+/// its refusals.
 ///
 /// **And a refusal must not stamp the clock.** The clock is the cached file's
-/// own modification date, so only a write sets it; the single exception is a
-/// 304, which is an answer — what is stored *is* current — and is worth a day.
-/// `refreshIfDue` is `async` and cannot throw, so a cancellation inside it is
-/// silent by construction, and `deactivate()` runs on every route out of the
-/// app including `applicationWillTerminate`: being cancelled mid-fetch is
-/// ordinary here, and it must read as "ask again next launch".
+/// modification date, so only a write sets it; a 304 is the one exception,
+/// an answer worth a day. A cancellation mid-fetch is ordinary (`deactivate()`
+/// runs on every route out of the app) and reads as "ask again next launch".
 public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
 
-    /// What a fetch is, as a function — the one seam in this type, so that
-    /// everything it does with an answer can be exercised without a network.
-    /// It stands for `URLSession.data(for:)` and for nothing else: the clock,
-    /// the files and the readings are the real ones in every test.
+    /// What a fetch is, as a function: the one seam in this type, standing for
+    /// `URLSession.data(for:)` and nothing else. The clock, the files and the
+    /// readings are the real ones in every test.
     typealias Transfer = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
 
     struct Endpoint: Sendable {
         let url: URL
         let file: String
-        /// Which half of a reading this document is.
-        ///
-        /// The ETag gate is the only thing that asks, and it asks through
-        /// `readings()` — so the one parse it costs is the parse the rest of
-        /// the day would have paid anyway, rather than a second one of its own.
+        /// Which half of a reading this document is. The ETag gate asks through
+        /// `readings()`, so it costs no parse of its own.
         let half: @Sendable (PopularityReadings) -> InstallCounts
     }
 
@@ -442,10 +381,8 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
         file: "homebrew-installs-casks.json",
         half: { $0.casks })
 
-    /// How long a transfer may go without a byte arriving. A read-only query
-    /// gets a deadline — nothing waits on this one, since it is a background
-    /// refresh of a figure that only reorders a list, but an unanswered read
-    /// holds a task for as long as the wire lets it.
+    /// How long a transfer may go without a byte arriving. Nobody waits on it,
+    /// but an unanswered read holds a task for as long as the wire lets it.
     private static let idleDeadline: TimeInterval = 30
 
     /// How long the whole transfer may take, whatever arrives meanwhile.
@@ -454,12 +391,10 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// an endpoint trickling a byte at a time never trips it — and the ceiling
     /// in `PopularityRefresh` cannot help either, because it is consulted once
     /// `URLSession` has already buffered the body. This is the one thing that
-    /// ends such a transfer, which is what lets the store claim a bound on the
-    /// wire at all.
+    /// ends such a transfer.
     ///
-    /// Two minutes for the larger document, 453,903 bytes on 2026-09-13, is a
-    /// floor of about 30 kbit/s — slower than any link this app is usable over,
-    /// and still inside the sitting it was started in.
+    /// Two minutes for the larger document (about 450 KB) is a floor of about
+    /// 30 kbit/s, slower than any link this app is usable over.
     private static let wireDeadline: TimeInterval = 120
 
     private let directory: URL
@@ -468,16 +403,10 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// nil until the first ask, which is what reads the two documents off the
     /// disk. See `loadedUnderTheLock`.
     ///
-    /// **What this costs while it is held: 2.84 MiB.** Measured on 2026-09-14
-    /// against the allocator's own books rather than the process footprint,
-    /// because it is a per-object cost (ARCHITECTURE.md § The memory trail) — `malloc_zone_statistics(malloc_default_zone(),)`,
-    /// `size_in_use` across parsing both of this Mac's cached documents:
-    /// 2,976,224 / 2,975,696 / 2,975,696 bytes over 15,270 entries, three
-    /// consecutive readings. That is the module's largest standing allocation,
-    /// it lasts for the life of the process, and it is the reading itself — so
-    /// there is no version of this feature without it. What there *is* a
-    /// version without is paying it on a Mac whose owner never searches, which
-    /// is why this field starts nil.
+    /// **About 3 MB while it is held**, read off the allocator's books
+    /// (ARCHITECTURE.md § The memory trail): the module's largest standing
+    /// allocation, for the life of the process. It is the reading itself, so it
+    /// cannot go; it starts nil so a Mac whose owner never searches never pays.
     private var stored: PopularityReadings?
 
     convenience init(directory: URL = HelmSupport.directory) {
@@ -493,10 +422,8 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
 
     public func refreshIfDue() async {
         if let counts = await fetchIfDue(Self.formulae) {
-            // On the day a fetch lands, this is the process's first ask for the
-            // half that was not fetched, so it is exactly the parse
-            // `fetchIfDue`'s own doc comment hops for — it belongs off the pool
-            // for the same reason.
+            // May parse the other half's document: off the pool, as in
+            // `fetchIfDue`.
             await offThePoolInThePhase { [self] in replaceFormulae(with: counts) }
         }
         // A cancelled task still runs the line after its `await`, and the ask
@@ -506,8 +433,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
             await offThePoolInThePhase { [self] in replaceCasks(with: counts) }
         }
         // Taken whether or not anything was due: the first reading for a label
-        // is the baseline every later one is a delta against, and a refresh
-        // that fetched nothing is the cheapest place to establish it.
+        // is the baseline every later one is a delta against.
         HelmLog.shared.memory(Self.phaseLabel)
     }
 
@@ -517,21 +443,15 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// its memory reading is filed under.
     ///
     /// **A bulk phase carries both or neither** (ARCHITECTURE.md § The memory trail).
-    /// Every synchronous hop in this store can
-    /// reach `InstallCounts.parse`: the ETag gate through `readings()`, `adopt`
-    /// through `PopularityRefresh.answer`, and each replace through `load`.
-    /// That parse is the module's largest standing allocation — 2.84 MiB, see
-    /// `stored` — so this is not work to leave out of the trail, and a named
-    /// interval with no figure beside it would be the half of the trail that
-    /// cannot be read.
+    /// Every synchronous hop in this store can reach `InstallCounts.parse`, the
+    /// module's largest allocation (`stored`).
     ///
     /// Prefixed with the module's own id, because that is what
     /// `HelmActivity.sweep(module:)` matches on when the host drops the module.
     static let phaseLabel = HomebrewEngine.moduleID + ".popularity"
 
-    /// Off the pool and inside the phase, in one call — the two things every
-    /// synchronous half of this refresh needs, so no call site can carry one
-    /// and forget the other.
+    /// Off the pool and inside the phase, in one call, so no call site can
+    /// carry one and forget the other.
     private func offThePoolInThePhase<T: Sendable>(
         _ body: @escaping @Sendable () -> T
     ) async -> T {
@@ -542,23 +462,15 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// and kept from then on. **Called with the lock held, by every path that
     /// touches `stored`.**
     ///
-    /// **Not in `init`, and that is a measurement rather than a taste.** The two
-    /// documents are 850 KB of JSON and 15,270 packages; parsing both takes
-    /// 30 ms on this Mac, optimised, three readings out of three — and `init`
-    /// runs inside `makeModule`, which `ModuleHost.enable` calls on the main
-    /// thread at launch for every module that is switched on.
+    /// **Not in `init`**: parsing both documents (about 850 KB of JSON) takes
+    /// tens of milliseconds, and `init` runs inside `makeModule`, on the main
+    /// thread at launch.
     ///
-    /// **Nor from the refresh unless the refresh needs it.** The only thing in
-    /// `fetchIfDue` that wants a stored reading is the ETag gate, which is
-    /// reached on a day a document is due with a tag beside it — so the whole
-    /// of this stays unpaid on a launch with nothing due, and a Mac whose
-    /// owner never searches pays nothing on that launch either. **A day a
-    /// fetch succeeds pays for one half**, not for this: `replaceFormulae` and
-    /// `replaceCasks` read the document they are *not* replacing rather than
-    /// calling this, which would also read back the one `adopt` has just
-    /// written and whose counts are in the caller's hand. When it *is* paid it
-    /// is paid off the cooperative pool: by `fetchIfDue`'s own hop, by
-    /// `refreshIfDue`'s hop around each replace, and by `search`'s.
+    /// **Nor from the refresh unless it needs it.** Only the ETag gate wants a
+    /// stored reading, on a day a document is due with a tag beside it, so a
+    /// launch with nothing due pays nothing. A fetch day pays for one half
+    /// (`replaceFormulae`, `replaceCasks`). When it is paid, it is paid off the
+    /// cooperative pool: by `fetchIfDue`'s hop, `refreshIfDue`'s, and `search`'s.
     private func loadedUnderTheLock() -> PopularityReadings {
         if let stored { return stored }
         let loaded = PopularityReadings(formulae: load(Self.formulae) ?? .none,
@@ -571,12 +483,9 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// be held across a suspension and an `async` body may not take one at all
     /// (ARCHITECTURE.md § Sealed settings).
     ///
-    /// **Only the other half is read.** These used to call
-    /// `loadedUnderTheLock()`, which on the first ask — the ordinary case on a
-    /// fetch day, since nothing before this has needed a reading — parses
-    /// *both* cached documents, including the one `adopt` wrote a moment
-    /// earlier whose counts are the argument here. That is about 450 KB read
-    /// and parsed for a value already in hand, once per fetch day.
+    /// **Only the other half is read**, not `loadedUnderTheLock()`: that would
+    /// also parse the document `adopt` just wrote, whose counts are already the
+    /// argument.
     private func replaceFormulae(with counts: InstallCounts) {
         lock.lock(); defer { lock.unlock() }
         stored = PopularityReadings(formulae: counts,
@@ -593,37 +502,20 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// above: `timeoutIntervalForResource` is the bound that cannot be written
     /// on a request, and the shared session's is seven days. Ephemeral with no
     /// cache, because this store keeps its own copy of both documents and
-    /// their tags — a URL cache would hold a second 850 KB saying the same
-    /// thing, and decide freshness by rules this store does not control.
+    /// their tags; a URL cache would hold a second copy and decide freshness by
+    /// rules this store does not control.
     ///
-    /// **The headers are pinned here because CFNetwork writes its own.** The
-    /// request `requestIfDue` builds sets a `User-Agent` and nothing else,
-    /// which said nothing about what actually left the process. Measured on
-    /// 2026-09-14 against a local listener printing what it received — one
-    /// fetch with this session unpinned, one with it pinned as below:
-    ///
-    ///     unpinned: Host, If-None-Match, Accept: */*, User-Agent: Helm,
-    ///               Accept-Language: ru, Accept-Encoding: gzip, deflate,
-    ///               Connection: keep-alive
-    ///     pinned:   Host, If-None-Match, Accept: application/json,
-    ///               User-Agent: Helm, Accept-Language: en,
-    ///               Accept-Encoding: gzip, deflate, Connection: keep-alive
-    ///
-    /// `Accept-Language: ru` is this Mac's own language preference, put on the
-    /// wire by CFNetwork with nobody here asking for it — a fact about the
-    /// person, handed to a third party on a fetch they did not start. Pinned to
-    /// `en`, which is what this request would rather say than anything: the
-    /// answer is a JSON document with no prose in it, so the value cannot even
-    /// change what comes back.
+    /// **The headers are pinned here because CFNetwork writes its own.**
+    /// Unpinned, it sends `Accept-Language` with this Mac's own language, a
+    /// fact about the person handed to a third party on a fetch they did not
+    /// start. Pinned to `en`: the answer is JSON with no prose, so the value
+    /// cannot change what comes back.
     ///
     /// **What is left is not pinned and does not need to be.** `Accept-Encoding`
     /// is CFNetwork's own constant and setting it by hand turns off transparent
-    /// decompression; `Connection` is the same constant on every client; `Host`
-    /// is the endpoint being asked. None of the three varies with this Mac.
-    /// Cookies are off — `httpShouldSetCookies` defaults to true, and an
-    /// ephemeral session's jar is empty at launch but not after the first
-    /// `Set-Cookie`, which would then name this install back to the endpoint on
-    /// tomorrow's ask.
+    /// decompression; `Connection` is the same on every client; `Host` is the
+    /// endpoint. Cookies are off: an ephemeral jar fills at the first
+    /// `Set-Cookie`, which would name this install back on tomorrow's ask.
     private static let session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = idleDeadline
@@ -640,33 +532,23 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// runner — a refusal that never reaches it.
     ///
     /// **The guard is on the transfer and not on `refreshIfDue`.** Every test of
-    /// this store calls `refreshIfDue` deliberately, handing it a fake transfer
-    /// that stands for the wire; a guard inside `refreshIfDue` would leave all
-    /// of them asserting about a method that returns immediately. What must not
-    /// happen under a suite run is a *request*, and this is the one line a
-    /// request goes through.
+    /// this store calls `refreshIfDue` with a fake transfer; a guard there
+    /// would leave them asserting about a method that returns at once. What
+    /// must not happen under a suite run is a *request*, and this is the one
+    /// line a request goes through.
     ///
-    /// Without it `swift test` fetched both documents from `formulae.brew.sh`
-    /// on every run — about 834 KiB to a third party, silently, with nothing
-    /// failing when it failed. Three files in `Tests/HelmAppTests` call
-    /// `ModuleHost.bootstrap`, which enables every module the registry knows,
-    /// and `HomebrewEngine.activate` is what starts the refresh.
-    /// `HelmSupport.directory` already redirects the *files* a suite run would
-    /// write (`TestProcess`, which says why the question is asked this way);
-    /// the ask itself was not redirected at all.
-    /// `ASuiteRunAsksHomebrewNothingTests` is what holds this line.
+    /// App-layer tests call `ModuleHost.bootstrap`, which activates every
+    /// module, and activation starts the refresh; without this a suite run
+    /// fetches from `formulae.brew.sh`. `ASuiteRunAsksHomebrewNothingTests`
+    /// holds this line.
     static var liveTransfer: Transfer {
         TestProcess.isRunning ? refusedUnderTest : overTheNetwork
     }
 
-    /// The refusal a suite run gets. A throw, because that is the shape the
-    /// store already treats as "no new reading, leave the clock alone" — the
-    /// same route an offline laptop takes.
-    ///
-    /// Named rather than anonymous because `ASuiteRunAsksHomebrewNothingTests`
-    /// asserts on it directly: `liveTransfer` under a test runner must throw
-    /// exactly this, which is the branch observable without a counter or a
-    /// listener — a request that is never sent leaves nothing else to see.
+    /// The refusal a suite run gets: a throw, the route an offline laptop
+    /// takes ("no new reading, leave the clock alone"). Named so
+    /// `ASuiteRunAsksHomebrewNothingTests` can assert on it: a request never
+    /// sent leaves nothing else to see.
     struct NoWireUnderTest: Error {}
     static let refusedUnderTest: Transfer = { _ in throw NoWireUnderTest() }
 
@@ -696,37 +578,25 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// unchanged, cancelled — so the caller has one thing to do about all of
     /// them: leave what it has alone.
     ///
-    /// **Both synchronous halves are hopped off the cooperative pool**, because
-    /// between them they read a file attribute, parse up to
-    /// `PopularityRefresh.sizeCeiling` of JSON, write a file through
-    /// `PrivateFile` and set an attribute on it — and this runs inside a bare
-    /// `Task`, which is the shared pool with one thread per core, the same
-    /// shape every `brew` call in this module already goes through
-    /// `offTheCooperativePool` for (ARCHITECTURE.md § Running other programs). The wire itself stays *on* the pool: an `await` on a
-    /// transfer holds no thread.
+    /// **Both synchronous halves are hopped off the cooperative pool**: they
+    /// read and write files and parse up to `PopularityRefresh.sizeCeiling` of
+    /// JSON (ARCHITECTURE.md § Running other programs). The wire itself stays
+    /// *on* the pool: an `await` on a transfer holds no thread.
     private func fetchIfDue(_ endpoint: Endpoint) async -> InstallCounts? {
         guard let request = await offThePoolInThePhase({ [self] in requestIfDue(endpoint) })
         else { return nil }
         // No network, a refused connection, either deadline, and the
-        // cancellation that arrives at quit all land here. None of them is
-        // worth a line in somebody's log — an offline laptop is an ordinary
-        // state, and a line that is printed on an ordinary day sends an
-        // investigation after nothing (ARCHITECTURE.md § Diagnostics log).
+        // cancellation at quit all land here, unlogged: an offline laptop is an
+        // ordinary state (ARCHITECTURE.md § Diagnostics log).
         guard let (data, http) = try? await transfer(request) else { return nil }
         return await offThePoolInThePhase { [self] in adopt(data, http, from: endpoint) }
     }
 
     /// The request to make, or nil because nothing is due.
     ///
-    /// Synchronous and off the pool: the last condition below reads and parses
-    /// this endpoint's cached document, and it is written last so that a
-    /// request already ruled out by an earlier condition — not due — never
-    /// reaches it; `TheCountsAreAskedForOnceADayTests` holds that half.
-    /// Whether the same is true when the document is due but no tag is
-    /// sitting beside it is not something a test can observe from outside —
-    /// `readings()` caches on first call either way, so nothing distinguishes
-    /// "parsed here" from "parsed a moment later" — so this comment does not
-    /// claim it.
+    /// Synchronous and off the pool: the last condition below parses this
+    /// endpoint's cached document, and it is last so a request that is not due
+    /// never reaches it (`TheCountsAreAskedForOnceADayTests`).
     private func requestIfDue(_ endpoint: Endpoint) -> URLRequest? {
         let file = path(endpoint)
         let written = (try? FileManager.default.attributesOfItem(atPath: file.path))?[.modificationDate] as? Date
@@ -734,19 +604,13 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
 
         var request = URLRequest(url: endpoint.url)
         request.setValue("Helm", forHTTPHeaderField: "User-Agent")
-        // `config.timeoutIntervalForRequest` on `Self.session` is `idleDeadline`,
-        // but a hand-built `URLRequest` always carries its own `timeoutInterval`
-        // (default 60) and which of the two governs a `session.data(for:)` call
-        // is unverified — the VPN module's precedent (`TraceExit`) calls
-        // `session.data(from:)`, where the session builds the request itself and
-        // never faces this. Setting it here too costs nothing and closes the
-        // doubt: the idle deadline is `idleDeadline` whichever one wins.
+        // A hand-built `URLRequest` carries its own `timeoutInterval` (default
+        // 60), and which of it and the session's governs `data(for:)` is
+        // unverified; set both, so the idle deadline holds whichever wins.
         request.timeoutInterval = Self.idleDeadline
         // **A tag is a claim about a body this Mac still has.** Offered with the
-        // document gone or unreadable, it earns a 304 — "what you have is
-        // current" — about nothing at all, and the readings would stay empty
-        // with the store believing itself up to date until somebody deleted the
-        // tag by hand.
+        // document gone, it earns a 304 about nothing, and the readings stay
+        // empty while the store believes itself current.
         if written != nil,
            let etag = try? String(contentsOf: etagPath(endpoint), encoding: .utf8),
            !endpoint.half(readings()).counts.isEmpty {
@@ -762,10 +626,8 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
         let file = path(endpoint)
         switch PopularityRefresh.answer(statusCode: http.statusCode, data: data) {
         case .unchanged:
-            // The one answer that spends the day without writing: nothing has
-            // changed, so asking again this afternoon would learn nothing. A
-            // touch that fails leaves the store due, which is the harmless
-            // direction — one more conditional ask tomorrow morning.
+            // The one answer that spends the day without writing. A touch that
+            // fails leaves the store due: one more conditional ask, harmless.
             try? FileManager.default.setAttributes([.modificationDate: Date()],
                                                    ofItemAtPath: file.path)
             return nil
@@ -774,19 +636,16 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
             return nil
         case .use(let counts):
             guard PrivateFile.writeMakingTheFolder(data, at: file) else {
-                // The reading is good and is used; only the caching failed, so
-                // the next launch asks again. Said out loud because a support
-                // folder that cannot be written is a fact about this Mac and
-                // not about Homebrew.
+                // The reading is used; only the caching failed. Said, because an
+                // unwritable support folder is a fact about this Mac.
                 HelmLog.shared.warn(HomebrewEngine.moduleID,
                                     "the install counts could not be cached — they will be "
                                     + "fetched again at the next launch")
                 return counts
             }
             if let etag = http.value(forHTTPHeaderField: "ETag") {
-                // Discarded deliberately: a tag that does not land costs one
-                // full document tomorrow instead of a 304, and the document
-                // beside it is already stored and already the reading.
+                // Discarded deliberately: a lost tag costs one full document
+                // tomorrow instead of a 304.
                 _ = PrivateFile.writeMakingTheFolder(Data(etag.utf8), at: etagPath(endpoint))
             }
             return counts
@@ -798,31 +657,23 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
 
 /// The size of a package, walked out of `<prefix>/Cellar/<name>`.
 ///
-/// **The prefix is asked for at every call and never remembered.** It is
-/// derived from the locator's own answer — `/opt/homebrew/bin/brew` two
-/// components up is `/opt/homebrew` — because that is the one reading in this
-/// process that already re-reads the disk each time it is asked
-/// (`FSBrewLocator`). Homebrew can be moved from `/usr/local` to
-/// `/opt/homebrew` while this window is open, and a prefix frozen at
-/// construction would go on measuring a Cellar that is not the one the rest of
-/// the module is talking to.
+/// **The prefix is asked for at every call and never remembered.** It comes
+/// from the locator's answer, which re-reads the disk each time
+/// (`FSBrewLocator`): Homebrew can move between `/usr/local` and
+/// `/opt/homebrew` while the window is open, and a frozen prefix would measure
+/// a Cellar the rest of the module is not talking to.
 public struct CellarWeight: PackageWeight {
     private let locator: BrewLocator
     init(locator: BrewLocator) { self.locator = locator }
 
     public func bytes(ofPackage name: String, isCask: Bool) -> Int? {
-        // **First, and before the prefix is even asked for.** A cask has no
-        // Cellar directory — it unpacks into `Caskroom` and puts an application
-        // somewhere macOS owns — so «nothing to measure» is *known* here rather
-        // than discovered by failing to find a directory, exactly as
-        // `HomebrewEngine.dependents` knows a cask needs no `brew uses` run.
-        // Asking the locator first would still answer nil, and would make
-        // «nothing was walked» unprovable from outside.
+        // **Before the prefix is even asked for.** A cask has no Cellar
+        // directory, so «nothing to measure» is *known* here, and «nothing was
+        // walked» stays provable from outside.
         guard !isCask, isAPackageName(name) else { return nil }
         guard let brew = locator.brewPath() else { return nil }
-        // `/opt/homebrew/bin/brew` → `/opt/homebrew`. Two components, because
-        // that is the shape Homebrew has in both its prefixes and the shape
-        // `FSBrewLocator` looks for.
+        // `/opt/homebrew/bin/brew` → `/opt/homebrew`, the shape of both
+        // prefixes `FSBrewLocator` looks for.
         let keg = URL(fileURLWithPath: brew)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Cellar").appendingPathComponent(name)
@@ -832,19 +683,13 @@ public struct CellarWeight: PackageWeight {
               isDirectory.boolValue else { return nil }
 
         // **Zero is a refusal here, not a measurement.** `FileWeight.allocated`
-        // answers 0 for a path it could not read at all, and `BulkWalk` reports
-        // a directory that would not open as denied rather than as empty — a
-        // `chmod` in somebody's terminal, or any TCC refusal, arrives that way.
-        // A keg that really is installed occupies blocks; nothing that
-        // occupies none is a package worth drawing a figure for, so both
-        // readings fold into the one nil the row is absent for.
+        // answers 0 for a path it could not read (a `chmod`, a TCC refusal),
+        // and an installed keg always occupies blocks, so zero folds into the
+        // one nil the row is absent for.
         let measured = FileWeight.allocated(of: keg)
         guard measured > 0 else {
-            // Said once, and only about a directory that is *there*: an absent
-            // keg is the ordinary answer for half the questions this port is
-            // asked, and a line about one would send a reading after something
-            // that has not happened — a refusal is logged, an absence is not
-            // (ARCHITECTURE.md § Diagnostics log).
+            // Only about a directory that is *there*: a refusal is logged, an
+            // absence is not (ARCHITECTURE.md § Diagnostics log).
             HelmLog.shared.warn(HomebrewEngine.moduleID,
                                 "the Cellar directory of \(Redact.pkg(name)) measured nothing "
                                 + "— it is there and could not be read")
@@ -858,11 +703,9 @@ public struct CellarWeight: PackageWeight {
     /// **The string is appended to a path that is then walked**, and it reaches
     /// this port from `brew`'s own stdout and from the search box somebody types
     /// into. `..` points the walk at the prefix, `.` at the whole Cellar, and a
-    /// name with a separator in it at wherever the separator leads: measured
-    /// with this guard removed, `bytes(ofPackage: "..")` walked 3,0 GB of a real
-    /// Homebrew installation and reported it as one package's size. A formula's
-    /// own name is one path component with no separator in it, so this refuses
-    /// everything else rather than trying to repair it.
+    /// separator wherever it leads, all reported as one package's size. A
+    /// formula's name is one path component, so this refuses everything else
+    /// rather than trying to repair it.
     private func isAPackageName(_ name: String) -> Bool {
         !name.isEmpty && name != "." && name != ".." && !name.contains("/")
     }

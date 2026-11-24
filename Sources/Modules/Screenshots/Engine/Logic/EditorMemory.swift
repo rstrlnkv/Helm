@@ -13,9 +13,9 @@ import HelmRuntime
 /// (`[String: Int]`, `[String: Double]`, `[String: [Double]]`): one entry of another type makes it read as no record for
 /// every tool, so each falls back to its default, bounded and without a crash.
 ///
-/// A tool with no colour of its own starts with the one the person had before each tool kept its own: `editorInk`,
-/// or the swatch `editorColor` names while `editorInk` is absent (the Settings row writes `editorColor` and removes `editorInk`). A pick
-/// in the editor never writes either, or the next read would hand it to every tool that has none yet.
+/// A tool with no colour of its own starts with the shared one: `editorInk`, or the swatch `editorColor` names while
+/// `editorInk` is absent (the Settings row writes `editorColor` and removes `editorInk`). A pick in the editor never
+/// writes either, or the next read would hand it to every tool that has none yet.
 /// Not sealed — nothing unattended reads it.
 public struct EditorMemory: Equatable, Sendable {
     /// Nil is no tool, which is what a drag on the area means.
@@ -82,9 +82,8 @@ public struct EditorMemory: Equatable, Sendable {
         store.object(ScreenshotsSettings.Key.editorInkByTool) as? [String: [Double]] ?? [:]
     }
 
-    /// The colour a tool starts with: `editorInk`, three numbers; or, while that key is absent, the swatch the old
-    /// `editorColor` names. A key that is there and cannot be read as three numbers is no colour, and the old key
-    /// is not asked then, so a damaged record never turns into a colour from before it.
+    /// The shared start colour: `editorInk`, three numbers, or, while that key is absent, the swatch `editorColor`
+    /// names. A key that is there and is not three numbers is no colour, and `editorColor` is not asked then.
     private static func readInk(_ store: NamespacedStore) -> AnnotationInk? {
         typealias Key = ScreenshotsSettings.Key
         guard let stored = store.object(Key.editorInk) else {

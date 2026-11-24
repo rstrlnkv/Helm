@@ -6,15 +6,11 @@ import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
 
-/// `ARefusalMustNotCarryTheNameTests` proves the tool's sentence loses **the
-/// name the command was about**. It is not the only name the tool can print.
-///
-/// `scutil` explains a refusal, and the explanation is often about a *different*
-/// configuration — the one already holding the interface, the one whose gateway
-/// answered — and that name went into the diagnostic file in clear. One
-/// configuration named in the file is the whole of what redaction exists to keep
-/// out of it: it announces an employer or a provider, and the file is the thing
-/// a person attaches to a bug report.
+/// A refusal's text names no configuration, not only the one the command was
+/// about (`ARefusalMustNotCarryTheNameTests`). `scutil` often explains a refusal
+/// by a *different* configuration, the one holding the interface or the one
+/// whose gateway answered, and any configuration named in the diagnostic file
+/// announces an employer or a provider.
 final class ARefusalNamesNoConfigurationTests: XCTestCase {
 
     private let asked = "Contoso Field Office"
@@ -54,10 +50,9 @@ final class ARefusalNamesNoConfigurationTests: XCTestCase {
     /// of the network configuration store and the rule was written from a text
     /// field, so the two can differ byte for byte while naming one configuration.
     ///
-    /// This passes today because `replacingOccurrences` without `.literal`
-    /// compares canonically — which is a property of Foundation and not of
-    /// anything written here, so it is pinned: adding `.literal` for speed would
-    /// silently put the name back in the file.
+    /// `replacingOccurrences` without `.literal` compares canonically. That is
+    /// Foundation's property, not ours, so it is pinned: `.literal` would put the
+    /// name back in the file.
     func testTheNameIsFoundInEitherNormalization() throws {
         let precomposed = "Ёлка"                    // U+0451
         let decomposed = "Е\u{0308}лка"             // Е + combining diaeresis
@@ -74,8 +69,7 @@ final class ARefusalNamesNoConfigurationTests: XCTestCase {
         XCTAssertFalse(printedPrecomposed.contains(precomposed), "«\(printedPrecomposed)»")
     }
 
-    /// Through the engine, which is what fills the list of names and writes the
-    /// file. Without this the sweep could be perfect and wired to nothing.
+    /// Through the engine, which fills the list of names and writes the file.
     func testTheEngineHandsOverEveryNameItKnows() {
         tailTheLog()
 

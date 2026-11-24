@@ -2,18 +2,9 @@ import Foundation
 import XCTest
 @testable import HelmUI
 
-/// Where Finder is sent when Helm reveals a path.
-///
-/// Two reasons this is a decision at all. **Selecting a file Finder cannot see
-/// does nothing** — `activateFileViewerSelecting` on a path that no longer exists
-/// returns without a window and without bringing Finder forward, and every place
-/// Helm reveals a path is a place the path may well be gone: beside removal
-/// failures, in Autopilot's history, on leftovers deleted a moment ago. And
-/// **`NSWorkspace.open` on a bundle launches it** — a `.app` runs, a
-/// `.photoslibrary` mounts — so opening the enclosing folder to "show where it
-/// was" would execute whatever bundle the stale row sat inside. The enclosing
-/// folder is therefore *selected*, not opened, whenever it is a package.
-/// Kept for the defect fixed in fbd693f9 (revealing a file that has gone).
+/// Where Finder is sent when Helm reveals a path: a path that is gone falls
+/// back to its enclosing folder, and a folder that is a package is selected,
+/// never opened, because opening a bundle launches or mounts it.
 final class RevealTargetTests: XCTestCase {
 
     private func target(_ path: String,
@@ -38,9 +29,8 @@ final class RevealTargetTests: XCTestCase {
     /// A file that is gone: the plain folder it was in is opened to its contents,
     /// which is the answer to "show me where it was".
     ///
-    /// `isDirectory: true` in the expectation, because that is what the folder's
-    /// URL is — dropping the last component leaves a trailing slash, and a URL
-    /// built without one is a different value for the same folder.
+    /// `isDirectory: true` in the expectation: dropping the last component
+    /// leaves a trailing slash, and a URL without one is a different value.
     func testAPathThatIsGoneOpensThePlainFolderItWasIn() {
         XCTAssertEqual(target("/Users/somebody/Library/Caches/com.example.app",
                               directories: ["/Users/somebody/Library/Caches"]),
@@ -48,15 +38,11 @@ final class RevealTargetTests: XCTestCase {
                                  isDirectory: true)))
     }
 
-    /// **The defect: a stale row inside a bundle.** The disk scan lists the
-    /// top-level children of a `.app`, so a row can point at
-    /// `…/Poison.app/Contents` after the file is gone. Opening the enclosing
-    /// `Poison.app` would launch it — an unsigned bundle, no Gatekeeper prompt.
-    /// The bundle is *selected* in its parent instead, which shows where it is
-    /// and runs nothing.
+    /// A stale row inside a bundle (`…/Poison.app/Contents`): opening the
+    /// enclosing `Poison.app` would launch an unsigned bundle with no
+    /// Gatekeeper prompt. The bundle is selected in its parent instead.
     func testAGonePathInsideABundleSelectsTheBundleRatherThanOpeningIt() {
-        // A directory URL (trailing slash), because that is what dropping the
-        // last component of the enclosing folder leaves.
+        // A directory URL, as dropping the last component leaves.
         XCTAssertEqual(target("/Applications/Poison.app/Contents",
                               packages: ["/Applications/Poison.app"]),
                        .select(URL(fileURLWithPath: "/Applications/Poison.app", isDirectory: true)))
@@ -71,18 +57,15 @@ final class RevealTargetTests: XCTestCase {
                        .select(URL(fileURLWithPath: "/Applications/Some.app")))
     }
 
-    /// A gone path whose enclosing folder is *also* gone — a volume that has
-    /// unmounted, most often — reveals nothing. Selecting a folder Finder cannot
-    /// see is silent, and `open` on it returns false; rather than pretend, the
-    /// decision is `nil` so a caller can say so.
+    /// A gone path whose enclosing folder is also gone, most often an unmounted
+    /// volume, reveals nothing: the decision is `nil` so a caller can say so.
     func testAGonePathWhoseEnclosingFolderIsAlsoGoneRevealsNothing() {
         XCTAssertNil(target("/Volumes/Ejected/old/file.bin"))
     }
 
-    /// Two sites already guarded a `String?` by hand and the rest did not. An
-    /// empty path must reveal *nothing*: `URL(fileURLWithPath: "")` is the
-    /// process's current directory, and the enclosing folder of that is `..` —
-    /// so the fallback would open some folder the person never asked about.
+    /// An empty path reveals nothing: `URL(fileURLWithPath: "")` is the
+    /// process's current directory, and the fallback would open some folder
+    /// the person never asked about.
     func testAnEmptyPathRevealsNothing() {
         XCTAssertNil(target(""))
         XCTAssertNil(target("   "))

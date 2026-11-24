@@ -7,16 +7,12 @@ import Module_Duplicates_Engine
 /// question was withdrawn.
 ///
 /// `cancel()` stops the engine and puts the page back, but the request task is
-/// still awaiting — and without the generation check whatever the work
-/// eventually returned was written straight into `groups`. A cancelled search
-/// resurfaced as if it had been asked for; and with a second search already
-/// running, the first one's corpse overwrote the newer folder's results.
+/// still awaiting; the generation check keeps whatever the work eventually
+/// returns out of `groups`, so a cancelled search does not resurface and an
+/// older search cannot overwrite a newer one's results.
 ///
 /// The work is hand-cranked: every "find" parks until the test releases
-/// it, so the interleaving is chosen rather than raced. An assertion that
-/// holds only for a lucky delay is not a test.
-///
-/// Guards a past defect: 1677af73 fix: seven agents over the whole app, and what they found.
+/// it, so the interleaving is chosen rather than raced.
 @MainActor
 final class DuplicateSearchRaceTests: XCTestCase {
 

@@ -5,12 +5,11 @@ import HelmRuntime
 @testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
-/// **A planted `last-scan.json`, opened the way the page opens it.**
+/// A planted `last-scan.json`, opened the way the page opens it.
 ///
-/// `ASavedFileCannotTrapTheSumsTests` reaches one sum from a value built in the
-/// test. This case reaches all four from
-/// one file, through the road a person takes: the view model's own
-/// `restoreLastScan` at construction, the advice rows put in the basket, the
+/// `ASavedFileCannotTrapTheSumsTests` reaches each sum from a value built in the
+/// test. This case reaches all four from one file, the way a person does: the
+/// view model's `restoreLastScan`, the advice rows put in the basket, the
 /// removal question, and a removal answered by the engine so the tree is pruned.
 ///
 /// Every figure in the file is `Int.max`; each is held to `DiskEntry.byteCeiling`
@@ -25,7 +24,6 @@ import HelmRuntime
 ///
 /// A sum that traps takes the test process with it, so a regression reads as a
 /// crashed bundle rather than one red case.
-/// Past defect: fixed in commit 4ce355a9.
 @MainActor
 final class APlantedScanOpensThroughTheRestoreTests: XCTestCase {
 

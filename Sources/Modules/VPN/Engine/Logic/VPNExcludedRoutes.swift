@@ -7,14 +7,12 @@ import Foundation
 ///
 /// A NetworkExtension configuration declares excluded routes, and a verdict that
 /// ignored them would say «Traffic goes through the tunnel» beside a connected
-/// card. That sentence can be false: among the seven
-/// exclusions on the machine this was written against is `17.0.0.0/8`, which is
-/// Apple's whole network — iCloud, the App Store, iMessage — leaving through
-/// `en0` with the real address.
+/// card. That sentence can be false: an exclusion of `17.0.0.0/8` sends Apple's
+/// whole network — iCloud, the App Store, iMessage — out through `en0` with the
+/// real address.
 ///
 /// `VPNStatusParser` calls them «the decoys» and walks past them by indentation
-/// to reach the tunnel's own interface, collecting their destinations on the
-/// way; seven of them sit in that parser's own committed fixture.
+/// to reach the tunnel's own interface, collecting their destinations on the way.
 public enum VPNExcludedRoutes {
 
     /// One declared exclusion, as the tool writes it: a destination, a dotted quad.
@@ -30,23 +28,21 @@ public enum VPNExcludedRoutes {
     /// **What the exclusions amount to, in the three shapes a reader can act
     /// on** — never the ranges themselves.
     ///
-    /// The summary is what travels, and the addresses stay in the engine. A
-    /// range is not a name, but it is a fact about somebody's network, and this
-    /// module already refuses to put an exit address into a published state for the same
-    /// reason (`VPNExitPort`). It is also what a reader can do anything with:
-    /// «and 10.0.0.0/8» tells them nothing that «the local network» does not.
+    /// The summary is what travels, and the addresses stay in the engine: a
+    /// range is a fact about somebody's network, as an exit address is
+    /// (`VPNExitPort`), and «10.0.0.0/8» tells a reader nothing that «the local
+    /// network» does not.
     public struct Summary: Equatable, Sendable {
         /// Private ranges, link-local, multicast, broadcast — the exclusions
         /// nearly every tunnel declares so that printers and NAS boxes keep
-        /// working. True of a dull configuration and worth one word.
+        /// working.
         public let localNetwork: Bool
         /// `17.0.0.0/8`. Its own case rather than one of `others`, because it
         /// is the one exclusion a person would want to know about by name: it
         /// is not a printer, it is every Apple service this Mac talks to.
         public let apple: Bool
-        /// Anything else, counted. Named by number rather than by range for the
-        /// reason the type's own comment gives — and counted rather than
-        /// flagged, because «two more» and «forty more» are different news.
+        /// Anything else, counted rather than flagged, because «two more» and
+        /// «forty more» are different news.
         public let others: Int
 
         /// The tunnel that excludes nothing. Not the same as «nobody looked» —
@@ -55,16 +51,14 @@ public enum VPNExcludedRoutes {
         static let none = Summary(localNetwork: false, apple: false, others: 0)
     }
 
-    /// Apple's network, as one `/8`. A constant with its own name because the
-    /// number means nothing on sight and a reader should not have to look it up.
+    /// Apple's network, as one `/8`.
     static let appleNetwork = "17.0.0.0"
 
     /// The ranges a tunnel excludes to leave the local network reachable.
     ///
     /// Matched on the destination alone. The masks a configuration writes for
-    /// these vary — 172.16/12 is written `255.240.0.0` here — and a reader who
-    /// has excluded 10/8 with an unusual mask has still excluded the local
-    /// network, which is all this word claims.
+    /// these vary, and a tunnel that excludes 10/8 with an unusual mask has
+    /// still excluded the local network, which is all this word claims.
     static let localRanges: Set<String> = [
         "10.0.0.0",         // RFC 1918
         "172.16.0.0",       // RFC 1918

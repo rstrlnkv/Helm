@@ -2,14 +2,9 @@ import SwiftUI
 
 /// The one pill. A short word tinted by meaning, next to the thing it is about.
 ///
-/// There were seven of these, with four different fill opacities and two sets
-/// of padding, and — worse — two different rules for the text: some drew it in
-/// the tint (orange on orange, about 1.7:1 at 11 pt, which is not readable) and
-/// some left it at the default. Two of them sat in the same row, 30 px apart,
-/// looking like different kinds of thing because one was dark and one was not.
-///
-/// The tint colours the fill and nothing else. Contrast is not something a
-/// caller should be able to get wrong.
+/// The tint colours the fill and nothing else: text in the tint on its own
+/// wash is unreadable, and contrast is not something a caller should be able
+/// to get wrong.
 public struct HelmBadge: View {
 
     /// How much the badge is asking for.
@@ -20,8 +15,7 @@ public struct HelmBadge: View {
     /// where a flat 20% wash beside 34 pt type reads as an unfinished
     /// placeholder rather than a mark.
     ///
-    /// Two styles of one component rather than a second badge: the house has
-    /// one pill, and the difference between these is emphasis, not kind.
+    /// Two styles of one component: the difference is emphasis, not kind.
     public enum Emphasis: Sendable { case quiet, prominent }
 
     /// The tint of a badge that says nothing by colour.
@@ -50,11 +44,9 @@ public struct HelmBadge: View {
             // Literal rather than `.primary`: badges appear inside rows that
             // animate in, where hierarchical styles re-resolve.
             .foregroundStyle(Color.primary.opacity(0.85))
-            // **Off the ladder on purpose, and measured rather than rounded.**
-            // A capsule's padding is not a gap between two things; it is half
-            // of the pill's own silhouette, solved against the rows this
-            // badge sits in. The ladder's neighbours are 4/6 and 0/2, and any
-            // of the four takes the pill 2 pt out of the row it was fitted to.
+            // Off the ladder on purpose: a capsule's padding is half of the
+            // pill's silhouette, solved against the rows it sits in, and each
+            // ladder neighbour takes it 2 pt out of the row.
             .padding(.horizontal, 5).padding(.vertical, 1)
             .background(Capsule().fill(tint.opacity(0.20)))
     }

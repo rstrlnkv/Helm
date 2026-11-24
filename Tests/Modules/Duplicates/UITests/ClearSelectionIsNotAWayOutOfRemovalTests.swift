@@ -3,19 +3,13 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_UI
 
-/// «Clear selection» during a removal emptied the basket and the files went
-/// anyway.
+/// «Clear selection» during a removal is refused: `emptyBasket` captures the
+/// paths at its first line, so the request is already out with them, and an
+/// emptied basket would be followed by «Moved to the Trash» about the very
+/// selection the person had just cleared.
 ///
-/// Measured with `trash` parked: `basket 0, busy true, parked 1` — and then
-/// «Moved to the Trash — 9 GB» about the very selection the person had just
-/// cleared. `emptyBasket` captures the paths at its first line, so the request
-/// is already out with them in it; the button had no `.disabled` and the model
-/// had no guard, so the only control on the screen that looks like a way out of
-/// a destructive act was not one.
-///
-/// **Not academic in this module.** `DuplicatesEngine.trash` verifies every pair
-/// before anything moves, serially, so the window between
-/// the press and the reply is proportional to the volume marked: minutes on an
+/// `DuplicatesEngine.trash` verifies every pair before anything moves,
+/// serially, so the window between the press and the reply is minutes on an
 /// external drive.
 ///
 /// The guard is on the model *and* the page dims the button — both, or neither is

@@ -5,24 +5,15 @@ import Foundation
 import XCTest
 @testable import Module_VPN_Engine
 
-/// **The drop notice fired on a tunnel that was back three seconds later.**
+/// **A drop that heals inside `VPNDropSettle.window` is never announced.**
 ///
-/// It is this module's only interrupting signal, and its own comment says why —
-/// «the person is now sending everything in clear having last been told they
-/// were behind a tunnel». It was fired on the first `scutil --nc list` read that
-/// showed a watched tunnel not up, and a NetworkExtension tunnel re-handshaking
-/// on a Wi-Fi change or a wake does exactly that.
-///
-/// Measured on the owner's machine, in the log and in the tool in the same
-/// breath: `automatic connection dropped` at 14:57:19 against
-/// `LastStatusChangeTime : 14:57:22`. Twice in the two days of log there was to
-/// read. A signal that cries wolf on a blip is a signal people switch off, and
-/// then the real drop is silent too.
-///
-/// Past defect: commit 038fee7f, «fix(vpn): a drop that healed in three seconds is not announced».
+/// The drop notice is this module's only interrupting signal. A NetworkExtension
+/// tunnel re-handshaking on a Wi-Fi change or a wake shows not up on one
+/// `scutil --nc list` read and is back seconds later; a signal that cries wolf
+/// on that blip is one people switch off, and then the real drop is silent too.
 final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
 
-    /// The measured case: down at one read, up at the next, three seconds later.
+    /// Down at one read, up at the next, three seconds later.
     func testATunnelThatComesBackInsideTheWindowIsNeverAnnounced() {
         let runner = FakeRunner()
         let clock = TestClock()
@@ -50,9 +41,8 @@ final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
             """)
     }
 
-    /// **And a real loss is still reported** — the half that makes the test
-    /// above mean anything. A settle window that swallowed every drop would
-    /// satisfy the first test and leave the module with no signal at all.
+    /// **A real loss is still reported**, or a window that swallowed every drop
+    /// would pass the test above.
     func testATunnelThatStaysDownIsAnnouncedOnceTheWindowHasPassed() throws {
         let runner = FakeRunner()
         let clock = TestClock()

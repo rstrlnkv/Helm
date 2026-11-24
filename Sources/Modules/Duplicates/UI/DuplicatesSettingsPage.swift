@@ -6,9 +6,8 @@ import SwiftUI
 /// The module's page: pick a folder, watch it read, decide what goes.
 struct DuplicatesSettingsPage: View {
     /// Observed, never owned: Settings tears this page down on every sidebar
-    /// visit, and a `@StateObject` here took the search, the basket and the
-    /// phase with it. Hashing a folder is minutes of reading and there is no
-    /// on-disk cache behind it — the view model outlives the page.
+    /// visit, and hashing a folder is minutes of reading with no on-disk cache
+    /// behind it, so the view model outlives the page.
     @ObservedObject private var dvm: DuplicatesViewModel
     @State private var confirming = false
     @State private var diskAccess: PermissionState = .granted
@@ -30,10 +29,9 @@ struct DuplicatesSettingsPage: View {
                 toolbar
                 Divider()
             }
-            // Under the toolbar and above everything the search says, because it
-            // is the question the answer is to — and from the moment a folder is
-            // chosen, not only when there are results: it decides what the next
-            // search offers to delete, so it cannot wait for one.
+            // Under the toolbar and above everything the search says, from the
+            // moment a folder is chosen: it decides what the next search offers
+            // to delete, so it cannot wait for results.
             if dvm.folder != nil {
                 policyRow
                 Divider()
@@ -67,10 +65,8 @@ struct DuplicatesSettingsPage: View {
         .task { dvm.appear() }
         .animation(HelmMotion.interface, value: dvm.phase)
         .animation(HelmMotion.interface, value: dvm.basket.isEmpty)
-        // And on the groups themselves, which is the change somebody actually
-        // makes here: the other two cover the state around the list, so
-        // without this, emptying the basket animates the bar and drops the
-        // rows it emptied in one frame.
+        // And on the groups, or emptying the basket animates the bar and drops
+        // the rows it emptied in one frame.
         .animation(HelmMotion.interface, value: dvm.groups.count)
         // And on `busy`, which brings the removal's own row — progress and
         // Stop — up and down in the bar the way the neighbours above arrive.
@@ -132,10 +128,9 @@ struct DuplicatesSettingsPage: View {
                 .disabled(dvm.busy)
                 if dvm.folder != nil {
                     let title = dvm.groups.isEmpty ? DupStr.search : DupStr.searchAgain
-                    // Dimmed while a removal runs, for the reason the clear
-                    // button beside the basket already is: this press empties
-                    // the basket the request is out with, and takes the
-                    // removal's own tick and Stop button down with it.
+                    // Dimmed while a removal runs, like the clear button: this
+                    // press empties the basket the request is out with, and
+                    // takes the removal's own tick and Stop button down with it.
                     Button(title) { dvm.search() }
                         .controlSize(.small)
                         .fixedSize()
@@ -155,10 +150,9 @@ struct DuplicatesSettingsPage: View {
 
     /// One sentence with a pop-up in the middle: «An extra copy is …».
     ///
-    /// **A sentence and not a titled setting.** A label above a control and a
-    /// caption under it would take four lines to say what this says in one, and
-    /// the thing being chosen is a belief rather than a preference — the two
-    /// options are the only two halves that finish the sentence.
+    /// A sentence and not a titled setting: a label above and a caption under
+    /// would take four lines, and the two options are the only two halves that
+    /// finish the sentence.
     ///
     /// `DuplicatesLayout.policyPickerWidth` is measured from the labels themselves.
     private var policyRow: some View {
@@ -190,16 +184,14 @@ struct DuplicatesSettingsPage: View {
     @ViewBuilder private var content: some View {
         switch dvm.phase {
         case .start:
-            // A stopped search is a named outcome, not a return to «Pick a
-            // folder»: the folder is still chosen and the toolbar shows it, so
-            // the hint would read as if nothing had happened. With a folder the
-            // hint does not ask for one again either.
+            // A stopped search is a named outcome: the folder is still chosen
+            // and the toolbar shows it, so «Pick a folder» would read as if
+            // nothing had happened.
             HelmEmptyState(symbol: "doc.on.doc", tint: DuplicatesDescriptor.tint.colour,
                            message: dvm.searchStopped ? DupStr.searchStopped()
                                : dvm.folder == nil ? DupStr.startHint : DupStr.startHintWithFolder) {
-                // With a folder already remembered the page must not ask for
-                // one again — the toolbar above is showing it. Reading it is
-                // expensive, so it is offered rather than started.
+                // Reading a remembered folder is expensive, so it is offered
+                // rather than started.
                 if dvm.folder == nil {
                     Button(DupStr.chooseFolder) { dvm.chooseFolder() }
                         .buttonStyle(.borderedProminent)
@@ -211,10 +203,8 @@ struct DuplicatesSettingsPage: View {
         case .searching:
             HelmBusyState(DupStr.busyLine(dvm.progress))
         case .result:
-            // **`nothingToShow`, not `groups.isEmpty`.** The two agree on when
-            // there is no list and not on what to say about it: a walk refused
-            // at every door produced the same «Every large file under this
-            // folder is one of a kind» as a walk that read the lot.
+            // `nothingToShow`, not `groups.isEmpty`: the two agree on when there
+            // is no list, not on what to say about it.
             if let nothing = dvm.nothingToShow {
                 HelmEmptyState(message: DupStr.emptyMessage(nothing), note: DupStr.floorNote)
             } else {
@@ -228,17 +218,14 @@ struct DuplicatesSettingsPage: View {
     private var basketBar: some View {
         // Stacked, not exclusive: what macOS refused stays ticked so the person
         // can fix the permission and press the button again, which means the
-        // basket and the outcome are both true at the same moment. Drawing the
-        // outcome only for an empty basket hid the failure list in exactly the
-        // case it exists for — seen on a render, not reasoned about.
+        // basket and the outcome are both true at the same moment.
         VStack(alignment: .leading, spacing: HelmSpace.s4) {
             if hasReport {
                 outcomeRow
             }
-            // The removal, while it runs: the same tick the search draws — both
-            // are files being read in full — and the way out `cancel` never
-            // was. Above the basket row so the count being acted on stays put
-            // under it.
+            // The removal, while it runs: the same tick the search draws (both
+            // read files in full) and its Stop. Above the basket row so the
+            // count being acted on stays put under it.
             if dvm.busy {
                 HStack(spacing: HelmSpace.s5) {
                     ProgressView().controlSize(.small)
@@ -267,22 +254,20 @@ struct DuplicatesSettingsPage: View {
         .helmPageStrip()
     }
 
-    /// Whether the row above the basket has anything to say. One spelling, read
-    /// by the bar and by the block inside it — two copies of this question could
-    /// disagree, and the one that draws the report is not the one that makes room
-    /// for it.
+    /// Whether the row above the basket has anything to say: one spelling for
+    /// the bar and the block inside it, so the two cannot disagree.
     private var hasReport: Bool {
         dvm.removalStopped || dvm.banner != nil || !dvm.failures.isEmpty
     }
 
-    /// What actually happened, named and reasoned — the component Disk,
-    /// Leftovers and the orphans tab already use.
+    /// What actually happened, named and reasoned: the component Disk,
+    /// Leftovers and the orphans tab use.
     private var outcomeRow: some View {
         HStack(spacing: HelmSpace.s5) {
             removalReport
                 // Bounded, as Leftovers bounds it: unbounded, each named
-                // failure's Reveal button ran to the right edge and sat under
-                // the Close button.
+                // failure's Reveal button runs to the right edge, under the
+                // Close button.
                 .frame(maxWidth: DuplicatesLayout.outcomeWidth, alignment: .leading)
             Spacer(minLength: HelmSpace.s4)
             Button(HelmWord.close) { dvm.dismissBanner() }
@@ -290,10 +275,9 @@ struct DuplicatesSettingsPage: View {
         }
     }
 
-    /// The condition on `hasReport` is this page's own: an outcome here is drawn
-    /// for a batch that refused *everything* as well, where there is no banner
-    /// and a list of failures, and drawing it only for a banner hid that list in
-    /// exactly the case it exists for.
+    /// Drawn for a batch that refused everything as well (see `hasReport`),
+    /// where there is no banner, only a list of failures.
+
     private var removalReport: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
             // Above the counts, because it qualifies them: a stopped removal

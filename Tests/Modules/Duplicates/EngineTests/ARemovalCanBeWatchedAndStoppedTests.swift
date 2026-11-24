@@ -7,8 +7,7 @@ import XCTest
 /// The heaviest read in the module obeys Stop between files.
 ///
 /// `trash` verifies every pair before anything moves — minutes on an
-/// external drive — and it used to do that un-abandonably: `cancel` reached only the
-/// search. The verification port here parks on purpose: a check that answers
+/// external drive. The verification port here parks on purpose: a check that answers
 /// on the spot is over before Stop can be pressed, so every assertion about
 /// "while it runs" would pass with the guard deleted.
 final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {

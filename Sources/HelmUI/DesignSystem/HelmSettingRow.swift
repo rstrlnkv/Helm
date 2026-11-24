@@ -5,10 +5,8 @@ public enum HelmRowMark: Equatable, Sendable {
     /// Nothing to report, and nothing to line up with either — for a card
     /// whose rows carry no marks at all.
     case none
-    /// Nothing to report, but hold the width. A card where some rows are
-    /// marked and some are not needs every label to start on one line;
-    /// without this the unmarked ones step 26 pt to the left and the card
-    /// reads as two lists.
+    /// Nothing to report, but hold the width, so that in a card where some rows
+    /// are marked every label starts on one line.
     case space
     /// The condition is met — this is why the Mac is awake.
     case holding
@@ -22,51 +20,35 @@ public enum HelmRowMark: Equatable, Sendable {
     /// The three-way answer, decided once for every module rather than in
     /// each page's own `if`.
     ///
-    /// The half that is easy to get wrong is the third: a rule that is
-    /// switched **off** gets `.space`, not a mark of its own. The mark
-    /// reports the world; the switch beside it already reports the setting,
-    /// and a grey dot for «off» is the row saying one thing twice. The
-    /// width stays, so the labels of a mixed card keep one left edge.
+    /// A rule switched **off** gets `.space`, not a mark of its own: the mark
+    /// reports the world, and the switch beside it already reports the setting.
+    /// The width stays, so the labels of a mixed card keep one left edge.
     public static func of(enabled: Bool, satisfied: Bool,
                           inCardWithMarks marksArePossible: Bool = true) -> HelmRowMark {
         guard enabled else { return spacer(inCardWithMarks: marksArePossible) }
         return satisfied ? .holding : .waiting
     }
 
-    /// The width-holder for a row that never carries a mark of its own — or
-    /// nothing at all, when no row in the card can carry one either.
-    ///
-    /// `.space` exists so a card of mixed rows keeps one left edge for its
-    /// labels. In a card where **nothing** is marked it holds that edge against
-    /// nobody: every label steps 26 pt right, and the column of air down the
-    /// left reads as icons that failed to load. Which is exactly what it looked
-    /// like on a Mac with no rule switched on — the common case on a fresh
-    /// install, and the first thing anybody sees.
+    /// The width-holder for a row that never carries a mark of its own, or
+    /// nothing at all when no row in the card can carry one either: in a card
+    /// where nothing is marked, a held column reads as icons that failed to load.
     ///
     /// The question is «can a mark appear here», not «is one here now»: asked
-    /// the second way the labels would jump sideways the moment a condition
-    /// came true. Asked the first way the indent arrives when somebody flips a
-    /// switch — their own doing, and the same gesture that puts the first mark
-    /// on the screen.
+    /// the second way, the labels would jump sideways the moment a condition
+    /// came true. Asked the first way, the indent arrives when somebody flips a
+    /// switch, the same gesture that puts the first mark on the screen.
     public static func spacer(inCardWithMarks marksArePossible: Bool) -> HelmRowMark {
         marksArePossible ? .space : .none
     }
 }
 
-/// One row of a settings card, in the shape v3 gives every module.
+/// One row of a settings card: mark, title, note, control.
 ///
-/// **The row answers two questions at once**, and that is the whole idea of the
-/// third redesign. The mark on the left says what is happening right now — a
-/// fact from the engine. The control on the right says what is configured — a
-/// value from the store. The second edition put those two in different columns,
-/// 268 pt apart, so a person reading the page top to bottom saw that a rule was
-/// holding the Mac and could not see what to change about it. One row, two
-/// jobs, and nothing between them.
-///
-/// The mark is drawn only when there is something happening. A rule that is
-/// switched off has no mark at all: the mark reports the world, not the
-/// position of the switch beside it, and a grey dot for «off» would be the row
-/// saying the same thing twice in two alphabets.
+/// The row answers two questions at once. The mark on the left says what is
+/// happening right now, a fact from the engine; the control on the right says
+/// what is configured, a value from the store. Side by side, so a person who
+/// sees that a rule is holding the Mac also sees what to change about it. A
+/// rule switched off has no mark: the mark reports the world, not the switch.
 ///
 /// Title and note are one VoiceOver stop (`.accessibilityLabel(spoken)` on the
 /// title, not `.combine` on the stack, which would fold the ⓘ in too); the
@@ -83,14 +65,13 @@ public struct HelmSettingRow<Trailing: View>: View {
     private let trailing: Trailing
 
     /// - Parameter explainer: what an ⓘ beside the row's name opens, for a
-    ///   setting whose full story does not fit a caption. The rule and the
-    ///   reason the row is not the place for it are on `HelmExplainer`; the
-    ///   short version is that the note answers «should I switch this on» and
-    ///   the explainer answers «what happens if I do».
-    /// - Parameter markSpoken: what the mark says, for VoiceOver — the mark itself is hidden from it, and a
-    ///   state only drawn is a state only seen. Read as the title's value. `nil` for a mark whose meaning the
-    ///   row's own words or control already carry: the value is then the row's spoken text, as it was before the
-    ///   mark existed.
+    ///   setting whose full story does not fit a caption (see `HelmExplainer`):
+    ///   the note answers «should I switch this on», the explainer «what
+    ///   happens if I do».
+    /// - Parameter markSpoken: what the mark says, for VoiceOver, which does not
+    ///   see the mark itself. Read as the title's value. `nil` for a mark whose
+    ///   meaning the row's own words or control already carry: the value is then
+    ///   the row's spoken text.
     public init(_ title: String, note: String? = nil,
                 explainer: HelmExplainer.Content? = nil, mark: HelmRowMark = .none, markSpoken: String? = nil,
                 @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
@@ -103,11 +84,9 @@ public struct HelmSettingRow<Trailing: View>: View {
     }
 
     public var body: some View {
-        // Spacing 0, with the mark's own gap inside its frame. An `HStack`
-        // spacing is applied whether or not the view beside it has any width,
-        // so a column that shrinks to nothing would leave 12 pt of air behind
-        // — which is exactly the indent-against-nobody that `.none` exists to
-        // prevent. Carried in the frame, the gap goes with the column.
+        // Spacing 0, with the mark's gap inside its frame: an `HStack` spacing
+        // applies even beside a view of no width, so a collapsed column would
+        // leave 12 pt of air, the indent `.none` exists to prevent.
         HStack(spacing: 0) {
             markView
             VStack(alignment: .leading, spacing: 2) {
@@ -120,48 +99,32 @@ public struct HelmSettingRow<Trailing: View>: View {
                 }
                 if let note {
                     Text(note)
-                        // The line under a row's name, in the token that is
-                        // that. It was `.system(size: 11)` — the same face at a
-                        // size that never moves, so a Mac whose owner had
-                        // raised the interface text size got a row whose title
-                        // grew and whose note did not.
+                        // The line under a row's name: a text style, so it
+                        // grows with the title when the system text size does.
                         .font(HelmText.rowDetail)
                         // Literal, not `.secondary`: these rows sit in blocks
                         // that animate, where hierarchical styles re-resolve.
                         .foregroundStyle(HelmText.quiet)
                         .fixedSize(horizontal: false, vertical: true)
-                        // `.contentTransition`, **not** `.id` plus a
-                        // `.transition`. Both cross-fade the words; only this
-                        // one leaves the note travelling.
-                        //
-                        // A transition needs two identities, and two identities
-                        // are two views: the outgoing note is removed *where it
-                        // stood* and the incoming inserted *where it belongs*,
-                        // so neither of them moves. On a press that changes the
-                        // words and the indent together — which is every press
-                        // on this card — the title glided 26 pt while the note
-                        // under it sat still and then appeared at the far end.
-                        // Measured, leftmost ink of the note band, twenty
-                        // frames: `[2, 2, 2, 2, 2, 2, 53, 54, 54 …]`.
-                        //
-                        // A content transition changes what one view *draws*
-                        // without changing which view it is, so the layout goes
-                        // on animating underneath it. Law 1 cuts both ways:
-                        // identity is what lets a transition fire, and it is
-                        // also what stops anything travelling.
+                        // `.contentTransition`, not `.id` plus a `.transition`.
+                        // A transition needs two identities, and two views do
+                        // not travel: on a press that changes the words and the
+                        // indent together, the title would glide while the note
+                        // sat still and then appeared at the far end. A content
+                        // transition changes what one view draws, so the layout
+                        // goes on animating underneath it
+                        // (Architecture/DesignSystem.md § Motion).
                         .contentTransition(.opacity)
-                        // The words are already in the title's label above.
-                        // Left readable here they would be read twice — once as
-                        // part of the sentence and once on their own.
+                        // The words are already in the title's label above, so
+                        // they would be read twice.
                         .accessibilityHidden(true)
                 }
             }
-            // The label is the subject of the row and gives way last. Without a
-            // floor it is the part a fixed-width control on the right squeezes
-            // to nothing — measured once already, at one character per line.
+            // The label is the subject of the row and gives way last: without
+            // a floor, a fixed-width control on the right squeezes it to one
+            // character per line.
             .layoutPriority(1)
-            // 12, which is what the stack's own spacing used to contribute
-            // here before it went to 0 for the mark column's sake.
+            // 12, the gap the stack's spacing would give.
             Spacer(minLength: 12)
             HStack(spacing: 8) { trailing }
         }
@@ -174,21 +137,13 @@ public struct HelmSettingRow<Trailing: View>: View {
         return "\(title). \(note)"
     }
 
-    /// **One view for every mark, not a `switch` over them.**
+    /// **One view for every mark, not a `switch` over them.** SwiftUI
+    /// interpolates between two states of one view, never between two views, so
+    /// the states are properties of a single `Image`: which symbol, what colour,
+    /// whether it is drawn, and how wide its column is. Every one interpolates.
     ///
-    /// This was four branches, and SwiftUI interpolates between two states of
-    /// one view and never between two views — so `.space` → `.holding` was an
-    /// insert and a remove however many transactions surrounded it, and the
-    /// green tick simply appeared. The states are properties of a single
-    /// `Image` now: which symbol, what colour, whether it is drawn at all, and
-    /// how wide the column it sits in is. Every one of those interpolates.
-    ///
-    /// `helmSymbolSwap` is what carries clock → tick, which is a *replacement*
-    /// of one glyph by another rather than a reveal — the house rule about
-    /// growing applies to blocks arriving, not to a 14 pt symbol changing what
-    /// it says. This was a bare `.contentTransition(.symbolEffect(.replace))`
-    /// until the token existed; the two symbols share a ring, so it is Magic
-    /// Replace that carries them now and only the hands inside move.
+    /// `helmSymbolSwap` carries clock → tick; the two symbols share a ring, so
+    /// Magic Replace moves only the hands inside.
     private var markView: some View {
         Image(systemName: symbolName)
             .foregroundStyle(markInk)
@@ -197,9 +152,8 @@ public struct HelmSettingRow<Trailing: View>: View {
             // `.space` is drawn and invisible rather than absent, so the labels
             // of a mixed card keep one left edge.
             .opacity(mark == .holding || mark == .waiting || mark == .attention ? 1 : 0)
-            // The whole column, gap included. At `.none` it is nothing at all
-            // and the labels sit flush; anywhere else it is the mark's width
-            // plus the gap the stack no longer contributes.
+            // The whole column, gap included: nothing at all at `.none`,
+            // otherwise the mark's width plus the gap.
             .frame(width: mark == .none ? 0 : HelmLayout.markColumn + 12, alignment: .leading)
             .accessibilityHidden(true)
     }

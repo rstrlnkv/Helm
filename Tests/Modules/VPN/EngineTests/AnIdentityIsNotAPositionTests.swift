@@ -5,16 +5,10 @@ import XCTest
 @testable import Module_VPN_Engine
 
 /// A row of `scutil --nc list` that carries no service id gets one made up, and
-/// the only other thing such a row carries is its **place in the list** — so the
-/// made-up id changed whenever the list was printed in a different order.
-///
-/// `_cameUp` is keyed by id, and its whole purpose is to tell "this one came up
-/// and then went" from "this one is not up yet": an id that changes under a
-/// stationary tunnel reads as the tunnel disappearing. The person gets the one
-/// banner this module interrupts them for — a drop — for a tunnel that never
-/// went anywhere.
-///
-/// Past defect: commit 1fe5e099, «fix(vpn): a rule is bound to a signature, and a forged plist stops summoning dialogs».
+/// that id must not hang on the row's **place in the list**. `_cameUp` is keyed
+/// by id to tell «came up and then went» from «not up yet», so an id that moved
+/// under a stationary tunnel would read as the tunnel disappearing: the one
+/// banner this module interrupts for, about a tunnel that went nowhere.
 final class AnIdentityIsNotAPositionTests: XCTestCase {
 
     private let at = Date(timeIntervalSince1970: 1_000_000)
@@ -60,8 +54,8 @@ final class AnIdentityIsNotAPositionTests: XCTestCase {
                        "two rows share one `Identifiable` id: \(parsed.map(\.id))")
     }
 
-    /// The harm, at the level it reaches the person: the list is re-read, the
-    /// order has changed, nothing has moved — and the module announces a drop.
+    /// The list is re-read in another order, nothing has moved, and no drop is
+    /// announced.
     func testAReorderedListIsNotADrop() {
         let runner = FakeRunner()
         runner.listOutput = [header,

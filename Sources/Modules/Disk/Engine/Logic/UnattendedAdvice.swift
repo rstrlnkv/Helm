@@ -15,8 +15,7 @@ import HelmRuntime
 /// 0600 and readable by any process running as this user, including ones macOS
 /// refuses to let read `~/Library/Mail` — so an unattended scan that recorded
 /// them would launder the Full Disk Access grant the person gave Helm into one
-/// they gave nobody. Measured on the owner's machine on 2026-08-20: 12 items in
-/// the disk journal, 1 of them under `~/Library`.
+/// they gave nobody.
 ///
 /// A scan somebody started still reports everything they asked about: this is
 /// reached from `backgroundScan` alone. The distinction is unattended versus
@@ -25,10 +24,9 @@ enum UnattendedAdvice {
 
     /// The journal's view of a finished unattended scan.
     ///
-    /// **The totals are derived from what survived the gate**, in one place.
-    /// Filtering the list and summing the original leaves a journal entry whose
-    /// figure disagrees with its own list — and the figure is what a settings
-    /// row draws and what `ScanNews` measures a banner against.
+    /// **The totals are derived from what survived the gate**, in one place, so
+    /// the figure a settings row draws and `ScanNews` measures a banner against
+    /// agrees with the entry's own list.
     ///
     /// - Parameter home: a parameter so the rule is a fact rather than something
     ///   that happens to be true of this Mac, the way `ScanRoot`'s own gate

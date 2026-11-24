@@ -9,15 +9,11 @@ import HelmTestSupport
 /// Every gate in the module reads it as Downloads: `WatchScope.allows` lets it
 /// through, the root check passes it, `WatchScope.sameFolder` calls it the
 /// watched Downloads, so `PresetOffer.offered` hands a starting rule *that*
-/// folder rather than a new one. What reads the folder is the one part that
-/// does not: `FolderReader` enumerates the link itself, and an enumerator
-/// started on a link to a directory does not descend — so the dry run shows
-/// nothing, every sweep examines nothing, and the rules in it never run while
-/// the folder they name is full.
+/// folder rather than a new one. `FolderReader` must agree: an enumerator
+/// started on the link itself does not descend, so the dry run would show
+/// nothing and the rules would never run while the folder they name is full.
 ///
 /// On disk: a scratch home, a real link, a real file.
-///
-/// Past defect: fixed in 4ce355a9.
 final class AFolderWatchedThroughALinkIsReadTests: XCTestCase {
 
     private var home: URL!

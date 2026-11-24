@@ -6,19 +6,15 @@ import HelmRuntime
 /// The scan must cost its slice, not its volume.
 ///
 /// `DuplicateScanner.hash` streams a megabyte at a time so a video never becomes
-/// a `Data` the size of the video — and for a long time that was true of the
-/// slice and false of the process: `FileHandle.read` hands back an autoreleased
-/// `Data`, `concurrentPerform` drains no pool per iteration, and so every slice
-/// ever read stayed alive until the whole parallel block finished. A user
-/// watched the app reach 48 GB on a folder of ordinary size.
+/// a `Data` the size of the video. `FileHandle.read` hands back an autoreleased
+/// `Data` and `concurrentPerform` drains no pool per iteration, so without a
+/// pool inside the loop every slice read stays alive until the whole parallel
+/// block finishes.
 ///
 /// This test reads far more than it may keep. The bound is deliberately loose —
 /// a memory figure is noisy and this one has a scan's own structures inside it —
-/// but the defect it guards against is not subtle: without the pool the
-/// footprint tracks the bytes read, which is an order of magnitude past the
-/// bound whatever else is going on.
-///
-/// Guards a past defect: 52eff599 fix(memory): the scan cost the volume it read, not the slice it kept.
+/// but without the pool the footprint tracks the bytes read, an order of
+/// magnitude past the bound.
 final class HashingFootprintTests: XCTestCase {
 
     private var folder: URL!

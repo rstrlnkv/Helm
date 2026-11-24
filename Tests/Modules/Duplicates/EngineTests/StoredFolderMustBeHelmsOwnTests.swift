@@ -6,11 +6,10 @@ import XCTest
 /// A background scan starts from a folder nobody re-chose, so the folder has to
 /// be the one Helm stored.
 ///
-/// `module.duplicates.folder` is a plain string in `com.helm.app.plist`. Until
-/// scans ran unattended it only ever changed through an open panel with the
-/// person present; now it decides how far a reader reaches with nobody at the
-/// desk, and any process running as this user can rewrite it. `ScanRoot` bounds
-/// where it may point — this is the other question, whether Helm put it there.
+/// `module.duplicates.folder` is a plain string in `com.helm.app.plist`. It
+/// decides how far a reader reaches with nobody at the desk, and any process
+/// running as this user can rewrite it. `ScanRoot` bounds where it may point —
+/// this is the other question, whether Helm put it there.
 ///
 /// **The fixture lives in the home directory on purpose.** `ScanRoot` refuses a
 /// root outside it, which is the gate working; a fixture in `/var/folders` would

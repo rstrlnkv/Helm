@@ -2,10 +2,10 @@ import XCTest
 import HelmRuntime
 @testable import Module_Autopilot_Engine
 
-/// A record that cannot be put back is a report, and this section was one.
+/// A record that cannot be put back is a report.
 ///
-/// Four things were missing, and each of them is a way an undo built on the old
-/// record would move the wrong file: the pass it belonged to, the rule's **id**
+/// A record carries four things, each a way an undo would otherwise move the
+/// wrong file: the pass it belonged to, the rule's **id**
 /// (names are not unique, and a stamp is keyed by id), who the file is, and
 /// whether it has been put back already. All four are Optional, because the
 /// store outlives the build that wrote it.
@@ -118,10 +118,9 @@ final class ARecordSaysWhatItTookTests: XCTestCase {
         XCTAssertFalse(moved.undone(at: when).undoable, "a returned row offered a second return")
     }
 
-    /// The store outlives the build. Every field added today is missing from a
-    /// history written yesterday, and a decoder that threw on one of them would
-    /// throw away the *whole* document — `JSONDecoder` gives up on the file, not
-    /// on the key.
+    /// The store outlives the build: a history an older build wrote lacks the
+    /// newer fields, and a decoder that threw on one would throw away the
+    /// *whole* document (`JSONDecoder` gives up on the file, not on the key).
     func testAHistoryWrittenBeforeThisBuildStillDecodes() throws {
         let json = """
         [{"at": 700000000, "rule": "Invoices", "file": "march.pdf",

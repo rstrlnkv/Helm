@@ -23,10 +23,8 @@ import CoreGraphics
 /// | `checkmark.circle` | 101 |
 /// | `lock.shield`   |  99 |
 ///
-/// So one point size across the set is 28% of *visual* size between the largest
-/// and the smallest — which is exactly what the sidebar looked like: the
-/// keyboard and the two documents crowding their tiles while the shield and the
-/// pie sat in space.
+/// So one point size across the set varies 28% in *visual* size between the
+/// largest and the smallest.
 ///
 /// Correcting each symbol towards the mean makes them the same size to the eye,
 /// which is what "the same size" is supposed to mean. The table is measured
@@ -52,10 +50,8 @@ enum SymbolInk {
         "lock.shield": 0.99,
     ]
 
-    /// The size everything is corrected towards: the mean of the table. Chosen
-    /// as the mean rather than a round number so the correction is as small as
-    /// it can be — an unmeasured symbol lands here and is no worse off than it
-    /// was before.
+    /// The size everything is corrected towards: the mean of the table, so the
+    /// correction is as small as it can be and an unmeasured symbol lands here.
     static let mean: CGFloat = 1.091
 
     /// The factor to multiply a point size by so this symbol paints the same

@@ -2,19 +2,15 @@ import Foundation
 
 /// A map of the files as they are now, with their digests — in two segments.
 ///
-/// **Why the win exists.** `DuplicateScanner` says where the minutes go in its
-/// own comment: "a real home directory measured 70 GB of worst-case full-hash
-/// volume", while "a folder of ten thousand distinct files costs a directory
-/// walk and nothing else". The walk is cheap; reading contents is not, and
+/// **Why the win exists.** The walk is cheap; reading contents is not, and
 /// between two scans of a disk that barely changed, nearly all of that reading
 /// is repeated for nothing.
 ///
 /// **Why it is safe.** The walk still visits every file, so nothing that
 /// appeared, vanished or moved can be missed — this skips the *reading*, never
-/// the looking. Skipping the walk itself is a different feature with a different
-/// risk, considered and deferred in the design: a directory's mtime does not
-/// change when a file inside it grows, so a tree-skipping scan can hold a stale
-/// digest for a file it never looked at.
+/// the looking. Skipping the walk itself is not safe the same way: a directory's
+/// mtime does not change when a file inside it grows, so a tree-skipping scan
+/// can hold a stale digest for a file it never looked at.
 ///
 /// **Two segments, and no eviction at all.** `settled` is the map as of the last
 /// compaction; `fresh` is everything the scans since have touched — read or
@@ -22,12 +18,9 @@ import Foundation
 /// the set of files that still exist. Compaction is then `settled := fresh`, and
 /// the map is bounded by the disk rather than by history.
 ///
-/// This replaced a single map with a per-entry expiry and a count limit. That
-/// one grew without bound inside its own thirty days, and when the limit bit,
-/// which entries survived was decided by the order `concurrentPerform` happened
-/// to hash them in — a ceiling that discarded by luck rather than by worth.
-/// Segments need no such choice: nothing is evicted, because nothing that is
-/// still on the disk is ever absent from `fresh`.
+/// No count limit: under `concurrentPerform` it would evict by hashing order
+/// rather than by worth. Segments need no such choice: nothing is evicted,
+/// because nothing that is still on the disk is ever absent from `fresh`.
 ///
 /// **Never on the removal path.** `DuplicateVerification` reads both files from
 /// disk immediately before either moves, because a digest here is exactly what
@@ -58,8 +51,7 @@ final class HashCache: Codable, @unchecked Sendable {
     /// What the scans since have touched, read or written.
     private var fresh: [String: Digests]
     /// When `settled` was established. Age belongs to the segment, not to each
-    /// entry — which is the whole reason an entry is 184 bytes again rather than
-    /// the 212 a per-entry stamp cost.
+    /// entry, so an entry carries no stamp of its own.
     private var settledAt: TimeInterval
 
     /// Hashing runs under `concurrentPerform`, so readers and writers arrive
@@ -99,10 +91,6 @@ final class HashCache: Codable, @unchecked Sendable {
     // MARK: - Use
 
     /// Entries in `fresh` — the files this map believes still exist.
-    ///
-    /// A `storedCount` sat beside this — everything across both segments, «what
-    /// the file on disk costs» — and nothing in the app or the tests ever asked
-    /// it. A figure nobody reads is not a diagnostic.
     var count: Int { lock.withLock { fresh.count } }
 
     func prefix(fileID: UInt64, bytes: Int, modified: TimeInterval?) -> String? {
@@ -128,10 +116,9 @@ final class HashCache: Codable, @unchecked Sendable {
             // the one that was asked for strands the other in a segment about
             // to be replaced.
             //
-            // And the merge has to run the other way too, which an assignment
-            // got wrong: `fresh` may already hold a digest this scan computed
-            // while `settled` holds the other half, and `fresh[key] = entry`
-            // threw the newer one away — permanently, one compaction later.
+            // And the merge runs the other way too: `fresh` may already hold a
+            // digest this scan computed while `settled` holds the other half,
+            // and an assignment would lose the newer one at the next compaction.
             // Whatever `fresh` has wins; `settled` fills the gaps.
             var merged = fresh[key] ?? Digests()
             merged.prefix = merged.prefix ?? settledEntry.prefix

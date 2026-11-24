@@ -19,7 +19,6 @@ public enum Spotlights {
     /// The corner of a spotlight's box, in points, held to half of the shorter side.
     static let cornerRadius: CGFloat = 10
 
-    /// The dim's colour.
     public static var color: CGColor { CGColor(srgbRed: 0, green: 0, blue: 0, alpha: dimAlpha) }
 
     /// The spotlight's box with round corners: the one geometry the dim and a press both read.

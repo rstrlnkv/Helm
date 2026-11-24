@@ -9,16 +9,10 @@ import HelmRuntime
 /// independently via `startSession`/`stopSession`/`toggleSession`.
 public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// The module's own name for itself, and the namespace its settings are
-    /// stored under.
-    ///
-    /// On the engine, with the descriptor forwarding it upward — the
-    /// convention `DiskEngine`,
-    /// `DuplicatesEngine`, `LeftoversEngine` and `UninstallerEngine` already
-    /// follow. It was a literal in the descriptor while the engine side had no
-    /// name at all, so nothing in `Engine/` could say which store it was
-    /// reading. `StoreNamespacesAreModuleIdsTests` records the registered ids
-    /// and fails on a rename: this is stored-settings data, and a
-    /// rename orphans everything anybody has configured.
+    /// stored under; the descriptor forwards it upward.
+    /// `StoreNamespacesAreModuleIdsTests` records the registered ids and fails
+    /// on a rename: this is stored-settings data, and a rename orphans
+    /// everything anybody has configured.
     public static let moduleID = "keep-awake"
 
     private let settings: KeepAwakeSettings
@@ -32,8 +26,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private let power: PowerInfoPort
     private let apps: AppRunningPort
     private let pointer: PointerPort
-    /// «Stay awake with the lid closed», and the NOPASSWD rule it needs. Six
-    /// methods and four flags that nothing else here reads — see
+    /// «Stay awake with the lid closed», and the NOPASSWD rule it needs — see
     /// `ClamshellCoordinator`.
     private let lid: ClamshellCoordinator
     private let clock: Clock
@@ -48,7 +41,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// IOKit refused the sleep assertion the session asked for. Cleared by the
     /// next one it takes and by every release, the battery guard's included.
     private(set) var assertionRefused = false
-    /// Forwarded, because the state and the panel have always called it this.
+    /// Forwarded under the name the state and the panel use.
     var clamshellActive: Bool { lid.active }
     /// macOS was asked to turn sleep off and refused, and the lid row says so —
     /// see `ClamshellCoordinator.refused`.
@@ -63,25 +56,20 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// An automatic condition is true and is being ignored, because a session
     /// was ended — by hand, or by a timer the person asked to end automation.
     ///
-    /// Read outside this file as well as inside it, and that is the point: the
-    /// flag existed from the first version and was published nowhere, so a Mac
-    /// that slept with the rule's app still on screen had no account of itself
-    /// anywhere. One name for it, here and in the state.
+    /// Published under the same name, so a Mac that sleeps with the rule's app
+    /// still on screen has an account of itself.
     private(set) var suppressed = false
     /// The rules whose triggers are true right now — **whether or not they are
     /// being obeyed**, which is what makes this different from
     /// `activeConditions`.
     ///
-    /// A suppressed rule contributes nothing to `activeConditions`, so from the
-    /// outside a paused rule and a rule whose app has quit looked identical:
-    /// the page drew «Not applying right now» under a banner saying the rule
-    /// was paused. Two accounts of one rule on one screen.
+    /// A suppressed rule contributes nothing to `activeConditions`, so without
+    /// this a paused rule and a rule whose app has quit look identical
+    /// (`Architecture/KeepAwake.md § Vetoes and the notice`).
     ///
     /// Non-empty means the same three expressions `stopSession()` asks afresh as «a rule holds», the input
     /// `StopPress` weighs when it decides whether Stop silences a rule as well as
-    /// ending the session — a fact the hero could only state in its `.automatic`
-    /// branch, because that was the only branch that could see any conditions at
-    /// all.
+    /// ending the session.
     private(set) var triggeredConditions: Set<ActiveCondition> = []
     /// The bundle ids of the app rules that are satisfied right now — so the
     /// screen can say *which* app, rather than «App». Ids rather than names:
@@ -90,12 +78,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// The battery guard is holding everything down, and nothing this module
     /// does will run until the charge comes back or the charger goes in.
     ///
-    /// Published because the alternative is what shipped: the session ends
-    /// with nobody touching anything, and the code's own comment said «the log
-    /// is the only place that can say who ended it and why». That is the same
-    /// silence the paused-rule banner exists to break, on a state a person is
-    /// even less likely to guess at — they pressed «15 min» and nothing
-    /// happened.
+    /// Published because otherwise the session ends with nobody touching
+    /// anything and only the log says why — a person pressed «15 min» and
+    /// nothing happened.
     private(set) var batteryStopped = false
 
     private var expiryToken: AnyObject?
@@ -139,9 +124,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         self.lid = ClamshellCoordinator(clamshell: clamshell, store: store, settings: settings)
         // After every stored property is set, which is the first moment `self`
         // may be captured. Both are asked at the moment of use rather than read
-        // now: a password prompt can be on screen for minutes, and whether a
-        // session is still running is a different answer by the time it is
-        // answered.
+        // now: a password prompt can be on screen for minutes.
         self.lid.sessionIsActive = { [weak self] in self?.isActive ?? false }
         self.lid.stateChanged = { [weak self] in self?.emitState() }
     }
@@ -170,14 +153,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// settings» is handing the system back, and the person is still looking at
     /// the screen.
     ///
-    /// The grant's lifetime is the *feature*, not the process, and until now the
-    /// only falling edge that took it out was the lid option's own switch — so
-    /// somebody who switched all of Keep Awake off left a permanent passwordless
-    /// `pmset disablesleep` behind for a module they had just turned off, with the
-    /// only way back to it being to switch the module on again and find the
-    /// option. This is the same edge, reached from one screen up, and it is the
-    /// last moment there is anybody to answer the administrator dialog: quitting
-    /// runs `deactivate()` and must not ask (`ModuleEngine.willDisable`).
+    /// The grant's lifetime is the *feature*, not the process, so switching
+    /// all of Keep Awake off is the lid option's falling edge reached from one
+    /// screen up. It is the last moment there is anybody to answer the
+    /// administrator dialog: quitting runs `deactivate()` and must not ask
+    /// (`ModuleEngine.willDisable`).
     public func willDisable() {
         lid.releaseOnModuleDisabled()
     }
@@ -191,27 +171,21 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// person's intent changes. The cost, stated rather than
     /// hidden: this cannot tell quitting from the module being switched off, so
     /// switching Keep Awake off and on again resumes an unexpired session. Of the
-    /// two mistakes, forgetting what was asked for is the one that was reported.
+    /// two mistakes, forgetting what was asked for is the worse.
     public func deactivate() {
         // Before anything else: the module can be switched off from Settings,
         // and what that drops is this engine and everything it owns. An
         // observer left armed is a pointer into freed memory the next time the
         // charger moves.
         //
-        // **Power is the one that would be a crash**, and the reason is worth
-        // keeping: it hands IOKit an *unretained* pointer to itself as the
-        // callback context (`IOPSNotificationCreateRunLoopSource`), so a
-        // callback already scheduled would resolve a context that is going
-        // away — which is why its `stopObserving` invalidates the source as
-        // well as removing it.
+        // **Power is the one that would be a crash**: it hands IOKit an
+        // *unretained* pointer to itself as the callback context
+        // (`IOPSNotificationCreateRunLoopSource`), so a callback already
+        // scheduled would resolve a context that is going away — which is why
+        // its `stopObserving` invalidates the source as well as removing it.
         //
-        // The display observer is stopped here too. It is not a crash if it is
-        // not — `ScreenParamsObserver` registers a block that captures the
-        // caller's closure and never `self`, and clears its own token in
-        // `deinit` — but *when* that happens is then a fact about when the last
-        // reference goes, and this is the moment it is meant to happen. The
-        // method was on the port and called by nobody for exactly as long as
-        // that reasoning stood in for calling it.
+        // The display observer would only leak, but this is the moment it is
+        // meant to stop, not whenever the last reference goes.
         power.stopObserving()
         displayObserver.stopObserving()
         apps.stopObserving()
@@ -239,13 +213,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Session control (keep-awake on/off)
 
-    /// The one verb the keyboard has, and it has to be able to undo itself.
-    ///
-    /// Measured before this branch existed: with a rule holding the Mac, the
-    /// global shortcut paused the rule; pressed again it did **not** put it back —
-    /// it started a session by hand, so the shortcut oscillated between «rule paused» and
-    /// «held by hand for ever» and could never reach «just the rule». Off,
-    /// then on, has to be where you started.
+    /// The one verb the keyboard has, and it has to be able to undo itself:
+    /// with a rule holding the Mac, off pauses the rule and on resumes it rather
+    /// than starting a session by hand. Off, then on, is where you started.
     ///
     /// **Which is why this one is not the stepped Stop below.** The shortcut, the
     /// panel's header switch and the menu-bar item all read as on/off, and a switch that
@@ -370,18 +340,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // The battery guard is a **veto, not a suppression.** While the charge is
         // at or under the floor nothing may hold the Mac — and the moment the charger
         // goes in the veto lifts by itself, because it is recomputed rather than
-        // remembered. Written as `stopSession()` it borrowed the person's verb:
-        // `suppressed` means somebody said stop, and suppression only lifts when
-        // the *trigger* drops and returns — so a rule silenced by a flat battery
-        // stayed silenced after the Mac was plugged back in. Written as
-        // `deactivate()` it did nothing at all, since the rule simply took the
-        // Mac again on the next recompute.
-        // **The sets are refreshed before the veto returns, not after it.**
-        // They used to be computed further down, past this `return`, so while a
-        // veto was in force both kept whatever they held when it began: the
-        // hero went on offering to pause a rule that was not holding, a row
-        // read «Paused» from a trigger that had dropped, and the figure named
-        // an app that had since quit.
+        // remembered. `suppressed` means somebody said stop, and only lifts when
+        // the *trigger* drops and returns, so a battery veto written as one would
+        // stay after the Mac was plugged back in.
+        // **The sets are refreshed before the veto returns, not after it**
+        // (`Architecture/KeepAwake.md § Vetoes and the notice`).
         refreshTriggers()
         guard !batteryVetoes() else {
             // **The arrival is the news, and only if it took something away.**
@@ -400,10 +363,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         batteryStopped = false
 
         // Read from the set `refreshTriggers` just built, not asked of the
-        // ports a second time: three more reads of the display list, the power
-        // source and the running applications, on every event, for answers this
-        // recompute already has — and two of them could differ from the ones
-        // the screen is about to be told about.
+        // ports a second time: a second reading could differ from the one the
+        // screen is about to be told about.
         if suppressed && triggeredConditions.isEmpty {
             suppressed = false
             // The other way a pause ends — the trigger it was set against
@@ -425,10 +386,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
         // Logged on the transition and never on the recompute. `recompute()` runs
         // from three observers — a display moving, the charger, an app launching —
-        // so a line here per call would be a stream, and the one trail that has to
-        // stay readable would be mostly this module. Whether sleep is held is the
-        // module's entire output and it changes rarely, which is exactly what a log
-        // is for.
+        // so a line here per call would be a stream.
         if r.isActive && !isActive {
             isActive = true
             HelmLog.shared.info(Self.moduleID, "holding sleep: \(ConditionLabel.of(r.conditions))"
@@ -502,9 +460,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     private func externalDisplayCondition() -> Bool {
         // The page hides this rule on a Mac with no lid, and the engine has to
-        // agree — a stored `true` from a machine that was a laptop last week,
-        // or from a hand-edited plist, would otherwise hold a Mac mini awake
-        // for ever through a row nobody can see to switch off.
+        // agree (`Architecture/KeepAwake.md § Rules read from the machine`).
         guard lidInfo.hasLid() else { return false }
         return settings.autoExternalDisplay && hasExternalDisplay()
     }
@@ -519,7 +475,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     /// **Definitely** on mains — the only reading that may hold a Mac awake, and
     /// this module's fold of the port's three answers (`PowerInfoPort.supply()`
-    /// has the history). A supply nothing named fails toward sleep, which is the
+    /// has why). A supply nothing named fails toward sleep, which is the
     /// opposite of the background scan's fold in `PowerSource.isOnMains(_:)` and
     /// the reason neither fold lives in the port.
     private func onMains() -> Bool { power.supply() == .mains }
@@ -541,10 +497,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             rules,
             running: Set(apps.runningBundleIDs()),
             externalDisplay: externalDisplayAttached(),
-            // The same reading as `powerCondition` above. This site was left on
-            // `snapshot()` when that fix landed, so a rule narrowed to «only
-            // when plugged in» stayed dead on every Mac without a battery —
-            // the exact defect the commit claimed to have closed.
+            // The same reading as `powerCondition` above, not `snapshot()`,
+            // which is nil on every Mac without a battery.
             onPower: onMains())
     }
     private func currentAutoConditionHolds() -> Bool {
@@ -604,11 +558,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// True while the charge is at or under the floor the person set.
     private func batteryVetoes() -> Bool {
         guard lidInfo.hasBattery() else { return false }
-        // No reading is two states and `isOnMains` tells them apart, the same
-        // split `powerCondition` above was corrected for. «No veto» for both
-        // switched the guard off exactly where it matters: a laptop on battery
-        // whose IOKit dictionary came back short, holding an indefinite session
-        // nothing else ever ends.
+        // No reading is two states and the supply tells them apart
+        // (`BatteryGuard.shouldDeactivateWithNoReading`).
         guard let snap = power.snapshot() else {
             return BatteryGuard.shouldDeactivateWithNoReading(
                 enabled: settings.batteryGuardEnabled, isOnMains: onMains())
@@ -634,21 +585,16 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private func releaseForBattery() {
         activeConditions = []
         // A session that was *asked for* counts, even though it never became
-        // active: pressing «15 min» at 5 % now refuses instantly rather than
-        // holding the Mac for the thirty seconds until the watch ticks, and a
-        // refusal nobody is told about is the module failing silently at the
-        // one thing it was asked to do. The question is `BatteryVetoNews`'s, not
-        // a second copy of it: the log line below and the notification the
-        // caller posts must not be able to disagree about whether anything
-        // happened.
+        // active (`BatteryVetoNews.tookSomethingAway`). The question is
+        // asked there, not copied here, so the log line below and the
+        // notification the caller posts cannot disagree.
         guard BatteryVetoNews.tookSomethingAway(active: isActive, manual: manualOn,
                                                 hasDeadline: endDate != nil)
         else { emitState(); return }
-        // The session ends without the person touching anything, so the log is the
-        // only place that can say who ended it and why — and a figure it did not
-        // read has no business in it. This was `percent ?? 0`, which reads as 0%:
-        // a measurement nobody took, and the one charge that means the Mac is
-        // about to go out.
+        // The session ends without the person touching anything, so the log
+        // says who ended it and why — and a figure it did not read has no
+        // business in it: 0 % is the one charge that means the Mac is about to
+        // go out.
         let charge = power.snapshot().map { "\($0.percent)%" } ?? "an unreadable charge"
         HelmLog.shared.info(Self.moduleID, "battery guard stopped the session at "
                             + "\(charge) (floor \(settings.batteryGuardPercent)%)")
@@ -687,18 +633,18 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
               let t = JiggleTarget.nudge(from: p, in: b) else { return }
         pointer.move(to: t)
         // Announced because the system cannot tell this from a hand on the
-        // trackpad. Measured: a synthetic `mouseMoved` took the idle counter
-        // from 284,97 s to 0,30 s. The default interval here is five minutes —
-        // exactly `ScanSchedule.idleThreshold` — so anything deciding "has the
-        // person left" from that counter alone would find the Mac permanently
-        // busy, and **no background scan would ever run** for anybody with this
-        // switch on. `ScanCoordinator` subtracts what it hears here.
+        // trackpad: a synthetic `mouseMoved` resets the idle counter. The
+        // default interval here is five minutes — exactly
+        // `ScanSchedule.idleThreshold` — so anything deciding "has the person
+        // left" from that counter alone would find the Mac permanently busy, and
+        // **no background scan would ever run** for anybody with this switch
+        // on. `ScanCoordinator` subtracts what it hears here.
         NotificationCenter.default.post(name: .helmPointerNudged, object: nil)
     }
 
     /// The person's own gesture on the lid switch: the one entry through which
-    /// the switch writes `clamshellEnabled`. Today it is the store write and
-    /// `settingsChanged()` the page used to make itself. The engine learns of the
+    /// the switch writes `clamshellEnabled`: the store write and
+    /// `settingsChanged()`. The engine learns of the
     /// gesture two ways: the option's edge (`consumeEdge`) and `switchGesture`,
     /// set here; `edge == .rising && switchGesture` is what tells the switch
     /// from an outside write to the same key.
@@ -733,15 +679,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - What the engine says
 
     /// The state, as a stream: the latest one first, then every later one, in
-    /// order.
-    ///
-    /// **Registered before this returns, in the one hold of the lock that replays
-    /// what was last said** (`EngineNews.stream`): reading the state and then
-    /// subscribing leaves a window an emit falls into, and subscribing before the
-    /// replay hands over an older state after a newer one. Synchronous and not
-    /// actor-isolated, so the model takes it in its own synchronous `init`, before
-    /// its first suspension; the subscriber is counted when this returns. Ending
-    /// the iteration removes the subscriber.
+    /// order. **Registered before this returns, in the one hold of the lock that
+    /// replays what was last said**
+    /// (`Architecture/KeepAwake.md § How the model reaches the engine`).
+    /// Ending the iteration removes the subscriber.
     public func stream() -> AsyncStream<StatePayload> { news.stream() }
 
     public var subscriberCount: Int { news.subscriberCount }
@@ -761,8 +702,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     assertionRefused: assertionRefused)
         // Compared, recorded and said under one lock, so the payload recorded
         // as last is the one said last, and one equal to it is not said again.
-        // The menu bar's countdown does not depend on this stream: the host
-        // ticks it once a second (`StatusItemController.timerTick`).
         emitLock.lock()
         defer { emitLock.unlock() }
         guard payload != lastEmitted else { return }
@@ -776,10 +715,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 /// Where a session is written down, and what the next launch makes of what it
 /// finds.
 ///
-/// An extension rather than more of the class above, for the reason the
-/// notification one below gives: this is a concern of its own — four keys, two
-/// methods, and the only part of this engine addressed to a process five minutes
-/// in the future. Same file, because every field it writes is `private` to it.
+/// An extension because this is a concern of its own: the only part of this
+/// engine addressed to a later process. Same file, because every field it
+/// writes is `private` to it.
 extension KeepAwakeEngine {
     /// Not private, so the tests that plant a session name the same keys the
     /// engine reads rather than spelling them a second time.
@@ -802,12 +740,10 @@ extension KeepAwakeEngine {
     /// re-scheduled expiry to miss the interval it was scheduled for, and enough
     /// to make a test of it pass or fail on the fractional part of `Date()`.
     ///
-    /// **The pause is written here too, and it is the half that was missing.**
-    /// Pressing Stop while a *rule* holds the Mac ends no session — there is
-    /// none — it silences the rule, and that decision reached the store as
-    /// `manualOn = false`, which was already true. The updater then relaunched
-    /// the app and the rule took the Mac straight back, five minutes after
-    /// somebody paused it, with nobody having touched anything.
+    /// **The pause is written here too.** Pressing Stop while a *rule* holds
+    /// the Mac ends no session — there is none — it silences the rule. Without
+    /// the pause on disk, a relaunch (the updater's) lets the rule take the Mac
+    /// straight back with nobody having touched anything.
     private func rememberSession() {
         store.set(manualOn, for: SessionKey.on)
         store.set(startDate?.timeIntervalSinceReferenceDate ?? 0, for: SessionKey.startedAt)
@@ -822,8 +758,8 @@ extension KeepAwakeEngine {
         // Before the switch below, because two of its branches write the record
         // back and would otherwise store a pause the flag has not been given
         // yet. A pause outlives the process for the same reason a session does,
-        // and lifts on the same event it always lifted on: the trigger dropping
-        // and coming back, which the recompute after this decides.
+        // and lifts on the same event: the trigger dropping and coming back,
+        // which the recompute after this decides.
         suppressed = store.bool(SessionKey.suppressed, default: false)
         // Raw, not `store.double(default: 0)`: a value that is no number reads as
         // 0 there, and 0 is «no deadline».
@@ -865,13 +801,9 @@ extension KeepAwakeEngine {
             endDate = clock.now().addingTimeInterval(left)
             scheduleExpiry(after: left)
             // The countdown every surface draws, not a second reading of the
-            // same number. `Int(left / 60)` printed «0 min left» for anything
-            // under a minute — so a session with 39 seconds of it left was
-            // reported as over, on the line immediately above «holding sleep»,
-            // in the trail that exists to explain a Mac that would not sleep.
-            // It cost a reader a morning. `TimerProgress.label` is what the menu
-            // bar, the tile and the page all show, so the log and the screen now
-            // say the same thing about the same session.
+            // same number: whole minutes would report a session with seconds
+            // left as over, and the log and the screen must say the same thing
+            // about the same session.
             HelmLog.shared.info(Self.moduleID,
                                 "restored a session: \(TimerProgress.label(remaining: left)) left")
         }
@@ -880,9 +812,8 @@ extension KeepAwakeEngine {
 
 // MARK: - The one notification
 
-/// An extension rather than more of the class above, because this is a concern
-/// of its own: the member here is the whole of what the engine does about
-/// a person who is not at the screen.
+/// An extension because this is a concern of its own: the whole of what the
+/// engine does about a person who is not at the screen.
 extension KeepAwakeEngine {
 
     /// One system notification, on the arrival of the veto that ended something

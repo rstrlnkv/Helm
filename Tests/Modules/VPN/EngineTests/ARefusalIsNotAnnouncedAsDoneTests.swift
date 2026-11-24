@@ -5,28 +5,17 @@ import XCTest
 import HelmContract
 @testable import Module_VPN_Engine
 
-/// **The module announces a rule's work before it has asked the tool to do it.**
+/// **A rule's work is announced only after the tool has accepted it.**
 ///
-/// `connectNow` records the firing — the ring, the menu-bar name and, in the
-/// banner mode, a macOS notification saying «Connected to Office» — and *then*
-/// runs `scutil --nc start`. `disconnectNow` is the same shape: it announces and
-/// wipes both books before the `stop` is issued. Neither looks at the reply.
+/// The firing (the ring, the menu-bar name, a macOS notification saying
+/// «Connected to Office») and the books of what Helm raised follow the reply of
+/// `scutil --nc start` / `stop`, not the request. A rule pointing at a
+/// configuration renamed in System Settings (`VPNFailure.Reason.noSuchService`)
+/// must not tell the person they are behind a tunnel that was never raised: that
+/// is the belief `VPNAutomation.Kind.dropped` exists to correct.
 ///
-/// So a rule pointing at a configuration that was renamed in System Settings —
-/// the case `VPNCommandReply` and `ARefusedCommandIsNotSilenceTests` exist for,
-/// and the very case `VPNFailure.Reason.noSuchService` is named after — tells the
-/// person they are behind a tunnel that was never raised. That is the one
-/// sentence this module must never produce: `VPNAutomation.Kind.dropped` exists
-/// because the app decided that «you believe you are tunnelled and you are not»
-/// is worth a system notification, and here the app manufactures that belief
-/// itself.
-///
-/// Every test in `VPNAutomationRecordingTests` runs with `FakeRunner.reply` left
-/// at `""`, which is what `scutil` prints when it **succeeded**. The whole
-/// recording table was therefore proved against a tool that cannot refuse, which
-/// is why the ordering was never seen.
-///
-/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity».
+/// `VPNAutomationRecordingTests` runs with `FakeRunner.reply` at `""`, what
+/// `scutil` prints when it succeeded, so the refusals are proved here.
 final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
 
     private let at = Date(timeIntervalSince1970: 1_000_000)
@@ -48,9 +37,8 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
 
     // MARK: - The control
 
-    /// The partner assertion every «nothing was announced» below needs: with the
-    /// tool accepting, this same call *does* announce. Without it, a module that
-    /// had stopped recording altogether would pass the whole file.
+    /// The partner of every «nothing was announced» below: with the tool
+    /// accepting, this same call *does* announce.
     func testAToolThatAcceptsIsStillAnnounced() {
         let runner = FakeRunner(list: scutilListRow("Disconnected"))
         runner.reply = ""                     // what scutil prints when it worked
@@ -93,11 +81,9 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
         XCTAssertNotEqual(e.lastAutomation?.kind, .connected)
     }
 
-    /// The state the page is actually handed, decoded from the event rather than
-    /// from the accessors: one payload carrying «Helm connected you to Old office»
-    /// and «there is no configuration called Old office» at the same time. The
-    /// page draws the failure banner *and* the view model posts the banner, so
-    /// the two channels contradict each other in one frame.
+    /// The state the page is handed, decoded from the event: one payload must
+    /// not carry «Helm connected you to Old office» and «there is no
+    /// configuration called Old office» at once.
     func testTheEmittedStateDoesNotCarryBothAConnectionAndItsRefusal() async {
         let runner = FakeRunner(list: scutilListRow("Disconnected", "Office"))
         runner.reply = "No service"
@@ -119,10 +105,9 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
                        + "\(String(describing: payload.lastFailure))")
     }
 
-    /// And Helm must not write it into its own book of «tunnels I raised». That
-    /// book is what the quit rule and the page's green «working now» dot read, and
-    /// a name that never came up stays in it for the life of the process — the
-    /// refresh path only forgets names that were once seen up.
+    /// Nor into Helm's book of «tunnels I raised», which the quit rule and the
+    /// green dot read: the refresh path only forgets names once seen up, so a
+    /// name that never came up would stay for the life of the process.
     func testARefusedConnectDoesNotClaimTheTunnelAsHelmsOwn() {
         let runner = FakeRunner(list: scutilListRow("Disconnected", "Office"))
         runner.reply = "No service"
@@ -139,10 +124,9 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
 
     // MARK: - The teardown the tool never performed
 
-    /// The rule's app quits, Helm asks for the stop, and the configuration has
-    /// been renamed since it was raised. The stop fails; the tunnel stays up; the
-    /// person is told it came down, and both books are wiped so no later drop can
-    /// be reported for it either.
+    /// The rule's app quits and the configuration has been renamed since it was
+    /// raised: the stop fails, the tunnel stays up, and the person must not be
+    /// told it came down.
     func testATeardownTheToolRefusedIsNotADisconnection() {
         let runner = FakeRunner(list: scutilListRow("Disconnected"))
         let apps = FakeApps.trustingA()
@@ -169,9 +153,8 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
                           "the tunnel is still up and the person was told Helm took it down")
     }
 
-    /// …and the tunnel it failed to stop is still Helm's. Forgetting it is what
-    /// makes the later drop unreportable: `refreshNow` only announces a drop for a
-    /// name that is still in `_autoConnected`.
+    /// …and the tunnel it failed to stop is still Helm's: `refreshNow` only
+    /// announces a drop for a name still in `_autoConnected`.
     func testARefusedTeardownDoesNotForgetTheTunnelItLeftUp() {
         let runner = FakeRunner(list: scutilListRow("Disconnected"))
         let apps = FakeApps.trustingA()

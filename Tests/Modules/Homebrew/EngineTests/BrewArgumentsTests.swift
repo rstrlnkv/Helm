@@ -4,10 +4,9 @@ import XCTest
 /// Where a value stops being a value.
 ///
 /// Nothing here is a shell injection: the arguments are an array and the
-/// executable path is absolute, so no shell ever parses them. But `brew` parses
-/// them, and it reads a leading `-` as a flag wherever it finds one. `query` is
-/// typed by the user; `name` is a word this module parsed out of brew's own
-/// stdout. Verified against Homebrew 6.0.13:
+/// executable path is absolute. But `brew` reads a leading `-` as a flag
+/// wherever it finds one, and `query` is typed by the person while `name` is a
+/// word parsed out of brew's own stdout:
 ///
 ///     $ brew search --formula -n
 ///     Usage: brew search, -S [options] text|/regex/ [...]     ← the search never ran
@@ -16,30 +15,22 @@ import XCTest
 ///
 /// `--` is accepted by every subcommand this module runs (`desc`, `search`,
 /// `install`, `uninstall`, `upgrade`, `uses`, `info`, with and without
-/// `--cask`). `uses` was verified on 2026-09-13 against Homebrew 6.x:
+/// `--cask`). For `uses` it is read as a terminator, not a formula name:
 ///
 ///     $ brew uses --installed -- openssl@3
 ///     aria2 libngtcp2 libssh2 llama.cpp nmap node python@3.14 yt-dlp
 ///
-/// — exit 0 and eight dependents, so the terminator is read as a terminator
-/// there too and is not mistaken for the name of a formula.
-///
-/// `info` was verified on 2026-09-15 against Homebrew 7.0.1:
+/// For `info`, only the second call reads `-n` as a name:
 ///
 ///     $ brew info --json=v2 --formula -n
 ///     Usage: brew info, abv [options] [formula|cask ...]  ← the lookup never ran
 ///     Error: invalid option: -n
 ///     $ brew info --json=v2 --formula -- -n
 ///     Error: No available formula with the name "-n".     ← looked up as a name
-///
-/// — both exit 1, but only the second reads `-n` as the name of a (missing)
-/// formula rather than an option `info` does not recognise; the terminator is
-/// doing its job even though neither call finds a package.
 final class BrewArgumentsTests: XCTestCase {
 
-    /// Asserts the *structure* — the value sits behind a terminator — rather
-    /// than comparing the whole argument list, which would have to be rewritten
-    /// every time a flag is added and would say nothing about the hazard.
+    /// Asserts the *structure*, the value behind a terminator, rather than the
+    /// whole argument list, which every new flag would rewrite.
     private func assertBehindTerminator(_ args: [String], value: String, what: String,
                                         file: StaticString = #filePath, line: UInt = #line) {
         guard let terminator = args.firstIndex(of: "--") else {
@@ -71,8 +62,7 @@ final class BrewArgumentsTests: XCTestCase {
         ] + [false, true].flatMap { isCask -> [Row] in [
             ("install, cask: \(isCask)", "-n", 1, { $0.install(name: "-n", isCask: isCask) }),
             ("uninstall, cask: \(isCask)", "-n", 1, { $0.uninstall(name: "-n", isCask: isCask) }),
-            // `info` runs through `runData`, not `run`; this asserts only the hazard this file
-            // exists for.
+            // `info` runs through `runData`; only the terminator is asserted.
             ("info, cask: \(isCask)", "-n", 1, { _ = $0.info(name: "-n", isCask: isCask) }),
         ] }
         for row in rows {

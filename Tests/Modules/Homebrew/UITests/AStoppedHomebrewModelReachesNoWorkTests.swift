@@ -10,13 +10,10 @@ import HelmTestSupport
 /// news the engine still yields reaches nothing, is not drawn and starts nothing.
 ///
 /// The host calls the descriptor's `stop(_:)` before the engine's `deactivate()`,
-/// on the person's switch and on quit. A page still on screen, or a task already
-/// queued, may press a control after that. A stopped model reaches no work, a
-/// stream task left running keeps a subscriber on a stream nobody reads, and an
-/// answer that was already out must not raise an irreversible
-/// question over a page that is gone. Defect class kept: a stopped model still
-/// talks to the engine, still listens to it, or still asks on an answer it
-/// heard late.
+/// on the person's switch and on quit, and a page still on screen or a queued
+/// task may press a control after that. Defect class kept: a stopped model still
+/// talks to the engine, still listens to it (a subscriber on a stream nobody
+/// reads), or still raises an irreversible question on an answer it heard late.
 ///
 /// Every absence rests on a control in this file.
 @MainActor

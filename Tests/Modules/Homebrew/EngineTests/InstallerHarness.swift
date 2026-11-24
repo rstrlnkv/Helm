@@ -53,8 +53,8 @@ extension XCTestCase {
         return (handle, run)
     }
 
-    /// Waits on the wall clock for `condition`. Only `TheInstallerWrapperPassesItsCodeAndOutputThroughTests`
-    /// (optional) still calls it; every other test waits with `waitUntilReached`.
+    /// Waits on the wall clock for `condition`. A test that can wait with
+    /// `waitUntilReached` does that instead.
     func eventually(_ seconds: TimeInterval, _ condition: () -> Bool) -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {

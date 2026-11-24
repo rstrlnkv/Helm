@@ -8,12 +8,12 @@ import HelmTestSupport
 /// One `brew search` chain is out at a time, whatever is typed behind it.
 ///
 /// Typing is a control a person presses repeatedly, and a `search` is two
-/// `brew search` runs and a `brew desc` per kind: the rule of ARCHITECTURE.md § Running other programs, «never an
-/// unbounded launch behind a control pressable repeatedly». A word typed while a
-/// chain is out waits as the newest only, and is asked after the chain only if
-/// the field still holds it. Defect class kept: a second chain launched beside
-/// the first, an older word asked in between, or a word nobody is looking at any
-/// more asked after all.
+/// `brew search` runs and a `brew desc` per kind, so no unbounded launch may
+/// stand behind it (Architecture/RunningOtherPrograms.md § Running other programs).
+/// A word typed while a chain is out waits as the newest only, and is asked
+/// after the chain only if the field still holds it. Guarded: a second chain
+/// beside the first, an older word asked in between, or a word nobody is
+/// looking at asked after all.
 @MainActor
 final class OneSearchChainIsOutAtATimeTests: XCTestCase {
 

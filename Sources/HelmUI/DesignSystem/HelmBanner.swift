@@ -2,31 +2,20 @@ import SwiftUI
 
 /// A statement the page has to make, with at most one verb beside it.
 ///
-/// v3's `.banner`: a signal-tinted field, a mark, a sentence, and the action
-/// that answers it on the right. Keep Awake's suppression row was drawing it by
-/// hand — a bare `HStack` of an icon, some quiet text and a button, floating on
-/// the page with nothing to say it was one thing. Beside a centred 40 pt hero
-/// that read as three unrelated pieces of furniture rather than a notice.
+/// A signal-tinted field, a mark, a sentence, and the action that answers it on
+/// the right, drawn as one thing rather than three pieces beside each other.
+/// `HelmPermissionNote` and the panel's permissions notice draw this type.
 ///
-/// **«The panel already draws this shape» is what this comment used to say, and
-/// it was not true.** The panel's permissions notice was a fourth hand-rolled
-/// `HStack` — 11 pt, no field — and so was `HelmPermissionNote`, which nine call
-/// sites in eight modules draw. A sentence claiming a shape is shared is not the
-/// sharing; both draw this type now, which is.
-///
-/// The fill is 13 % of the signal, which is what makes it a field rather than a
-/// row; the ink is the signal's *ink* variant, measured against that fill and
-/// not against the card — the same tone gives 6–7 on a card and 4.8–5.1 here,
-/// so the card's number is the one that would ship unreadable.
+/// The fill is 13 % of the signal, which makes it a field rather than a row.
+/// Ink on it is measured against that fill, not against the card: a tone that
+/// passes on a card can fail here.
 public struct HelmBanner<Action: View>: View {
     @Environment(\.helmTraits) private var traits
 
     /// Which signal, and therefore which fill and which ink.
     ///
-    /// One case. A `success` sat beside it with no caller anywhere — a banner
-    /// is a statement the page has to make with a verb beside it, and nothing
-    /// in this app has ever had to announce that something went right that
-    /// way. Two lines to add back if one ever does.
+    /// One case: nothing in this app announces that something went right with
+    /// a verb beside it.
     public enum Tone: Sendable { case warning }
 
     private let text: String
@@ -40,18 +29,11 @@ public struct HelmBanner<Action: View>: View {
     ///   column and should share its edges; false for one that belongs to a
     ///   *centred* block, where a full-width field lines up with nothing.
     ///
-    ///   Measured: in the hero it took the section header's inset, which is
-    ///   9 pt inside the card below it and 20 pt outside the buttons above —
-    ///   so it matched neither, and read as a third thing wedged between two.
     ///   Sized to its own content and centred, it is plainly part of the block
-    ///   it sits in.
-    /// - Parameter compact: the panel's scale rather than a page's. A settings
-    ///   page gives a banner 704 pt and the body step is right there; the panel is
-    ///   a 320 pt window, and at 13 pt «2 permissions not granted» needs 269 of the
-    ///   296 it has in English, 293 in Russian and 303 in Portuguese — so two of
-    ///   the eight wrapped, on the first thing anybody opens when something is
-    ///   wrong. Measured at 11 pt the widest is Portuguese at 278, which leaves
-    ///   every language a line to itself.
+    ///   it sits in; at full width it would match neither edge around it.
+    /// - Parameter compact: the panel's scale rather than a page's. In the
+    ///   320 pt panel the body step wraps a short notice in some languages, and
+    ///   11 pt gives every language a line to itself.
     public init(_ text: String, symbol: String = "exclamationmark.triangle.fill",
                 tone: Tone = .warning, fillsWidth: Bool = true, compact: Bool = false,
                 @ViewBuilder action: () -> Action) {
@@ -76,36 +58,24 @@ public struct HelmBanner<Action: View>: View {
                 .foregroundStyle(ink)
                 .accessibilityHidden(true)
             Text(text)
-                // The scale's body step. Written `.system(size: 13)` here
-                // first, with a comment saying it was the step — which is a
-                // token spelled as a number, and the thing the tokens exist to
-                // stop. `.callout` is 12 on macOS and 12 is not one of the six
-                // sizes this house has.
+                // The scale's body step, or `rowDetail` at the panel's scale.
                 .font(compact ? HelmText.rowDetail : HelmText.rowTitle)
-                // Literal, and deliberately not the ink: a whole sentence in a
-                // signal colour is a shout. The mark carries the signal; the
-                // words carry the meaning.
+                // Not the ink: a whole sentence in a signal colour is a shout.
+                // The mark carries the signal, the words the meaning.
                 .foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.leading)
-                // **The words take their width before the spacer does.** Both are
-                // flexible in this row — a `Spacer` entirely so, and a `Text` that
-                // is `fixedSize` only vertically takes whatever is proposed — so
-                // SwiftUI split the space between them and «Не выдано 2
-                // разрешения» wrapped at 110 pt inside a 294 pt panel plate with
-                // 190 available. Priority is what says which of the two is the
-                // content: it still wraps when a language really needs two lines,
-                // and it no longer wraps because a spacer wanted room.
+                // The words take their width before the spacer does: both are
+                // flexible here, and without the priority SwiftUI splits the
+                // space and wraps a short sentence in a wide plate. It still
+                // wraps when a language needs two lines.
                 .layoutPriority(1)
             // Filling the width, the spacer is what pushes the verb to the
             // far edge; hugging, there is nothing to push against and the two
             // would sit 8 pt apart, which reads as one run-on control.
             if fillsWidth { Spacer(minLength: 8) } else { Spacer().frame(width: 6) }
-            // **The verb keeps its words; the sentence is what wraps.** The
-            // priority above made the words win against the spacer, and nothing
-            // said the action must not lose to the words — so a sentence long
-            // enough to need two lines took its width out of the button, and
-            // Leftovers' note drew «Выдать…» 10 pt wide against the 69 it needs.
+            // The verb keeps its words; the sentence is what wraps, or a long
+            // sentence takes its width out of the button.
             action
                 .fixedSize()
         }
@@ -120,12 +90,10 @@ public struct HelmBanner<Action: View>: View {
 
 /// A banner with nothing to press.
 ///
-/// A separate initialiser rather than `action: () -> Action = { EmptyView() }`,
-/// which Swift warns about today and rejects outright in a future language
-/// mode: a default expression cannot stand in for a generic parameter the other
-/// arguments already infer. The constraint says the same thing in a form the
-/// compiler is happy with — this initialiser exists only when `Action` is
-/// `EmptyView`, so the type is pinned rather than guessed.
+/// A separate initialiser rather than `action: () -> Action = { EmptyView() }`:
+/// a default expression cannot stand in for a generic parameter the other
+/// arguments infer, which Swift warns about and a future language mode
+/// rejects. The constraint pins `Action` to `EmptyView` instead.
 extension HelmBanner where Action == EmptyView {
     public init(_ text: String, symbol: String = "exclamationmark.triangle.fill",
                 tone: Tone = .warning, fillsWidth: Bool = true) {

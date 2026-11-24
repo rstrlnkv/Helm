@@ -3,15 +3,13 @@ import XCTest
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
-/// The runner bounds a hung query now (`AQueryRunnerHasADeadlineTests`), but a
-/// deadline alone only moves the lie: every query used to hand whatever came
-/// back to a parser, so a timeout — empty stdout — became an empty list, and
-/// the page said "No packages installed." about a machine with 54 of them.
+/// The runner bounds a hung query (`AQueryRunnerHasADeadlineTests`), but a
+/// timeout's empty stdout handed to a parser would become an empty list, and
+/// the page would say "No packages installed." about a full Cellar.
 ///
 /// A list query that timed out answers *nothing*, which this codebase
 /// distinguishes from an empty answer: `nil` here, and the view model keeps the
 /// list it had.
-/// Kept: guards the defect fixed in 882fe986 fix(homebrew): the batch — a hang has a deadline, a press has an answer, a phase has a name.
 final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
 
     /// What `ShellProcessRunner` answers once its deadline has passed.

@@ -11,8 +11,8 @@ final class PanelLayoutTests: XCTestCase {
 
     // MARK: - Seeding
 
-    /// A fresh install gets the panel it had before there was a layout: one
-    /// tab, everything at full width, in the order the person arranged.
+    /// A fresh install gets one tab, everything at full width, in the order
+    /// the person arranged.
     func testTheSeedIsTodaysPanel() {
         let seeded = PanelLayout.seeded(from: ["keepawake", "vpn", "disk"])
         XCTAssertEqual(seeded.tabs.count, 1)
@@ -86,13 +86,9 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(try! JSONDecoder().decode(PanelLayout.self, from: data), before)
     }
 
-    /// A size written by a newer build reads as `wide` rather than throwing.
-    ///
-    /// Synthesised `Decodable` throws on an unknown raw value and `JSONDecoder`
-    /// gives up on the whole document — so one slot from a newer build would
-    /// empty the entire panel, and the next save would write that emptiness
-    /// down. A downgrade should cost a widget's proportions, not the
-    /// arrangement.
+    /// A size written by a newer build reads as `wide` rather than throwing:
+    /// `JSONDecoder` gives up on the whole document, so one unknown slot would
+    /// empty the panel and the next save would write that emptiness down.
     func testASizeFromTheFutureDoesNotTakeTheLayoutWithIt() throws {
         let json = """
         {"tabs":[{"id":"t","widgets":[
@@ -104,12 +100,10 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(decoded.allSlots.map(\.size), [.wide, .compact])
     }
 
-    /// A layout written before this build decodes whole rather than taking the
-    /// document down with it: `JSONDecoder` gives up on the document, not the
-    /// field, so a missing `dismissed` or `hidden` list, or a tab without a
-    /// glyph, would each have thrown under the synthesised decoder. The
-    /// *known* size is the control for the lenient one above: it still decodes
-    /// as itself, so the lenient path is not quietly answering `wide` to everything.
+    /// An older stored layout (no `dismissed` or `hidden` list, a tab without a
+    /// glyph) decodes whole rather than taking the document down with it. The
+    /// known size is the control for the lenient path above: it still decodes
+    /// as itself.
     func testALayoutFromAnOlderBuildDecodesWhole() throws {
         let json = """
         {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"tall"}]}]}
@@ -124,10 +118,9 @@ final class PanelLayoutTests: XCTestCase {
 
     // MARK: - A widget that was taken off stays off
 
-    /// The bug this was written for: removing a widget was undone by the next
-    /// read. `reconciled` adds any id this build can draw that the layout does
-    /// not hold — which is how a new module joins — and a widget just removed
-    /// is exactly that. It came back at every launch.
+    /// Removing a widget survives the next read: `reconciled` adds any id this
+    /// build can draw that the layout does not hold, and a widget just removed
+    /// is exactly that.
     func testARemovedWidgetDoesNotComeBackOnTheNextRead() {
         let after = layout([("vpn", .wide), ("disk", .wide)])
             .removing("disk")

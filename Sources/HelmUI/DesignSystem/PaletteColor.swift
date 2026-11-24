@@ -2,26 +2,15 @@ import SwiftUI
 import AppKit
 /// The active-tint palette for status icons — Calendar's, which is the system's.
 ///
-/// **This reverses an earlier decision, and the reversal is measured.** The
-/// palette used to be ten hand-picked hexes «not the system's», on the finding
-/// that `systemRed` and `systemPink` are **22 units of sRGB apart** — two of
-/// the ten swatches were the same colour, in the one control whose entire
-/// content is which colour you picked. That finding was about a set containing
-/// both a red and a pink. Calendar's set has neither problem: measured on this
-/// Mac, the closest pair of the seven *tinted* colours — `offered` less
-/// `.white`, which stands for no tint and is measured against nothing — is
-/// orange/yellow at **103** units in light and red/orange at **101** in dark,
-/// against 22 for the pair that caused the rewrite.
-///
-/// What the system's colours buy that a hex cannot: they change with the
-/// appearance. `systemRed` is `#FF383C` in light and `#FF4245` in dark, and the
-/// icon they tint sits in the menu bar, which is the one surface that follows
+/// The tinted colours are far apart in sRGB, the closest pair about 100 units
+/// in either appearance, so no two swatches read as one colour (`systemRed` and
+/// `systemPink`, 22 units apart, would). And the system's colours change with
+/// the appearance, which matters in the menu bar, the one surface that follows
 /// the desktop rather than the app.
 ///
-/// `mint`, `cyan` and `pink` are **retired, not removed**. They are somebody's
-/// stored setting on a Mac that has already run Helm, and a case that stops
-/// existing reads back as white with no explanation. They resolve; `offered` is
-/// what the menu lists.
+/// `mint`, `cyan` and `pink` are **retired, not removed**: they are somebody's
+/// stored setting, and a case that stops existing reads back as white with no
+/// explanation. They resolve; `offered` is what the menu lists.
 public enum PaletteColor: String, CaseIterable, Sendable {
     case white, red, orange, yellow, green, blue, purple, brown
     case mint, cyan, pink
@@ -47,8 +36,7 @@ public enum PaletteColor: String, CaseIterable, Sendable {
         case .blue: return .systemBlue
         case .purple: return .systemPurple
         case .brown: return .systemBrown
-        // Retired: reachable only from a stored value written before the
-        // palette became Calendar's.
+        // Retired: reachable only from a stored value.
         case .mint: return .systemMint
         case .cyan: return .systemCyan
         case .pink: return .systemPink
@@ -62,9 +50,8 @@ public enum PaletteColor: String, CaseIterable, Sendable {
         if self == .white { return Color(hex: 0xF1F1F7) }
         return Color(nsColor: nsColor)
     }
-    /// The colour's name in the user's language. It was `rawValue.capitalized`
-    /// — the one user-visible string in the app that skipped `L()` — and on a
-    /// swatch the colour itself is the only other signal there is.
+    /// The colour's name in the user's language: on a swatch the colour itself
+    /// is the only other signal there is.
     public var label: String {
         switch self {
         case .white: return L(.white)
@@ -87,15 +74,10 @@ public enum PaletteColor: String, CaseIterable, Sendable {
 
     /// A filled circle in this colour, as an image.
     ///
-    /// **Not an SF Symbol with a `foregroundStyle` on it.** A `Picker` with the
-    /// menu style is drawn by AppKit as an `NSMenu`, and an `NSMenuItem` takes
-    /// an *image*: the tint SwiftUI is asked to apply to a symbol inside one is
-    /// dropped, which is why the colours arrived as identical grey dots and
-    /// then as no dots at all. Drawn here and handed over already coloured,
-    /// there is nothing left for the menu to strip.
-    ///
-    /// `isTemplate` stays false for the same reason — a template image is
-    /// recoloured by the menu, which is exactly what has to not happen.
+    /// Not an SF Symbol with a `foregroundStyle`: a menu-style `Picker` is an
+    /// `NSMenu`, and an `NSMenuItem` takes an image and drops a SwiftUI tint, so
+    /// the swatch is handed over already coloured. Not a template either, which
+    /// the menu would recolour.
     public var swatchImage: NSImage { Self.swatchImage(of: NSColor(color)) }
 
     /// A disc in an arbitrary colour, drawn as the palette's own are
@@ -108,8 +90,8 @@ public enum PaletteColor: String, CaseIterable, Sendable {
             let disc = NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5))
             fill.setFill()
             disc.fill()
-            // The same hairline the swatches always had: `.white` is a pale
-            // grey on a pale menu and needs an edge to be a disc at all.
+            // A hairline: `.white` is a pale grey on a pale menu and needs an
+            // edge to be a disc at all.
             NSColor.labelColor.withAlphaComponent(0.20).setStroke()
             disc.lineWidth = 1
             disc.stroke()

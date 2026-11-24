@@ -11,16 +11,13 @@ import Foundation
 /// by a fraction of a pixel it is a different stroke, which nobody sees.
 ///
 /// **How much.** A pixel's ink is `1.45 - 1.6 t` of 255, clamped to 3...255, where `t` is the mean of the hash's four
-/// bytes, 0...1: the approved frame's graphite (alpha = clamp(1.45 - 1.6 * fractal noise)), the mean of four
-/// uniform bytes standing for the noise, bell-shaped about 0.5 as fractal noise is. Arithmetic from that bell
-/// (standard deviation 0.144), not a measurement: about 7 % of pixels fully inked (6.7 % by the arithmetic), under 1 % nearly bare, mean
-/// ink about 0.65, so the ink adds up to about 0.65 of the stroke's width. The pen is the other end.
+/// bytes, 0...1: four uniform bytes stand for fractal noise, bell-shaped about 0.5 (standard deviation 0.144), so about
+/// 7 % of pixels are fully inked, under 1 % nearly bare, and the ink adds up to about 0.65 of the stroke's width.
 ///
 /// **How big.** The mask covers only the stroke's bounding box, widened by half the stroke's width and one pixel,
-/// and only where it meets `pixels`; one byte a pixel, on screen too (`Mask.alpha` is alpha-only). A stroke still being
-/// drawn is the exception: every draft, however short, holds a display-sized mask, built once, since the grain does not follow the path,
-/// and it holds it as two rasters (`grey` and `alpha`; `draftGrain` keeps both): 2 × 14.7 MB at 5120 × 2880. The worst case
-/// of a finished stroke is one across a whole display: 14.7 MB for a 5120 × 2880 one (arithmetic, not a measurement).
+/// and only where it meets `pixels`; one byte a pixel, on screen too (`Mask.alpha` is alpha-only). A draft, however
+/// short, holds a display-sized mask, built once since the grain does not follow the path, as two rasters (`grey` and
+/// `alpha`; `draftGrain` keeps both): 2 × 14.7 MB at 5120 × 2880, where a finished stroke across the display holds one.
 public enum PencilGrain {
     /// The grain over part of an image: `grey` is 8-bit, each pixel's ink from 3 (nearly bare, never 0) to 255 (fully inked), its
     /// pixel (x, y) the image's pixel (`pixels.minX + x`, `pixels.minY + y`), top-left origin.

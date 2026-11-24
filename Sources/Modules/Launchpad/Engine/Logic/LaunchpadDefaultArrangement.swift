@@ -32,7 +32,7 @@ extension LaunchpadLayout {
     private static let utilitiesPath = "/System/Applications/Utilities/"
 
     /// Apple's own apps in the Dock's order of macOS 26, then Launchpad's older order for the rest.
-    /// Copied on 2026-11-19 from `/System/Library/CoreServices/Dock.app/Contents/Resources/default.plist` (`persistent-apps`:
+    /// Copied from `/System/Library/CoreServices/Dock.app/Contents/Resources/default.plist` (`persistent-apps`:
     /// Safari to System Settings; Keynote, Numbers and Pages are the `/Applications` ones) and, after it, the
     /// bundle ids of the `/System/Applications` apps the Dock leaves out, in the order the old Launchpad showed them.
     /// Read at build time, never at run time: `Apps` (the system's own launcher) goes last.
@@ -49,7 +49,7 @@ extension LaunchpadLayout {
         "com.apple.QuickTimePlayerX", "com.apple.apps.launcher",
     ]
 
-    /// The apps of `/System/Applications/Utilities` (read from the bundles' `CFBundleIdentifier` on 2026-11-19) and the four
+    /// The apps of `/System/Applications/Utilities` (their bundles' `CFBundleIdentifier`) and the four
     /// of Apple's old "Other" folder that live outside it: Automator, Font Book, Image Capture, Time Machine.
     private static let utilityIDs: Set<AppID> = [
         "com.apple.ActivityMonitor", "com.apple.airport.airportutility", "com.apple.audio.AudioMIDISetup",

@@ -9,11 +9,9 @@ extension SystemVolumeCapacity {
 
 /// Disks appearing and disappearing, for as long as this object is held.
 ///
-/// A separate type because its `deinit` is the whole point and a `@MainActor`
-/// class cannot have one that reads its own tokens — Swift 6 refuses a
-/// nonisolated `deinit` touching non-`Sendable` state, which is how «the
-/// observer nobody takes out» gets written by accident. Here the subscription
-/// *is* the lifetime, so there is nothing left to remember.
+/// A separate type because its `deinit` is the whole point, and Swift 6
+/// refuses a `@MainActor` class a nonisolated `deinit` that reads its own
+/// non-`Sendable` tokens. Here the subscription *is* the lifetime.
 ///
 /// `NSWorkspace`'s own centre, not `NotificationCenter.default`: these two
 /// notifications are posted there and nowhere else. Delivered on the main

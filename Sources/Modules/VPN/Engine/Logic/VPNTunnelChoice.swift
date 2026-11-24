@@ -10,14 +10,11 @@ import Foundation
 /// is ordered with the default-route tunnel first, so «the first» names the
 /// tunnel the traffic actually leaves through — and *therefore* falling back to
 /// the first when a selection goes stale lands on the one honest default rather
-/// than on whichever configuration was made earliest. Split across two files the
-/// second half is a sentence with nothing keeping it.
+/// than on whichever configuration was made earliest.
 ///
-/// Pure, so the page's fallback and the engine's ordering are each a value in
-/// and a value out. The selection itself is `@State` on the page — a state of
-/// this visit, never stored — and that is exactly why this has to answer for a
-/// name that no longer names anything: the list is rewritten under it whenever
-/// the network moves.
+/// The selection itself is `@State` on the page, never stored, so this has to
+/// answer for a name that names nothing: the list is rewritten under it
+/// whenever the network moves.
 public enum VPNTunnelChoice {
 
     /// The tunnel the strip draws: the one the person picked while it is still

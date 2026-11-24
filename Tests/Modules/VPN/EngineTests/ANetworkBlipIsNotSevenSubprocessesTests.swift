@@ -11,60 +11,29 @@ import XCTest
 /// **The notifications that arrive before a re-read runs are one re-read.
 /// `SCDynamicStore` does not deliver one event.**
 ///
-/// Measured in the owner's own `~/Library/Logs/Helm/helm.log`, not reasoned
-/// about: `network state changed; re-reading` arrives in bursts of up to seven
-/// inside a single second — counts per second across the log of 7, 7, 7, 6, 5,
-/// 5, 5, 5 — and one connect is followed by five to eleven of them in under half
-/// a second:
+/// One tunnel coming up moves the global IPv4 entity, each service's IPv4 entity
+/// and the Setup entity, and `DynamicStoreNetworkWatch` subscribes to all three,
+/// so the store fires in bursts of five to eleven within a second. Each re-read
+/// costs a `scutil --nc list` subprocess, plus a `--nc status` for any connected
+/// tunnel whose reading is not cached, on the queue every connect has to get
+/// through. The port carries no detail, so how often to re-read is the engine's
+/// job: the engine, not the port, must coalesce.
 ///
-/// ```
-/// 23:20:20.284 [info] [vpn] connect vpn#7b99
-/// 23:20:20.526 [info] [vpn] network state changed; re-reading
-/// 23:20:20.540 [info] [vpn] network state changed; re-reading
-/// 23:20:20.611 [info] [vpn] network state changed; re-reading
-/// 23:20:20.661 [info] [vpn] network state changed; re-reading
-/// 23:20:20.678 [info] [vpn] network state changed; re-reading
-/// 23:20:21.162 [info] [vpn] settled: …
-/// ```
-///
-/// That is what the store does when one tunnel comes up: the global IPv4 entity
-/// moves, each service's IPv4 entity moves, the Setup entity moves, and
-/// `DynamicStoreNetworkWatch` subscribes to all three with no coalescing
-/// anywhere between the callback and `refreshNow`. Every one of them costs a
-/// `scutil --nc list` — a subprocess this repository measures at 16 ms — plus a
-/// `--nc status` for any connected tunnel whose reading is not cached yet.
-///
-/// `ScanCoordinator` has an explicit on-change-only rule for exactly this shape.
-/// Nothing in this module has earned an exception from it: the port's own
-/// documentation says «the port carries no detail: what changed is `scutil`'s
-/// answer to give, and the engine re-reads the list either way» — which makes
-/// deciding *how often* to re-read the engine's job and nobody else's.
-///
-/// **The fake is exactly as free as the real port has been measured to be.** It
-/// fires from one thread, in a burst, the way the store's own serial queue does.
-/// A coalescer put in `DynamicStoreNetworkWatch` alone would leave this test red
-/// on purpose: the engine is what turns a notification into a subprocess, and it
-/// is the thing that has to be robust to a port that fires seven times.
-///
-/// The count is taken on `.background`, the queue the app runs on, because
-/// coalescing is about time and `VPNWorkQueue.inline` runs a delayed block at
-/// once. It is held until it stops moving before it is read.
-///
-/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
+/// The fake fires from one thread, in a burst, the way the store's serial queue
+/// does. The count is taken on `.background`, the queue the app runs on, because
+/// `VPNWorkQueue.inline` runs a delayed block at once, and it is held until it
+/// stops moving before it is read.
 final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
 
-    /// What the store delivered when one tunnel came up, on the machine the log
-    /// above came from. Twenty rather than seven so that «fewer than one
+    /// Twenty rather than the store's usual seven, so that «fewer than one
     /// subprocess each» is not a reading a lucky schedule can produce.
     private static let burst = 20
 
     /// At most this many `--nc list` runs may follow the whole burst.
     ///
-    /// Four, and each of the four is a read somebody can name: one already in
-    /// flight when the burst began, one for the leading edge, one for the
-    /// trailing edge, and one spare. A burst arriving inside a millisecond
-    /// collapses to one or two under any coalescing window at all, so this is a
-    /// ceiling with room in it rather than a threshold tuned to pass.
+    /// One already in flight when the burst began, one for the leading edge,
+    /// one for the trailing edge, and one spare: a ceiling with room in it, not a
+    /// threshold tuned to pass.
     private static let affordable = 4
 
     private let list = """
@@ -76,9 +45,8 @@ final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
 
     /// Waits until `tally` has not moved for `still`, and fails at `deadline`.
     ///
-    /// A single reading taken too early would be *low*, which is the direction
-    /// that makes this test pass while the defect is there — so the count is
-    /// held until it stops moving rather than read after a fixed sleep.
+    /// A reading taken too early would be *low*, the direction that passes
+    /// with the defect present, so no fixed sleep.
     private func settled(_ tally: LockedCount, still: TimeInterval = 0.4,
                          deadline: TimeInterval = 8,
                          file: StaticString = #filePath, line: UInt = #line) -> Int {

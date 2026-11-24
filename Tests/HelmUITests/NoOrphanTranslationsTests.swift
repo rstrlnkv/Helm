@@ -7,13 +7,11 @@ import HelmTestSupport
 /// still *wants* the symbol, and whether anything still asks for a word by its English spelling.
 final class NoOrphanTranslationsTests: XCTestCase {
 
-    /// **An orphan is a trap for the next person.** One symbol means one thing, so a symbol nothing asks
-    /// for is not merely weight: the next `L(.medium)`, written about something else entirely, would
-    /// inherit eight translations describing the size of an icon, and English could not show it. Every
-    /// word is asked for by symbol (`L(.symbol)`, or `HelmWord.x` whose body is one), so this asks the
-    /// sources of the catalog's own target — comments blanked, literals kept — for each `.symbol`: the
-    /// kit's in `Sources/HelmUI`, a module's in its `UI`, the host's in `Sources/HelmAppStrings`. A symbol nothing
-    /// names ships eight translations of a word nobody draws.
+    /// **An orphan is a trap for the next person.** One symbol means one thing, so the next `L(.medium)`,
+    /// written about something else, would inherit eight translations of an unrelated word, and English
+    /// could not show it. Every word is asked for by symbol, so this asks the sources of the catalog's own
+    /// target (comments blanked, literals kept) for each `.symbol`: the kit's in `Sources/HelmUI`, a module's
+    /// in its `UI`, the host's in `Sources/HelmAppStrings`.
     func testNoCatalogSymbolGoesUnnamed() throws {
         let catalogs = try ModuleCatalogs.all()
         XCTAssertGreaterThanOrEqual(catalogs.count, 13, "only \(catalogs.count) catalog(s) were found, so a pass means nothing")
@@ -44,9 +42,8 @@ final class NoOrphanTranslationsTests: XCTestCase {
 
     /// **No call asks for a word by its English.** `L("Open")` falls back to the key and shows English
     /// in a language whose catalog never got the word; `L(.open)` is a symbol the build refuses when the
-    /// catalog lacks it. `L(` followed by a quote is the old spelling. The raw text is read, comments
-    /// included, because a comment that shows `L("…")` for a lookup that is gone is a sentence the code
-    /// no longer makes true.
+    /// catalog lacks it. The raw text is read, comments included, because a comment that shows `L("…")`
+    /// teaches a spelling the build would refuse.
     static func englishLookups(in text: String) -> [Int] {
         text.matches(of: /\bL\(\s*"/).map { text[..<$0.range.lowerBound].filter { $0 == "\n" }.count + 1 }
     }

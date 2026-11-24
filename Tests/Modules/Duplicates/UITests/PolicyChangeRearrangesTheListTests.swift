@@ -9,17 +9,14 @@ import Module_Duplicates_Engine
 /// without hashing anything again.
 ///
 /// **The mark that becomes the survivor is the mine here.** `emptyBasket` builds
-/// its plans from each group's copies *after the first*, so a ticked path that
-/// has just been promoted to survivor silently leaves the plans while staying in
-/// the basket: the bar promises to remove four files and three go. The rule is
-/// that the two agree, and it is asserted against the plans that actually reach
-/// the work rather than against a count.
+/// its plans from each group's copies *after the first*, so a ticked path
+/// promoted to survivor would leave the plans while staying in the basket. The
+/// two must agree, asserted against the plans that reach the work.
 @MainActor
 final class PolicyChangeRearrangesTheListTests: XCTestCase {
 
-    /// One group: the copy in Downloads arrived first, the copy in Documents was
-    /// filed later. The two policies disagree about it, which is the whole point
-    /// of there being two.
+    /// One group the two policies disagree about: the copy in Downloads arrived
+    /// first, the copy in Documents was filed later.
     private func group() -> DuplicateGroup {
         let day = Date(timeIntervalSince1970: 1_700_000_000)
         return DuplicateGroup(copies: [
@@ -65,9 +62,7 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
     ///
     /// The request carries the policy it was pressed with, so the engine's answer
     /// arrives ordered by *that* one. Landing it as it came would leave the list
-    /// in one order while the sentence above it named another — and the header's
-    /// reason, which asks the ladder rather than the array, would describe a copy
-    /// that is not the one on the first row.
+    /// in one order while the sentence above it names another.
     func testAnAnswerThatLandsAfterThePolicyChangedIsPutInTheNewOrder() async {
         let work = AnsweringWork(groups: [group()], answering: .park)
         let dvm = model(work)
@@ -140,10 +135,8 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
         XCTAssertNil(dvm.marksNote, "a note about the previous change outlived it")
     }
 
-    /// The basket promises what the removal will do, and after a rearrangement
-    /// that promise is the one most easily broken: the plans are built from the
-    /// copies *after the first*, so a promoted survivor would leave the plans and
-    /// stay in the count — the bar saying two files and one going.
+    /// The basket promises what the removal will do, and a rearrangement is
+    /// where a promoted survivor would leave the plans and stay in the count.
     func testTheBasketAndThePlansAgreeAfterAPolicyChange() async throws {
         let work = AnsweringWork(groups: [trio()])
         let dvm = await searched(work)

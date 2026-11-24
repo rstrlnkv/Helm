@@ -5,11 +5,8 @@ import Module_Homebrew_Engine
 
 /// **The Health tab: a verdict, the findings behind it, and the configuration.**
 ///
-/// A striped list with an inspector beside it is built for a hundred packages,
-/// and the two things this tab holds — one to three paragraphs of prose from
-/// `brew doctor` and a document from `brew config` — are not that shape: a
-/// title cut to one line at 286 pt with its meaning one click away, a stripe
-/// under nothing, and «Nothing to fix.» drawn as the quietest row of a table.
+/// One page, not a list and an inspector: `brew doctor`'s paragraphs of prose
+/// and `brew config`'s document are not the shape of a hundred packages.
 ///
 /// **Read top to bottom, and nothing needs choosing first.**
 ///
@@ -18,9 +15,8 @@ import Module_Homebrew_Engine
 ///    unfiltered answer, so a word typed into the search field cannot say the
 ///    Mac is clean.
 /// 2. **One card of findings**, each a row that opens in place through
-///    `helmAccordion` on `HelmMotion.disclosure`. The only finding is open
-///    always and has no control to close it: a card with one row that hides
-///    its one paragraph asks a click for nothing.
+///    `helmAccordion` on `HelmMotion.disclosure`. The only finding is always
+///    open, with no control to close it.
 /// 3. **The configuration**, in a card of its own, closed, with the one
 ///    action on it — «Copy for a bug report» — in its header.
 ///
@@ -28,17 +24,13 @@ import Module_Homebrew_Engine
 /// its header; an open one carries it in the body, beside the command it runs.
 /// Never both, so a press is never one of two controls for one act.
 ///
-/// **What did not move.** The gate is the same: `DoctorFix.judge` decided
-/// whether a fix is `.runnable` before this page saw it, `FixAsk` decides
-/// which question comes before the act (`HomebrewSettingsPage.fixQuestion`), the engine judges again at the press and names its refusal,
-/// and brew's own words are drawn verbatim and selectable. Only where they are
-/// drawn changed.
+/// `DoctorFix.judge` decided whether a fix is `.runnable` before this page saw
+/// it, `FixAsk` decides which question comes before the act
+/// (`HomebrewSettingsPage.fixQuestion`), and the engine judges again at the
+/// press. Brew's own words are drawn verbatim and selectable.
 ///
-/// **No inspector, no selection, no "Available to install".** Findings open in
-/// place, so nothing is selected on this tab and `HomebrewViewModel` keeps no
-/// selection for it; a search for a package is not a question about this Mac's
-/// health, so the section that draws its answer is not drawn here and the
-/// field only filters.
+/// No inspector, no selection, no "Available to install"
+/// (Architecture/Homebrew.md § The Health tab).
 struct HomebrewHealthPage: View {
     @ObservedObject var hb: HomebrewViewModel
     @Environment(\.helmTraits) private var traits
@@ -49,8 +41,7 @@ struct HomebrewHealthPage: View {
     private static let unexaminedTint = Color.gray
 
     /// The findings the person has opened, by `DoctorIssue.id`. The view's own
-    /// state and not the view model's: it is a fact about what this page has
-    /// drawn open, and a page that is left and returned to starts closed.
+    /// state: a page left and returned to starts closed.
     @State private var openFindings: Set<String> = []
     @State private var configurationOpen = false
 
@@ -67,12 +58,9 @@ struct HomebrewHealthPage: View {
             VStack(alignment: .leading, spacing: HelmSpace.s6) {
                 verdict(screen.verdict)
                 if screen.noMatches {
-                    // Under the verdict and not instead of it: the Mac has
-                    // findings and the field is hiding them, which is a
-                    // different fact from having none. **On the column's own
-                    // edge, with no padding of its own** — the one the
-                    // verdict's plate and both cards stand on. A card's
-                // padding under nothing that had one would be a fourth left edge on the page.
+                    // Under the verdict, not instead of it: the field hides
+                    // findings the Mac has. On the column's own edge, the one
+                    // the plate and both cards stand on.
                     Text(HbStr.noMatches)
                         .foregroundStyle(HelmText.quiet)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -115,21 +103,13 @@ struct HomebrewHealthPage: View {
     }
 
     private func verdict(_ verdict: HealthVerdict) -> some View {
-        // **Top-aligned, and the text column has a fixed step from the top.**
-        // Centred on the plate, the title would stand
-        // wherever the number of lines put it: a wait with one line lower
-        // than the answer that replaced it with two, and a refusal that wraps
-        // higher again, the title jumping at the moment it was being read.
-        // So its first line begins at the same place in every reading, whatever
-        // is under it.
+        // **Top-aligned, at a fixed step from the top,** so the title's first
+        // line stands at one place in every reading however many lines follow.
         HStack(alignment: .top, spacing: HelmSpace.s5) {
             switch verdict {
             case .checking:
-                // **Waiting moves**: the reading is `brew doctor`, the slowest
-                // query in the module, and a still sentence over it reads as a
-                // page that has stopped.
-                // Beside the title's first line, which is where the title now
-                // stands: centred in the slot it would sit under it.
+                // **Waiting moves**: a still sentence over the slowest query
+                // reads as a page that has stopped. Beside the title's first line.
                 ProgressView().controlSize(.small)
                     .padding(.top, HelmSpace.s2)
                     .frame(width: Self.plate, height: Self.plate, alignment: .top)
@@ -158,10 +138,8 @@ struct HomebrewHealthPage: View {
         .accessibilityAddTraits(.isHeader)
     }
 
-    /// The plate's own size, named once. The wait's spinner is drawn in a slot
-    /// of the same size, so the text column starts at one place across in every
-    /// reading; that the title also stands at one *height* is the top
-    /// alignment above.
+    /// The plate's size; the wait's spinner gets a slot of the same size, so
+    /// the text column starts at one place across in every reading.
     private static let plate: CGFloat = 44
 
     // MARK: - The findings
@@ -173,9 +151,7 @@ struct HomebrewHealthPage: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(findings.enumerated()), id: \.element.id) { index, issue in
                 if index > 0 { Divider().padding(.leading, Self.bodyInset) }
-                // **The only finding is open, and stays open.** A card of one
-                // row that hides its one paragraph asks a click for nothing, so
-                // it is drawn open and given no control to close it.
+                // **The only finding is open, and stays open.**
                 FindingRow(hb: hb, issue: issue,
                            open: total == 1 || openFindings.contains(issue.id),
                            toggle: total > 1 ? {
@@ -221,9 +197,7 @@ private struct FindingRow: View {
             header
                 .padding(HelmSpace.s5)
             VStack(alignment: .leading, spacing: HelmSpace.s5) {
-                // Brew's own words, kept as brew wrote them — the parser keeps
-                // body lines verbatim on purpose (`DoctorParser.body`), and a
-                // body line naming a path is somebody's path.
+                // Brew's own words, verbatim (`DoctorParser.body`).
                 Text(issue.body)
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
@@ -247,10 +221,8 @@ private struct FindingRow: View {
             } else {
                 title
             }
-            // The word, and only where there is one: a caution is what nearly
-            // every finding is, and a badge on every row said the same word on
-            // all of them, so `severityBadge` has none for it. `Problem` is
-            // `Error:` in brew's own text and is the one that should stand out.
+            // Only `Error:` earns a word; a caution, nearly every finding, has
+            // none (`severityBadge`).
             if let (word, tint) = HomebrewSettingsPage.severityBadge(issue.severity, increased: traits.increasedContrast) {
                 HelmBadge(word, tint: tint)
             }
@@ -286,15 +258,11 @@ private func copyToPasteboard(_ text: String) {
 /// The one Run button, in the closed row's header and in the open row's body —
 /// the same builder, so the two cannot disagree about what pressing it does.
 ///
-/// **The destructive one, drawn and behaved as the destructive one it is.**
-/// `role: .destructive` is what makes `HelmButtonStyle` draw it red, and in a
-/// menu or a dialog behave as one; `askToRunFix` is what makes
-/// it *behave* differently: every fix asks before it runs, and the label's
-/// ellipsis says so.
+/// `role: .destructive` draws it red; `askToRunFix` asks before every fix runs,
+/// and the label's ellipsis says so.
 ///
-/// **It names what it will run in the tooltip and to VoiceOver**, because a
-/// closed row shows the button at the far edge from its title and the command
-/// is out of sight; the dialog that follows (`fixQuestion`) still names the package.
+/// **It names what it will run in the tooltip and to VoiceOver**, because on a
+/// closed row the command is out of sight.
 private struct HealthRunButton: View {
     @ObservedObject var hb: HomebrewViewModel
     let fix: DoctorFix
@@ -311,19 +279,13 @@ private struct HealthRunButton: View {
 /// The command, whose label says whose reading it is, and whatever this app
 /// may do with it.
 ///
-/// **No control here attributes the command to Homebrew.** On one Mac, one
-/// Homebrew version (7.0.1): `brew doctor` printed 1,194 bytes and not
-/// one `brew …` command line, so `uninstall <name>` is Helm's reading of a
-/// heading brew printed and not a line brew wrote — `HbStr.helmReadsThisAs` and
-/// `HbStr.brewNamedNoCommand` are the two places that say so, and the second is
-/// drawn for both kinds of fix, because the provenance is a fact about the
-/// command rather than about the button beside it.
+/// **No control here attributes the command to Homebrew** (`HbStr.helmReadsThisAs`);
+/// `HbStr.brewNamedNoCommand` is drawn for both kinds of fix, because the
+/// provenance is a fact about the command.
 ///
-/// The copy is a pasteboard write from the view, the way `LogView` already
-/// does it: there is no engine command for it, because nothing leaves this
-/// process. Inside a clipped, animated block the ink is a literal primary with
-/// an opacity (`HelmText.quiet` is one), never a hierarchical style
-/// (`HelmAccordion`'s own note on why).
+/// The copy is a pasteboard write from the view: nothing leaves this process.
+/// Inside a clipped, animated block the ink is a literal primary with an
+/// opacity, never a hierarchical style (`HelmAccordion`).
 private struct HealthFixBlock: View {
     @ObservedObject var hb: HomebrewViewModel
     let fix: DoctorFix
@@ -339,16 +301,13 @@ private struct HealthFixBlock: View {
                     .textSelection(.enabled)
                     .padding(.horizontal, HelmSpace.s4).padding(.vertical, HelmSpace.s3)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    // `ctl` and not `card`: this is one line of text, a small
-                    // field well, and the design system gives those the
-                    // control corner.
+                    // `ctl`, not `card`: a one-line field well.
                     .background(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
                         .fill(HelmSurface.wellFill))
                 Button(HbStr.copyTheFix) { copyToPasteboard(command) }
                 if fix.kind == .runnable {
-                    // The step before it is `HelmSpace.s5` where the row's own
-                    // is `s3`: a press meant for Copy that lands on this one is
-                    // not a press anybody can take back.
+                    // A wider step than the row's: a press meant for Copy
+                    // must not land on Run.
                     HealthRunButton(hb: hb, fix: fix)
                         .padding(.leading, HelmSpace.s5 - HelmSpace.s3)
                 }
@@ -366,17 +325,11 @@ private struct HealthFixBlock: View {
 /// What `brew config` says, in one card: closed it is a line that names this
 /// Homebrew and this Mac, with the one action; open it is the document.
 ///
-/// **«Copy for a bug report» copies the document and not what is drawn.**
-/// `BrewConfig.text` is what brew printed, byte for byte; the groups below are
-/// a reading regrouped under headings this app invented, and a bug report asks
-/// for the first. Drawn only when there is a document — a button that copies an
-/// empty string is a button that silently does nothing.
+/// **«Copy for a bug report» copies `BrewConfig.text`, what brew printed,**
+/// not the regrouped reading drawn. Drawn only when there is a document.
 ///
-/// The key is drawn as Homebrew spells it and the value in a monospaced face:
-/// many of the values are a version, a path or a hash, which is what a
-/// reader compares character by character rather than reads as a word. The
-/// value is selectable, because a person who is not copying the whole document
-/// is copying exactly one of these.
+/// The key as Homebrew spells it; the value monospaced (versions, paths,
+/// hashes are compared character by character) and selectable.
 private struct ConfigurationCard: View {
     @ObservedObject var hb: HomebrewViewModel
     let groups: [ConfigGroup]
@@ -394,9 +347,7 @@ private struct ConfigurationCard: View {
                         // title carries the trait itself (`HelmSectionTitle`).
                         HelmSectionTitle(HbStr.configSectionName(group.section))
                         // A `Grid`, so the key column is as wide as the widest
-                        // key and not a number written down here: Homebrew adds
-                        // keys between releases, so the column has to be able
-                        // to grow.
+                        // key: Homebrew adds keys between releases.
                         Grid(alignment: .leadingFirstTextBaseline,
                              horizontalSpacing: HelmSpace.s5, verticalSpacing: HelmSpace.s3) {
                             ForEach(group.lines) { line in

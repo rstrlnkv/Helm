@@ -14,9 +14,8 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
 
     /// One path this advice will really hand to the Trash, and what it weighs.
     ///
-    /// The weight travels with the path because a partial removal has to leave
-    /// an honest row behind: half the targets gone and the row still claiming
-    /// the whole folder is the same lie in a quieter place.
+    /// The weight travels with the path so a partial removal leaves a row that
+    /// claims only what is still there.
     struct Target: Codable, Equatable, Sendable {
         public let path: String
         public let bytes: Int
@@ -55,9 +54,8 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
     /// a folder, whose own mtime says when something was last added to it and
     /// nothing about what is inside.
     ///
-    /// It travels with the advice because the row that asks somebody to bin a
-    /// gigabyte otherwise offers a category word as its whole reason — and the
-    /// category word claimed *use*, which no attribute here measures.
+    /// It travels with the advice so the row gives a date as its reason, not a
+    /// category word claiming *use*, which no attribute here measures.
     public let modified: TimeInterval?
 
     /// The thing itself: one path, weighing what the row says.
@@ -77,10 +75,9 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
         self.bytes = targets.map(\.bytes).saturatingSum()
     }
 
-    /// A scan cached by a build that named only the container decodes as one
-    /// target: itself. Dropping the whole tree over a missing key would cost
-    /// somebody a minute of scanning on the first launch after an update, and
-    /// `modified` already earned that lesson.
+    /// A saved scan that names only the container decodes as one target:
+    /// itself. Dropping the whole tree over a missing key would cost a minute
+    /// of scanning on the first launch after an update.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let path = try c.decode(String.self, forKey: .path)
@@ -111,29 +108,21 @@ enum DiskAdvisor {
     /// Cache folders whose whole **contents** are regenerable. Relative to home.
     ///
     /// The contents, and never the folder. `~/Library/Caches` carries an ACL
-    /// its children do not — `group:everyone deny delete`, which `ls -lde`
-    /// prints and which makes `trashItem` answer NSCocoaErrorDomain 513 — so a
-    /// row offering the folder recommended the one action macOS refuses.
+    /// its children do not, `group:everyone deny delete`, which makes
+    /// `trashItem` answer NSCocoaErrorDomain 513.
     ///
-    /// The other two carry no such ACL today and their containers really are
-    /// trashable, and they are still treated the same way. Two reasons, in
-    /// order: emptying is what the row already claims ("Cache — apps rebuild
-    /// it") whatever the folder's own permissions happen to be, and applications
-    /// expect their cache folder to exist; and which of the three wears the ACL
-    /// is a fact about this release of macOS, so a per-folder rule would pin
-    /// today's `ls` output into the advisor and go quietly wrong when it moves.
-    /// Uniform costs one empty folder left behind — the one Xcode would create
-    /// again on its next build.
+    /// The other two are treated the same way: emptying is what the row claims
+    /// ("Cache — apps rebuild it"), applications expect their cache folder to
+    /// exist, and which folder wears the ACL is a fact about one release of
+    /// macOS. Uniform costs one empty folder left behind.
     ///
-    /// There is no runtime "would macOS take this" probe here because there is
-    /// none to call: measured against the real folder,
+    /// There is no runtime "would macOS take this" probe:
     /// `FileManager.isDeletableFile` and `faccessat(_DELETE_OK)` both answer yes
-    /// for `~/Library/Caches`. Reading the ACL with `acl_get_file` would, and
-    /// nothing needs it while the rule is "a cache means its contents".
+    /// for `~/Library/Caches`. Only `acl_get_file` would tell, and nothing needs
+    /// it while the rule is "a cache means its contents".
     ///
-    /// `Library/Logs` was here and drew "Cache — safe to clear" over a folder
-    /// named Logs. Two different claims: a cache is rebuilt on demand, a log
-    /// is the record somebody may still need to read.
+    /// No `Library/Logs`: a cache is rebuilt on demand, a log is a record
+    /// somebody may still need to read.
     private static let cacheFolders = [
         "Library/Caches",
         "Library/Developer/Xcode/DerivedData",
@@ -141,9 +130,7 @@ enum DiskAdvisor {
     ]
 
     /// `rootPath` is where `root` was scanned from, and it is not `home`: the
-    /// volume walk hands in `/` while home is somewhere inside it. The two were
-    /// one parameter for as long as `DiskNode` stored its own path, and the
-    /// tests never caught the conflation because they scan home itself.
+    /// volume walk hands in `/` while home is somewhere inside it.
     static func advise(root: DiskNode, rootPath: String, home: String,
                        now: Date = Date()) -> [DiskAdvice] {
         var advice: [DiskAdvice] = []
@@ -164,23 +151,18 @@ enum DiskAdvisor {
         let cachePrefixes = advice.map { $0.path + "/" }
 
         let downloads = home + "/Downloads/"
-        // A depth-first descent, and deliberately not the breadth-first stack
-        // this used to be. The path is composed on the way down and released on
-        // the way up, so the strings alive at any moment number the depth of the
-        // tree — a stack of pending siblings would hold one per node still to
-        // visit, handing back as a transient spike exactly the ~345 MB that
-        // dropping the stored path saved.
+        // A depth-first descent: the path is composed on the way down and
+        // released on the way up, so the strings alive at any moment number the
+        // depth of the tree. A stack of pending siblings would hold one per
+        // node still to visit, which is what not storing paths avoids.
         func sweep(_ node: DiskNode, path: String) {
             // The pool goes **inside**, per node judged, not around the descent:
             // `UserFileScope.isRemovable` is `standardizingPath`, a `fileExists`
             // walk up the parent chain and `resolvingSymlinksInPath`, all of it
-            // Foundation handing back autoreleased objects — and this runs inside
+            // Foundation handing back autoreleased objects, and this runs inside
             // `offTheCooperativePool`, where the only pool that would ever drain
-            // is the one closing when the whole scan returns. Measured over
-            // 20 000 file nodes that all pass the size and age floors and reach
-            // the gate: 88 bytes a node kept without this, 0 with it
-            // (`TheAdvisorKeepsOnlyItsAdviceTests`, against the allocator's own
-            // books). ARCHITECTURE.md § Module pattern.
+            // is the one closing when the whole scan returns
+            // (`TheAdvisorKeepsOnlyItsAdviceTests`; Architecture/ModulePattern.md § Module pattern).
             autoreleasepool {
                 // Size and age first: they cost a comparison, the gate costs
                 // filesystem calls, and most nodes of a volume fail them. The
@@ -201,9 +183,8 @@ enum DiskAdvisor {
                     }
                 }
             }
-            // A node is judged before its children, as it was when this popped a
-            // stack: `sorted` below is not stable, so a changed visit order would
-            // silently reshuffle advice of equal size.
+            // A node is judged before its children: `sorted` below is not
+            // stable, so a changed visit order would reshuffle advice of equal size.
             for child in node.children {
                 sweep(child, path: ScanPath.child(of: path, name: child.name))
             }
@@ -216,11 +197,9 @@ enum DiskAdvisor {
     /// What clearing a cache folder really removes: everything directly inside
     /// it, each with its own weight.
     ///
-    /// The folded bucket is left out and it is not an oversight — it is an
-    /// aggregate of the small loose files, wearing the name `…`, and its path
-    /// names no file. Including it would advertise bytes nothing would ever be
-    /// asked to free. By the flag, and only by the flag: the gate no longer
-    /// refuses that name, because a person may have given it to a real file.
+    /// The folded bucket is left out: it aggregates the small loose files under
+    /// the name `…`, its path names no file, and its bytes would never be asked
+    /// to free. By the flag only, since a person may give that name to a real file.
     private static func contents(of node: DiskNode,
                                  at path: String) -> [DiskAdvice.Target] {
         node.children.filter { !$0.isFolded }.map {

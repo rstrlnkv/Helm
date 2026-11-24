@@ -1,9 +1,8 @@
 import XCTest
 @testable import Module_Homebrew_Engine
 
-/// The four brew parsers all read text a tool prints for humans, and the tool
-/// changes its mind about that text between versions. These pin the shapes that
-/// matter — and one that current Homebrew no longer emits.
+/// The four brew parsers read text a tool prints for humans, and the tool
+/// changes that text between versions. These pin the shapes that matter.
 final class BrewParserShapeTests: XCTestCase {
 
     // MARK: - Nothing in, nothing out
@@ -24,14 +23,11 @@ final class BrewParserShapeTests: XCTestCase {
         XCTAssertNil(BrewOutdatedParser.parse(Data("{}".utf8)))
     }
 
-    /// Split out because this one is the odd parser: the other three trim each
-    /// line before deciding, `BrewListParser` splits only on the literal space.
-    /// A line holding nothing but a tab therefore becomes a package named "\t",
-    /// and every package row carries an Uninstall button that passes its name
-    /// straight to `brew uninstall`. Lowest-harm of the findings in this pass —
-    /// `brew list --versions` does not print such a line today — but it is the
-    /// same missing trim that would turn any prose brew sends to stdout into a
-    /// row, and the fix is one call.
+    /// `BrewListParser` is the odd parser: the others trim each line before
+    /// deciding, it splits only on the literal space. A line holding only a tab
+    /// must not become a package named "\t", whose row's Uninstall button would
+    /// pass that name to `brew uninstall`; the same missing trim would turn any
+    /// prose brew sends to stdout into a row.
     func testAWhitespaceOnlyLineIsNotAPackage() {
         for output in ["\t\n", " \n", "\t\n \n", "\u{00A0}\n"] {
             XCTAssertEqual(BrewListParser.parse(output, isCask: false).map(\.name), [],
@@ -41,11 +37,10 @@ final class BrewParserShapeTests: XCTestCase {
 
     // MARK: - Name collisions across kinds
 
-    /// Trap of the family that bit Login Items: two rows that render the same
-    /// identity. `docker` is both a formula (the CLI) and a cask (the app), and
-    /// the Install/Uninstall buttons pass `isCask` straight to the brew command.
-    /// If the two ever collapse into one row, the button uninstalls the wrong
-    /// one. The rows carry it correctly today — pinning so they keep to it.
+    /// Two rows must not render the same identity. `docker` is both a formula
+    /// (the CLI) and a cask (the app), and the Install/Uninstall buttons pass
+    /// `isCask` straight to the brew command, so collapsed rows would uninstall
+    /// the wrong one.
     func testAPackageThatIsBothFormulaAndCaskStaysTwoDistinguishableRows() throws {
         let json = """
         {"formulae":[{"name":"docker","installed_versions":["27.0.1"],"current_version":"28.0.0"}],

@@ -3,22 +3,17 @@ import XCTest
 import HelmContract
 @testable import Module_Homebrew_Engine
 
-/// One long operation at a time — the engine's own first sentence, and nothing
-/// held it.
+/// One long operation at a time.
 ///
 /// `beginBusy`/`endBusy` guard every `brew install`, `uninstall`, `upgrade` and
-/// `upgrade all` behind one flag, and the module's doc comment opens by
-/// promising it. The refusal is quiet by design: the second press writes a line
-/// to the console and returns, so a broken flag does not throw, does not fail a
-/// build, and does not look like anything on screen — it runs two `brew`
-/// processes against one prefix, which is the state Homebrew's own lock exists
-/// to prevent.
+/// `upgrade all` behind one flag. The refusal is quiet by design (the second
+/// press writes a console line and returns), so a broken flag shows nothing on
+/// screen: it runs two `brew` processes against one prefix, the state
+/// Homebrew's own lock exists to prevent.
 ///
-/// **The runner has to be one that does not answer.** With a fake that calls
-/// `onExit` synchronously, the flag is released before the first call returns
-/// and a second one is admitted correctly — so a test built on such a fake
-/// passes whether the guard exists or not. `ScriptedRunner` never exits, which
-/// is what a real `brew install` looks like for the seconds that matter.
+/// **The runner must not answer.** A fake that calls `onExit` synchronously
+/// releases the flag before the first call returns, and the test passes with
+/// or without the guard. `ScriptedRunner` never exits by itself.
 final class OneOperationAtATimeTests: XCTestCase {
 
     func testASecondOperationIsRefusedWhileTheFirstIsStillRunning() {

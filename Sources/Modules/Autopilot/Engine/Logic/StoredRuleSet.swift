@@ -60,8 +60,8 @@ struct KeptMembers: Equatable, Sendable {
 /// this build could not read. Pure: bytes in, bytes out. See `SealedRules`.
 ///
 /// **Why not one `JSONDecoder().decode([WatchedFolder].self)`.** One rule a newer
-/// Helm wrote (an unknown condition case) fails the whole decode, and the save
-/// after it wrote back the list without it. Here each rule is decoded alone.
+/// Helm wrote (an unknown condition case) would fail the whole decode, and the
+/// next save would write the list back without it. Here each rule is decoded alone.
 enum StoredRuleSet {
     enum Reading: Equatable {
         /// The record cannot be parsed by this build: the scanner fails, the top

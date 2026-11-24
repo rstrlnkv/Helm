@@ -2,45 +2,25 @@ import Foundation
 import XCTest
 @testable import Module_Homebrew_Engine
 
-/// **The one launch in this app that still goes through the door that aborts.**
+/// **A streamed launch that `NSTask` refuses by raising is a failed spawn, not
+/// an abort.**
 ///
-/// `HelmProcess` exists because `NSTask` *raises* on some launch paths, and an
-/// Objective-C exception has nothing to land on in a Swift frame — it goes past
-/// `catch` into `std::terminate`. A shipped build died with SIGABRT inside
-/// `-[NSConcreteTask launchWithDictionary:error:]`, which is why `HelmLaunch`
-/// is the package's only Objective-C target and why `HelmProcess.launched`
-/// starts every child through `HelmLaunchTask`.
+/// `NSTask` *raises* on some launch paths, and an Objective-C exception goes
+/// past a Swift `catch` into `std::terminate`. `HelmProcess.launched` starts
+/// every child through `HelmLaunchTask`, the package's only Objective-C target,
+/// so a raise is caught there. `ShellProcessRunner.stream` carries every
+/// operation that changes the machine: `brew install`, `uninstall`, `upgrade`,
+/// `upgrade all`, and the `/bin/bash` that runs the Homebrew installer.
 ///
-/// `ShellProcessRunner.run` and `.runData` were moved onto `HelmProcess` and are
-/// covered by that door. `ShellProcessRunner.stream` was not
-/// (`SystemPorts.swift:169`): it builds its own `Process` and starts it with
+/// **The NUL is the lever, not the claim.** `HelmLaunch.h` records what raises:
+/// a NUL in an argument or an environment value. Other refusals come back as an
+/// `NSError`, and the guard is «catch whatever it raises», not «forbid what is
+/// known to raise». A NUL is reachable: a package name is parsed out of `brew`'s
+/// stdout, and `String(decoding:as: UTF8.self)` keeps a NUL byte intact.
 ///
-///     do { try p.run() } catch { … }
-///
-/// — the exact line `HelmProcess.launched`'s own doc comment describes as unable
-/// to guard this class of refusal, "however carefully it was written". It is the
-/// last bare one left in `Sources/` apart from `HelmApp/Installer.swift`.
-///
-/// What goes through `stream` is every operation that changes the machine:
-/// `brew install`, `uninstall`, `upgrade`, `upgrade all`, and the `/bin/bash`
-/// that downloads and runs the Homebrew installer.
-///
-/// **The NUL below is the lever, not the claim.** `HelmLaunch.h` records what
-/// was measured: a NUL in an argument or in an environment value raises, while a
-/// missing file, a bad working directory, `EMFILE`, `EAGAIN` and `E2BIG` all
-/// come back as an `NSError` a Swift `catch` already handles — and the crash in
-/// the field came from a third path nobody has enumerated, which is why the fix
-/// there had to be «catch whatever it raises» rather than «forbid what we know
-/// raises». A NUL is simply the one input that reaches the raise from a test.
-/// It is not an unreachable one either: a package name is a word parsed out of
-/// `brew`'s own stdout, and `String(decoding:as: UTF8.self)` keeps a NUL byte
-/// intact where it folds genuinely invalid bytes to U+FFFD.
-///
-/// **This test cannot show the abort, and that is worth writing down** — the
-/// same note `AStartedToolCannotKillTheAppTests` carries for the query side.
-/// XCTest installs its own Objective-C exception handler around each test
-/// method, so inside the harness a raise is reported as an ordinary failure.
-/// The app has no such handler; there the same raise is `abort()`.
+/// **This test cannot show the abort.** XCTest wraps each test method in its
+/// own Objective-C exception handler, so a raise is reported as an ordinary
+/// failure; the app has no such handler, and there the raise is `abort()`.
 final class AStreamedLaunchCannotKillTheAppTests: XCTestCase {
 
     /// The exit code a stream reported, and a way to wait for it: the real
@@ -99,19 +79,16 @@ final class AStreamedLaunchCannotKillTheAppTests: XCTestCase {
                        "a NUL in an environment value raised out of the streamed launch")
     }
 
-    /// The control that keeps the guard honest in the other direction: the
-    /// refusals that arrive as an `NSError` already reach `onExit(-1)` today, so
-    /// a fix must not be "report -1 for everything" — and a page waiting on an
-    /// exit that never comes is the failure this path already handles.
+    /// The control in the other direction: refusals that arrive as an `NSError`
+    /// reach `onExit(-1)`, so the guard is not "report -1 for everything".
     func testAMissingToolIsStillAFailedSpawnWithAnExit() {
         let box = streamed("/definitely/not/here", [])
         XCTAssertEqual(box.code(within: 5), -1,
                        "a tool that could not start left the operation with no exit at all")
     }
 
-    /// And the precondition every assertion above rests on: a tool that *can*
-    /// start still starts and still reports its own exit. Without this the
-    /// three tests hold on a runner that refuses everything.
+    /// The precondition every assertion above rests on: a tool that *can*
+    /// start still starts and reports its own exit.
     func testAToolThatCanStartStillReportsItsOwnExit() {
         let box = streamed("/bin/sh", ["-c", "exit 3"])
         XCTAssertEqual(box.code(within: 15), 3)

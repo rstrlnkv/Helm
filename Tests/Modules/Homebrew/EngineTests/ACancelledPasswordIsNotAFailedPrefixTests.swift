@@ -4,8 +4,8 @@ import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// The password dialog has three answers and the page has three sentences for
-/// them. «Cancel» is the ordinary way it ends and used to read as a failed
-/// `mkdir` — a red «Failed» with code 1 over a Mac nothing had touched.
+/// them. «Cancel», the ordinary ending, is not a failed `mkdir`: no red «Failed»
+/// with code 1 over a Mac nothing touched.
 final class ACancelledPasswordIsNotAFailedPrefixTests: XCTestCase {
 
     private func rigWithTools(reply: PrivilegedOutcome, holds: Bool = false) -> WaitRig {

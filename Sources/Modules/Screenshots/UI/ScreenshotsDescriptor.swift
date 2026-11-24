@@ -13,11 +13,8 @@ import Module_Screenshots_Engine
         // module can do nothing at all.
         inertWithout: [.screenRecording]) }
     public static let category: ModuleCategory = .utilities
-    // Olive, the one hue the others left open: 0,34 from the nearest of them in
-    // sRGB, where the floor is 0,15, and white reads 4,86:1 on it — past the
-    // higher floor as well, so the two sets and the two appearances share one
-    // value. Found by a search over the hue wheel for the largest distance
-    // at a contrast of at least 4,55:1.
+    // Olive, the one hue the other modules' tints left open, far enough from the nearest of them in sRGB, and
+    // dark enough that white reads past the higher contrast floor, so both appearances share one value.
     public static let tint = ModuleTint(
         ordinary: (light: (0.384, 0.480, 0.000), dark: (0.384, 0.480, 0.000)),
         increasedContrast: (light: (0.384, 0.480, 0.000), dark: (0.384, 0.480, 0.000)))

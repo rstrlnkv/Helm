@@ -95,9 +95,8 @@ struct ConditionRow: View {
             textDetail(comparison, value) { condition = .name($0, $1) }
 
         case let .baseName(comparison, value):
-            // The same four comparisons: the field differs, the question does
-            // not, and two shapes for one question is how a screen teaches
-            // somebody that they are different when they are not.
+            // The same four comparisons as the full name: one question gets one
+            // shape, or the screen teaches that the two differ.
             textDetail(comparison, value) { condition = .baseName($0, $1) }
 
         case let .fileExtension(list):
@@ -170,12 +169,11 @@ struct ConditionRow: View {
         TextField("", text: Binding(
             get: { RuleSummary.number(value) },
             set: { text in
-                // A field that empties itself while being retyped must not
-                // become a rule that matches every file: an unparseable value
-                // leaves the last good one in place.
-                // Finite and bounded. `Double.init` accepts `1e999`, which is
-                // `+∞`: `JSONEncoder` refuses the whole rule list, and
-                // `Int(∞)` in a formatter is a trap rather than an error.
+                // An unparseable value leaves the last good one, so a field
+                // emptied while retyped never becomes a rule that matches every
+                // file. Finite and bounded too: `Double.init` reads `1e999` as
+                // `+∞`, which `JSONEncoder` refuses with the whole rule list and
+                // `Int(∞)` in a formatter traps on.
                 if let parsed = Double(text.replacingOccurrences(of: ",", with: ".")),
                    RuleCondition.accepts(parsed) {
                     set(parsed)

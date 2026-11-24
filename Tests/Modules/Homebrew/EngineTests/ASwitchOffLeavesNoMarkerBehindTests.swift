@@ -10,18 +10,16 @@ import HelmRuntime
 /// **A module switched off during any `brew` operation leaves no marker
 /// behind: it goes when the child does, and not before.**
 ///
-/// `deactivate()` ends the install of Homebrew (terminated, as Stop does). A
-/// package operation or a doctor fix is **not** terminated — a half-built
-/// `brew` run is how a broken Cellar is made — it finishes on its own. Its exit
-/// used to be heard by a weak reference to an engine the host had already
-/// dropped: nobody cleared the marker, so the next enable reported "running at
-/// quit" for a child that was still running, and a fresh engine's `busy` was
-/// false beside it. The gate is shut meanwhile: nothing launches for a module
-/// that is off.
+/// `deactivate()` ends the install of Homebrew as Stop does. A package
+/// operation or a doctor fix is **not** terminated (a half-built `brew` run
+/// breaks the Cellar); it finishes on its own, and its exit, heard even after
+/// the host dropped the engine, clears the marker. Otherwise the next enable
+/// reports "running at quit" for a child still running. The gate stays shut
+/// meanwhile.
 ///
-/// **The runner never exits until told** (a `brew` that has run for the seconds
-/// that matter), and its handle records a TERM without ending the stream, as
-/// the real one does: the child dies, then EOF, then `onExit`.
+/// The runner never exits until told, and its handle records a TERM without
+/// ending the stream, as the real one does: the child dies, then EOF, then
+/// `onExit`.
 final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
     private struct AllowingPrivileged: PrivilegedRunner {
         func runAdmin(_ script: String) -> PrivilegedOutcome { .done }

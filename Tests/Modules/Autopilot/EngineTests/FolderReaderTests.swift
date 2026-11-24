@@ -92,11 +92,10 @@ final class FolderReaderTests: FolderReaderRig {
 
     /// The only reader of `bytes` refuses a directory outright
     /// (`RuleMatcher`'s `.size` guard), so walking a plain folder for its
-    /// weight is work computed and thrown away — measured at 33× the cost of
-    /// the whole read on an ordinary tree. A package must keep its walk: it
-    /// passes that guard by design, and a zero there once meant «smaller than
-    /// 1 MB → Trash» matched every application in the folder
-    /// (`PackageFactsTests`).
+    /// weight is work computed and thrown away, and it dwarfs the rest of the
+    /// read. A package must keep its walk: it passes that guard by design, and
+    /// a zero there would let «smaller than 1 MB → Trash» match every
+    /// application in the folder (`PackageFactsTests`).
     ///
     /// Asked through the reader's own seam rather than timed: the assertion is
     /// that the question is never put, not that it is answered quickly.

@@ -45,8 +45,8 @@ enum LaunchpadMetrics {
     }
     /// The "new" dot: the system blue with a dark ring, so it parts from a blue icon and from a bright wallpaper. Its side is a share of the icon
     /// (not under `newDotLeast`), and it sits `newDotInset` of the icon in from the frame's corner, on the art's corner: an app's art is inset
-    /// about a tenth of its frame. The ring's darkness and the share were chosen by eye on shots over a blue icon and a light ground
-    /// (2026-11-22). Offscreen probes read the ring against App Store's blue at about 3:1, against a light ground 6.2:1, the fill against a dark ground 4.5:1; not measured over real glass or with Increase Contrast. With Increase Contrast the ring is opaque and thicker.
+    /// about a tenth of its frame. The ring's darkness and the share are chosen by eye over a blue icon and a light ground.
+    /// With Increase Contrast the ring is opaque and thicker.
     static func newDot(icon: CGFloat) -> CGFloat { max(newDotLeast, icon * 0.14) }
     static let newDotLeast: CGFloat = 8
     static let newDotInset: CGFloat = 0.08
@@ -62,14 +62,14 @@ enum LaunchpadMetrics {
     /// The kit's header-control height, the switch's.
     static let searchHeight: CGFloat = 36
     static let searchWidth: CGFloat = 280
-    /// What the switch ("Apps", "Categories") is given at the left of the search field: the strip is 196 pt in the widest pair of the
-    /// eight languages (Russian, "Приложения" and "Категории"), plus a gap of 20 pt that keeps it from the field. Measured by `fittingSize`
-    /// on 2026-11-21 in the text style, which is what the window always draws (it sets no `helmHeaderChoices`).
+    /// What the switch ("Apps", "Categories") is given at the left of the search field: the strip in the widest pair of the
+    /// eight languages (Russian), in the text style the window always draws (it sets no `helmHeaderChoices`), plus a gap of 20 pt
+    /// that keeps it from the field.
     static let switchRoom: CGFloat = 216
-    /// What "Done" is given at the right of the search field, as `switchRoom` is at the left: its button in the widest of the eight languages plus the same gap of 20 pt
-    /// (85 pt in Portuguese, the widest, measured by `fittingSize` on 2026-11-23). A window with less room has the button above the page dots.
+    /// What "Done" is given at the right of the search field, as `switchRoom` is at the left: its button in the widest of the eight languages
+    /// (Portuguese) plus the same gap of 20 pt. A window with less room has the button above the page dots.
     static let doneRoom: CGFloat = 105
-    /// The removal card's width, and what its buttons are given inside its padding (the 324 pt the German and Russian "Quit and Move to Trash" overflowed side by side).
+    /// The removal card's width, and what its buttons are given inside its padding: wide enough that the German and Russian "Quit and Move to Trash" fit side by side.
     static let removalCardWidth: CGFloat = 360
     static let removalRoom: CGFloat = removalCardWidth - 2 * HelmSpace.s6
     /// The switch's own height (the kit's segmented tabs, a 36 pt strip), centred on the search field's.
@@ -80,7 +80,7 @@ enum LaunchpadMetrics {
     static let wellFill = Color.white.opacity(0.18)
     /// The search field's capsule.
     static let fieldFill = Color.white.opacity(0.14)
-    /// The search field's placeholder (about 5:1 on the capsule over a dark wallpaper, measured offscreen); the glyph and the empty Hidden card's message are `secondaryInk`.
+    /// The search field's placeholder; the glyph and the empty Hidden card's message are `secondaryInk`.
     static let placeholderInk = Color.white.opacity(0.75)
     /// Secondary white ink on the window's blur: the search glyph, the Hidden card's empty message.
     static let secondaryInk = Color.white.opacity(0.7)
@@ -91,7 +91,8 @@ enum LaunchpadMetrics {
     /// A one-cell folder's well side as a share of its frame, so it reads as big as an app icon's visible body; a large mark's well takes the small icon's inset instead (`LaunchpadGeometry.largeEdge`), so it meets the four icons' bodies. Its corner is `wellCorner` of the well's side.
     static let wellShare: CGFloat = 0.85
     static let wellCorner: CGFloat = 0.225
-    /// The keyboard choice's ring when the glow is off (Reduce Motion, Increase Contrast): measured offscreen by the designer at 4.68:1 against the tile wash and 6.56:1 against the ground (a dark stand-in), so chosen is not pressed.
+    /// The keyboard choice's ring when the glow is off (Reduce Motion, Increase Contrast): it reads against the tile wash and the ground,
+    /// so chosen is not pressed.
     static let selectionRing = Color.white.opacity(0.6)
     /// Kept under the grid for the page dots.
     static let dotsRoom: CGFloat = 64

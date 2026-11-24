@@ -5,13 +5,10 @@ import XCTest
 /// The slot the running search sits in, so Stop can reach it.
 ///
 /// A new search supersedes the one before it: the engine cancels the old finder
-/// and puts the new one in the box. But the old one then returns — cancelled —
-/// and used to clear the box on its way out, whoever was in it by then. From
-/// that moment "cancel" reached nothing: Stop did nothing to a search that was
-/// still hashing, and switching the module off left it running.
-///
-/// The same defect the disk engine had, and the same fix: a token is spent
-/// once, on the slot it was given.
+/// and puts the new one in the box. The old one then returns, cancelled; were it
+/// to clear the box on its way out, Stop would reach nothing and switching the
+/// module off would leave the new search running. A token is spent once, on the
+/// slot it was given.
 final class FinderBoxTests: XCTestCase {
 
     func testTheSearchInTheBoxIsTheOneCancelReaches() {

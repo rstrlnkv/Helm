@@ -26,9 +26,9 @@ private final class EdgeRuleSequence: RuleSequencePort, @unchecked Sendable {
 ///
 /// `APresetsFolderCanBeChosenTests` holds the chooser's decisions against
 /// `/Users/x`, a home that does not exist. `WatchScope` canonicalizes through
-/// the filesystem, and the order of (ARCHITECTURE.md § The gates) is that such a gate is tested with
-/// paths that exist, because a path that does not is the one input the
-/// filesystem treats differently. So everything here stands on a real scratch
+/// the filesystem, so such a gate is tested with paths that exist: a path that
+/// does not is the one input the filesystem treats differently
+/// (Architecture/TheGates.md § The gates). So everything here stands on a real scratch
 /// home: real folders, a real link into its `Library`, the `/private` spelling
 /// the temporary directory also answers to, and — for the deleting and moving
 /// presets — a real engine behind the model, trashing for real.
@@ -142,11 +142,9 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
     // MARK: - One folder, two spellings
 
     /// **A folder the page already watches is the same folder under any spelling
-    /// the gate accepts for it.** The gate canonicalizes, so `/private/var/…`
-    /// and a link to `~/Downloads` both pass it as the watched folder; the
-    /// identity has to agree, or the chooser hands back a second `WatchedFolder`
-    /// for one directory — stored twice, swept at once, and promised in the
-    /// sheet's sentence as a folder Helm is about to start watching.
+    /// the gate accepts for it** (`/private/var/…`, a link to `~/Downloads`), or
+    /// the chooser hands back a second `WatchedFolder` for one directory, stored
+    /// twice, swept at once, and promised as a folder Helm is about to watch.
     func testAWatchedFolderIsTheWatchedOneUnderEverySpellingTheGateAccepts() async throws {
         try standTheHome()
         let downloads = home.path + "/Downloads"
@@ -204,11 +202,9 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
         }
     }
 
-    /// **A spelling that differs only in case is the watched folder too.** The
-    /// volume ignores case, and `WatchScope` canonicalizes every component that
-    /// exists — the leaf included — so `~/downloads` passes it as `~/Downloads`.
-    /// The identity has to agree for the chooser and for «Add folder…» alike,
-    /// or the one directory is stored twice and the second copy is swept at once.
+    /// **A spelling that differs only in case is the watched folder too**, for
+    /// the chooser and «Add folder…» alike: the volume ignores case, and
+    /// `WatchScope` canonicalizes every component that exists, the leaf included.
     /// Checked on disk first: on a case-sensitive volume the lower-case spelling
     /// names nothing, and the test says so rather than passing.
     func testASpellingThatDiffersOnlyInCaseIsTheWatchedFolder() async throws {
@@ -250,11 +246,10 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
         }
     }
 
-    /// **Both sides of the comparison are resolved, not only the chosen one.**
-    /// A folder stored under a roundabout spelling — through a link, or under
-    /// `/private` — is the same directory as its plain name chosen later. A
-    /// comparison that resolved only the incoming path passes every test whose
-    /// stored path already happens to be the plain one.
+    /// **Both sides of the comparison are resolved.** A folder stored through a
+    /// link, or under `/private`, is the same directory as its plain name chosen
+    /// later; resolving only the incoming path would pass whenever the stored
+    /// path is already the plain one.
     func testTheStoredSpellingIsResolvedAsWellAsTheChosenOne() async throws {
         try standTheHome()
         let downloads = home.path + "/Downloads"
@@ -284,13 +279,11 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
     /// **The deleting preset, pointed through the chooser, trashes nothing the
     /// gate refuses.** A real engine, a real scratch home and the real Trash.
     ///
-    /// The control is the subject: the same flow, pointed back at the preset's
-    /// own folder, really does trash the installer there — so «the Library file
-    /// is still there» is not the absence of a sweep. Then the watched folder is
-    /// replaced by a link into `~/Library/Messages` after the save, which is the
-    /// state no choice can refuse in advance; the engine's root gate
-    /// (`AutopilotEngine.readGated`, with the reader's own check behind it) is
-    /// what stands between that and the Trash, and the sweep must act on nothing.
+    /// The control is the subject: pointed back at the preset's own folder, the
+    /// same flow really trashes the installer there. Then the watched folder
+    /// becomes a link into `~/Library/Messages` after the save, which no choice
+    /// can refuse in advance; the engine's root gate (`AutopilotEngine.readGated`,
+    /// with the reader's own check behind it) leaves the sweep acting on nothing.
     func testTheDeletingPresetTrashesNothingOutsideTheScope() async throws {
         try standTheHome()
         let model = engineModel()
@@ -337,19 +330,16 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
 
         let swapped = helm.runNow(stored)
 
-        // A root that now leads into `~/Library` is refused by the root gate
-        // before the reader or the runner is asked, so nothing behind it is
-        // examined or planned; the assertions below are on what the disk and
-        // the report show, not on which gate answered.
+        // A root that now leads into `~/Library` is refused before the reader or
+        // the runner is asked; the assertions are on the disk and the report,
+        // not on which gate answered.
         XCTAssertTrue(fm.fileExists(atPath: secret.path),
                       "a file in ~/Library/Messages was trashed through a watched folder turned link")
         XCTAssertEqual(swapped.acted, 0, "the sweep acted on something behind the link")
 
-        // A file in the watched folder that is a link into the Library. The sweep
-        // filters what the reader returns through the same gate the runner asks
-        // (`AutopilotEngine.readGated`), so the link is dropped before it is a
-        // plan: not offered, not counted, and the report below says so rather than
-        // that the runner refused it.
+        // A file in the watched folder that is a link into the Library is dropped
+        // by `AutopilotEngine.readGated`, the gate the runner asks, before it is a
+        // plan: not offered, not counted, and not a runner refusal.
         try fm.removeItem(at: home.appendingPathComponent("Downloads"))
         try fm.moveItem(at: home.appendingPathComponent("Downloads-real"),
                         to: home.appendingPathComponent("Downloads"))

@@ -9,11 +9,9 @@ import Module_VPN_Engine
 /// The per-app automation half of the VPN settings page: saving the rules and
 /// the picker that writes one.
 ///
-/// Its own file because the page reached the length limit, and this is where it
-/// divides: everything above is about the connections this Mac has, and
-/// everything here is about the rules a person wrote over them. The properties it
-/// reads stay on the page — one `@State` of the rules, seeded and written back in
-/// one place — so this is an extension rather than a view of its own.
+/// Its own file for length. The properties it reads stay on the page, one
+/// `@State` of the rules seeded and written back in one place, so this is an
+/// extension rather than a view of its own.
 extension VPNSettingsPage {
 
     /// Saves the rules through the model, which tells the engine to re-read them. `internal`, because
@@ -22,17 +20,15 @@ extension VPNSettingsPage {
         vm.saveRules(rules)
     }
 
-    /// **Where a rule's identity comes from, and the only place it can.** The path
-    /// in front of a file dialog is somebody pointing at an app deliberately;
-    /// everything downstream has only a bundle identifier, which is a string in a
-    /// plist anybody can write. `VPNRules.adopting` decides what that does to the
-    /// rules — including for an app that already has one, which is how a rule
-    /// written before identities existed is repaired.
+    /// **Where a rule's identity comes from, and the only place it can.** A
+    /// path picked in a file dialog is somebody pointing at an app
+    /// deliberately; downstream there is only a bundle identifier, which any
+    /// plist can claim. `VPNRules.adopting` decides what that does to the
+    /// rules, including repairing a rule with no identity.
     ///
-    /// **The tunnel is the caller's.** `scutil`'s creation order is not the order
-    /// the page draws and never the tunnel that is up, so on a Mac with two
-    /// configurations a default would be a coin flip nobody was told about. The
-    /// button lives inside one card's popover, so the answer is that card.
+    /// **The tunnel is the caller's.** `scutil`'s creation order is neither the
+    /// page's order nor the tunnel that is up, so a default would be a coin
+    /// flip. The button lives in one card's popover, so the answer is that card.
     func pickApp(into vpnName: String) {
         let picked = AppPicker.chooseApps().map {
             (bundleID: $0.bundleID, identity: CodeIdentity.of(bundleAt: $0.url))

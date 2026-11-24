@@ -55,8 +55,7 @@ import Module_Screenshots_Engine
     }
 
     /// A length is also the one the cell switches on with next time. None is not a length: it keeps the one there was,
-    /// **written out now**, because a store from before `timerLength` has only `timer`, and the zero this writes would
-    /// leave nothing to say what the timer had been.
+    /// **written out**, because a store with only `timer` would be left with nothing to say what the timer had been.
     func choose(_ timer: CaptureTimer) {
         // Read before the first write: a write announces itself and `reload` takes the half-written store as `settings`.
         let length = timer == .none ? settings.timerLength : timer
@@ -115,15 +114,11 @@ import Module_Screenshots_Engine
     }
 }
 
-/// The glass bar, drawn as macOS's own: a close control, Screen, Window and Area, the timer, the gear and Capture.
-/// **A non-activating key panel** — it reads Esc and Return without making Helm the active application, so the
-/// person's own app keeps its focus and its menu bar — in every Space and over full-screen apps. It stands at the
-/// level the toast uses, and **above the overlay while one is open under it** (`selecting`): the person picks a
-/// window or an area on the frozen screen and presses Capture on this panel, so it cannot lie below that overlay. The
-/// freeze excludes Helm's own windows, so the panel is in no shot.
+/// The glass bar (Architecture/Screenshots.md § The capture panel), **a non-activating key panel**: it reads Esc and Return
+/// without making Helm the active application, so the person's own app keeps its focus and its menu bar. Its levels
+/// are Architecture/Screenshots.md § The after-shot window. The freeze excludes Helm's own windows, so the panel is in no shot.
 ///
-/// It is dragged by its empty glass and stands where it was left, as a move from the place it opens in
-/// (`PanelPlace`), written when it closes. **It ends at the gear while there is nothing to capture and is wider by
+/// **It ends at the gear while there is nothing to capture and is wider by
 /// Capture when there is** (`CapturePanelView.trailing`): the window follows its content's width with its **leading
 /// edge fixed**, because ✕ and the cells are under the pointer and only Capture is new, on the right; a fixed centre
 /// would slide every cell by half of it. The move is stored against the panel at its width without Capture (`restWidth`),

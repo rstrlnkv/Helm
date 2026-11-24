@@ -6,16 +6,11 @@ import HelmRuntime
 
 /// «A day-old tree is a guess, not a measurement.»
 ///
-/// `expireIfStale` is the whole of that rule and it had no test of any kind —
-/// neither the boundary, nor the states it must not fire in. It is called from
-/// the page's `.task`, so it runs on every appearance of the module: getting it
-/// wrong in one direction shows somebody yesterday's ring as fact, and in the
-/// other throws away a tree that took a minute to walk because they switched
-/// tabs.
+/// `expireIfStale` is the whole of that rule, and the page's `.task` calls it
+/// on every appearance: wrong one way it shows yesterday's ring as fact, wrong
+/// the other it throws away a tree that took a minute to walk.
 ///
-/// `now:` is a parameter of the method for exactly this reason — the clock is
-/// not something a test may wait for — so nothing here sleeps.
-/// Past defect: fixed in commit 841b9c26.
+/// `now:` is a parameter so nothing here waits for the clock.
 @MainActor
 final class ADayOldTreeIsAGuessTests: XCTestCase {
 
@@ -56,9 +51,8 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
         }
     }
 
-    /// The boundary itself. A tree exactly one lifetime old is still the
-    /// measurement it was a moment before — this is `>`, not `>=`, and a test
-    /// only of "much older" would pass either way.
+    /// The boundary: a tree exactly one lifetime old is still a measurement
+    /// (`>`, not `>=`).
     func testATreeExactlyOneLifetimeOldIsStillTheMeasurementItWas() async throws {
         let (dvm, _) = await showingAFinishedScan()
         let measuredAt = try XCTUnwrap(dvm.completedAt)
@@ -69,9 +63,8 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
         XCTAssertNotNil(dvm.result)
     }
 
-    /// The state that matters most: the page reappears while the walk is still
-    /// running. There is no completed measurement to judge, and expiring here
-    /// would empty the screen out from under a scan the person is watching.
+    /// The page reappears while the walk is still running: there is no finished
+    /// measurement to judge, and expiring would empty the screen under the scan.
     func testAWalkInFlightIsNeverExpired() async {
         let work = HeldWork()
         let store = ScanStore(directory: scratchDirectory("disk-stale-live"))

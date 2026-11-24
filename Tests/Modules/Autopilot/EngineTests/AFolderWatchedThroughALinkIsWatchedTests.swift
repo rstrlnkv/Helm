@@ -8,11 +8,8 @@ import HelmTestSupport
 /// link — `~/DL` for `~/Downloads` — and a file arriving in it.
 ///
 /// An FSEvents stream reports real paths, so the event for `photo.jpg` names
-/// `~/Downloads/photo.jpg`, and a leg that matched it to the watched folder by
-/// the folder's *spelling* found no folder at all: the sweep read the folder and
-/// the watcher never acted on anything arriving in it.
-///
-/// Past defect: fixed in 4ce355a9.
+/// `~/Downloads/photo.jpg`. Matched to the watched folder by the folder's
+/// *spelling*, it finds no folder, and nothing arriving there is acted on.
 final class AFolderWatchedThroughALinkIsWatchedTests: XCTestCase {
 
     private var home: URL!

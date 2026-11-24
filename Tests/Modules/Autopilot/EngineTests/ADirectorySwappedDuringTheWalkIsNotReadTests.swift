@@ -7,11 +7,10 @@ import HelmTestSupport
 /// A subfolder of a watched folder replaced by a link into `~/Library` while the
 /// walk is under way, and put back as soon as the walk has read it.
 ///
-/// The root is asked about before it is read and every file is asked about by
-/// the runner, and between the two a walk that descends *by path* opens whatever
-/// the path leads to at that moment. What it read then was a protected folder's
-/// names; swapped back, the runner found the file `.missing` and the history and
-/// the log wrote its name and path down.
+/// Between the gate's question about the root and the runner's about each file,
+/// a walk that descends *by path* opens whatever the path leads to at that
+/// moment. Guards that no name from the protected folder reaches the history or
+/// the log.
 ///
 /// The swap is made by the walk's own seam — the weigh of a file, which is asked
 /// as each file is read — so it lands in the window without a race: the first

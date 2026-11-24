@@ -19,7 +19,7 @@ final class TheEditOfALargerPictureExportsAtItsOwnSizeTests: XCTestCase {
     private let srgb = CGColorSpace(name: CGColorSpace.sRGB)!
 
     /// A picture of one colour in sRGB, which is the space a composition draws in: a picture in the device's generic
-    /// space is converted on the way and no longer reads as the colour it was made as.
+    /// space is converted on the way and does not read as the colour it was made as.
     private func solid(_ width: Int, _ height: Int, _ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> CGImage {
         let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: srgb,
                                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!

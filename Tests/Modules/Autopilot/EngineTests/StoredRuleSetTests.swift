@@ -10,7 +10,7 @@ final class StoredRuleSetTests: XCTestCase {
 
     private typealias B = ASealedRecordBench
 
-    /// Today's encoding: every condition case, every action case, depth 1 and 8,
+    /// The deployed encoding: every condition case, every action case, depth 1 and 8,
     /// enabled on and off. Key order is the encoder's, which differs per process.
     private let deployed = #"[{"enabled":true,"path":"\/Users\/x\/Downloads","id":"f1","rules":[{"conditions":[{"name":{"_0":"contains","_1":"a"}},{"baseName":{"_0":"beginsWith","_1":"b"}},{"fileExtension":{"_0":["pdf","png"]}},{"kind":{"_0":"image"}},{"size":{"megabytes":4,"_0":"largerThan"}},{"dateAdded":{"_0":"olderThan","days":30}},{"dateModified":{"_0":"newerThan","days":2}},{"downloadedFrom":{"_0":"example.com"}},{"tag":{"_0":"red"}}],"enabled":true,"name":"All","id":"r1","action":{"move":{"to":"\/Users\/x\/Docs"}},"match":"all"},{"conditions":[{"name":{"_0":"contains","_1":"a"}}],"enabled":true,"name":"N0","id":"a0","action":{"move":{"to":"\/Users\/x\/Docs"}},"match":"any"},{"conditions":[{"baseName":{"_0":"beginsWith","_1":"b"}}],"enabled":false,"name":"N1","id":"a1","action":{"sortIntoSubfolder":{"_0":"month"}},"match":"any"},{"conditions":[{"fileExtension":{"_0":["pdf","png"]}}],"enabled":true,"name":"N2","id":"a2","action":{"rename":{"pattern":"{name}"}},"match":"any"},{"conditions":[{"kind":{"_0":"image"}}],"enabled":false,"name":"N3","id":"a3","action":{"addTag":{"_0":"t"}},"match":"any"},{"conditions":[{"size":{"megabytes":4,"_0":"largerThan"}}],"enabled":true,"name":"N4","id":"a4","action":{"trash":{}},"match":"any"}],"depth":1},{"enabled":false,"path":"\/Users\/x\/Pic\/é\"\/","id":"f2","rules":[],"depth":8}]"#
 

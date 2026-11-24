@@ -42,9 +42,8 @@ struct RingView: View {
     @State private var pivot: RingSegment?
     @State private var unfold: Double = 0
     /// The layout the ring is coming *from*. The drill lands before the
-    /// animation starts, so `segments` is already the destination and this is
-    /// the snapshot being left behind — which makes the last frame of the
-    /// animation the layout itself, not a transform that has to agree with it.
+    /// animation starts, so `segments` is already the destination and the last
+    /// frame of the animation is the layout itself.
     @State private var leaving: [RingSegment] = []
 
     private let geometry = RingGeometry(innerRadius: 0.34, thickness: 0.155, gap: 0.012)
@@ -62,22 +61,16 @@ struct RingView: View {
     /// The elements the drawing implies, in the order the eye reads it: where
     /// you are, then what is in it.
     ///
-    /// Three things this has to get right, all of which it got wrong first:
-    /// the centre has to name the folder, or every "N% of this folder" below
-    /// it is a share of something never mentioned; the denominator must be the
-    /// used bytes, not the used bytes plus free space, or the spoken share
-    /// disagrees with the bar drawn beside it on the same row; and the names
-    /// must be the names on screen — the list and the tooltip both localize
-    /// macOS's own folders, so raw `name` said "Movies" while the screen said
-    /// «Фильмы».
+    /// The centre names the folder, so every "N% of this folder" below it has
+    /// a subject; the denominator is the used bytes without free space, so the
+    /// spoken share matches the bar on the same row; and the names are the
+    /// names on screen, macOS's own folders localized as the list does.
     @ViewBuilder private var ringElements: some View {
         let inner = segments.filter { $0.ring == 0 }
-        // The folder's own size, which is what the wedges are drawn against —
-        // not the sum of the wedges. `DiskEntry` keeps only the 200 largest
-        // children, so summing them omits whatever was folded away and
-        // renormalises the gap: a wedge drawn at 30% of the circle was
-        // announced at 60%, which is the same disagreement between the spoken
-        // share and the drawn one that excluding free space set out to end.
+        // The folder's own size, which is what the wedges are drawn against,
+        // not the sum of the wedges: `DiskEntry` keeps only the 200 largest
+        // children, and summing them would make the spoken share larger than
+        // the drawn one.
         let total = max(focusBytes, 1)
         VStack {
             // First, not last: a VoiceOver user walks this list in order, and
@@ -88,8 +81,7 @@ struct RingView: View {
                 .accessibilityAddTraits(canGoBack ? [.isButton] : [])
                 .accessibilityAction { if canGoBack { onBack() } }
             // `path` is empty for both free space and the `isOther` arc, so it
-            // cannot be the identity: two elements would collide and one would
-            // be dropped.
+            // cannot be the identity.
             ForEach(inner, id: \.startAngle) { segment in
                 Color.clear
                     .accessibilityElement()
@@ -158,20 +150,16 @@ struct RingView: View {
                 guard hit.isDirectory, !hit.isOther, !hit.isFreeSpace else { return }
                 open(hit)
             }
-            // A Canvas is one opaque rectangle to VoiceOver: the ring said
-            // nothing at all, and drilling in was a double-click with no
-            // keyboard equivalent. `accessibilityChildren` supplies the
-            // elements the drawing implies — one per wedge, each carrying its
-            // share and its way in.
+            // A Canvas is one opaque rectangle to VoiceOver.
+            // `accessibilityChildren` supplies one element per wedge, each
+            // carrying its share and its way in.
             .accessibilityElement(children: .contain)
             .accessibilityLabel(DkStr.ringMap)
             .accessibilityChildren { ringElements }
         }
-        // Not while a wedge is opening. This is here for the ring growing under
-        // a running scan, and during a drill it is a second animation on the
-        // same view with a different curve: measured off a recording, every
-        // move came out as two bursts with a pause between them, which is what
-        // "ragged" was. The morph animates the arcs itself.
+        // Not while a wedge is opening. This is for the ring growing under a
+        // running scan; during a drill it would be a second animation on the
+        // same view with another curve. The morph animates the arcs itself.
         .animation(pivot == nil ? HelmMotion.interface : nil, value: segments.count)
         // Arriving back at the parent: run the same transform backwards, so the
         // ring narrows into the wedge it came out of.
@@ -194,11 +182,9 @@ struct RingView: View {
     ///
     /// The drill lands *first*, so the ring is already showing the layout it
     /// will settle on, and the animation carries the previous layout out over
-    /// the top of it. The other order — transform the old arcs, then swap —
-    /// cannot be made seamless: folding into "other" is decided against the
-    /// parent's total in one layout and the folder's own total in the other, so
-    /// the last transformed frame held arcs the destination did not have, and
-    /// every boundary moved in the single frame between them.
+    /// the top of it. Transforming the old arcs and then swapping cannot be
+    /// seamless: folding into "other" is decided against the parent's total in
+    /// one layout and the folder's own total in the other.
     private func open(_ hit: RingSegment) {
         leaving = segments
         pivot = hit
@@ -207,12 +193,10 @@ struct RingView: View {
         withAnimation(HelmMotion.ringMorph()) {
             unfold = 1
         } completion: {
-            // Only these two. Resetting `unfold` here as well let one frame
-            // render with the snapshot still in place and the progress already
-            // back at zero — the old geometry, for a sixtieth of a second, at
-            // the end of every move. It is `open` and the fold that put the
-            // progress back to zero before they animate, where nothing is
-            // drawn between the two writes.
+            // Only these two. Resetting `unfold` here too would render one frame
+            // of the old geometry at the end of every move; `open` and the fold
+            // reset the progress before they animate, where nothing is drawn
+            // between the two writes.
             pivot = nil
             leaving = []
         }
@@ -259,13 +243,9 @@ struct RingView: View {
             Text(Bytes(focusBytes))
                 .font(RingView.figureFont)
                 .contentTransition(.numericText())
-                // The same curve **and the same length** as the arcs around it.
-                //
-                // `ringMorph()` alone is always one level, so a breadcrumb jump
-                // three levels back gave the arcs 0.82 s and this figure 0.50 —
-                // it stopped 320 ms early, which is the two-moves-for-one-event
-                // the note above says was fixed. The levels have to travel with
-                // it: `foldingBackFrom` is still set in the update where
+                // The same curve **and the same length** as the arcs around it:
+                // `ringMorph()` alone is one level, and a breadcrumb jump spans
+                // several. `foldingBackFrom` is still set in the update where
                 // `focusBytes` changes on the way out, and nil on a drill-in,
                 // which is exactly the distinction the arcs make.
                 .animation(HelmMotion.ringMorph(levels: foldingBackFrom != nil
@@ -364,10 +344,8 @@ private struct RingCanvas: View, @MainActor Animatable {
     /// frame that follows it.
     private func arcs() -> [Drawn] {
         // Not `progress > 0`: the drill lands before the animation's first tick,
-        // so at exactly zero this drew the destination for one frame and the
-        // animation then pulled it back to where it had come from. Measured off
-        // a recording, that single frame was the largest change in the whole
-        // move — a bigger jump than the animation it was introducing.
+        // so at exactly zero that would draw the destination for one frame
+        // before the animation pulls it back.
         guard let pivot, !leaving.isEmpty else {
             return segments.compactMap { segment in
                 guard segment.ring < RingView.visibleRings else { return nil }

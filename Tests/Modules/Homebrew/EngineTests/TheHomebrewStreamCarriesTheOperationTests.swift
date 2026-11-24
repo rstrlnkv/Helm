@@ -14,16 +14,14 @@ import HelmRuntime
 /// Activation says where brew is, first: the locator's path, or none, and the
 /// model seeds its status from it. This test never draws a frame.
 ///
-/// Lines are edges and states are levels. A stream that dropped a line, kept
-/// only the newest of a burst, or took its subscription a moment after it was
-/// asked for would show as a console with a hole in it or a page that never
-/// leaves «running» — nothing throws. Over a runner whose output the test
-/// feeds by hand, so the order is the test's and not a process's
-/// (`ScriptedRunner` holding its child: `line` and `exit` are the test's).
+/// Lines are edges and states are levels. A dropped line, a burst kept only by
+/// its newest, or a subscription taken a moment late would show as a console
+/// with a hole or a page that never leaves «running», and nothing throws. The
+/// test feeds the output by hand (`ScriptedRunner` holding its child), so the
+/// order is the test's.
 private struct FixtureBrew: BrewLocator {
     func brewPath() -> String? { "/opt/fixture/bin/brew" }
 }
-/// Kept: the only test that the engine's stream delivers lines and states whole and in order, and to a late subscriber; the model-side class reads a fake stream, not the engine's.
 final class TheHomebrewStreamCarriesTheOperationTests: XCTestCase {
 
     private func engine(_ runner: ProcessRunner, _ news: EngineNews<HomebrewNews> = EngineNews())

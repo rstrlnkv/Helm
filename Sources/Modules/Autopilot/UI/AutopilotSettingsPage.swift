@@ -40,11 +40,9 @@ struct AutopilotSettingsPage: View {
                     .helmPageStrip()
                 Divider()
             }
-            // Nothing to say about the order of rules unless the rules are what
-            // is on screen: the empty state's own call to action is the whole
-            // page, and a refusal is a statement about rules that are not
-            // running. One value decides both halves, so a refused rule set is
-            // never read as a Mac with nothing on it.
+            // Only over the rules: the empty state's call to action is the whole
+            // page, and a refusal is about rules that are not running. One value
+            // decides both halves, so a refused rule set never reads as an empty Mac.
             if rvm.screen == .folders {
                 toolbar
                 Divider()
@@ -94,23 +92,20 @@ struct AutopilotSettingsPage: View {
     }
 
     /// The report at the foot. It appears and leaves at once: a button arrives
-    /// after its sentence, and an opening slide drew the sentence over it.
+    /// after its sentence, and an opening slide draws the sentence over it.
     private func report(_ banner: String) -> some View {
         VStack(spacing: 0) {
             Divider()
             VStack(alignment: .leading, spacing: HelmSpace.s3) {
-                // A return's report is several lines — one per file that
-                // did not go back, with its reason — and a single-line
-                // banner would truncate exactly the part that explains
-                // itself.
+                // A return's report is a line per file that did not go back,
+                // with its reason; a single line would truncate the reasons.
                 Text(banner).font(HelmText.rowTitle)
                     .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.leading)
                 // Under the text and wrapping, never beside it: the turn-off
-                // button carries a rule's *name*, the person's own text with no
-                // bound, and beside the report it compressed at the narrow pane.
-                // Pinned leading because `HelmWrappingRow` answers with its
-                // widest line and centres otherwise.
+                // button carries a rule's *name*, unbounded text that compresses
+                // beside the report at the narrow pane. Pinned leading because
+                // `HelmWrappingRow` answers with its widest line and centres otherwise.
                 HelmWrappingRow(spacing: HelmSpace.s4, lineSpacing: HelmSpace.s3,
                                 alignment: .leading) {
                     // The pass this run just made, offered where the
@@ -121,13 +116,11 @@ struct AutopilotSettingsPage: View {
                         }
                         .controlSize(.small)
                     }
-                    // The one line in a return's report with something to
-                    // do: a rule that could not be re-marked will take the
-                    // file back within the hour, so the lever to switch it
-                    // off is here, named, beside the warning that says so.
-                    // Capped, because the wrapping row gives an over-wide
-                    // child a whole line rather than folding it; the middle
-                    // is cut so the name's opening survives.
+                    // A rule that could not be re-marked takes the file back
+                    // within the hour, so its switch-off is here, named,
+                    // beside the warning. Capped, because the wrapping row
+                    // gives an over-wide child a whole line rather than
+                    // folding it; the middle is cut so the name's opening survives.
                     ForEach(rvm.unmarkedRules) { rule in
                         Button { rvm.turnOffRule(rule) } label: {
                             Text(ApStr.turnRuleOff(rule.name))
@@ -167,18 +160,14 @@ struct AutopilotSettingsPage: View {
             refused(reason)
         case .noFolders:
             // **No `ScrollView` around this.** `HelmEmptyState` centres itself
-            // in whatever space it is given, with `maxHeight: .infinity`; inside
-            // a scroll view that height is unbounded and the page draws
-            // differently. The empty state takes the flexible space and the card
-            // sits under it.
+            // with `maxHeight: .infinity`, which a scroll view leaves unbounded.
             VStack(spacing: HelmSpace.s6) {
                 HelmEmptyState(symbol: AutopilotDescriptor.symbol,
                                tint: AutopilotDescriptor.tint.colour,
                                message: ApStr.startHint) {
-                    // The second answer to «what do I do with this page», beside
-                    // the first: on a Mac that has never had a rule it is the
-                    // easier one, since the button opens a panel and asks for a
-                    // decision, and the menu shows what a decision would do.
+                    // The second answer to «what do I do with this page», and on
+                    // a Mac that never had a rule the easier one: the button asks
+                    // for a decision, the menu shows what a decision would do.
                     HStack(spacing: HelmSpace.s4) {
                         Button(ApStr.addFolder) { rvm.addFolder() }
                             .buttonStyle(.borderedProminent)
@@ -219,20 +208,17 @@ struct AutopilotSettingsPage: View {
                 }
             }
             .listStyle(.inset)
-            // No history read here on purpose. The engine acts on a timer and
-            // on files arriving, and it *announces* those passes — the view
-            // model subscribes for the life of the module and re-asks, so a
-            // `.task` here would only read the same store twice on open.
+            // No history read here: the view model hears the engine's announced
+            // passes for the life of the module, so a `.task` here would only
+            // read the same store twice on open.
         }
     }
 
-    /// The starting rules, as one menu, in both the places it appears — and
-    /// nowhere at all when there are none to offer, which is what the empty view
-    /// answers with.
+    /// The starting rules as one menu, in both places it appears, and nowhere
+    /// when there are none to offer.
     ///
     /// Not drawn on the refused screen: `content` never reaches this branch
-    /// there, and the view model empties the list as well. Two halves of one
-    /// rule, and the second is the one with a test under it.
+    /// there, and the view model empties the list as well; that half has the test.
     @ViewBuilder private var presets: some View {
         if !rvm.presets.isEmpty {
             PresetSection(presets: rvm.presets, diskAccess: diskAccess) { offer in
@@ -245,11 +231,10 @@ struct AutopilotSettingsPage: View {
     /// The screen a person gets instead of «you have no folders» when the rules
     /// on disk are not Helm's to run.
     ///
-    /// Not dismissible, and not a `banner`: the banner is a report of a sweep
-    /// that has finished, and this is a standing statement about work that is not
-    /// happening. The only control is on the branch where there is something to
-    /// do — a keychain that would not answer is answered by waiting, and offering
-    /// to delete somebody's rules over it would be the worst button in the app.
+    /// Not dismissible, and not a `banner`, which reports a finished sweep: this
+    /// is a standing statement about work that is not happening. The only control
+    /// is where there is something to do; offering to delete somebody's rules
+    /// over a keychain that would not answer would be the worst button in the app.
     @ViewBuilder private func refused(_ reason: RuleRefusal) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
             // One banner, one place that says whether it carries Discard:
@@ -273,11 +258,10 @@ struct AutopilotSettingsPage: View {
     private func folderHeader(_ folder: WatchedFolder) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s2) {
             folderRow(folder)
-            // **A switch that says «on» over a folder that is gone.** The reading
-            // and the stream are facts about the world, not about the rules, and
-            // both stop being true with nobody touching Helm. Beside the path
-            // rather than in a banner at the foot of the page: the page can watch
-            // several folders and only one of them is the one this is about.
+            // **A switch that says «on» over a folder that is gone.** Beside the
+            // path rather than at the foot of the page: the page can watch several
+            // folders, and this is about one.
+
             if let notice = rvm.notice(for: folder) {
                 HelmBanner(notice)
             }
@@ -291,10 +275,8 @@ struct AutopilotSettingsPage: View {
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .labelsHidden()
-                // The verb first, then which folder — the same shape as the
-                // rule rows' "\(HelmWord.edit), \(rule.name)". The bare path would
-                // read as the Text beside it said twice, never as a switch that
-                // does something.
+                // The verb first, then which folder, like the rule rows. The bare
+                // path would read as the Text beside it said twice.
                 .accessibilityLabel("\(ApStr.watchFolder), \(Redact.path(folder.path))")
             Text(Redact.path(folder.path))
                 .font(HelmText.sectionHeading)
@@ -376,10 +358,9 @@ struct AutopilotSettingsPage: View {
             .accessibilityElement(children: .combine)
 
             Spacer()
-            // A tap on the row does not open anything: inside a `List` a tap is
-            // the list's, for selection, and a gesture that competes with it
-            // works about half the time. The button is unambiguous and it is
-            // where the eye already is.
+            // A tap on the row opens nothing: inside a `List` a tap is the
+            // list's, for selection, and a competing gesture works about half
+            // the time.
             Button { editing = EditingRule(folder: folder, rule: rule) } label: {
                 Image(systemName: "slider.horizontal.3")
             }
@@ -402,10 +383,9 @@ struct AutopilotSettingsPage: View {
         }
         .contentShape(Rectangle())
         .contextMenu { ruleActions(rule, in: folder) }
-        // The same actions where VoiceOver and Full Keyboard Access can reach
-        // them, since the menu above needs a right-click. Without this a rule
-        // could be edited from the row's own button but only *deleted* with a
-        // mouse. `HistorySection` documents the pairing.
+        // The same actions where VoiceOver and Full Keyboard Access reach them,
+        // since the menu above needs a right-click; without them a rule could be
+        // *deleted* only with a mouse.
         .accessibilityActions { ruleActions(rule, in: folder) }
     }
 

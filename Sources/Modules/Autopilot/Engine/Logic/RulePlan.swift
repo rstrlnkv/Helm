@@ -43,15 +43,13 @@ extension RulePlan {
     /// **A folder a sorting rule makes is not one of the things it sorts.**
     ///
     /// `sortIntoSubfolder(.kind)` calls a directory a `.folder`, whose bucket is
-    /// `Folders` — so once the rule has made `~/Downloads/Folders`, every sweep
-    /// planned to move that folder inside itself. `RuleRunner.move` refused it
-    /// `outOfScope`, correctly and for ever: an hourly warning in the log and an
-    /// hourly row in the history, about a folder nobody had asked to move.
+    /// `Folders`, so once the rule has made `~/Downloads/Folders` every sweep
+    /// would plan to move that folder inside itself, and the runner's refusal
+    /// would be an hourly warning and history row nobody asked for.
     ///
     /// Decided here rather than in the runner because the plan is the one value
-    /// the dry run shows and the runner executes. A refusal would be the wrong
-    /// word anyway — it says something was going to happen and could not, and
-    /// this was never going to happen.
+    /// the dry run shows and the runner executes, and a refusal would say
+    /// something was going to happen.
     ///
     /// Only a sorting rule, and only a directory: a *file* called `Folders` is
     /// an ordinary file, and a `2026-07/` met by a `.kind` rule is somebody's

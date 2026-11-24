@@ -4,12 +4,10 @@ import XCTest
 /// The two decisions worth testing without a network.
 ///
 /// The counts cover a thirty-day window and Homebrew publishes them daily, so
-/// asking more than once a day is bandwidth spent on a number that has not
-/// moved. And a document read off the wire is bounded before it is parsed: the
-/// two files were 453,903 and 399,502 bytes on 2026-09-13, and a ceiling well
-/// above that is the difference between a moved endpoint costing a refusal and
-/// it costing however much whatever now lives there decides to send.
-/// Kept: the only test of the once-a-day rule and the size ceiling before parsing (c01e0f81 added the empty-document case); `ARefusedFetchKeepsTheLastCountsTests` covers the refusal path only.
+/// asking more than once a day spends bandwidth on a number that has not moved.
+/// A document read off the wire is bounded before it is parsed: a ceiling well
+/// above the real documents (about 450 KB each) makes a moved endpoint cost a
+/// refusal, not whatever it decides to send.
 final class PopularityRefreshTests: XCTestCase {
 
     func testNothingStoredMeansAFetchIsDue() {
@@ -61,11 +59,9 @@ final class PopularityRefreshTests: XCTestCase {
         XCTAssertEqual(PopularityRefresh.answer(statusCode: 304, data: Data()), .unchanged)
     }
 
-    /// The case that made the ceiling worth having: an endpoint that has moved
-    /// and now serves somebody else's idea of a response.
+    /// An endpoint that has moved and now serves somebody else's response.
     func testAnythingOverTheCeilingIsRefusedBeforeItIsParsed() {
-        // Valid JSON, and far too much of it — so a refusal here can only be
-        // the size, which is what makes this test about the ceiling.
+        // Valid JSON, and far too much of it, so a refusal can only be the size.
         var huge = Data(#"{"formulae":{"a":[{"count":"1"}]}}"#.utf8)
         huge.append(Data(repeating: 0x20, count: PopularityRefresh.sizeCeiling))
         guard case .refused(let why) = PopularityRefresh.answer(statusCode: 200, data: huge) else {
@@ -90,13 +86,11 @@ final class PopularityRefreshTests: XCTestCase {
         else { return XCTFail("a document that is not the counts was read as counts") }
     }
 
-    /// **The other side of that line, which `Answer.use` argues for at length
-    /// and nothing held.** `{"formulae":{}}` is the endpoint answering — with
-    /// nothing in it — and it is entitled to. `InstallCountsParserTests` covers
-    /// the parse; what was uncovered is this, the decision to adopt, which is
-    /// the only place the difference between "nobody answered" and "the answer
-    /// was empty" is acted on. Turn this into a refusal and the document that
-    /// says so is never cached, so every launch re-fetches it for ever.
+    /// **`{"formulae":{}}` is the endpoint answering, with nothing in it.**
+    /// `InstallCountsParserTests` covers the parse; this is the decision to
+    /// adopt (`Answer.use`), the one place "nobody answered" and "the answer was
+    /// empty" are told apart. As a refusal it would never be cached, and every
+    /// launch would re-fetch it.
     func testAnEmptyDocumentIsAReadingAndIsAdopted() {
         XCTAssertEqual(PopularityRefresh.answer(statusCode: 200,
                                                 data: Data(#"{"formulae":{}}"#.utf8)),

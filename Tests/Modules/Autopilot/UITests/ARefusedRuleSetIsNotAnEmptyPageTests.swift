@@ -8,9 +8,9 @@ import XCTest
 ///
 /// The engine refuses a rule set something else wrote and hands out `[]`, which
 /// is the same value a Mac that has never had a rule hands out — so the page
-/// draws its "point Helm at a folder" empty state, whose one control is «Add
-/// folder…», and the press that follows used to write an empty list over rules
-/// nothing can rebuild.
+/// would draw its "point Helm at a folder" empty state, whose one control is
+/// «Add folder…», and the press that follows would write an empty list over
+/// rules nothing can rebuild.
 ///
 /// The engine's half of that is `ARefusedRuleSetIsNotOverwrittenTests`. This is
 /// the half a person sees: the page has to say the rules could not be read, and
@@ -102,12 +102,10 @@ final class ARefusedRuleSetIsNotAnEmptyPageTests: XCTestCase {
     /// gesture that will not work.
     ///
     /// **The folder list and the refusal are two requests, and this is the state
-    /// between them.** Written first with an empty list and a folder the page had
-    /// never heard of, which passed with the guard deleted: `update` drops a
-    /// folder it cannot find long before `save` is reached, so the test asserted
-    /// that a save nothing had attempted did not happen. The engine answers
-    /// `folders` and `status` one after the other, and a plist rewritten between
-    /// the two leaves exactly this page — a list it may no longer write back.
+    /// between them**: a plist rewritten between `folders` and `status` leaves a
+    /// page holding a list it may no longer write back. The page holds the folder
+    /// the gesture is about, since `update` drops one it cannot find long before
+    /// `save` is reached.
     func testTheRefusedPageDoesNotSendAFolderList() async {
         let watched = WatchedFolder(id: "downloads", path: "/tmp/watched")
         let work = FakeAutopilotWork(folders: [watched],

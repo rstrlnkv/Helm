@@ -5,9 +5,8 @@ import Module_Autopilot_Engine
 
 /// Every user-visible string in the autopilot module, in eight languages.
 ///
-/// The module is named for what it does rather than what it is made of: a
-/// folder holds rules, and the module keeps the folder on course without hands
-/// on it — the instrument Helm is named after, one step further along.
+/// Named for what it does: the module keeps a folder on course without hands on
+/// it, the instrument Helm is named after one step further along.
 enum ApStr {
     static var moduleName: String { L(.autopilot) }
     static var summary: String { L(.foldersThatKeepThemselvesInOrder) }
@@ -69,14 +68,10 @@ enum ApStr {
     static var folderRemoved: String { L(.folderRemoved) }
     static var depth: String { L(.includeSubfolders) }
 
-    /// **What a switch that says «on» is not saying.** A folder that was renamed,
-    /// a folder behind Full Disk Access and a folder with nothing in it are three
-    /// separate things, and they are separate because a person can do something
-    /// different about each — point the rule somewhere else, grant the
-    /// permission, or nothing at all.
-    ///
-    /// Each takes the language, so a test can read all eight rather than reading
-    /// this Mac's eight times.
+    /// **What a switch that says «on» is not saying.** A renamed folder, a folder
+    /// behind Full Disk Access and an empty one are kept apart because a person
+    /// does something different about each: point the rule elsewhere, grant the
+    /// permission, or nothing. Each takes the language, so a test reads all eight.
     static func folderMissing(language: AppLanguage = AppLanguage.current) -> String {
         L(.thisFolderIsNoLongerThere, language: language)
     }
@@ -110,20 +105,15 @@ enum ApStr {
     /// words true. The tour's step has its own (`tourOffer`).
     static var welcomeOffer: String { L(.showTheRulesToStartWith) }
 
-    /// The tour's button on Autopilot's step, which is not the menu above: the
-    /// tour is static metadata and holds no reading of the rules, and the block
-    /// of starting rules is on the page only while there are none — so a button
-    /// promising it is false for everyone who has a rule (the tour shown once to
-    /// an existing install, or reopened). This one says only where it goes.
+    /// The tour's button on Autopilot's step, not the menu above: the tour cannot
+    /// read the rules, and the starting rules are on the page only while there
+    /// are none, so this one says only where it goes.
     static var tourOffer: String { L(.openAutopilot) }
 
-    /// The five names, and the only part of a preset that is translated.
-    ///
-    /// What each one *does* is `RuleSummary.describe(rule)` — built from the
-    /// rule itself, so a name and a description cannot drift apart.
-    ///
-    /// Exhaustive, and the `PresetKind` it switches over is the engine's: a
-    /// sixth preset does not build until it has a name in eight languages.
+    /// The five names, the only translated part of a preset; what each *does* is
+    /// `RuleSummary.describe(rule)`, built from the rule itself. Exhaustive over
+    /// the engine's `PresetKind`: a sixth preset does not build until it has a
+    /// name in eight languages.
     static func presetName(_ kind: PresetKind,
                            language: AppLanguage = AppLanguage.current) -> String {
         switch kind {
@@ -169,20 +159,15 @@ enum ApStr {
     static var savingStartsTheWatch: String { L(.onceSavedHelmWatchesThisFolder) }
     static var dryRunNote: String { L(.aRuleIsADecisionMade) }
     static var nothingWouldHappen: String { L(.nothingInThisFolderMatchesYet) }
-    /// The heading over the rows this rule does not get.
-    ///
-    /// The dry run is of the folder now, top to bottom, first match wins — so a
-    /// file another rule takes appears in the list the editor draws, and without
-    /// a line saying so it reads as this rule's work. Written as a whole sentence
-    /// rather than as a word beside each row: the rows carry the rule's own name,
-    /// and a name is not a claim.
+    /// The heading over the rows this rule does not get. The dry run is of the
+    /// whole folder, first match wins, so without it a file another rule takes
+    /// reads as this rule's work. A whole sentence, not a word per row: the rows
+    /// carry the rule's own name, and a name is not a claim.
     static var takenByAnotherRule: String { L(.anotherRuleTakesTheseFiles) }
     static var enableRule: String { L(.turnTheRuleOn) }
-    /// **What the dry run above it is not showing.** A folder watched with
-    /// subfolders included hands every rule in it the whole tree, and a preset
-    /// does not change that setting — it is the person's, made about their own
-    /// folder. So the editor says it instead, where the consequence is being
-    /// read.
+    /// **What the dry run above it is not showing**: a folder watched with
+    /// subfolders hands every rule in it the whole tree, a setting of the
+    /// person's that a preset does not change.
     static var folderIncludesSubfolders: String { L(.subfoldersAreIncludedForThisFolder) }
     /// What a Run now did — and, when there is one, what it did not do.
     ///
@@ -191,11 +176,8 @@ enum ApStr {
     ///
     /// The two halves are joined rather than rewritten: `historyProblems` already
     /// says the second one in eight languages, with the colon-before-count that
-    /// keeps the agreement right, and one sentence that said both would be eight
-    /// new translations of two that exist. The language is a parameter for the
-    /// reason `HelmConfirm.trash` takes one — the suite runs in whatever language
-    /// this Mac is set to, so a composition checked through `current` is checked
-    /// in one language eight times.
+    /// keeps the agreement right. The language is a parameter, as for
+    /// `HelmConfirm.trash`, so a test checks all eight rather than this Mac's.
     static func swept(_ acted: Int, _ examined: Int, notCompleted: Int = 0,
                       language: AppLanguage = AppLanguage.current) -> String {
         let sentence = L(.swept(String(acted), String(examined)), language: language)
@@ -270,11 +252,10 @@ enum ApStr {
 
     // MARK: - Names for controls that carry none on screen
 
-    /// A rule reads as a sentence — "name contains report, move to Documents" —
-    /// and the screen builds it out of pickers and fields whose meaning comes
-    /// entirely from their position in the row. Sighted, that works; read aloud
-    /// it would be "pop up button, pop up button, text field", so each control
-    /// carries a name. Kept short, because VoiceOver reads the name before every value.
+    /// A rule reads as a sentence built from pickers and fields whose meaning
+    /// comes from their place in the row; read aloud it would be "pop up button,
+    /// pop up button, text field", so each control carries a name. Kept short,
+    /// because VoiceOver reads the name before every value.
     static var a11yField: String { L(.whatToCheck) }
     static var a11yComparison: String { L(.howToCompare) }
     static var a11yValue: String { L(.valueToMatch) }
@@ -292,10 +273,9 @@ enum ApStr {
 
     static var historyTitle: String { L(.last30Days) }
 
-    /// **Why the record is empty: three states with three different next steps**
-    /// — no watched folder, every rule switched off, a running rule that has
-    /// found nothing. Exhaustive, so a fourth reason
-    /// cannot be added to the engine without a sentence to say it with.
+    /// **Why the record is empty: three states with three different next steps**:
+    /// no watched folder, every rule switched off, a running rule that found
+    /// nothing. Exhaustive, so a fourth reason needs a sentence to build.
     static func historyEmpty(_ reason: HistoryEmpty.Reason,
                              language: AppLanguage = AppLanguage.current) -> String {
         switch reason {
@@ -325,11 +305,9 @@ enum ApStr {
         switch kind {
         case .moved: L(.movedTo)
         case .renamed: L(.renamedTo)
-        // German said "Tag" — the word for *day*, which this module also prints
-        // in the same column ("älter als 30 Tage"), so the record of a tagged
-        // file read as a record of a date. French said "Étiquette", a
-        // capitalised noun among five lowercase past participles. Both are past
-        // participles now, which is what every other language here already had.
+        // A past participle in every language. Not German «Tag», the word for
+        // *day* that the same column prints («älter als 30 Tage»), and not a
+        // capitalised noun such as French «Étiquette» among lowercase verbs.
         case .tagged: L(.tagged)
         case .trashed: L(.movedToTrash)
         case .refused: L(.refused)
@@ -374,12 +352,9 @@ enum ApStr {
         L(.putBackFiles(Plural.files(count, language: language.rawValue)), language: language)
     }
 
-    /// The word on a row that has already gone back. The row stays — a history
-    /// that hid what it had undone would be hiding an action.
-    ///
-    /// Not "put back" again: that is the button's word, and one English text
-    /// means one thing. Two keys differing only in a capital letter is the same
-    /// collision wearing a disguise.
+    /// The word on a row that has already gone back; the row stays, since hiding
+    /// what was undone would hide an action. Not "put back" again: that is the
+    /// button's word, and one English text means one thing, capital letter or not.
     static var putBackAlready: String { L(.backWhereItWas) }
 
     /// The header over one pass: the time, the folder the files came from when
@@ -391,10 +366,8 @@ enum ApStr {
     static func passHeader(at when: Date, folder: String?, files: Int,
                            language: AppLanguage = AppLanguage.current,
                            home: String = NSHomeDirectory()) -> String {
-        // macOS calls `~/Downloads` «Загрузки» and «ダウンロード», and it is the
-        // one that gets to name its own folders — a ninth translation of a name
-        // the system already has is how the same folder comes to have two names
-        // on one screen.
+        // macOS names its own folders («Загрузки», «ダウンロード»); a ninth
+        // translation would give one folder two names on one screen.
         let named = folder.map {
             SystemFolderNames.displayOrOwn(path: $0, home: home, language: language.rawValue)
         }
@@ -413,9 +386,8 @@ enum ApStr {
         return done + " · " + L(.putBackReportNotPutBack(String(notPutBack)), language: language)
     }
 
-    /// A file that came back under a name it did not have. Told outright,
-    /// because otherwise somebody goes looking for `march.pdf` and it is
-    /// `march 2.pdf`.
+    /// A file that came back under a name it did not have. Told outright, or
+    /// somebody goes looking for `march.pdf` and it is `march 2.pdf`.
     static func landedAs(_ file: String, as name: String,
                          language: AppLanguage = AppLanguage.current) -> String {
         // The marks are `Quoted`'s. Every language here punctuates quotation
@@ -469,18 +441,15 @@ enum ApStr {
     }
 
     /// The card over a history that something else wrote. Its own sentence
-    /// rather than `rulesTampered`: the rules being forged and the history
-    /// being forged are different things to be told, and the second one leaves
-    /// the module working.
+    /// rather than `rulesTampered`: a forged history leaves the module working.
     static var historyTampered: String { L(.theRecordOfWhatAutopilotDid) }
     /// The verb beside it. Says what it does — the record goes, and Autopilot
     /// starts keeping one again — rather than «OK».
     static var discardHistory: String { L(.clearTheRecordAndStartAgain) }
 
     /// Why a row was refused, in the reader's language. The record stores the
-    /// reason's rawValue — data, stable across releases — and this is the only
-    /// place it turns into words. Exhaustive on purpose: a new reason refuses to build until
-    /// it can say itself.
+    /// reason's rawValue, stable data, and only here does it become words.
+    /// Exhaustive: a new reason refuses to build until it can say itself.
     static func historyRefusal(_ reason: RuleOutcome.Refusal,
                                language: AppLanguage = AppLanguage.current) -> String {
         switch reason {
@@ -499,15 +468,13 @@ enum ApStr {
     /// that reaches somebody who is not looking at it.
     ///
     /// **The Trash is why it exists.** Everything else Autopilot does is a move
-    /// it can undo, recorded in History, one press from being put back — and a
-    /// banner about that turns an hourly sentinel into an hourly banner, which
-    /// is a channel switched off before it ever says the one thing that
-    /// matters. `SweepNews` holds that rule; this is only its voice.
+    /// it can undo from History, and a banner for each would be switched off
+    /// before it said the one thing that matters. `SweepNews` holds that rule;
+    /// this is only its voice.
     ///
-    /// Titled with the module's name because a notification with no title is
-    /// drawn as the app's name and a body, and «Helm» does not say which of ten
-    /// modules is speaking — the reasoning `KAStr.batteryVetoNotice` already
-    /// carries one module over.
+    /// Titled with the module's name: a notification with no title shows the
+    /// app's name, and «Helm» does not say which module is speaking (as
+    /// `KAStr.batteryVetoNotice`).
     static func sweepNotice(_ tally: SweepNews.Tally,
                             language: AppLanguage = AppLanguage.current) -> NoticeText {
         // Two clauses at most, and each stands alone: what went to the Trash,
@@ -523,13 +490,11 @@ enum ApStr {
                           body: clauses.joined(separator: " · "))
     }
 
-    /// The files are counted in `language`'s own plural before the template is
-    /// asked, and the word for the Trash is written into the template rather than
-    /// composed. It is copied from the eight translations of
-    /// `HelmWord.moveToTrash`, which are macOS's own spellings, so a person is not
-    /// shown two words for one folder; the copy is the price of the template and
-    /// is the one thing in this pair to check against those files if either ever
-    /// moves.
+    /// The files are counted in `language`'s own plural first, and the Trash's
+    /// word is written into the template, copied from the eight translations of
+    /// `HelmWord.moveToTrash` (macOS's own spellings) so one folder never has two
+    /// words. Check the copy against those if either changes.
+
     static func sweepTrashed(_ count: Int,
                              language: AppLanguage = AppLanguage.current) -> String {
         L(.sweepTrashed(Plural.files(count, language: language.rawValue)), language: language)

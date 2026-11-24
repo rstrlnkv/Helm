@@ -7,25 +7,18 @@ import HelmTestSupport
 
 /// **A secret never rides in an argument list, whichever tool carries it.**
 ///
-/// (the line on a secret a tool reads;
-/// → ARCHITECTURE.md § Running other programs): a secret a tool reads from its terminal
-/// goes there, never in argv, env, file or log. An argument list is readable by
-/// every process running as this user for as long as the child lives, and a
-/// `scutil --nc` child lives long enough to be read. `scutil`
-/// has no terminal form, so `--nc start <name> --user … --password … --secret …`
-/// is the defect class «a secret in argv» in this module.
+/// A secret a tool reads from its terminal goes there, never in argv, env, file
+/// or log (Architecture/RunningOtherPrograms.md § Running other programs). An
+/// argument list is readable by every process of this user while the child
+/// lives. `scutil --nc start` takes `--user`, `--password` and `--secret` only
+/// as arguments and has no terminal form, so the start that carries a secret
+/// goes to the system in process (`VPNRunnerPort.start(_:supplying:)`, through
+/// `SCNetworkConnectionStart`), which the fake records in `supplied`.
 ///
-/// The check is on the structure, not on one spelling: every element of every
-/// command the runner was asked to run, whatever the flag is called, must be
-/// free of the marker the credentials carry. Each credential carries the marker
-/// `7f3a`, so a repair that drops `--secret` but keeps `--password` stays red.
-///
-/// The secret goes to the system in process (`VPNRunnerPort.start(_:supplying:)`),
-/// which the fake records in `supplied`: the test names where it went, not only
-/// where it did not.
-///
-/// Controls inside each test: the connect did reach the runner (a start was
-/// supplied), so «nothing contains the marker» is not true of an empty record.
+/// The check is on the structure, not one spelling: no element of any command
+/// the runner ran may carry the marker `7f3a` every credential carries. Each
+/// test first asserts a start was supplied, so the check is not true of an
+/// empty record.
 final class ASecretNeverReachesAnArgumentListTests: XCTestCase {
 
     private let marker = "7f3a"

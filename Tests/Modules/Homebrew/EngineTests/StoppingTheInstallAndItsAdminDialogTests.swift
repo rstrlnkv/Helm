@@ -8,43 +8,24 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
-/// **Stop is a press against a handle that does not exist yet.**
+/// **A Stop pressed before the engine holds a child's handle still ends the
+/// operation.**
 ///
-///     public func stop() {
-///         lock.lock()
-///         guard busy, let handle = current else { lock.unlock(); return }
+/// `current` is set by `adopt`, after the launch. For `installBrew` the time
+/// before it is the administrator password dialog, as long as a person takes to
+/// find their password, with the page already showing a live Stop button. A
+/// press there must be recorded, end the operation as stopped, and keep the
+/// installer from being downloaded and run after the dialog.
 ///
-/// `current` is set by `adopt`, which runs *after* the child has been launched.
-/// Everything before that point is a window in which the page is showing a
-/// running operation with a live Stop button — `emitState(.running)` is the
-/// first thing `installBrew` does — and the press falls through the `guard`
-/// into a bare `return`: no state, no console line, no log, and `stopRequested`
-/// left `false`, so nothing later can tell that the person asked.
-///
-/// For a package operation the window is a spawn and is measured in
-/// milliseconds. For `installBrew` it is **the administrator password dialog**,
-/// which is as long as a person takes to find their password — and while it is
-/// up, `runAdmin` is blocking the engine's thread with `current` still nil.
-/// Pressing Stop there does nothing, says nothing, and is then followed by the
-/// module downloading and running the Homebrew installer anyway.
-///
-/// It is the family of a press that does nothing, visibly forever — here the
-/// flag, `stopRequested`, is not written at all, because the check in front of
-/// it fails.
-///
-/// **The fake privileged runner has to be *in the middle of* asking.** Every
-/// existing `PrivilegedRunner` fake in this suite returns its answer inline, so
-/// "the dialog is on screen and the person has not answered yet" is a state no
-/// test could write down — which is why this window has never been tested.
-/// `ScriptedPrivileged(holds: true)` stops inside `runAdmin` until the test says the
-/// person answered, which is what the real one does.
+/// `ScriptedPrivileged(holds: true)` stops inside `runAdmin` until the test says
+/// the person answered, as the real dialog does; a fake that answers inline
+/// cannot represent "the dialog is up and unanswered".
 final class AStopBeforeTheChildExistsTests: XCTestCase {
 
     // MARK: - Plumbing
 
-    /// Starts `installBrew` on a thread of its own — it blocks inside the
-    /// dialog, exactly as the engine's own queue does — and hands back a way to
-    /// wait for it to return.
+    /// Starts `installBrew` on a thread of its own, since it blocks inside the
+    /// dialog, and hands back a way to wait for it to return.
     private func startInstallBrew(_ engine: HomebrewEngine) -> DispatchSemaphore {
         let returned = DispatchSemaphore(value: 0)
         DispatchQueue.global(qos: .userInitiated).async {
@@ -106,10 +87,8 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
 
     // MARK: - Controls
 
-    /// Once the child exists the press does reach it — so the failures above
-    /// are about the window before `adopt`, not about `stop` in general. The
-    /// Handle-counting `ScriptedRunner` is what makes the installer's own
-    /// termination visible.
+    /// Control: once the child exists the press reaches it, so a failure above
+    /// is about the time before `adopt`, not about `stop` in general.
     func testOnceTheInstallerIsRunningStopReachesIt() {
         let privileged = ScriptedPrivileged(reply: .done)
         let runner = ScriptedRunner(streams: .hold)
@@ -148,24 +127,16 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
     }
 }
 
-/// **The other side of the window `AStopBeforeTheChildExistsTests` closes.**
+/// **A Stop that lands while `runner.stream` is launching the child reaches
+/// that child.**
 ///
-/// That one is a press that lands *before* the launch, which the launch itself
-/// now reads. This one lands after that reading and before the engine owns a
-/// handle — while `runner.stream` is in flight, which for the real runner is a
-/// `posix_spawn` and a pipe. `stop` finds `current` still nil, so it terminates
-/// nothing; a moment later `adopt` is handed the very child the person asked to
-/// end. Without the check there, the press is recorded, the page says
-/// «Stopped», and `brew install` goes on running to completion.
+/// `stop` finds `current` still nil and terminates nothing; `adopt` must then
+/// see the recorded press and end the child it is handed, or the page says
+/// «Stopped» while `brew install` runs to completion. `stop` comes from a button
+/// press on another thread, so nothing orders it against `runOp`.
 ///
-/// It is milliseconds wide and it is not unreachable: `stop` arrives on the
-/// news from a button press, on a different thread from the one inside
-/// `runOp`, and the two are not ordered by anything else.
-///
-/// **The fake presses the button from inside `stream`,** which is the only way
-/// to be exactly there. A fake that merely returns a handle cannot represent
-/// «the press landed during the spawn», so no test of this could exist however
-/// carefully it was written.
+/// The fake presses Stop from inside `stream`, the only way to land exactly
+/// there.
 final class AStopDuringTheLaunchItselfIsNotLostTests: XCTestCase {
 
     func testAStopPressedWhileTheChildIsBeingLaunchedStillReachesIt() {
@@ -206,22 +177,16 @@ final class AStopDuringTheLaunchItselfIsNotLostTests: XCTestCase {
 /// **Stop during `install.sh` has to reach `install.sh`.**
 ///
 /// The handle Stop holds is the `bash -c` that wraps the download and the
-/// installer. The wrapper used to die on the TERM without reaching its `rm`, so
-/// the downloaded script stayed in the temporary folder; and a signal that
-/// reaches only the wrapper leaves the inner `bash "$script"` running orphaned,
-/// writing into `/opt/homebrew` after the page said stopped. Which of the two
-/// happens through `Process.terminate()` is not the wrapper's to decide, so the
-/// checks below ask for every part of the outcome: the stream ends, nothing the
+/// installer. A signal that reaches only the wrapper leaves the inner
+/// `bash "$script"` writing into `/opt/homebrew` after the page said stopped,
+/// and a wrapper that dies before its `rm` leaves the script in the temporary
+/// folder. So the checks ask for the whole outcome: the stream ends, nothing the
 /// installer started is alive, and the script is gone.
 ///
-/// Nothing here reaches the network or root. The command is the engine's own
-/// (composed by driving `installBrew` against a fake runner, not spelled a
-/// second time), rehosted as `TheDownloadedInstallerIsTidiedAwayTests` does —
-/// the `https://` word becomes a `file://` URL and `mktemp` is told where to
-/// write — and launched through the real `ShellProcessRunner.stream`, whose
-/// handle is what Stop terminates. The stand-in installer records its own
-/// process id and that of a child it starts, then waits: a harmless script that
-/// does what the real one does to the process tree.
+/// Nothing here reaches the network or root. The command is the engine's own,
+/// rehosted as `TheDownloadedInstallerIsTidiedAwayTests` does, and launched
+/// through the real `ShellProcessRunner.stream`. The stand-in installer records
+/// its own pid and that of a child it starts, then waits.
 final class AStopReachesTheInstallerItselfTests: XCTestCase {
 
     private func pid(in file: URL) -> pid_t? {
@@ -281,17 +246,12 @@ final class AStopReachesTheInstallerItselfTests: XCTestCase {
 /// **Every place a Stop or a switch-off can land in `installBrew` ends the
 /// operation exactly once, raises nothing after it, and leaves the gate open.**
 ///
-/// `TheGapsAroundTheWaitRaiseNoDialogTests` asks whether a dialog rises after
-/// an ending. This asks the three things a page needs from the same moments:
-/// that the ending was said once — two terminal states from one operation is
-/// two `concludeOp`s, which closes the activity phase twice and runs the
-/// refresh twice — that it was said as the person's stop, and that the next
-/// press is admitted. Each ending fires from inside the port call the engine
-/// really makes at that moment.
+/// Two terminal states from one operation are two `concludeOp`s, which close the
+/// activity phase twice and run the refresh twice. Each ending fires from inside
+/// the port call the engine makes at that moment.
 ///
-/// The second half is `deactivate()` reaching past the wait: while
-/// `install.sh` runs it ends it the way Stop does, while the password dialog
-/// is up it leaves nothing to launch after it.
+/// `deactivate()` while `install.sh` runs ends it the way Stop does; while the
+/// password dialog is up it leaves nothing to launch after it.
 final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
 
     /// Every port named: Apple's tools, time, root, the runner, the marker.
@@ -917,16 +877,10 @@ final class StoppingTheWaitRaisesNoDialogTests: XCTestCase {
 /// find nothing to take: no wait armed yet, or the wait already taken by the
 /// tick that is on its way to the dialog.
 ///
-/// `StoppingTheWaitRaisesNoDialogTests` holds the ending that finds the token.
-/// These hold the one that does not — a Stop or a switch-off landing while the
-/// request is being filed, before it is filed, or between the tick's verdict
-/// and the password dialog — and ask the same question of each: does the
-/// person, who has just said no more, get Apple's window or an administrator
-/// dialog anyway?
-///
-/// Every hook fires from inside a port call the engine really makes at that
-/// moment, so the ending lands on the thread and at the line it would in the
-/// app, not before or after the press.
+/// After such an ending the person gets neither Apple's window nor an
+/// administrator dialog. Every hook fires from inside a port call the engine
+/// makes at that moment, so the ending lands on the thread and at the line it
+/// would in the app.
 final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
 
     // MARK: - A switch-off that finds no wait to take
@@ -1011,12 +965,8 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
     }
 
     /// The switch-off during the request on the host's own route, where the
-    /// engine is dropped as well: the press holds the engine until it returns.
-    /// It is `deactivate()` that keeps the wait from being armed — it sets the
-    /// stop flag under the lock, and `installBrew` reads the flag before it arms
-    /// anything, which the first case in this class holds without dropping the
-    /// engine. What this case adds is the drop: with the engine gone, no tick is
-    /// left live and the dialog stays down.
+    /// engine is dropped as well (the press holds it until it returns): with the
+    /// engine gone, no tick is left live and the dialog stays down.
     func testAnEngineSwitchedOffAndDroppedDuringTheRequestLeavesNoTick() {
         final class Host: @unchecked Sendable { var engine: HomebrewEngine? }
         let tools = FakeCommandLineTools()
@@ -1243,21 +1193,15 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
 
 /// **How far a Stop reaches, measured at both ends of the port.**
 ///
-/// The engine names a `StopReach` per launch and the real runner acts on it,
-/// but every fake in this family implements only the `stream` that has no
-/// `reach:` label, so the default in `ProcessRunner`'s extension swallows the reach before any
-/// fake can see it: nothing else in the suite goes red if `installBrew` names
-/// `.process` or a brew operation names `.wholeGroup`. The first case records
-/// the reach the engine names; the rest run the real `ShellProcessRunner` and
-/// read what a Stop actually reached — a group whose leader has already gone,
-/// and the repeated signal per reach, against a leader that is still there and
-/// one that is not.
+/// The engine names a `StopReach` per launch and the real runner acts on it.
+/// A fake that implements only the `stream` with no `reach:` label never sees
+/// the reach, so the first case records it at the port; the rest run the real
+/// `ShellProcessRunner` and read what a Stop reached.
 ///
-/// The last two cases stop the engine's own `install.sh` wrapper (rehosted as
-/// `TheInstallerWrapperKeepsItsWordTests` does it: `file://` source, `mktemp`
-/// pointed at a scratch folder) at the one moment that sweep does not reach:
-/// the wrapper's EXIT trap, whose `rm` is itself a member of the group a Stop
-/// signals. Nothing here reaches the network, root or the real installer.
+/// The last two cases stop the engine's own `install.sh` wrapper, rehosted as
+/// `TheInstallerWrapperKeepsItsWordTests` does, during its EXIT trap, whose `rm`
+/// is itself a member of the group a Stop signals. Nothing here reaches the
+/// network, root or the real installer.
 final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
 
     // MARK: - The reach the engine names
@@ -1332,13 +1276,10 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
 
     /// The repeated signal goes out for the installer's reach while the leader
     /// is still there, never once it has gone, and never for a brew
-    /// operation's reach, whose Stop is the one `Process.terminate()` it always
-    /// was. A member of the child's group counts every TERM it is sent; the
-    /// leader either survives every TERM (a trap that does nothing) or leaves at
-    /// the first. Note what the `.process` row reads: one TERM **to the
-    /// member** — `Process.terminate()` signals the child's whole group on this
-    /// Mac (a member moved into a group of its own is not reached), so
-    /// `.process` and `.wholeGroup` differ by the repeats alone.
+    /// operation's reach, whose Stop is one `Process.terminate()`. A member of
+    /// the child's group counts every TERM it is sent. The `.process` row reads
+    /// one TERM to the member: `Process.terminate()` signals the child's whole
+    /// group, so `.process` and `.wholeGroup` differ by the repeats alone.
     func testTheGroupIsSignalledAgainOnlyWhileItsLeaderLives() async throws {
         let root = scratchDirectory("stop-repeats")
         var counts: [String: Int] = [:]
@@ -1389,12 +1330,10 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
         }
     }
 
-    /// An installer that answers TERM by tidying up for a moment before it
-    /// exits — the shape of any installer with a cleanup handler. The wrapper
-    /// then runs its EXIT trap at about that moment, and the Stop's repeated
-    /// signal, sent 0.1 s after the first to the same group, lands on the
-    /// trap's own `rm`. Swept across the wind-down times around the repeat:
-    /// every Stop must still leave the temporary folder empty.
+    /// An installer that tidies up for a moment on TERM makes the wrapper's EXIT
+    /// trap run about when the Stop's repeated signal (0.1 s after the first)
+    /// reaches the group. Swept across wind-down times around the repeat, every
+    /// Stop must still leave the temporary folder empty.
     func testTheRepeatedSignalDoesNotLandOnTheWrappersOwnCleanup() async throws {
         let root = scratchDirectory("stop-cleanup-repeat")
         let temporaries = root.appendingPathComponent("tmp")

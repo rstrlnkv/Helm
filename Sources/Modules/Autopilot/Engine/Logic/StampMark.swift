@@ -3,12 +3,11 @@ import HelmRuntime
 
 /// What one rule's mark on one file is worth.
 ///
-/// The mark used to be the rule's id, and the id is not a secret: it is a UUID
-/// in `~/Library/Preferences/com.helm.app.plist`, which any process running as
-/// the user can read. Writing `com.helm.autopilot.stamp` on a file needs no
-/// permission either — so a program that had just landed in `~/Downloads` could
-/// stamp itself with the id of the rule written to catch it and be skipped for
-/// ever, leaving nothing in the history to say a file had been passed over.
+/// The rule's id is not a secret: it is a UUID in a plist any process running
+/// as the user can read, and writing `com.helm.autopilot.stamp` needs no
+/// permission. A bare id as the mark would let a program that landed in
+/// `~/Downloads` stamp itself and be skipped for ever, with nothing in the history.
+
 ///
 /// So a mark is an HMAC under the same key the rule set is sealed with
 /// (`SettingSeal.mac`, one implementation of this crypto for the app), over the

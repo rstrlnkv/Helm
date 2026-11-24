@@ -9,20 +9,17 @@ import XCTest
 /// Stands for the engine on the model's side of `HomebrewWork`: the port's
 /// members and nothing the engine has beyond them.
 ///
-/// A call is written down by its member's name (`calls`), with the one thing it
-/// was asked about after a space where it has one (`find wget`); a press is
-/// kept whole in `acts` and noted in `calls` as `perform`. `say(_:)` is what the
-/// engine would emit; the last line and the last state are replayed to a stream
-/// taken afterwards in the order the two kinds first appeared, after where brew
-/// is, which activation says before any operation — `EngineNews<HomebrewNews>` keeps the
-/// same order for the engine. A stream the
-/// consumer let go of is counted (`finishedStreams`), so «the loop was
-/// cancelled» is read from the work and not assumed from the model.
+/// A call is written down by its member's name (`calls`), with what it was
+/// asked about after a space (`find wget`); a press is kept whole in `acts` and
+/// noted in `calls` as `perform`. `say(_:)` is what the engine would emit; the
+/// last line and the last state are replayed to a later stream in the order the
+/// two first appeared, after where brew is, as `EngineNews<HomebrewNews>` does.
+/// A stream the consumer let go of is counted (`finishedStreams`), so «the loop
+/// was cancelled» is read from the work.
 ///
-/// `park(_:)` holds the next reads of one member (`find`, `readDependents`, ...)
-/// open until `release(_:)`: an order of events that a fake answering at once
-/// cannot show. `completed` is what has been answered, so a test can tell «still
-/// out» from «answered and nothing followed». Every test that parks releases.
+/// `park(_:)` holds the next reads of one member open until `release(_:)`;
+/// `completed` tells «still out» from «answered and nothing followed». Every
+/// test that parks releases.
 final class FakeHomebrewWork: HomebrewWork, @unchecked Sendable {
     private let lock = NSLock()
     private var recorded: [String] = []

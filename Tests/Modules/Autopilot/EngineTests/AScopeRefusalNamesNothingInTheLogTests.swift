@@ -7,13 +7,12 @@ import HelmTestSupport
 /// What a scope refusal leaves in `helm.log`, and what the sweep reads before
 /// the runner is ever asked.
 ///
-/// The history already writes neither the name nor the path of a file refused
-/// for lying outside the allowed folders (`AFolderReachedThroughALinkIsNotReadTests`).
-/// The log is the same kind of place — readable by any process running as the
-/// user, with no grant — and the sweep's and the watcher's warning lines named
-/// the file there all the same: `refused <path>: outOfScope`, the leaf in clear.
-/// Reachable by a link put in place of an ancestor between the root check and
-/// the walk.
+/// The history writes neither the name nor the path of a file refused for lying
+/// outside the allowed folders (`AFolderReachedThroughALinkIsNotReadTests`).
+/// The log is the same kind of place, readable by any process running as the
+/// user with no grant, so the sweep's and the watcher's warning lines name the
+/// rule and not the file. Reachable by a link put in place of an ancestor
+/// between the root check and the walk.
 ///
 /// And the second half of the same window: what the walk *returns* is filtered
 /// by the same gate the runner would apply, so a file the gate refuses is never

@@ -5,9 +5,9 @@ import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
 /// The timer's scan and the person's search share the engine's one finder slot,
-/// so a scan that fired mid-search ended the search with «Search stopped». The
-/// model now answers nil, which the coordinator treats as no completion, while a
-/// search or a removal runs.
+/// so a scan that fired mid-search would end the search with «Search stopped».
+/// While a search or a removal runs the model answers nil, which the
+/// coordinator treats as no completion.
 @MainActor
 final class ATimersScanWaitsForThePersonTests: XCTestCase {
 

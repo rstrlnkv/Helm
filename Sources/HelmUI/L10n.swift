@@ -12,25 +12,20 @@ public enum AppLanguage: String, CaseIterable, Sendable {
 
     /// Best match from the user's preferred languages, else English.
     ///
-    /// Cached: this is read by every `L()` and every `Bytes()`, and Helm's string
-    /// properties are computed, so a hovered list of 200 rows
-    /// hit `Locale.preferredLanguages` — a CFPreferences read — a few hundred
-    /// times per frame. The cache is dropped when the system's locale changes
-    /// or `override` is set, the only two things that can change the answer.
+    /// Cached, because every `L()` and `Bytes()` reads it and
+    /// `Locale.preferredLanguages` is a CFPreferences read. The cache is dropped
+    /// when the system's locale changes or `override` is set, the only two
+    /// things that can change the answer.
     public static var current: AppLanguage { cache.value }
 
-    /// A language chosen in Settings, overriding the system's preference.
+    /// A language chosen in Settings, overriding the system's preference; nil,
+    /// the ordinary state, means whatever this Mac is set to.
     ///
-    /// Helm sets it in Dev builds only, and the picker that writes it says so;
-    /// the showcase sets it from `--language`. It exists to read a screen in
-    /// seven languages without logging out of the Mac, which is what checking
-    /// a translation against the running app costs otherwise.
-    /// Nil is the ordinary state and means «whatever this Mac is set to».
-    ///
-    /// Setting it drops the cache, which is the same thing the system's own
-    /// locale change does — so every `L()` from the next read onwards answers
-    /// in the new language. Views already built do not redraw by themselves;
-    /// the app posts a notification for that.
+    /// Helm sets it in Dev builds only, and the showcase from `--language`, so a
+    /// screen can be read in every language without logging out of the Mac.
+    /// Setting it drops the cache, so every `L()` from the next read answers in
+    /// the new language. Views already built do not redraw by themselves; the
+    /// app posts a notification for that.
     public static var override: AppLanguage? {
         get { cache.override }
         set { cache.override = newValue }
@@ -98,8 +93,7 @@ public enum AppLanguage: String, CaseIterable, Sendable {
 
         /// The first two letters of each preferred language, in order, name the
         /// catalog: `zh-Hant` goes to the Simplified `zh` catalog and `pt-PT` to
-        /// the Brazilian `pt` one, in line with Info.plist's `zh-Hans` and
-        /// `pt-BR`. A `zh-Hant` translation is a later chain.
+        /// the Brazilian `pt` one, in line with Info.plist's `zh-Hans` and `pt-BR`.
         private static func resolve() -> AppLanguage {
             for code in Locale.preferredLanguages {
                 let base = code.prefix(2).lowercased()
@@ -115,19 +109,15 @@ public enum AppLanguage: String, CaseIterable, Sendable {
 /// `String(localized:)` alone answers in the language macOS resolves for the
 /// process, not the one the person picked in Helm, so the resource is asked in
 /// `language`. The resource carries its own target's bundle, which is why one
-/// function in the kit can read every module's catalog; the symbol is what
-/// makes a mistyped key a build error.
+/// function in the kit can read every module's catalog.
 ///
-/// **Remembered, because the system does not.** `String(localized:)` measures
-/// dearer the larger the table it answers from, on every call; a held dictionary
-/// does not. A word drawn in a view body is paid per frame at the
-/// system's price, so each answer is kept by what identifies it — key, table,
-/// bundle, arguments and language — and only an answer not kept pays.
+/// Remembered, because `String(localized:)` costs more the larger the table, on
+/// every call, and a word in a view body is asked per frame. Each answer is
+/// kept by key, table, bundle, arguments and language.
 ///
-/// **`remembered: false` for a word that holds somebody's typed text.** The memo keeps the
-/// arguments with the answer and forgets only by count, so a word typed into a field would outlive
-/// whatever the owner of that text does to forget it. Such a word pays the system's price on every
-/// ask and leaves nothing behind.
+/// `remembered: false` is for a word that holds somebody's typed text: the memo
+/// keeps the arguments and forgets only by count, so the text would outlive
+/// whatever its owner does to forget it.
 public func L(_ resource: LocalizedStringResource,
               language: AppLanguage = AppLanguage.current,
               remembered: Bool = true) -> String {
@@ -136,28 +126,21 @@ public func L(_ resource: LocalizedStringResource,
     return remembered ? ResourceAnswers.shared.string(for: resource) : String(localized: resource)
 }
 
-/// The answers `L(_:language:remembered:)` has given, bounded because a resource that
-/// carries arguments is a new entry for every value it is asked with.
+/// The answers `L(_:language:remembered:)` has given, bounded because a
+/// resource that carries arguments is a new entry for every value.
 ///
-/// A `LocalizedStringResource` is not `Hashable`, and its arguments can be read
-/// only by describing `defaultValue`, so the dictionary is keyed by what is
-/// plain to read — key, table, language — and each such family keeps a short
-/// list of `(resource, answer)` that the resource's own `==` searches. That `==`
-/// also compares the bundle and the arguments, so the same key in two catalogs
-/// (`summary`, `upToDate`) stays two answers.
+/// A `LocalizedStringResource` is not `Hashable`, so the dictionary is keyed by
+/// key, table and language, and each such family keeps a short list searched
+/// with the resource's own `==`, which also compares bundle and arguments: the
+/// same key in two catalogs stays two answers.
 ///
-/// **Why the list is short.** The visible part puts every value of one template
-/// in one family, so a hit is a search by `==` through all of them. A family
-/// holds at most `perFamily` answers and the oldest is replaced, so a hit costs
-/// at most that many comparisons and a miss twice that, whatever the arguments
-/// are. Above `perFamily` values of one template in turn every ask misses, and
-/// costs a little more than no memo.
+/// A family holds at most `perFamily` answers, oldest replaced, so a hit costs
+/// at most that many comparisons whatever the arguments. Past `perFamily`
+/// values of one template in turn every ask misses, a little dearer than no memo.
 ///
-/// **Not `LockedMemo`**, which needs a `Hashable` key, keeps every value for good
-/// and builds under its lock. Here the build is `String(localized:)`, the very
-/// call this exists to avoid, and it runs outside the lock so a slow word does
-/// not hold up the others; a memo that never forgets would also grow by one
-/// entry per argument ever shown.
+/// Not `LockedMemo`, which needs a `Hashable` key, never forgets, and builds
+/// under its lock: here the build is `String(localized:)`, which runs outside
+/// the lock so a slow word does not hold up the others.
 private final class ResourceAnswers: @unchecked Sendable {
     static let shared = ResourceAnswers()
 
@@ -202,24 +185,20 @@ private final class ResourceAnswers: @unchecked Sendable {
 }
 
 /// A size in the user's language: "432,95 ГБ", "1.5 GB". One formatter for
-/// every screen — see `HelmBytes` for why that had to be said out loud.
+/// every screen (`HelmBytes`).
 public func Bytes(_ count: Int) -> String {
     HelmBytes.string(count, language: AppLanguage.current.rawValue)
 }
 
-/// A number in the user's language: "1,5" where the language writes a comma.
-/// The rule summary printed `String(format: "%.1f", …)` beside sizes that
-/// `Bytes` had already written with a comma, so one line read "1.5 МБ" next to
-/// "1,5 ГБ". Not named `Decimal`: a free function of that name shares its
-/// call spelling with `Foundation.Decimal`, and `Decimal(anInt)` binds to
-/// Foundation's initialiser, not to this one (VPN's speed tile drew «10000»).
+/// A number in the user's language: "1,5" where the language writes a comma,
+/// so a figure beside a `Bytes` size uses the same mark. Not named `Decimal`:
+/// `Decimal(anInt)` would bind to Foundation's initialiser, not to this one.
 public func Fractional(_ value: Double, decimals: Int = 1) -> String {
     HelmBytes.decimal(value, decimals: decimals, language: AppLanguage.current.rawValue)
 }
 
-/// A count in the user's language: "1 499 308", "1.499.308". Beside `Bytes` and
-/// `Fractional` because it is the same mistake one class of number over — a scan
-/// of `/` reported "1499308 files", where macOS itself groups the digits.
+/// A count in the user's language: "1 499 308", "1.499.308", grouped as macOS
+/// groups digits.
 ///
 /// Not `Fractional`, which turns grouping off on purpose: that one writes the
 /// mantissa of a size, where a separator would be a second decimal mark.
@@ -229,28 +208,17 @@ public func Count(_ value: Int, language: AppLanguage = AppLanguage.current) -> 
 
 /// Dates in the app's language, not the system's.
 ///
-/// `RelativeDateTimeFormatter()` with no locale answers in the system language,
-/// so an Italian or Polish Mac — outside Helm's eight, therefore shown an
-/// English UI — read "Checked 2 ore fa". The formatters were also built once and
-/// held, which meant they kept the language the app started in after the user
-/// picked another one in Settings. Keyed by language, so both go away.
+/// A formatter with no locale answers in the system's language, which on a Mac
+/// outside Helm's eight sits inside an English UI, and one built once keeps the
+/// language the app started in. So every formatter here is keyed by language.
 public enum HelmDates {
 
-    /// **How long an age is spelled**, as two cases rather than as the system's
-    /// three.
+    /// How long an age is spelled, as two cases rather than the system's three.
     ///
-    /// macOS writes «1 минуту назад», «1 мин. назад» and «-1 мин» for the same
-    /// moment, and the third is not an age at all: `.abbreviated` prints a
-    /// *signed delta* in Russian and French — measured on macOS 27, «-1 мин» and
-    /// «-1 min», against a plain «hace 1 min» in Spanish, so the defect is in
-    /// two of the eight and invisible in the language most of this is read in.
-    /// Drawn under the VPN speed tile, whose value is itself two signed
-    /// readings, a leading minus reads as a third one.
-    ///
-    /// So the third case is not offered. This is a switch over something the
-    /// app defines, exhaustive on purpose: a caller cannot choose the answer
-    /// that is wrong. The enum stops a caller picking it and cannot stop the
-    /// enum being wired to it; nothing checks the mapping below.
+    /// `.abbreviated` prints a signed delta in Russian and French («-1 мин»),
+    /// which is not an age, and under the VPN speed tile a leading minus reads
+    /// as a third reading. So that case is not offered. The enum stops a caller
+    /// picking it; nothing checks the mapping below.
     public enum AgeStyle {
         /// «1 минуту назад» — for a line that has the width for it.
         case full
@@ -265,37 +233,21 @@ public enum HelmDates {
         }
     }
 
-    /// "2 hours ago", «2 часа назад» — **an age, or nothing at all** for a
-    /// stamp that has none.
+    /// "2 hours ago", «2 часа назад»: an age, or nil for a stamp that has none.
     ///
-    /// Every caller of this draws how old something is: «Checked …»,
-    /// «Measured …», «Last scan …», a speed reading's date.
-    /// Not one of them ever wants a time still to come, and there are two ways
-    /// the system formatter writes one:
+    /// Every caller draws how old something is, and the system formatter writes
+    /// a time still to come in two cases: a stamp ahead of the clock (a file
+    /// from a Mac whose clock runs fast, a row an NTP step stepped over), and a
+    /// stamp less than a second old, which `RelativeDateTimeFormatter` rounds to
+    /// zero and writes in the future voice («через 0 секунд», "in 0 seconds") in
+    /// all eight languages.
     ///
-    /// 1. A stamp genuinely **ahead of the clock**. A file copied from a Mac
-    ///    whose clock runs fast carries a modification date in the future, and
-    ///    so does a scan row that an NTP step has stepped over.
-    /// 2. A stamp **behind the clock by less than a second**, which needs no
-    ///    skew at all. Measured on macOS 27 in all eight languages:
-    ///    `RelativeDateTimeFormatter` rounds the interval to the nearest second
-    ///    and renders a rounded zero in the *future* voice — 0.9 s ago comes
-    ///    back «через 0 секунд», "in 0 seconds", "0秒钟后", and only at a full
-    ///    second does it say «1 секунду назад». A scan row redrawn the moment
-    ///    its scan comes back sits inside that first second.
+    /// `nil`, never a clamp: «just now» for a file dated next March is wrong in a
+    /// way nothing on screen can show, because a fresh reading says the same.
+    /// The absence is the only answer a reader can tell apart.
     ///
-    /// **`nil`, and never a clamp.** «Just now» for a file dated next March is
-    /// wrong in a way nothing on screen can show and no test can catch, because
-    /// «just now» is also what a true fresh reading says; the absence is the
-    /// only answer a reader can tell apart. It is what the rest of the tree
-    /// already does with the same input — `HelmExpectedWait.Claim.at` falls to
-    /// `.unknown`, `UpdateCheck.lastChecked` answers `nil`, and the VPN tile
-    /// leaves the unit standing alone.
-    ///
-    /// `style` defaults to what the three callers that predate it already drew:
-    /// a scan row, the update check and Disk's «measured» line each have a full
-    /// row's width, and only the VPN speed tile — 143 pt at the default window
-    /// and 91 at the narrowest — asks for the short form.
+    /// `style` is `.full` for a row with the width; the VPN speed tile asks for
+    /// `.short`.
     public static func age(_ date: Date, to now: Date = Date(),
                            style: AgeStyle = .full,
                            language: String = AppLanguage.current.rawValue) -> String? {
@@ -309,20 +261,12 @@ public enum HelmDates {
     /// one of them says «ago».
     private static let youngestAgeWrittenAsPast: TimeInterval = 1
 
-    /// A **span** in the person's language — «1 ч 14 мин», "1h 14m".
+    /// A span in the person's language: «1 ч 14 мин», "1h 14m".
     ///
-    /// Beside `age` rather than in the module that wanted it first: how a
-    /// language writes a length of time is `HelmUI`'s business, the same as how
-    /// it writes a size or a date, and the second module to draw an uptime
-    /// would otherwise write this again with its own idea of which units to
-    /// show. A `DateComponentsFormatter` built with no locale answers in the
-    /// *system's* language, which is the defect every member of this enum is
-    /// keyed by language to avoid.
-    ///
-    /// Two unit sets, because one cannot serve both ends: hours and minutes
-    /// above the hour is what somebody wants from a tunnel that has been up all
-    /// morning, and minutes and seconds is the only thing that moves in the
-    /// first minute of one.
+    /// Here rather than in a module, because how a language writes a length of
+    /// time is `HelmUI`'s business, as sizes and dates are. Two unit sets,
+    /// because one cannot serve both ends: hours and minutes above the hour,
+    /// minutes and seconds below it, where only they move.
     public static func span(_ seconds: TimeInterval,
                             language: String = AppLanguage.current.rawValue) -> String {
         let seconds = max(0, seconds)
@@ -338,17 +282,13 @@ public enum HelmDates {
     }
 
     /// The fraction, `.123`, as its own string so a row can draw it quieter
-    /// than the seconds. Measured on this machine's log: 2083 of 2311 lines
-    /// share their second with a neighbour and the busiest second holds 28 —
-    /// a whole viewport under one timestamp. The file has always written it.
+    /// than the seconds: many lines share their second with a neighbour.
     public static func logMillis(_ date: Date) -> String {
         millis.string(from: date)
     }
 
-    /// Built once. It was built per call, at 42.3 µs measured — about 1.1 ms of
-    /// main thread every second for the visible rows, and 42 ms in one hitch
-    /// when "Copy log" formatted a full thousand-line tail. Nothing to key it
-    /// by: the format is POSIX and language-independent by construction.
+    /// Built once, because it is asked per visible row and for every line of a
+    /// copied log tail. Nothing to key it by: the format is POSIX.
     private static let clock: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"
@@ -363,13 +303,10 @@ public enum HelmDates {
         return formatter
     }()
 
-    /// A time of day the way this language writes one — «15:42», "3:42 PM".
-    ///
-    /// Keyed by the app's language like everything else here, and for the same
-    /// measured reason: a `DateFormatter` built with no locale answers in the
-    /// *system's* language, so a Mac set to Italian would read Helm's Russian
-    /// page with an Italian clock — and, worse, a 12-hour one where the reader
-    /// expects 24.
+    /// A time of day the way this language writes one: «15:42», "3:42 PM".
+    /// Keyed by the app's language, like everything here, or a Mac set to
+    /// another language would draw its own clock, maybe a 12-hour one, on a
+    /// page in Helm's.
     public static func timeOfDay(_ date: Date,
                                  language: String = AppLanguage.current.rawValue) -> String {
         cache.clock(language: language).string(from: date)
@@ -382,55 +319,39 @@ public enum HelmDates {
         cache.absolute(language: language).string(from: date)
     }
 
-    /// A calendar day written down as "2026-07-28" — the changelog's entries —
-    /// in the language's own long form: "28 июля 2026 г.", "28. Juli 2026".
+    /// A calendar day stored as "2026-07-28" (the changelog's entries), in the
+    /// language's long form: "28 июля 2026 г.", "28. Juli 2026".
     ///
-    /// The stored form stays as it is: it sorts, it is what the entries are
-    /// keyed by, and it is not a date anybody reads. Anything that is not a day
+    /// The stored form sorts and keys the entries. Anything that is not a day
     /// comes back untouched, because the changelog is written by hand and a
-    /// blank line under a version number reads as a broken sheet rather than as
-    /// a typo in the data.
-    ///
-    /// Parsed and written in the same time zone. Parsed in UTC and written in
-    /// the reader's, half the world would see the 27th.
+    /// blank line under a version reads as a broken sheet, not a typo. Parsed
+    /// and written in the same zone, or half the world would see the 27th.
     public static func day(_ stored: String,
                            language: String = AppLanguage.current.rawValue) -> String {
         guard let date = cache.storage.date(from: stored) else { return stored }
         return cache.day(language: language, zone: cache.storage.timeZone).string(from: date)
     }
 
-    /// The same long day, for a date the app already holds.
+    /// The same long day, for a date the app already holds, where the minute
+    /// is noise. `dayAndMinute` is for a report of today's activity.
     ///
-    /// A file's modification time is a moment, but "not modified since
-    /// 09.03.2024, 19:00" answers a question nobody asked — the advice it
-    /// explains is measured in months. `dayAndMinute` is for a report of
-    /// today's activity; this is for a date far enough back that the minute is
-    /// noise.
-    ///
-    /// Written in the zone the process is in *now*, read at each call, the way the
-    /// language is — `NSTimeZone.default`, which `Calendar.current` follows, and not
-    /// `TimeZone.current`, which is a snapshot that a zone change does not move.
-    /// The row's clock and a calendar grouping follow the machine's zone, so a label cached in the zone of the first call names a different day
-    /// than the time beside it after the Mac changes zone under a running app.
+    /// Written in the zone the process is in at each call, `NSTimeZone.default`,
+    /// which `Calendar.current` follows, not `TimeZone.current`, a snapshot a
+    /// zone change does not move. Otherwise the label names a different day than
+    /// the clock beside it after the Mac changes zone under a running app.
     public static func day(_ date: Date,
                            language: String = AppLanguage.current.rawValue) -> String {
         cache.day(language: language, zone: NSTimeZone.default).string(from: date)
     }
 
-    /// **The days a folded row stands for, written the way the language writes a
-    /// span of days** — the system's own interval formatter, and not two days
-    /// joined with a dash: the sign and its spacing are the language's (Japanese
-    /// writes «～», and a day that shares its month or year with the other is
-    /// written once). The long date style `day` uses, which makes a span and a
-    /// heading one family in six of the eight languages; in Chinese and Japanese
-    /// the interval formatter answers that style in numerals
-    /// (`2026/9/22 – 2026/9/23`) beside a heading spelled `2026年9月22日`, so
-    /// those two ask for the day by a template (`2026年9月22日 – 23日` in
-    /// Chinese, `2026年9月22日～23日` in Japanese).
+    /// The days a folded row stands for, written by the system's interval
+    /// formatter rather than two days joined with a dash: the sign and spacing
+    /// are the language's, and a shared month or year is written once. The long
+    /// style matches `day`'s headings, except in Chinese and Japanese, where it
+    /// answers in numerals, so those two ask by a template.
     ///
-    /// The formatter is kept per language and zone, never in one constant: the
-    /// app's language changes while it runs, and a formatter built per call is
-    /// the cost the page reads a thousand rows to avoid.
+    /// Kept per language and zone: the language changes while the app runs, and
+    /// a formatter built per call is the cost a page of a thousand rows avoids.
     public static func daySpan(from first: Date, to last: Date, language: String,
                                zone: TimeZone) -> String {
         let spelled = cache.daySpan(language: language, zone: zone).string(from: first, to: last)
@@ -530,12 +451,9 @@ public enum HelmDates {
             }
         }
 
-        /// Keyed by the language **and** the style, for the reason `span` above
-        /// is keyed by its unit set: a formatter is not safe to reconfigure
-        /// under a reader, and keyed by language alone the first style a
-        /// language was asked for would be the style it answers in for the life
-        /// of the process — so the VPN tile's `.short` would reword the About
-        /// page's «last checked» on any Mac that opened the VPN page first.
+        /// Keyed by the language and the style, for the reason `span` is keyed
+        /// by its unit set: keyed by language alone, the first style asked for
+        /// would be the one that language answers in for the life of the process.
         func relative(language: String,
                       style: HelmDates.AgeStyle) -> RelativeDateTimeFormatter {
             let key = "\(language)|\(style)"
@@ -559,28 +477,15 @@ public enum HelmDates {
     }
 }
 
-/// Quotation marks belong to the language too. VPN and the settings window
-/// already spelled them out per language; anything that quotes a value the user
-/// typed goes through here instead of hard-coding English's pair.
+/// Quotation marks belong to the language too: anything that quotes a value
+/// the user typed goes through here instead of hard-coding English's pair.
 ///
-/// Which marks a language uses is looked up, not remembered — the same rule the
-/// units and the pane names follow. Counted over the 1176 `Localizable.loctable`
-/// files macOS ships, for this exact shape (a substituted name between a pair):
-///
-///     fr   «\u{00A0}%@\u{00A0}»  3206     « %@ » with plain spaces   12
-///     de   „%@“                  3674
-///     ru   «%@»                   483
-///     es   “%@”                  2768     «%@»                        0
-///     ja   “%@”                  3099     「%@」                       1
-///     zh   “%@”                  3399
-///     pt   “%@”                   378
-///
-/// Three of the eight had been translated rather than read. French put ordinary
-/// spaces inside its guillemets, which is not only the wrong character but a
-/// line-breaking one: a name can end up on the next line from the mark that
-/// opens it. Spanish was given guillemets and Japanese corner brackets; macOS
-/// uses curly quotes for both when what it quotes is a name — 「」 does other
-/// work in Japanese, and this helper only ever wraps a name.
+/// The marks are the ones macOS uses around a substituted name in its own
+/// `Localizable.loctable` files, looked up rather than remembered. French takes
+/// no-break spaces inside its guillemets, because an ordinary space can break a
+/// name onto the next line from its opening mark. Spanish and Japanese take
+/// curly quotes around a name, as macOS does; 「」 does other work in Japanese,
+/// and this helper only ever wraps a name.
 public func Quoted(_ text: String, language: AppLanguage = AppLanguage.current) -> String {
     let nbsp = "\u{00A0}"
     switch language {

@@ -12,13 +12,12 @@ import HelmRuntime
 public struct VPNAutomation: Equatable, Sendable {
     /// What happened. **Three, not two** — a tunnel Helm took down when an app
     /// quit and a tunnel that fell over are the same movement and not the same
-    /// news, and they shared a case for as long as the module existed.
+    /// news.
     ///
     /// `.disconnected` is a rule doing what it was asked to. `.dropped` is the
     /// network, the server or somebody in System Settings taking the tunnel
     /// away while the person believed they were behind it — the one event here
-    /// worth interrupting somebody for, and it was announced in the same words,
-    /// at the same volume, as the one they had arranged themselves.
+    /// worth interrupting somebody for.
     public enum Kind: String, Sendable { case connected, disconnected, dropped
 
         /// Which way the tunnel went. The ring turns in one of two colours and
@@ -29,9 +28,7 @@ public struct VPNAutomation: Equatable, Sendable {
     public let name: String
     public let kind: Kind
 
-    /// How long the ring turns. Two revolutions at 0.6 s each — long enough to
-    /// register as movement, short enough that it cannot be mistaken for a
-    /// progress indicator. The host measures the same window from
+    /// How long the ring turns. The host measures the same window from
     /// `StatusPlan.spinDuration`, so this reads it rather than repeating it.
     static let spinDuration: TimeInterval = StatusPlan.spinDuration
     /// How long the name stays. It outlives the ring on purpose: the movement

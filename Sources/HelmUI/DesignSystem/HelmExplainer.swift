@@ -4,56 +4,33 @@ import SwiftUI
 /// the rest.**
 ///
 /// A setting's line is a caption, not a page. When there is genuinely more to
-/// say — what a permission leaves behind, what an option costs, an example of
-/// the thing being described — the extra belongs *beside* the row rather than
-/// under it: one short sentence in the row, and an ⓘ next to its name that opens
-/// the wider explanation. The caption stays scannable down a column of settings;
-/// the explanation gets room to be an explanation.
+/// say — what a permission leaves behind, what an option costs, an example —
+/// it goes in an ⓘ beside the row's name, and the caption stays scannable down
+/// a column of settings. In the row: what somebody needs to take the decision.
+/// Behind the glyph: what follows from it, such as consequences, recovery, or a
+/// command to type. A fact that is the only way out of a state the app cannot
+/// reach (`sudo rm` on a rule left by a deleted Helm) goes in the explanation in
+/// full.
 ///
-/// This exists because Keep Awake's lid row was **606 characters in German** —
-/// seven drawn lines under one switch, 3.5× the next-longest caption on the same
-/// page. Every word of it was true and none of it was skippable, which is the
-/// shape this component is for: not padding to cut, but a paragraph in the wrong
-/// place.
+/// **A popover, not an inline reveal and not a sheet.** An inline block pushes
+/// every row below it down and is the same wall of text behind a press; a sheet
+/// leaves the page for a question about one line of it. A popover is anchored
+/// to its row, sized on its own terms, dismissed by Escape or a click away, and
+/// is what System Settings puts behind its ⓘ.
 ///
-/// **What goes where.** In the row: what somebody needs to take the decision.
-/// Behind the glyph: what follows from it — consequences, recovery, an example
-/// they may have to type. If a fact is the only way out of a state the app
-/// cannot reach (`sudo rm` on a rule left behind by a deleted Helm), it belongs
-/// in the explanation, in full, and it may not be the thing that got cut.
+/// The app's reveal rules do not reach inside: macOS opens the popover with its
+/// own animation and its own answer to Reduce Motion. Helm animates only the
+/// glyph, through `helmSymbolSwap`.
 ///
-/// **A popover, not an inline reveal and not a sheet**, and the column is the
-/// reason. These rows live in a column of rows — a grouped `Form` (Layout) or a
-/// `HelmSettingsSection` card (Keep Awake) — where an inline block pushes every
-/// row below it down and would be the same wall of text with a press in front
-/// of it. A sheet is the other error — «leave the
-/// page» for a question about one line of it. A popover is anchored to the row
-/// it explains, sized on its own terms rather than the column's, dismissed by
-/// Escape or by clicking away, and it is what macOS itself puts behind the ⓘ in
-/// System Settings. Two of this app's own settings pages already open one from a
-/// control on the page (`VPNConnectionCard`, the «Other…» button in Keep
-/// Awake's hero), so this is a shape the window is known to draw rather than an
-/// assumption about it.
-///
-/// **The app's reveal rules do not reach inside a popover** — the block that
-/// grows and clips (`helmAccordion`) is for a disclosure *in* the page, and what
-/// arrives here is a window macOS opens with its own animation and its own
-/// answer to Reduce Motion. The one thing Helm animates is the glyph, through
-/// `helmSymbolSwap`, which collapses with the setting like every other token.
-///
-/// **The content is blocks rather than a string**, so the explanation can be
-/// several points and an example without the caller assembling a paragraph out
-/// of newlines — and so that a picture is one more case here and one more line
-/// in `blockView`, rather than a new component. That case is deliberately not
-/// written yet: there is nothing to draw in it today, and a case nothing
-/// constructs is a promise with no test under it.
+/// The content is blocks rather than a string, so an explanation can be several
+/// points and an example without the caller assembling a paragraph out of
+/// newlines.
 public struct HelmExplainer: View {
 
     /// What the glyph opens: a heading and the points under it.
     ///
-    /// The title is the caller's — normally the row's own name, so the popover
-    /// says which row it belongs to without a second string to translate and
-    /// without a name that can drift from the control it explains.
+    /// The title is the caller's, normally the row's own name, so the popover
+    /// says which row it belongs to with no second string to translate.
     public struct Content: Equatable {
         public let title: String
         let blocks: [Block]
@@ -78,8 +55,7 @@ public struct HelmExplainer: View {
 
     private let content: Content
     /// The popover's own state, held here so a caller cannot forget to say
-    /// whether the disclosure is open — a control whose whole purpose is to
-    /// show and hide answers its own press with silence otherwise.
+    /// whether it is open.
     @State private var open = false
 
     init(_ content: Content) {
@@ -100,13 +76,11 @@ public struct HelmExplainer: View {
                 .helmSymbolSwap(glyph)
         }
         .buttonStyle(.plain)
-        // A glyph is the whole face of this control. Read aloud it is «button»
-        // until it is named, and the name is macOS's own for exactly this
-        // control — «Подробнее» in the system's tables, not a translation.
+        // A glyph is the whole face of this control, so it is named, with
+        // macOS's own word for exactly this control.
         .accessibilityLabel(HelmA11y.moreInfo)
-        // …and which of its two things it has just done. The popover is a
-        // window, so nothing about the page changes when it opens: without this
-        // the press has no answer at all.
+        // …and which of its two things it has just done: the popover is a
+        // window, so nothing on the page changes when it opens.
         .accessibilityValue(HelmA11y.expanded(open))
         .help(HelmA11y.moreInfo)
         .popover(isPresented: $open, arrowEdge: .bottom) { HelmExplainerPage(content) }
@@ -117,12 +91,9 @@ public struct HelmExplainer: View {
 
 /// What the glyph opens, as a view of its own.
 ///
-/// Not nested inside the button, because a popover is a window and a window
-/// cannot be photographed offscreen: `cacheDisplay(in:to:)` renders the view it
-/// is asked about, and `NSPopover` is not in that tree. As a type the page is
-/// mountable on its own, so what the explanation *looks like* can be read off a
-/// bitmap in both appearances and in all eight languages, which is the only form
-/// in which a claim about it is worth anything.
+/// Not nested inside the button, because a popover is a window and
+/// `cacheDisplay(in:to:)` does not see it. As a type of its own the page can be
+/// mounted and photographed in both appearances and all eight languages.
 struct HelmExplainerPage: View {
 
     private let content: HelmExplainer.Content
@@ -131,10 +102,9 @@ struct HelmExplainerPage: View {
         self.content = content
     }
 
-    /// 320 pt: the width macOS's own settings popovers open at, and — by
-    /// coincidence rather than by dependency — what `helmPanelWidth` is. Not
-    /// shared with it: a panel's width is a fact about the menu bar. Wider reads
-    /// as a document, narrower turns three sentences into nine lines.
+    /// 320 pt: the width macOS's own settings popovers open at. Equal to
+    /// `helmPanelWidth` by coincidence, so not shared with it. Wider reads as a
+    /// document, narrower turns three sentences into nine lines.
     static let width: CGFloat = 320
 
     var body: some View {

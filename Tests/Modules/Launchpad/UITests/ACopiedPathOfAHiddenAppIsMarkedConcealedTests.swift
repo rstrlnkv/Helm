@@ -4,7 +4,7 @@ import XCTest
 @testable import Module_Launchpad_UI
 
 /// Copy Path of a hidden app is marked for a clipboard manager (`ConcealedType`, `TransientType`), and of any other app is the plain
-/// text. Read off a pasteboard of the test's own name, never the general one. Whether a manager honours the markers is not measured.
+/// text. Read off a pasteboard of the test's own name, never the general one.
 @MainActor final class ACopiedPathOfAHiddenAppIsMarkedConcealedTests: XCTestCase {
     private func board() -> NSPasteboard {
         let board = NSPasteboard(name: NSPasteboard.Name("helm.test.launchpad.\(UUID().uuidString)"))

@@ -2,9 +2,8 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Disk_Engine
 
-/// Against a real fixture tree in tmp — the bulk-attribute walk has too many
+/// Against a real fixture tree in tmp: the bulk-attribute walk has too many
 /// byte-layout edge cases to trust without touching an actual filesystem.
-/// Past defect: fixed in commit 76f18e41.
 final class DiskScannerTests: XCTestCase {
     private var fixture: URL!
 
@@ -65,8 +64,8 @@ final class DiskScannerTests: XCTestCase {
         XCTAssertEqual(node.bytes > 0, true)
     }
 
-    /// The skip set must actually prevent descent — the firmlink fix depends
-    /// on it, and a path-formatting slip made it silently inert once already.
+    /// The skip set must actually prevent descent: the firmlink skip depends on
+    /// it, and a path-formatting slip makes it silently inert.
     func testSkippedDirectoriesAreNotWalked() throws {
         let root = scratchDirectory("skip")
         let kept = root.appendingPathComponent("kept")

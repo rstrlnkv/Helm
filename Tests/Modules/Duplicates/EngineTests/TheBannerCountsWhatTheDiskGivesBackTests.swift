@@ -7,21 +7,14 @@ import HelmRuntime
 /// What the removal reports is what the disk gives back, and in this module the
 /// copy that stays is never in the batch.
 ///
-/// `FileWeight.Ledger` charges a clone family once — but only for the members it
-/// sees, and its own doc says so: "there is no reverse lookup from a family to
-/// its members, so a lone clone whose twin lives on elsewhere is still charged
-/// in full." **Duplicates is the module where that is every family**: the
-/// survivor is by construction excluded from the plan, so the ledger added to
-/// `HelmTrash` for exactly this lie could never fire here, and trashing a clone
-/// of a file that stays was reported as its full 20 MB against the 72 KB the
-/// disk actually gains.
+/// `FileWeight.Ledger` charges a clone family once, but only for the members it
+/// sees: there is no reverse lookup from a family to its members. **In
+/// Duplicates that is every family**, because the survivor is by construction
+/// excluded from the plan, so the survivor is passed to the ledger.
 ///
-/// Measured on the fixture below rather than reasoned about: `clonefile` is what
-/// Finder's Duplicate command does, and a clone reports its *whole* allocated
-/// size, not zero — which is why "the clone's bytes are 0" fixtures elsewhere in
-/// this target cannot see any of this.
-///
-/// Guards a past defect: f0e00ef3 fix(duplicates): the banner counts what the disk gives back, and the page reaches the screen at all.
+/// `clonefile` is what Finder's Duplicate command does, and a clone reports its
+/// *whole* allocated size, not zero — which is why "the clone's bytes are 0"
+/// fixtures elsewhere in this target cannot see any of this.
 final class TheBannerCountsWhatTheDiskGivesBackTests: XCTestCase {
 
     private var root: URL!
@@ -87,9 +80,8 @@ final class TheBannerCountsWhatTheDiskGivesBackTests: XCTestCase {
         XCTAssertEqual(result.freedBytes, 0)
     }
 
-    /// The other three modules pass no survivor and are unchanged: a family with
-    /// nobody staying gives its blocks back once, which is what the ledger has
-    /// always done.
+    /// With no survivor passed, as the other modules call it, a family with
+    /// nobody staying gives its blocks back once.
     func testAFamilyWithNoSurvivorInTheBatchStillGivesItsBlocksBackOnce() throws {
         let allocated = FileWeight.allocated(of: URL(fileURLWithPath: clone))
         XCTAssertGreaterThan(allocated, 0)

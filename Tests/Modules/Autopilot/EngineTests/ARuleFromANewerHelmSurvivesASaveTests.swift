@@ -6,10 +6,10 @@ import HelmTestSupport
 
 /// A rule a newer Helm wrote is not applied and not lost.
 ///
-/// Guards: owner decision 4. One rule this build cannot decode used to fail the
-/// whole list, and the next save wrote the list back without it; a Dev, Beta,
-/// Dev round trip lost the newer rules. Every case plants a sealed record and
-/// asserts first that the engine read it.
+/// Guards owner decision 4: one rule this build cannot decode neither fails the
+/// whole list nor is dropped by the next save, so a Dev, Beta, Dev round trip
+/// keeps the newer rules. Every case plants a sealed record and asserts first
+/// that the engine read it.
 final class ARuleFromANewerHelmSurvivesASaveTests: XCTestCase {
 
     private typealias B = ASealedRecordBench

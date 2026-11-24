@@ -3,13 +3,11 @@ import HelmRuntime
 
 /// What the marks on the screen are worth, and what a press on them asks for.
 ///
-/// **It sits beside `KeptCopies` on purpose.** This module's recurring defect is
-/// two arithmetics about one basket — the bar quoting 300 MB above the list and
-/// the banner 321 MB below it about the same two files — and both times the two
-/// spellings were a page's and an engine's. The page's half is here now, in the
-/// engine's own target, so the fold the bar shows, the plans the press sends and
-/// the gate the batch is read against are one file apart rather than one target
-/// apart.
+/// **It sits beside `KeptCopies` on purpose.** Two arithmetics about one basket,
+/// a page's and an engine's, let the bar above the list and the banner below it
+/// quote different figures for the same files. Here, in the engine's own target,
+/// the fold the bar shows, the plans the press sends and the gate the batch is
+/// read against are one file apart rather than one target apart.
 ///
 /// Nothing here reads a disk or holds any state: it is the group list and the
 /// marks, and the same inputs always give the same answer.
@@ -33,15 +31,14 @@ public enum DuplicateBasket {
     /// **Not the sum of the ticked copies' sizes.** A clone shares its blocks
     /// with the copy it was made from, and in this module that copy is usually
     /// one that stays — so its removal returns nothing, and adding the sizes up
-    /// promised exactly double on the case Finder's own Duplicate command
-    /// creates.
+    /// would promise double on the case Finder's own Duplicate command creates.
     public static func worth(marking marked: [String], in groups: [DuplicateGroup]) -> Int {
         DuplicateGroup.reclaimable(marking: Set(marked), in: groups)
     }
 
     /// One copy's own figure. A group's size is the copy that stays, so quoting
-    /// it against a path promised a clone's nothing for a real file, or the
-    /// reverse — the basket bar and the menu under it both ask this.
+    /// it against a path would promise a clone's nothing for a real file, or the
+    /// reverse. The basket bar and the menu under it both ask this.
     public static func bytes(of path: String, in groups: [DuplicateGroup]) -> Int {
         groups.lazy.compactMap { group in
             group.copies.first { $0.path == path }
@@ -53,7 +50,7 @@ public enum DuplicateBasket {
     /// Through `DuplicateGroup.reclaimable`, which is the same fold the basket
     /// bar and the confirmation use and the same slate `HelmTrash` opens for the
     /// batch — so the line above the list, the bar under it and the banner after
-    /// the press are one arithmetic (ARCHITECTURE.md § Duplicates).
+    /// the press are one arithmetic (Architecture/Duplicates.md § Duplicates).
     public static func wasted(in groups: [DuplicateGroup]) -> Int {
         DuplicateGroup.reclaimable(marking: Set(groups.flatMap(removableExtras)), in: groups)
     }

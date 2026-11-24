@@ -6,11 +6,9 @@ import XCTest
 
 /// The verification's three verdicts reach the reply as three facts, not two.
 ///
-/// `trash` folded `.unreadable` into the same refusal as `.changed`, so a pair
-/// the engine could not read — a permission withdrawn, a volume gone, the
-/// *survivor* unreadable — came back as `changedSinceScan`: «this is not where
-/// Helm found it», said about a file that is exactly there. The verdict's own
-/// doc keeps the two apart («not a licence to delete»); the reply has to.
+/// A pair the engine could not read — a permission withdrawn, a volume gone,
+/// the *survivor* unreadable — is not `changedSinceScan`: «this is not where
+/// Helm found it» would be said about a file that is exactly there.
 final class AnUnreadablePairIsItsOwnRefusalTests: XCTestCase {
 
     private func engine(verdict: DuplicateVerification.Verdict,

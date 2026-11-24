@@ -4,40 +4,21 @@ import HelmRuntime
 @testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
-/// The two doors `treeIsComplete` does not stand in front of.
+/// An unfinished tree is never written down, at the two save sites besides
+/// `scan(path:)`, which saves only a walk that answered.
 ///
-/// `StopKeepsWhatItMeasuredTests` pins the rule and the reason:
-/// **an unfinished tree is never written down.** `TreeBuilder` charges a
-/// directory as its files are found, so every folder in one reports a floor
-/// rather than a total — and the store is what the module reopens on and labels
-/// «Measured N minutes ago», which turns a tree the person was told is
-/// incomplete into a measurement they are not.
+/// Every folder of an unfinished tree holds a floor, not a total, and the store
+/// is what the module reopens on as «Measured N minutes ago»
+/// (`StopKeepsWhatItMeasuredTests`). The two cases:
 ///
-/// That rule is enforced at exactly one of the three places the view model
-/// saves:
+/// 1. A removal while the walk is still running: rows can be ticked off a
+///    partial snapshot and `Move to the Trash` is dimmed only by `busy`, so
+///    `emptyBasket` must not save a tree that is still being built.
+/// 2. A folder measured after Stop: a stopped tree is full of folders the walk
+///    never reached, which is what `drill` measures on demand, so
+///    `measureAndDrill` must not save the stopped tree it grafts into.
 ///
-/// * `scan(path:)` — only on a walk that answered, so nothing unfinished
-///   reaches it;
-/// * `emptyBasket` — asks `treeIsComplete`, which is `!stopped`;
-/// * `measureAndDrill` — asks nothing at all.
-///
-/// Both cases below are trees the walk has not finished and `stopped` is false
-/// for, which is the whole of `treeIsComplete`'s knowledge:
-///
-/// 1. **A removal while the walk is still running.** The bar is drawn outside
-///    `switch dvm.phase`, rows can be ticked off a partial snapshot, and
-///    `Move to the Trash` is dimmed only by `busy` — so this is three ordinary
-///    gestures, not a corner. `stopped` is false during a live walk, so
-///    `treeIsComplete` answers yes about a tree that is still being built.
-/// 2. **A folder measured after Stop.** A stopped tree is exactly the tree full
-///    of folders the walk never reached, and a folder with no children is what
-///    `drill` measures on demand — `guard !last.children.isEmpty` — so the
-///    stopped screen is the one where that path is *most* likely to be taken.
-///    `measureAndDrill` grafts the answer in and saves, with no guard.
-///
-/// Each case is written with the control that proves the wait is long enough to
-/// see a save: an absence measured with too short a wait is an absence of the
-/// wait, not of the write.
+/// Each case has a control proving the wait is long enough to see a save.
 @MainActor
 final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
 

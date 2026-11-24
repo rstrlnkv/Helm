@@ -58,10 +58,8 @@ public enum RecognizedBoxes {
 
     /// **The blur's step for an automatic blur comes from the height of the text found,** not from the step the
     /// editor remembers: the smallest of the three whose block is at least that high, the thickest when none is.
-    /// Text taller than the thickest block (24 points) therefore gets a block lower than itself, the thickest the
-    /// tool has, and what that leaves readable of such large text is not measured here; no fourth step was added.
-    /// A block lower than the text it covers can leave digits that are read back out of the mosaic. A height that
-    /// is not a number takes the thickest.
+    /// Text taller than the thickest block (24 points) gets a block lower than itself, which can leave digits that
+    /// are read back out of the mosaic. A height that is not a number takes the thickest.
     static func step(forTextHeight points: CGFloat) -> AnnotationThickness {
         guard points.isFinite else { return .thick }
         return AnnotationThickness.allCases.first { $0.points(for: .blur) >= points } ?? .thick

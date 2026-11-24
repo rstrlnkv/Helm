@@ -8,44 +8,27 @@ import Module_VPN_Engine
 /// What each notice mode looks like, drawn rather than shipped as pictures so
 /// the previews follow the appearance the way the rest of the app does.
 ///
-/// A menu-bar corner with Helm's ring in it; what differs between the three is
-/// exactly what the setting decides — nothing beside the ring, a name beside
-/// it, or a banner below it.
+/// A menu-bar corner with Helm's ring in it; the three differ in exactly what
+/// the setting decides: nothing beside the ring, a name beside it, or a banner
+/// below it.
 ///
-/// **Every size is a fraction of the frame**, which is the same rule
-/// `AppearanceThumbnail` follows and is what lets these draw at any card size
-/// without a redraw: written in points, they would not move with it.
+/// **Every size is a fraction of the frame**, as in `AppearanceThumbnail`, so
+/// these draw at any card size.
 ///
-/// **Drawn after the Figma mockups**, in four points:
+/// - The desktop is `HelmWallpaper`, shared with the appearance thumbnail.
+/// - **The menu bar has no strip behind it**: macOS 26 draws the bar as glass
+///   over the wallpaper.
+/// - A signal-ish pair and the clock stand beside the ring, because a corner
+///   holding one glyph does not read as a menu bar.
+/// - `.system` shows **no** name beside the ring
+///   (`VPNNotice.showsMenuBarName`): the banner names the configuration.
 ///
-/// - The desktop is `HelmWallpaper`, shared with the appearance thumbnail,
-///   rather than a flat `Color.primary.opacity(0.06)`. The mockups draw one
-///   desktop for both controls.
-/// - **The menu bar has no strip behind it.** macOS 26 draws the bar as glass
-///   over the wallpaper, so the glyphs sit on the desktop.
-/// - There are the neighbours a real menu bar has — a signal-ish pair and the
-///   clock — because a corner holding one glyph does not read as a menu bar at
-///   all, which is the whole subject of this picture.
-/// - `.system` still shows **no** name beside the ring, which is
-///   `VPNNotice.showsMenuBarName`'s decision and the mockup's too: a banner
-///   names the configuration in words, so the menu bar does not have to.
-///
-/// The clock is a shape, not digits. The mockups carry Apple's "9:41", and at
-/// 104 pt real digits are three grey smudges — this stands for a clock the way
-/// the two lines in the banner stand for a sentence.
-/// `@MainActor` because every one of these builds a view, and its one caller,
-/// `VPNConnectionCard`'s body, is on the main actor already.
+/// The clock is a shape, not digits: at 104 pt real digits are grey smudges.
+/// `@MainActor` because each of these builds a view for `VPNConnectionCard`.
 @MainActor
 enum NoticePreview {
     /// The picture for a mode, **derived from the mode** rather than described
-    /// beside it.
-    ///
-    /// It was three hand-written pairs of booleans, and one of them was wrong:
-    /// `.system` was drawn with a name in the menu bar while
-    /// `VPNNotice.showsMenuBarName` is `self == .menuBar`, so the card for the
-    /// loudest mode promised something the setting does not do. Nothing could have
-    /// caught it — the enum and the picture agreed about nothing, because nothing
-    /// connected them. They are one expression now.
+    /// beside it, so the picture cannot promise what the setting does not do.
     static func of(_ mode: VPNNotice) -> some View {
         strip(name: mode.showsMenuBarName, banner: mode.postsBanner)
     }
@@ -75,12 +58,9 @@ enum NoticePreview {
         HStack(spacing: w * 0.029) {
             Spacer()
             // **Monochrome, not the accent.** The status item is a template
-            // image unless a module tints it (`StatusItemController.refreshIcon`
-            // → `tintToken`), so an accent ring here was drawing the uncommon
-            // case — and drawing it invisibly: measured on this wallpaper it
-            // came out at 1.4:1 in dark, a blue ring on blue. The banner's icon
-            // below keeps the accent, where a notification really does carry
-            // the app's own colour.
+            // image unless a module tints it (`StatusItemController.refreshIcon`),
+            // and an accent ring on this wallpaper is a blue ring on blue in
+            // dark. The banner's icon keeps the accent, as a notification does.
             Circle()
                 .strokeBorder(Color.primary.opacity(0.75), lineWidth: 1.5)
                 .frame(width: h * 0.121, height: h * 0.121)
@@ -89,10 +69,8 @@ enum NoticePreview {
                     .fill(Color.primary.opacity(0.70))
                     .frame(width: w * 0.160, height: h * 0.091)
             }
-            // A signal-strength wedge and the clock. Both `secondary` rather
-            // than `primary`: they are the room this picture stands in, and a
-            // neighbour drawn as firmly as the subject makes the reader hunt
-            // for which glyph the setting is about.
+            // A signal-strength wedge and the clock, fainter than the ring so
+            // the reader sees which glyph the setting is about.
             RoundedRectangle(cornerRadius: 1)
                 .fill(Color.primary.opacity(0.45))
                 .frame(width: w * 0.048, height: h * 0.091)
@@ -113,10 +91,8 @@ enum NoticePreview {
                 .frame(width: w * 0.5, height: h * 0.303)
                 .overlay(alignment: .leading) {
                     HStack(spacing: w * 0.029) {
-                        // The icon is round because notification icons are,
-                        // and it is the app's own accent ring rather than a
-                        // grey disc — the banner is Helm's, and this is the
-                        // one place in the picture that says whose it is.
+                        // Round, as notification icons are, with the app's
+                        // accent ring: the one mark saying whose banner it is.
                         Circle()
                             .fill(Color.primary.opacity(0.10))
                             .overlay(Circle().strokeBorder(Color.accentColor, lineWidth: 1))

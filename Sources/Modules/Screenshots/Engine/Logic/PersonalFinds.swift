@@ -4,7 +4,7 @@ import Foundation
 /// What "Blur Emails and Phone Numbers" blurs, from a reading of the picture: an e-mail address, a phone number,
 /// a card number by Helm's own rule (`CardNumbers`) and a link, **and nothing else — that list is the whole of
 /// it,** and the menu item's hint names exactly it. A postal address is not on it, and neither is a name or a
-/// face: what the system finds of those was not measured in every language, and the item does not promise it.
+/// face: what the system finds of those is not known in every language, so the item does not promise it.
 ///
 /// A find is one box to blur (`RecognizedBoxes.place`), and the boxes are made for `AnnotationEditing.insert(blurs:)`,
 /// which puts each in as an ordinary blur layer the person can see, move and delete. Two kinds of find are not

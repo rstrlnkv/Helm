@@ -6,18 +6,14 @@ import HelmRuntime
 
 /// **The `install.sh` wrapper under every input its own test does not feed it.**
 ///
-/// `AStopReachesTheInstallerItselfTests` stops the wrapper once, while the
-/// installer is running. The wrapper also has to: end a Stop that lands in the
-/// download, survive a second Stop, and remove the script exactly once — and a
-/// Stop can land at *any* moment of the wrapper's life, not only the one after
-/// the installer has settled.
+/// The wrapper ends a Stop that lands in the download, survives a second Stop,
+/// removes the script exactly once, and holds at *any* moment of its life a
+/// Stop can land in.
 ///
-/// The command is the engine's own (taken from `installBrew` against fakes),
-/// rehosted the way `TheDownloadedInstallerIsTidiedAwayTests` does it — the
-/// `https://` word becomes a `file://` URL, `mktemp` is told where to write —
-/// and run through the real `ShellProcessRunner.stream`, whose handle is what
-/// Stop terminates. Nothing here reaches the network, root, or the real
-/// installer; every installer is a stand-in written by the test.
+/// The command is the engine's own, rehosted as
+/// `TheDownloadedInstallerIsTidiedAwayTests` does, and run through the real
+/// `ShellProcessRunner.stream`. Nothing here reaches the network, root, or the
+/// real installer; every installer is a stand-in written by the test.
 final class TheInstallerWrapperKeepsItsWordTests: XCTestCase {
 
     // MARK: - Stop
@@ -82,16 +78,14 @@ final class TheInstallerWrapperKeepsItsWordTests: XCTestCase {
         XCTAssertEqual(run.exits, 1, "the stream ended \(run.exits) times")
     }
 
-    /// **A Stop can land at any moment of the wrapper's life**, not only once
-    /// the installer has settled — through `adopt` it lands a moment after the
-    /// launch, and a person's press can land as the download hands over to the
+    /// **A Stop can land at any moment of the wrapper's life**: through `adopt`
+    /// a moment after the launch, or as the download hands over to the
     /// installer. Swept across the wrapper's first milliseconds, calibrated on
-    /// this Mac: every Stop must end with no installer running, no download
-    /// still writing, and nothing in the temporary folder.
+    /// the machine running it, every Stop ends with no installer running, no
+    /// download still writing, and nothing in the temporary folder.
     ///
-    /// The stand-in installer replaces itself with a twenty-second sleep, so an
-    /// installer that outlived the Stop also holds the page's pipe — the stream
-    /// not ending is the same defect seen from the page.
+    /// The stand-in installer replaces itself with a twenty-second sleep, so one
+    /// that outlived the Stop also holds the page's pipe open.
     func testNoMomentOfStopLeavesTheInstallerOrItsScriptBehind() throws {
         let g = try ground("wrapper-stop-sweep")
         let command = try rehosted(try composedInstaller(),

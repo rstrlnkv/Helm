@@ -6,33 +6,13 @@ import Module_Homebrew_Engine
 /// lists already drew.**
 ///
 /// Nothing here reads the page or the view model: the whole input is one
-/// `PackageInfo` and the figure beside it.
-/// `packageDetail` stays the one builder of what a package draws, and this is
-/// one of the things it draws.
+/// `PackageInfo` and the size beside it, which arrives on its own
+/// (`SizeReading`, spent in `PackageFacts`).
 ///
-/// **Every block is drawn only when its fact is present.** A package that is not
-/// installed has no install date and no "how it got here"; a cask records
-/// neither a licence nor who asked for it; most packages are not deprecated,
-/// have no sibling version lines and print no caveats. An absent fact is an
-/// absent block rather than one with a dash in it — the whole reason
-/// `PackageInfo` carries optionals rather than empty strings.
-///
-/// And nothing here can be reached while `HomebrewViewModel.info` is nil, which
-/// is the rule the tier exists under: a selection with no answer yet, or one
-/// whose answer was refused, draws the first tier and nothing false.
-///
-/// **The size is the one input that is not part of `info`**, and it is a
-/// parameter of its own because it arrives on its own: `brew info` carries no
-/// size in either direction, so the figure is a walk of the package's Cellar
-/// directory that lands after this tier has already been drawn once.
-///
-/// It is also the one input with three states rather than two. While that walk
-/// is out for the package on screen, the row is there and says the figure is
-/// being counted; when it answers, the figure replaces the word in the row that
-/// is already there; when there was nothing to measure — a cask, a keg that
-/// would not open, a package that is not installed — there is no row at all,
-/// the same as every other absent fact here. `SizeReading` is what carries the
-/// difference, and `PackageFacts` is where it is spent.
+/// **Every block is drawn only when its fact is present.** An absent fact is an
+/// absent block rather than one with a dash in it — the reason `PackageInfo`
+/// carries optionals rather than empty strings. Nothing here is drawn while
+/// `HomebrewViewModel.info` is nil.
 struct PackageSecondTier: View {
     let info: PackageInfo
     /// What is known about the disk this package occupies: nothing, a walk that
@@ -47,11 +27,8 @@ struct PackageSecondTier: View {
             origin
             notes
             if !info.dependencies.isEmpty {
-                // A heading and a wrapping row of pills — the dependencies.
-                // `HelmWrappingRow`, not an `HStack`: an `HStack` places every
-                // child on one line by construction and compresses them when
-                // the line is too narrow, and `node` answers with eight names
-                // in a column that is 260 pt at its narrowest.
+                // `HelmWrappingRow`, not an `HStack`, which would compress a
+                // long list of names onto one line.
                 HelmSettingsSection(HbStr.dependsOn) {
                     HelmWrappingRow(spacing: HelmSpace.s2, lineSpacing: HelmSpace.s2,
                                     alignment: .leading) {
@@ -69,21 +46,11 @@ struct PackageSecondTier: View {
     /// trailing** — the shape macOS itself uses for exactly this, in System
     /// Settings' own «About» and in every grouped `Form`.
     ///
-    /// Rows, not tiles: a grid of tiles needs a measured minimum to decide how
-/// many go across and still gives a French label two lines, and a column of wells
-/// side by side reads as a set of controls rather than as statements about one
-/// package. Rows need no such number: there is one of them per fact at every
-/// width, and the only thing the width decides is whether a long value takes a
-/// second line.
+    /// Rows, not tiles: tiles need a measured minimum to decide how many go
+    /// across and read as controls; a row per fact holds at every width.
     ///
-    /// **The label recedes and the value does not.** The person came for «3.6.4»,
-/// not for «Installed version».
-    ///
-    /// The value may wrap and keeps to the trailing edge when it does:
-    /// the widest pair is French at 105.2 pt of label and
-/// 106.3 of value (measured once by hand, no guard), which with the row's own
-/// gaps is a few points more than the 244 pt inspector at 560 pt (once `HomebrewSplit`'s
-/// threshold). One wrapped value in one language at one width is the price.
+    /// **The label recedes and the value does not.** The value may wrap, and
+    /// keeps to the trailing edge when it does.
     @ViewBuilder
     private var facts: some View {
         let rows = PackageFacts.of(info, size: size)
@@ -106,27 +73,14 @@ struct PackageSecondTier: View {
     /// from.
     ///
     /// **The link is drawn as a link only for a scheme a browser answers.** The
-    /// value is a string out of a document downloaded from the network, and
-    /// `Link` hands whatever it is given to the system opener — which answers
-    /// every scheme any installed app has registered, not only the two this is
-    /// for. A homepage that is neither `http` nor `https` is still shown, as
-    /// text.
+    /// value comes from the network, and `Link` hands any scheme to the system
+    /// opener. Another homepage is shown as text.
     @ViewBuilder
     private var origin: some View {
-        // **A stack that resolves to zero height is not the same as no stack.**
-        // Collapsed to nothing rather than drawn empty, the way `facts` above
-        // is: a `VStack`'s spacing is not paid around an absent child, and an
-        // `HStack` of nothing is a child. `origin` and `notes` were
-        // unconditional stacks, so for the commonest package of all (an
-        // installed formula somebody asked for, no other version lines, not
-        // deprecated) the tier paid its 24 pt step around each of two empty
-        // blocks where the design's rhythm is 12. Decided here rather than by
-        // the layout, because the question is about the answer. Presence is all
-        // there is to ask: `BrewInfoParser` maps a blank value to nil at the one
-        // place the document is read, so a field that is there has something in
-        // it. Either half of the origin line is enough to draw it — a package
-        // with a homepage and no tap is an ordinary answer, and so is the
-        // reverse.
+        // **An empty stack is still a child,** and the parent's spacing is
+        // paid around it; so the block is absent rather than empty.
+        // `BrewInfoParser` maps a blank value to nil, so presence is all there
+        // is to ask. Either half is enough to draw the line.
         if info.homepage != nil || info.tap != nil {
             HStack(spacing: HelmSpace.s5) {
                 if let homepage = info.homepage {
@@ -154,29 +108,19 @@ struct PackageSecondTier: View {
 
     /// The notes, each one drawn only when its fact is there.
     ///
-    /// The deprecation goes through `HelmBanner`, which is the house's one
-    /// signal-tinted statement and measures its ink against its own fill; the
-    /// other two are quiet fields, because "it came in as a dependency" and
-    /// "there are other version lines" are facts about the package rather than
-    /// warnings about it, and three orange fields in a column would leave none
-    /// of them reading as the one that matters.
+    /// The deprecation goes through `HelmBanner`, the one signal-tinted
+    /// statement; the other two are quiet, facts about the package rather than
+    /// warnings, so the warning stands out.
     @ViewBuilder
     private var notes: some View {
-        // And the same for this one (see `origin`): most packages are not
-        // deprecated, were asked for by name and have no other version lines,
-        // which is an empty `VStack` on the commonest screen in the module.
-        // `installedOnRequest` is read as a *value* rather than for presence:
-        // nil is a cask, which records nobody, `true` is somebody asked for it,
-        // and only `false` is something to say.
+        // Absent rather than empty, as in `origin`. `installedOnRequest` is
+        // read as a value: nil is a cask, and only `false` has something to say.
         if info.deprecationReason != nil || info.installedOnRequest == false
             || !info.siblings.isEmpty {
             VStack(alignment: .leading, spacing: HelmSpace.s4) {
                 if let reason = info.deprecationReason {
-                    // Three sentences, and the third only when Homebrew named a
-                    // replacement: "nothing was offered instead" is worth saying
-                    // and "use nothing instead" is not. Composed out of whole
-                    // sentences rather than clauses, so no language has to bend
-                    // one into a frame another language chose.
+                    // Whole sentences, not clauses, so no language bends one
+                    // into another's frame; the third only with a replacement.
                     let said = HbStr.deprecated + " " + HbStr.deprecationReason(reason)
                     HelmBanner(info.replacement.map { said + " " + HbStr.useInstead($0) } ?? said)
                 }
@@ -207,12 +151,9 @@ struct PackageSecondTier: View {
 
     /// What brew prints after an install: paths to edit, a service to start.
     ///
-    /// Monospaced and kept whole, because it is the tool's own text and usually
-    /// carries a path or a command somebody has to copy — re-flowing it would
-    /// change what it says, and `textSelection` is what makes copying possible
-    /// at all. In a card of its own under the house's section title, the same
-    /// surface as the facts above it rather than a recessed well — it is
-    /// something to read, not something to type into.
+    /// Monospaced, kept whole and selectable: the tool's own text, usually a
+    /// path or a command somebody has to copy. A card, not a well: it is to be
+    /// read, not typed into.
     private func caveatsBlock(_ caveats: String) -> some View {
         HelmSettingsSection(HbStr.packageNotes) {
             Text(caveats)

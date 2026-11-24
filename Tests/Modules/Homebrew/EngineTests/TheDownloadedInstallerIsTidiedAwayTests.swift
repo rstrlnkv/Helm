@@ -8,27 +8,17 @@ import XCTest
 /// running it.**
 ///
 /// It downloads the Homebrew installer into a temporary file, runs it, and
-/// removes it — and the whole string opens with `set -e`, which ends the shell
-/// at the first command that fails. An installer that exits non-zero is
-/// therefore the last thing the shell does: the `rm` after it never runs, and
-/// the downloaded script stays in the temporary directory, where it is a
-/// program somebody else's process can read and (with the right umask on the
-/// folder) rewrite before a retry runs it again.
+/// removes it, under `set -e`. A failed installer must not end the shell before
+/// the `rm`: a script left in the temporary directory is a program another
+/// process can read and perhaps rewrite before a retry runs it.
 ///
-/// Nothing here reaches the network or root. The composed string is taken from
-/// the engine itself — not spelled a second time here, which is how the two
-/// sides of a test come to agree with each other and with nothing else — and
-/// two fixtures are substituted into it:
+/// Nothing here reaches the network or root. The string is taken from the
+/// engine itself, with two fixtures substituted:
 ///
 ///   * the `https://` word becomes a `file://` URL of a script this test wrote,
-///     so `curl` fetches a local file and the exit code is the test's to choose;
-///   * `mktemp` is given `-p`, because macOS's `mktemp` ignores `TMPDIR`
-///     (measured: it answers out of `/var/folders/…/T` whatever the environment
-///     says), and a test that cannot say where the file lands cannot say whether
-///     it is still there.
-///
-/// Everything the defect lives in — `set -e`, the ordering, how the exit code is
-/// carried past the `rm` — is run exactly as the engine composed it.
+///     so the exit code is the test's to choose;
+///   * `mktemp` is given `-p`, because macOS's `mktemp` ignores `TMPDIR`, and a
+///     test that cannot say where the file lands cannot say whether it is gone.
 final class TheDownloadedInstallerIsTidiedAwayTests: XCTestCase {
 
     // MARK: - Plumbing
@@ -36,11 +26,6 @@ final class TheDownloadedInstallerIsTidiedAwayTests: XCTestCase {
     /// Runs the engine's command with `script` standing in for the downloaded
     /// installer, and answers what the shell exited with and what it left in the
     /// temporary folder.
-    ///
-    /// One launcher rather than one per test: the three cases differ only in
-    /// what the installer they download does, and a second copy of «write the
-    /// script, substitute, launch, wait» is how one of them comes to be running
-    /// something else than the others.
     private func runInstaller(_ script: String, label: String,
                               file: StaticString = #filePath, line: UInt = #line)
     throws -> (status: Int32, leftovers: [String]) {
@@ -68,8 +53,7 @@ final class TheDownloadedInstallerIsTidiedAwayTests: XCTestCase {
 
     // MARK: - The tidying
 
-    /// The defect: the installer failed, so `set -e` ended the shell before the
-    /// `rm`, and the downloaded script is still on disk.
+    /// The installer failed, and the downloaded script is still removed.
     func testAFailedInstallerIsStillRemoved() throws {
         let result = try runInstaller(exiting(3), label: "brew-installer-failed")
 
@@ -80,9 +64,8 @@ final class TheDownloadedInstallerIsTidiedAwayTests: XCTestCase {
                        + "tells the person the install failed")
     }
 
-    /// The control: the path that always worked still works, in both halves.
-    /// Without it, «leaves nothing behind» is satisfied by a command that
-    /// downloads nothing.
+    /// The control: a successful install is removed and reports success, so
+    /// «leaves nothing behind» is not met by a command that downloads nothing.
     func testASuccessfulInstallerIsRemovedAndReportsSuccess() throws {
         let result = try runInstaller(exiting(0), label: "brew-installer-ok")
 
@@ -90,11 +73,8 @@ final class TheDownloadedInstallerIsTidiedAwayTests: XCTestCase {
         XCTAssertEqual(result.status, 0)
     }
 
-    /// And the fixture is proven on the machine rather than assumed: an
-    /// installer this test writes to exit 3 is really run, so the failing case
-    /// above is a failing installer and not a `curl` that fetched nothing.
-    /// Without this, a broken substitution would make both tests above pass on
-    /// a command that never ran anything.
+    /// The fixture is really run: an installer written to exit 3 does, so the
+    /// failing case is not a `curl` that fetched nothing.
     func testTheFixtureReallyRunsTheScriptItWrote() throws {
         let witness = scratchDirectory("brew-installer-witness").appendingPathComponent("it-ran")
 

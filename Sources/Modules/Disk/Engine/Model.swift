@@ -22,10 +22,9 @@ public struct VolumeInfo: Equatable, Sendable, Identifiable {
 /// scan; the model receives this immutable snapshot by return from `scan`, and
 /// `ScanStore` saves it.
 public struct DiskEntry: Codable, Equatable, Sendable, Identifiable {
-    /// The path, and whether this is the bucket. They share one: the bucket's
-    /// path is the path a real file called `…` would have, so `ForEach` drew
-    /// one row for the two of them however carefully the tree kept them apart.
-    /// A NUL cannot appear in a filename, so nothing real can collide with it.
+    /// The path, and whether this is the bucket: the bucket's path is the path
+    /// a real file called `…` would have. A NUL cannot appear in a filename, so
+    /// nothing real can collide with it.
     public var id: String { isFolded ? path + "\u{0}folded" : path }
     public let name: String
     public let path: String
@@ -35,12 +34,8 @@ public struct DiskEntry: Codable, Equatable, Sendable, Identifiable {
     public let children: [DiskEntry]
     /// The per-directory bucket the small files fold into, rather than a file.
     ///
-    /// `DiskNode` gained this flag so a real file named `…` would stop being
-    /// mistaken for the bucket — and the flag stopped at the engine boundary.
-    /// This is the value that crosses to the screen, `id` is `path`, and the
-    /// bucket's path is the one a real `…` file would have, so the two rows
-    /// collapsed into one again on the other side. Optional for decoding: a
-    /// scan cached by an earlier build has no such key.
+    /// Carried across to the screen so a real file named `…` is never taken
+    /// for the bucket. Optional for decoding: an older saved scan has no such key.
     public let isFolded: Bool
 
     /// The largest figure a decoded entry may carry: one pebibyte, far past any
@@ -89,15 +84,11 @@ public struct ScanResult: Codable, Equatable, Sendable {
         self.advice = advice
     }
 
-    /// The same repair its two members already carry, and for the same reason:
-    /// **the `= []` above does not make an older document decode.** The
+    /// **The `= []` above does not make an older document decode.** The
     /// synthesised `Decodable` requires the key whatever a property's default
-    /// argument says, and `JSONDecoder` gives up on the whole document rather
-    /// than filling in the one field — so a `last-scan.json` written before
-    /// `advice` existed took the entire tree down with it, and the module spent
-    /// another minute walking the volume at the first launch after the update.
-    /// The next field added here is the same trap again, which is why the four
-    /// that were always written are read outright and anything later is not.
+    /// says, and `JSONDecoder` gives up on the whole document, which costs a
+    /// minute of walking. The four fields always written are read outright, and
+    /// anything added later is read as optional.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         root = try c.decode(DiskEntry.self, forKey: .root)
@@ -115,11 +106,10 @@ extension DiskEntry {
     /// Depth-limited snapshot: the UI never draws more than a few rings, and
     /// encoding a million-node tree would cost more than the scan itself.
     ///
-    /// `path` is the path of `node` itself, which the caller knows — the scan
+    /// `path` is the path of `node` itself, which the caller knows: the scan
     /// root at the top, and a composed child's path further down. `DiskNode`
-    /// stopped storing one because a full path per node cost ~345 MB on a large
-    /// volume; the depth limit is what makes composing them cheap here, since
-    /// only the few hundred nodes that reach the screen ever get a string.
+    /// stores no path, and the depth limit keeps composing them cheap, since
+    /// only the few hundred nodes that reach the screen get a string.
     init(_ node: DiskNode, depth: Int, path: String) {
         self.init(name: node.name, path: path, bytes: node.bytes,
                   isDirectory: node.isDirectory, noAccess: node.noAccess,

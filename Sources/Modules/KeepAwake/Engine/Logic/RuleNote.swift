@@ -2,19 +2,14 @@ import Foundation
 
 /// What the line under a rule's title says, as a case rather than a string.
 ///
-/// It was an expression written in the row's own body — a nested ternary over
-/// `enabled` and `satisfied` — and it had no third input, so it could not
-/// express the state the page actually gets into: a rule that is switched on,
-/// whose trigger holds, and which has been **paused** because somebody pressed
-/// Stop. `satisfied` reads from `activeConditions`, and a paused rule
-/// contributes nothing to that set, so the row fell to «Not applying right
-/// now» — two hundred points below a banner reading «Paused until the rule
-/// applies again». One screen, two accounts of one rule, and the row's was the
-/// one that sounded like nothing was wrong.
+/// `enabled` and `satisfied` alone cannot say a rule is **paused** or
+/// **vetoed**: a paused or vetoed rule is not in `activeConditions`, so the row
+/// would read «Not applying right now» under a banner saying otherwise
+/// (`Architecture/KeepAwake.md § Vetoes and the notice`).
 public enum RuleNote: Equatable, Sendable {
     /// Switched off — so the note explains what switching it on would do.
     /// The one moment somebody needs to know what a rule means is before they
-    /// turn it on, which was the state the row used to say nothing in.
+    /// turn it on.
     case meaning
     /// On, and holding the Mac awake right now.
     case applies
@@ -25,13 +20,8 @@ public enum RuleNote: Equatable, Sendable {
     case paused
     /// On, and the battery guard has everything stopped: nothing this module does
     /// will run until the charge comes back or the charger goes in, whatever this
-    /// rule's own trigger says.
-    ///
-    /// The fifth case, and the second one added for the same reason as the
-    /// fourth: `satisfied` is false under the veto — `releaseForBattery` empties
-    /// `activeConditions` — so a rule whose trigger was still true fell to «Not
-    /// applying right now», which is true and is the least useful of the three
-    /// things the screen knew.
+    /// rule's own trigger says. `satisfied` is false under the veto, because
+    /// `releaseForBattery` empties `activeConditions`.
     case vetoed
 
     /// - Parameter satisfied: the rule is in `activeConditions` — which a

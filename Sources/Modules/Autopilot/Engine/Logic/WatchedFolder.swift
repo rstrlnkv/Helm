@@ -34,12 +34,9 @@ public struct WatchedFolder: Codable, Equatable, Identifiable, Sendable {
     /// the order it is read, with the rule being written in its own place and
     /// switched on.
     ///
-    /// **A dry run of one rule alone answers a question nobody asked.** The
-    /// editor used to send a folder holding a single rule, with a comment saying
-    /// a rule above it would otherwise take the files — which is true, and is
-    /// the answer rather than the problem: first match wins, so a narrow rule
-    /// written below a broad one is offered files it will never get, lights up
-    /// with matches, and does nothing for ever after.
+    /// **A dry run of one rule alone answers a question nobody asked.** First
+    /// match wins, so a narrow rule below a broad one would light up with
+    /// matches it will never get.
     ///
     /// The rule is switched on because the dry run is what the switch is decided
     /// from; every other rule keeps the switch the person gave it, because a rule

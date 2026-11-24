@@ -4,54 +4,28 @@
 import SwiftUI
 import AppKit
 
-/// `PaletteColor.offered` and a colour of your own, as one compact control.
-/// One of these, no local variants: it was a private method inside
-/// `KeepAwakeSettingsPage` until VPN needed the same control, and the list of
-/// things written twice before they moved, in ARCHITECTURE.md § Tests and
-/// measurement, exists to stop the second copy.
+/// `PaletteColor.offered` and a colour of your own, as one compact control, and
+/// no local variants (Architecture/TestsAndMeasurement.md § Why the commands are run).
 ///
-/// **A pop-up, not a row of swatches.** Two of these in one card — the active
-/// colour and the countdown colour — were two rainbows 270 pt wide, and a
-/// settings card is a list of rows with a control at the end of each. The
-/// control is a 12 pt dot now — `PaletteColor.swatchImage` and `swatchImage(of:)`
-/// both draw that side, and nothing here draws any other — and the palette
-/// lives behind it, which is what Calendar and Reminders do with exactly this
-/// choice.
+/// **A pop-up, not a row of swatches.** A settings card is a list of rows with
+/// a control at the end of each, and two palettes in one card would be two
+/// rainbows of different widths. The control is a 12 pt dot
+/// (`PaletteColor.swatchImage`, `swatchImage(of:)`) with the palette behind
+/// it, as in Calendar and Reminders. A pop-up is also one keyboard stop that
+/// opens a list Full Keyboard Access already knows how to walk.
 ///
-/// It also settles an accessibility problem rather than working around one. The
-/// row had to be `Button`s specifically so Full Keyboard Access could reach
-/// them — as `onTapGesture`s none entered the key-view loop, Tab skipped every
-/// swatch, and the colour could not be chosen without a mouse while VoiceOver
-/// worked, which is what hid it. A pop-up (the `Picker` below, in its menu
-/// style) is one stop that opens a list the keyboard already knows how to walk.
-///
-/// No count in any of that, deliberately. Every sentence above said «ten» —
-/// true of the hand-picked palette they were written against, and not of
-/// `PaletteColor.offered` since, with nothing to make any of them go red. The
-/// list is the one place allowed to say how long it is.
-///
-/// **A `Picker`, not a `Menu`**, because it is visible to the probes. Both are
-/// one compact control, and this one is what the other settings pages use and
-/// draws its own selection; but a `Menu` whose label is a bare `Circle`
-/// photographed as nothing, offscreen and in a real window both, because AppKit
-/// draws it outside the layer `cacheDisplay` reads. Shipping a control nobody
-/// could photograph would have been shipping one nobody had seen.
+/// **A `Picker`, not a `Menu`**, because a `Menu` whose label is a bare
+/// `Circle` photographs as nothing, offscreen and in a real window: AppKit
+/// draws it outside the layer `cacheDisplay` reads. A control nobody can
+/// photograph is a control nobody has seen.
 public struct HelmPaletteSwatches: View {
-    // The row this replaced put every swatch on one line, beside the label
-    // whose colour they set — and there was a 5×2 grid as well, which was the
-    // default. Two of those in one column — the active colour and the
-    // countdown colour — came out different widths, so their right edges did
-    // not line up and the card read as crooked. A row cannot do that. The grid
-    // had no call site left once both moved, and a layout nobody asks for is a
-    // branch that stops being true without anybody finding out.
     private let name: String
     private let selection: String
     private let pick: (String) -> Void
 
     /// - Parameter name: what this colour is *for*, in the caller's words.
-    ///   Hidden on screen — the row beside it already says so — and read aloud,
-    ///   which is the whole point: a picker with no name is «pop up button» and
-    ///   nothing else.
+    ///   Hidden on screen, where the row beside it says so, and read aloud: a
+    ///   picker with no name is «pop up button» and nothing else.
     public init(_ name: String, selection: String, pick: @escaping (String) -> Void) {
         self.name = name
         self.selection = selection
@@ -81,11 +55,9 @@ public struct HelmPaletteSwatches: View {
                 .tag(Choice.palette(palette))
             }
             Divider()
-            // Calendar's own last item. Its seven translations are Calendar's
-            // words and its English is one word longer than Calendar's, for the
-            // reason set out on `HelmA11y.otherColour`. The swatch beside it is
-            // the colour in use when that is a custom one, so the menu shows
-            // what was chosen rather than only that something was.
+            // Calendar's own last item (see `HelmA11y.otherColour`). Its swatch
+            // is the colour in use when that is a custom one, so the menu shows
+            // what was chosen.
             Label {
                 Text(HelmA11y.otherColour)
             } icon: {
@@ -116,15 +88,10 @@ public struct HelmPaletteSwatches: View {
         })
     }
 
-    /// **The system panel itself, not a popover containing a colour well.**
-    ///
-    /// A SwiftUI `ColorPicker` *is* a well — a button that opens this panel —
-    /// so presenting one in a popover put a second click and a floating swatch
-    /// between «Other colour…» and the thing it names. Calendar opens the panel.
-    ///
-    /// Continuous, so the icon in the menu bar follows the panel while somebody
-    /// is dragging around the wheel: this control's whole subject is a colour
-    /// they are looking at somewhere else on screen.
+    /// **The system panel itself, not a popover with a colour well**: a
+    /// `ColorPicker` is a well that opens this panel, so it would add a click.
+    /// Calendar opens the panel. Continuous, so the menu-bar icon follows the
+    /// wheel while somebody drags it.
     private func openColourPanel() {
         let panel = NSColorPanel.shared
         bridge.onPick = { pick(PaletteTint.token(for: Color(nsColor: $0))) }
@@ -151,23 +118,18 @@ public struct HelmPaletteSwatches: View {
     }
 }
 
-/// `NSColorPanel`'s target, which it holds **weakly**.
-///
-/// A closure cannot be one — the panel wants an object and a selector — and an
-/// object created inside the action that opens the panel is deallocated before
-/// the first colour comes back, which reads as a panel that does nothing. Held
-/// by whoever opens the panel: the swatch row's view (its `@State`) for as long as the
-/// view is there, the Screenshots editor's `EditorColourPanel` for as long as it lives.
+/// `NSColorPanel`'s target, which it holds **weakly**: the panel wants an
+/// object and a selector, and one created inside the action is gone before the
+/// first colour comes back. Held by whoever opens the panel: the swatch row's
+/// `@State`, or the Screenshots editor's `EditorColourPanel`.
 public final class ColorPanelBridge: NSObject {
     public var onPick: (NSColor) -> Void = { _ in }
 
     public override init() { super.init() }
 
-    /// `@MainActor` on the method and not on the class: AppKit sends an action
-    /// on the main thread, which is what makes the annotation true, while the
-    /// class's `init` has to stay nonisolated for the `@State` default above to
-    /// build. Neither annotation moves ownership — the panel still holds this
-    /// weakly and its holder, named above, still holds it.
+    /// `@MainActor` on the method, not the class: AppKit sends an action on the
+    /// main thread, and the class's `init` has to stay nonisolated for the
+    /// `@State` default above to build.
     @MainActor
     @objc public func colourChanged(_ sender: NSColorPanel) { onPick(sender.color) }
 }

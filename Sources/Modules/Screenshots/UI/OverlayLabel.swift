@@ -21,9 +21,8 @@ extension CATextLayer {
 /// A small text plate: white digits on a dark rounded ground, sized to its text.
 ///
 /// **A plate and a text layer inside it, not one text layer.** A `CATextLayer`
-/// draws its line from the top of its frame, and a digit has no descender: a
-/// plate as tall as the line plus a margin left the digits three points from the
-/// top edge and seven and a half from the bottom. The plate is sized to the
+/// draws its line from the top of its frame, and a digit has no descender, so a
+/// plate as tall as the line sits the digits high. The plate is sized to the
 /// digits' own height and the line is placed so that they sit in the middle.
 final class LabelLayer: CALayer {
     private let text = CATextLayer()

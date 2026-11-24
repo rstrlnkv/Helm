@@ -5,17 +5,10 @@ import HelmTestSupport
 
 /// Two scans can be in flight at once, so one slot is not enough.
 ///
-/// The engine kept a single box and wrote it unconditionally: a scan starting
-/// replaced whatever was there, and a scan finishing set it to nil whether or
-/// not the thing it cleared was its own. Drilling into an unmeasured folder
-/// starts a second scan while the first is still walking, so the
-/// order start-A, start-B, finish-B left the box empty with A still walking the
-/// volume — Stop did nothing, New scan did nothing, and switching the module
-/// off left the walk running and emitting.
-///
-/// Identity is the fix: a scan clears the slot it was given, never the slot
-/// somebody else holds, and cancelling reaches everything in flight rather than
-/// whatever happened to be stored last.
+/// In the order start-A, start-B, finish-B a single slot would be left empty
+/// with A still walking, and Stop, New scan and the module's switch would not
+/// reach it. So a scan clears only the slot it was given, and cancelling
+/// reaches everything in flight.
 final class ScanRegistryTests: XCTestCase {
 
     /// Any object will do — the registry is bookkeeping, not scanning.
@@ -33,7 +26,7 @@ final class ScanRegistryTests: XCTestCase {
         XCTAssertTrue(held.contains { $0 === second })
     }
 
-    /// The failure the ring showed: B finishes, and A stops being cancellable.
+    /// B finishes, and A is still cancellable.
     func testAFinishedScanClearsOnlyItsOwnSlot() {
         let registry = ScanRegistry<Scan>()
         let walking = Scan(), measuring = Scan()

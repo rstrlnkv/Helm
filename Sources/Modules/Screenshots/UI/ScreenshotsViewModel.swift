@@ -20,10 +20,8 @@ extension ScreenshotsEngine: ScreenshotsWork {}
 /// What the settings page knows about the world outside Helm (the folder and the
 /// system's boxes, as the engine last read them), and the capture a shortcut starts.
 ///
-/// Built once by `ScreenshotsDescriptor.makeModule`, so it lives as long as the module is
-/// switched on and the page reads it instead of owning it. Its init asks the engine for
-/// nothing but its stream; the session and the capture controller are built at the first press, because
-/// they make the capture ports, a panel and a toast.
+/// Built once by `ScreenshotsDescriptor.makeModule`, so the page reads it instead of owning it
+/// (Architecture/Screenshots.md § How Screenshots' model reaches its engine).
 @MainActor public final class ScreenshotsViewModel: ObservableObject {
     @Published private(set) var state = ScreenshotsState.unread
     /// The module's settings, which the page reads and writes and the session is built over.

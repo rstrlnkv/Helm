@@ -121,12 +121,10 @@ final class AutopilotSealRaceTests: XCTestCase {
 
     // MARK: - The verdict
 
-    /// The defect. A read that began before the plist was edited finishes after
-    /// the read that saw the edit, and its verdict — "these are Helm's own
-    /// rules", true of the file it read and of nothing since — lands last.
-    ///
-    /// The status's `refusal` is what tells a person their rules were tampered with, so
-    /// the last write winning by accident is not a test problem.
+    /// A read that began before the plist was edited and finishes after the read
+    /// that saw the edit must not land its verdict last: "these are Helm's own
+    /// rules" is true of the file it read and of nothing since, and the status's
+    /// `refusal` is what tells a person their rules were tampered with.
     func testAReadThatBeganBeforeTheEditDoesNotGetTheLastWord() throws {
         let helm = try engineWithAHeldRead()
         let earlier = expectation(description: "the earlier read finished")

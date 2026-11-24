@@ -4,20 +4,15 @@ import HelmUI
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
-/// **«Run» ran `brew uninstall periphery` on one click, six points from
-/// «Copy».**
+/// **«Run» on a doctor fix asks before it runs.**
 ///
-/// Measured 2026-09-16 on the inspector: «Скопировать» 106.5×24 at x 675.5…782
-/// and «Выполнить» 93.5×24 at x 788 — a 6 pt gap, no weight difference, no
-/// role, no question. `DoctorFix.Allowed` holds one command, and a cellar
-/// directory does not come back. Every other irreversible deletion in Helm asks first, and the
-/// Uninstall button three lines up the same file raises a dialog that names the
-/// package and says what it takes with it.
+/// `DoctorFix.Allowed` holds one command, an uninstall, and a Cellar directory
+/// does not come back. Run sits beside Copy, and every other irreversible
+/// deletion in Helm asks first, as the Uninstall button does.
 ///
-/// **What makes this a guard rather than a claim about a `role:`.** The
-/// behaviour is what is asserted: the press does not reach the engine at all
-/// until the question is answered, and the confirmed press does — otherwise
-/// «nothing was sent» would be true of a view model with the command deleted.
+/// The behaviour is asserted: the press does not reach the engine until the
+/// question is answered, and the confirmed press does, so «nothing was sent» is
+/// not met by a view model with the command deleted.
 @MainActor
 final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
 
@@ -30,10 +25,9 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
             """)
     }
 
-    /// **Anything else asks too.** `DoctorFix.judge` is argument-exact, so
-    /// nothing outside that one reaches Run today; that is a fact about today's
-    /// allowlist, and a second entry added by somebody who did not read
-    /// `DoctorFix.Allowed`'s checklist gets a question rather than a press.
+    /// **Anything else asks too.** Only one command reaches Run, but a second
+    /// entry added by somebody who did not read `DoctorFix.Allowed`'s checklist
+    /// gets a question rather than a press.
     func testAnUnrecognisedCommandIsAskedAboutRatherThanRun() {
         XCTAssertEqual(FixAsk.of(["update-reset"]), .unrecognised)
         XCTAssertEqual(FixAsk.of(["untap", "somebody/tap"]), .unrecognised)
@@ -43,10 +37,9 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
 
     // MARK: - The words
 
-    /// The question names the package, in the words the Uninstall button's own
-    /// dialog uses — one key, one act, eight translations already written for
-    /// it. Checked in every language, because the sentence is the whole of what
-    /// a person decides on and this Mac reads one of the eight.
+    /// The question names the package in the Uninstall dialog's own words, one
+    /// key for one act, checked in every language: the sentence is the whole of
+    /// what a person decides on.
     func testTheQuestionNamesThePackageTheWayTheUninstallDialogDoes() {
         let uninstall = DoctorFix(argv: ["uninstall", "periphery"], kind: .runnable)
         AppLanguage.each { language in
@@ -91,9 +84,9 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         XCTAssertNil(model.pendingFix)
     }
 
-    /// Declining runs nothing, and the question does not come back — the second
-    /// half is `cancelUninstall`'s own lesson: this view model outlives the
-    /// page, so a question left standing is one the next visit opens with.
+    /// Declining runs nothing, and the question does not come back: this view
+    /// model outlives the page, so a question left standing is one the next
+    /// visit opens with.
     func testDecliningRunsNothingAndClearsTheQuestion() async {
         let work = FakeHomebrewWork()
         let model = HomebrewViewModel(work: work)
@@ -135,7 +128,7 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
 
     /// A reading that did not answer is not «nothing depends on it»: the
     /// question is still asked, with no list and no reassurance, and one
-    /// sentence that the reading failed (decision 20).
+    /// sentence that the reading failed.
     func testAFailedDependentsReadIsNotAReassuranceInTheFixDialog() async {
         let work = FakeHomebrewWork()
         work.dependents = nil

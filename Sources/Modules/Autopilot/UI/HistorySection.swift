@@ -5,47 +5,38 @@ import SwiftUI
 
 /// What Autopilot did while nobody was looking, and the way to undo it.
 ///
-/// Every other module acts because somebody pressed something a moment before,
-/// so the result on screen is the record. This one acts on a timer and on files
-/// arriving, and the only other trace is the log — counts and redacted paths,
-/// which answers "did anything happen" and never "what happened to my file". A
-/// folder that tidies itself is only trustworthy if it can say what it tidied
-/// **and take it back**.
+/// Every other module acts on a press, so the result on screen is the record.
+/// This one acts on a timer and on files arriving, and the log holds only counts
+/// and redacted paths. A folder that tidies itself is trustworthy only if it can
+/// say what it tidied **and take it back**.
 ///
-/// Still not a console: no filters, no search. Two questions, and the second
-/// one is why the record grew an identity — "where did that go", and "put it
-/// back". The grouping is what makes the second answerable: five hundred rows
-/// is not something anybody can act on, and "the twelve files that arrived at
-/// 14:22" is.
+/// Not a console: no filters, no search. It answers "where did that go" and
+/// "put it back", and the grouping makes the second answerable: five hundred
+/// rows is not something anybody can act on, and "the twelve files that
+/// arrived at 14:22" is.
 struct HistorySection: View {
     let history: [ActionRecord]
     /// The same history in passes, grouped once by the view model rather than
     /// on every body pass.
     let runs: [ActionRun]
-    /// Why there is nothing to draw, when there is nothing. Decided by the
-    /// engine over the folders as well as the passes — two of the three reasons
-    /// are about the rules, which this view has never been given and should not
-    /// be.
+    /// Why there is nothing to draw, when there is nothing. Decided over the
+    /// folders as well as the passes: two of the three reasons are about the
+    /// rules, which this view is not given.
     let empty: HistoryEmpty.Reason?
     let clear: (AutopilotViewModel.Discard) -> Void
 
-    /// Whether the stored history is not Helm's, and the two gestures. Passed
-    /// in rather than reached for, like `clear`: this view draws and asks, and
-    /// the view model is what knows how to send.
-    ///
-    /// **No defaults.** A default here is "offer no return", which is a whole
-    /// feature switched off by a call site that forgot an argument — silently,
-    /// with nothing failing.
+    /// Whether the stored history is not Helm's, and the two gestures, passed in
+    /// like `clear`: this view draws and asks. **No defaults**: a default here is
+    /// "offer no return", a whole feature switched off in silence by a call site
+    /// that forgot an argument.
     let refused: Bool
     let canPutBack: (ActionRecord) -> Bool
     let canPutBackRun: (ActionRun) -> Bool
     let putBack: (ActionRecord) -> Void
     let putBackRun: (ActionRun) -> Void
     /// What the last return came to for this row, when there is something to
-    /// say — a file that did not go back, or one that came back under another
-    /// name. On the row it is about, not only in the banner at the foot of the
-    /// page. No default, like the gestures above: a call site that forgot it
-    /// would drop the note in silence.
+    /// say: a file that did not go back, or came back under another name. No
+    /// default, like the gestures above.
     let note: (ActionRecord) -> String?
 
     private var summary: ActionHistory.Summary { ActionHistory.summary(of: history) }
@@ -78,9 +69,8 @@ struct HistorySection: View {
                 // A heading, so the rotor can reach the record without reading
                 // the whole list above it.
                 .accessibilityAddTraits(.isHeader)
-            // The count is a promise the list has to keep, so both come from
-            // the same window: a header saying seventeen over a list of nine is
-            // worse than no header.
+            // The count is a promise the list keeps, so both come from the same
+            // window: seventeen over a list of nine is worse than no header.
             if summary.total > 0 {
                 HelmBadge(Plural.files(summary.total,
                                        language: AppLanguage.current.rawValue))
@@ -137,9 +127,8 @@ struct HistorySection: View {
                     .font(HelmText.rowTitle)
                     .lineLimit(1).truncationMode(.middle)
                 // Tail, not middle: this column never holds a path, and a sentence
-                // cut in the middle read «отказано: в…ённых папок». The file name
-                // above keeps `.middle`, being the one thing here whose both ends
-                // carry meaning.
+                // cut in the middle reads as nonsense. The file name above keeps
+                // `.middle`: both its ends carry meaning.
                 Text(ApStr.historyDetail(record))
                     .font(HelmText.rowDetail)
                     .foregroundStyle(record.kind == .failed || record.kind == .refused
@@ -152,16 +141,14 @@ struct HistorySection: View {
                 }
                 Spacer(minLength: HelmSpace.s4)
                 // The rule's name is the one word that says why, and the person
-                // writing it chose it: "Invoices" explains more than any sentence
-                // this screen could compose.
+                // chose it: "Invoices" explains more than any composed sentence.
+
                 Text(record.rule)
                     .helmQuietDetail()
                     .lineLimit(1)
             }
-            // What the last return came to for this file, on its own row. Aligned
-            // under the file name — the same leading gap the row opens with — so a
-            // «march.pdf came back as march 2.pdf» sits with the file it renames
-            // rather than in the banner alone.
+            // What the last return came to for this file, aligned under the file
+            // name so a rename note sits with the file it renames.
             if let note = note(record) {
                 HStack(spacing: HelmSpace.s4) {
                     Spacer().frame(width: HelmSpace.s4)
@@ -173,14 +160,13 @@ struct HistorySection: View {
         // Read as one thing. Six separate labels per row turns a page of
         // twenty into a hundred and twenty stops.
         .accessibilityElement(children: .combine)
-        // "Where did that go" ends at the folder the file went to, and every
-        // other list in Helm can open it. Offered only where the record knows
-        // the answer — a refused row has nothing to point at, and an item that
-        // silently does nothing is worse than one that is absent.
+        // "Where did that go" ends at the folder the file went to. Offered only
+        // where the record knows the answer: an item that silently does nothing
+        // is worse than one that is absent.
         //
         // **The return is offered on the record's shape, not on a verdict.**
-        // Asking the disk per row would be five hundred `stat`s to draw a menu
-        // nobody has opened; the verdict comes after the press, in the report.
+        // Asking the disk per row would be a `stat` per row to draw a menu
+        // nobody opened; the verdict comes after the press, in the report.
         .contextMenu { items(record) }
         // The same actions where VoiceOver can reach them, since the menu above
         // needs a right-click. `DiskResultView` documents the pairing.

@@ -4,33 +4,18 @@ import XCTest
 @testable import Module_Autopilot_UI
 
 /// **The rule set can stop being Helm's while the page is open, and nothing
-/// tells the page.**
+/// tells the page.** The rules are JSON in a plist any process running as the
+/// user can rewrite, and `SealedRules.write` refuses to save over a set it did
+/// not write, so a save can be turned down at any moment by something the page
+/// never saw happen.
 ///
-/// The refusal is a live external fact: the rules are JSON in a plist any
-/// process running as this user can rewrite, and `SealedRules.write` refuses to
-/// save over a set it did not write — deliberately, because «the refusal must
-/// not be the thing that destroys the rules». So a save can be turned down at
-/// any moment by something the page never saw happen.
-///
-/// What the page has instead is `refusal`, read once at load and consulted by
-/// `save()` as `guard refusal == nil`, which is the family (ARCHITECTURE.md § Ports and logic) names: a
-/// local flag standing in for a live external fact, with no reverse channel from
-/// the port that knows. And there is no channel to have: the one thing the
-/// engine says unasked is that a pass went into the history, and
-/// `AutopilotWork.save` answers nothing whether the write landed or was
-/// refused, so even the two save paths that *are* `async` and awaited cannot
-/// learn from the answer. What is left is asking again, and before 99a2a306
-/// nothing re-read the status after a write.
-///
-/// Without that re-read the result is the one thing a settings page must never
-/// do: show somebody their own configuration as saved when the engine dropped
-/// it. Every later edit is refused too, silently, for as long as the page stays
-/// open — and the card that offers the one way out (`discardRefusedRules`) is on
-/// the screen the page is not drawing.
-///
-/// The module already has the shape of the answer and uses it in the same
-/// view model: `discardRefusedRules()` sends and then `await load()`s. This
-/// is the same gesture on the write path.
+/// `refusal` is a local flag standing in for that live fact
+/// (Architecture/ModulePattern.md § Ports and logic), and `AutopilotWork.save`
+/// answers nothing whether the write landed or was refused. So the page asks
+/// again after every write, as `discardRefusedRules()` does; otherwise it would
+/// draw somebody's configuration as saved when the engine dropped it, refuse
+/// every later edit in silence, and keep the card that offers the way out off
+/// the screen.
 @MainActor
 final class ARefusedSaveIsNotDrawnAsDoneTests: XCTestCase {
 
@@ -50,16 +35,11 @@ final class ARefusedSaveIsNotDrawnAsDoneTests: XCTestCase {
                       enabled: true, rules: [], depth: 1)
     }
 
-    /// The control, and it has to come first: this same gesture over a rule set
-    /// the engine accepts hands the rule over and leaves the page on the folder
-    /// list, so the assertion below is about a page that would otherwise stay
-    /// there.
-    ///
-    /// Asserted on **what was sent** rather than on what the page lists
-    /// afterwards: the page re-reads after a write (`sendFolders` loads), and
-    /// `FakeAutopilotWork` applies a save it was not refused, as `SealedRules.write`
-    /// does, so the list afterwards is the fake's echo of the save rather than
-    /// evidence that the page made it.
+    /// The control, first: the same gesture over a rule set the engine accepts
+    /// hands the rule over and leaves the page on the folder list. Asserted on
+    /// **what was sent**, not on what the page lists afterwards: the page
+    /// re-reads after a write, and `FakeAutopilotWork` applies a save it was not
+    /// refused, so the list is the fake's echo rather than evidence of the page.
     func testARuleSavedOverARuleSetTheEngineAcceptsIsHandedOver() async {
         let work = FakeAutopilotWork()
         let rvm = model(on: work)
@@ -74,12 +54,9 @@ final class ARefusedSaveIsNotDrawnAsDoneTests: XCTestCase {
                           "a page whose save was taken must not draw the refusal")
     }
 
-    /// And the same gesture when the engine refused it.
-    ///
-    /// The engine's half is `ARefusedRuleSetIsNotOverwrittenTests`: the write is
-    /// turned down and the stored rules survive. This is the half a person sees
-    /// — and what they see is the folder they just added, listed, on a page that
-    /// still believes the rules are running.
+    /// The same gesture when the engine refused it draws the refusal. The
+    /// engine's half, the stored rules surviving, is
+    /// `ARefusedRuleSetIsNotOverwrittenTests`.
     func testAPageWhoseSaveWasRefusedDoesNotGoOnDrawingItAsSaved() async {
         let work = FakeAutopilotWork()
         let rvm = model(on: work)
@@ -104,13 +81,8 @@ final class ARefusedSaveIsNotDrawnAsDoneTests: XCTestCase {
             """)
     }
 
-    /// The mechanism behind it, stated separately so the finding above cannot be
-    /// read as being about one gesture: after a write, the page has to ask.
-    ///
-    /// A refusal is a fact about the store, and the only thing that ever reports
-    /// it is `AutopilotWork.readStatus`, which the page asks when it loads — so
-    /// `sendFolders` sends and then loads, as `discardRefusedRules()` does in
-    /// `AutopilotViewModel.swift`.
+    /// After any write the page asks `AutopilotWork.readStatus`, the only thing
+    /// that reports a refusal, so the test above is not about one gesture.
     func testAWriteIsNeverFollowedByAskingWhatBecameOfIt() async {
         let work = FakeAutopilotWork()
         let rvm = model(on: work)

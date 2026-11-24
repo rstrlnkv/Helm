@@ -8,16 +8,13 @@ import HelmTestSupport
 ///
 /// The rules are stored in a property list any process running as the user can
 /// write, and the folder is read before the runner is asked about any file in it.
-/// The runner's per-file gate refuses what it is shown, but by then the folder
-/// had been read without a gate and each refused file had been written into the
-/// history — name and full path — in the same property list, which a process
-/// with no Full Disk Access reads freely. So the file names of a protected
-/// folder went to a place anybody could read, without any move happening.
+/// Read without a gate, each file the runner then refuses lands in the history
+/// (name and full path) in the same property list, which a process with no Full
+/// Disk Access reads freely: a protected folder's names, with no move made.
 ///
-/// The shape is the one the security pass probed: `~/Stuff` is a link to
-/// `~/Library`, the watched folder is `~/Stuff/Inbox`, and `~/Library/Inbox`
-/// is a real folder holding a file. Everything is real: a scratch home, a real
-/// link, real files.
+/// The shape: `~/Stuff` is a link to `~/Library`, the watched folder is
+/// `~/Stuff/Inbox`, and `~/Library/Inbox` is a real folder holding a file. A
+/// scratch home, a real link, real files.
 final class AFolderReachedThroughALinkIsNotReadTests: XCTestCase {
 
     private var home: URL!

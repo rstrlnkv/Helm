@@ -7,20 +7,15 @@ import XCTest
 /// What the batch is removed *around* is every copy that stays, and the engine
 /// has to be told which those are.
 ///
-/// The harm: an extra the person
-/// left unticked goes on holding its family's blocks, so a clone of it that goes
-/// frees nothing, while the banner promised the whole allocation. What that
-/// asks of the engine is the one thing no engine can answer — `staying.bin` is
-/// named in no plan, and `HelmTrash`'s own doc says why it cannot be worked out
-/// from the disk: "there is no reverse lookup from a family to its members". So
-/// the fact travels: the caller's `staying:` carries the copies that stay, and
-/// what is tested here is that the engine seeds the ledger with them and with
+/// An extra the person left unticked goes on holding its family's blocks, so a
+/// clone of it that goes frees nothing. `staying.bin` is named in no plan, and
+/// there is no reverse lookup from a clone family to its members
+/// (`HelmTrash`), so the fact travels: the caller's `staying:` carries the
+/// copies that stay, and the engine seeds the ledger with them and with
 /// everything else in the batch that is not going.
 ///
 /// Real `clonefile`: a fixture where a clone's bytes are zero cannot see any of
 /// this, because a clone reports its whole allocated size.
-///
-/// Guards a past defect: 69505181 fix(duplicates): the batch is read against itself, and four other ways the page lied.
 final class TheBatchIsToldWhatStaysTests: XCTestCase {
 
     private var root: URL!
@@ -79,8 +74,7 @@ final class TheBatchIsToldWhatStaysTests: XCTestCase {
     }
 
     /// And the same seed read from the other side: a family with nothing left
-    /// behind still gives its blocks back once, so the repair is not «seed
-    /// everything».
+    /// behind still gives its blocks back once, so the seed is not «everything».
     func testAFamilyWithNothingLeftBehindIsStillFreedOnce() async throws {
         let allocated = FileWeight.allocated(of: URL(fileURLWithPath: marked))
         XCTAssertGreaterThan(allocated, 0, "precondition: the clone occupies something")
@@ -97,13 +91,9 @@ final class TheBatchIsToldWhatStaysTests: XCTestCase {
     /// A copy the batch **refused** stays too, and holds its family exactly as an
     /// unticked one does.
     ///
-    /// The refusal here is the module's ordinary one — the pair stopped matching
-    /// — because that is the reachable shape: two clone twins marked together, a
-    /// permission or an edit takes one of them out of the batch, and the other
-    /// goes on to free nothing at all. `staying` is deliberately **not** passed:
-    /// what is under test is the batch's own knowledge of what it did not
-    /// remove, and a refused path named in the caller's list too would prove
-    /// only that the caller said it.
+    /// The refusal here is the module's ordinary one — the pair stopped matching.
+    /// `staying` is deliberately **not** passed: what is under test is the
+    /// batch's own knowledge of what it did not remove.
     func testACopyRefusedByTheBatchHoldsItsFamilyToo() async throws {
         // A copy the twins are identical to, and one they are not: the plan
         // against the second is refused, so its twin stays.

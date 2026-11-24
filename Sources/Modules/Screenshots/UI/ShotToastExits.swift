@@ -6,7 +6,7 @@ extension ShotToast {
 
     /// Asks for the system's Share sheet at the newest shot's thumbnail, as soon as the thumbnail's view is on a
     /// window. The toast holds from the sheet's opening to its end: the lifetime would otherwise close the panel
-    /// under the sheet. How the pointer's events go while the sheet is up is not measured.
+    /// under the sheet.
     func requestShare() {
         wantsShare = true
         attemptShare()

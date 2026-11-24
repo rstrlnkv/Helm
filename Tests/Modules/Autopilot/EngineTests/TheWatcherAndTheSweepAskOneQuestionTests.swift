@@ -4,23 +4,18 @@ import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
-/// **The two triggers disagreed about what a rule means.**
+/// **The two triggers ask one question about what a rule may touch.** The sweep
+/// and the dry run read a folder through `FolderReader.reading(in:)`, which
+/// skips hidden files and package descendants, so an `.app` is one thing and a
+/// dotfile is not there at all. An FSEvents stream is recursive whether or not
+/// anybody asked, so the watcher refuses the same paths: otherwise, with
+/// «Include subfolders» on, a resource inside an application bundle in
+/// Downloads would be a live target the dry run could not warn about.
 ///
-/// The sweep and the dry run read a folder through `FolderReader.reading(in:)`,
-/// whose enumerator is built with `.skipsHiddenFiles` and
-/// `.skipsPackageDescendants` — so an `.app` is one thing and a dotfile is not
-/// there at all. The FSEvents leg took the path it was handed and asked for its
-/// facts with no filter, and an FSEvents stream is recursive whether or not
-/// anybody asked. With «Include subfolders» on — depth 8, which is what the ⋯
-/// menu writes — a resource inside an application bundle in Downloads was a live
-/// target, and the dry run could not warn anybody, because the dry run runs
-/// through the reader that skips packages.
-///
-/// **The FSEvents delivery itself is not what these tests drive**, and that is
-/// deliberate: `FolderWatcher` carries `kFSEventStreamCreateFlagIgnoreSelf`, so
-/// files a test writes in its own process raise no event at all — a test built on
-/// the stream would be a test of a child process. `handle` is the leg's entry
-/// point and these call it directly, which is the decision the finding is about.
+/// **The FSEvents delivery itself is not what these tests drive**:
+/// `FolderWatcher` carries `kFSEventStreamCreateFlagIgnoreSelf`, so files a test
+/// writes in its own process raise no event at all. `handle` is the leg's entry
+/// point, where the decision lives, and these call it directly.
 final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
 
     private var home: URL!

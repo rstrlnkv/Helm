@@ -6,18 +6,15 @@ import HelmTestSupport
 
 /// "Wasted" and "freed" are the same number about the same files.
 ///
-/// `DuplicateGroup.wasted` says it is "what deleting all but one copy frees",
-/// and it was built from `.fileSizeKey` — the logical length — while
-/// `HelmTrash.freedBytes` is built from what the file occupies. One screen, two
-/// answers, and the second one arrives right after the person acts on the
-/// first.
+/// `DuplicateGroup.wasted` is "what deleting all but one copy frees", so it is
+/// built from what the files occupy, as `HelmTrash.freedBytes` is, not from
+/// their logical length; otherwise the screen would quote one figure and the
+/// removal report another.
 ///
 /// The pre-filter keeps the logical size on purpose: it is a *content* test —
 /// two identical files always agree on length, and they need not agree on
 /// blocks. Grouping by what they occupy would lose duplicates, which is a worse
 /// failure than an imprecise total.
-///
-/// Guards a past defect: 3049f0d9 fix: the three contradictions that needed code, not wording.
 final class WastedBytesTests: XCTestCase {
 
     private var root: URL!
@@ -31,12 +28,10 @@ final class WastedBytesTests: XCTestCase {
         try write(name, in: root, bytes: 1_200_000, filler: byte).path
     }
 
-    /// **Asked of the removal, not of a second measurement.** This used to compare
-    /// `wasted` with `FileWeight.allocated(of:countingOnce:)`, which is the
-    /// question "what does this path occupy" — clone-blind on purpose — so on a
-    /// fixture of Finder duplicates the assertion would have *demanded* the
-    /// doubled figure that `CloneShare` exists to refuse. What the doc above
-    /// promises is that one number, so the other side of it is the batch itself.
+    /// **Asked of the removal, not of a second measurement.**
+    /// `FileWeight.allocated(of:countingOnce:)` is clone-blind on purpose, so on
+    /// Finder duplicates it would demand the doubled figure `CloneShare` exists
+    /// to refuse; the other side of the promise is the batch itself.
     func testWastedIsWhatRemovingTheExtrasWouldActuallyFree() throws {
         _ = try write("a.bin", 7)
         _ = try write("b.bin", 7)
@@ -89,17 +84,10 @@ final class WastedBytesTests: XCTestCase {
     // MARK: - Wasted is the copies that leave
     //
     // `wasted` describes the copies that would be removed, and they are not
-    // interchangeable with the one that stays.
-    //
-    // The group took its size from `identical.first` — the walk order — while its
-    // paths came from `SurvivingCopy.order`, two different orderings of the same
-    // array, and multiplied that one figure by `count - 1`. Content-identical
-    // files need not agree on what they *occupy*: an APFS clone or an
-    // HFS-compressed copy takes far less than its logical length, which is why
-    // `FileFacts` carries `allocated` separately in the first place. So a pair of
-    // [clone, real file] reported nothing wasted or the whole file wasted purely
-    // by sort order, and the screen's promise of what removing the extras frees
-    // then disagreed with what HelmTrash reported afterwards.
+    // interchangeable with the one that stays: content-identical files need not
+    // agree on what they *occupy* — an APFS clone or an HFS-compressed copy takes
+    // far less than its logical length. One size times `count - 1` would make a
+    // [clone, real file] pair report nothing or the whole file by sort order.
 
     private func facts(_ allocations: [(String, Int)]) -> [FileFacts] {
         allocations.enumerated().map { index, pair in

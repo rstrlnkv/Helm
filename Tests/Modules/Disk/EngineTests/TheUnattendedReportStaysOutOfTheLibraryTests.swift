@@ -4,17 +4,12 @@ import HelmRuntime
 
 /// What a disk scan nobody watched is allowed to write down.
 ///
-/// The same laundering the duplicate finder's descent gate closed, in a narrower
-/// shape. Disk's walk *must* measure `~/Library` — «where did the space go» with
-/// the largest folder on the volume left out is the one omission that screen may
-/// not make — so `DiskScanner(unattended:)` refuses only application databases
-/// and the walk goes in. `DiskAdvisor` then names paths inside it, and the
-/// journal written afterwards is 0600: readable by any process running as this
-/// user, including ones macOS refuses. Measured on the owner's machine on
-/// 2026-08-20: 12 items in the disk journal, 1 of them under `~/Library`.
-///
-/// So the refusal belongs to the *report*, not to the descent — and a scan the
-/// person started still answers with everything they asked about.
+/// Disk's walk must measure `~/Library`, so `DiskScanner(unattended:)` refuses
+/// only application databases and the walk goes in. `DiskAdvisor` then names
+/// paths inside it, and the journal written afterwards is readable by any
+/// process running as this person, including ones macOS refuses. So the refusal
+/// belongs to the report, not to the descent, and a scan the person started
+/// still answers with everything they asked about.
 final class TheUnattendedReportStaysOutOfTheLibraryTests: XCTestCase {
     private let home = "/Users/tester"
 
@@ -46,9 +41,8 @@ final class TheUnattendedReportStaysOutOfTheLibraryTests: XCTestCase {
         XCTAssertEqual(written.items.map(\.path), ["/Users/tester/Downloads/big.dmg"])
     }
 
-    /// **The numbers come from what was kept.** Filtering the list and totalling
-    /// the original is a journal entry whose figure and whose list disagree —
-    /// and the figure is the one a settings row and a banner read.
+    /// The numbers come from what was kept, or the journal's figure, which a
+    /// settings row and a banner read, would disagree with its list.
     func testTheTotalsAreOfWhatSurvivedTheGate() {
         let written = report([
             advice("/Users/tester/Library/Caches", 8_000_000_000, .cache),
@@ -83,11 +77,8 @@ final class TheUnattendedReportStaysOutOfTheLibraryTests: XCTestCase {
         XCTAssertEqual(written.count, 2)
     }
 
-    /// **The other half of the promise, and the half a filter is likeliest to
-    /// break silently.** «A hand-started scan still reports everything the
-    /// person asked about» is prose until something checks that the advice
-    /// itself is untouched — the same tree, the same advisor, the library advice
-    /// still made and still named. Only the unattended *report* drops it.
+    /// A hand-started scan still reports everything: the same tree and advisor
+    /// still make and name the library advice. Only the unattended report drops it.
     func testTheAdviceItselfStillNamesTheLibraryForSomebodyWatching() {
         let caches = home + "/Library/Caches"
         let tree = DiskNode(

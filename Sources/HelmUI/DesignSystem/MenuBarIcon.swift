@@ -3,14 +3,9 @@ import HelmRuntime
 
 /// The shape Helm wears in the menu bar.
 ///
-/// Six: the three circles it has always had, and three that are not circles.
-///
-/// The circle used to be structural rather than chosen. The countdown was
-/// drawn *as* the ring and the spinner as a quarter of it turning, so a shape
-/// with no ring — `disc`, `dot` — had nothing for the timer to consume, and
-/// those two are gone for that reason. Adding a square meant answering the
-/// same question in general: a countdown is now a fraction of whatever the
-/// outline is, walked from the top, which works for any closed path.
+/// A countdown is a fraction of whatever the outline is, walked from the top,
+/// so any closed path can carry the timer. A shape with no outer outline would
+/// have nothing for the countdown and the spinner to consume.
 public enum MenuBarIconStyle: String, CaseIterable, Sendable {
     case ring, doubleRing, ringDot, squircle, hexagon, capsule
 
@@ -25,13 +20,10 @@ public enum MenuBarIconStyle: String, CaseIterable, Sendable {
         }
     }
 
-    /// A value read back from disk, including two this build no longer offers.
-    ///
-    /// `disc` and `dot` had no outer ring, and the ring is what the countdown
-    /// and the spinner replace — so on those two the timer setting sat on the
-    /// page beside them and meant nothing. Whoever had one gets the ring
-    /// rather than the default of the day: a shape silently becoming the
-    /// factory setting is indistinguishable from the app forgetting.
+    /// A value read back from disk, including `disc` and `dot`, which this
+    /// build does not offer: they had no outer ring for the countdown and the
+    /// spinner. Whoever had one gets the ring rather than the default, because a
+    /// shape silently becoming the factory setting looks like the app forgetting.
     public init(stored: String) {
         switch stored {
         case "disc", "dot": self = .ring
@@ -42,10 +34,8 @@ public enum MenuBarIconStyle: String, CaseIterable, Sendable {
 
 /// Menu-bar icon size (canvas point size).
 public enum MenuBarIconSize: String, CaseIterable, Sendable {
-    // rawValues kept stable for stored-settings compatibility. Five sizes
-    // became three: 9 pt was smaller than the menu bar's own glyphs and 18 pt
-    // was larger, so both ends were choices that made Helm look wrong beside
-    // everything else in the bar rather than choices about Helm.
+    // Raw values are stored, so they stay as they are whatever the labels say.
+    // Smaller or larger than these sits wrong beside the menu bar's own glyphs.
     case xxSmall, extraSmall, small
 
     public var points: CGFloat {
@@ -56,20 +46,12 @@ public enum MenuBarIconSize: String, CaseIterable, Sendable {
         }
     }
 
-    /// A value read back from disk, including the two this build dropped — and
-    /// **the one place the shipped default is written**.
+    /// A value read back from disk, including two stored values this build does
+    /// not offer, and **the one place the shipped default is written**.
     ///
-    /// Mapped to the nearest survivor rather than to the default: somebody who
-    /// chose the smallest icon wanted a small icon, and answering that with
-    /// the middle one is the app overruling them. `xxxSmall` was 9 and becomes
-    /// 11; `medium` was 18 and becomes 15.
-    ///
-    /// The fallback is `.small` — 15 pt, «L» — because that is what the app has
-    /// always shipped. It read `.extraSmall` here while `AppSettings` supplied
-    /// `"small"` on the way in: two defaults for one setting, disagreeing by a
-    /// size and a letter, and invisible only because the caller never passed an
-    /// empty string. `AppSettings.menuBarIconSize` is typed now and passes one,
-    /// so this is the answer rather than a second opinion nobody reached.
+    /// Those map to the nearest size rather than to the default: somebody who
+    /// chose the smallest icon wanted a small icon. `xxxSmall` (9) becomes 11,
+    /// `medium` (18) becomes 15. The fallback is `.small`, 15 pt, «L».
     public init(stored: String) {
         switch stored {
         case "xxxSmall": self = .xxSmall
@@ -78,13 +60,9 @@ public enum MenuBarIconSize: String, CaseIterable, Sendable {
         }
     }
 
-    /// S, M, L — and not translated, because they are not words.
-    ///
-    /// The five names they replace were: Tiny, Very small, Small, Medium,
-    /// Large. Two of them read as absolute claims that were untrue — «Medium»
-    /// was the largest but one, and «Large» was 18 pt — and every one of them
-    /// had to be read to be compared. Three letters compare at a glance and
-    /// mean the same in eight languages.
+    /// S, M, L, and not translated, because they are not words: three letters
+    /// compare at a glance and mean the same in eight languages, where names
+    /// like «Medium» have to be read and make claims about absolute size.
     public var label: String {
         switch self {
         case .xxSmall: return "S"
@@ -111,11 +89,10 @@ public enum MenuBarIcon {
                 return
             }
             strokeWhole(path, width: width, colour: colour.withAlphaComponent(0.25))
-            // `clamped` is `min(max(…))`, which keeps a NaN — and the arc below
-            // is the only reader, where `NaN > 0` is false: the track is drawn
-            // and nothing over it, exactly what the old `min(1, max(0, x))`
-            // drew by answering 0. Anything here that is not a comparison has
-            // to decide that case first (`clamped(to:whenNotANumber:)`).
+            // `clamped` keeps a NaN, and the arc below is the only reader, where
+            // `NaN > 0` is false: the track is drawn and nothing over it.
+            // Anything here that is not a comparison has to decide that case
+            // first (`clamped(to:whenNotANumber:)`).
             let remaining = progress.clamped(to: 0...1)
             if remaining > 0 {
                 stroke(perimeter(of: path), from: 0, to: remaining,
@@ -168,9 +145,8 @@ public enum MenuBarIcon {
     /// the canvas edge rather than half a line beyond it.
     ///
     /// This is what the countdown and the spin travel along. Anything a shape
-    /// draws *inside* it is `interior`, and is redrawn on top of every arc —
-    /// without that, a double ring collapsed to a plain ring the moment a
-    /// timed session started.
+    /// draws *inside* it is `interior`, redrawn on top of every arc, or a
+    /// double ring would collapse to a plain ring while a timer runs.
     static func outline(style: MenuBarIconStyle, size s: CGFloat) -> NSBezierPath {
         let w = lineWidth(s)
         let rect = NSRect(x: w / 2, y: w / 2, width: s - w, height: s - w)
@@ -222,23 +198,17 @@ public enum MenuBarIcon {
     /// clockwise.
     ///
     /// Neither is a property of the path as built: `NSBezierPath(roundedRect:)`
-    /// and a hand-built polygon start wherever their construction started and
-    /// wind whichever way it wound. A countdown that begins at the bottom left
-    /// and runs anti-clockwise is not wrong by a little — it is a clock going
-    /// backwards — so the orientation is established here rather than trusted.
+    /// and a hand-built polygon start and wind wherever their construction did,
+    /// and a countdown running anti-clockwise from the bottom left is a clock
+    /// going backwards. So the orientation is established here, not trusted.
     static func perimeter(of path: NSBezierPath) -> [CGPoint] {
         // Finer than the default 0.6, which turns a 15 pt circle into an
         // octagon: the walk is only ever a *part* of the outline, so it has to
         // agree with the whole one drawn under it.
         //
-        // **On the class, not on the path.** `flattened` ignores the instance's
-        // own `flatness` and reads `NSBezierPath.defaultFlatness` — measured on
-        // a 15 pt ring: 9 points with `copy.flatness = 0.02`, which is what
-        // this line used to say, and 65 with the class value set. So the fix
-        // that was supposed to stop the countdown being an octagon changed
-        // nothing at all, and every round shape kept its corners the moment a
-        // timer started. Restored immediately: it is global state, and it is
-        // only ours for the length of one flatten.
+        // Set on the class, not on the path: `flattened` ignores the instance's
+        // own `flatness` and reads `NSBezierPath.defaultFlatness`. It is global
+        // state, so it is restored right after the one flatten.
         // `copy()` comes from `NSCopying` typed `Any`; `NSBezierPath.copy()`
         // returns an `NSBezierPath` by contract, so this cannot fail.
         // swiftlint:disable:next force_cast
@@ -271,13 +241,10 @@ public enum MenuBarIcon {
         }
         if area > 0 { points.reverse() }
 
-        // Start at twelve o'clock — which usually is not one of the points.
-        //
-        // Flattening a rounded rectangle turns its top edge into a single
-        // segment, so the only candidates up there are the two corners where
-        // the curves end. Picking the nearer of them started the square's
-        // countdown 2.4 pt to the right of centre, on the corner, measured.
-        // So the top edge is split rather than chosen from.
+        // Start at twelve o'clock, which usually is not one of the points:
+        // flattening a rounded rectangle turns its top edge into one segment
+        // whose ends are the corners, so the top edge is split rather than
+        // chosen from.
         let top = points.map(\.y).max() ?? 0
         let centreX = (points.map(\.x).min()! + points.map(\.x).max()!) / 2
         let atTop = { (point: CGPoint) in point.y > top - 0.001 }
@@ -297,13 +264,9 @@ public enum MenuBarIcon {
         return Array(points[start...] + points[..<start])
     }
 
-    /// The whole outline, drawn as the curve it is.
-    ///
-    /// Not as the flattened walk: `NSBezierPath.flattened` uses a default
-    /// flatness of 0.6, which at 15 pt turns a circle into an eight-sided
-    /// polygon. Stroking the polyline made every round shape faceted — and it
-    /// shipped in one build, visible in a contact sheet nobody read closely
-    /// enough. The walk is for parts of the outline; this is for all of it.
+    /// The whole outline, drawn as the curve it is, not as the flattened walk,
+    /// which would turn a small circle into a faceted polygon. The walk is for
+    /// parts of the outline; this is for all of it.
     static func strokeWhole(_ path: NSBezierPath, width: CGFloat, colour: NSColor) {
         path.lineWidth = width
         path.lineJoinStyle = .round
@@ -365,11 +328,9 @@ public enum MenuBarIcon {
         return image
     }
 
-    /// Every palette colour here is dynamic — `.labelColor` and the system
-    /// colours all differ between light and dark — and `lockFocus` bakes the
-    /// one that was current. A cache keyed only by style, size and tint would
-    /// therefore keep drawing yesterday's appearance after the user switched,
-    /// so the appearance is part of the key.
+    /// Every palette colour here is dynamic and `lockFocus` bakes the one that
+    /// was current, so the appearance is part of the cache key, or the cache
+    /// would keep drawing the old appearance after the user switched.
     private static var currentAppearanceName: String {
         NSAppearance.currentDrawing().name.rawValue
     }
@@ -381,27 +342,23 @@ public enum MenuBarIcon {
         let appearance: String
     }
 
-    /// One set of frames per key, built once. It used to let go of its lock to
-    /// build, so two menu-bar redraws arriving together each rendered the whole
-    /// spin — which is `frameCount` bitmaps drawn twice for nothing.
+    /// One set of frames per key, built once under the lock, so two redraws
+    /// arriving together do not each render the whole spin.
     private static let spinnerCache = LockedMemo<SpinnerKey, [NSImage]>()
 
     /// Palette lookup, also used for menu-bar text drawn beside the glyph.
     public static func nsColor(forTintToken token: String?) -> NSColor {
         switch token {
         case nil: return .white
-        // Theme-adaptive, and a trap in a baked bitmap: the glyph is drawn with
-        // `lockFocus`, so this resolves once against whatever appearance was
-        // current — not the one the image is shown in. In-app previews should
-        // ask for `nil` (a template) and tint with `foregroundStyle`, or go
-        // through `HelmAppearance`. Kept for callers that draw at a moment
-        // when the appearance is known to be right.
+        // Theme-adaptive, and a trap in a baked bitmap: `lockFocus` resolves it
+        // once against whatever appearance was current, not the one the image is
+        // shown in. In-app previews ask for `nil` (a template) and tint with
+        // `foregroundStyle`, or go through `HelmAppearance`.
         case "primary": return .labelColor
-        // Every palette name, the retired ones too, answers from `PaletteColor`.
-        // A colour the person chose themselves, stored as `#RRGGBB`, comes next.
-        // Anything else — a token from a build that had names this one does not,
-        // a hand-edited plist — falls back to white, which is the untinted glyph
-        // and the same answer `nil` gives.
+        // Every palette name, the retired ones too, answers from `PaletteColor`,
+        // then a colour the person chose, stored as `#RRGGBB`. Anything else (a
+        // token from another build, a hand-edited plist) is white, the untinted
+        // glyph, the same answer `nil` gives.
         case let token?: return PaletteColor(rawValue: token)?.nsColor ?? PaletteTint.custom(token) ?? .white
         }
     }

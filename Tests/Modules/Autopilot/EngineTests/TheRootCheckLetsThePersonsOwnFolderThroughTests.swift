@@ -123,11 +123,9 @@ final class TheRootCheckLetsThePersonsOwnFolderThroughTests: RootCheckRig {
     // MARK: - The page and the sweep
 
     /// **What the page draws for a root the sweep refuses.** `status` answers
-    /// each folder with `FolderReader.state(of:)`, which opens the folder without
-    /// asking the gate — with Full Disk Access that open succeeds, so the page
-    /// is told `.read` and draws no notice, while every sweep of the same folder
-    /// is `.refused` and does nothing. After a Run now the row says «Helm cannot
-    /// read this folder» until the next status read takes it away again.
+    /// each folder with the sweep's own verdict: an open that skipped the gate
+    /// succeeds under Full Disk Access, and the page would draw no notice while
+    /// every sweep of the same folder is `.refused` and does nothing.
     func testThePageIsToldWhatTheSweepWasToldAboutARefusedRoot() throws {
         let fm = FileManager.default
         try write("Library/Inbox/\(secret)", in: home)
@@ -144,21 +142,14 @@ final class TheRootCheckLetsThePersonsOwnFolderThroughTests: RootCheckRig {
     }
 }
 
-/// The person's own folder is read under every spelling of it.
-///
-/// A root check refuses in the safe direction, and the cost of refusing too much
-/// is not visible anywhere: the sweep reports the folder as unreadable, the
-/// hourly pass writes one warning into a log nobody reads, and the person's
-/// real rules simply stop. So these hold the other side of the check — every
-/// spelling under which an ordinary watched folder is still the person's own
-/// folder is read, and a gate that compared strings, or one that forgot the
-/// engine's home, fails here.
+/// The person's own folder is read under every spelling of it, the other side
+/// of a root check whose refusing too much shows nowhere (the class above says
+/// why). A gate that compared strings, or one that forgot the engine's home,
+/// fails here.
 ///
 /// Everything is on disk: a scratch home, real folders, real links. The scratch
 /// home lives under `/var/folders`, so its `/private` spelling is a real second
 /// spelling of the same directory.
-///
-/// Past defect: fixed in 4ce355a9.
 final class ThePersonsOwnFolderReadsUnderEverySpellingTests: RootCheckRig {
 
     /// Read, and acted on: the move happened, so the rules really ran.

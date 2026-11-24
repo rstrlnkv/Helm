@@ -5,12 +5,10 @@ import HelmTestSupport
 /// A scan nobody is watching stops at an application's database; a scan
 /// somebody asked for measures it.
 ///
-/// The asymmetry is the point. On 2026-08-03 a background scan walked into
-/// `~/Pictures/Photos Library.photoslibrary` and macOS raised a consent dialog
-/// that waited at an empty desk. But this module's whole answer is where the
-/// space went, and a photo library is often the largest thing on the volume —
-/// so the refusal belongs to the unattended walk alone, and both halves need a
-/// test or the next person will "simplify" one of them away.
+/// Walking into a photo library raises a macOS consent dialog, which nobody is
+/// there to answer during a background scan. But a photo library is often the
+/// largest thing on the volume, so the refusal belongs to the unattended walk
+/// alone, and both halves are held.
 final class UnattendedWalkStopsAtLibrariesTests: XCTestCase {
     private var fixture: URL!
 

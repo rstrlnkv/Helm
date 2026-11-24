@@ -1,14 +1,10 @@
 import XCTest
 @testable import HelmUI
 
-/// Five sizes became three and five shapes became three, and nobody's icon
-/// changes to something they did not choose.
-///
-/// A dropped case is not a compile error at the *storage* boundary: the raw
-/// string is still on disk, `init(rawValue:)` answers nil, and every call site
-/// had a `?? default` waiting to swallow it. Somebody who had picked the
-/// smallest icon would have been handed the middle one, and the app would
-/// have looked like it had forgotten.
+/// A stored size or shape this build does not offer reads back as the nearest
+/// it does, so nobody's icon changes to something they did not choose. A
+/// dropped case is not a compile error at the storage boundary: the raw string
+/// is still on disk and `init(rawValue:)` answers nil.
 final class MenuBarIconChoicesTests: XCTestCase {
 
     // MARK: - Sizes
@@ -33,9 +29,7 @@ final class MenuBarIconChoicesTests: XCTestCase {
     /// **And this is where the shipped default lives**, which is why the empty
     /// string is asserted beside the nonsense one: `AppSettings.menuBarIconSize`
     /// passes `""` for «never chosen», so this fallback is what a fresh install
-    /// wears. It answered `.extraSmall` while `AppSettings` supplied `"small"`
-    /// separately — 13 pt and «M» against 15 pt and «L» — and the disagreement
-    /// was reachable the moment anybody dropped the literal for this fallback.
+    /// wears, `.small`, 15 pt, «L».
     func testSomethingUnrecognisedFallsBackToTheShippedDefault() {
         XCTAssertEqual(MenuBarIconSize(stored: "enormous"), .small)
         XCTAssertEqual(MenuBarIconSize(stored: ""), .small)
@@ -45,8 +39,7 @@ final class MenuBarIconChoicesTests: XCTestCase {
 
     // MARK: - Shapes
 
-    /// The three circles stayed; only `disc` and `dot` went, and they go to
-    /// the ring rather than to whatever the default happens to be that day.
+    /// `disc` and `dot` go to the ring rather than to whatever the default is.
     func testTheTwoDroppedShapesBecomeTheRing() {
         XCTAssertEqual(MenuBarIconStyle(stored: "disc"), .ring)
         XCTAssertEqual(MenuBarIconStyle(stored: "dot"), .ring)

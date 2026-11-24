@@ -7,15 +7,12 @@ import Module_Duplicates_Engine
 /// removal it sends has to say.
 ///
 /// What a removal frees is arithmetic over clone families, and a family is held
-/// by any copy of it that is not going — `DuplicateGroup.reclaimable`, the fold
-/// the bar above the press is built from, counts it that way and says so. The
+/// by any copy of it that is not going (`DuplicateGroup.reclaimable`). The
 /// engine cannot arrive at the same figure on its own: an extra the person left
-/// unticked is named in no plan, and `HelmTrash.remove`'s own doc records why it
-/// cannot be recovered from the disk — there is no reverse lookup from a clone
-/// family to its members. `TheBatchIsToldWhatStaysTests` holds the engine's half
-/// on real clones; this holds the page's, which is that the fact is sent at all.
-///
-/// Guards a past defect: 69505181 fix(duplicates): the batch is read against itself, and four other ways the page lied.
+/// unticked is named in no plan, and there is no reverse lookup from a clone
+/// family to its members (`HelmTrash.remove`). `TheBatchIsToldWhatStaysTests`
+/// holds the engine's half on real clones; this holds the page's, which is that
+/// the fact is sent at all.
 @MainActor
 final class ThePageNamesEveryCopyItKeepsTests: XCTestCase {
 

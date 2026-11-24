@@ -12,16 +12,13 @@ import HelmUI
 /// appearance block resolves against whatever appearance happens to be current.
 /// A wedge or a row bar is the swatch blended into the window background inside
 /// the block that knows which appearance it is drawing in, so the same folder is
-/// the same colour in the ring and in the list, and each one can be measured.
+/// the same colour in the ring and in the list.
 ///
 /// Each swatch has four values: light and dark, each in the ordinary and the
-/// Increase Contrast form. The ordinary pair is one colour in both appearances —
-/// the eight colours this screen has always had. The increased pair is solved
-/// for a floor: the outermost drawn ring, which is the faintest wedge, clears
-/// 3:1 against the window background (a mark that carries meaning). Light goes
-/// darker and dark goes lighter, by the smallest step that clears it; a dark
-/// swatch that already clears it keeps its ordinary value. Measured against
-/// `windowBackgroundColor`: white in light, #1E1E1E in dark.
+/// Increase Contrast form. The ordinary pair is one colour in both appearances.
+/// The increased pair is solved so the outermost drawn ring, the faintest
+/// wedge, clears 3:1 against `windowBackgroundColor` (white in light, #1E1E1E
+/// in dark), by the smallest step that clears it.
 @MainActor
 enum DiskPalette {
     /// Light and dark of one setting, as 0xRRGGBB in sRGB.
@@ -47,8 +44,7 @@ enum DiskPalette {
     /// ring recedes by this much each step.
     static let ringStep = 0.14
     /// The fraction of the swatch in a list row's bar, light and dark: one
-    /// opacity does not carry the same weight on both, and the bar measures
-    /// about 1.10:1 over a white list at 0.10.
+    /// opacity does not carry the same weight on both.
     private static let barWeight = (light: 0.28, dark: 0.10)
     /// …and under the pointer. The hovered row's wash is drawn beneath its bar.
     private static let hoverWeight = (light: 0.38, dark: 0.16)

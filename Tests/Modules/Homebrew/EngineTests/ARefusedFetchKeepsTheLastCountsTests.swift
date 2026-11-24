@@ -7,12 +7,9 @@ import HelmTestSupport
 /// empty one: `[:]` is a perfectly well-formed answer meaning nobody installs
 /// anything, and the ranking would believe it.
 ///
-/// The other half is the clock. A fetch that did not complete must not stamp
-/// one, or the next launch reads a refusal as a fresh reading and stops
-/// retrying — and `deactivate()` runs on every route out of the app,
-/// `applicationWillTerminate` included, so being cancelled mid-fetch is an
-/// ordinary Tuesday rather than an edge case.
-/// Kept: guards the defect fixed in fe2f9044 Fetch Homebrew's install counts once a day, bounded, with the ETag.
+/// A fetch that did not complete stamps no clock, or the next launch reads a
+/// refusal as a fresh reading and stops retrying. `deactivate()` runs on every
+/// route out of the app, so a cancellation mid-fetch is ordinary.
 final class ARefusedFetchKeepsTheLastCountsTests: XCTestCase {
 
     private func directoryWithADayOldReading(_ label: String) throws -> URL {
@@ -68,24 +65,16 @@ final class ARefusedFetchKeepsTheLastCountsTests: XCTestCase {
                                              try directoryWithADayOldReading("counts-huge"))
     }
 
-    /// No network, a refused connection, a deadline — and the cancellation that
-    /// arrives when the app is quitting, which throws out of the same call and
-    /// is the one this store meets most often.
+    /// No network, a refused connection, a deadline, and the cancellation that
+    /// arrives when the app quits, the one this store meets most often.
     func testATransportFailureLeavesBothTheReadingAndTheClock() async throws {
         try await assertTheLastReadingStands(PopularityWire.offline(),
                                              try directoryWithADayOldReading("counts-offline"))
     }
 
-    /// The first launch on every Mac, and every launch on one whose support
-    /// folder was cleared out: it answers, it does not crash, and it invents no
-    /// counts.
-    ///
-    /// **It does not pin nil against empty, and cannot.** `InstallCounts.none`
-    /// *is* `InstallCounts(counts: [:])`, so at this layer the two are one
-    /// value and this assertion would still pass if `load` started answering an
-    /// empty reading instead of nil. The guard that really holds that
-    /// distinction is `assertTheLastReadingStands` above, where a refusal
-    /// turning into `[:]` replaces a stored reading and fails three ways.
+    /// The first launch on every Mac: it answers, does not crash, and invents
+    /// no counts. `InstallCounts.none` *is* `InstallCounts(counts: [:])`, so this
+    /// cannot tell nil from empty; `assertTheLastReadingStands` holds that.
     func testAMacWithNothingStoredAnswersWithoutInventingCounts() {
         let store = FilePopularityStore(directory: scratchDirectory("counts-empty"),
                                         transfer: PopularityWire.offline().transfer)
@@ -93,10 +82,9 @@ final class ARefusedFetchKeepsTheLastCountsTests: XCTestCase {
     }
 
     /// **The disk is read on the first ask and not in `init`.** The two
-    /// documents are 850 KB of JSON — 30 ms of parse, measured — and `init`
-    /// runs inside `makeModule`, which the host calls on the main thread at
-    /// launch for every module that is switched on. Reading a file that only
-    /// appears after construction is the observable form of that claim.
+    /// documents are 850 KB of JSON, and `init` runs inside `makeModule` on the
+    /// main thread at launch. A file that only appears after construction is
+    /// read: the observable form of that.
     func testTheDocumentsAreNotParsedUntilSomebodyAsks() throws {
         let directory = scratchDirectory("counts-lazy")
         let store = FilePopularityStore(directory: directory,
@@ -111,17 +99,11 @@ final class ARefusedFetchKeepsTheLastCountsTests: XCTestCase {
 
     /// **And a refresh with nothing due is not somebody asking.**
     ///
-    /// This is the ordinary launch of an enabled module: `activate()` starts
-    /// the refresh, both documents were cached this morning, and there is
-    /// nothing to fetch. `refreshIfDue` used to open with one unconditional
-    /// `readings()` — 850 KB of JSON parsed and 2.84 MiB of dictionary resident
-    /// from that moment on, every launch, for a figure nobody had asked for.
-    /// The only thing in there that wants a stored reading is the ETag gate,
-    /// which is reached on a day a document is due.
-    ///
-    /// Observable the same way its sibling above is: a document rewritten
-    /// afterwards is still the one the store answers with, which it could not
-    /// be if the refresh had read and cached the earlier bytes.
+    /// The ordinary launch of an enabled module: `activate()` starts the
+    /// refresh, both documents are cached, nothing is due. Only the ETag gate
+    /// wants a stored reading, and it is reached only on a day a document is
+    /// due. A document rewritten afterwards is still the one the store answers
+    /// with, which it could not be had the refresh read the earlier bytes.
     func testARefreshWithNothingDueParsesNothing() async throws {
         let directory = scratchDirectory("counts-not-parsed")
         for (endpoint, counts) in [(FilePopularityStore.formulae, ["helm": 900]),
@@ -145,17 +127,11 @@ final class ARefusedFetchKeepsTheLastCountsTests: XCTestCase {
                        + "due — the cost the lazy load exists to avoid, paid anyway")
     }
 
-    /// **The line drawn from the other side.** Everything above is a refusal
-    /// that must not become `[:]`; this is `[:]` arriving as an answer, which
-    /// must not be read as a refusal. `{"formulae":{}}` is Homebrew saying
-    /// nobody installed anything over the window — a thing it is entitled to
-    /// say — so it replaces the stored reading and is cached like any other
-    /// document. Read it as a refusal instead and the store never writes it,
-    /// so every launch from then on re-fetches the same document for ever.
-    ///
-    /// What it costs the person is nothing: search ranks against an empty
-    /// reading exactly as it ranks with no reading at all, which is brew's own
-    /// order.
+    /// **`[:]` arriving as an answer is not a refusal.** `{"formulae":{}}` is
+    /// Homebrew saying nobody installed anything over the window, so it replaces
+    /// the stored reading and is cached. Read as a refusal it is never written,
+    /// and every launch re-fetches it. Search ranks against an empty reading as
+    /// with none, in brew's own order.
     func testAnEmptyDocumentOffTheWireReplacesTheStoredReading() async throws {
         let directory = try directoryWithADayOldReading("counts-empty-document")
         let wire = PopularityWire(status: 200, body: countsDocument([:]))
@@ -179,12 +155,9 @@ final class ARefusedFetchKeepsTheLastCountsTests: XCTestCase {
     /// program wrote: the store answers, does not crash, and invents no counts
     /// out of the wreckage.
     ///
-    /// Same caveat as the case above — `PopularityReadings.none` is a reading
-    /// with empty halves, so this cannot tell nil from `[:]`. What it does hold
-    /// is that an unreadable file reaches nothing: no partial dictionary, no
-    /// throw out of `readings()`. The nil-against-empty distinction is
-    /// `assertTheLastReadingStands`'s, and the tag gate's own half of it is
-    /// `testATagIsNotOfferedWhenTheDocumentItDescribesCannotBeRead`.
+    /// `PopularityReadings.none` has empty halves, so this cannot tell nil from
+    /// `[:]`; it holds that an unreadable file reaches nothing: no partial
+    /// dictionary, no throw out of `readings()`.
     func testACacheFileThisBuildCannotReadInventsNoCounts() throws {
         let directory = scratchDirectory("counts-corrupt")
         try Data("{\"formulae\":{\"helm\":[{\"cou".utf8)

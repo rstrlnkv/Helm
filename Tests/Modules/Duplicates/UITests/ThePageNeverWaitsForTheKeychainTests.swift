@@ -10,15 +10,10 @@ import XCTest
 /// which verifies a seal, which needs the key, which comes from the login
 /// keychain. On an ad-hoc build the cdhash changes with every build, no access
 /// list an earlier one wrote still names this one, and the answer is a modal
-/// authorization dialog rather than data: the same arrangement measured as
-/// `HelmApp_2026-08-19-235500_MacBook.hang`, 19,09 s of a settings window that
-/// could not answer a mouse-up, one target over.
+/// authorization dialog rather than data, on the thread that draws.
 ///
 /// So the policy starts at the standard belief and arrives from a task
-/// `appear()` holds. Held rather than fired and forgotten, for the reason
-/// Autopilot's model records: a load nobody can await is a load every test races.
-///
-/// Guards a past defect: 23dae882 fix(duplicates): the page is built before the keychain has answered.
+/// `appear()` holds: a load nobody can await is a load every test races.
 @MainActor
 final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
 
@@ -38,8 +33,7 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
 
     // MARK: - Cold
 
-    /// The guard the defect walked past: building the page asks the keychain
-    /// nothing at all.
+    /// Building the page asks the keychain nothing at all.
     func testBuildingThePageAsksTheKeychainNothing() {
         let probe = SealKeyProbe()
 
@@ -51,13 +45,12 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
             """)
     }
 
-    /// And the hang itself, with a keychain that is **still deciding**: the page
-    /// is built and answers while the port is parked mid-call.
+    /// With a keychain that is **still deciding**, the page is built and answers
+    /// while the port is parked mid-call.
     ///
-    /// A port that answers instantly cannot be in the state this is about — the
-    /// subject is over before the code under test is reached — so the probe is
-    /// held on its gate, which is what that gate is for. The valve keeps a page
-    /// that *does* wait from hanging the suite: it fails a deadline instead.
+    /// A port that answers instantly is over before the code under test is
+    /// reached, so the probe is held on its gate. The valve keeps a page that
+    /// *does* wait from hanging the suite: it fails a deadline instead.
     func testThePageIsBuiltWhileTheKeychainIsStillDeciding() async {
         let gate = DispatchSemaphore(value: 0)
         let probe = SealKeyProbe(gate: gate)
@@ -98,8 +91,8 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
     ///
     /// **The page's own cache starts cold**, which is what makes this about the
     /// page: sealing through a guard that shares the model's cache would warm it
-    /// before the model existed, and the assertion below then held with the
-    /// warming deleted — measured, on the mutant that dropped `warmKey()`.
+    /// before the model existed, and the assertion below would hold with
+    /// `warmKey()` dropped.
     func testTheStoredPolicyArrivesOnceTheKeyIsInHand() async {
         let probe = SealKeyProbe()
         DuplicatesSettings.setKeepPolicy(.byDate, in: store, guardedBy: SettingGuard(keys: probe))

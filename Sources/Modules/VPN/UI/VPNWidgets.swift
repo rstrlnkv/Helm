@@ -3,10 +3,8 @@ import HelmUI
 
 /// VPN at 1×1: how many are up, out of how many there are.
 ///
-/// Not every connection with its switch — that is the 2×1 tile, and it needs
-/// a row each. What fits in a square is the count, and the count is what
-/// somebody is checking when they glance at the panel: nothing up when
-/// something should be is the whole question.
+/// Every connection with its switch is the 2×1 tile. What fits in a square is
+/// the count, which is what a glance at the panel checks.
 struct VPNCompactWidget: View {
     @ObservedObject private var vm: VPNViewModel
 

@@ -47,8 +47,8 @@ extension ActionHistory {
     /// The history in passes, newest first.
     ///
     /// Records with no pass of their own each stand alone rather than
-    /// collapsing into one enormous group — a history written before this build
-    /// has none, and one press over all of it is not a gesture anybody meant.
+    /// collapsing into one enormous group: one press over all of them is not a
+    /// gesture anybody meant.
     public static func runs(of history: [ActionRecord], now: Date = Date()) -> [ActionRun] {
         var order: [String] = []
         var grouped: [String: [ActionRecord]] = [:]
