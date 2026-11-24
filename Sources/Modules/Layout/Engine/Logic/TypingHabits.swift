@@ -2,10 +2,8 @@ import Foundation
 
 /// The one typing habit Helm is sure enough about to correct on its own.
 ///
-/// It shared a file with the abbreviation table until that feature was cut,
-/// which is the only reason the two were ever near each other: they arrived at
-/// `replaceWord` by the same door and have nothing else in common. macOS ships
-/// abbreviations in Text Replacement and syncs them; it does not ship this.
+/// macOS ships abbreviations in Text Replacement and syncs them; it does not
+/// ship this.
 enum TypingHabits {
 
     /// A capital held a moment too long: `ПРивет` → `Привет`.
@@ -16,17 +14,15 @@ enum TypingHabits {
     ///   shouting on purpose is worse than leaving a typo.
     /// - `ПР` has nothing after it to prove the intent, and two capitals is
     ///   what an abbreviation looks like.
-    /// - `CDs` is the same thing one letter longer, and it was corrected to
-    ///   `Cds` — with `IDs`, `PCs`, `TVs` and `OKs` — for as long as the
-    ///   threshold was three. A two-letter abbreviation with a lowercase suffix
-    ///   is the commonest shape this rule cannot tell from a slipped Shift, and
-    ///   the fourth letter is what separates them: a slip has a word behind it.
+    /// - `CDs` is the same thing one letter longer (`IDs`, `PCs`, `TVs`,
+    ///   `OKs`). A two-letter abbreviation with a lowercase suffix is the
+    ///   commonest shape this rule cannot tell from a slipped Shift, and the
+    ///   fourth letter is what separates them: a slip has a word behind it.
     /// - Anything with a digit is an identifier — `IPv6`, `MP3file` — where the
     ///   shape is the meaning.
     ///
-    /// **What it still cannot tell**, recorded rather than claimed away:
-    /// `OSes`, `ТВшник` and `IPhone` read as slips to this rule and always did.
-    /// There is no test of the letters that separates those from `ПРивет` —
+    /// What it cannot tell: `OSes`, `ТВшник` and `IPhone` read as slips to this
+    /// rule. No test of the letters separates those from `ПРивет` —
     /// which is why the switch's note names the boundary this has instead of
     /// promising one it does not.
     ///

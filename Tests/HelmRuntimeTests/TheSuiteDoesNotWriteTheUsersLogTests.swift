@@ -1,15 +1,9 @@
 import XCTest
 @testable import HelmRuntime
 
-/// `~/Library/Logs/Helm/helm.log` is a product surface, and a suite run used to
-/// write into it.
-///
-/// The engine wire, since removed, logged at `error` when a reply would not encode,
-/// and when it still read payloads it logged one that would not decode — and its own tests, since
-/// cut, exercised exactly that, because that was the behaviour they were written
-/// for. The lines landed in the file every dev build
-/// is triaged against before it ships, wearing the same shape as a real fault,
-/// and four of them were investigated as a defect that did not exist.
+/// `~/Library/Logs/Helm/helm.log` is a product surface, and a suite run does not
+/// write into it: a test that exercises an error path would leave a line every
+/// dev build is triaged against, shaped like a real fault.
 ///
 /// The guard stands where the log resolves its destination, not at any call
 /// site: any test that switches the log on and reaches logging code writes.
@@ -72,8 +66,6 @@ final class TheSuiteDoesNotWriteTheUsersLogTests: XCTestCase {
 
     // MARK: - The guard
 
-    /// The one that would have caught it.
-    ///
     /// Asserting that the marker is absent passes for free when nothing was
     /// written at all, so the line is proven to exist first — in the tail, which
     /// is filled from the same parts the file line is spelled from. The file's

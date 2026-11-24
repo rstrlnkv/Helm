@@ -4,19 +4,13 @@ import HelmRuntime
 /// Swift read as text, for the checks that pin something no type system says.
 ///
 /// `RepoSource` answers *which* files and hands back their lines; this answers
-/// what is in one. The family it serves is already large — a string that
-/// must not be a literal, a list that must agree with the tree, a control that
-/// must be reachable from the keyboard — and two of them now need more than a
-/// line at a time: a call whose arguments span four lines, and the body of one
-/// function so a rule can be about what that function does.
+/// what is in one, including what spans lines: a call whose arguments span
+/// several lines, and the body of one function.
 ///
-/// **`RepoSource.code` is not enough, and it is not wrong.** It strips a comment
-/// tail from one line, which is exactly right for a scan that reads a line at a
-/// time and is why every such scan uses it. It cannot see that a `"""` block
-/// spans lines, or that a `//` inside a string is not a comment. The first cost
-/// a real finding: the keychain-port guard reported two of its own fixtures —
-/// Swift quoted inside a `"""` — as offences in `Tests/`, and it did that on the
-/// first run it was ever given.
+/// `RepoSource.code` strips a comment tail from one line, which is right for a
+/// line scan. It cannot see that a `"""` block spans lines, or that a `//`
+/// inside a string is not a comment, so Swift quoted in a fixture would read as
+/// code.
 public enum SwiftSource {
 
     // MARK: - Reading it as the compiler roughly would
@@ -35,18 +29,12 @@ public enum SwiftSource {
     /// `source` with comments blanked and the insides of string literals **kept**
     /// — the other half of the same walk, for a scan whose subject is a literal.
     ///
-    /// **`code` is the wrong reading for one family of check and it is not
-    /// obviously wrong.** The orphan-translation scan asks whether anything in
-    /// the tree still says `L("Off")`; run over `code` output that line reads
-    /// `L("")` and every key reports as dead at once, which at least fails
-    /// loudly. Run over the **raw** file it reads the opposite way and fails
-    /// silently: this repository writes backticked names inside doc comments on
-    /// purpose, so a doc comment saying «Not `L("Off")`» (the host's strings file
-    /// once had one) keeps the key «Off» alive by explaining why nothing uses it.
+    /// The orphan-translation scan asks whether anything still says `L("Off")`.
+    /// Over `code` output that reads `L("")` and every key looks dead. Over the
+    /// raw file a doc comment saying «Not `L("Off")`» keeps the key alive.
     ///
-    /// Not a second walk, and it could not be one: a `//` inside a string is not
-    /// a comment, so blanking comments correctly already requires parsing every
-    /// literal. It is the same parse with the copying turned back on.
+    /// The same parse with the copying turned on: blanking comments correctly
+    /// already requires parsing every literal.
     ///
     /// Escapes come back **as written**: `\"` stays `\"`. A caller that decodes
     /// them does it afterwards, because decoding first would end a literal at
@@ -55,16 +43,8 @@ public enum SwiftSource {
         read(source, keepingStrings: true)
     }
 
-    /// The delimiters, hoisted. They were `Array("…")` literals inside the loop
-    /// — seven of them built at **every character position**, beside a `String`
-    /// allocated per character by `take(1)`, and that is where the whole cost
-    /// was. Measured over every file of `Sources/` on 2026-08-21, three readings
-    /// each: **3.728 / 3.734 / 3.743 s before, 0.557 / 0.559 / 0.558 s after**,
-    /// with the output byte-identical on every file of `Sources/` and `Tests/`
-    /// and on the corpus of unterminated literals, raw blocks, CRLF and emoji
-    /// that `ACommentIsNotAUseOfAKeyTests` keeps. Worth having because XCTest
-    /// builds an instance per test case, so a class of ten whole-tree scans paid
-    /// the old cost ten times.
+    /// The delimiters, hoisted out of the loop so none is built per character:
+    /// this walk runs over the whole tree, and its cost is per character.
     private static let lineComment: [Character] = ["/", "/"]
     private static let blockOpen: [Character] = ["/", "*"]
     private static let blockClose: [Character] = ["*", "/"]
@@ -85,11 +65,8 @@ public enum SwiftSource {
 
     /// One walk, two readings: comments always go, literals go or stay.
     ///
-    /// Written against an index into `[Character]` rather than a consuming
-    /// slice, so that recognising a delimiter compares characters in place
-    /// instead of building an array to compare against — and accumulating into
-    /// `[Character]`, which appends without re-encoding, rather than into a
-    /// `String` grown one grapheme at a time.
+    /// An index into `[Character]`, so a delimiter is compared in place, and an
+    /// output `[Character]`, which appends without re-encoding.
     private static func read(_ source: String, keepingStrings: Bool) -> String {
         let characters = Array(source)
         let count = characters.count
@@ -117,15 +94,10 @@ public enum SwiftSource {
         func skip(to close: [Character], escaping: Bool, keeping: Bool) {
             while index < count {
                 if escaping, characters[index] == "\\" {
-                    // A `\` right before a newline is Swift's own line
-                    // continuation inside a `"""` literal: the *decoded*
-                    // value drops the newline, but the raw text still has
-                    // one, and every line number below it is counted
-                    // against the raw text. Compared against `"\n"`, the
-                    // same spelling the non-escape branch below already
-                    // keeps — this file does not track `\r\n` as a second
-                    // spelling anywhere else, so the escape branch should
-                    // not start.
+                    // A `\` before a newline is a line continuation inside
+                    // `"""`: the raw text keeps the newline, and line numbers
+                    // count the raw text. Only `"\n"`, as everywhere in this
+                    // file; `\r\n` is not tracked.
                     if !keeping, index + 1 < count, characters[index + 1] == "\n" {
                         out.append("\n")
                     }
@@ -188,14 +160,9 @@ public enum SwiftSource {
     /// reads one — **walked, loaded and parsed once a process**, however many
     /// test cases ask for it.
     ///
-    /// **XCTest builds an instance per test case.** An instance method that
-    /// reads the tree therefore reads it once per *case*, not once per class,
-    /// and three whole-tree scans in a twelve-case class is thirty-six walks.
-    /// Measured on 2026-08-21, the two classes that did this cost 11.1 s and
-    /// 14.9 s of a suite whose other hundred-odd classes are milliseconds.
-    ///
-    /// The tree does not change while the suite runs, so the answer is the same
-    /// every time and the second walk buys nothing.
+    /// XCTest builds an instance per test case, so an instance method would
+    /// walk the tree once per case. The tree does not change while the suite
+    /// runs, so a second walk buys nothing.
     public static func code(under directory: String) throws -> [Read] {
         try files(under: directory, keepingStrings: false)
     }
@@ -203,20 +170,14 @@ public enum SwiftSource {
     /// The same, read as `uncommented(_:)` reads one — comments blanked,
     /// literals kept.
     ///
-    /// **Cached apart from `code(under:)` and not merely alongside it.** One
-    /// cache keyed on the directory would serve whichever caller came second
-    /// the first one's text, and that failure is silent in the direction that
-    /// matters: every `L("Off")` in the tree arrives as `L("")` and the orphan
-    /// scan condemns all thousand-odd keys at once.
+    /// Cached apart from `code(under:)`: one cache keyed on the directory alone
+    /// would hand the second caller the first one's reading, and every
+    /// `L("Off")` would arrive as `L("")`.
     public static func uncommented(under directory: String) throws -> [Read] {
         try files(under: directory, keepingStrings: true)
     }
 
-    /// **`LockedMemo` rather than a fifth hand-rolled one.** It is `HelmRuntime`'s,
-    /// it is one lock and one dictionary with the build under the lock, and its
-    /// own documentation is the account of the four copies that existed before
-    /// it — three of them under one name and already not the same thing. This
-    /// was written as a sixth before that was noticed.
+    /// `HelmRuntime`'s `LockedMemo`, not a hand-rolled one.
     ///
     /// The value is a `Result` so the throwing read fits a non-throwing memo,
     /// and a failure is remembered on purpose: the subject is a fixed tree, so
@@ -282,16 +243,10 @@ public enum SwiftSource {
     ///   by something.
     public static func callSites(of callee: String, in source: String,
                                  wholeWords: Bool = true) -> [Call] {
-        // **A fast no, before the copy.** The walk below needs the whole source
-        // as `[Character]` before it can look at anything, and a call site *is*
-        // an occurrence of `callee(` — so a source without that substring has
-        // none, exactly rather than probably.
-        //
-        // It belongs here and not at a caller: every scan that asks about
-        // several callees over one tree was paying a copy per callee, and
-        // `PortsAtConstruction` — three subjects over all of `Tests/` — made
-        // three of every file for answers two of them could not hold. Measured
-        // 2026-08-21, that scan went 2.421 s to 0.200 s.
+        // A fast no before the copy: a call site is an occurrence of
+        // `callee(`, so a source without that substring has none. Here rather
+        // than at a caller, because a scan asking about several callees over
+        // one tree would otherwise copy every file once per callee.
         guard source.contains(callee + "(") else { return [] }
         var out: [Call] = []
         let characters = Array(source)
@@ -326,10 +281,8 @@ public enum SwiftSource {
         while index < characters.count {
             let character = characters[index]
             // A literal is copied whole and never inspected: its parentheses are
-            // not the call's. Redundant once `code(_:)` has blanked the insides —
-            // and kept anyway, because this is callable without it and a reader
-            // that is only correct on pre-processed input is one somebody will
-            // use on the other kind.
+            // not the call's. Needed even after `code(_:)`, because this is
+            // callable on raw input too.
             guard character != "\"" else {
                 let end = endOfString(from: index, in: characters)
                 current += String(characters[index..<end])
@@ -385,13 +338,9 @@ public enum SwiftSource {
     /// Every `class`/`struct`/`actor`/`enum`/`extension`/`protocol` body in
     /// `source`.
     ///
-    /// **Not "the nearest declaration above".** That was the first reading, and
-    /// it was wrong on the very file the keychain-port guard was written for:
-    /// `DuplicatesViewModel` declares a nested `enum Phase` above its own `init`,
-    /// so the nearest declaration above that init is `Phase` — the subject was
-    /// filed under a type nothing ever constructs, and the rule went quietly
-    /// green over the three call sites it existed for. A brace stack is the only
-    /// reading that survives nesting, and nesting is the normal shape here.
+    /// A brace stack, not "the nearest declaration above": a nested `enum`
+    /// declared above a type's own `init` would claim that init, and nesting is
+    /// the normal shape here.
     public static func typeBodies(in source: String) -> [Body] {
         bodies(in: source, after: ["class", "struct", "actor", "enum", "extension", "protocol"])
     }
@@ -407,16 +356,6 @@ public enum SwiftSource {
         bodies.filter { $0.contains(offset) }.min { $0.width < $1.width }
     }
 
-    /// The text of the first body named `name`, or nothing.
-    ///
-    /// «First», not «the one», and deliberately: an overloaded name has more than
-    /// one, and a caller that cares asks `functionBodies` and picks. A caller that
-    /// does not is asking about a name it believes is unique, and
-    /// `bodiesNamed(_:in:)` is what proves that belief.
-    public static func body(of name: String, in source: String) -> String? {
-        bodiesNamed(name, in: source).first
-    }
-
     /// The text of every body declared under `name`.
     public static func bodiesNamed(_ name: String, in source: String) -> [String] {
         let characters = Array(source)
@@ -427,9 +366,8 @@ public enum SwiftSource {
     /// What a completed word does to the reading: introduce a declaration, name
     /// one that was introduced, or nothing.
     ///
-    /// Its own function because the walk below is otherwise one loop carrying
-    /// every decision in this file, and a reader that has to hold all of them at
-    /// once is how the nested-`enum` misreading survived review.
+    /// Its own function so the walk below does not carry every decision in one
+    /// loop.
     private static func introduced(_ word: String, _ keywords: Set<String>,
                                    _ pending: String?, _ expectingName: Bool)
     -> (pending: String?, expectingName: Bool) {
@@ -451,8 +389,7 @@ public enum SwiftSource {
         var word = ""
         /// Depth inside a parameter list. Without it, `init(trashing: … = { … })`
         /// hands the declaration's name to the closure and the real body comes
-        /// back anonymous — which is `DuplicatesEngine.init` and
-        /// `ActionRecord.of`, two of the declarations these scans are about.
+        /// back anonymous.
         var parens = 0
         func endWord() {
             defer { word = "" }

@@ -11,7 +11,7 @@ import HelmTestSupport
 /// module that moves files unattended is which files are still there
 /// afterwards. Every assertion below is a directory listing — a count or a
 /// `SweepReport` field can be satisfied by the rules never having matched, and
-/// that is exactly the way a fix like this ships inert.
+/// that is how a guard like this ships inert.
 final class AutopilotSealTests: SealedRulesRig {
 
     // MARK: - The plist, as something else sees it
@@ -57,7 +57,7 @@ final class AutopilotSealTests: SealedRulesRig {
 
     // MARK: - Planted rules
 
-    /// The defect. A process with no permissions of its own writes a rule set
+    /// A process with no permissions of its own writes a rule set
     /// into the plist and waits an hour for Helm to carry the file out.
     func testAPlantedRuleSetIsNotRun() throws {
         try writeAFile()
@@ -106,10 +106,9 @@ final class AutopilotSealTests: SealedRulesRig {
 
     // MARK: - The upgrade
 
-    /// Somebody who has been using Autopilot has rules and no seal. Refusing
-    /// them would throw away configuration they built by hand, which is a worse
-    /// defect than the one being fixed — so the first run of this build adopts
-    /// what it finds and seals it.
+    /// Rules from before sealing have no seal. Refusing them would throw away
+    /// configuration somebody built by hand, so the first run of a sealing build
+    /// adopts what it finds and seals it.
     func testRulesFromBeforeTheSealAreAdoptedOnceAndThenSealed() throws {
         try writeAFile()
         try plant(emptyingRules(in: root))

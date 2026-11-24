@@ -5,14 +5,10 @@ import XCTest
 /// silent downgrade: `UpdateCheck.evaluateList` feeds it to `max(by:)`, and
 /// `max(by:)` trusts the predicate to be a strict weak ordering. If it is not,
 /// the "newest" release depends on the order GitHub happened to return, which
-/// is creation date — not version.
-///
-/// **Past defect: an offer that depended on GitHub's order** (5f196564, the fix commit
-/// that added this class).
+/// is creation date, not version.
 final class UpdateOrderingTests: XCTestCase {
 
-    /// Helm's real published tags, oldest first, including the dev prerelease
-    /// that preceded 0.7.0 and the one running now.
+    /// Helm's real published tags, oldest first, prereleases included.
     private let history = ["v0.2.0", "v0.3.0", "v0.4.0", "v0.5.0", "v0.5.1",
                            "v0.6.0", "v0.6.1", "v0.7.0-dev.20", "v0.7.0",
                            "v0.7.1-dev.9"]
@@ -57,13 +53,11 @@ final class UpdateOrderingTests: XCTestCase {
     }
 
     /// Dev ordinals are numbers, not text: dev.9 must sit below dev.10 and
-    /// dev.20, which string comparison would get backwards. Helm has already
-    /// shipped a dev.20.
+    /// dev.20, which string comparison would get backwards.
     func testDevOrdinalsCompareAsNumbers() {
         let devs = (1...25).map { "v0.7.1-dev.\($0)" }
         // A fixed seed, not `shuffled()`: a different permutation on every run
-        // is a different test on every run, which is how a green suite hides a
-        // bug that only one arrangement reaches.
+        // is a different test on every run.
         var rng = SeededGenerator(seed: 0x48_65_6C_6D)
         let sorted = devs.shuffled(using: &rng).sorted { UpdateVersion.isNewer($1, than: $0) }
         XCTAssertEqual(sorted, devs)
@@ -86,9 +80,6 @@ struct SeededGenerator: RandomNumberGenerator {
 /// The list endpoint returns releases newest-*created* first, which is not the
 /// same as newest-versioned: a hotfix cut on an old branch, or a re-published
 /// release, lands at the top with an older tag.
-///
-/// **Past defect: the same offer depending on GitHub's order** (5f196564, with the
-/// class above).
 final class UpdateListOrderTests: XCTestCase {
     private func release(_ tag: String, prerelease: Bool = true) -> String {
         ReleaseJSON.release(tag: tag, page: "https://x/\(tag)", body: "n", prerelease: prerelease, draft: false,
@@ -111,11 +102,9 @@ final class UpdateListOrderTests: XCTestCase {
     /// A dev user must never be walked backwards onto a stable release older
     /// than the prerelease they are running.
     ///
-    /// The answer used to be `.upToDate` and is now `.ahead`, which is the same
-    /// answer to the question this test asks — nothing is offered — said more
-    /// precisely. Being ahead of the channel is a real state, and calling it
-    /// "up to date" is what let the About page tell somebody running an
-    /// unreleased build that they were on the latest version.
+    /// The answer is `.ahead`: nothing is offered, and being ahead of the
+    /// channel is a real state, not "up to date", which would tell somebody
+    /// running an unreleased build that they are on the latest version.
     func testAStableReleaseOlderThanTheRunningPrereleaseIsNotOffered() {
         let json = "[" + release("v0.7.0", prerelease: false) + "," + release("v0.7.0-dev.20") + "]"
         let outcome = UpdateCheck.evaluateList(statusCode: 200, data: Data(json.utf8),

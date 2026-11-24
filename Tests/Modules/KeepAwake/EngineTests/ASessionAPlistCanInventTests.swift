@@ -34,9 +34,8 @@ final class ASessionAPlistCanInventTests: XCTestCase {
     /// `.indefinite` — «until I say stop» — because that is exactly what the
     /// engine's own writer stores for a session started with `minutes: 0`: the
     /// dates go down as `0`, and `0` is read back as «no date». The two are
-    /// indistinguishable by construction, so this cannot be refused without a
-    /// production change, and it is not a defect so much as the cost of the
-    /// shape.
+    /// indistinguishable by construction, so it is not refused: it is the cost
+    /// of the shape.
     ///
     /// What it must not be is *silent*: the Mac comes up held awake with no
     /// countdown and nothing on screen that says why it began. The line in the

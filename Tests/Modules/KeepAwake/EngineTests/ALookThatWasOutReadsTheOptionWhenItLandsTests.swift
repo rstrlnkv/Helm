@@ -9,9 +9,6 @@ import HelmRuntime
 /// on main, so the verdict follows the value current *then*; read before the
 /// hop, a rule the person has just started using would be reported as
 /// forgotten.
-///
-/// Past defect guarded: `lookForTheRule` taking `settings.clamshellEnabled`
-/// before the hop to `main`.
 final class ALookThatWasOutReadsTheOptionWhenItLandsTests: XCTestCase {
 
     @MainActor

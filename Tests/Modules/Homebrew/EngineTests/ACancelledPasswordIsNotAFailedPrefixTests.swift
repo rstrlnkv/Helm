@@ -1,10 +1,11 @@
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// The password dialog has three answers and the page has three sentences for
-/// them. «Cancel» is the ordinary way it ends and used to read as a failed
-/// `mkdir` — a red «Failed» with code 1 over a Mac nothing had touched.
+/// them. «Cancel», the ordinary ending, is not a failed `mkdir`: no red «Failed»
+/// with code 1 over a Mac nothing touched.
 final class ACancelledPasswordIsNotAFailedPrefixTests: XCTestCase {
 
     private func rigWithTools(reply: PrivilegedOutcome, holds: Bool = false) -> WaitRig {
@@ -22,7 +23,7 @@ final class ACancelledPasswordIsNotAFailedPrefixTests: XCTestCase {
         XCTAssertEqual(state?.phase, .failed)
         XCTAssertEqual(state?.reason, .authorizationDeclined)
         XCTAssertNil(state?.exitCode, "a cancelled dialog was given an exit code")
-        XCTAssertTrue(rig.runner.calls.isEmpty, "the installer ran after the person said no")
+        XCTAssertTrue(rig.runner.streamed.isEmpty, "the installer ran after the person said no")
     }
 
     /// Root was asked and the script failed: the other named outcome, with the
@@ -35,7 +36,7 @@ final class ACancelledPasswordIsNotAFailedPrefixTests: XCTestCase {
         let (state, _) = await rig.replayed()
         XCTAssertEqual(state?.reason, .prefixNotPrepared)
         XCTAssertEqual(state?.exitCode, 1)
-        XCTAssertTrue(rig.runner.calls.isEmpty)
+        XCTAssertTrue(rig.runner.streamed.isEmpty)
     }
 
     func testAnAcceptedDialogStartsTheInstallerWithTheDeclaredEnvironment() {
@@ -43,7 +44,7 @@ final class ACancelledPasswordIsNotAFailedPrefixTests: XCTestCase {
 
         rig.engine.installBrew()
 
-        XCTAssertEqual(rig.runner.calls.count, 1)
+        XCTAssertEqual(rig.runner.streamed.count, 1)
         XCTAssertEqual(rig.runner.streamCalls.first?.env, HomebrewEngine.installerEnvironment)
     }
 
@@ -73,9 +74,10 @@ final class ACancelledPasswordIsNotAFailedPrefixTests: XCTestCase {
     /// end they asked for wins over the answer, so the page says «Stopped».
     func testAStopWhileTheDialogIsUpWinsOverACancel() async {
         let rig = rigWithTools(reply: .declined, holds: true)
+        let shared = Shared(rig)
         let returned = DispatchSemaphore(value: 0)
         DispatchQueue.global(qos: .userInitiated).async {
-            rig.engine.installBrew()
+            shared.value.engine.installBrew()
             returned.signal()
         }
         rig.privileged.waitUntilOnScreen()

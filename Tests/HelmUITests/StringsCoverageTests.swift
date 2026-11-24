@@ -19,8 +19,8 @@ import HelmTestSupport
 final class StringsCoverageTests: XCTestCase {
 
     /// The kit's catalog is read, and is the kit's: `ModuleCatalogs.all()` throws when the file is
-    /// missing, and this says what a pass means. 105 plain keys were measured in the kit when it
-    /// moved; a floor of 90 is a guard against a read that has stopped finding the symbols.
+    /// missing, and this says what a pass means. The floor of 90 guards against a read that has
+    /// stopped finding the symbols.
     func testTheKitsCatalogIsRead() throws {
         let kit = try XCTUnwrap(try ModuleCatalogs.all().first { $0.module == "HelmUI" },
                                 "no catalog named HelmUI was read")
@@ -35,8 +35,7 @@ final class StringsCoverageTests: XCTestCase {
 
     /// **All eight languages in every catalog, none empty, none marked anything but `translated`.**
     /// A catalog editor writes «needs_review» for a value somebody has not looked at, and the build
-    /// ships it all the same. Replaces the `.lproj` pair (every English text in every other language,
-    /// no empty value): the catalog's symbol is the key, and each is asked for all eight.
+    /// ships it all the same.
     func testEveryCatalogSymbolCarriesTheEightLanguages() throws {
         let catalogs = try ModuleCatalogs.all()
         XCTAssertGreaterThanOrEqual(catalogs.count, 13, "only \(catalogs.count) catalog(s) were read")
@@ -122,8 +121,7 @@ final class StringsCoverageTests: XCTestCase {
 
     /// What a value holds that is neither a placeholder nor a literal percent sign, by the one rule
     /// the format string follows: **a value with arguments writes a literal `%` as `%%`; a value
-    /// without writes it single** (`100% готово` prints as it is, `100%%` prints two marks). Measured on
-    /// the copy the day it was decided; a bare `%` beside an argument is read as the start of a
+    /// without writes it single.** A bare `%` beside an argument is read as the start of a
     /// conversion, and `%%` in a value with none prints twice.
     static func percentOffences(_ value: String) -> [String] {
         let hasArguments = !placeholderPlaces(value).isEmpty
@@ -158,11 +156,9 @@ final class StringsCoverageTests: XCTestCase {
         XCTAssertEqual(Self.percentOffences("100%% done").count, 1)
     }
 
-    /// **No source holds an inline table.** The catalogs are where a module's words live, and a table at a
-    /// call site is outside everything this file guards — a language could be missing from one and
-    /// nothing would say so; one changelog entry shipped English to six languages for exactly that.
-    /// Read from the source with comments and literals blanked, so neither a doc comment that names the
-    /// old spelling nor a string that holds it counts. `testTheReadingFindsAnInlineTableInEitherSpelling` tests the reading.
+    /// **No source holds an inline table.** A table at a call site is outside everything this file
+    /// guards, so a language could be missing from it and nothing would say so. Read with comments
+    /// and literals blanked; `testTheReadingFindsAnInlineTableInEitherSpelling` tests the reading.
     static func inlineTableSpellings(in code: String) -> [Int] {
         var lines: [Int] = []
         let patterns = [#"\[\s*\.(?:ru|es|fr|de|ja|zh|pt|en)\s*:"#, #"\[\s*AppLanguage\s*:\s*String\s*\]"#]
@@ -194,22 +190,14 @@ final class StringsCoverageTests: XCTestCase {
 
     /// Where a language ships a key back as its own value, on purpose.
     ///
-    /// Every entry here is a decision somebody made and can be argued with;
-    /// that is the point of writing them down. It replaced a length threshold —
-    /// "fail if the key is 20 characters or more" — which did no work at all:
-    /// most legitimate identities are a word or two, so a length rule fired on
-    /// almost none of the entries below, while `Show all`,
-    /// `Widget size` and `Close tab` could have shipped untranslated in all
-    /// seven and passed. A threshold hides the decision; a list makes it.
-    ///
-    /// Per language, not per key, because `Notification` is French and German's
-    /// own word for it is `Mitteilung`: an identity is legitimate in the
-    /// languages that were checked, not everywhere the spelling could occur.
+    /// Every entry is a decision that can be argued with, which is why this is a list and not a
+    /// length threshold: a threshold hides the decision. Per language, not per key, because an
+    /// identity is legitimate only in the languages that were checked (`Notification` is French,
+    /// German says `Mitteilung`).
     private static let deliberateIdentities: [String: Set<AppLanguage>] = [
         "1 module": [.fr],
-        // The host's counted words, now in its catalog and so read by this loop. French says «module»
-        // and Spanish «error» the way English does (the six others differ), and a count in front of
-        // them does not change the word.
+        // French says «module» and Spanish «error» the way English does (the six others differ), and a
+        // count in front of them does not change the word.
         "%@ error": [.es],
         "%@ modules": [.fr],
         " · %@ module": [.fr],
@@ -223,13 +211,8 @@ final class StringsCoverageTests: XCTestCase {
         // The Tweaks entry's name. The owner kept the English word in German: «Tweaks» is what
         // German-speaking Mac users call these small system adjustments, and the other six differ.
         "Tweaks": [.de],
-        // The Keyboard module's app-row picker. Portuguese borrowed the word
-        // whole, the way German borrowed «Filter»: macOS pt-BR says «Layout de
-        // Teclado» throughout `KeyboardSettings.appex` — «Alterar Layout de
-        // Teclado», «Layout de Teclado Instalado» — so the system's own
-        // spelling is the English one. The other six all differ (Раскладка,
-        // Belegung, Disposition, Distribución, 配列, 布局), which is what makes
-        // this an identity rather than a row nobody filled in.
+        // The Keyboard module's app-row picker. macOS pt-BR says «Layout de Teclado» throughout
+        // `KeyboardSettings.appex`, so the system's own spelling is the English one; the other six differ.
         "Layout": [.pt],
         // Launchpad's folder names, as the iPhone's own folder-naming table spells them (`FrontBoard.framework`'s
         // `FolderNaming.loctable`): the language keeps the English word, and the table says so. «Lifestyle» is German,
@@ -242,17 +225,11 @@ final class StringsCoverageTests: XCTestCase {
         "News": [.de, .pt],
         "Shopping": [.de, .fr],
         "Social": [.es],
-        // The module's name is the macOS app's name, and macOS spells it «Launchpad» in
-        // every one of these six; only Chinese has its own (启动台). The displayed table that holds it is
-        // KeyboardSettingsIntents.appex's Localizable.loctable, key «Launchpad»
-        // (/System/Library/ExtensionKit/Extensions/): zh_CN 启动台; ru, de, es, pt_BR, pt_PT, fr, ja «Launchpad».
+        // macOS spells the app «Launchpad» in all of these; only Chinese has its own (启动台), per
+        // `KeyboardSettingsIntents.appex`'s `Localizable.loctable`, key «Launchpad».
         "Launchpad": [.fr, .de, .es, .ja, .pt, .ru],
-        // The severity badge over a `brew doctor` finding that is an `Error:`
-        // rather than a `Warning:`. German spells it exactly as English does —
-        // Duden lists «Problem» and the alternatives («Schwierigkeit»,
-        // «Missstand») are longer words for something else — and the other six
-        // all differ (Проблема, Problema, Problème, 問題, 问题), which is what
-        // makes this an identity rather than a row nobody filled in.
+        // The severity badge over a `brew doctor` `Error:` finding. Duden lists «Problem» for German;
+        // the other six all differ.
         "Problem": [.de],
         "BETA": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Beta": [.ru, .es, .fr, .de, .ja, .zh, .pt],
@@ -264,10 +241,8 @@ final class StringsCoverageTests: XCTestCase {
         "Capsule": [.fr],
         "cask": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Cookies": [.ru, .es, .fr, .de, .pt],
-        // The two picture formats in the Screenshots format picker. macOS never
-        // transliterates a format name: CoreTypes.bundle says «PNG-Bild»,
-        // «Image PNG», «PNG画像» — the abbreviation stays in the script of
-        // English in every language here.
+        // The Screenshots format picker: macOS never transliterates a format name (CoreTypes.bundle:
+        // «PNG-Bild», «Image PNG», «PNG画像»).
         "PNG": [.de, .es, .fr, .ja, .pt, .ru, .zh],
         "JPEG": [.de, .es, .fr, .ja, .pt, .ru, .zh],
         // A markup shape's name, as Preview spells it: Localizable.loctable
@@ -289,33 +264,22 @@ final class StringsCoverageTests: XCTestCase {
         "Control": [.ru, .es, .ja, .zh],
         "Option": [.ru, .fr, .ja, .zh],
         "Shift": [.ru, .pt, .zh],
-        // The two `brew config` group headings French spells exactly as
-        // English does. Larousse gives «configuration» and «machine» for both
-        // senses — the settings of an installation, and the computer itself —
-        // and neither has a shorter French word to prefer. The other six all
-        // differ (Конфигурация/Машина, Configuración/Equipo,
-        // Konfiguration/Rechner, 構成/マシン, 配置/本机, Configuração/Máquina),
-        // which is what makes these identities rather than rows nobody filled
-        // in.
+        // The two `brew config` group headings French spells as English does (Larousse); the other six
+        // all differ.
         "Configuration": [.fr],
         "Machine": [.fr],
         "Cyan": [.fr, .de],
         "DEV": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Dev": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Document": [.fr],
-        // The log row's spoken level. Spanish spells it the way English does —
-        // «Error» is the RAE's word and the one this file's own «Errors» =
-        // «Errores» is the plural of.
+        // The log row's spoken level: «Error» is the RAE's Spanish word.
         "Error": [.es],
         // The Screenshots editor's name. German, Spanish and Portuguese each
         // have the word as their own — «Der Editor», «El editor», «O editor»
         // in the changelogs — so the tab says it the way English does.
         "Editor": [.de, .es, .pt],
-        // The emoji button, as macOS displays it: AppKit InputManager.loctable
-        // says «Emoji & Symbole» in de, «Emojis y símbolos» in es, «Emoji et
-        // symboles» in fr, «Emoji e Símbolos» in pt_BR. German, French and
-        // Portuguese keep that word; Spanish does not — macOS says «Emojis», and
-        // Helm's «Emoji» is its own (`ScStr.tool` in ScreenshotsStrings says so).
+        // The emoji button: AppKit's InputManager.loctable keeps «Emoji» in de, fr and pt_BR; Helm's
+        // Spanish «Emoji» is its own (`ScStr.tool` in ScreenshotsStrings says so).
         "Emoji": [.de, .es, .fr, .pt],
         "Extension": [.fr],
         "General": [.es],
@@ -323,10 +287,7 @@ final class StringsCoverageTests: XCTestCase {
         "Hardware": [.es, .de, .pt],
         "Homebrew": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Image": [.fr],
-        // The package view's licence tile. The English text is the British
-        // spelling, which is the French word — «licence», capitalised as a
-        // label. The other six each have their own: «Лицензия», «Licencia»,
-        // «Lizenz», «ライセンス», «许可证», «Licença».
+        // The package view's licence tile: the British spelling is the French word; the other six differ.
         "Licence": [.fr],
         "m": [.es, .fr, .pt],
         "Manual": [.es, .pt],
@@ -339,14 +300,8 @@ final class StringsCoverageTests: XCTestCase {
         // and Spanish, «пт» and «пикс», «点» and «像素»).
         "%@ pt": [.ja, .pt],
         "%@ px": [.ja, .pt],
-        // The tunnel strip's unit, and the identity is inherited rather than
-        // new: all eight already shipped it inside «Speed, Mbit/s», which
-        // splitting that key into a plain label and a unit turned from a
-        // sentence into six identities and put in front of this list. macOS
-        // spells the same quantity differently and is not the answer —
-        // `MeasurementFormatter` over `UnitInformationStorage.megabits` gives
-        // «Mb» in seven of the eight and «Мбит» in Russian, with no per-second
-        // in any of them.
+        // The tunnel strip's unit, as all eight shipped it inside «Speed, Mbit/s». macOS's own spelling
+        // (`MeasurementFormatter`, megabits) is «Mb» with no per-second, so it is not the answer.
         "Mbit/s": [.es, .fr, .de, .ja, .zh, .pt],
         "min": [.es, .fr, .pt],
         "Mint": [.de],
@@ -358,7 +313,7 @@ final class StringsCoverageTests: XCTestCase {
         "OK": [.fr, .pt],
         "Orange": [.fr, .de],
         "Panel": [.es, .de],
-        // es reads «Módulos» now, System Information's own name for the section.
+        // Spanish says «Módulos», System Information's own name for the section.
         "Plug-ins": [.de, .pt],
         "Ring": [.de],
         "Rostislav Strelnikov": [.es, .fr, .de, .ja, .zh, .pt],
@@ -377,11 +332,8 @@ final class StringsCoverageTests: XCTestCase {
         "Timer: %@": [.de, .pt],
         "Updates": [.de],
         "VERSION": [.fr, .de],
-        // The same two languages as the dial above it, for the same reason
-        // and now at the package view's version tile: French and German
-        // both write the word the way English does. The four non-Latin
-        // scripts and the two Iberian languages do not — «Версия»,
-        // «Versión», «バージョン», «版本», «Versão».
+        // French and German write the word the way English does, as for «VERSION» above; the other six
+        // do not.
         "Version": [.fr, .de],
         "Video": [.de],
         "🌐︎": [.ru, .es, .fr, .de, .ja, .zh, .pt],

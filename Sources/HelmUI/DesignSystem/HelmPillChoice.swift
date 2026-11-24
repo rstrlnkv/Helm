@@ -13,14 +13,10 @@ extension View {
 /// A choice whose options differ in kind, not in position: a capsule per option, a material capsule under the
 /// group, a hairline rim (`helmPillTrack`, which the panel's size chips draw with too).
 ///
-/// A segmented control could not carry what the update channel row is for. The channels differ in kind, and the
-/// system draws every segment in the accent whichever is chosen — so the control that asks «how rough a build do
-/// you want» said it in one colour. Here each option is inked by its own `chosenFill`.
-///
-/// Not the knocked-out white on a saturated capsule the panel's size chips use: that was measured and it does not
-/// hold up (white on the accent falls short in both appearances, 3.65:1 in dark, and on the warning orange is 2.23:1 in
-/// dark, against the 4.5:1 floor). So the tint colours the fill and nothing else, as `HelmBadge` does, and the lettering stays the
-/// text colour, whatever the option. Pass `HelmSurface.chosenWash(_:)` as the fill.
+/// A segmented control draws every segment in the accent whichever is chosen, so it cannot say that the
+/// options differ (the update channels). Here each option is inked by its own fill. The tint colours the fill
+/// and nothing else, as in `HelmBadge`: white on a saturated capsule falls short of 4.5:1 in both appearances.
+/// Pass `HelmSurface.chosenWash(_:)` as the fill.
 ///
 /// Buttons rather than a tap gesture on a shape, so Full Keyboard Access reaches them and each carries its own
 /// label and selected trait.

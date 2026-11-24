@@ -6,10 +6,10 @@ import XCTest
 
 /// **The record is what launchd accepted, not what was asked.**
 ///
-/// The port used to return nothing, so the engine recorded every press: a switch
-/// launchd refused was written down as Helm's and enabled at the give-back, and one
-/// that timed out was the opposite risk, a disabled label with no record that
-/// nothing would ever give back. `SwitchAnswer` carries the three cases.
+/// A switch launchd refused, written down as Helm's, would be enabled at the
+/// give-back; one that timed out is the opposite risk, a disabled label with no
+/// record that nothing would ever give back. `SwitchAnswer` carries the three
+/// cases.
 final class AFailedSwitchIsNotRecordedTests: XCTestCase {
     private let one = "com.example.agent.one"
     private let two = "com.example.agent.two"

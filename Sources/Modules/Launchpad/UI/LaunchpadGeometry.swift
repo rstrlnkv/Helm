@@ -6,10 +6,8 @@ import HelmRuntime
 /// (`LaunchpadScreenState.regrid`).
 ///
 /// Nothing in the window measures: no `GeometryReader`, no preference, no size read back from a view. A layout that
-/// asks the views how big they are and answers by changing them is a loop, and pass 3's page was one: the log showed the
-/// system switching the keyboard tap off and memory up 559 MB. Here the size comes from the screen, the answer is a pure value, and
-/// `TheLaunchpadWindowMeasuresNothingTests` fails when anything measures again; it is an optional test, run on request
-/// (`bash Scripts/test.sh --filter TheLaunchpadWindowMeasuresNothingTests`).
+/// asks the views how big they are and answers by changing them is a loop that starves the main thread and grows memory.
+/// Here the size comes from the screen, the answer is a pure value, and a change that makes the window measure again brings the loop back.
 struct LaunchpadGeometry: Equatable {
     /// The screen's size as used (the fallback when the real one was not a size): the window's root is exactly this.
     let size: CGSize
@@ -50,7 +48,6 @@ struct LaunchpadGeometry: Equatable {
 
     /// Kept under the grid for the page dots: `LaunchpadMetrics.dotsRoom` at `scale`, and never less than the dots' bottom offset and their touch size, which does
     /// not shrink with the scale, so the last row never reaches the touch area on a small scale.
-    var dotsRoom: CGFloat { Self.dotsRoom(scale: scale) }
     static func dotsRoom(scale: CGFloat) -> CGFloat {
         max(LaunchpadMetrics.dotsRoom * scale, LaunchpadMetrics.dotsBottom * scale + 24 * max(1, scale))
     }

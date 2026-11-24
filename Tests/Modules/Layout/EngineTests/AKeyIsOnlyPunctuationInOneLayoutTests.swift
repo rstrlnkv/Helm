@@ -3,16 +3,12 @@ import XCTest
 
 /// A key is only «punctuation» in the layout you happen to be holding.
 ///
-/// `,` types `б` in Russian, `;` types `ж`, `[` types `х`, `'` types `э`.
-/// The key table kept letters only, so seven Cyrillic letters had no key at
-/// all — and the same is true of most non-latin layouts, which is why this is
-/// not a Russian fix. Measured over 24 ordinary Russian words typed on the US
-/// layout: 6 corrupted mid-word, 18 refused, 0 converted correctly.
-///
-/// Admitting those keys fixes the words and breaks the sentences: with the
-/// whole table, `Ghbdtn, rfr ltkf?` came back `Приветб как дела?` — measured.
-/// Both readings are right, and which one applies is decided by the neighbour
-/// on the right, not by the key:
+/// `,` types `б` in Russian, `;` types `ж`, `[` types `х`, `'` types `э`, and
+/// most non-latin layouts put letters on such keys. A table of letters only
+/// would leave seven Cyrillic letters with no key; read as letters everywhere,
+/// `Ghbdtn, rfr ltkf?` would come back `Приветб как дела?`. Both readings are
+/// right, and which one applies is decided by the neighbour on the right, not
+/// by the key:
 ///
 /// - a letter follows → the person pressed it for a letter (`cgfcb,j`)
 /// - a space, another mark, or nothing follows → they pressed it for the mark
@@ -21,12 +17,10 @@ import XCTest
 /// A mark at the very start with letters after it — `[jhjij` for «хорошо» —
 /// reads as a letter by the same rule, which is what makes the rule worth
 /// having rather than «inside a word».
-///
-/// Guards a past defect: a key that types a letter in another layout read as a mark (fix commit `96afdc45`).
 final class AKeyIsOnlyPunctuationInOneLayoutTests: XCTestCase {
 
-    /// Toy tables in the shape `buildTable` now produces: every key, not only
-    /// the letter-typing ones.
+    /// Toy tables in the shape `buildTable` produces: every key, not only the
+    /// letter-typing ones.
     private let latin: [UInt16: Character] = [
         1: "e", 2: "t", 3: "y", 4: "u", 5: "i", 6: "o", 7: "p", 8: "[",
         10: "a", 11: "s", 12: "d", 13: "f", 14: "g", 15: "h", 16: "j", 17: "k", 18: "l", 19: ";", 20: "'",
@@ -40,7 +34,7 @@ final class AKeyIsOnlyPunctuationInOneLayoutTests: XCTestCase {
         30: "к", 31: "й", 32: "ц",
     ]
 
-    /// The six measured words that the letters-only table could not produce.
+    /// Words with a letter on a punctuation key.
     func testAMarkFollowedByALetterIsALetter() {
         XCTAssertEqual(KeyRemap.map("cgfcb,j", from: latin, to: cyrillic), "спасибо")
         XCTAssertEqual(KeyRemap.map("nt,z", from: latin, to: cyrillic), "тебя")
@@ -53,7 +47,7 @@ final class AKeyIsOnlyPunctuationInOneLayoutTests: XCTestCase {
         XCTAssertEqual(KeyRemap.map("'rhfy", from: latin, to: cyrillic), "экран")
     }
 
-    /// And the half that broke when the table was opened up.
+    /// And the half a whole table must not break: marks before a space.
     func testAMarkBeforeASpaceOrAtTheEndStaysAMark() {
         XCTAssertEqual(KeyRemap.map("Ghbdtn, rfr ltkf?", from: latin, to: cyrillic),
                        "Привет, как дела?")

@@ -5,26 +5,23 @@
 which every module's UI target depends on and no engine does. A reason that is about one
 file is on that file's doc comment; this page keeps the rules that cross files.
 
-The look is rebuilt one module at a time. For that work the shell, this kit and the pages
-as they stand are no model: a copy carries forward exactly what the rebuild replaces. One
-module's look is finished before the next one's is started, because a page is judged
-beside finished neighbours, and two modules in flight change the same kit and the same
-string tables at once.
+The look is rebuilt one module at a time: the shell, this kit and the pages
+as they stand are no model, and one module's look is finished before the next one's is started,
+because a page is judged beside finished neighbours.
 
 ## Tokens
 
 Tokens live one family to a file in `Sources/HelmUI/DesignSystem`: `HelmFills.swift` holds
-`HelmSurface` — a small set of fills over `Color.primary` (and `rowWashOpacity`, `chosenWash(_:)`), and `hairline`, which `helmPillTrack` (`HelmPillChoice.swift`) draws as the rim of a pill's track — the settings window's channel choice, the panel's size chips and the drawer's choose chip — though no card is given one —
-`HelmLadders.swift` `HelmSpace` and `HelmRadius`, `HelmLayout.swift` `HelmLayout` (with `markColumn`, the 14 pt column a row's mark and a log row's glyph share; `helmPageStrip()` is the inset of a full-width strip on a page that bleeds),
-`HelmText.swift` `HelmText` (with the faces `statusGlyph`, `smallPrint`, `entryHeading`, `plateTitle` and `code`), `HelmSignal.swift` `HelmSignal`, `HelmMotion.swift` the curves,
-`ModuleTint.swift` the method, and with it `hostColour` (General, Log, About) and `whatsNewColour`,
+`HelmSurface` (fills over `Color.primary`, `rowWashOpacity`, `chosenWash(_:)`) and `hairline`;
+`HelmLadders.swift` `HelmSpace` and `HelmRadius`; `HelmLayout.swift` `HelmLayout` (with `markColumn`, the 14 pt column a row's mark and a log row's glyph share, and `helmPageStrip()`, the inset of a full-width strip on a page that bleeds);
+`HelmText.swift` `HelmText` (with the faces `statusGlyph`, `smallPrint`, `entryHeading`, `plateTitle` and `code`); `HelmSignal.swift` `HelmSignal`; `HelmMotion.swift` the curves;
+`ModuleTint.swift` the method, and with it `hostColour` (General, Log, About) and `whatsNewColour`;
 and `HelmTraits.swift` the one entry a kit view reads the look through: `\.helmTraits`, the
 colour scheme and the three accessibility settings in one value (`HelmAccessibility.system`
 is the one place that asks the workspace for them). Motion is the exception: every `Animation` token of
-`HelmMotion` reads Reduce Motion from `HelmAccessibility.system` statically, so a view that animates by one
-(`HelmButtonStyle` and `HelmPageHeader` through `HelmMotion.hover(entering:)`) takes it there, and the
-showcase cannot force it. A kit view reads it rather than asking the workspace itself. Reduce Transparency changes two inks, the plates behind words on the capture overlay
-(`OverlayInk`). No kit token answers it; of the system's materials the window ground and the header tabs
+`HelmMotion` reads Reduce Motion from `HelmAccessibility.system` statically (`HelmButtonStyle` and `HelmPageHeader` through `HelmMotion.hover(entering:)`), so
+the showcase cannot force it. Reduce Transparency changes two inks, the plates behind words on the capture overlay
+(`OverlayInk`); no kit token answers it, and of the system's materials the window ground and the header tabs
 were measured to follow it, the others are assumed.
 
 ## Surfaces
@@ -35,46 +32,36 @@ were measured to follow it, the others are assumed.
 treatment: a fill, continuous corners at `HelmRadius.card`, and no border, because a grouped
 `Form` section is drawn by the system and nothing can restyle it (`command grep -rlE '^ *Form \{' Sources` lists the files that still build one). A
 surface that floats over content takes `.glassEffect` rather than an edge, because glass
-carries its own edge and its own shadow and a hairline on top is a second silhouette;
-`command grep -rn '\.glassEffect(' Sources` lists the sites. The one striped list is
-`helmStripedList(rowPitch:)` in `HelmStripedList.swift`, laid on the `List` itself and
-nowhere above it.
+carries its own edge and shadow and a hairline on top is a second silhouette
+(`command grep -rn '\.glassEffect(' Sources` lists the sites). The one striped list is
+`helmStripedList(rowPitch:)` in `HelmStripedList.swift`, laid on the `List` itself and nowhere above it.
 
-A grouped `Form` insets a section *header* further than the section itself, and a section
-header is the one part of such a form drawn on the bare pane that still scrolls — which is
+A grouped `Form` insets a section *header* further than the section itself, and a header is the one part drawn on the bare pane that still scrolls, which is
 why a hero or a block of cards lives in one. `HelmLayout.groupedHeaderOutset`, negated
-onto the block, is right for a grid the page draws itself and wrong for a filled field,
-which is a row that has not been written yet.
+onto the block, is right for a grid the page draws itself and wrong for a filled field.
 
 A page that is not a grouped `Form` groups its rows with `HelmSettingsSection` (heading, one
 `helmCard`, a hairline between rows) and `HelmSettingsNote` (`HelmSettingsSection.swift`, the wrapping quiet line; a detail line that is not a note takes `.helmQuietDetail()` from `HelmText.swift`); its gaps are
 `HelmLayout.groupedHeaderGap` and `groupedHeaderOutset`, the form's own, so a kit page and a `Form` page
-keep one rhythm. Outside a `Form` a `Picker`, a segmented control and a `LabeledContent` no longer lay out
-"label left, control right" by themselves — that was the form's layout, not the controls': the section
+keep one rhythm. Outside a `Form` a `Picker`, a segmented control and a `LabeledContent` do not lay out
+"label left, control right" by themselves: the section
 sets a `LabeledContent` style, and a `Picker` goes in a `HelmSettingRow` with `labelsHidden()`.
 
 ## Ladders
 
-`Sources/HelmUI/DesignSystem/HelmLadders.swift` holds `HelmSpace` and
-`HelmRadius`, and
-
-```bash
-command grep -cE '^\s+public static let' Sources/HelmUI/DesignSystem/HelmLadders.swift
-```
-
-counts the steps. A number off the ladder is a number somebody has to argue for.
+`Sources/HelmUI/DesignSystem/HelmLadders.swift` holds `HelmSpace` and `HelmRadius`;
+`command grep -cE '^\s+public static let' Sources/HelmUI/DesignSystem/HelmLadders.swift` counts the steps. A number off the ladder is a number somebody has to argue for.
 
 ## Type
 
 `HelmText` carries four named sizes for the settings window — `rowTitle`,
 `rowDetail`, `sectionHeading`, `groupLabel` — and a size outside these is a decision
-somebody argues for rather than types. They are named rather than numbered, so a Mac
+somebody argues for. They are named rather than numbered, so a Mac
 whose owner raised the interface text size gets a Helm window that follows. `HelmText.figureFont` is
 the one face for a figure — a byte size, a count, a version. SwiftUI draws the text; `HelmText.rowDetailNSFont` is the same style as
 AppKit sees it, for the places that measure text with it instead; `command grep -rln rowDetailNSFont Sources`
 lists them (`LeftoverPathFloor` among them). `HelmPickerWidth` measures the
-system font, not this one. The reasons are on the doc comments of `HelmText` and its members
-(`.headline` is not the heading, `rowDetailNSFont`, `figureFont`).
+system font, not this one. The reasons are on the doc comments of `HelmText` and its members.
 
 ## Ink and contrast
 
@@ -82,7 +69,7 @@ Ink that means something comes from `HelmSignal` rather than the system palette,
 `.orange` / `.green` / `.red` handed to something that paints with it. A *tint* is not ink:
 `HelmBadge.swift` takes one and draws it behind
 `Color.primary` text. A tinted figure is darkened in the light appearance by a fraction
-measured against a contrast floor rather than chosen, and the blend is resolved *inside*
+measured against a contrast floor, and the blend is resolved *inside*
 the light appearance, because `NSColor(Color)` returns a dynamic colour that resolves
 again against whatever appearance is current.
 
@@ -95,23 +82,20 @@ an argument the way `HelmMotion.spins(requested:reduceMotion:)` does, so that a 
 holds the flag from `\.helmTraits` passes it, and `HelmShowcase` can draw either. The second
 set is the same solve against a higher floor, and each is solved against the *rounded* literal.
 
-A label on a button's well is a surface of its own: `HelmButtonStyle` inks the destructive role with `HelmSignal`'s `dangerOnWell(increased:)`, solved by arithmetic against the well on a card, under the pointer, because `danger` is solved against the bare window. Rendered readings exist at rest on a card and bare, and in all three states on one tinted ground, `HelmBanner`'s, where, without Increase Contrast, dark under the pointer and pressed stand under 4.5:1; on a card under the pointer and on any other ground 4.5:1 is unproved (`HelmSignal`).
+A label on a button's well is a surface of its own: `HelmButtonStyle` inks the destructive role with `HelmSignal`'s `dangerOnWell(increased:)`, because `danger` is solved against the bare window; which readings are rendered and which 4.5:1 claims are unproved is on the doc comment of `HelmSignal`.
 
 A menu swatch is drawn already coloured and left a non-template image. The colour panel's
 target is held from the view. A colour is converted to sRGB on the way in, and a stored
 case is retired and never removed. A component's contrast is measured against what it
-actually draws on rather than against the page, and a control is checked for being
-photographable before it is chosen for a surface this house verifies by photograph.
+draws on, and a control is checked for being photographable before it is chosen for a surface verified by photograph.
 
 ## Own look over system behaviour
 
 A hosting root carries `helmRoot()` (`HelmRoot.swift`): the accessibility tracker, `HelmButtonStyle`
-and `HelmToggleStyle`. The Settings window's roots, `HostWindow.present`, the menu-bar panel and Screenshots' after-shot window carry it;
-the environment stops at each root, so a root without it draws plain `Button`s and `Toggle`s in the system's
-look. A page writes a plain `Button` or `Toggle` and gets the kit's. A style set on the control itself wins.
-The button's well is a rounded rectangle; `helmCapsuleButtons()` on a container makes it a capsule for the buttons
-inside, and Keep Awake's, Layout's and VPN's heroes are the pages that ask for it. `helmChosen(_:)` marks the chosen
-button of a row of positional choices, or a door whose popover is open, with `HelmSurface.chosenWash` of the accent; a choice whose options differ in
+and `HelmToggleStyle`. The environment stops at each root (the Settings window's, `HostWindow.present`, the menu-bar panel, Screenshots' after-shot window), so a root without it draws plain `Button`s and `Toggle`s in the system's
+look. A page writes a plain `Button` or `Toggle` and gets the kit's; a style set on the control itself wins.
+The button's well is a rounded rectangle; `helmCapsuleButtons()` on a container makes it a capsule. `helmChosen(_:)` marks the chosen
+button of a row of positional choices, or a door whose popover is open, with `HelmSurface.chosenWash`; a choice whose options differ in
 kind is `HelmPillChoice`.
 
 The kit owns the look and leaves the behaviour to the system. `HelmButtonStyle` is a `ButtonStyle`, not a
@@ -128,8 +112,7 @@ inactive look of their own. A kit view that does dim there reads `\.helmWindowAp
 A page uses a system control under `helmRoot()` or a component of the kit (`ls Sources/HelmUI/DesignSystem/`),
 and takes a colour, a font size, a spacing or a curve from a token: `HelmText` faces, `HelmSpace` and `HelmRadius`
 steps, `HelmSurface` fills, `HelmSignal` ink, `HelmMotion` curves. One typed into a page is a token somebody has
-not written yet, and a size or a number off the ladders is one somebody argues for (§ Ladders, § Type).
-`HelmInteraction`
+not written yet (§ Ladders, § Type). `HelmInteraction`
 (`\.helmShownInteraction`) is not for a page: only `HelmShowcase` sets anything but `.live`.
 
 ## Motion
@@ -144,11 +127,11 @@ command grep -c 'public static let'          Sources/HelmUI/DesignSystem/HelmMot
 
 is the list, and the second line prints zero. Springs rather than ease curves, because an
 eased move reads as "smoothed" and a spring reads as physical; a spring also cannot be
-handed to a `CAMediaTimingFunction`, and the eased tokens are named exceptions, `marquee(distance:)` is linear (a name scrolling at a reading pace, 40 pt/s, has no physical thing to be), and `wiggle(seed:)` is eased and repeats (Launchpad's edit mode: a tile's 1.6 degree tilt, 0.12 s each way, 0 to 0.03 s later by seed; **nil under Reduce Motion**, the caller then applies no tilt at all);
-`panelEntrance`'s doc comment says why it is eased. `windowZoomDuration` is how long a full-screen window takes to come in (Launchpad: its content settling from 1.08 to 1 as the panel's alpha rises), run by the window's own clock, which reads `interfaceProgress(at:)` (no animation token, since a finger's scrub drives the same number), and whose caller branches on `reduceMotion` itself. `pageSettle(velocity:distance:)` is a page let go by the fingers: a spring with no bounce whose initial velocity is the release speed over the distance left, held to 0 to 8 so a shaky release cannot fling it, and `pageSettleDuration` is its length, read by the swipe to ignore a touch during the settle; both are Launchpad's page and nothing else's. Every token above consults `reduceMotion`, `pageSettle` through its `guard`, and the two durations are for callers that do. The header tabs slide their pick on `HelmMotion.interface`, and only where `HelmMotion.moves` says so;
-`interfaceCurve` with `interfaceDuration` is taken by the window buttons' morph (`ShellWindowButtons.swift`, behind `HelmMotion.moves`) and by `OverlayFlash.swift`; the Display Corners mask's morph takes `cornerMorphCurve`, the standalone's ease in and out, which the owner chose over `interfaceCurve` on 2026-11-18, with `cornerMorphDuration(rounding:travel:)` (`CornerMaskView.swift`, behind `HelmMotion.moves`). The sidebar's fold reads `interfaceCurve` at a fraction (`interfaceProgress(at:)`) from the timestamps of a display link of its own, for `sidebarFoldDuration`, and its rows run through `sidebarFold`, one length for both. `disclosure` is for anything whose height is
+handed to a `CAMediaTimingFunction`, and the eased tokens are named exceptions: `marquee(distance:)` is linear (a name scrolling at 40 pt/s has no physical thing to be), `wiggle(seed:)` is eased and repeats (Launchpad's edit mode: a 1.6 degree tilt, 0.12 s each way; **nil under Reduce Motion**, the caller then applies no tilt at all), and `panelEntrance`, whose doc comment says why.
+`windowZoomDuration` is how long a full-screen window takes to come in (Launchpad), run by the window's own clock, which reads `interfaceProgress(at:)`; its caller branches on `reduceMotion` itself. `pageSettle(velocity:distance:)` is a page let go by the fingers, with `pageSettleDuration` its length; both are Launchpad's and nothing else's (their doc comments hold the numbers). Every token above consults `reduceMotion`, `pageSettle` through its `guard`, and the two durations are for callers that do. The header tabs slide their pick on `HelmMotion.interface`, and only where `HelmMotion.moves` says so;
+`interfaceCurve` with `interfaceDuration` is taken by the window buttons' morph (`ShellWindowButtons.swift`) and by `OverlayFlash.swift`; the Display Corners mask's morph takes `cornerMorphCurve`, the standalone's ease in and out, which the owner chose over `interfaceCurve`, with `cornerMorphDuration(rounding:travel:)` (`CornerMaskView.swift`). The sidebar's fold reads `interfaceCurve` at a fraction (`interfaceProgress(at:)`) from the timestamps of a display link of its own, for `sidebarFoldDuration`, and its rows run through `sidebarFold`. `disclosure` is for anything whose height is
 measured and clipped, and it has zero bounce, because an overshooting height clips its own
-content for a frame. There is no token for turning forever, and that is the finding: a
+content for a frame. There is no token for turning forever: a
 `repeatForever` linear rotation leaves the model at its end value while the dial is
 somewhere inside the turn, so a stop by retargeting runs backwards; the About bezel
 drives its angle from a clock and the refresh glyphs turn on `helmSteadySpin`, a symbol
@@ -157,15 +140,14 @@ effect gated on `HelmMotion.spins`.
 Every token collapses to a near-instant cut when `accessibilityDisplayShouldReduceMotion`
 is on — `HelmMotion.reduceMotion` is read fresh on each access, since stored in a `let` it
 would freeze at launch — because SwiftUI does not honour that setting for us. A curve
-written inline is therefore not a token somebody forgot to use; it is an animation that
-plays for a person who asked the operating system for none.
+written inline is an animation that plays for a person who asked the operating system for none.
 So no curve is built outside the token file, every `Animation`-returning token consults the
 flag, and the flag stays computed.
 
 Three laws sit under the tokens. Identity decides whether anything can animate: SwiftUI
-interpolates between two states of *one* view and not between two views, so a `ForEach`
+interpolates between two states of *one* view, so a `ForEach`
 keyed on an index, an `.id()` that changes with the thing being animated, or an `if/else`
-inside a `ViewModifier` each ends the question before any transaction reaches it.
+inside a `ViewModifier` each ends the question.
 `.animation(_:value:)` carries neither a transition nor a layout change: a value the layout
 is built from has to be written inside `withAnimation` **where it lands** rather than where
 the change was triggered, and the first measurement is not a change, so it is not
@@ -174,50 +156,36 @@ in `HelmAccordion.swift` are that idiom. And what cannot be reached cannot be fi
 AppKit's drag draws its own translucent snapshot, a system focus ring is drawn round the
 frame rather than the shape, and `.borderedProminent` renders grey without a key window.
 
-Three consequences of that, all about what draws where, and the reasons are on the doc
-comment of `HelmAccordion.swift`. A reveal grows rather than fades: animating `.opacity`
-puts the subtree in an offscreen layer where hierarchical colours resolve differently, and
-dropping the layer at the end makes them jump. Inside such a block a literal
-`Color.primary.opacity(…)` tracks light and dark by itself where `.secondary` and
-`.tertiary` blink when the layer goes away. And a reveal by `if` collapses the card's
-background instantly while the disappearing rows keep drawing over what sits below.
+A reveal grows rather than fades, and inside one a literal `Color.primary.opacity(…)` stands in for `.secondary` and `.tertiary`: `HelmAccordion.swift`'s doc comment holds the reasons.
 
 ## The visual language
 
 Every screen speaks one visual language derived from the app's subject.
 `Sources/HelmUI/DesignSystem/HelmPageHeader.swift` is a 24 pt icon plate, title, the module's status, and at the far end
-the page's own controls (`HelmHeaderControls`, `Sources/HelmUI/DesignSystem/HelmCardHeader.swift`: tabs, actions, search, 36 pt high, 8 pt apart, in a 52 pt row: the Kit's `Toolbar`, numbers in `ThePageHeader`); it has no summary line. `HelmIconPlate` is the
+the page's own controls (`HelmHeaderControls`, `Sources/HelmUI/DesignSystem/HelmCardHeader.swift`: the Kit's `Toolbar`, numbers in `ThePageHeader`); it has no summary line. `HelmIconPlate` is the
 symbol on the module's own colour (`descriptor.moduleTint.colour`) and stands alone in
 empty states; a verdict's plate is `HelmSignalPlate`.
-`HelmMetricStrip` is an instrument readout — monospaced figures over small-caps labels,
-split by hairlines — and the one place the product draws it is About's instrument row,
-inside a `helmCard`. `Sources/HelmUI/DesignSystem/HelmAppMark.swift` draws the mark from
-`Resources/Icon/Helm.icon/Assets/helm-ring.svg` — the artwork the app icon is built from,
-copied in by the `cp` of `helm-ring.svg` in `Scripts/package-app.sh` — rather than reading the icon back, because macOS
-26 resolves `.icon` variants at the system level and the light variant's white slab reads
-as a hole inside Helm's surfaces. `Sources/HelmUI/DesignSystem/HelmBadge.swift` is the one
-pill, its tint colouring the fill and nothing else. `HelmAppHero.swift` is About's mark in its bezel over the wordmark, whose bezel rotates only
+`HelmMetricStrip` is an instrument readout, drawn once, in About's instrument row. `Sources/HelmUI/DesignSystem/HelmAppMark.swift` draws the mark from
+`Resources/Icon/Helm.icon/Assets/helm-ring.svg` rather than reading the icon back (its doc comment says why).
+`Sources/HelmUI/DesignSystem/HelmBadge.swift` is the one
+pill, its tint colouring the fill and nothing else. `HelmAppHero.swift` is About's mark in its bezel, which rotates only
 while an update check is in flight: motion means work rather than decoration.
 `HelmPillChoice.swift` is a choice whose options differ in kind, each inked by its own option. The menu-bar
 panel is on the kit's tokens and surfaces; what it keeps of its own is listed at the top of `Architecture/TheMenuBarPanel.md`.
 
 `HelmSettingRow.swift` is mark, title, note, control; the mark reports *the world*
 rather than the switch beside it. `HelmBanner.swift` is a statement with at most one verb
-beside it, its ink measured against its own fill rather than against the card.
-`HelmWrappingRow.swift` is a `Layout` because an `HStack` compresses its children instead
+beside it. `HelmWrappingRow.swift` is a `Layout` because an `HStack` compresses its children instead
 of moving one down. Every control carries a name and a glyph is not one, and an empty page
-is drawn by `HelmEmptyState` or `HelmBusyState` inside `HelmCenteredContent` rather than
-by a hand-rolled `VStack` with two bare `Spacer()`s, since each describes a defect nobody
-sees at runtime unless they are the person it locks out.
+is drawn by `HelmEmptyState` or `HelmBusyState` inside `HelmCenteredContent`, not by a hand-rolled `VStack` with bare `Spacer()`s.
 
 ## Widths
 
 A width is read from a sibling with no size of its own and never from the view being
-measured: a geometry reading reports a view's *resolved* size, so once a row overflows it
-reports what the row demanded, and a threshold fed by it latches upward and cannot come
+measured: a geometry reading reports a view's *resolved* size, so a threshold fed by an overflowing row latches upward and cannot come
 back down. A threshold is measured against the widest the string can become in every
 language, and then the question is what window ever crosses it, because a control gated
-above every reachable width is a deleted control that still costs a constant and a test.
+above every reachable width is a deleted control.
 
 ## The showcase
 
@@ -230,23 +198,17 @@ swift build --product HelmShowcase
 .build/debug/HelmShowcase --board buttons --appearance dark
 ```
 
-`--board` is one of `buttons`, `capsules`, `toggles`, `rows`, `sections`, `hotkeys`, `notices`, `header`, `toolbar`, `surfaces`, `pickers`, `lists`, `panel`, `motion`, `palette`, `ladders`, `present`, `welcome`;
-`--appearance` one of `light`, `dark`, `light-contrast`, `dark-contrast` (without it the machine's own);
-`--language en|zh|es|fr|de|ja|ru|pt` sets `AppLanguage.override` for this process, so the kit's own words read in that language;
-`--present sheet|popover|alert|dialog` opens one presentation on the `present` board at launch. `-reduceTransparency 1` is the one argument with one dash: it is the setting itself, answered from the argument domain for this process, and it changes no Mac setting. A
-refused argument prints the usage and exits 64: an unknown one, a value off its flag's list, a flag with no
-value, `--present` beside a `--board` other than `present` (`--present` alone selects `present`). It stores nothing: arguments only, no defaults, no autosaved
+`--board`, `--appearance`, `--language` and `--present` take the values `ShowcaseOptions.usage` lists (`Sources/HelmShowcase/ShowcaseOptions.swift`; without `--appearance` the machine's own, `--language` sets `AppLanguage.override` for this process). `-reduceTransparency 1` is the one argument with one dash: it is the setting itself, answered from the argument domain for this process. A
+refused argument prints the usage and exits 64. The showcase stores nothing: arguments only, no defaults, no autosaved
 frame, and its window is not restored. Its sample text is plain `String`s in `enum Sample`, outside the
 eight tables on purpose.
 
-Hover and pressed are forced by `\.helmShownInteraction` (`HelmInteraction.swift`), which the button style, the
-sidebar row and the page header read and which defaults to `.live`; the inactive column sets
-`\.helmWindowAppearsActive`. What cannot be forced is named on each board: the system switch's hover and
-pressed, the focus ring (it needs the key window and Full Keyboard Access, so the focus column is drawn live), the
-open content of a `Menu`, a real inactive window for a system control, and a press where a control has only the system's plain one.
-`HelmHotkeyRow` stands on `hotkeys` over `HelmHotkeyRecorder.unsaved`, a store in memory, so a press keeps nothing; its recording face and `HelmExplainer`'s open popover come from a press (`HelmReadout press`). A modifier that only reads a permission or watches a notification draws nothing and is on no board.
-A board is `fixedSize`, so one taller than the screen cannot be photographed whole: a board that outgrows the screen splits in two, it does not scroll. A still of a board is taken by window number (`screencapture -x -o -l <id>`, the id from `HelmReadout window <pid>`, `-o` leaving out the shadow); `-R` is for a window whose material is active, which `-l` mis-renders, as
-`Architecture/TestsAndMeasurement.md` § Two screen instruments says; `Scripts/shoot.sh` launches Helm Dev
+Hover and pressed are forced by `\.helmShownInteraction` (`HelmInteraction.swift`), which defaults to `.live`; the inactive column sets
+`\.helmWindowAppearsActive`. What cannot be forced is named on each board (the system switch's hover and
+pressed, the focus ring, the open content of a `Menu`, a real inactive window for a system control).
+`HelmHotkeyRow` stands on `hotkeys` over `HelmHotkeyRecorder.unsaved`, a store in memory; its recording face and `HelmExplainer`'s open popover come from a press (`HelmReadout press`).
+A board is `fixedSize`, so one that outgrows the screen splits in two, it does not scroll. A still of a board is taken by window number (`screencapture -x -o -l <id>`, the id from `HelmReadout window <pid>`); `-R` is for a window whose material is active, which `-l` mis-renders, as
+`Architecture/TestsAndMeasurement.md` § Two screen instruments, which says; `Scripts/shoot.sh` launches Helm Dev
 and does not take it.
 
 ## Apple's rules in three grades
@@ -261,7 +223,6 @@ Followed with a measured change: secondary copy is `HelmText.quiet`, because the
 the light appearance (`HelmTraits.swift`).
 
 Departed from, on purpose: a card has no border (`helmCard`), and macOS 26 draws no band under a page header by
-the owner's answer (`HelmBandChoice.swift`). Two departures are open for the owner and the showcase is where they
+the owner's answer (`HelmBandChoice.swift`). Two departures are open for the owner, and the showcase is where they
 are looked at: the kit's vertical padding (`HelmSpace.s3`, `s4` at `.large`) makes its regular button 27 pt tall against the system's 23, and `.large` 31 against 27; the kit's fill to
-the window is 1.10:1 against the system's 1.18:1 in light and 1.13 against 1.25 in dark (measured at 2 px/pt from the buttons board: launch `.build/debug/HelmShowcase --board buttons --appearance light`
-for the light figures and `--appearance dark` for the dark ones, shoot its region, then `HelmReadout contrast <shot> …`).
+the window is 1.10:1 against the system's 1.18:1 in light and 1.13 against 1.25 in dark (measured at 2 px/pt from the buttons board with `HelmReadout contrast`).

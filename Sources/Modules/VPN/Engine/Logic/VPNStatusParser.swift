@@ -10,12 +10,9 @@ import Foundation
 /// **Asked of the tool, by name, because the store cannot be asked by id.**
 /// `State:/Network/Service/<id>/IPv4` wants the identifier of a *network
 /// service*, and `scutil --nc list` answers with the identifier of a
-/// *configuration* — the same string only for classic PPP/IPSec. Measured on a
-/// live NetworkExtension tunnel, 2026-08-18: the list named
-/// `02196763-19A0-40A0-B369-D9EA68F7F65D`, the routing entry was under
-/// `B8689BB0-071F-4E35-906E-FBC1F66D195C`, and the lookup answered nil for
-/// every tunnel this app can raise. The module already speaks `scutil` through
-/// `VPNRunnerPort`, and the tool answers by the same name `--nc start` takes.
+/// *configuration* — the same string only for classic PPP/IPSec, so for a
+/// NetworkExtension tunnel the lookup by id answers nil. The tool answers by
+/// the same name `--nc start` takes, through `VPNRunnerPort`.
 enum VPNStatusParser {
 
     /// What one status read found. Only ever built with an interface: a
@@ -28,17 +25,9 @@ enum VPNStatusParser {
         /// is the routing table's own answer — and falls back to this, which is
         /// the same question asked of the connection (`VPNExitVerdict.of`).
         let isPrimaryInterface: Bool?
-        /// **When the tunnel last changed state, as the tool says it.**
-        ///
-        /// `VPNEngine.stampWhatCameUp` carried the sentence «`scutil` cannot
-        /// answer «since when»» for several releases, and it is not true: every
-        /// status read this parser is handed ends with
-        /// `LastStatusChangeTime : 08/19/2026 14:57:22`, and that line was
-        /// already sitting in this parser's own fixture, being walked past. The
-        /// cost of the mistake was a hole in the first column of the page on the
-        /// most ordinary Mac there is — a VPN raised at login, the menu bar app
-        /// started after it — because Helm's own observation was the only source
-        /// and it had not been watching.
+        /// **When the tunnel last changed state, as the tool says it**
+        /// (`LastStatusChangeTime`). It covers a tunnel raised before Helm
+        /// started, which Helm's own observation never saw come up.
         ///
         /// Nil when the line is absent or does not parse, and the engine falls
         /// back to what it saw itself. So this can only ever add a duration.
@@ -60,14 +49,10 @@ enum VPNStatusParser {
 
     /// **`en_US_POSIX`, and the format written out.**
     ///
-    /// `scutil` writes `MM/dd/yyyy HH:mm:ss` — measured on a Mac whose
-    /// languages are `("ru-RU", "en-US")`, so the tool is not writing the
-    /// reader's format and a formatter built on the user's locale would fail to
-    /// read it. A fixed formatter that answers nil is the safe direction: the
-    /// engine's own observation is still there behind it.
-    ///
-    /// Local time, because the stamp is: the value above matched this app's own
-    /// log line for the same event to three seconds.
+    /// `scutil` writes `MM/dd/yyyy HH:mm:ss` whatever the Mac's languages, so a
+    /// formatter built on the user's locale would fail to read it. A fixed
+    /// formatter that answers nil is the safe direction: the engine's own
+    /// observation is still there behind it. Local time, because the stamp is.
     private static let stamp: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -80,23 +65,15 @@ enum VPNStatusParser {
     ///
     /// A connected tunnel's Extended Status carries the excluded routes it was
     /// configured with, each a dictionary naming the interface the traffic
-    /// leaves *around* the tunnel by — seven `InterfaceName : en0` lines on the
-    /// machine this was measured on, all of them before the tunnel's own. A
-    /// parser taking the first match answers `en0`, the verdict then compares
-    /// `en0` against a primary interface of `utun8` and the page says «traffic
-    /// is not going through the tunnel» on a Mac where it is: a false alarm in
-    /// the one sentence this feature exists to get right.
+    /// leaves *around* the tunnel by (`InterfaceName : en0`), all of them before
+    /// the tunnel's own. A parser taking the first match answers `en0`, and the
+    /// page says «traffic is not going through the tunnel» on a Mac where it is.
     ///
-    /// «The shallowest `InterfaceName` seen» is the same rule only while the tunnel's own line is present. `scutil`
-    /// prints a dictionary's keys in order — `Addresses`, `ExcludedRoutes`,
-    /// `InterfaceName`, `Router`, `ServerAddress` — so the decoys come *before*
-    /// the line that overrules them, and any output stopping between the two
-    /// leaves a decoy as the shallowest candidate there is: a tunnel a moment
-    /// past `Connected`, or a read cut short inside `ExcludedRoutes`. The
-    /// caller then caches that reading for the life of the tunnel
-    /// (`VPNEngine.readInterfaces`), so one transient read draws `en0`'s
-    /// since-boot counters beside a card whose dot is green. Nil is the answer, and the
-    /// caller is already written for it.
+    /// «The shallowest `InterfaceName` seen» is not the same rule: output cut
+    /// short before the tunnel's own line leaves a decoy as the shallowest, and
+    /// the caller caches that reading for the life of the tunnel
+    /// (`VPNEngine.readInterfaces`). Nil is the answer then, and the caller is
+    /// written for it.
     ///
     /// So the anchor is the `IPv4` dictionary's own indent: the tunnel's line
     /// is its direct child, the decoys sit two levels deeper inside

@@ -9,9 +9,7 @@ open is Helm's own rather than whatever a plist happened to hold. The doc commen
 cached once per process and no verdict is, because the key is a secret created once
 while whether a stored value is Helm's own is a live fact about a plist anything can
 rewrite; a refusal is not cached either. `KeychainItem.read` (in `KeychainSealKey.swift`) is
-the one read of a keychain item for the seal key and Autopilot's rule sequence:
-`errSecItemNotFound` alone is `absent`, anything else, a success without data
-included, is `refused`. A broken seal refuses in each side's own safe direction: the
+the one read of a keychain item for the seal key and Autopilot's rule sequence. A broken seal refuses in each side's own safe direction: the
 folder is left unwalked, and the disabled list becomes every scannable module.
 
 A stored setting that steers unattended work is sealed, because the property list is
@@ -20,18 +18,16 @@ borrowing Helm's Full Disk Access. The writer never refuses to *save* what a per
 asked for, since failing there is the wrong end to fail at. Nothing an initialiser reads
 is sealed, a SwiftUI state's initial value included: that is a keychain dialog in front
 of a window that has drawn nothing, on every install. The dialog is the ad-hoc
-signature's doing (§ Signing and grants on the Release page): a cdhash is a hash of contents, so every build
-is a different program to the keychain and no access list an earlier one wrote still
-names it, and any keychain read on the launch path, a verdict included, is that dialog
-(measured 2026-08-15, recorded on the doc comment of `SealKeyCache`). What is read occasionally is
+signature's doing (§ Signing and grants, on the Release page; the doc comment of `SealKeyCache` says why):
+every build is a different program to the keychain, so any keychain read on the launch path, a verdict included, is that dialog. What is read occasionally is
 sealed, and first use is spent at the getter's early return so a planted value is never
 adopted before the guard is touched.
 
 A missing seal is never the sign that a migration is due; only a missing keychain key is
 (`Sources/HelmRuntime/KeychainSealKey.swift`), because a seal is data sitting beside the
 rules it signs and whoever can write the file can delete the seal too. Nothing is written
-back from a refused read: the editor once drew a tampered rule set the way it drew none,
-and the next ordinary save sealed that emptiness with Helm's own key. A new setting takes
+back from a refused read: otherwise the editor would draw a tampered rule set the way it draws none,
+and the next ordinary save would seal that emptiness with Helm's own key. A new setting takes
 a new keychain account, because Autopilot's item exists on every Mac that has run the
 module and moving it would read there as "somebody rewrote your rules".
 
@@ -40,11 +36,8 @@ model's calls and from the watch refresh. In Autopilot's rules one lock, `decisi
 (`Sources/Modules/Autopilot/Engine/SealedRules.swift`), covers both reading, judging against the
 seal and recording the judgement, and saving payload and seal, on purpose: it is not split. Without
 that, a read landing between the two writes judges new rules against an old seal and calls
-Helm's own work tampering, and unordered, "these are Helm's own rules" lands on top of
-"something else wrote these"
-(`Tests/Modules/Autopilot/EngineTests/AutopilotSealRaceTests.swift` holds both orderings). `keyLock` is
-held only around the two keychain ports and `trustLock` only around the field access, each on
-both sides of a field, in a synchronous property that returns the value
+Helm's own work tampering (`Tests/Modules/Autopilot/EngineTests/AutopilotSealRaceTests.swift` holds both orderings). `keyLock` is
+held only around the two keychain ports and `trustLock` only around the field access, in a synchronous property that returns the value
 rather than holding it across a suspension.
 
 What is *not* sealed is as much a part of the shape: `KeepAwakeSettings.clamshellEnabled`
@@ -58,11 +51,12 @@ well as debug. The single ceiling for the durations is `TimerPolicy.longestSessi
 the number — the settings (`KeepAwakeSettings`), the engine's session start, the extend
 button (`TimerPolicy.extendedMinutes`), the panel tile's stored length (`panelTimerMinutes`, read as written up to the ceiling, so 721 to 1440 minutes come back unchanged) and the drawn label — so the multiply is
 unreachable by construction rather than guarded at each call site. A value read at
-launch is bounded as strictly as one read from a window, because a trap during launch is
-the app terminating with no window left to undo the bad value from. `SessionRestore.decide`
+launch is bounded as strictly as one read from a window, because a trap during launch leaves no window to undo the bad value from. `SessionRestore.decide`
 refuses a restored deadline rather than bringing it down to the ceiling, and checks the two
 dates are ordered before either bound runs. `UpdateCheck.lastChecked(stored:now:)` reads a
-stamp as a moment rather than doing arithmetic on the raw `Int`.
+stamp as a moment, not arithmetic on the raw `Int`.
+
+A property list read from outside (a bundle's `Info.plist`, a launch agent's) is bounded by `PropertyListFile.byteCeiling` (`Sources/HelmRuntime/PropertyListFile.swift`), the one reader for all of them: no link, no pipe, nothing over 2 MiB.
 
 `Sources/HelmRuntime/Clamped.swift` is the shared clamp, and its doc comments say why
 `clamped(to:)` propagates a NaN rather than absorbing it. Which answer a NaN gets is
@@ -74,5 +68,5 @@ exercise.
 
 The scan settings' key is `com.helm.app` / `settings-seal`; Helm Dev seals under `dev-settings-seal`
 (`SettingsSealItems.of(bundle:)`), so its saves never touch the installed Helm's item. A seal Dev wrote
-before that account existed reads in Dev as broken and refuses safe; `defaults delete com.helm.app.dev`
+under the shared account reads in Dev as broken and refuses safe; `defaults delete com.helm.app.dev`
 once starts Dev clean.

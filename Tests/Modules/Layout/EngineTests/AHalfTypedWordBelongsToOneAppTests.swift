@@ -2,18 +2,12 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
-/// **`convertLastWord` has two doors and only one of them knows which app the
-/// word came from.**
+/// `convertLastWord` has two doors, and both must know which app the word came
+/// from.
 ///
-/// The module's own rule, written out at length on `RememberedWord`: converting
-/// a word is a blind edit — a fixed count of backspaces sent at whatever the
-/// caret is in front of now — and it is only correct in the app the word was
-/// measured in. «Type `ghbdtn` in Notes, switch to Mail, tap the key, and six
-/// backspaces and a Russian word land in Mail» is that file's own example, and
-/// `belongs(to:)` is the repair. `LayoutEngineStaleWordTests` pins it.
-///
-/// It pins the *completed* word. `convertLastWord` reaches for the live buffer
-/// first:
+/// Converting a word is a blind edit, correct only in the app the word was
+/// measured in (`RememberedWord`). `LayoutEngineStaleWordTests` pins the
+/// completed word; `convertLastWord` reaches for the live buffer first:
 ///
 /// ```
 /// let live = buffer.wholeWord
@@ -22,22 +16,13 @@ import XCTest
 /// else if let previous, previous.belongs(to: bundleID) { … }
 /// ```
 ///
-/// `buffer` carries no app, so the branch that runs first is the branch with no
-/// check. A word half typed — nothing has ended it, so it never became a
-/// `RememberedWord` at all — is converted into whatever is in front when the key
-/// is tapped.
+/// A half-typed word never became a `RememberedWord`, so the live branch needs
+/// its own app check.
 ///
-/// **The tap cannot see this happen.** Its mask is keyDown, leftMouseDown and
-/// flagsChanged. A click gives `.click` and a chord gives `.chord`, and both end
-/// the word and hand it to the pinned branch — which is why the existing suite,
-/// which switches apps with `.chord`, is green. The app changing with neither is
-/// ordinary: a four-finger swipe to a Space with another app in front, or any
-/// app bringing itself forward — an alert, a call joining, a download opening,
-/// another program calling `activate()`. Nothing in that list is a keystroke or
-/// a left click, so the buffer survives it intact and unpinned.
-///
-/// Pinning the buffer to the app it was typed in is one repair; refusing the
-/// live branch outside that app is another. Either answers this.
+/// The tap cannot see the app change: its mask is keyDown, leftMouseDown and
+/// flagsChanged, and a click or a chord ends the word and hands it to the
+/// pinned branch. The app changing with neither is ordinary: a swipe to another
+/// Space, an alert, a call joining, another program calling `activate()`.
 @MainActor
 final class AHalfTypedWordBelongsToOneAppTests: XCTestCase {
     private var typing = FakeTyping()
@@ -96,9 +81,8 @@ final class AHalfTypedWordBelongsToOneAppTests: XCTestCase {
 
     /// And the empty bundle id — «no idea which app» — is not a match for
     /// anything, which is the rule `AppScope`, `UndoRecord` and `RememberedWord`
-    /// all state and the live branch never reaches. `AppScope` refuses this one
-    /// on its own today; the assertion is here so a repair that pins the buffer
-    /// cannot accidentally read an empty id as «the same app».
+    /// all state. `AppScope` refuses this one on its own; the assertion is here
+    /// so the live branch cannot read an empty id as «the same app».
     func testAHalfTypedWordIsNotConvertedWhenNothingIsInFront() {
         let engine = engine()
         tap.type("ghbdtn")

@@ -27,10 +27,8 @@ struct OrphansView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             content
-            // Always present, like every other bottom bar in Helm: showing it
-            // only after a scan moved the whole screen by its height and took
-            // the hairline with it. The buttons are already disabled when there
-            // is nothing to act on.
+            // Always present, like every bottom bar in Helm, so a scan does not
+            // move the screen. The buttons are disabled when there is nothing to act on.
             Divider()
             watchRow
             Divider()
@@ -38,9 +36,8 @@ struct OrphansView: View {
         }
     }
 
-    /// What the last removal had to say, or nil while this page has said
-    /// nothing — built where the Trash window builds its own, because the two
-    /// report the same three states.
+    /// What the last removal had to say, or nil while this page has said nothing;
+    /// built where the Trash window builds its own (`UninstallerRemovalReport`).
     private var removalReport: HelmRemovalOutcome? {
         .uninstaller(model.banner, removed: model.removedCount, failures: model.failures)
     }
@@ -49,10 +46,9 @@ struct OrphansView: View {
         if model.scanning {
             HelmBusyState(HelmWord.searching)
         } else if !model.scanned {
-            // The module's own tint, not a colour chosen per state: orange and
-            // green here read as a warning and a success on a screen that is
-            // only waiting to be asked. A colour shared by several modules
-            // would not say which page this is (`ModuleTint.swift`).
+            // The module's own tint, not a colour per state: orange or green would
+            // read as a warning or a success on a screen that is only waiting
+            // (`ModuleTint.swift`).
             HelmEmptyState(symbol: "clock.arrow.circlepath", tint: UninstallerDescriptor.tint.colour,
                            message: UnStr.orphansIntro) {
                 Button(UnStr.scanOrphans) { Task { await model.scan() } }
@@ -84,10 +80,8 @@ struct OrphansView: View {
                     } header: {
                         HStack {
                             Text(group.bundleID).font(HelmText.sectionHeading)
-                                // A heading over this bundle's leftovers.
-                                // `Section(header:)` may say so as well; the
-                                // trait is a set, so saying it twice costs
-                                // nothing and saying it never costs the rotor.
+                                // A heading over this bundle's leftovers. The
+                                // trait is a set, so repeating `Section`'s costs nothing.
                                 .accessibilityAddTraits(.isHeader)
                             Spacer()
                             Text(Bytes(group.totalBytes)).helmFigure().foregroundStyle(HelmText.quiet)
@@ -101,29 +95,22 @@ struct OrphansView: View {
 
     /// The switch that decides whether Helm speaks up on its own.
     ///
-    /// It sits on this tab because this tab is already the answer to "what did an
-    /// app I removed leave behind" — the window asks the same question at the
-    /// moment of removal, when the bundle is still there to be identified. On the
-    /// Apps tab it would hang over a list it has nothing to do with.
+    /// On this tab because the tab answers "what did a removed app leave behind",
+    /// the question the window asks at the moment of removal.
     ///
-    /// Off by default: a window that appears unasked is not something to hand
-    /// somebody without their say-so.
+    /// Off by default: a window that appears unasked needs the person's say-so.
     private var watchRow: some View {
         HStack(alignment: .center, spacing: HelmSpace.s6) {
-            // Label above its own explanation, switch hard right — the macOS
-            // order, and the one every other settings row in Helm keeps. Written
-            // as one HStack rather than a Toggle with a label because a label
-            // that wraps to two lines pushed the switch into the middle of the
-            // row, between the sentence and its own footnote.
+            // Label above its explanation, switch hard right, the macOS order.
+            // One HStack, not a labelled Toggle: a wrapped label would push the
+            // switch into the middle of the row.
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text(UnStr.watchTrash).font(HelmText.rowTitle)
                 HelmSettingsNote(UnStr.watchTrashNote)
             }
             Spacer(minLength: 0)
-            // The switch's position comes from the engine, which is also the only
-            // thing that knows whether it is doing anything — this view kept a
-            // `@State` of its own, and the page kept a second one for its
-            // permission note.
+            // The switch's position comes from the engine, the only thing that
+            // knows whether it is doing anything.
             Toggle("", isOn: Binding(get: { uvm.trashWatch.isOn },
                                      set: { on in Task { await uvm.setWatchingTrash(on) } }))
                 .toggleStyle(.switch)

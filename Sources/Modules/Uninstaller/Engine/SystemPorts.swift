@@ -15,24 +15,15 @@ public final class WorkspaceAppLister: AppLister {
     }
 
     public func installedBundleIDs() -> Set<String> {
-        var ids: Set<String> = []
-        for dir in searchDirs {
-            guard let items = try? FileManager.default.contentsOfDirectory(
-                at: dir, includingPropertiesForKeys: nil) else { continue }
-            for app in items where app.pathExtension == "app" {
-                if let id = Self.bundleID(forAppAt: app.path), !id.isEmpty { ids.insert(id) }
-            }
-        }
-        return ids
+        PropertyListFile.installedBundleIDs(home: home.path)
     }
 
     /// The `CFBundleIdentifier` in a bundle's `Info.plist`, nil when unreadable.
     /// A bulk read of file contents: the pool goes inside the iteration, so it
-    /// is here, one per call (ARCHITECTURE.md § Module pattern).
+    /// is here, one per call (Architecture/ModulePattern.md § Module pattern).
     static func bundleID(forAppAt path: String) -> String? {
         autoreleasepool {
-            let info = URL(fileURLWithPath: path).appendingPathComponent("Contents/Info.plist")
-            return NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String
+            PropertyListFile.infoPlist(ofBundleAt: URL(fileURLWithPath: path))?["CFBundleIdentifier"] as? String
         }
     }
 
@@ -40,36 +31,24 @@ public final class WorkspaceAppLister: AppLister {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
     }
 
-    /// The listing above cannot answer this: `/Applications/Adobe Acrobat
-    /// DC/Adobe Acrobat.app` is one folder past what it reads, and a second
-    /// bundle declaring an id is the only evidence the scan has that the id
-    /// does not belong to the app being removed. LaunchServices knows every
-    /// copy it has ever seen, so `InstalledLocation` keeps the ones that are
-    /// installed rather than merely present.
-    /// LaunchServices rather than the listing, and not both: the listing is
-    /// already read once per scan for `installedBundleIDs()`, and reading it a
-    /// second time to group it by id would double that for an answer
-    /// LaunchServices gives more completely — it registers `/Applications`
-    /// itself, so a bundle there that it has never heard of does not arise.
+    /// Where else an id is installed: a second bundle declaring it is the only
+    /// evidence that the id does not belong to the app being removed. The
+    /// listing keeps ids, not paths, and does not reach deep or nested copies;
+    /// LaunchServices knows every copy it has seen, and `InstalledLocation`
+    /// keeps the ones that are installed rather than merely present.
     public func installedPaths(forBundleID id: String) -> [String] {
         NSWorkspace.shared.urlsForApplications(withBundleIdentifier: id)
             .map(\.path)
             .filter { InstalledLocation.isInstalled(path: $0, home: home.path) }
     }
 
-    /// Spotlight's own answer through the metadata API, in this process — no
-    /// `mdls`, no other program. See the port for which reasons read as `nil`.
+    /// Spotlight's own answer through the metadata API, in this process. See the
+    /// port for which reasons read as `nil`.
     ///
-    /// **Only a date Spotlight itself recorded.** On a volume it does not index
-    /// the API still answers `kMDItemLastUsedDate` — with the file's modification
-    /// date, synthesised on the spot — and every app there would read "Opened N
-    /// years ago" with N the age of the install. The two are told apart by the
-    /// item's attribute names, which list the attribute only when it is stored.
-    /// Measured on this Mac: 93 bundles under `/Applications` and
-    /// `/System/Applications`, the attribute answered a date for 53 and was in
-    /// the name list for the same 53; on an APFS volume with `mdutil -i off` a
-    /// copy of Calculator with its mtime set to 2020-01-02 answered that mtime
-    /// and its names (15) did not carry the attribute.
+    /// Only a date Spotlight itself recorded. On a volume it does not index, the
+    /// API answers `kMDItemLastUsedDate` with the file's modification date, and
+    /// every app would read "Opened N years ago". The item's attribute names
+    /// list the attribute only when it is stored, which tells the two apart.
     public func lastOpened(path: String) -> Date? {
         guard let item = MDItemCreate(kCFAllocatorDefault, path as CFString),
               let names = MDItemCopyAttributeNames(item) as? [String],
@@ -85,21 +64,17 @@ public final class WorkspaceAppLister: AppLister {
             : ("the Trash could not be read: \(code)", nil)
     }
 
-    /// The user's own Trash only. Per-volume `/Volumes/*/.Trashes/<uid>` is left
-    /// alone: an app is rarely installed on and deleted from an external disk, and
-    /// each of those is a separate protected read.
+    /// The user's own Trash only: an app is rarely installed on and deleted from
+    /// an external disk, and each volume's `.Trashes` is a separate protected read.
     ///
-    /// Something in there that is not a readable app bundle — a broken download, a
-    /// folder somebody named `.app` — yields nothing rather than an error. There is
-    /// no failure to report to anyone: the question is whether there is anything to
-    /// offer, and the answer is no.
+    /// An entry that is not a readable app bundle yields nothing rather than an
+    /// error: the question is only whether there is anything to offer.
     ///
-    /// **A read Helm was not allowed to make is `nil`, not empty.** That is the
-    /// Full Disk Access case, which is every local install (ARCHITECTURE.md § Signing and grants), and folded into
-    /// `[]` it made the switch on the Leftovers tab say on over a Trash nothing
-    /// could see. A Trash that is simply *not there* — a fresh account has none
-    /// until something is deleted — is empty rather than nil, or the page would
-    /// report a missing permission to somebody who has all of them.
+    /// A read Helm was not allowed to make is `nil`, not empty: that is the Full
+    /// Disk Access case, every local install
+    /// (Architecture/Release.md § Signing and grants), and the switch must not
+    /// say on over a Trash nothing can see. A Trash that is not there (a fresh
+    /// account) is empty, or the page would report a missing permission.
     public func trashedApps() -> [TrashedApp]? {
         let trash = home.appendingPathComponent(".Trash", isDirectory: true)
         let items: [URL]
@@ -107,10 +82,8 @@ public final class WorkspaceAppLister: AppLister {
             items = try FileManager.default.contentsOfDirectory(
                 at: trash, includingPropertiesForKeys: nil)
         } catch {
-            // A read that failed and a Trash with nothing in it are the same
-            // silence to whoever opens the log, and they want different answers:
-            // the first is usually Full Disk Access, which every install takes
-            // away again. The path is the user's home and is not written.
+            // A failed read is logged so it is not the silence of an empty
+            // Trash. The path is the user's home and is not written.
             let refusal = Self.trashReadFailure(code: (error as NSError).code)
             if let warning = refusal.warning {
                 HelmLog.shared.warn(UninstallerEngine.moduleID, warning)
@@ -121,11 +94,9 @@ public final class WorkspaceAppLister: AppLister {
             .filter { $0.pathExtension == "app" }
             .compactMap { app in
                 // Inside the iteration, and only the extracted identity leaves it
-                // (ARCHITECTURE.md § Module pattern).
+                // (Architecture/ModulePattern.md § Module pattern).
                 autoreleasepool {
-                    let info = app.appendingPathComponent("Contents/Info.plist")
-                    return TrashedAppIdentity.of(path: app.path,
-                                                 info: NSDictionary(contentsOf: info) as? [String: Any])
+                    TrashedAppIdentity.of(path: app.path, info: PropertyListFile.infoPlist(ofBundleAt: app))
                 }
             }
     }
@@ -140,24 +111,20 @@ public final class WorkspaceAppLister: AppLister {
         let fm = FileManager.default
         var seen = Set<String>()
         var out: [InstalledApp] = []
-        // Counted rather than named: a bundle id names somebody's habits, and a
-        // row that is missing with nothing anywhere saying why reads as a folder
-        // Helm could not see.
+        // Counted, so a missing row is explained; not named, since a bundle id
+        // names somebody's habits.
         var linked = 0
         for dir in searchDirs {
             guard let items = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { continue }
-            // Once for the folder, not once per bundle: where the folder itself
-            // leads is one fact about the listing, and `resolvingSymlinksInPath`
-            // is a `realpath` each time it is asked.
+            // Once per folder: `resolvingSymlinksInPath` is a `realpath` each time.
             let folder = dir.resolvingSymlinksInPath().standardizedFileURL
             for app in items where app.pathExtension == "app" {
                 guard !seen.contains(app.path) else { continue }
                 seen.insert(app.path)
                 // One `Info.plist` per bundle: the pool goes inside the iteration and
-                // only the two Strings leave it (ARCHITECTURE.md § Module pattern).
+                // only the two Strings leave it (Architecture/ModulePattern.md § Module pattern).
                 let plist: (bundleID: String, name: String?)? = autoreleasepool {
-                    let info = app.appendingPathComponent("Contents/Info.plist")
-                    let dict = NSDictionary(contentsOf: info)
+                    let dict = PropertyListFile.infoPlist(ofBundleAt: app)
                     guard let bundleID = dict?["CFBundleIdentifier"] as? String, !bundleID.isEmpty else { return nil }
                     return (bundleID, (dict?["CFBundleDisplayName"] as? String)
                         ?? (dict?["CFBundleName"] as? String))
@@ -183,45 +150,30 @@ public final class WorkspaceAppLister: AppLister {
 
     /// Whether a listed entry leads somewhere other than where it is spelled.
     ///
-    /// **Measured**, in a scratch directory: a symlink named `Linked.app` pointing
-    /// at a real 3 MB bundle is returned by `contentsOfDirectory`, has the `.app`
-    /// extension, and `NSDictionary(contentsOf:)` reads the *target's*
-    /// `Info.plist` through it — so the row carried the real name and the real
-    /// bundle id while `FileWeight.allocated` answered **0** bytes for it, and
-    /// `RemovableScope.isRemovable` allowed the move. What `FileManager.trashItem`
-    /// does with such a leaf, take the link or take the target, is a question this
-    /// app has no answer to, and **both answers are defects**: one leaves the app
-    /// installed with its containers gone under a banner saying it is in the
-    /// Trash, the other breaks "leaves the leaf alone"
-    /// (ARCHITECTURE.md § The gates). So the offer is withdrawn rather than
-    /// guessed at. Who has one: anyone whose apps arrive as links — nix-darwin,
-    /// some cask layouts, hand-made links.
+    /// A linked `.app` lists like a bundle and reads the target's `Info.plist`,
+    /// with no size of its own, and the scope allows its move. Whether
+    /// `FileManager.trashItem` then takes the link or the target, both are
+    /// defects: the app stays installed with its containers gone, or the leaf is
+    /// not left alone (Architecture/TheGates.md § The gates). So the offer is
+    /// withdrawn rather than guessed at. Apps arrive as links from nix-darwin,
+    /// some cask layouts and by hand.
     ///
-    /// **Both sides are resolved, and that is not a shortcut** — it is what
-    /// `ScanRoot.resolve` records one target over: `resolvingSymlinksInPath()`
-    /// rewrites `/private/var/…` to `/var/…`, so a folder compared against its own
-    /// unresolved spelling answers "this leads somewhere else" for every entry in
-    /// any temporary tree on this machine. What is left is the question that
-    /// matters here — does *this entry* lead out of the folder it was listed in.
-    /// The ancestor case, a link at `/Applications` redirecting everything under it
-    /// without any single entry being a link, is not answered here on purpose: it
-    /// is one question about the folder rather than one per row, and the removal
-    /// gate already refuses what it leads to, since `RemovableScope.partition`
-    /// resolves a path's ancestors before judging it.
+    /// Both sides are resolved, because `resolvingSymlinksInPath()` rewrites
+    /// `/private/var/…` to `/var/…` and an unresolved folder would make every
+    /// entry "lead elsewhere". A link at the folder itself is not asked here:
+    /// `RemovableScope.partition` resolves ancestors before judging a path.
     ///
-    /// The caller exempts a `com.apple.` bundle, and that is not a courtesy:
-    /// **measured on this Mac, `/Applications/Safari.app` is itself a link**, into
-    /// `/System/Volumes/Preboot/Cryptexes/App/…`. Its row carries no checkbox and
-    /// `setChecked` refuses the id (`SystemApp`), so it is not an offer to remove
-    /// anything and there is nothing to withdraw — dropping it would only take the
-    /// row that says «System app» away from a person who can see the app in Finder.
+    /// The caller exempts a `com.apple.` bundle: `/Applications/Safari.app` is
+    /// itself a link into the Cryptexes. Its row has no checkbox and `setChecked`
+    /// refuses the id (`SystemApp`), so there is no offer to withdraw, only the
+    /// «System app» row to keep.
     static func leadsElsewhere(_ app: URL, inside folder: URL) -> Bool {
         app.resolvingSymlinksInPath().standardizedFileURL.path
             != folder.appendingPathComponent(app.lastPathComponent).path
     }
 
     /// Measured in parallel: the walks are independent, and one slow bundle
-    /// (Xcode, 3.2 s here) otherwise holds up the other thirty-eight.
+    /// would otherwise hold up the rest.
     public func appSizes(_ apps: [InstalledApp]) -> [String: Int] {
         let fs = self.fs
         // `nonisolated(unsafe)`: the compiler cannot see `lock`, and the shape it
@@ -232,10 +184,8 @@ public final class WorkspaceAppLister: AppLister {
         DispatchQueue.concurrentPerform(iterations: apps.count) { index in
             let app = apps[index]
             let size = fs.size(URL(fileURLWithPath: app.path))
-            // Keyed by path. Two copies of one app share a bundle id, so the
-            // second write overwrote the first and which size survived was
-            // decided by `concurrentPerform` — a race. Both rows then showed
-            // one number and "will free" was wrong about one of them.
+            // Keyed by path: two copies of one app share a bundle id, and each
+            // row needs its own size.
             lock.lock(); sizes[app.path] = size; lock.unlock()
         }
         return sizes
@@ -287,17 +237,11 @@ public struct WorkspaceRunningApps: RunningAppsPort {
     public init() {}
 
     /// `runningApplications(withBundleIdentifier:)` reads AppKit's own mutable
-    /// list of running applications, and reading it off the main thread is what
-    /// killed the VPN engine over four releases (ARCHITECTURE.md § Running
-    /// applications). All callers here are off it: the scan, each
-    /// quit and each poll of `waitUntilGone` run inside `offTheCooperativePool`
-    /// — while this very type is terminating applications, which is to say while
-    /// that list is being mutated.
+    /// list, which must not be read off the main thread
+    /// (Architecture/RunningOtherPrograms.md § Running applications), and every
+    /// caller here runs off it, while this type terminates applications.
     ///
-    /// The hop lives here rather than at the call sites because this is the
-    /// boundary: anything that reaches AppKit through this port gets the rule
-    /// for free, and a third caller cannot forget it. One hop per scan — the
-    /// scan is of one application, not a list.
+    /// The hop is at the port, the boundary, so no caller can forget it.
     private func onMain<T: Sendable>(_ body: @MainActor @Sendable () -> T) -> T {
         if Thread.isMainThread { return MainActor.assumeIsolated(body) }
         return DispatchQueue.main.sync { MainActor.assumeIsolated(body) }
@@ -320,8 +264,8 @@ public struct WorkspaceRunningApps: RunningAppsPort {
 public struct SystemExtensionLister: SystemExtensionPort {
     public init() {}
     /// `hostIdentifiersIfAnswered`, never the folded reader: a tool that did not
-    /// run is not a Mac with no extensions on it, and this answer decides whether
-    /// the failure sheet offers to open the Extensions pane.
+    /// run is not a Mac with no extensions, and this answer decides whether the
+    /// failure sheet offers the Extensions pane.
     public func activeExtensionHosts() -> Set<String>? {
         SystemExtensionCLI.hostIdentifiersIfAnswered()
     }

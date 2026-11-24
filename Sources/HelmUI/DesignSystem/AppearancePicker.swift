@@ -4,18 +4,11 @@ import HelmRuntime
 /// Light, dark or automatic — as three pictures, the way System Settings asks
 /// the same question.
 ///
-/// It was a pop-up menu of three words. The words are accurate and they are
-/// not what anybody is choosing between: this is the one setting in Helm whose
-/// answer *is* an appearance, and a picture of it says in one glance what
-/// «Auto» takes a sentence to explain. macOS asks it this way on its own
-/// Appearance pane, so a person arriving here has already answered it once in
-/// this shape.
-///
-/// **Drawn rather than borrowed.** The system's thumbnails are private assets
-/// of System Settings; these are the same idea in Helm's own hand — a
-/// wallpaper and a window with its three lights — and the automatic one is the
-/// two of them split down the middle, which is the convention macOS itself
-/// uses for that case.
+/// This is the one setting whose answer *is* an appearance, and a picture says
+/// at a glance what «Auto» takes a sentence to explain; macOS asks it this way
+/// on its own Appearance pane. Drawn in Helm's own hand, since the system's
+/// thumbnails are private assets: a wallpaper and a window with its three
+/// lights, and automatic as the two split down the middle, as macOS does.
 public struct AppearancePicker: View {
     @Binding private var selection: AppAppearance
     private let title: String
@@ -31,21 +24,10 @@ public struct AppearancePicker: View {
     private static let order: [AppAppearance] = [.light, .dark, .system]
 
     public var body: some View {
-        // `LabeledContent`, and the label stays on the first baseline.
-        //
-        // It was hand-built for a while, to centre the label against the whole
-        // block the way `SidebarComposerRow` centres its button. Measured, that
-        // was the consistent choice — 22 pt off against every other row in the
-        // card — and looked at, it was not: a button is one small thing beside
-        // a label and belongs level with it, while this is a 62 pt block of
-        // pictures with names under them, and a label floating at its middle
-        // reads as attached to nothing. On the first line it introduces what
-        // follows, which is what the pictures are arranged as.
-        //
-        // The row of pictures itself is `HelmChoiceCards`, which is where the
-        // ring, the hairline and the label's weight now live — this file kept
-        // its own copy of all three while the VPN page drew the same control
-        // one size and one radius away.
+        // `LabeledContent`, with the label on the first baseline: beside a
+        // 62 pt block of pictures with names under them, a label at its middle
+        // reads as attached to nothing, while on the first line it introduces
+        // what follows. The row of pictures is `HelmChoiceCards`.
         LabeledContent(title) {
             HelmChoiceCards(selection: $selection,
                             items: Self.order.map {
@@ -103,16 +85,12 @@ private struct AppearanceThumbnail: View {
                 HelmWallpaper(dark: dark)
 
                 // The window, offset down and right so the wallpaper shows on
-                // two sides — the same asymmetry the system's own thumbnail has.
-                // Padded on two edges only, so it always runs exactly to the
-                // right and bottom of the frame.
+                // two sides, as in the system's thumbnail, and padded on two
+                // edges only so it runs to the right and bottom of the frame.
                 //
-                // **Two tones, not one**: the sidebar and what it opens. The
-                // mockup draws them (measured `#E1E7F7` against `#FFFEFF`
-                // light, `#494E5C` against `#383838` dark), and at 74 pt they
-                // are what makes the picture read as *this* app's window
-                // rather than as a plain rectangle — Helm has a sidebar on
-                // every screen a person will see after choosing.
+                // Two tones, the sidebar and what it opens, from the mockup:
+                // at 74 pt they make the picture read as this app's window
+                // rather than a plain rectangle.
                 RoundedRectangle(cornerRadius: w * 0.068, style: .continuous)
                     .fill(dark ? Color(white: 0.22) : Color(white: 1.0))
                     .overlay(alignment: .leading) {
@@ -129,10 +107,8 @@ private struct AppearanceThumbnail: View {
                     }
                     .overlay(alignment: .topLeading) {
                         // Three lights in the corner of the title bar, and
-                        // nothing else. There was a selected row under them in
-                        // the accent colour; at 74 pt it was a blue bar with
-                        // no list for it to be a row of, and it read as the
-                        // window's content rather than as one item in it.
+                        // nothing else: a selected row at this size reads as the
+                        // window's content rather than one item in it.
                         HStack(spacing: w * 0.045) {
                             ForEach([Color(red: 0.99, green: 0.37, blue: 0.34),
                                      Color(red: 0.99, green: 0.74, blue: 0.18),

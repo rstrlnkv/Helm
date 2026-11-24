@@ -10,28 +10,24 @@ import HelmRuntime
 /// **A module switched off during any `brew` operation leaves no marker
 /// behind: it goes when the child does, and not before.**
 ///
-/// `deactivate()` ends the install of Homebrew (terminated, as Stop does). A
-/// package operation or a doctor fix is **not** terminated — a half-built
-/// `brew` run is how a broken Cellar is made — it finishes on its own. Its exit
-/// used to be heard by a weak reference to an engine the host had already
-/// dropped: nobody cleared the marker, so the next enable reported "running at
-/// quit" for a child that was still running, and a fresh engine's `busy` was
-/// false beside it. The gate is shut meanwhile: nothing launches for a module
-/// that is off.
+/// `deactivate()` ends the install of Homebrew as Stop does. A package
+/// operation or a doctor fix is **not** terminated (a half-built `brew` run
+/// breaks the Cellar); it finishes on its own, and its exit, heard even after
+/// the host dropped the engine, clears the marker. Otherwise the next enable
+/// reports "running at quit" for a child still running. The gate stays shut
+/// meanwhile.
 ///
-/// **The runner never exits until told** (a `brew` that has run for the seconds
-/// that matter), and its handle records a TERM without ending the stream, as
-/// the real one does: the child dies, then EOF, then `onExit`.
+/// The runner never exits until told, and its handle records a TERM without
+/// ending the stream, as the real one does: the child dies, then EOF, then
+/// `onExit`.
 final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
     private struct AllowingPrivileged: PrivilegedRunner {
         func runAdmin(_ script: String) -> PrivilegedOutcome { .done }
     }
 
     /// The Cellar a doctor fix is judged against.
-    private func cellarRunner() -> HangingRunner {
-        let runner = HangingRunner()
-        runner.listing = "wget 1.25.0\n"
-        return runner
+    private func cellarRunner() -> ScriptedRunner {
+        ScriptedRunner(streams: .hold, answers: [BrewAnswer(["list", "--formula"], 0, "wget 1.25.0\n")])
     }
 
     /// Reports what is written *now*, without taking it the way `status()` does.
@@ -172,9 +168,8 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
     func testASwitchOffDuringTheFixsCellarReadLaunchesNothing() {
         let runner = cellarRunner()
         let marker = SpyMarker()
-        let hook = HookedRunner(runner)
-        let off = engine(hook, marker)
-        hook.onList = { [weak off] in off?.deactivate() }
+        let off = engine(runner, marker)
+        runner.onRun = { [weak off] args in if args.first == "list" { off?.deactivate() } }
 
         off.runDoctorFix(["uninstall", "wget"])
 
@@ -264,8 +259,10 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
         a.upgradeAll()
         weak var dropped: HomebrewEngine?
         autoreleasepool {
-            dropped = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
-                                     user: "tester", marker: marker, gate: gate)
+            var held: HomebrewEngine? = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
+                                                        user: "tester", marker: marker, gate: gate)
+            dropped = held
+            held = nil
         }
         XCTAssertNil(dropped, "the engine was not freed, so deinit did not run")
 
@@ -306,24 +303,5 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
         b.upgradeAll()
         XCTAssertEqual(runner.handles.count, 1, "the dropped engine's gate stayed shut")
         runner.finishAll(code: 0)
-    }
-
-    private final class HookedRunner: ProcessRunner, @unchecked Sendable {
-        let inner: HangingRunner
-        var onList: (@Sendable () -> Void)?
-        init(_ inner: HangingRunner) { self.inner = inner }
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) {
-            let answer = inner.run(launchPath, args, env: env)
-            if args.first == "list" { onList?() }
-            return answer
-        }
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                     env: [String: String]) -> (status: Int32, output: String) { (0, "") }
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            inner.stream(launchPath, args, env: env, onLine: onLine, onExit: onExit)
-        }
     }
 }

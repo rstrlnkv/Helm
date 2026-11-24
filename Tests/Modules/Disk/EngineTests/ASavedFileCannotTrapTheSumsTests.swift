@@ -3,21 +3,19 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Disk_Engine
 
-/// **The figures in the saved scan are bounded one at a time, and the sums over
-/// them saturate.**
+/// The figures in the saved scan are bounded one at a time, and the sums over
+/// them saturate.
 ///
 /// `DiskEntry` and `DiskAdvice.Target` clamp what they decode to
-/// `DiskEntry.byteCeiling`; one ceiling is not enough, because 8192 figures at
-/// the ceiling pass an integer's top (`Int.max / byteCeiling + 1` of them do; 8191
-/// do not). The sums the file can reach — the advice's total in the decoder
-/// (`DiskAdvice.init(name:path:kind:modified:targets:)`), `DiskTreePrune` after a
-/// removal, and the removal question's total — go through
-/// `Sequence.saturatingSum()`. The file is one any process running as the user can
-/// write, and `restoreLastScan` reads it on every opening of the page.
+/// `DiskEntry.byteCeiling`, but `Int.max / byteCeiling + 1` figures at the
+/// ceiling still pass an integer's top. So the sums the file reaches (the
+/// advice's total in the decoder, `DiskTreePrune` after a removal, the removal
+/// question's total) go through `Sequence.saturatingSum()`. Any process running
+/// as the person can write the file, and `restoreLastScan` reads it at every
+/// opening of the page.
 ///
-/// A trap takes the whole test process with it (`exited with unexpected signal
-/// code 5`), so a regression in the two cases that used to trap reads as a crashed
-/// bundle rather than as one red case.
+/// A trap takes the whole test process with it, so a regression here reads as a
+/// crashed bundle rather than one red case.
 final class ASavedFileCannotTrapTheSumsTests: XCTestCase {
 
     private func entry(_ path: String, bytes: String, children: [String] = []) -> String {
@@ -69,10 +67,8 @@ final class ASavedFileCannotTrapTheSumsTests: XCTestCase {
                                  "an advice row weighs \(row.bytes) bytes, past the ceiling")
     }
 
-    /// Two targets whose figures add past `Int.max`: the decoder's own sum once
-    /// trapped, on the detached read `restoreLastScan` makes at every opening of the
-    /// page. Unreachable by the bound alone only at two targets, so the case below
-    /// is the one that needs the saturation.
+    /// Two targets whose figures add past `Int.max`. The bound alone covers two
+    /// targets; the case below is the one that needs the saturation.
     func testTwoTargetsOutweighingAnIntegerDoNotTrapTheRead() throws {
         let cached = try load(saved(root: entry("/v", bytes: "1"),
                                     advice: [advice(targets: ["9223372036854775807", "1"])]))
@@ -114,7 +110,7 @@ final class ASavedFileCannotTrapTheSumsTests: XCTestCase {
 
     /// More rows at the ceiling than an integer holds, all in the basket: the
     /// question the dialog asks sums them. Each row is held to the ceiling by
-    /// `Target`, so two rows can no longer overflow it.
+    /// `Target`, so two rows cannot overflow it.
     func testTheRemovalQuestionOverManyHugeRowsSaturates() {
         let count = Int.max / DiskEntry.byteCeiling + 2
         let rows = (0..<count).map {

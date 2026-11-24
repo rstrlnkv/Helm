@@ -2,21 +2,15 @@ import Foundation
 
 /// Where a scan that nobody is watching may start.
 ///
-/// **A fourth gate, and a different question from the other three.**
-/// `RemovableScope` asks what belongs to an application, `UserFileScope` what
-/// belongs to the user and may be deleted, `WatchScope` where an Autopilot rule
-/// may reach. This one asks where an unattended *read* may begin — and it cannot
-/// be `UserFileScope.isRemovable`, which refuses the user's home outright. The
-/// home is the commonest duplicate-scan root there is, so that gate would refuse
-/// the normal case.
+/// The fourth gate (Architecture/TheGates.md § The gates): where an unattended
+/// *read* may begin and how far it may descend. It cannot be
+/// `UserFileScope.isRemovable`, which refuses the home outright, and the home
+/// is the commonest duplicate-scan root there is.
 ///
-/// It exists because the root is stored rather than asked for.
-/// `module.duplicates.folder` is a plain string in `com.helm.app` — verified
-/// live, holding the home directory — with its MAC beside it (`SettingGuard`),
-/// and a background scan refuses it when the seal does not match. Until background scans it only
-/// ever changed through an open panel with the person present; now it decides
-/// how far a reader reaches with nobody there, and any process running as this
-/// user can rewrite that plist.
+/// It exists because the root is stored rather than asked for:
+/// `module.duplicates.folder` is a plain string in `com.helm.app`, sealed
+/// (`SettingGuard`), that decides how far a reader reaches with nobody there,
+/// and any process running as this user can rewrite that plist.
 public enum ScanRoot {
 
     private static let home = FileManager.default.homeDirectoryForCurrentUser.path
@@ -28,61 +22,43 @@ public enum ScanRoot {
     /// every walk, for an answer that cannot change while the process lives.
     ///
     /// It is the spelling `resolve` approves a root in, which is why the descent
-    /// gate below compares against this and not against `home`. It is **not** a
-    /// promise about the spelling the walk's own paths arrive in — measured, an
-    /// enumerator resolves the root's symlinks on the way out and hands back
-    /// something else; the gate folds `/private` away on both sides for exactly
-    /// that reason.
+    /// gate compares against this and not `home`. It is **not** the spelling the
+    /// walk's own paths arrive in: an enumerator resolves the root's symlinks on
+    /// the way out, so the gate folds `/private` away on both sides.
     public static let canonicalHome = PathCanonical.resolvingWholePath(home)
 
     /// Subtrees of the home that macOS protects with TCC, and that an
     /// unattended scan has no business walking.
     ///
     /// Helm holds Full Disk Access, so it *can* read these; the journal it
-    /// writes afterwards names every path it found, at 0600 — readable by any
-    /// process running as this user, including ones macOS refuses. Measured: a
-    /// shell without Full Disk Access cannot list `~/Library/Mail`, and reads
-    /// Helm's own scan file in full. Walking them on a timer would launder a
-    /// privilege the person granted Helm into one they granted nobody.
+    /// writes afterwards names every path it found, at 0600, readable by any
+    /// process running as this user, including ones macOS refuses. Walking them
+    /// on a timer would launder a privilege the person granted Helm into one
+    /// they granted nobody.
     ///
-    /// `Library` wholesale rather than a list of the dozen directories inside
-    /// it — Mail, Messages, Safari, AddressBook, HomeKit, Cookies and the rest.
-    /// A list is a thing to keep up to date with Apple; the subtree is not, and
-    /// nobody points a duplicate finder at `~/Library` on purpose.
+    /// `Library` wholesale rather than a list of the directories inside it: a
+    /// list has to be kept up to date with Apple, and nobody points a duplicate
+    /// finder at `~/Library` on purpose. An interactive scan may still go there.
     ///
-    /// An *interactive* scan may still go there: the person picked the folder
-    /// in an open panel and is watching the result. This gate is only asked
-    /// about the unattended case.
-    ///
-    /// **Asked about every directory, not only about the root.** It answers
-    /// `resolve` below and `refusesDescentInHome` further down, and until
-    /// 2026-08-20 it answered only the first — which refused to *start* in
-    /// `~/Library` while the walk went in one step later. One list, two
-    /// questions: where an unattended walk may begin, and where it may go.
+    /// One list, two questions, asked of every directory and not only the root:
+    /// where an unattended walk may begin (`resolve`) and where it may go
+    /// (`refusesDescentInHome`).
     private static let refusedInHome = ["library"]
 
     /// The scan root to actually walk, or nil.
     ///
-    /// **It returns the path rather than judging one**, and that is the whole
-    /// repair. The first version answered true or false about a string, and the
-    /// caller then walked *its own* string — so the gate validated one spelling
-    /// and the scanner used another. Measured: `$HOME/link/.` where `link`
-    /// points outside the home passed the gate, because `standardizingPath`
-    /// strips the `/.` before the check, and `FileManager.enumerator` then
-    /// followed it, because `/.` makes it treat the link as a directory. A gate
-    /// that hands back a different string from the one it approved is checking
-    /// the wrong thing by construction.
+    /// **It returns the path rather than judging one**, so the caller walks the
+    /// string the gate approved. A boolean about one spelling lets the scanner
+    /// walk another: `$HOME/link/.`, with `link` pointing outside the home,
+    /// passes a check after `standardizingPath` strips the `/.`, and
+    /// `FileManager.enumerator` then follows the link.
     ///
-    /// **Resolved to the end, leaf included.** `UserFileScope` deliberately
-    /// leaves the leaf alone — trashing a stale alias must remove the alias —
-    /// and that reason does not carry here: you cannot scan a link, only what it
-    /// points at. Resolving is also what fixes the *other* half of the same
-    /// defect, and the two had to be fixed together: `fileExists` follows a leaf
-    /// symlink and answers "yes, a directory", while `enumerator` handed the
-    /// same link yields nothing — so a person who moved `~/Downloads` to an
-    /// external drive and left a link behind got an empty walk recorded as
-    /// «проверено, чисто», for ever. Repairing that alone, by resolving before
-    /// walking, would have turned the first defect into a real disclosure.
+    /// **Resolved to the end, leaf included.** `UserFileScope` leaves the leaf
+    /// alone because trashing a stale alias must remove the alias; you cannot
+    /// scan a link, only what it points at. It also matters because
+    /// `fileExists` follows a leaf symlink while `enumerator` handed the same
+    /// link yields nothing: a moved `~/Downloads` with a link left behind would
+    /// otherwise be an empty walk recorded as clean.
     public static func resolve(_ rawPath: String) -> String? {
         // Absolute first, before any resolution: `URL(fileURLWithPath:)` resolves
         // a relative path against the process's working directory and hands back
@@ -104,12 +80,9 @@ public enum ScanRoot {
             return nil
         }
 
-        // Asked of the descent gate rather than spelled out again here. The two
-        // questions differ only in *when* they are put — where a walk may begin,
-        // where it may go — and a rule written twice is two rules waiting to
-        // disagree about the same list. The home itself is not refused by it,
-        // which is right: this gate's whole reason for existing is that the home
-        // is a legitimate root.
+        // Asked of the descent gate rather than spelled out again, so the two
+        // cannot disagree about the list. The home itself is not refused by it:
+        // the home is a legitimate root.
         guard !refusesDescentInHome(into: path) else { return nil }
 
         // Existence and directory-ness are part of the answer: a root that is
@@ -136,30 +109,18 @@ public enum ScanRoot {
     /// Whether a walk must stop at this directory, because it is an application's
     /// database. The end of this doc says which walks ask.
     ///
-    /// **The root gate cannot answer this, and that is the whole reason it
-    /// exists.** `resolve` judges where a scan *begins*; on 2026-08-03 a
-    /// background scan of a legitimate root met
-    /// `~/Pictures/Photos Library.photoslibrary` several levels down, macOS
-    /// raised a Photos consent dialog, and it stood there until somebody came
-    /// back to an empty desk. **A prompt raised for an empty chair is a prompt
-    /// answered without reading** — whoever returns sees a question with no
-    /// context for what asked or why, and clicks something. Helm caused that.
-    ///
-    /// Had they clicked Allow, every filename inside would have landed in the
-    /// journal at 0600, readable by any process running as this user including
-    /// the ones macOS refuses — the laundering `refusedInHome` exists to stop,
-    /// arriving by the one route that gate does not watch. Of 3875 entries that
-    /// run recorded, 0 came from the library. That was luck: permission was not
-    /// granted.
+    /// The root gate cannot answer this: a legitimate root can hold
+    /// `~/Pictures/Photos Library.photoslibrary` several levels down, and walking
+    /// in raises a Photos consent dialog in front of an empty chair. A prompt
+    /// nobody asked for is answered without reading, and an Allow would put
+    /// every filename inside into the 0600 journal, the laundering
+    /// `refusedInHome` stops.
     ///
     /// **Judged by name, not by asking the filesystem.** Reading the directory
-    /// to decide whether to read the directory is the prompt itself. It also
-    /// makes the rule pure, so every case above is a test rather than a machine
-    /// this happens to be true on. `.skipsPackageDescendants` is not a
-    /// substitute: it asks LaunchServices whether the bundle's type is
-    /// registered, which is an answer about *this* Mac's installed apps — a
-    /// library copied from another machine, or one whose app was removed, is a
-    /// plain directory to that flag and a database to everyone else.
+    /// to decide whether to read it is the prompt itself, and a pure rule is
+    /// testable. `.skipsPackageDescendants` is not a substitute: it asks
+    /// LaunchServices about *this* Mac's installed apps, so a library copied
+    /// from another machine, or whose app was removed, is a plain directory to it.
     ///
     /// An *interactive* disk scan may still go in: the person chose the folder and
     /// is watching, and `DiskScanner` asks this on the unattended path only. The
@@ -173,27 +134,15 @@ public enum ScanRoot {
     /// Whether a walk that nobody is watching must stop at this directory
     /// because of *where in the home* it is.
     ///
-    /// **`refusedInHome` used to be asked one question too few.** It was
-    /// consulted only from `resolve`, which judges where a walk *begins* — and
-    /// the home is the commonest duplicate-scan root there is, so the subtree
-    /// the list exists to protect was reached on the very next step. Measured on
-    /// the owner's own machine on 2026-08-20: 3895 items in the last unattended
-    /// duplicate journal, 217 of them under `~/Library` and 19 under
-    /// `~/Library/Mobile Documents`, at 0600. Refusing to *start* there while
-    /// walking straight in is not a gate.
+    /// Asked of every directory a walk meets: the home is the commonest root,
+    /// so refusing only to *start* in `~/Library` would let the walk in on the
+    /// very next step.
     ///
-    /// The sibling above refuses an application's database wherever it stands;
+    /// `refusesDescent` refuses an application's database wherever it stands;
     /// this one refuses a subtree of *this* home, so it needs the home to
-    /// compare against and `refusesDescent` does not.
+    /// compare against. `home` is `canonicalHome`, resolved once per process.
     ///
-    /// **`home` is the canonical spelling** — `canonicalHome`, asked of the
-    /// filesystem once for the life of the process rather than once per
-    /// directory met. What the walk's own paths are spelled like is not in
-    /// anybody's gift, which the body below says out loud with the measurement.
-    ///
-    /// Judged by name, for the same two reasons as `refusesDescent`: reading the
-    /// directory to decide whether to read it is the disclosure, and a pure rule
-    /// is a test rather than a machine this happens to be true on.
+    /// Judged by name, for the same two reasons as `refusesDescent`.
     ///
     /// An *interactive* scan still goes wherever the person pointed it. The
     /// distinction is unattended versus asked-for, never `~/Library` versus
@@ -203,19 +152,10 @@ public enum ScanRoot {
         // Folded, because the boot volume is case-insensitive and the plist that
         // names the root is writable by any process running as this user.
         //
-        // **`/private` is stripped from both sides, and the walk is why.**
-        // Measured 2026-08-20: `FileManager.enumerator` given a root spelled
-        // `/var/folders/…` yields its children spelled `/private/var/folders/…`
-        // — it resolves the root's symlinks on the way out, so the walk's own
-        // paths need not carry the spelling of the root it was handed. A gate
-        // comparing one against the other then matches nothing and fails open,
-        // silently, which is the worst way for a gate to be wrong. It does not
-        // arise for `/Users/…`, and that is luck about this volume's layout
-        // rather than anything the code is doing.
-        //
-        // Applied to both sides, never to one: the asymmetry is the defect.
-        // Pure string work, so the rule stays a fact rather than a question
-        // about the filesystem asked once per directory met.
+        // `/private` is stripped from both sides: `FileManager.enumerator` given
+        // `/var/folders/…` yields children spelled `/private/var/folders/…`, and
+        // a gate comparing the two spellings matches nothing and fails open,
+        // silently. Both sides, never one: the asymmetry is the defect.
         //
         // A trailing slash needs no stripping: `library/` is caught by the
         // prefix arm below, which is the spelling the descendants take anyway.
@@ -226,11 +166,7 @@ public enum ScanRoot {
         return refusedInHome.contains { inside == $0 || inside.hasPrefix($0 + "/") }
     }
 
-    // There is deliberately no `isAllowed(_:) -> Bool`.
-    //
-    // It existed, and it was the defect: a caller asked it about one string and
-    // then walked another. Returning the path is what makes that mistake
-    // impossible to write — a boolean cannot tell anybody *which* path was
-    // approved, and with a symlinked root the approved one and the stored one
-    // are different directories.
+    // There is deliberately no `isAllowed(_:) -> Bool`: a boolean cannot say
+    // *which* path was approved, and with a symlinked root the approved one and
+    // the stored one are different directories.
 }

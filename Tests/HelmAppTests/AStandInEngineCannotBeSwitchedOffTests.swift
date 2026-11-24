@@ -18,13 +18,12 @@ import XCTest
 /// same defect through another door: it would forget the preferences that say the
 /// module ran.
 ///
-/// **The switch is driven; the reset is read off the source.** `setEnabled` runs for
-/// real on the shared host against a recording descriptor (as
-/// `TheHostPutsAModulesOwnItemInTheMenuBarTests` does). `ResetEverything.run()` is not
-/// called: with its guard gone it trashes this Mac's Helm folders, forgets the
-/// preferences of the running bundle and relaunches. What is pinned there is that the
-/// guard on `anyStandsIn` stands before the first step, and the behaviour it asks
-/// (`anyStandsIn`) is driven here both ways.
+/// **Both are driven.** `setEnabled` runs for real on the shared host against a
+/// recording descriptor (as `TheHostPutsAModulesOwnItemInTheMenuBarTests` does). The
+/// reset runs through `ResetEverything.run(standInIsLive:perform:)` with a recorder
+/// for `perform`: the real steps trash this Mac's Helm folders, forget the preferences
+/// of the running bundle and relaunch. `anyStandsIn`, the answer it is given, is
+/// driven here both ways.
 @MainActor
 final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
 
@@ -33,20 +32,10 @@ final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
 
     private final class PageModel {}
 
-    private final class Probe: ModuleEngine {
-        let standsIn: Bool
-        var willDisableCalls = 0
-        var deactivateCalls = 0
-        init(standsIn: Bool) { self.standsIn = standsIn }
-        func activate() {}
-        func willDisable() { willDisableCalls += 1 }
-        func deactivate() { deactivateCalls += 1 }
-    }
-
     private class Base: StandInDescriptor {
         class var id: ModuleID { fatalError() }
-        let engine: Probe
-        init(standsIn: Bool) { engine = Probe(standsIn: standsIn) }
+        let engine: FakeEngine
+        init(standsIn: Bool) { engine = FakeEngine(standsIn: standsIn) }
         func makeModule(store: NamespacedStore) -> ModuleParts<PageModel> {
             ModuleParts(engine: engine, model: PageModel())
         }
@@ -59,12 +48,12 @@ final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
     }
 
     /// The host's store is `UserDefaults.standard`: the keys written are taken back out.
-    override func tearDown() {
+    override func tearDown() async throws {
         ModuleHost.shared.shutdown()
         for id in [Self.standInID, Self.ordinaryID] {
             UserDefaults.standard.removeObject(forKey: "module.\(id).enabled")
         }
-        super.tearDown()
+        try await super.tearDown()
     }
 
     private func enabledKey(_ id: String) -> Any? {
@@ -84,8 +73,8 @@ final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
             switching a stand-in off wrote "off" into the real store: the next ordinary launch \
             finds the module off, with whatever the real engine had taken left and no engine to recover it.
             """)
-        XCTAssertEqual(d.engine.willDisableCalls, 0, "the stand-in was asked to give back what it never took")
-        XCTAssertEqual(d.engine.deactivateCalls, 0, "the stand-in was torn down by a refused switch")
+        XCTAssertEqual(d.engine.willDisables, 0, "the stand-in was asked to give back what it never took")
+        XCTAssertEqual(d.engine.deactivations, 0, "the stand-in was torn down by a refused switch")
         XCTAssertNotNil(host.liveModule(Self.standInID), "the refused switch still dropped the engine")
         XCTAssertTrue(host.anyStandsIn, "the host does not say a stand-in is live, so the reset cannot refuse")
     }
@@ -101,21 +90,15 @@ final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
         host.setEnabled(d, false)
 
         XCTAssertEqual(enabledKey(Self.ordinaryID) as? Bool, false, "the person's off was not recorded")
-        XCTAssertEqual(d.engine.willDisableCalls, 1)
-        XCTAssertEqual(d.engine.deactivateCalls, 1)
+        XCTAssertEqual(d.engine.willDisables, 1)
+        XCTAssertEqual(d.engine.deactivations, 1)
         XCTAssertNil(host.liveModule(Self.ordinaryID))
     }
 
-    /// The reset's guard stands before the first step of the plan, and asks the host.
-    func testTheResetRefusesBeforeAnyStep() throws {
-        let source = try RepoSource.text(of: "Sources/HelmApp/ResetEverything.swift")
-        let body = try XCTUnwrap(SwiftSource.body(of: "run", in: source), "ResetEverything.run is gone")
-        let guardAt = try XCTUnwrap(body.range(of: "guard !ModuleHost.shared.anyStandsIn"),
-                                    "«Reset all settings» no longer asks whether a stand-in is live")
-        let loopAt = try XCTUnwrap(body.range(of: "for step in ResetPlan.order"))
-        XCTAssertLessThan(guardAt.lowerBound, loopAt.lowerBound,
-                          "the guard comes after a step has already run")
-        let guardText = String(body[guardAt.lowerBound..<loopAt.lowerBound])
-        XCTAssertTrue(guardText.contains("return"), "the guard does not leave `run()`")
+    /// A live stand-in refuses the reset before its first step.
+    func testTheResetRefusesBeforeAnyStep() {
+        var performed: [ResetPlan.Step] = []
+        ResetEverything.run(standInIsLive: true) { performed.append($0) }
+        XCTAssertEqual(performed, [], "a step ran while a stand-in engine was live")
     }
 }

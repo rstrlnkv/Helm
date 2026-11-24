@@ -10,26 +10,12 @@ import XCTest
 /// published.**
 ///
 /// `VPNEngine.measureSpeed` refuses a name that is not the tunnel carrying the
-/// default route, and its own comment says why the refusal has to reach the
-/// page: «A silent return leaves the second with a spinner and no button under
-/// it, a refresh over a quiet tunnel being withheld by the dedup». The repair
-/// was an `emitState()` on the refusing branch — and `emitState` is the dedup.
-/// Nothing about the module changed between the last emission and the refusal,
-/// so the payload it builds is equal in every field to `_lastEmitted` and is
-/// dropped on the floor.
-///
-/// The page had set `VPNViewModel.measuring = name` on the press, on purpose:
-/// «a button that does nothing for a moment reads as a button that did not
-/// work», cleared by the arrival that never comes. So the spinner turns on that
-/// tunnel until some *other* fact about the module moves — which over a quiet
-/// tunnel is nothing, and `VPNTunnelState.measuring`'s own doc calls that
-/// ending «the one that shipped».
-///
-/// Two tunnels up with the route on one of them is not a contrived fixture: it
-/// is the case `VPNTunnelChoice.primaryFirst` and the whole switcher exist for,
-/// and the button under the second tunnel is the only way to reach this branch.
-///
-/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
+/// default route, and the refusal must reach the page, which set
+/// `VPNViewModel.measuring` on the press and clears it on the next arrival. The
+/// refusal changes no field, so `emitState`'s dedup would withhold it and the
+/// spinner would turn over a quiet tunnel until something else moved; the
+/// refusing branch forces the emission. Two tunnels up with the route on one is
+/// the case `VPNTunnelChoice.primaryFirst` and the switcher exist for.
 final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
 
     private let header = "Available network connection services:"
@@ -42,8 +28,7 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
         }).joined(separator: "\n")
     }
 
-    /// Two tunnels up, the route on `routed`. Every port named — three of the
-    /// defaults reach the network or run a tool for fifteen seconds
+    /// Two tunnels up, the route on `routed`. Every port named
     /// (`NoTestTakesAProductionPortTests`).
     private func twoTunnels(_ speed: FakeSpeed)
         -> (engine: VPNEngine, news: EngineNews<VPNEngine.StatePayload>) {
@@ -54,21 +39,15 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
         runner.statusOutput["beside"] = scutilStatus("utun9", primary: false, extra: ["Status : 2"])
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun4"
-        // **A quiet tunnel, which is the case the dedup bites on.** `carriesPerRead`
-        // is 0, so the counters answer the same pair at every reading — a Mac
-        // where nothing is moving through either tunnel while the button is
-        // pressed. With traffic on the link the counters cross a kilobyte, the
-        // payload differs and the refusal reaches the page *by accident*, which
-        // is the green-by-luck this fixture refuses.
+        // **A quiet tunnel, the case the dedup bites on.** Counters that moved
+        // would make the payload differ and the refusal reach the page by luck.
         interfaces.counters = ["utun4": (in: 1_000_000, out: 1_000_000),
                                "utun9": (in: 2_000_000, out: 2_000_000)]
-        // **The exit request is still out**, which is what the real port is for
-        // up to eight seconds of every refresh that starts one. It is also what
-        // keeps this test's reading of the stream deterministic: the check's own
-        // completion calls `emitState` too, and under `VPNWorkQueue.inline` that
-        // runs on the answering task's thread rather than on the module's serial
-        // queue — so the two emissions race and one is silently swallowed as a
-        // duplicate (`TheTestQueueIsAsSerialAsTheRealOneTests`).
+        // **The exit request is still out**, as the real port's is for seconds of
+        // every refresh. Its completion calls `emitState` too, and under
+        // `VPNWorkQueue.inline` that runs off the module's serial queue, so an
+        // answered check would race this test's emission
+        // (`TheTestQueueIsAsSerialAsTheRealOneTests`).
         let exit = FakeExit()
         exit.hangs = true
         let news = EngineNews<VPNEngine.StatePayload>()
@@ -80,13 +59,9 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
         return (engine, news)
     }
 
-    /// **The control.** The same command, on the tunnel that does carry the
-    /// route, reaches the page — so the silence below belongs to the refusal and
-    /// not to a command that never arrived.
-    ///
-    /// The fake blocks until released, the way `networkQuality` holds its thread
-    /// for fifteen seconds: a port that answered instantly would be past the
-    /// state this asserts on before the assertion was reached.
+    /// **The control.** The same command on the tunnel that carries the route
+    /// reaches the page. The fake blocks until released, as `networkQuality`
+    /// holds its thread, or the run would be past the state asserted on.
     func testAMeasurementTheEngineAcceptsIsAnnouncedAsItStarts() async {
         let speed = FakeSpeed()
         speed.blocksUntilReleased = true
@@ -104,14 +79,9 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
             """)
     }
 
-    /// **The finding.** The refusal changes no other field, so the payload it
-    /// publishes is a duplicate and never leaves the engine.
-    ///
-    /// Counted rather than matched on content: a fix emits the same fields — what
-    /// is wrong today is that nothing arrives at all, and the page is left
-    /// holding the optimistic flag it set on the press. The replayed event is the
-    /// first of the count, and the precondition below establishes that there is
-    /// exactly one of those before the press.
+    /// The refusal reaches the page although it changes no field. Counted rather
+    /// than matched on content, since the refusal emits the same fields; the
+    /// replayed event is the first of the count.
     func testAMeasurementRefusedOverAQuietTunnelStillReachesThePage() async {
         let speed = FakeSpeed()
         let (engine, news) = twoTunnels(speed)

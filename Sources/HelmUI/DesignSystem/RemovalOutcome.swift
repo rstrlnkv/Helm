@@ -3,11 +3,10 @@ import HelmRuntime
 
 /// What actually happened when Helm tried to delete something.
 ///
-/// Three screens used to announce "Removed — N freed" whether or not anything
-/// was refused, and threw the list of failures away. macOS refuses often
-/// enough — a container without Full Disk Access, a file the app is holding —
-/// that a cheerful banner over a silent failure is the app lying about its own
-/// work. This says what stayed, and why, in the module's own words.
+/// macOS refuses often enough (a container without Full Disk Access, a file an
+/// app is holding) that a success banner over a silent failure would be the app
+/// lying about its own work. This says what stayed, and why, in the module's
+/// own words.
 public struct HelmRemovalFailure: Identifiable, Equatable, Sendable {
     public var id: String { path }
     let path: String
@@ -22,16 +21,14 @@ public struct HelmRemovalFailure: Identifiable, Equatable, Sendable {
     /// A refusal as it comes back from `HelmTrash`, with its reason put into the
     /// reader's language.
     ///
-    /// Disk, Duplicates and Leftovers each spelled this map out — the same two
-    /// lines, reaching past this type to `TrashReasonText` for the sentence. The
-    /// lookup belongs beside the sentences, and the third copy of it arrived the
-    /// day Leftovers stopped carrying a refusal shape of its own.
+    /// The lookup lives beside the sentences (`TrashReasonText`), so no module
+    /// spells the map out itself.
     ///
     /// `refresh` is the verb of the caller's own refresh control, where the
-    /// sentence ends by naming one — Duplicates passes `.search`. Its own
-    /// initializer rather than a defaulted parameter, because the three scan
-    /// modules build theirs point-free (`map(HelmRemovalFailure.init)`) and a
-    /// default does not survive that reference.
+    /// sentence ends by naming one; Duplicates passes `.search`. A separate
+    /// initializer rather than a defaulted parameter, because the scan modules
+    /// build theirs point-free (`map(HelmRemovalFailure.init)`) and a default
+    /// does not survive that reference.
     public init(_ refusal: HelmTrash.Refusal, refresh: TrashReasonText.Refresh) {
         self.init(path: refusal.path,
                   reason: TrashReasonText.sentence(refusal.reason.rawValue, refresh: refresh))
@@ -53,10 +50,8 @@ public struct HelmRemovalOutcome: View {
     let verdict: Verdict
 
     /// `removed` is the count, not the sentence, because the sentence cannot be
-    /// asked whether it is true. Disk builds its banner before it knows the
-    /// outcome, so a batch where every path refused still announced "Removed —
-    /// 0 bytes freed, 1 item could not be moved" — a claim, its own refutation,
-    /// and two em-dashes, in one caption.
+    /// asked whether it is true: a caller builds its success sentence before it
+    /// knows the outcome.
     public init(succeededText: String, removed: Int,
                 failures: [HelmRemovalFailure],
                 needsFullDiskAccess: Bool = false) {
@@ -69,16 +64,12 @@ public struct HelmRemovalOutcome: View {
 
     /// What this line has to say, given what actually happened.
     ///
-    /// Pulled out because the `failures.isEmpty` branch was not consulting
-    /// `removed` at all — the parameter existed for exactly that question and
-    /// only one of the two branches asked it. A caller builds its success
-    /// sentence before it knows the outcome and defaults every count to zero,
-    /// so an engine reply carrying nothing rendered as unqualified success over
-    /// a row that was still there.
+    /// A caller defaults every count to zero, so an engine reply carrying
+    /// nothing must not render as success over a row that is still there.
     enum Verdict: Equatable {
         /// Nothing moved and nothing was refused: no sentence is true, so none
-        /// is drawn. It needs no wording of its own — every sentence this
-        /// component has is about something that happened.
+        /// Nothing moved and nothing was refused: no sentence is true, so none
+        /// is drawn.
         case silent
         case succeeded
         case failed
@@ -96,12 +87,8 @@ public struct HelmRemovalOutcome: View {
         case .succeeded:
             quiet(succeededText)
         case .failed:
-            // **The two levels below were one level.** The heading was
-            // `.caption` and the failures under it `.caption2`, which macOS
-            // resolves to 10 both — so the hierarchy was in the source and not
-            // on the screen. The heading is the note step (11) and the list
-            // under it stays at 10, which is the difference this block was
-            // always written to have.
+            // Two levels: the heading at the note step (11), the list under it
+            // at 10. `.caption` and `.caption2` both resolve to 10 on macOS.
             VStack(alignment: .leading, spacing: HelmSpace.s3) {
                 HStack(spacing: HelmSpace.s4) {
                     Image(systemName: "exclamationmark.circle.fill")
@@ -123,11 +110,9 @@ public struct HelmRemovalOutcome: View {
                             .font(.caption2)
                             .lineLimit(1).truncationMode(.middle)
                         Text("·").font(.caption2).foregroundStyle(HelmText.faint)
-                        // Not `lineLimit(1)`. These sentences exist to say what
-                        // macOS refused and what to do about it, and measured at
-                        // 10 pt the Russian ran past the row in three of the four
-                        // reasons — so the half that named the next step was the
-                        // half that got truncated. Two lines, and the row grows.
+                        // Not `lineLimit(1)`: the second half of each sentence
+                        // names the next step, and a long language would lose it.
+                        // Two lines, and the row grows.
                         Text(failure.reason)
                             .font(.caption2)
                             .foregroundStyle(HelmText.quiet)
@@ -155,15 +140,12 @@ public struct HelmRemovalOutcome: View {
         }
     }
 
-    /// **A full stop, not a second em dash.** `succeeded` is the caller's own
-    /// sentence and already carries one — "Moved to the Trash: 3 items — 4 KB" —
-    /// so joining with another put two in one caption, which is the very defect
-    /// `init`'s comment above says was fixed. The Uninstaller's own copy of this
-    /// line used a comma, so the app disagreed with itself about it. CJK takes its
-    /// own full stop; French an unbreakable space before the colon.
+    /// **A full stop, not a second em dash**: `succeeded` is the caller's own
+    /// sentence and may already carry one. CJK takes its own full stop; French
+    /// an unbreakable space before the colon.
     ///
-    /// `language` is explicit, defaulting to the app's, because the other seven
-    /// cannot be read back otherwise.
+    /// `language` is explicit, defaulting to the app's, so the other seven can
+    /// be read back.
     static func heading(succeeded: String?, failed: Int,
                         language: AppLanguage = AppLanguage.current) -> String {
         let items = Plural.items(failed, language: language.rawValue)

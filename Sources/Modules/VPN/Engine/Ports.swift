@@ -3,7 +3,7 @@ import HelmRuntime
 
 /// Credentials some VPNs (L2TP/IPSec) need at connect time; a VPN that connects
 /// on its own (IKEv2) is answered `VPNCredentialRead.notNeeded`. Secrets never
-/// logged.
+/// reach an argument list, the environment, a file or the log.
 public struct VPNCredentials: Equatable, Sendable {
     var user: String?
     var password: String?
@@ -13,27 +13,21 @@ public struct VPNCredentials: Equatable, Sendable {
     }
 }
 
-/// What a credential read found — **four answers, because the nil it replaced
-/// was two of them and a failed read was a third.**
+/// What a credential read found — **four answers, because an optional would
+/// fold three of them into one nil.**
 ///
-/// `credentials(for:promptingAllowed:)` used to answer `VPNCredentials?`, and nil
-/// meant either «this configuration keeps no secret Helm has to supply» (IKEv2,
-/// WireGuard — the ordinary case, and nothing is wrong) or «there is one, in the
-/// System keychain, and this caller may not open the dialog macOS guards it with»
-/// (an automatic connect against an empty cache — the tunnel cannot come up and
-/// nobody is told). Folded together, the engine could report neither: saying
-/// something about every nil would put a warning under every automatic connect on
-/// the machine, and saying nothing is what shipped.
+/// «This configuration keeps no secret Helm has to supply» (IKEv2, WireGuard —
+/// the ordinary case) and «there is one, in the System keychain, and this caller
+/// may not open the dialog macOS guards it with» (an automatic connect against an
+/// empty cache — the tunnel cannot come up) need different words: folded, the
+/// engine could only warn under every automatic connect or say nothing.
 ///
-/// **`.unreadable` is its own case because it is neither of those.** A read that
-/// timed out or failed says nothing about whether a secret is kept, so folding it
-/// into `.notNeeded` started a connect that may need one and announced it, and
-/// folding it into `.behindAPrompt` told the person to press Connect for a prompt
-/// that is not the problem. The engine neither starts nor announces on it.
-///
-/// This is the repair (ARCHITECTURE.md § Module pattern) records for
-/// `PowerSource.supply()`, in the same shape:
-/// the port answers the question it is actually being asked.
+/// **`.unreadable` is neither of those.** A read that timed out or failed says
+/// nothing about whether a secret is kept: as `.notNeeded` it would start and
+/// announce a connect that may need one, and as `.behindAPrompt` it would send
+/// the person to press Connect for a prompt that is not the problem
+/// (Architecture/ModulePattern.md § Module pattern: the port answers the
+/// question it is actually being asked).
 public enum VPNCredentialRead: Equatable, Sendable {
     /// Read, and usable: the secret is in hand. Only ever built with a non-empty
     /// secret — the fake stands where the real port stands, and a `.ready` with
@@ -50,10 +44,9 @@ public enum VPNCredentialRead: Equatable, Sendable {
     /// The configuration could not be read, so nobody knows whether a secret is
     /// kept: `scutil --nc show` timed out or exited non-zero (whatever it
     /// printed before — a half-printed `AuthPassword` field is not trusted).
-    /// Owner decision 2026-11-11: **a connect on this answer neither starts nor
-    /// announces.** A start without a secret the configuration may need reports
-    /// success whether it worked or not, so a rule connect recorded and announced
-    /// "connected" with no tunnel. The person's press says so
+    /// **A connect on this answer neither starts nor announces.** A start without
+    /// a secret the configuration may need reports success whether it worked or
+    /// not, so a rule would announce "connected" with no tunnel. The person's press says so
     /// (`VPNFailure.Reason.secretUnreadable`); a rule's connect logs it. Not
     /// `.behindAPrompt`: no prompt is the problem, and the next connect asks again.
     case unreadable
@@ -69,11 +62,9 @@ public enum VPNCredentialRead: Equatable, Sendable {
 ///
 /// **The status is half the answer.** A bare `String` would make `scutil`
 /// succeeding silently — which is how it reports a connect it performed — and
-/// `scutil` never running at all one value: the same empty string,
-/// indistinguishable to every caller. A tool that did not run would be announced
-/// as a tunnel that came up, and no fake could catch it, because no fake can
-/// separate what the port has already folded together
-/// (ARCHITECTURE.md § Module pattern).
+/// `scutil` never running at all one empty string, so a tool that did not run
+/// would be announced as a tunnel that came up, and no fake could separate what
+/// the port had folded together (Architecture/ModulePattern.md § Module pattern).
 ///
 /// `HelmProcess.Result` rather than a type of this module's own: it is already
 /// the shape of "what a command-line tool answered", and there is one of those.
@@ -90,7 +81,7 @@ public enum VPNCredentialRead: Equatable, Sendable {
 /// `scutil` that does not answer is ended at the deadline and the answer is
 /// `HelmProcess.timedOutStatus` with no output, so the module's one serial queue
 /// is never parked behind it. `run(_:)` is for `--nc start` and `stop`, which
-/// change state and keep the timing they always had.
+/// change state and are not cut short.
 public protocol VPNRunnerPort: AnyObject {
     /// A command, unbounded.
     func run(_ args: [String]) -> HelmProcess.Result
@@ -143,9 +134,7 @@ public enum VPNStartAnswer: Equatable, Sendable {
 ///   prompt and stays readable either way, so an automatic connect that has been
 ///   made once before is unaffected; one that has not answers `.behindAPrompt`,
 ///   and the System keychain then waits for the gesture of a person pressing
-///   Connect. That answer is a state the screen draws, not a silence: giving up
-///   quietly is what left a rule reaching the same dead end three times in an
-///   hour with only the log to say so.
+///   Connect. That answer is a state the screen draws, not a silence.
 public protocol VPNCredentialsPort: AnyObject {
     func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentialRead
 }
@@ -159,9 +148,9 @@ public protocol AppObserverPort: AnyObject {
     ///
     /// A second question because the first one cannot be trusted: a bundle
     /// identifier is a string in a plist anybody can write, and a rule keyed on it
-    /// alone let a bundle nobody signed raise and drop somebody's tunnel by
-    /// launching and quitting (`VPNRuleTrust`). Nil is «could not tell», which is
-    /// treated as no rule rather than as permission.
+    /// alone would let a bundle nobody signed raise and drop somebody's tunnel
+    /// (`VPNRuleTrust`). Nil is «could not tell», which is treated as no rule
+    /// rather than as permission.
     func identity(of bundleID: String) -> CodeIdentity?
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
     /// Ends the observation, so no further change is reported. The engine calls it
@@ -177,9 +166,9 @@ public protocol AppObserverPort: AnyObject {
 /// port carries no detail: what changed is `scutil`'s answer to give, and the
 /// engine re-reads the list either way.
 ///
-/// `stopObserving` is not optional courtesy — ARCHITECTURE.md § "An observer
-/// outlives the thing it points at": the host calls `deactivate()` and drops
-/// the engine, and a callback still holding it holds freed memory.
+/// `stopObserving` is not optional courtesy: the host calls `deactivate()` and
+/// drops the engine, and a callback still holding it holds freed memory
+/// (Architecture/StateAndLifetime.md § An observer outlives the thing it points at).
 public protocol NetworkWatchPort: AnyObject {
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
     func stopObserving()
@@ -193,21 +182,17 @@ public protocol NetworkWatchPort: AnyObject {
 /// offline), and an interface that has gone has no counters even though its name
 /// is still known.
 ///
-/// **Which interface a given tunnel is on is not asked here**, and that is the
-/// repair for a defect this port shipped. It was `interface(forServiceID:)` over
-/// `State:/Network/Service/<id>/IPv4`, and the id the module has comes from `scutil
-/// --nc list` — the identifier of a *configuration*, which is the identifier of a
-/// *network service* only for classic PPP/IPSec. For every NetworkExtension tunnel
-/// the lookup answered nil, so the tile strip was absent on every Mac. The question
-/// is `scutil`'s now, asked by name through `VPNRunnerPort` and read by
-/// `VPNStatusParser` — and a fake can no longer be planted with a pair the system
-/// cannot produce.
+/// **Which interface a given tunnel is on is not asked here.** The id the module
+/// has comes from `scutil --nc list` — the identifier of a *configuration*, which
+/// is the identifier of a *network service* only for classic PPP/IPSec — so a
+/// lookup in `State:/Network/Service/<id>/IPv4` answers nil for every
+/// NetworkExtension tunnel. The question is `scutil`'s, asked by name through
+/// `VPNRunnerPort` and read by `VPNStatusParser`, and a fake cannot be planted
+/// with a pair the system cannot produce.
 public protocol VPNInterfacePort: AnyObject {
     /// The interface carrying the default route, or nil when the machine has
-    /// none — which is the honest answer for a Mac with no network at all — or
-    /// when the store could not be read. Both causes, like the method above:
-    /// naming one of them is how a reader comes to believe a nil here means the
-    /// machine is offline.
+    /// none (a Mac with no network at all) or when the store could not be read.
+    /// A nil here does not mean the machine is offline.
     func primaryInterface() -> String?
     /// What that interface has carried, or nil when the kernel has no counters
     /// for it.
@@ -235,14 +220,12 @@ public protocol VPNSpeedPort: AnyObject {
     /// **This blocks its thread for `NetworkQualitySpeed.typicalRun`, and up to sixty at
     /// its deadline. Never call it on the module's serial queue.**
     ///
-    /// Said at the protocol because the cost is not visible at the call site and
-    /// was got wrong once already: `networkQuality` measures by moving real
-    /// traffic, so the implementation is a subprocess this waits out. On
-    /// `VPNWorkQueue` that is the whole module deaf — every connect, disconnect
-    /// and poll is behind the same queue — and on the cooperative pool it is one
-    /// of the machine's few pool threads held for the same quarter of a minute.
-    /// `VPNEngine.measureSpeed` goes through `offTheCooperativePool` and comes
-    /// back to the queue only to write what it learned.
+    /// Said at the protocol because the cost is not visible at the call site:
+    /// `networkQuality` measures by moving real traffic, so the implementation is
+    /// a subprocess this waits out. On `VPNWorkQueue` that is the whole module
+    /// deaf, and on the cooperative pool it is one of the machine's few pool
+    /// threads held for the same time. `VPNEngine.measureSpeed` goes through
+    /// `offTheCooperativePool` and comes back to the queue only to write what it learned.
     ///
     /// Nil when the tool did not run, was killed at its deadline, or printed
     /// something this build cannot read.
@@ -252,9 +235,8 @@ public protocol VPNSpeedPort: AnyObject {
 // MARK: - Banners
 
 // `AutomationNoticePort`, `NoticeAuthorization` and the `UNUserNotificationCenter`
-// implementation of the port live in `HelmRuntime`: Keep Awake's battery veto
-// needed a banner too, and a port two modules speak is plumbing. What stays here
-// is this module's own policy about *when* to ask and when to post, below.
+// implementation live in `HelmRuntime`: Keep Awake posts a banner too. What stays
+// here is this module's own policy about *when* to ask and when to post.
 
 /// Who gets asked for a permission, and what the banner says when a rule fires.
 public enum AutomationNotice {
@@ -274,14 +256,11 @@ public enum AutomationNotice {
     /// answers what macOS said about banners while it was there.
     ///
     /// **It asks macOS now rather than being told.** The permission can be
-    /// revoked in System Settings at any moment and nothing tells the app; a
-    /// stored mirror of the last answer is therefore a memory, and this is the
-    /// one instant where being wrong costs the person the news — `.system`
-    /// suppresses the menu-bar name because the banner is meant to carry it, so
-    /// a stale yes means macOS drops the banner and nothing else is said.
-    /// Measured: the ring turned for 1.1 s and the connection was never named.
-    /// `authorizationState()` is a read that prompts nobody, which is what
-    /// makes asking on every firing affordable.
+    /// revoked in System Settings at any moment and nothing tells the app, and
+    /// this is the one instant where being wrong costs the person the news:
+    /// `.system` suppresses the menu-bar name because the banner is meant to
+    /// carry it, so a stale yes means nothing is said. `authorizationState()`
+    /// prompts nobody, which makes asking on every firing affordable.
     ///
     /// Only the banner mode asks: for the other two the answer cannot change
     /// what happens, and a permission nobody needs is not worth a question.
@@ -292,12 +271,9 @@ public enum AutomationNotice {
     /// label — which posts nothing here — instead of to silence. The caller
     /// puts the returned answer where the label decision reads it.
     ///
-    /// The words come in already written. `L()` lives in `HelmUI`, which an
-    /// engine target cannot import, and moving `L()` down into `HelmRuntime` to
-    /// serve one sentence would put the app's whole string layer under every
-    /// engine. So the decision stays here, where it is pure and tested, and the
-    /// caller that already speaks eight languages says it: `VPNStr` writes the
-    /// banner, `VPNViewModel` hands it over.
+    /// The words come in already written: `L()` lives in `HelmUI`, which an
+    /// engine cannot import. The decision stays here, pure and tested; `VPNStr`
+    /// writes the banner and `VPNViewModel` hands it over.
     @discardableResult
     public static func announce(notice: VPNNotice, title: String, body: String,
                                 port: AutomationNoticePort) async -> NoticeAuthorization? {

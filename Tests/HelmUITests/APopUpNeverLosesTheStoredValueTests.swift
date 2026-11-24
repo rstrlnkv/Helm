@@ -1,12 +1,10 @@
 import XCTest
 @testable import HelmUI
 
-/// Two settings changed from a stepper to a pop-up when they moved into the
-/// inspector: how often the pointer is nudged, and the battery level that ends
-/// a session. A stepper accepts every number in its range and a pop-up offers a
-/// handful, so a value stored by the old control has nowhere to be selected —
-/// the button draws empty, and the first thing anybody does about an empty
-/// button is choose something, overwriting a setting they never meant to touch.
+/// A pop-up offers a handful of values where a stored one may be any number in
+/// range (the pointer nudge's interval, the battery level that ends a session),
+/// so a stored value that is not offered must still be selectable: an empty
+/// button invites choosing something, overwriting a setting nobody meant to touch.
 final class APopUpNeverLosesTheStoredValueTests: XCTestCase {
     private let minutes = [1, 2, 5, 10, 15, 30, 60]
 
@@ -14,8 +12,7 @@ final class APopUpNeverLosesTheStoredValueTests: XCTestCase {
         XCTAssertEqual(HelmChoices.including(5, in: minutes), minutes)
     }
 
-    /// The case the type exists for: 7 minutes, set with the stepper this
-    /// pop-up replaced.
+    /// The case the type exists for: 7 minutes, between two offered values.
     func testAStoredValueThatIsNotOfferedIsAddedInOrder() {
         XCTAssertEqual(HelmChoices.including(7, in: minutes),
                        [1, 2, 5, 7, 10, 15, 30, 60])

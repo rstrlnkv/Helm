@@ -5,13 +5,11 @@ import HelmTestSupport
 /// A duplicate search nobody is watching stops at `~/Library`; one a person
 /// asked for goes wherever they pointed it.
 ///
-/// The asymmetry is the whole rule, and both halves need a test or the next
-/// person will "simplify" one of them away. The unattended half is the defect
-/// this file was written for: the stored root is the home on the owner's Mac,
-/// `ScanRoot.resolve` approves the home by design, and nothing then stopped the
-/// walk one step later — the journal it writes at 0600 named 217 paths under
-/// `~/Library`, which is a privilege the person granted Helm handed to every
-/// process running as this user.
+/// The asymmetry is the whole rule, and both halves need a test. `ScanRoot.resolve`
+/// approves the home by design, so only the walk stops the unattended scan one
+/// step later; a journal written at 0600 that named paths under `~/Library`
+/// would hand a privilege the person granted Helm to every process running as
+/// this user.
 ///
 /// The home is injected, so the fixture is a scratch tree rather than the
 /// owner's own `~/Library` — and so the unattended assertion can actually fail,

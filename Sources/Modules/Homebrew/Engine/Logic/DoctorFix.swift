@@ -2,12 +2,9 @@ import Foundation
 
 /// A command line `brew doctor` printed, and whether Helm may run it.
 ///
-/// `DoctorParser` never constructs one with a judgement — every `DoctorIssue`
-/// it produces carries `fix: nil`, because parsing text is not judging a
-/// command safe to run. `DoctorFix.judge(_:installed:)` below is the only
-/// place in this module that may answer `.runnable`, and a command parsed out
-/// of a tool's output is data, not an instruction, until it has been through
-/// there.
+/// `DoctorParser` produces every issue with `fix: nil`: parsing text is not
+/// judging a command safe to run. `DoctorFix.judge(_:installed:)` is the only
+/// place in this module that may answer `.runnable`.
 public struct DoctorFix: Equatable, Sendable {
     public enum Kind: String, Sendable {
         /// Safe for Helm to run through the module's own operation path.
@@ -26,12 +23,14 @@ public struct DoctorFix: Equatable, Sendable {
 extension DoctorFix {
 
     /// The allowlist: every command this app may ever run on a person's behalf
-    /// because `brew doctor` suggested it. Two entries, hand-written, named one
-    /// by one in `OnlyAnAllowedFixMayBeRunTests` so that a third cannot be
-    /// added without its author being sent back here to read the checklist
-    /// under `judge(_:installed:)`.
+    /// because `brew doctor` suggested it. Named in
+    /// `OnlyAnAllowedFixMayBeRunTests`, so a second entry sends its author back
+    /// to the checklist under `judge(_:installed:)`.
     ///
-    /// Two a reader will expect and that are **deliberately** absent:
+    /// Three a reader will expect and that are **deliberately** absent:
+    ///
+    /// - `cleanup` — no `brew doctor` heading Helm parses suggests it, so no
+    ///   page offers it; an entry nothing reaches is an entry nobody reads.
     ///
     /// - `update-reset` — it discards local taps, which are somebody's work
     ///   and are not recoverable from anything Helm holds.
@@ -39,26 +38,16 @@ extension DoctorFix {
     ///   visible act (one tap goes away) is not the act performed.
     enum Allowed: CaseIterable, Sendable {
 
-        /// `["cleanup"]`, and nothing else spelled `cleanup`. Its arguments are
-        /// part of the match rather than decoration: `cleanup --prune=all`
-        /// throws away every cached download regardless of age, which is a
-        /// different act from the one the bare command performs.
-        case cleanup
-
         /// `["uninstall", <name>]` where `<name>` is in the installed list the
-        /// judge was handed. The name is the one part of a fix that comes out
-        /// of prose, so it is checked against a list of what this Mac actually
-        /// has — a name this Mac does not have is not a name this app may act
-        /// on, whatever the text said. Exactly one name: a second name is a
-        /// second act, and nobody offered it.
+        /// judge was handed. The name comes out of prose, so it is checked
+        /// against what this Mac actually has. Exactly one name: a second
+        /// name is a second act, and nobody offered it.
         case uninstallAnInstalledPackage
 
         /// Whether this entry admits `argv`. Argument-exact in both directions:
         /// the count is part of the match, so nothing is accepted by a prefix.
         func admits(_ argv: [String], installed: [String]) -> Bool {
             switch self {
-            case .cleanup:
-                return argv == ["cleanup"]
             case .uninstallAnInstalledPackage:
                 return argv.count == 2 && argv[0] == "uninstall" && installed.contains(argv[1])
             }
@@ -67,20 +56,14 @@ extension DoctorFix {
 
     /// Judges one command `brew doctor` printed against the allowlist above.
     ///
-    /// **What `argv` is.** The subcommand and its operands, in the shape this
-    /// module's own launch sites already pass to the brew executable — `brew`
-    /// is *not* argv[0], and `--` is not in it either (a runner puts the
-    /// operands behind `--`; that is the runner's job and not part of the
-    /// identity being judged). An argv that still carries `brew` at the front
-    /// has not been parsed, and is `.copyOnly`: removing it would be a
-    /// normalisation, and this judge does none.
+    /// **What `argv` is.** The subcommand and its operands: `brew` is *not*
+    /// argv[0], and `--` is not in it (the runner adds it). An argv that still
+    /// carries `brew` is `.copyOnly`: removing it would be a normalisation.
     ///
     /// **No normalisation, at all.** No case folding, no trimming, no
     /// re-splitting on whitespace. Every normalisation judges one string and
-    /// runs another, and the gap between the two is where the next defect
-    /// lives; `UNINSTALL`, `" uninstall "` and `"uninstall\tperiphery"` are
-    /// each a command this app does not recognise, and not recognising a
-    /// command costs a person one copied line.
+    /// runs another; `UNINSTALL` or `" uninstall "` is simply not recognised,
+    /// which costs a person one copied line.
     ///
     /// **The character rule.** Before the allowlist is consulted, every element
     /// must be non-empty, must not begin with `-` (brew reads that as an
@@ -88,13 +71,11 @@ extension DoctorFix {
     /// the alphabet a Homebrew name and subcommand use — letters, digits and
     /// ``.``, `_`, `-`, `+`, `@`, `/`. That alphabet holds no quote, dollar,
     /// backtick, semicolon, ampersand, parenthesis, backslash, space or
-    /// newline, which makes a shell metacharacter unrepresentable here rather
-    /// than unlikely. Today's two entries would refuse those anyway by being
-    /// argument-exact — *except* through the installed list, which is itself a
-    /// list parsed out of another tool's output: "it is in the installed list"
-    /// is not proof that a string is a name.
+    /// newline, so a shell metacharacter is unrepresentable rather than
+    /// unlikely. The installed list is itself parsed out of another tool's
+    /// output: being in it is not proof that a string is a name.
     ///
-    /// **Adding a third entry.** It has to answer all five, in the file, before
+    /// **Adding a second entry.** It has to answer all five, in the file, before
     /// the test above is changed:
     ///
     /// 1. What does it do that nothing already on the list does, and is that

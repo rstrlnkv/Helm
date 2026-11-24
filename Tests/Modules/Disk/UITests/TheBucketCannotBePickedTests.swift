@@ -6,13 +6,10 @@ import HelmRuntime
 
 /// The one row on the ring whose path names no file.
 ///
-/// `…` is the per-directory aggregate the scan invents, and it is also a name a
-/// person can type. The two were told apart by the name — `UserFileScope`
-/// refused any path ending in `/…` — which kept the aggregate out of the basket
-/// and kept the person's own file out with it: drawn as a system item, no basket
-/// button, and nothing anywhere saying why. The gate judges no names now, so the
-/// flag has to hold the door, and this is the door: `toggleBasket` is where every
-/// press, menu item and keyboard action arrives.
+/// `…` is the per-directory aggregate the scan invents, and also a name a
+/// person can type. The gate judges no names, so the `isFolded` flag keeps the
+/// aggregate out, at `toggleBasket`, where every press, menu item and keyboard
+/// action arrives.
 @MainActor
 final class TheBucketCannotBePickedTests: XCTestCase {
 
@@ -43,8 +40,8 @@ final class TheBucketCannotBePickedTests: XCTestCase {
             """)
     }
 
-    /// The control, and it is the defect this pair exists for: the same path and
-    /// the same name, without the flag, is an ordinary file and goes in.
+    /// The control: the same path and name without the flag is an ordinary file
+    /// and goes in.
     func testAFileTheUserNamedLikeTheBucketGoesIn() {
         let dvm = model()
         let real = entry("/Users/test/Movies/…", isFolded: false)

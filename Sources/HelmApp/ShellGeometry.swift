@@ -19,7 +19,7 @@ import HelmRuntime
 /// handed: on macOS 27 the token `HelmRadius.window`, on 26 what `WindowCorner` read.
 ///
 /// `inset` is the owner's fixed gap. `railWidth`, `defaultSidebarWidth`,
-/// `sidebarRange`, `capsuleSize`, `capsuleShift`, `capsulePad` and `hoverMargin`
+/// `capsuleSize`, `capsuleShift`, `capsulePad` and `hoverMargin`
 /// are the owner's numbers too, tuned by eye on a running window, not measured.
 enum ShellGeometry {
 
@@ -30,10 +30,7 @@ enum ShellGeometry {
     /// The sidebar's width when it is folded to the rail.
     nonisolated static let railWidth: CGFloat = 56
 
-    /// The widths a stored sidebar width is brought into; nothing in the window drags it.
-    nonisolated static let sidebarRange: ClosedRange<CGFloat> = 150...320
-
-    /// The width a stored value that is not a number reads as.
+    /// The width the sidebar has when it is expanded; nothing in the window drags it.
     nonisolated static let defaultSidebarWidth: CGFloat = 200
 
     /// The closed capsule's size.
@@ -56,8 +53,8 @@ enum ShellGeometry {
     nonisolated static let buttonShift: CGFloat = 6
 
     /// How far right and down of where they stand without a toolbar AppKit puts the window's three buttons once the
-    /// window wears one (`SettingsToolbar`): measured on macOS 27.3, 19 against 9 across and as far down. Helm holds
-    /// the buttons at the same place under both looks (`ShellWindowButtons.placed`).
+    /// window wears one (`SettingsToolbar`): measured, 19 against 9 across and as far down. Helm holds the buttons at
+    /// the same place under both looks (`ShellWindowButtons.placed`).
     nonisolated static let toolbarShift = CGSize(width: 10, height: 10)
 
     /// The title bar's band without a toolbar, which the sidebar's content stands below (measured: 32 against 66 with
@@ -83,7 +80,7 @@ enum ShellGeometry {
     /// 0 — for x as well as for the width the card loses to it — because a
     /// frame whose origin is not a number cannot be placed; a finite width is
     /// used as given, also past the window's edge or below zero, since the width
-    /// is clamped where it is stored (`sidebarWidth(stored:)`) and
+    /// is only ever between `railWidth` and `defaultSidebarWidth` and
     /// bending it here would put x and the sidebar in two places.
     nonisolated static func cardFrame(in size: CGSize, sidebarWidth: CGFloat) -> CGRect {
         let sidebar = sidebarWidth.isFinite ? sidebarWidth : 0
@@ -99,15 +96,6 @@ enum ShellGeometry {
     /// infinite reads 0, a card drawn square, since neither is a corner.
     nonisolated static func cardRadius(windowRadius: CGFloat) -> CGFloat {
         windowRadius.isFinite ? max(windowRadius - inset, 0) : 0
-    }
-
-    // MARK: - the sidebar's width
-
-    /// **A stored sidebar width brought into `sidebarRange`.** Not-a-number
-    /// reads `defaultSidebarWidth`, which is not a bound: nothing says which
-    /// end it meant. Infinities go to the bound on their side.
-    nonisolated static func sidebarWidth(stored: CGFloat) -> CGFloat {
-        stored.clamped(to: sidebarRange, whenNotANumber: defaultSidebarWidth)
     }
 
     // MARK: - the window's buttons

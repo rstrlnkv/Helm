@@ -5,7 +5,7 @@ import Foundation
 import HelmRuntime
 
 /// `-HelmOpenPage <id>` opens Settings on that page for `Scripts/shoot.sh`
-/// (ARCHITECTURE.md § Two screen instruments).
+/// (Architecture/TestsAndMeasurement.md § Two screen instruments).
 ///
 /// Read from the argument domain only: `string(forKey:)` falls through to the
 /// persistent domain, so a `defaults write` of the same key would open a page at

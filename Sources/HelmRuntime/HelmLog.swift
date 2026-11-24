@@ -1,9 +1,7 @@
 import Foundation
 import os
 
-// Diagnostics for dev builds. Every prerelease ships with the log on: the
-// file is the evidence trail we triage against before a build graduates to
-// the stable channel. Stable builds stay silent unless explicitly opted in.
+// The diagnostics log: Architecture/DiagnosticsLog.md § Diagnostics log.
 
 public enum LogLevel: String, Sendable {
     case info, warn, error
@@ -11,13 +9,11 @@ public enum LogLevel: String, Sendable {
 
 /// Whether this build writes a log. Pure so the rule is testable.
 public enum LogPolicy {
-    /// **A dev build always logs, whatever was saved.** The Log page greys the
-    /// «Write a log file» item of its «More actions» menu on a dev build — the
-    /// file is what the build is triaged on — so a saved «off» could be neither
-    /// read nor undone there. One
-    /// reaches a dev build all the same: the installed Helm on the dev channel
-    /// shares its settings domain with the beta, where the switch is live.
-    /// Everywhere else the saved choice wins.
+    /// A dev build always logs, whatever was saved: the Log page greys the
+    /// «Write a log file» item on a dev build, so a saved «off» could be neither
+    /// read nor undone there, and one reaches it anyway, because the dev channel
+    /// shares its settings domain with the beta. Everywhere else the saved
+    /// choice wins.
     public static func isEnabled(isDev: Bool, override: Bool?) -> Bool {
         if isDev { return true }
         return override ?? false
@@ -27,26 +23,19 @@ public enum LogPolicy {
 /// Where the log keeps its files. Pure so the rule is testable, beside the rule
 /// about whether there is a log at all.
 ///
-/// **A test process must not write into the file people triage.** The log is a
-/// product surface: the log of the build under triage (`~/Library/Logs/Helm/helm.log`,
-/// Helm Dev's in `Helm Dev`) is what a dev build is judged by before it ships, so a line in it reads as something the app did. Logging
-/// code under test logs — a test of a failing decode records the failure it provokes —
-/// and those lines wore the shape of a real fault well
-/// enough to be triaged as one.
+/// A test process must not write into the file people triage: a line in it
+/// reads as something the app did, and code under test logs the failures it
+/// provokes.
 ///
-/// The *folder* moves rather than the file, because everything that lives beside
-/// the log lives beside it by design: the rollover, the purge latch, and
-/// `Redact`'s salt. One decision keeps them together, where teaching each of
-/// them the same exception separately is how a name ends up spelled twice. It
-/// also takes the teeth out of `discardPreRedactionLog`, which deletes the log
-/// it finds and has destroyed a dev build's triage evidence once already when a
-/// tool that merely linked this target started it.
+/// The *folder* moves rather than the file, because the rollover, the purge
+/// latch and `Redact`'s salt live beside the log by design, and one decision
+/// keeps them together. It also keeps `discardPreRedactionLog`, which deletes
+/// the log it finds, away from the real log when a tool linking this target
+/// starts it.
 ///
-/// The test folder is **one** folder, reused by every run and bounded by the
-/// same rollover as the real one — so the file writing stays exercised under
-/// test rather than going dark, and nothing accumulates. `ScanJournal` takes one
-/// per process and has to sweep after the processes that died; a log has no
-/// reason to tell two runs apart, so it does not buy that problem.
+/// The test folder is one folder, reused by every run and bounded by the same
+/// rollover, so the file writing stays exercised and nothing accumulates. A log
+/// has no reason to tell two runs apart, unlike `ScanJournal`.
 enum LogDestination {
 
     /// The folder under the home directory, spelled from the build's data folder:
@@ -67,17 +56,13 @@ enum LogDestination {
                                           isDirectory: true)
     }
 
-    /// What the page's tail is seeded from — the same decision read from the
-    /// other side, and it has to be taken here rather than left implied.
+    /// What the page's tail is seeded from: the same decision read from the
+    /// other side.
     ///
-    /// The test folder above is deliberately **one** folder, reused by every run
-    /// of every bundle, so that the file writing stays exercised and nothing
-    /// accumulates unboundedly. Reading it back makes that shared file part of
-    /// every test's tail: `recentEntries()` after a `clearTail()` would answer
-    /// with the accumulated history of every run there has ever been — measured
-    /// at 46 copies of one line where the test that counted them wanted 1. So a
-    /// test process seeds from nothing, and `HelmLog.seed(from:)` is what a test
-    /// of the seed hands its own files to.
+    /// The test folder is shared by every run, so reading it back would put
+    /// every run's history into every test's tail, `clearTail()` or not. A test
+    /// process seeds from nothing; a test of the seed hands its own files to
+    /// `HelmLog.init(seedFiles:)`.
     static func seedSources(files: [URL], underTest: Bool) -> [URL] {
         underTest ? [] : files
     }
@@ -104,22 +89,18 @@ public enum LogLine {
     }
 
     /// The line an entry would be written as, for anything outside this target
-    /// that has to spell one: «Copy log» is the caller, through `lines` below,
-    /// and what it puts on the pasteboard is the line the file carries rather
-    /// than a second format invented at the button. The one that shipped dropped
-    /// the level, the date and the source site.
+    /// that has to spell one: «Copy log» puts on the pasteboard the line the
+    /// file carries rather than a second format invented at the button.
     static func line(_ entry: LogEntry, timeZone: TimeZone = .current) -> String {
         line(entry, using: stamper(timeZone))
     }
 
-    /// A whole tail of them, on **one** formatter.
+    /// A whole tail of them, on one formatter.
     ///
-    /// The bulk caller has to exist rather than being a `map` at the call site:
-    /// building a `DateFormatter` is the 42.3 µs what is running already
-    /// records — the 42 ms hitch «Copy log» paid on a full tail
-    /// before `HelmDates` cached its own — and this one carries a time zone as
-    /// well, which measured 77–100 µs on 2026-08-14. A thousand of them is a
-    /// tenth of a second on the main thread for one press of a button.
+    /// The bulk caller exists rather than a `map` at the call site, because
+    /// building a `DateFormatter` with a time zone costs tens of microseconds,
+    /// and a full tail of them is a visible hitch on the main thread for one
+    /// press of a button.
     public static func lines(_ entries: [LogEntry], timeZone: TimeZone = .current) -> String {
         let formatter = stamper(timeZone)
         return entries.map { line($0, using: formatter) }.joined(separator: "\n")
@@ -127,10 +108,9 @@ public enum LogLine {
 
     /// The stamp every line opens with, spelled once.
     ///
-    /// `LogSeed` reads it back and needs the same pattern to the character —
-    /// two spellings of it are the drift this repository names as a defect of
-    /// its own: one side changes and nothing is an error anywhere. It is also
-    /// what makes the seed's fixed-width arithmetic legitimate.
+    /// `LogSeed` reads it back and needs the same pattern to the character: with
+    /// two spellings one side changes and nothing is an error anywhere. It is
+    /// also what makes the seed's fixed-width arithmetic legitimate.
     static let stampFormat = "yyyy-MM-dd HH:mm:ss.SSS"
 
     static func stamper(_ timeZone: TimeZone) -> DateFormatter {
@@ -142,9 +122,8 @@ public enum LogLine {
     }
 
     /// The one place a line is spelled. An entry rather than five parameters,
-    /// because the five parts of a line *are* a `LogEntry` — carrying them
-    /// separately alongside the type that holds them is how the tail came to be
-    /// missing one of them.
+    /// because the five parts of a line *are* a `LogEntry`, and carried
+    /// separately one of them goes missing.
     private static func line(_ entry: LogEntry, using formatter: DateFormatter) -> String {
         let flat = entry.message
             .replacingOccurrences(of: "\r\n", with: "\n")
@@ -174,24 +153,17 @@ public final class HelmLog: @unchecked Sendable {
     private var footprint = FootprintTracker()
     private let footprintQueue = DispatchQueue(label: "helm.log.footprint")
 
-    /// ~/Library/Logs/Helm/helm.log (Helm Dev: ~/Library/Logs/Helm Dev) — the place macOS users (and Console.app)
-    /// expect app logs to live. Somewhere else entirely under test; the reason
-    /// is on `LogDestination`.
-    ///
-    /// Resolved once. Every appended line asks for this folder, and none of the
-    /// three answers it is built from can change while the process lives.
+    /// ~/Library/Logs/Helm (Helm Dev: ~/Library/Logs/Helm Dev), where macOS users
+    /// and Console.app expect app logs; elsewhere under test (`LogDestination`).
+    /// Resolved once: every appended line asks, and nothing it is built from
+    /// changes while the process lives.
     static let directory: URL =
         LogDestination.directory(home: FileManager.default.homeDirectoryForCurrentUser,
                                  temporary: FileManager.default.temporaryDirectory,
                                  underTest: TestProcess.isRunning)
     public static var fileURL: URL { directory.appendingPathComponent("helm.log") }
-    /// Where rollover puts the old half.
-    ///
-    /// Declared, because it used to be spelled twice and the two spellings did
-    /// not match: the one-time purge of the pre-redaction log removed
-    /// `helm.log.1`, a name rotation has never written. The half of the log that
-    /// most needed destroying — VPN names, application names, home paths —
-    /// survived both the purge and the Clear button.
+    /// Where rollover puts the old half. Declared once, so the purge and the
+    /// Clear button remove the name rotation actually writes.
     static var previousFileURL: URL {
         directory.appendingPathComponent("helm.previous.log")
     }
@@ -206,10 +178,9 @@ public final class HelmLog: @unchecked Sendable {
     }
     /// The latch for the one-time pre-redaction purge.
     ///
-    /// Deliberately **not** in `allFileURLs`: it is the record that the purge
-    /// happened, so a purge that removed it would be able to run again. Named
-    /// here rather than inside the purge because a file name invented in a
-    /// second place is a defect nothing in the suite catches now.
+    /// Not in `allFileURLs`: it is the record that the purge happened, so a
+    /// purge that removed it would run again. Named here so the name is spelled
+    /// once.
     static var resetMarkerURL: URL {
         directory.appendingPathComponent(".redaction-reset")
     }
@@ -224,12 +195,10 @@ public final class HelmLog: @unchecked Sendable {
     /// The files the first `recentEntries()` reads back — this process's two, in
     /// the order they happened.
     ///
-    /// Held per instance rather than taken from the static at the moment of the
-    /// read, because under test the honest answer is *no files at all*
-    /// (`LogDestination.seedSources`) — so a log built with files of its own is
-    /// the only way the first read can be exercised, and the first read is the
-    /// whole of this. `shared` is the one instance the app has, and `init` is
-    /// internal, so nothing outside this target can make a second.
+    /// Held per instance because under test the static answer is no files at
+    /// all (`LogDestination.seedSources`), so a log built with files of its own
+    /// is the only way to exercise the first read. `init` is internal, so
+    /// nothing outside this target can make a second instance.
     private let seedFiles: [URL]
 
     init(seedFiles: [URL] = HelmLog.seedSources) {
@@ -244,12 +213,9 @@ public final class HelmLog: @unchecked Sendable {
         queue.async { self.enabled = on; self.runVersion = version }
         discardPreRedactionLog()
         // Once a launch, not once a line. `append` creates the file privately,
-        // but a file an earlier build created keeps its 0644 for ever otherwise —
-        // which is what `~/Library/Logs/Helm/helm.log` was measured at, inside
-        // the 0700 folder that was doing all of the protecting.
+        // but a file created with the umask keeps 0644 otherwise.
         // Discarded: `harden` answers whether there was a file to tighten, and
-        // "there was not" is the ordinary case — this runs before the first line
-        // is written, and the paragraph above says so.
+        // "there was not" is the ordinary case before the first line.
         queue.async { Self.allFileURLs.forEach { _ = PrivateFile.harden(at: $0) } }
         guard on else { return }
         write(.info, LogLine.appCategory, LogLine.started(version: version))
@@ -257,17 +223,13 @@ public final class HelmLog: @unchecked Sendable {
 
     /// Throws away a log written before `Redact` existed.
     ///
-    /// Adding redaction stopped new lines from naming VPN connections, apps and
-    /// home paths; it did nothing about the ones already on disk, and there is
-    /// a "Copy log" button whose whole purpose is pasting that file into a bug
-    /// report. Two megabytes of rollover could take weeks to clear it. Once.
+    /// Redaction keeps new lines from naming VPN connections, apps and home
+    /// paths, but not the lines already on disk, and «Copy log» pastes that
+    /// file into a bug report. Runs once.
     ///
-    /// **The latch is a file beside the log, not a preference.** It used to be
-    /// `UserDefaults.standard`, which is the *calling process's* domain — so
-    /// "once" meant once per process identity, and any tool that links
-    /// HelmRuntime and starts the log deleted the user's log the first time it
-    /// ran. That is not hypothetical: it destroyed a dev build's triage
-    /// evidence, which is the one thing this file exists to hold.
+    /// The latch is a file beside the log, not a preference: `UserDefaults` is
+    /// the calling process's domain, so any tool that links HelmRuntime and
+    /// starts the log would delete the user's log the first time it ran.
     private func discardPreRedactionLog() {
         let marker = Self.resetMarkerURL
         let fm = FileManager.default
@@ -288,11 +250,9 @@ public final class HelmLog: @unchecked Sendable {
 
     /// On the log queue only.
     private static func writePurgeLatch() {
-        // Discarded: the `createFile` below is what this is for and it
-        // has its own answer; a folder that could not be made is a marker
-        // that cannot land, and an unlanded marker retries at the next
-        // launch — which is a repeated deletion of a log that is already
-        // empty. See `append` for why nothing here can be logged.
+        // Discarded: a folder that could not be made is a marker that cannot
+        // land, and an unlanded marker retries at the next launch, deleting a
+        // log that is already empty. `append` says why nothing here is logged.
         _ = PrivateFile.directory(at: directory)
         FileManager.default.createFile(atPath: resetMarkerURL.path, contents: Data())
     }
@@ -301,12 +261,11 @@ public final class HelmLog: @unchecked Sendable {
     /// moves: a file that simply stops cannot be told from an app that died, and
     /// «the person switched it off» is the commonest reason of the two.
     ///
-    /// **The on edge names the version** — «logging enabled (0.11.0)» — because a
-    /// «logging disabled» from one launch and a «logging enabled» from the next
-    /// sit side by side in the file with nothing between them, and the page
-    /// cannot tell that from the two edges of one sitting. `LogSessions` reads the
-    /// version back; `LogSeed` still reads the line as it always did, since the
-    /// version is part of the message.
+    /// The on edge names the version («logging enabled (0.11.0)»): a «logging
+    /// disabled» from one launch and a «logging enabled» from the next sit side
+    /// by side in the file, and without it the page cannot tell them from one
+    /// sitting. `LogSessions` reads the version back; to `LogSeed` it is part
+    /// of the message.
     public func setEnabled(_ on: Bool) {
         if !on { write(.info, LogLine.appCategory, LogLine.loggingDisabled) }
         queue.async { self.enabled = on }
@@ -325,26 +284,22 @@ public final class HelmLog: @unchecked Sendable {
         write(.info, LogLine.appCategory, LogLine.terminating)
     }
 
-    /// The last lines, for the Log page, which shows them arriving rather than
-    /// sending a person to open the file afterwards. Guarded by the same queue as the file, so
-    /// a reader never sees a half-written line.
+    /// The last lines, for the Log page, which shows them arriving. Guarded by
+    /// the same queue as the file, so a reader never sees a half-written line.
     private var tail = LogTail()
     /// The most lines `recentEntries()` ever answers with.
     public static var tailLimit: Int { LogTail.standardLimit }
-    /// The file has been read once. It is read at the first `recentEntries()`
-    /// rather than at launch: nothing but the page asks, and a launch that reads
-    /// two megabytes for a window nobody opened is a cost paid by everybody.
+    /// The file has been read once: at the first `recentEntries()` rather than
+    /// at launch, since nothing but the page asks.
     private var seeded = false
 
     /// A snapshot, oldest first. Taken on the queue and handed back by value:
     /// the page that draws it must not hold anything the logger is still
     /// writing to.
     ///
-    /// **The first call reads the file.** Until 2026-08-14 this answered with
-    /// what *this process* had written since launch, which on the owner's own
-    /// machine was 45 lines of a 5 306-line log — so the page called Log showed
-    /// 0.85 % of it under a footer that read as the whole thing, and the event
-    /// somebody opened it for was almost never there.
+    /// The first call reads the file, so the page shows the log and not only
+    /// what this process wrote since launch: the event somebody opened it for
+    /// is usually older.
     public func recentEntries() -> [LogEntry] {
         queue.sync {
             if !seeded {
@@ -363,12 +318,10 @@ public final class HelmLog: @unchecked Sendable {
     /// How much of each file the seed reads, against the two megabytes reading
     /// the whole of it would cost for a page showing its end.
     ///
-    /// Measured on the owner's log, 2026-08-14: 5 327 lines in 396 912 bytes,
-    /// and its newest thousand lines 76 460 of them — so a quarter of a megabyte
-    /// is that thousand three times over. A bound in bytes and not in lines,
-    /// because bytes are what the read costs; a log of unusually wide lines (the
-    /// widest here is 540 characters) seeds fewer than a thousand rather than
-    /// reading more, which is the direction for this to fail in.
+    /// A thousand ordinary lines fit several times over. A bound in bytes and
+    /// not in lines, because bytes are what the read costs: a log of unusually
+    /// wide lines seeds fewer lines rather than reading more, which is the
+    /// direction for this to fail in.
     private static let seedByteLimit = 256 * 1024
 
     /// Whether there is a log on disk at all — the question «Clear» is drawn
@@ -385,17 +338,14 @@ public final class HelmLog: @unchecked Sendable {
     func write(_ level: LogLevel, _ category: String, _ message: String,
                       site: LogSite? = nil) {
         // The timestamp is taken here, where the event happened; the line is
-        // built on the queue, after the check. Formatting allocates a
-        // DateFormatter and walks the string twice, and on a beta build every
-        // one of those was discarded a moment later.
+        // built on the queue, after the check, so a build that does not log
+        // pays nothing for formatting.
         let now = Date()
         queue.async {
             guard self.enabled else { return }
-            // The tail is filled from the same parts the line is spelled from,
-            // not by parsing the line back apart — one value handed to both, so
-            // they are the same five parts by construction rather than by two
-            // call sites agreeing. (`LogSeed` is the one place a line is read
-            // back, and it is for the file this process did not write.)
+            // One value handed to the tail and the file, so they hold the same
+            // parts by construction. (`LogSeed` reads lines back only for the
+            // file this process did not write.)
             let entry = LogEntry(date: now, level: level, category: category,
                                  message: message, site: site)
             self.tail.append(entry)
@@ -405,10 +355,9 @@ public final class HelmLog: @unchecked Sendable {
 
     /// Convenience wrappers so call sites read as prose.
     ///
-    /// `warn` and `error` capture where they were called from: the wording of
-    /// a failure is what reaches a bug report, and the same wording can come
-    /// from four places. `info` does not — it describes an event, not a fault,
-    /// and the file it came from is noise on every line of a healthy log.
+    /// `warn` and `error` capture where they were called from: the same wording
+    /// can come from several places. `info` does not: it describes an event,
+    /// not a fault, and a source site is noise on every line of a healthy log.
     public func info(_ category: String, _ message: String) {
         write(.info, category, message)
     }
@@ -417,19 +366,15 @@ public final class HelmLog: @unchecked Sendable {
     ///
     /// Silent when the kernel will not answer and silent when nothing moved:
     /// a diagnostic that writes a line per event is a diagnostic nobody reads.
-    /// The threshold and the accounting live in `FootprintTracker` — this only
-    /// decides that memory is worth a category of its own, because "which of
-    /// these two hundred lines is about memory" is the question being asked
-    /// when someone opens the log for this.
+    /// The threshold and the accounting live in `FootprintTracker`; this gives
+    /// memory a category of its own, so one filter finds it.
     ///
     /// `sample` and `launch` are the two labels that ask about everything, so
     /// they are the only ones not excluded from their own description; any other
     /// phase asks about everything *else*.
     public func memory(_ label: String) {
         guard let bytes = MemoryFootprint.current() else { return }
-        // Captured here, not on the queue: by the time the write happens the
-        // phase may be over, and a figure is worth having only beside what was
-        // running when it was taken.
+        // Captured here, not on the queue, where the phase may already be over.
         let isSample = label == "sample" || label == "launch"
         let doing = HelmActivity.describe(HelmActivity.running,
                                           excluding: isSample ? nil : label)
@@ -442,12 +387,9 @@ public final class HelmLog: @unchecked Sendable {
 
     /// What a bounded scope cost, from two readings taken around it.
     ///
-    /// Different question from `memory(_:)`, which reports a running total against
-    /// the last sighting of the same label and stays quiet below 8 MB. Here the
-    /// cost *is* the question — building a module, tearing one down — the figure is
-    /// single-digit megabytes, and being small is the answer rather than a reason
-    /// to withhold it. Same `memory` category, so one filter still finds
-    /// everything about memory.
+    /// Unlike `memory(_:)`, which stays quiet below its threshold, this has
+    /// none: the cost of building or tearing down a module is the question, and
+    /// being small is the answer rather than a reason to withhold it.
     public func memory(_ label: String, grewBy bytes: Int) {
         write(.info, "memory", "\(label): \(ScopeCost.line(grewBy: bytes))")
     }
@@ -476,9 +418,7 @@ public final class HelmLog: @unchecked Sendable {
 
     public func clear() {
         queue.async {
-            // All of it. Clearing only `helm.log` left the rollover behind, so
-            // the button said the log was gone while up to two megabytes of it
-            // sat beside the file it had just emptied.
+            // All of it, the rollover included.
             Self.removeAllFiles()
         }
     }
@@ -489,33 +429,23 @@ public final class HelmLog: @unchecked Sendable {
 
     // MARK: - IO (always on the private queue)
 
-    /// **A log that cannot write cannot log that it cannot write**, which is why
-    /// the only refusal in this file goes somewhere else.
+    /// A log that cannot write cannot log that it cannot write, so the only
+    /// refusal in this file goes somewhere else. A line about the failure would
+    /// fail in turn, and a flag saying «the file is unwritable» is a local
+    /// boolean standing in for a live fact, with nothing to tell it the disk
+    /// came back.
     ///
-    /// Every other caller of `PrivateFile` in the app answers a refusal with a
-    /// line here. This one cannot: the line would be appended by the call that
-    /// just failed, and a line about the failure would fail in turn, on the
-    /// queue that is already running the first one. A flag saying «the file is
-    /// unwritable» would be worse than silence — it is the family this house has
-    /// a name for, a local boolean standing in for a live external fact, with
-    /// nothing to tell it the disk came back.
-    ///
-    /// Two things are true instead. `LogView`'s tail already has the line: it is
-    /// appended in `write` before this runs, so the surface a person can open is
-    /// unaffected and only the *file* — the one "Copy log" hands to a bug report
-    /// — is missing what the screen is showing. And `os.Logger` is a different
-    /// port on a different store, so the refusal is said in the unified log,
-    /// where `log show --predicate 'subsystem == "com.helm.app"'` finds it. Not
-    /// rate-limited by hand: the system does that, and the alternative to some
-    /// noise while a disk is full is a log that quietly stops.
+    /// The tail already has the line (`write` appends it first), so only the
+    /// file is missing it. The refusal goes to the unified log, a different
+    /// store, where `log show --predicate 'subsystem == "com.helm.app"'` finds
+    /// it. The system rate-limits it; the alternative is a log that quietly
+    /// stops.
     private func append(_ text: String) {
         let url = Self.fileURL
         // On every append: the folder may predate this rule, and `attributes:`
-        // on a create call only covers a folder that call made. The log is
-        // diagnostic, not public — no other account needs to read it.
-        //
-        // Discarded: a folder that could not be made is a write that cannot
-        // land, and the writes below report for both.
+        // on a create call only covers a folder that call made. Discarded: a
+        // folder that could not be made is a write that cannot land, and the
+        // writes below report for both.
         _ = PrivateFile.directory(at: Self.directory)
         guard let data = text.data(using: .utf8) else { return }
         if let handle = try? FileHandle(forWritingTo: url) {
@@ -525,8 +455,7 @@ public final class HelmLog: @unchecked Sendable {
                 try? handle.close()
                 rotate()
                 // Both branches that *create* the file go through `PrivateFile`:
-                // a bare write takes the umask, which is 0644 here, and the file
-                // then keeps it for as long as it is appended to.
+                // a bare write takes the umask, and the file keeps it.
                 if !PrivateFile.write(data, to: url) { Self.sayOutOfBand() }
                 return
             }
@@ -538,10 +467,8 @@ public final class HelmLog: @unchecked Sendable {
 
     /// The one channel left when the log's own file is the thing refusing.
     ///
-    /// No path and no message text: this says that the file is not taking lines,
-    /// and the lines it is not taking are the ones that carry Helm's redaction.
-    /// Sending them through a second store would be handing the unified log
-    /// content that was written for a file with a `0600` mode on it.
+    /// No path and no message text: the lines were written for a `0600` file,
+    /// and a second store must not receive them.
     private static func sayOutOfBand() {
         // One literal and no interpolation: `Logger` takes an `OSLogMessage`,
         // which a concatenation is not, and there is nothing here to interpolate.

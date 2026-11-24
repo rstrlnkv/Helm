@@ -2,40 +2,30 @@ import Foundation
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// **A scanned directory that is a symbolic link redirects the whole scan, and the
-/// row shows the spelling the file does not have.**
+/// **A scanned directory that is a symbolic link does not redirect the scan.**
 ///
 /// `LeftoversScanner` enumerates eight directories it is compiled with — three
-/// launch folders, `~/Library/Preferences`, four plug-in folders — and never asks
-/// whether the directory it got is the one it named. `DirectoryListing.children`
-/// hands back the contents of wherever the name leads, and the item's `path` is
-/// then `dir.appendingPathComponent(name)`: the *false* spelling, which is what the
-/// row draws and what «Show in Finder» opens.
+/// launch folders, `~/Library/Preferences`, four plug-in folders.
+/// `DirectoryListing.children` hands back the contents of wherever the name
+/// leads, and the item's `path` is `dir.appendingPathComponent(name)`: through a
+/// link, the *false* spelling, which the row draws and «Show in Finder» opens.
 ///
-/// Four of those directories do not exist on a stock install, so creating one as a
-/// link needs no privilege at all — and the ordinary-mistake version of this is
-/// anybody who has ever symlinked a plug-in folder onto another volume.
+/// Four of those directories do not exist on a stock install, so creating one as
+/// a link needs no privilege — and the ordinary-mistake version is anybody who
+/// has symlinked a plug-in folder onto another volume. `RemovableScope` resolves
+/// ancestors, closing the escape into `~/Documents`, but permits anything under
+/// `~/Library` and anything ending in `.app` wherever it lives: a redirected
+/// target would be judged, shown under a name it does not have, ticked by
+/// «Select all» and trashed — another process borrowing Helm's Full Disk Access
+/// to reach another app's container.
 ///
-/// `RemovableScope` resolves ancestors, so the documented escape into `~/Documents`
-/// is closed; what it still permits is anything under `~/Library` and anything
-/// ending in `.app` wherever it lives. So the redirected target is enumerated,
-/// judged, shown under a name it does not have, ticked by «Select all» and moved to
-/// the Trash — a process with no Full Disk Access of its own borrowing Helm's to
-/// reach another app's container.
-///
-/// The two tests below are the two halves of the same escape, and the second is the
-/// reason the fix is not `isSymbolicLinkKey`: a link at `~/Library` redirects
+/// The two tests below are the two halves of the same escape, and the second is
+/// why the check is not `isSymbolicLinkKey`: a link at `~/Library` redirects
 /// `~/Library/QuickLook` without `~/Library/QuickLook` being a link.
 ///
-/// **What «not scanned» is asserted over.** These two read `items == []` until the
-/// refusal grew a voice: a source the scan will not walk now comes back as one row
-/// standing for the *folder* — `ItemStatus.sourceRedirected`, unjudged, offering
-/// nothing — because a refusal that reached only the log left the page drawing «No
-/// leftovers found» under a green check over a folder nobody opened
-/// (`ASourceNobodyWalkedIsNotACleanMacTests`). So what is asserted is the thing
-/// this file is about, and it is the stronger reading of the two: **nothing from
-/// behind the link is in the list**, and what is there says the folder went
-/// unread rather than standing in for a file.
+/// What is asserted: **nothing from behind the link is in the list**, and the
+/// one row there is `ItemStatus.sourceRedirected`, standing for the folder and
+/// saying it went unread (`ASourceNobodyWalkedIsNotACleanMacTests`).
 final class ADirectoryThatIsNotTheOneItNamesTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
@@ -55,7 +45,7 @@ final class ADirectoryThatIsNotTheOneItNamesTests: XCTestCase {
         return files
     }
 
-    /// **The finding.** The source is a link, and the scan follows it.
+    /// **The guard.** The source is a link, and the scan does not follow it.
     func testASourceThatIsALinkIsNotScanned() {
         let items = scan(filesWithARedirectedPlugInFolder())
 

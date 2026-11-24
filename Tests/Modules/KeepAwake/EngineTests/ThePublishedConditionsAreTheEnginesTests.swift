@@ -4,10 +4,9 @@ import XCTest
 /// The sets `StatePayload` carries are the engine's own, and the 30-second
 /// battery watch is a timer, not an observer.
 ///
-/// `conditions` and `triggeredConditions` were retyped from `[String]` to
-/// `Set<ActiveCondition>`; nothing asserted what reaches the stream, so an
-/// emitter that published empty sets stayed green. The watch is the only thing
-/// that ends an unattended session when the power observer stays silent.
+/// What reaches the stream is asserted, so an emitter that published empty sets
+/// goes red. The watch is the only thing that ends an unattended session when
+/// the power observer stays silent.
 final class ThePublishedConditionsAreTheEnginesTests: KeepAwakeEngineRig {
 
     private let render = "com.example.render"

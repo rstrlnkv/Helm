@@ -7,17 +7,13 @@ import XCTest
 /// **«Helm returns to how it was just after installing» is a promise about the
 /// machine, not about two folders.**
 ///
-/// A reset trashed Helm's own two directories and forgot its preferences, and
-/// that was all it did — so the one thing Helm changes *outside* those folders
-/// stayed: `/etc/sudoers.d/helm-keepawake`, a passwordless `pmset` rule for a
-/// feature the reset had just made the app forget it ever had. Nothing in the
-/// reset named it and nothing could, because the code that can take it back out
-/// belongs to the module that put it there and needs somebody at the screen to
-/// answer an administrator dialog.
+/// Helm changes things outside its own folders (`/etc/sudoers.d/helm-keepawake`,
+/// a passwordless `pmset` rule), and only the module that put one there can
+/// take it back, with somebody at the screen to answer an administrator dialog.
 ///
-/// So the order is a value rather than the shape of a function body, where the
-/// omission was invisible: the engines are asked for what is theirs **first**,
-/// while their settings still exist and the person is still there.
+/// So the order is a value rather than the shape of a function body: the
+/// engines are asked for what is theirs first, while their settings still
+/// exist and the person is still there (Architecture/GivingEverythingBack.md § Giving everything back).
 final class AResetAsksBeforeItDeletesTests: XCTestCase {
 
     func testTheEnginesAreAskedBeforeAnythingOfTheirsIsDeleted() throws {

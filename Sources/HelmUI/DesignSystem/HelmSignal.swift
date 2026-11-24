@@ -3,32 +3,18 @@ import SwiftUI
 
 /// Colour that carries a meaning: this needs attention, this failed, this is on.
 ///
-/// The same argument as `HelmText`, one class of colour over. The system
-/// palette is tuned for dark, where all three are comfortable, and it is light
-/// where they fail — measured against both
-/// `windowBackgroundColor` and `controlBackgroundColor`, which are the same
-/// colour on macOS 26:
+/// The same argument as `HelmText`, one class of colour over: the system
+/// palette is tuned for dark and fails in light against the window, where
+/// orange and green fall under even the 3:1 floor for a meaningful mark.
 ///
-///     light   orange 2.31:1   green 2.22:1   red 3.57:1
-///     dark    orange 7.47:1   green 8.25:1   red 4.86:1
+/// One threshold rather than two: these are used for icons and for body text,
+/// so they answer to the stricter 4.5:1 everywhere. The light values are the
+/// system colours blended toward black by the smallest fraction that clears it,
+/// solved rather than chosen. Dark keeps the system colours: they already pass,
+/// and they are the palette people recognise.
 ///
-/// against a 4.5:1 body-text floor and a 3:1 floor for a mark that carries
-/// meaning. So the icon on every "needs a permission" banner — the most
-/// important warning the app has — was its least visible mark in light mode,
-/// and `HelmHotkeyRecorder`'s "this shortcut does nothing" note was body text
-/// at 2.31:1. This is the defect `HelmText` and `HelmBadge` were built to
-/// eliminate, never generalised past text tokens.
-///
-/// One threshold rather than two: these are used for icons *and* for body text,
-/// so they answer to the stricter one everywhere rather than to whichever the
-/// current call site happens to need. The light values are the system colours
-/// blended toward black by the smallest fraction that clears 4.5:1 (0.36, 0.38,
-/// 0.15) — solved for, not chosen and described afterwards. Dark keeps the
-/// system colours untouched: they already pass, and the palette macOS ships is
-/// the one people recognise.
-///
-/// Resolved colours, not hierarchical styles, so they are safe inside the
-/// measured-height blocks the Motion rules warn about.
+/// Resolved colours, not hierarchical styles, so they are safe inside
+/// measured-height blocks (`HelmAccordion`).
 public enum HelmSignal {
     /// Something needs attention and can still be acted on. 4.54:1 / 7.47:1,
     /// and 7.06:1 / 7.47:1 under Increase Contrast.
@@ -38,11 +24,9 @@ public enum HelmSignal {
     public static var success: Color { success(increased: HelmAccessibility.system.increasedContrast) }
     /// It failed. 4.52:1 / 4.86:1, and 7.06:1 / 7.03:1 under Increase Contrast.
     ///
-    /// The only one of the three whose **dark** value moves. Warning and success
-    /// are the system's own orange and green there, and both already clear 7:1
-    /// against the window; red does not, at 4,86:1, so the increased value is a
-    /// literal — the smallest blend toward white that reaches the higher floor,
-    /// because on a dark window contrast is bought by going lighter.
+    /// The only one whose dark value moves under Increase Contrast: the system
+    /// red does not clear 7:1 against a dark window, so the increased value is
+    /// the smallest blend toward white that does.
     public static var danger: Color { danger(increased: HelmAccessibility.system.increasedContrast) }
 
     /// The setting as an argument rather than a reading, so each floor can be
@@ -64,13 +48,10 @@ public enum HelmSignal {
     /// a card under the pointer, and on any other ground, 4.5:1 is unproved. Internal: only the style reads it.
     static func dangerOnWell(increased: Bool) -> Color { increased ? dangerOnWellIncreased : dangerOnWellOrdinary }
 
-    /// Eight stored colours rather than eight built on demand, and the reason is
-    /// identity rather than cost. `Color` compares by the object inside it, so a
-    /// property that builds a fresh `NSColor(name:)` on every access is a colour
-    /// that is never equal to itself: two reads of `warning` compared unequal,
-    /// and SwiftUI compares the same way when it decides whether a view's input
-    /// changed. The **flag** above stays computed, which is what the setting
-    /// needs; these do not move.
+    /// Stored, not built on demand, for identity: `Color` compares by the object
+    /// inside it, so a fresh `NSColor(name:)` per read is never equal to itself,
+    /// and SwiftUI would see a changed input on every compare. The flag above
+    /// stays computed.
     private static let warningOrdinary = HelmSurface.pair(
         light: NSColor(srgbRed: 0.700, green: 0.380, blue: 0.097, alpha: 1), dark: .systemOrange)
     private static let warningIncreased = HelmSurface.pair(

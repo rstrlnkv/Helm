@@ -6,10 +6,9 @@ import XCTest
 
 /// A `TrashPort` that answers a question at the moment of the move.
 ///
-/// The subject here is *when* the bundle goes, not what happens to it: a wait
-/// that came back early and a wait that was never written look identical in the
-/// result, and both leave the process running out of a bundle that has moved.
-/// So the double reads the world as it moves each path and keeps the reading.
+/// The subject is when the bundle goes: a wait that returned early and no wait
+/// look identical in the result. So the double reads the world as it moves
+/// each path and keeps the reading.
 final class WatchfulTrash: TrashPort, @unchecked Sendable {
     private let lock = NSLock()
     private let watching: @Sendable () -> Bool
@@ -31,35 +30,22 @@ final class WatchfulTrash: TrashPort, @unchecked Sendable {
     }
 }
 
-/// **The app is asked whether it is running where the answer is used.**
-///
-/// `ScanResult.runningNow` is read once, when the review is built, and the
-/// removal that follows never asks again. Both directions of that staleness are
-/// defects and the expensive one is this: the person reviews an app that is
-/// closed, launches it again while reading, presses Move to Trash — and macOS
-/// lets a running app's bundle be moved. The process carries on out of the moved
-/// bundle and writes its preferences when it finally exits, so the leftovers the
-/// uninstall has just taken come back. That is the whole of what this module
-/// promises, and `UninstallerEngine.waitUntilGone` was written for exactly it
-/// while `trashSync` never consulted `running` at all.
-///
-/// **The fake could not have shown it either.** `FakeRunning` could go down and
-/// never up, so "the app came back while the person was reading the review" was
-/// unrepresentable — no test of it could exist, whatever anybody wrote.
+/// The app is asked whether it is running where the answer is used, not from
+/// `ScanResult.runningNow`, read when the review was built. An app relaunched
+/// while the person reads the review must keep its bundle: macOS moves it
+/// anyway, and the process writes the removed leftovers back on exit.
 final class TheAppIsAskedAgainAtRemovalTests: XCTestCase {
 
     private var home: URL!
     private let playerID = "com.acme.player"
 
     override func setUpWithError() throws {
-        // `RemovableScope` refuses everything outside a home, and a test exempted
-        // from that gate is a test of a different program.
+        // `RemovableScope` refuses everything outside a home, and the test keeps the gate.
         home = scratchDirectory("unrunning")
     }
 
     /// A bundle that answers the question production asks of it: the engine reads
-    /// the id out of the bundle's own `Info.plist`, the same read that ties a
-    /// failure to the app owning a system extension.
+    /// the id out of the bundle's own `Info.plist`.
     @discardableResult
     private func appBundle(_ name: String, id: String) throws -> String {
         let app = home.appendingPathComponent("Applications/\(name).app")
@@ -103,10 +89,8 @@ final class TheAppIsAskedAgainAtRemovalTests: XCTestCase {
                       + "half-uninstall that the app itself undoes on exit")
     }
 
-    /// Ticked «Force quit and remove anyway»: the app is asked to quit and the
-    /// bundle waits for it to be gone. The `quitAfter` is what keeps this from
-    /// being vacuous — an app that vanishes the instant it is asked would satisfy
-    /// the assertion with the wait deleted.
+    /// Ticked «Force quit and remove anyway»: the bundle waits for the app to be
+    /// gone. `quitAfter` keeps this from passing with the wait deleted.
     func testAnAllowedQuitIsWaitedForBeforeTheBundleMoves() async throws {
         let app = try appBundle("Player", id: playerID)
         let running = FakeRunning(running: [playerID], quitAfter: 0.15)
@@ -126,9 +110,8 @@ final class TheAppIsAskedAgainAtRemovalTests: XCTestCase {
                        "an app that was quit as asked was reported as blocking the batch")
     }
 
-    /// The other direction, and the control: an app that is down at the press
-    /// moves, whatever the review thought. Without this, "refuse everything"
-    /// passes the test above.
+    /// The control: an app that is down at the press moves, whatever the review
+    /// thought, or "refuse everything" would pass the test above.
     func testAnAppThatIsDownAtThePressMovesWithNoPermissionAsked() async throws {
         let app = try appBundle("Player", id: playerID)
         let running = FakeRunning(running: [playerID])

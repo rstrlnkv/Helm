@@ -11,51 +11,13 @@ private func pair(_ runner: ProcessRunner) -> (HomebrewEngine, HomebrewViewModel
     return (engine, HomebrewViewModel(work: engine))
 }
 
-/// A `brew` that answers `uses` from a table and holds the query for one name
-/// until `release()`.
-private final class ParkedUsesRunner: QueryOnlyRunner, @unchecked Sendable {
-    /// Fulfilled on the runner's own thread the moment the parked query is
-    /// inside the tool, so the test knows it is in flight rather than hoping.
-    let parked = XCTestExpectation(description: "the parked query reached brew")
-    private let held = DispatchSemaphore(value: 0)
-    private let park: String
-    /// Written once before any run and read-only afterwards, which is what
-    /// makes concurrent runs safe here without a lock.
-    private let answers: [String: String]
-
-    init(park: String, answers: [String: String]) {
-        self.park = park
-        self.answers = answers
-    }
-
-    /// Lets the parked query answer at last. A real semaphore and not a
-    /// cooperative yield: a yield buys a turn on the pool and no wall-clock
-    /// time, so it cannot hold one query open across a second press, a
-    /// departure or a gesture.
-    func release() { held.signal() }
-
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) {
-        guard args.first == "uses", let name = args.last else { return (0, "") }
-        if name == park {
-            parked.fulfill()
-            held.wait()
-        }
-        return (0, answers[name] ?? "")
-    }
-
-}
-
 /// An answer that arrives after the press it belonged to is over says nothing.
 ///
-/// The press is asynchronous and nothing on the page is disabled while the query
-/// is out — the page's own `disabled` tracks long operations, not queries. So two
-/// presses put two queries in flight, and with no token the last continuation to
-/// resume wins: cancel the dialog that opened for the second package and the
-/// first one's answer raises a dialog nobody asked for, over the app's only
-/// irreversible deletion; or the title and the list swap under someone reading
-/// them. `LatestRequest` is what `search(_:)` in the same view model already
-/// uses, for the reason written out there.
+/// Nothing on the page is disabled while the query is out, so two presses put
+/// two queries in flight. The first one's answer must not raise a dialog nobody
+/// asked for over the app's only irreversible deletion, nor swap the title and
+/// the list under someone reading them. `LatestRequest` retires it, as for
+/// `search(_:)`.
 @MainActor
 final class ALateReadingCannotRaiseADialogTests: XCTestCase {
 
@@ -70,8 +32,7 @@ final class ALateReadingCannotRaiseADialogTests: XCTestCase {
     /// the dialog on screen belongs to the second press, and the first press's
     /// names must not land in it.
     func testALateAnswerDoesNotOverwriteTheDialogOnScreen() async {
-        let runner = ParkedUsesRunner(park: "openssl@3",
-                                      answers: ["openssl@3": "aria2\nnode\n"])
+        let runner = FakeBrew(uses: ["openssl@3": "aria2\nnode\n"], park: "openssl@3")
         let (engine, vm) = pair(runner)
         let first = Task { await vm.askToUninstall(parked) }
         await fulfillment(of: [runner.parked], timeout: 5)
@@ -86,13 +47,10 @@ final class ALateReadingCannotRaiseADialogTests: XCTestCase {
         withExtendedLifetime(engine) {}
     }
 
-    /// The same two presses, and then the person closes the dialog. Nothing is
-    /// on screen and nothing may put anything there: a confirmation for an
-    /// irreversible deletion that opens by itself is the worst shape this can
-    /// take.
+    /// The same two presses, then the person closes the dialog: nothing may
+    /// reopen a confirmation for an irreversible deletion by itself.
     func testALateAnswerDoesNotReopenAClosedDialog() async {
-        let runner = ParkedUsesRunner(park: "openssl@3",
-                                      answers: ["openssl@3": "aria2\nnode\n"])
+        let runner = FakeBrew(uses: ["openssl@3": "aria2\nnode\n"], park: "openssl@3")
         let (engine, vm) = pair(runner)
         let first = Task { await vm.askToUninstall(parked) }
         await fulfillment(of: [runner.parked], timeout: 5)
@@ -109,30 +67,16 @@ final class ALateReadingCannotRaiseADialogTests: XCTestCase {
 
 /// **Leaving the page must retire an uninstall ask that is still out.**
 ///
-/// `ALateReadingCannotRaiseADialogTests` says the sentence this class proves the
-/// other half of: «a confirmation for an irreversible deletion that opens by
-/// itself is the worst shape this can take». There it is a second press and a
-/// cancel that retire the first query. Neither of those is the case here.
+/// The press launches an unstructured `Task` not tied to the view, and the
+/// answer can take the whole query deadline (`defaultQueryTimeout`) when another
+/// `brew` holds the lock. Meanwhile the person can switch modules or close the
+/// Settings window, and `.helmIdlesOffScreen()` unmounts the page.
 ///
-/// The press launches an unstructured `Task` that is not tied to the view's
-/// lifetime, and the answer it waits for can take the whole query deadline —
-/// `defaultQueryTimeout` in `Sources/Modules/Homebrew/Engine/SystemPorts.swift`,
-/// 90 s, reached whenever another `brew` holds the lock. In that window the
-/// person can switch modules in the sidebar or close the Settings window, and
-/// both hosting controllers carry `.helmIdlesOffScreen()`, so either unmounts
-/// the page.
-///
-/// `pendingUninstall` used to be the page's `@State` and died with the subtree.
-/// It lives on `HomebrewViewModel` now, and the descriptor builds that once per
-/// enable, so it outlives the page — so the answer lands on a live view model
-/// with no page mounted, sets `pendingUninstall`, and nothing clears it. The
-/// dialog's `isPresented` is derived from that property alone: the next visit to
-/// Homebrew raises a confirmation nobody asked for, over a dependents reading
-/// taken arbitrarily long ago.
-///
-/// `LatestRequest` does not cover this on its own. It retires work on a later
-/// press and on a cancel; leaving the page is neither, and only the page knows
-/// it has gone.
+/// `pendingUninstall` lives on `HomebrewViewModel`, which outlives the page, and
+/// the dialog's `isPresented` is derived from it alone. An answer landing with no
+/// page mounted must not leave it set, or the next visit raises a confirmation
+/// nobody asked for over a stale dependents reading. `LatestRequest` retires
+/// work on a later press and on a cancel; only the page knows it has gone.
 @MainActor
 final class LeavingThePageRetiresAnUninstallAskTests: XCTestCase {
 
@@ -142,8 +86,7 @@ final class LeavingThePageRetiresAnUninstallAskTests: XCTestCase {
     /// answer comes back to a view model that outlives the page and must find
     /// its request retired.
     func testAnAnswerArrivingAfterTheDepartureRaisesNothing() async {
-        let runner = ParkedUsesRunner(park: "openssl@3",
-                                      answers: ["openssl@3": "aria2\nnode\n"])
+        let runner = FakeBrew(uses: ["openssl@3": "aria2\nnode\n"], park: "openssl@3")
         let (engine, vm) = pair(runner)
         let pressed = BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false)
         let ask = Task { await vm.askToUninstall(pressed) }
@@ -165,34 +108,18 @@ final class LeavingThePageRetiresAnUninstallAskTests: XCTestCase {
 
 /// **Moving off the package must retire an uninstall ask that is still out.**
 ///
-/// The third class in this family, and the one that covers the gestures the
-/// other two do not. `ALateReadingCannotRaiseADialogTests` retires an ask with
-/// a second press and with a cancel; `LeavingThePageRetiresAnUninstallAskTests`
-/// retires it by unmounting the page. All three exist for one sentence: «a
-/// confirmation for an irreversible deletion that opens by itself is the worst
-/// shape this can take».
+/// `askToUninstall` is asynchronous and its `brew uses --installed` can be out
+/// for the whole query deadline. Meanwhile the person can move off the package
+/// without pressing Cancel and without leaving the page:
 ///
-/// `askToUninstall` is asynchronous, and the `brew uses --installed` behind it
-/// can be out for the whole query deadline — `defaultQueryTimeout` in
-/// `Sources/Modules/Homebrew/Engine/SystemPorts.swift`, 90 s, reached whenever
-/// another `brew` holds the lock. In that window the person can move off the
-/// package three ways without pressing Cancel and without leaving the page:
-///
-/// - **Back** on the narrow screen, which is `select(nil)`;
+/// - **deselecting** in the list, which is `select(nil)`;
 /// - **another row**, which is `List(selection:)`'s setter, `select(id)`;
 /// - **another segment**, which is the segmented picker writing `segment`.
 ///
-/// None of the three is a second press and none is a cancel, so `LatestRequest`
-/// does not cover them; none unmounts the page, so `.onDisappear` does not
-/// either. The answer landed afterwards and raised the modal confirmation over
-/// whatever the person had moved to — a list, a different package, a different
-/// segment.
-///
-/// The subject of the ask is the *pair* `(segment, selection[segment])`: it is
-/// raised from the package `packageDetail` is drawing, and `packageDetail`
-/// reads both. So both fields retire it, which is two write points rather than
-/// three gestures — the picker's binding writes `segment` and never goes
-/// through `select(_:)`.
+/// None is a second press, a cancel or an unmount. The subject of the ask is the
+/// *pair* `(segment, selection[segment])`, which `packageDetail` reads, so a
+/// write to either field retires it; the picker's binding writes `segment` and
+/// never goes through `select(_:)`.
 @MainActor
 final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
 
@@ -207,7 +134,7 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
     /// query is inside the tool. The caller then makes its gesture and calls
     /// `release`.
     private func askInFlight(_ vm: HomebrewViewModel,
-                             _ runner: ParkedUsesRunner) async -> Task<Void, Never> {
+                             _ runner: FakeBrew) async -> Task<Void, Never> {
         vm.select(pressed.id)
         let ask = Task { await vm.askToUninstall(pressed) }
         await fulfillment(of: [runner.parked], timeout: 5)
@@ -215,16 +142,14 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
         return ask
     }
 
-    private func runner() -> ParkedUsesRunner {
-        ParkedUsesRunner(park: "openssl@3", answers: ["openssl@3": "aria2\nnode\n"])
+    private func runner() -> FakeBrew {
+        FakeBrew(uses: ["openssl@3": "aria2\nnode\n"], park: "openssl@3")
     }
 
     // MARK: - The ask does land when nothing moves
 
-    /// Assert the subject happened before asserting an absence: without this
-    /// the three cases below would pass against an `askToUninstall` that raises
-    /// nothing at all, which is the default in a test process the moment
-    /// anything upstream of the query stops answering.
+    /// The subject happened: without this the cases below would pass against an
+    /// `askToUninstall` that raises nothing at all.
     func testTheAskStillLandsWhenTheSelectionDoesNotMove() async {
         let runner = self.runner()
         let (engine, vm) = pair(runner)
@@ -243,9 +168,8 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
     /// Each row is its own door, and a fresh runner, pair and ask are built for it.
     func testEveryGestureThatMovesOffThePackageRetiresTheAsk() async {
         let gestures: [(gesture: (HomebrewViewModel) -> Void, message: String)] = [
-            // Back on the narrow screen: `backBar` calls `select(nil)` and nothing
-            // else. The list comes up, and the answer must not put a confirmation
-            // over it.
+            // Deselecting the package: `select(nil)` and nothing else. The answer
+            // must not put a confirmation over the empty inspector.
             ({ $0.select(nil) },
              "pressing Back left the query out, and its answer raised a confirmation for "
              + "the app's only irreversible deletion over the package list"),
@@ -296,33 +220,16 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
     }
 }
 
-/// A `brew` that answers `uses` from a table.
-private final class UsesRunner: QueryOnlyRunner, @unchecked Sendable {
-    private let lock = NSLock()
-    var answers: [String: String] = [:]
-
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) {
-        lock.lock(); defer { lock.unlock() }
-        guard args.first == "uses", let name = args.last else { return (0, "") }
-        return (0, answers[name] ?? "")
-    }
-
-}
-
 /// The reading is taken for the press it belongs to, and it does not outlive it.
 ///
-/// Two packages, asked one after the other: the second dialog must never carry
-/// the first one's dependents. This is the stored-reading question the tree asks
-/// everywhere — what happened between the reading and the act — and here the act
-/// is a person reading a sentence and deciding.
-/// Kept: guards M217 (backlog, Homebrew; fixed 2026-11-11): both doors to `brew uninstall` read the dependents first and draw one note.
+/// Two packages asked one after the other: the second dialog never carries the
+/// first one's dependents. Both doors to `brew uninstall` read the dependents
+/// first and draw one note.
 @MainActor
 final class UninstallNamesWhatStillNeedsItTests: XCTestCase {
 
     func testTheDialogCarriesWhatTheEngineAnswered() async {
-        let runner = UsesRunner()
-        runner.answers["openssl@3"] = "aria2\nnode\n"
+        let runner = FakeBrew(uses: ["openssl@3": "aria2\nnode\n"])
         let (engine, vm) = pair(runner)
         await vm.askToUninstall(BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false))
         XCTAssertEqual(vm.pendingUninstall?.name, "openssl@3")
@@ -333,8 +240,7 @@ final class UninstallNamesWhatStillNeedsItTests: XCTestCase {
     }
 
     func testTheNextPackageDoesNotInheritTheLastOnesDependents() async {
-        let runner = UsesRunner()
-        runner.answers["openssl@3"] = "aria2\nnode\n"
+        let runner = FakeBrew(uses: ["openssl@3": "aria2\nnode\n"])
         let (engine, vm) = pair(runner)
         await vm.askToUninstall(BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false))
         vm.cancelUninstall()
@@ -346,8 +252,7 @@ final class UninstallNamesWhatStillNeedsItTests: XCTestCase {
     }
 
     func testCancellingClearsTheReading() async {
-        let runner = UsesRunner()
-        runner.answers["openssl@3"] = "aria2\n"
+        let runner = FakeBrew(uses: ["openssl@3": "aria2\n"])
         let (engine, vm) = pair(runner)
         await vm.askToUninstall(BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false))
         vm.cancelUninstall()

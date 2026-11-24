@@ -6,9 +6,9 @@ import HelmRuntime
 import HelmTestSupport
 @testable import HelmApp
 
-/// **Past defect: the card kept «Update & Relaunch» over a refusal.** The card asks
-/// about `available` before it asks about the note, so a declined release left in
-/// place showed the offer while a browser opened by itself. `decline` withdraws the
+/// **A refusal takes «Update & Relaunch» off the card.** The card asks about
+/// `available` before it asks about the note, so a declined release left in place
+/// would show the offer while a browser opens by itself. `decline` withdraws the
 /// offer and says which reason it was; the install state is private to the service, so only a test of the callers can pin its reset.
 @MainActor
 final class ADeclinedUpdateTakesTheOfferAwayTests: XCTestCase {

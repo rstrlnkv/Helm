@@ -18,8 +18,8 @@ struct FileFacts: Hashable, Sendable {
     /// occupy would lose duplicates — a worse failure than an imprecise total.
     /// The arithmetic the screen shows is about space, so it uses this.
     let allocated: Int
-    /// When the file arrived in its folder — the Finder's "Date Added", and
-    /// what decides which copy stays. Not the creation date: a file carries
+    /// When the file arrived in its folder — the Finder's "Date Added", one of
+    /// the rungs that decide which copy stays. Not the creation date: a file carries
     /// that with it when it is copied, so it would call the copy exactly as old
     /// as the original. nil on a volume that does not record it.
     let added: Date?
@@ -56,9 +56,7 @@ public struct DuplicateGroup: Equatable, Sendable, Identifiable {
     ///
     /// Each copy carries its own figure because content-identical files need
     /// not agree on one: an APFS clone or an HFS-compressed copy occupies far
-    /// less than its logical length. The group used to hold a single size and
-    /// multiply it, which made the answer depend on which copy the walk reached
-    /// first.
+    /// less than its logical length.
     public struct Copy: Equatable, Sendable {
         public let path: String
         public let bytes: Int
@@ -71,7 +69,7 @@ public struct DuplicateGroup: Equatable, Sendable, Identifiable {
         /// the worse of the two errors.
         let cloneFamily: UInt64?
         /// When this copy arrived in its folder — the Finder's "Date Added",
-        /// the one thing `SurvivingCopy` decides on first.
+        /// one of the rungs `SurvivingCopy` reads.
         ///
         /// The walk already reads it for that decision; carrying it here is what
         /// lets the copy that stays be re-decided from the group alone, without
@@ -92,9 +90,8 @@ public struct DuplicateGroup: Equatable, Sendable, Identifiable {
 
     /// What the group is, independent of how its copies are arranged.
     ///
-    /// It used to be `copies.first?.path` — the survivor — which is a fact about
-    /// the *order* of the array rather than about the group. The order is not
-    /// fixed: re-deciding which copy stays permutes `copies`, and
+    /// Not the survivor's path, which is a fact about the *order* of the array:
+    /// re-deciding which copy stays permutes `copies`, and
     /// `ForEach(dvm.groups)` would then read one group as a removal and an
     /// insertion, animating a change nobody made. The paths sorted are the same
     /// set however it is arranged.
@@ -119,11 +116,8 @@ public struct DuplicateGroup: Equatable, Sendable, Identifiable {
     /// What deleting all but the first actually returns to the disk.
     ///
     /// Not the sum of their sizes. On APFS a clone shares its blocks with the
-    /// copy it was made from, so removing it frees nothing — measured here, a
-    /// 20 MB file cloned with `cp -c` cost 0 bytes of free space while a real
-    /// copy cost 20 MB, and `stat` reported the same allocated size for both.
-    /// Adding the sizes up promised space the disk would not give back, and the
-    /// promise was exactly double for a folder of Finder duplicates.
+    /// copy it was made from, so removing it frees nothing, though `stat`
+    /// reports the same allocated size for a clone and a real copy.
     public var wasted: Int {
         Self.reclaimable(marking: Set(copies.dropFirst().map(\.path)), in: [self])
     }
@@ -132,12 +126,9 @@ public struct DuplicateGroup: Equatable, Sendable, Identifiable {
     /// screen stays.
     ///
     /// The one rule, asked by the group (`wasted`), by the bar under the list and
-    /// by the toolbar's total — which had been three answers: `wasted` folded the
-    /// clone family, and the other two added `Copy.bytes` up. On the ordinary case
-    /// — Finder's Duplicate command, which makes clones — those two were exactly
-    /// double, so one screen quoted 300 MB above the list and 321 MB below it
-    /// about the same two files, and the confirmation and the banner inherited the
-    /// wrong one.
+    /// by the toolbar's total, so the confirmation and the banner inherit one
+    /// figure. Adding `Copy.bytes` up would quote double on the ordinary case:
+    /// Finder's Duplicate command makes clones.
     ///
     /// **Over every group at once, not group by group.** It is the same slate
     /// `HelmTrash` opens for the batch, so the figure before the press and the
@@ -219,9 +210,8 @@ enum Duplicates {
             byDigest[d, default: []].append(file)
         }
         // Sorted, not `Dictionary.values`: that order comes from a hash seeded
-        // per process, so the same folder listed its groups differently on
-        // every launch. `SurvivingCopy` goes to the trouble of a third tiebreak
-        // so a row does not move between scans; between groups nothing did.
+        // per process, so the same folder would list its groups differently on
+        // every launch.
         return byDigest.keys.sorted().compactMap { key in
             let group = byDigest[key]!
             return group.count > 1 ? group : nil
@@ -230,26 +220,14 @@ enum Duplicates {
 
     /// One group, assembled the one way, by `DuplicateScanner.find` and by the tests that need a group without a disk.
     ///
-    /// When `SurvivingCopy` replaced the alphabetical rule it was wired into a
-    /// second pipeline the unit tests drove and not into the scanner, so the
-    /// page explained one rule in its tooltip while the app followed another.
-    /// That pipeline is gone and this is the one place a group is built.
+    /// The one place a group is built, so the rule the page explains is the
+    /// rule the scanner follows.
     static func group(_ identical: [FileFacts], by rule: KeepRule) -> DuplicateGroup {
         // Each copy with what it occupies, because `wasted` promises what
         // removing the extras frees and the removal reports the same measure.
-        // One size for the group took it from the walk order while the paths
-        // came from the survivor rule — two orderings of one array — so a clone
-        // beside its original reported nothing wasted or everything wasted
-        // depending on which was reached first.
-        //
-        // **The order carries the facts with it.** It used to hand back paths,
-        // and this rebuilt each copy through a dictionary keyed on the path —
-        // one ordering of an array joined to another, and a lookup that had to
-        // answer `nil` for a fact that was in hand the whole time.
+        // One size for the group would follow the walk order, so a clone beside
+        // its original would read as nothing or everything wasted.
         DuplicateGroup(copies: SurvivingCopy.order(identical, by: rule).map { fact in
-            // The date the walk already read for the survivor rule, carried
-            // instead of dropped: re-deciding which copy stays needs it and
-            // nothing else.
             DuplicateGroup.Copy(path: fact.path, bytes: fact.allocated,
                                 cloneFamily: fact.cloneFamily, added: fact.added)
         })

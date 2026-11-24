@@ -6,21 +6,14 @@ import XCTest
 
 /// What the sweep at the end of a scan costs the process.
 ///
-/// (ARCHITECTURE.md § Module pattern) puts a pool inside a bulk read of file
-/// contents and names `resourceValues` loops as the measured exception.
-/// `DiskAdvisor.sweep` is neither a read of file contents nor a `resourceValues`
-/// loop, yet it had no pool: it visits every node in the finished tree but asks
-/// `UserFileScope.isRemovable` only about each file of at least 50 MB and over 30
-/// days old (the cheap floors are judged first) — which is
-/// `NSString.standardizingPath`, a `FileManager.fileExists` walk up the parent
-/// chain and `URL.resolvingSymlinksInPath`, all of it Foundation handing back
-/// autoreleased objects. The sweep runs inside `offTheCooperativePool` on
-/// the scan's own thread, so the pool those objects belong to is the one that
-/// closes when the **whole scan** returns: everything the advisor ever looked at
-/// stays alive until then, on top of the tree it is looking at.
+/// `DiskAdvisor.sweep` asks `UserFileScope.isRemovable` about each file past the
+/// size and age floors, and that gate hands back autoreleased Foundation objects.
+/// The sweep runs on the scan's own thread inside `offTheCooperativePool`, so
+/// without a pool inside the sweep everything it judged would live until the
+/// whole scan returns (Architecture/ModulePattern.md § Bulk reads).
 ///
 /// Measured against the allocator's books rather than `MemoryFootprint.current()`
-/// — ARCHITECTURE.md § The memory trail.
+/// (Architecture/DiagnosticsLog.md § The memory trail).
 final class TheAdvisorKeepsOnlyItsAdviceTests: XCTestCase {
 
     /// Enough nodes for a per-node cost to be a reading rather than noise, few
@@ -78,17 +71,8 @@ final class TheAdvisorKeepsOnlyItsAdviceTests: XCTestCase {
                      Double(pooled1 - pooled0) / 1_048_576,
                      Double(pooled1 - pooled0) / Double(Self.files)))
 
-        // **The threshold sits between two measurements of this fixture**, three
-        // consecutive runs each on the machine this was written on, re-read on
-        // this fixture (floors judged before the gate) by printing the two lines
-        // above, the pool taken out of `sweep` for the first set:
-        //
-        //     sweep without the pool:                 88 bytes/node (1.7 MB)
-        //     the same sweep with a pool inside it:    0 bytes/node (0.0 MB)
-        //
-        // 25 fails the defect by more than a factor of two and passes the repair
-        // by the whole of it. A number above 88 would have recorded the present
-        // rather than guarded it.
+        // The threshold sits between the two readings the lines above print:
+        // about 88 bytes/node with the pool taken out of `sweep`, 0 with it in.
         XCTAssertLessThan(perNode, 25, """
             the advisor is keeping every path it judged rather than the advice it produced. \
             `DiskAdvisor.sweep` asks `UserFileScope.isRemovable` for each file that passes the size and age floors, and nothing \

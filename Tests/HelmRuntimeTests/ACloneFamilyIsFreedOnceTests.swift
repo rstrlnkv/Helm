@@ -5,24 +5,18 @@ import HelmTestSupport
 
 /// What a removal may say it freed, when the files share their blocks.
 ///
-/// On APFS a **clone** shares its blocks with the file it was made from, and
-/// Finder's Duplicate command makes clones — so this is the ordinary case, not an
-/// exotic one. Measured in a scratch directory: one 20 MB file and a clone of it
-/// report the same clone family id, each report 20 000 768 allocated bytes, and
-/// the second one cost **0 bytes** of free space. `HelmTrash` weighed them one at
-/// a time and announced 40 MB freed for 20 MB of blocks; the ring above says the
-/// same thing, and «Moved to the Trash — 8 GB» is a promise about space the disk
-/// will not give back.
+/// On APFS a clone shares its blocks with the file it was made from, and
+/// Finder's Duplicate command makes clones, so this is the ordinary case. A file
+/// and its clone each report their full allocation and the second costs no free
+/// space; weighed one at a time they would announce twice the space the disk
+/// gives back.
 ///
-/// `CloneShare` — in `HelmRuntime`, and used by Duplicates since the day this was
-/// measured — is the arithmetic: a family is charged once, not once per member.
-/// `grep -rn CloneShare Sources/Modules/Disk` was empty, which is the house rule
-/// about shared plumbing read from the wrong side.
+/// `CloneShare` in `HelmRuntime` is the arithmetic: a family is charged once,
+/// not once per member.
 ///
-/// **Nothing here is trashed.** The move is `HelmTrash`'s injected `trashing`
-/// closure and it does nothing, so what is measured is the ledger and the files
-/// stay in the scratch directory the teardown drains.
-/// Past defect: fixed in commit 3591c2a7.
+/// Nothing here is trashed: `HelmTrash`'s injected `trashing` closure does
+/// nothing, so what is measured is the ledger, and the files stay in the
+/// scratch directory.
 final class ACloneFamilyIsFreedOnceTests: XCTestCase {
 
     private var root: URL!
@@ -40,9 +34,8 @@ final class ACloneFamilyIsFreedOnceTests: XCTestCase {
 
     private func clone(of url: URL, as name: String) throws -> URL {
         let copy = root.appendingPathComponent(name)
-        // `clonefile(2)` rather than `cp -c` or `copyItem`: this test's whole
-        // subject is that the two share blocks, so the sharing is made rather
-        // than hoped for — and asserted below either way.
+        // `clonefile(2)`, so the sharing is made rather than hoped for, and
+        // asserted below either way.
         guard clonefile(url.path, copy.path, 0) == 0 else {
             throw XCTSkip("this volume does not clone: errno \(errno)")
         }
@@ -54,7 +47,7 @@ final class ACloneFamilyIsFreedOnceTests: XCTestCase {
         return FileWeight.allocated(of: url, countingOnce: &seen)
     }
 
-    /// The defect: two names for one allocation, charged twice.
+    /// Two names for one allocation are charged once.
     func testAFamilyRemovedWholeIsChargedOnce() throws {
         let first = try original("a.bin")
         let second = try clone(of: first, as: "b.bin")
@@ -93,10 +86,8 @@ final class ACloneFamilyIsFreedOnceTests: XCTestCase {
                        "a clone family inside a folder was charged once per member")
     }
 
-    /// The control, and it is the half that matters most: two files that share
-    /// nothing are two allocations, and a ledger that answered "once" for
-    /// everything would pass the test above while under-reporting every ordinary
-    /// removal there is.
+    /// The control: two files that share nothing are two allocations, and a
+    /// ledger that answered "once" for everything would pass the tests above.
     func testTwoUnrelatedFilesAreBothCharged() throws {
         let first = try original("a.bin")
         let second = try original("b.bin")
@@ -114,9 +105,8 @@ final class ACloneFamilyIsFreedOnceTests: XCTestCase {
                        "two separate allocations were reported as one")
     }
 
-    /// A hard link is the other way one allocation wears two names, and it was
-    /// already handled. Both rules run over the same batch, so this is the guard
-    /// that adding the second did not cost the first.
+    /// A hard link is the other way one allocation wears two names. Both rules
+    /// run over the same batch, so neither may cost the other.
     func testAHardLinkIsStillChargedOnce() throws {
         let first = try original("a.bin")
         let link = root.appendingPathComponent("same.bin")
@@ -131,8 +121,8 @@ final class ACloneFamilyIsFreedOnceTests: XCTestCase {
     }
 
     /// A path that is refused spends nothing: the ledger grows only where the
-    /// batch really took something, which is the rule the inode set already
-    /// follows and the reason it is copied per path rather than written to.
+    /// batch really took something, as with the inode set, which is why it is
+    /// copied per path rather than written to.
     func testARefusedPathLeavesTheFamilyUncharged() throws {
         let first = try original("a.bin")
         let second = try clone(of: first, as: "b.bin")

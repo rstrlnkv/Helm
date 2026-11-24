@@ -3,50 +3,37 @@ import Foundation
 /// The seal key, fetched from the keychain once per process.
 ///
 /// **A keychain round trip is not a cheap read, and on this app it is not even
-/// a quiet one.** Every verdict a `SettingGuard` gives calls `key()`, so the
-/// coordinator paid three `SecItemCopyMatching` calls per tick and the settings
-/// window paid one inside its own construction. The bundle is ad-hoc signed —
-/// its cdhash is a hash of its contents, so every build is a different program
-/// to the keychain and no access list an earlier one wrote still names it — and
-/// the answer is therefore a modal authorization dialog rather than data
-/// (ARCHITECTURE.md § Sealed settings). Measured 2026-08-15 standing in
-/// front of the settings window before it had drawn anything.
+/// a quiet one.** Every verdict a `SettingGuard` gives calls `key()`. The
+/// bundle is ad-hoc signed, so every build is a different program to the
+/// keychain and no access list an earlier one wrote still names it: the answer
+/// is a modal authorization dialog, which stands in front of a settings window
+/// that has drawn nothing (Architecture/StoredSettings.md § Sealed settings).
 ///
 /// **What is cached is the key, never a verdict.** The key is a secret created
 /// once and never rewritten, so remembering it cannot go stale; whether a stored
 /// value is Helm's own is a live fact and is still computed on every read.
 ///
 /// **First use is spent, exactly once.** `KeychainSealKey` answers
-/// `firstUse: true` only for the run that creates the item and `false` for ever
-/// after — that is the door `.adopt` leaves open closing behind Helm's own first
-/// read. A cache that handed the first answer back unchanged would hold the door
-/// open for the life of the process, so anything written to the plist after
-/// Helm's first read would be adopted and sealed as Helm's own, which is the
-/// defect `TheFirstReadClosesTheSealsDoorTests` exists for, one layer down.
+/// `firstUse: true` only for the run that creates the item, which closes the
+/// door `.adopt` leaves open behind Helm's own first read. A cache handing the
+/// first answer back unchanged would hold the door open for the life of the
+/// process, adopting anything written to the plist afterwards
+/// (`TheFirstReadClosesTheSealsDoorTests`).
 ///
 /// **A refusal is not remembered.** Nil means "cannot tell" — a keychain locked
 /// at login is the reachable case — and it can stop being true a second later.
 ///
-/// A decorator rather than something folded into `KeychainSealKey`, because
-/// spending first use exactly once and refusing to remember a refusal are the
-/// two things worth a test, and neither could have one if they lived behind the
-/// real login keychain. The cost of that choice is that it has to be *put* in
-/// front of a port: `SettingsSealKey.overScanSettings` has it, for
-/// `AppSettings.scanGuard` and `DuplicatesSettings.guardOfScanSettings`, and
+/// A decorator rather than something folded into `KeychainSealKey`, so both
+/// rules above can be tested without the real login keychain. It has to be
+/// *put* in front of a port: `SettingsSealKey.overScanSettings` has it, and
 /// Autopilot's `SealedRules` resolves its key once per run and holds it.
 ///
-/// ## Two locks, because one lock had two jobs
+/// ## Two locks, one job each
 ///
-/// There was one `NSLock`, held across the source's own call so that two callers
-/// arriving together cost one dialog rather than two. That is still wanted, and
-/// `testTwoCallersArrivingTogetherCostOneRoundTrip` still holds it. What the one
-/// lock also did, unasked, was make *every* other caller wait for that dialog —
-/// and on 2026-08-19 one of them was the thread that draws:
-/// `HelmApp_2026-08-19-235500_MacBook.hang`, 19,09 s, the report naming the
-/// arrangement outright as *blocked by turnstile … waiting for … thread
-/// 0x1bc925*, which was `SettingGuard.warmKey()` sitting in securityd.
-///
-/// So the two jobs are two locks:
+/// Two callers arriving together must cost one dialog, not two
+/// (`testTwoCallersArrivingTogetherCostOneRoundTrip`), but a caller that only
+/// wants what is in hand, the thread that draws among them, must not wait for
+/// that dialog:
 ///
 /// - `fetching` serialises the round trip. It is held across `source.key()` and
 ///   is the one that makes two arrivals cost one dialog. Only a caller that has
@@ -58,11 +45,10 @@ import Foundation
 /// The invariant that keeps them honest: nothing takes `fetching` while holding
 /// `held`, and nothing calls out of this file while holding `held`.
 ///
-/// `@unchecked` because the one mutable field is behind `held` on both sides —
-/// the rule a handler field once broke by taking the lock on one of
-/// them.
+/// `@unchecked` because the one mutable field is behind `held` on both sides,
+/// read and write.
 public final class SealKeyCache: SealKeyPort, @unchecked Sendable {
-    private let source: SealKeyPort
+    let source: SealKeyPort
     /// Serialises the round trip: one dialog for two callers arriving together.
     private let fetching = NSLock()
     /// Guards `material`, and is held for a field access and nothing else.
@@ -73,10 +59,10 @@ public final class SealKeyCache: SealKeyPort, @unchecked Sendable {
 
     /// The key, fetching it if this is the first ask.
     ///
-    /// **Only for a caller that can afford to wait**, which since 2026-08-20
-    /// means not the main actor: the wait is a modal dialog, and on the thread
-    /// that draws it is a window that cannot answer a mouse-up. The main actor
-    /// asks `keyIfWarm()` and lets `SettingGuard.warmKey()` do the waiting.
+    /// **Only for a caller that can afford to wait**, which is not the main
+    /// actor: the wait is a modal dialog, and on the thread that draws it is a
+    /// window that cannot answer a click. The main actor asks `keyIfWarm()` and
+    /// lets `SettingGuard.warmKey()` do the waiting.
     ///
     /// The cache is checked twice — once before queuing for the fetch and once
     /// after — so the second of two callers arriving together is served from

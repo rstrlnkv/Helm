@@ -1,33 +1,19 @@
 import XCTest
 @testable import Module_Autopilot_Engine
 
-/// **«.pdf» is what people type, and it used to be a rule that matched
-/// nothing.**
+/// «.pdf» is what people type, and the extension is kept without its dot.
 ///
-/// `RuleCondition.fileExtension` documents its own contents — "Lowercase, no
-/// dots" — and `RuleMatcher` compares the list against `FileFacts.fileExtension`,
-/// which never carries one. Nothing enforced the second half of that sentence:
-/// the editor's field lowercased and trimmed the text and kept the dot, so a
-/// person who typed the extension the way Finder shows it got a condition that
-/// is `isComplete`, may be switched on, and can never match a file. It fails
-/// safe and it fails silently, which is the pair that keeps a rule looking like
-/// it works.
+/// `RuleCondition.fileExtension` holds "Lowercase, no dots", and `RuleMatcher`
+/// compares the list against `FileFacts.fileExtension`, which never carries one.
+/// A dot kept from the field gives a condition that is `isComplete`, may be
+/// switched on, and never matches a file: it fails safe and silently.
 ///
-/// **The repair is where the text is entered, and deliberately not in
-/// `storable`.** `storable` runs over the stored rules on the way out as well as
-/// in, so putting it there would change what a rule already on somebody's Mac
-/// *does* — a condition that has been inert since the day it was written would
-/// begin moving or trashing files at the next launch, with nobody at the desk
-/// and nothing said. This module's own repair policy is that a value it cannot
-/// use matches nothing rather than something; making one match more than it did
-/// yesterday is the direction that needs a person's press behind it, and typing
-/// is that press.
-///
-/// So the parse moved out of `ConditionRow`'s binding and into the engine, where
-/// it can be read back: the view calls `RuleCondition.fileExtension(typed:)` and
-/// this is what that answers.
-///
-/// Past defect: fixed in 99a2a306.
+/// The repair is where the text is entered (`RuleCondition.fileExtension(typed:)`,
+/// which the view calls), deliberately not in `storable`. `storable` runs over
+/// the stored rules too, so a repair there would make a condition inert since
+/// the day it was written begin moving or trashing files at the next launch,
+/// with nobody at the desk. A value the module cannot use matches nothing;
+/// making a rule match more needs a person's press behind it, and typing is one.
 final class ADotTypedIntoTheExtensionFieldTests: XCTestCase {
 
     private func typed(_ text: String) -> [String] {
@@ -37,7 +23,7 @@ final class ADotTypedIntoTheExtensionFieldTests: XCTestCase {
         return list
     }
 
-    /// The premise: what the field already did, which this must go on doing.
+    /// The premise: a list typed without dots is lowercased, trimmed and split.
     func testTheListItAlreadyTookIsUnchanged() {
         XCTAssertEqual(typed("pdf, png, zip"), ["pdf", "png", "zip"])
         XCTAssertEqual(typed("PDF , Png"), ["pdf", "png"], "the field has always lowercased")
@@ -45,7 +31,6 @@ final class ADotTypedIntoTheExtensionFieldTests: XCTestCase {
         XCTAssertEqual(typed(""), [], "an empty field is an unfinished condition, not a wildcard")
     }
 
-    /// The finding.
     func testAnExtensionTypedWithItsDotIsTheExtension() {
         XCTAssertEqual(typed(".pdf"), ["pdf"])
         XCTAssertEqual(typed(" .PDF , .png"), ["pdf", "png"])
@@ -78,10 +63,9 @@ final class ADotTypedIntoTheExtensionFieldTests: XCTestCase {
         XCTAssertTrue(RuleMatcher.matches(facts, rule))
     }
 
-    /// And the rules already stored are left exactly as they are, which is the
-    /// other half of the decision above: `storable` is what every launch reads
-    /// the plist through, and a condition that has never matched anything must
-    /// not start matching because Helm was updated.
+    /// A stored condition is left as it is: every launch reads the plist through
+    /// `storable`, and a condition that never matched must not start matching
+    /// because Helm was updated.
     func testAStoredConditionIsNotRepairedBehindAnybodysBack() {
         XCTAssertEqual(RuleCondition.fileExtension([".pdf"]).storable,
                        .fileExtension([".pdf"]))

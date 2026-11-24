@@ -4,12 +4,9 @@ import Module_Disk_Engine
 
 /// The disk in the panel: how much room is left, out of how much there is.
 ///
-/// **This one costs a volume-attributes read, not a scan.** Everything else the Disk module
-/// knows — what is taking up the space — has to be walked for, and a widget
-/// that started a walk when the panel opened would be the worst thing in the
-/// app. Capacity and free space are a question the filesystem answers
-/// immediately, they are the two numbers somebody opens a disk tool to see
-/// first, and until now the only way to see them in Helm was to open its page.
+/// **This one costs a volume-attributes read, not a scan.** What is taking up
+/// the space has to be walked for, and the panel must never start a walk.
+/// Capacity and free space the filesystem answers at once.
 struct DiskWidget: View {
     @ObservedObject private var vm: DiskViewModel
     private let size: PanelWidgetSize
@@ -53,12 +50,9 @@ struct DiskWidget: View {
             }
         }
         .task {
-            // **Every time it is shown**, not once per launch. The model lives as
-            // long as the module does, so a read gated on an empty list would show
-            // the figure from the first opening of the panel, and the bar's red
-            // could never fire on a disk filling up while Helm runs. The panel
-            // rebuilds its widgets on every opening, and this read is a
-            // volume-attributes read.
+            // **Every time it is shown**, not once per launch: the model lives as
+            // long as the module does, and a disk can fill up while Helm runs.
+            // The read is a volume-attributes read.
             await vm.appear()
         }
     }
@@ -91,29 +85,18 @@ struct CapacityBar: View {
 
 /// The way from the tile into the module, and it is a chevron.
 ///
-/// **What this tile answers and what it cannot.** Free space is a volume-attributes read — the
-/// panel can have it instantly, which is why the tile exists. *What is taking
-/// the space* has to be walked for, and a tile that started a walk when the
-/// panel opened would be the worst thing in the app. So the tile always ends in
-/// a question it is not allowed to answer, and until now it ended there with no
-/// way onwards: the person closed the panel, found the Helm icon again, opened
-/// Settings, and looked for Disk in the sidebar.
+/// The tile answers how much is free; *what is taking the space* has to be
+/// walked for, which the panel never starts. This is the way onwards to the
+/// page that can answer it.
 ///
 /// Quiet on purpose. `HelmText.faint` and a caption-sized glyph, in the header's
-/// own trailing slot where VPN puts its dot — the tile's subject is the figure,
-/// and a door that competes with it is a door in the wrong place. A chevron is
-/// the one glyph that means «there is more, over there» without a word.
-///
-/// Named, because a control whose whole face is a glyph is invisible to anybody
-/// using VoiceOver.
+/// own trailing slot where VPN puts its dot: the tile's subject is the figure.
+/// Named, because a control whose whole face is a glyph is invisible to VoiceOver.
 private struct OpenTheModule: View {
     var body: some View {
         Button {
             // The panel's own route, and the only one: `.helmOpenSettings`
-            // carries a module id and the host brings that page up. A module
-            // asking the shell for a window through a notification is the
-            // pattern; a new `ModuleDescriptor` member for one caller is what
-            // `headerAccessory` was.
+            // carries a module id and the host brings that page up.
             NotificationCenter.default.post(name: .helmOpenSettings,
                                             object: DiskDescriptor.id.rawValue)
         } label: {

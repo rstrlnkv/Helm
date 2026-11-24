@@ -39,8 +39,8 @@ final class ObsoleteDefaultsTests: XCTestCase {
     }
 
     /// Where a retired key's constant would be declared, and the name it would carry. A tweak's key is
-    /// `module.tweak.<id>.<name>` (its store's namespace is `tweak.<id>`), so reading `tweak` as a module
-    /// pointed at `Sources/Modules/Tweak`, which is absent, and the key was skipped as "module gone".
+    /// `module.tweak.<id>.<name>` (its store's namespace is `tweak.<id>`), so `tweak` is not read as a
+    /// module, whose folder would be absent and the key skipped as "module gone".
     private static func declaringDirectory(of parts: [Substring]) -> (directory: String, name: String) {
         func pascal(_ word: Substring) -> String { word.prefix(1).uppercased() + word.dropFirst() }
         if parts[1] == "tweak", parts.count >= 4 {
@@ -66,42 +66,22 @@ final class ObsoleteDefaultsTests: XCTestCase {
     /// **A retired key's constant must be gone**, because the purge really
     /// deletes and it runs at every launch.
     ///
-    /// The list is written by hand — it has to be, since nothing in the tree
-    /// remembers a constant that was removed — so the half that *can* be tied
-    /// to the tree is the other direction: no name on it may still be declared
-    /// as a key by the code that owns its namespace. Retire
-    /// `module.layout.automatic` by a slip and every launch would quietly
-    /// switch the module off for everyone who had it on, with no error
-    /// anywhere.
+    /// The list is written by hand, since nothing in the tree remembers a
+    /// removed constant, so the direction tied to the tree is the other one: no
+    /// name on it may still be declared as a key by the code that owns its
+    /// namespace. A live key retired by a slip would quietly switch a feature
+    /// off at every launch.
     ///
-    /// **The declaration, not the write.** Two earlier versions of this scan
-    /// tried to find the *write* and could not: every write in this codebase
-    /// names a constant (`store.set(on, for: LayoutKey.automatic)`, and the
-    /// page's own `write(value, LayoutKey.automatic)`), so a scan for
-    /// `for: "automatic"` matched nothing at all and passed while three live
-    /// keys sat on the retired list. Three mutations said so, one after
-    /// another. The declaration is the thing that is actually spellable, and it
-    /// is also the stronger rule: a key whose feature is gone has no reason to
+    /// The declaration, not the write: every write names a constant
+    /// (`store.set(on, for: LayoutKey.automatic)`), so a scan for the write
+    /// matches nothing and passes. A key whose feature is gone has no reason to
     /// keep a constant.
     ///
-    /// **Spelled as a literal counts too.** Most live keys have no constant at all:
-    /// `store.string("menuBarIconSize", default: "")` is the whole declaration, so
-    /// looking only for `= "name"` let `module.app.menuBarIconSize` join the list
-    /// unnoticed (a mutation said so).
-    ///
-    /// The exception is a key still read *once* by the migration that carries
-    /// its value somewhere new before the purge takes it. There is one, it is
-    /// named here with its reason, and adding a second should be an argument
-    /// rather than an edit.
+    /// A literal counts too: `store.string("menuBarIconSize", default: "")` is
+    /// the whole declaration of many live keys.
     func testNoRetiredKeyStillHasAConstant() throws {
-        /// Retired *and* still declared, on purpose. `PanelFooterSetting` reads
-        /// this key once at launch to unfold the three switches it became, and
-        /// `AppSettings.migrateAndPurge` is one function so the read cannot
-        /// happen after the delete.
-        let migrating: Set<String> = ["module.app.showPanelFooter"]
-
         var checked = 0
-        for key in ObsoleteDefaults.retired where !migrating.contains(key) {
+        for key in ObsoleteDefaults.retired {
             let parts = key.split(separator: ".")
             guard parts.count >= 3, parts[0] == "module" else {
                 return XCTFail("\(key) is not `module.<namespace>.<name>`")

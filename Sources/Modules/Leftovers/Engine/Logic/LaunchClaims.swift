@@ -8,9 +8,9 @@ import Foundation
 /// `com.vendor.updater` sits in `~/Library/LaunchAgents` and in
 /// `/Library/LaunchAgents` on plenty of Macs — one agent for the person, one for
 /// everybody. Both load into `gui/<uid>`, so both files claim one switch. The scan
-/// is right to return two rows; what is not two is the act. With one of them badged
-/// «Leftover» in orange and the other «In use» in green, «Turn off» on the obvious
-/// rubbish stopped the working job, with nothing on screen having said so.
+/// is right to return two rows; what is not two is the act. With one badged
+/// «Leftover» and the other «In use», «Turn off» on the obvious rubbish would
+/// stop the working job, with nothing on screen having said so.
 ///
 /// Which of the two registrations launchd actually kept is not something this app
 /// can read — that needs a `launchctl print` port it does not have — so the safe
@@ -19,9 +19,8 @@ import Foundation
 ///
 /// **One rule, two readings.** The scan asks it of the launch items it has just
 /// read; the engine asks it of the two folders at the moment of the press, which is
-/// the fresher of the two — a list on screen is as old as the scan that drew it.
-/// The offer and the act cannot come to disagree about a row, which is the whole
-/// reason `LaunchLabel` is a single predicate.
+/// the fresher of the two. The offer and the act cannot come to disagree about a
+/// row, which is why `LaunchLabel` is a single predicate.
 enum LaunchClaims {
 
     /// One file, and the label it registers with launchd.
@@ -80,14 +79,11 @@ enum LaunchClaims {
     /// whether both folders opened.
     ///
     /// **The second half is not a detail of the first.** A folder that would not
-    /// open hands back nothing, and nothing is what a folder with no rival in it
-    /// hands back too — so a count taken without it is the strongest claim this
-    /// module makes («no second file registers this label, the switch may go
-    /// through») resting on a read that never happened. Either folder can
+    /// open hands back nothing, as a folder with no rival in it does — so a count
+    /// taken without it would rest the claim «no second file registers this label,
+    /// the switch may go through» on a read that never happened. Either folder can
     /// refuse: `DirectoryListing.Contents.refused` names the reasons — a mode, an
-    /// ACL, a folder belonging to somebody else, or a TCC grant. (Listing
-    /// `/Library/LaunchAgents` is open to everyone on the Mac this was written on,
-    /// `drwxr-xr-x root wheel`; what is root's is writing there.)
+    /// ACL, a folder belonging to somebody else, or a TCC grant.
     struct Reading: Equatable, Sendable {
         /// What the folders that opened hold.
         let claims: [Claim]
@@ -112,8 +108,8 @@ enum LaunchClaims {
             claims: readings.flatMap(\.entries)
                 .filter { $0.pathExtension == "plist" }
                 .map { url in
-                    // A plist read per file, handing back autoreleased Foundation
-                    // objects — ARCHITECTURE.md § Module pattern, inside the iteration.
+                    // A plist read per file, handing back autoreleased Foundation objects
+                    // (Architecture/ModulePattern.md § Module pattern): inside the iteration.
                     autoreleasepool {
                         Claim(label: LaunchAgentReader.read(plist: files.readPlist(url)?.raw ?? [:],
                                                             path: url.path).identifier,

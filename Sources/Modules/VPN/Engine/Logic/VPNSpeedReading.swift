@@ -14,15 +14,12 @@ public struct VPNSpeedReading: Equatable, Sendable {
     /// it.
     ///
     /// The page draws an arc against an expected length while a measurement is
-    /// in flight, and that length was a constant in a view: 22 s, measured on
-    /// one Mac, on one link, on one afternoon. The tool times itself
-    /// (`NetworkQualitySpeed.measure` runs inside `HelmActivity.phase`), so the
-    /// number the arc is drawn against can be a fact about *this* link — which
-    /// is what the reading already is.
+    /// in flight. The run is timed (`NetworkQualitySpeed.measure` runs inside
+    /// `HelmActivity.phase`), so that length is a fact about *this* link.
     ///
-    /// **Still not a stage.** The engine knows whether a run is in flight and
-    /// nothing else; this publishes a *length*, so the arc goes on claiming the
-    /// clock rather than the work (`HelmExpectedWait`).
+    /// **Not a stage.** The engine knows whether a run is in flight and
+    /// nothing else; this publishes a *length*, so the arc claims the clock
+    /// rather than the work (`HelmExpectedWait`).
     ///
     /// Optional: nil is what a run of no measurable length means, which is every
     /// reading a test's fixed clock produces.
@@ -39,10 +36,8 @@ public struct VPNSpeedReading: Equatable, Sendable {
     /// part of its JSON, and a reading built out of the half that arrived claims
     /// the link is 0 Mbit/s in the direction nobody measured.
     ///
-    /// Which is also why every number goes through `whole`: this function exists
-    /// because the tool's output cannot be trusted, and `Int(_: Double)` **traps**
-    /// on a value outside `Int`'s range — refusing the document is the difference
-    /// between a nil and the app going down on a line of JSON.
+    /// Every number goes through `whole`, because the tool's output cannot be
+    /// trusted and `Int(_: Double)` **traps** on a value outside `Int`'s range.
     static func parse(_ output: String, at: Date,
                              took: TimeInterval? = nil) -> VPNSpeedReading? {
         guard let data = output.data(using: .utf8),

@@ -11,9 +11,7 @@ import HelmRuntime
 /// sent into a text field Helm cannot read. The automatic path is guarded — the
 /// buffer refuses to *report* a word it could not hold in full, and
 /// `LayoutEngineEdgeTests.testNoPlanDeletesLessThanWasTyped` pins that. The
-/// gesture is a second door into the same arithmetic: `convertLastWord()` reads
-/// `buffer.word` directly, and that property answers with whatever prefix the
-/// buffer is holding without saying it is a prefix.
+/// gesture is a second door into the same arithmetic, through `convertLastWord()`.
 final class LayoutEngineGestureReachTests: XCTestCase {
     private var typing = FakeTyping()
     private var context = FakeSecure()
@@ -21,8 +19,8 @@ final class LayoutEngineGestureReachTests: XCTestCase {
 
     private func engine() -> LayoutEngine {
         typing = FakeTyping(); context = FakeSecure(); tap = FakeTap()
-        let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
-                                  translation: SameLengthTranslation(), spell: CyrillicSpell(),
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: FakeSources(follows: false),
+                                  translation: FakeTranslation(sameLength: true), spell: FakeSpell(cyrillic: true),
                                   secure: context, activation: FakeActivation())
         engine.activate()
         return engine
@@ -31,19 +29,11 @@ final class LayoutEngineGestureReachTests: XCTestCase {
     /// The trap: mid-word, past the buffer's cap, with the gesture instead of a
     /// space.
     ///
-    /// The buffer stops accepting at `maxLength` and the *field* does not. Type
-    /// seventy characters and the field holds seventy; the buffer holds
-    /// sixty-four and `buffer.word` hands them over as though they were the
-    /// whole word. `convertLastWord` converts that prefix with `force: true`,
-    /// which skips the dictionary — the one check that might have declined — and
-    /// builds a plan for sixty-four backspaces against seventy characters. Six
-    /// characters of the original survive, the replacement is typed after them,
-    /// and the token is now half Latin and half Cyrillic.
-    ///
-    /// `TypingBuffer` states the rule in its own comment — "a plan built from a
-    /// prefix deletes fewer characters than were typed" — and enforces it only
-    /// on the path that returns a `Completion`. `word` is the other path and it
-    /// is not marked as poisoned.
+    /// The buffer stops accepting at `maxLength` and the field does not. Type
+    /// seventy characters and the buffer holds sixty-four; converted with
+    /// `force: true`, which skips the dictionary, a plan for sixty-four
+    /// backspaces against seventy characters would leave a token half Latin and
+    /// half Cyrillic.
     ///
     /// Asserted as a range rather than as a refusal: either answer is a fix.
     /// Refusing is one, and so is holding on to enough to delete all seventy.
@@ -82,8 +72,8 @@ final class LayoutEngineGestureReachTests: XCTestCase {
     /// After the cap is passed the buffer has already dropped characters it
     /// never recorded; deleting from the end cannot put them back. The
     /// completion path knows this — `overflowed` survives a backspace and the
-    /// next boundary still reports nothing. `buffer.word` forgets it, so the
-    /// gesture converts a prefix that is now shorter still.
+    /// next boundary still reports nothing, and the gesture must not convert a
+    /// prefix that is now shorter still.
     ///
     /// Seventy typed, five deleted: the field holds sixty-five characters and
     /// the buffer offers fifty-nine.

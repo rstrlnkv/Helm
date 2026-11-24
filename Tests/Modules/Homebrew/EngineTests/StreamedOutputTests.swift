@@ -5,18 +5,13 @@ import XCTest
 /// What the console shows while `brew` is working.
 ///
 /// `stream` is the only port whose output a person reads directly, line by
-/// line, as it arrives. Two ways of losing some of it, both silent.
-/// Kept: guards the defect fixed in 3075fecf fix(homebrew): the console lost the end of every long operation.
+/// line, as it arrives. Two ways of losing some of it silently.
 final class LineBufferUTF8Tests: XCTestCase {
 
-    /// The trap: `availableData` splits on byte boundaries, not character
-    /// boundaries, so a multi-byte character straddling two reads leaves the
-    /// first chunk ending mid-sequence. `String(data:encoding:.utf8)` answers
-    /// nil for that, and the whole chunk — not the one character — was dropped
-    /// on the floor.
-    ///
-    /// Reachable with any non-ASCII output past one read. `brew` prints "🍺"
-    /// on every successful install and localized paths on plenty of others.
+    /// `availableData` splits on byte boundaries, so a multi-byte character can
+    /// straddle two reads, and `String(data:encoding:.utf8)` answers nil for the
+    /// first chunk. Not one character of it may be lost. `brew` prints "🍺" on
+    /// every successful install, and localized paths on others.
     func testACharacterSplitAcrossTwoReadsLosesNothing() {
         let sink = Locked<[String]>([])
         let buffer = LineBuffer(onLine: { line in sink.withLock { $0.append(line) } })
@@ -28,8 +23,7 @@ final class LineBufferUTF8Tests: XCTestCase {
         XCTAssertEqual(sink.value, ["Poured 🍺 into the Cellar"])
     }
 
-    /// The same defect one layer out: everything before the split character is
-    /// ASCII and perfectly decodable, and it went too.
+    /// The ASCII ahead of a split character survives too.
     func testTheAsciiAheadOfASplitCharacterSurvives() {
         let sink = Locked<[String]>([])
         let buffer = LineBuffer(onLine: { line in sink.withLock { $0.append(line) } })
@@ -74,29 +68,18 @@ final class LineBufferUTF8Tests: XCTestCase {
 }
 
 /// The other half: what is still in the pipe when the child exits.
-/// Kept: guards the defect fixed in 3075fecf fix(homebrew): the console lost the end of every long operation.
 final class StreamTailTests: XCTestCase {
 
-    /// The trap: `terminationHandler` cleared the readability handler and
-    /// reported the exit at once. A pipe holds tens of kilobytes, so whatever
-    /// the child had written and the reader had not picked up yet was thrown
-    /// away — and what a tool writes last is its summary. The
-    /// `🍺 /opt/homebrew/Cellar/…` line at the end of an install is exactly the
-    /// line somebody is waiting for.
+    /// What the child wrote and the reader has not picked up yet when it exits
+    /// is still delivered: a pipe holds tens of kilobytes, and what a tool
+    /// writes last is its summary, such as the `🍺 /opt/homebrew/Cellar/…` line.
     ///
     /// **The consumer has to be slower than the producer, or this passes by
-    /// luck.** Measured before the fix: 5000 lines with an instant `onLine`
-    /// arrived complete in 5 runs out of 5, because the reader kept up and the
-    /// pipe was empty by the time the child exited. The same 5000 lines with a
-    /// consumer taking 2 ms a chunk lost the tail in 5 runs out of 5 — between
-    /// 396 and 458 lines each time. The real consumer is the slow one: `onLine`
-    /// emits an event that hops to the main actor, appends to a `@Published`
-    /// array and redraws a scrolling console. So the delay here is not a
-    /// contrivance to force a failure, it is the shape of the only caller.
-    ///
-    /// Asserted on the *last* line and on the count, never on "some output
-    /// arrived": the head of the stream always arrives, which is what made this
-    /// invisible.
+    /// luck.** With an instant `onLine` the reader keeps up and the pipe is empty
+    /// at the exit. The real consumer is slow (a hop to the main actor, a
+    /// `@Published` append, a redraw), so the delay is the shape of the only
+    /// caller. Asserted on the *last* line and the count: the head always
+    /// arrives.
     func testTheLastLineOfABurstIsNotLost() {
         let count = 5000
         let sink = Locked<[String]>([])

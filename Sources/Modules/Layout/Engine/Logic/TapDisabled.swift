@@ -10,12 +10,10 @@ import CoreGraphics
 /// there will be, arriving through the same callback as ordinary keys and
 /// looking like nothing unless it is read for.
 ///
-/// It was not read for. Both types fell through `deliver`'s switch into the
-/// keycode default, produced no characters, and returned — so Layout stopped
-/// converting words with nothing said anywhere and its own switch still
-/// reading "on". A timeout needs no permission change to happen: when a word
-/// is judged the callback asks the accessibility server whether the field is
-/// secure, and one slow app in front is enough.
+/// Unread, the module stops converting with nothing said and its switch still
+/// reading "on". A timeout needs no permission change: when a word is judged
+/// the callback asks the accessibility server whether the field is secure, and
+/// one slow app in front is enough.
 ///
 /// Here rather than in the port because it is a decision, and decisions in this
 /// module are checkable without a keyboard.

@@ -6,22 +6,12 @@ import XCTest
 /// «Run now» is live on a folder whose own switch is off, and answers with a
 /// report of a sweep that did not happen.
 ///
-/// The page draws a switch per folder and a «Run now» beside it, and the button
-/// asked only whether any *rule* was enabled:
+/// The page draws a switch per folder and a «Run now» beside it. No file is at
+/// risk: `WatchedFolder.activeRules` is `enabled ? rules : []`, so a
+/// switched-off folder runs no rules however the sweep is started. What is
+/// guarded is a live-looking press returning «examined N, acted 0», a banner
+/// reporting a sweep of a folder that is off.
 ///
-/// ```swift
-/// .disabled(folder.rules.allSatisfy { !$0.enabled })
-/// ```
-///
-/// **Nothing was ever at risk, and the first draft of this file said otherwise.**
-/// `WatchedFolder.activeRules` is `enabled ? rules : []`, so a switched-off
-/// folder runs no rules however the sweep is started — the files were safe the
-/// whole time. That was found by mutation: the guard was removed and
-/// `testASwitchedOffFolderIsLeftAlone` went on passing, which is the only reason
-/// the claim was corrected instead of shipped.
-///
-/// What is real: the button looks live, and pressing it returns
-/// «examined N, acted 0» — a banner reporting a sweep of a folder that is off.
 /// The refusal is the engine's rather than the button's because the model's
 /// door, `sweepNow(folderID:)`, is a second door, and a check living in a view
 /// does not stand in it.
@@ -62,9 +52,9 @@ final class ASwitchedOffFolderIsNotSweptByHandTests: XCTestCase {
                        "precondition: run now did not sweep an enabled folder")
     }
 
-    /// The files, which were never in danger — `activeRules` already refused
-    /// them. Kept because it is the claim somebody will make about this code
-    /// again, and a test is a cheaper answer than re-reading three files.
+    /// The files are never in danger: `activeRules` refuses them. Kept because
+    /// somebody will claim otherwise, and a test is a cheaper answer than
+    /// re-reading three files.
     func testASwitchedOffFolderIsLeftAlone() async throws {
         engine.folders = [folder(enabled: false)]
         let file = try write("a.pdf", in: root)

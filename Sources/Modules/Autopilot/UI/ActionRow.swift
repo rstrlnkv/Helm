@@ -56,12 +56,11 @@ struct ActionRow: View {
 
         /// An action of this kind that does nothing yet.
         ///
-        /// A move starts with nowhere to go because the destination only ever
-        /// arrives through the panel — guessing one would be the module
-        /// choosing where somebody's files go. The runner's refusal is not what
-        /// makes that safe: repeated hourly it is a log line and a history row
-        /// per matching file for a rule that looks switched on. `Rule.canBeEnabled`
-        /// is — the switch is unreachable until the panel has been used.
+        /// A move starts with nowhere to go: the destination arrives only through
+        /// the panel, since a guess would be the module choosing where somebody's
+        /// files go. `Rule.canBeEnabled` keeps the switch unreachable until then;
+        /// the runner's refusal alone would be a log line and a history row per
+        /// matching file, every hour.
         var blank: RuleAction {
             switch self {
             case .move: .move(to: "")

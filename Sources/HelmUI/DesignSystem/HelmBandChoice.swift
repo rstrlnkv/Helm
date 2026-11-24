@@ -5,30 +5,21 @@ import SwiftUI
 /// the running macOS, and handed down as one value.**
 ///
 /// On macOS 27 the band is Helm's: `HeaderEdgeLight` over the row (`HelmPageHeader`). On macOS 26 the owner
-/// asked for the system's behaviour back (2026-09-27): the sidebar there is the system's floating glass, and
-/// Helm's band ended in a straight edge at its rounded corner (a screenshot from a 26.6.2 virtual machine, not
-/// a reading taken here) — so on 26 `pageHeaderBand` is false and no band is drawn under the row.
+/// chose the system's: the sidebar there is floating glass, and Helm's band ends in a straight edge at its
+/// rounded corner. That reading of 26 comes from the owner's 26 virtual machine, not from anything in this tree.
 ///
-/// **What the window does with it now.** `SettingsWindow` reads `running` once and hands the same value to
-/// its pane through the environment (`helmBandChoice`), where `HelmPageHeader` reads `pageHeaderBand`. It no
-/// longer sets its title bar from it: the title bar is transparent on every system
-/// (`titlebarAppearsTransparent = true`, `SettingsWindow.init`), so the owner's 26 decision that the title bar
-/// stays opaque there is not carried out; that is open with the owner.
+/// `SettingsWindow` reads `running` once and hands it to its pane (`helmBandChoice`), where `HelmPageHeader`
+/// reads `pageHeaderBand`. The title bar is transparent on every system (`SettingsWindow.init`), so the
+/// owner's wish for an opaque title bar on 26 is not carried out; that is open with the owner.
 ///
-/// **On 26 the whole is inference, not measurement.** This Mac runs 27; whether macOS 26 looks as described
-/// is checked by the owner in a 26 virtual machine, not by anything in this tree.
-///
-/// **One value, read in one place.** `running` is the only reading of the system's version the band is decided
-/// from (the window's corner reads its own, which is no band); a flag set from
-/// one reading and a band drawn from another is a page with two bands or none.
+/// One value, read in one place: a flag set from one reading of the version and a band drawn from another is
+/// a page with two bands or none.
 public struct HelmBandChoice: Equatable, Sendable {
     /// Helm's own light on the header row (`HelmPageHeader`).
     let pageHeaderBand: Bool
 
-    /// **The owner's answer (2026-09-27): on macOS 26 the system's edge
-    /// everywhere** — the header drawn in the page gives up Helm's band there
-    /// too, so on 26 no `HeaderEdgeLight` is drawn; 27 keeps it. `true` would keep the in-page header's band
-    /// on 26; this line is the whole switch.
+    /// The owner's answer for macOS 26: the system's edge everywhere, so the header drawn in the page gives up
+    /// Helm's band there too. `true` would keep the in-page header's band on 26; this line is the whole switch.
     static let pageHeaderBandOn26 = false
 
     /// The decision for a system's major version: Helm's band from 27 on, the

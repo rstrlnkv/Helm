@@ -6,18 +6,15 @@ import HelmRuntime
 ///
 /// Every number a person can choose is already bounded where they choose it —
 /// the settings menu, the panel tile's presets, `TimerPolicy.extendedMinutes`
-/// for the "+15" button. `startSession` itself took the number on trust and
-/// multiplied it:
+/// for the "+15" button. `startSession` multiplies it:
 ///
 ///     endDate = clock.now().addingTimeInterval(TimeInterval(minutes * 60))
 ///
 /// `Int` multiplication traps on overflow in Swift, in release as well as
 /// debug. And nothing makes a caller bound it: `startSession` is public, and each
-/// bound a caller applies today is that caller's own —
+/// bound a caller applies is that caller's own —
 /// `command grep -rn 'start(minutes:\|startSession(' Sources/Modules/KeepAwake`
 /// lists them. A clamp in every view is a clamp in no engine.
-///
-/// Guards: 9394ea17 (the engine did not bound the session it was asked to start).
 final class TheEngineHasTheLastWordOnASessionsLengthTests: XCTestCase {
 
     private var store: NamespacedStore!
@@ -50,9 +47,8 @@ final class TheEngineHasTheLastWordOnASessionsLengthTests: XCTestCase {
 
     /// The other end of the same multiply, and the worse answer of the two.
     /// `minutes > 0` is false for a negative, which is how this module spells
-    /// **"until I say stop"** — so a session of minus a minute became one with
-    /// no deadline at all, holding the assertion until somebody noticed. A
-    /// negative duration is not a session.
+    /// "until I say stop", so a session of minus a minute would have no
+    /// deadline at all. A negative duration is not a session.
     func testAStartAskingForANegativeSessionStartsNothing() {
         let module = engine()
 

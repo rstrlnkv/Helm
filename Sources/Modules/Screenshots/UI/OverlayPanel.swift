@@ -4,13 +4,9 @@ import AppKit
 
 /// The capture overlay's panel: borderless, non-activating, at the screen-saver level.
 ///
-/// What was measured of a menu and tooltips over it (Helm inactive, real keyboard): an `NSMenu`
-/// popped up from the panel works: an item click and a submenu item click both land, and the
-/// checkmark is drawn. With the menu closed, `EditorKeys` selects tools by key code, in the US and the Russian layout alike (the two measured);
-/// with it open, a `keyEquivalent` "a" fired in the US layout and not in the Russian one. Tooltips (`.help`) were not
-/// shown on the cells of the two bars the palette replaced, and the overlay forces the crosshair on every move (its cursor sets climbed by hundreds per
-/// open). Not yet measured: whether that forced crosshair is what hides the tooltips, and whether a menu
-/// item's SF Symbol image is drawn on its own (it was not, beside `state = .on`). The palette is hosted by `EditorBarHostingView`.
+/// An `NSMenu` popped up from it works, item, submenu and check mark alike, with Helm inactive. With the menu
+/// closed `EditorKeys` selects tools by key code in any layout; with it open a `keyEquivalent` fires only in some
+/// layouts, so the keys act with the menu closed. The palette is hosted by `EditorBarHostingView`.
 final class OverlayPanel: BorderlessPanel {
     init(screen: NSScreen, view: NSView) {
         super.init(contentRect: screen.frame)

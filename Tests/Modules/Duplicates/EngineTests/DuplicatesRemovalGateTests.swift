@@ -10,12 +10,9 @@ import XCTest
 /// `~/Library`, `/Applications` and the shared `/Library` folders — which is
 /// right for the uninstaller and fatal here: a duplicate finder pointed at
 /// `~/Downloads` would refuse every file it found, offering a basket that
-/// silently accepts nothing. `UserFileScope` asks what belongs to the *user*,
-/// which is the question this module is asking.
-///
-/// This test exists because the finder was wired to the wrong one when it moved
-/// out of Disk, and the symptom — every checkbox disabled — looks from a
-/// distance like a permissions problem rather than a mistake.
+/// silently accepts nothing — every checkbox disabled, which looks like a
+/// permissions problem rather than a mistake. `UserFileScope` asks what belongs
+/// to the *user*, which is the question this module is asking.
 final class DuplicatesRemovalGateTests: XCTestCase {
 
     private var home: String { NSHomeDirectory() }

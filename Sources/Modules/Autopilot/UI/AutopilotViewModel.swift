@@ -4,10 +4,11 @@ import Module_Autopilot_Engine
 import SwiftUI
 
 /// What the model asks of the engine: the one door. Every answer is the return
-/// value, so there is no reply that can be lost. The one thing the engine says
-/// unasked — a pass went into the history — does not come through here: the
-/// descriptor hands the model a stream of it.
+/// value, so no reply can be lost. The one thing the engine says unasked, that
+/// a pass went into the history, comes on the descriptor's stream instead.
 protocol AutopilotWork: AnyObject, Sendable {
+    /// `[]` for a Mac with no rules and for a rule set the seal refused alike;
+    /// `readStatus().refusal` tells them apart.
     func readFolders() async -> [WatchedFolder]
     func readStatus() async -> AutopilotStatus
     func readHistory() async -> [ActionRecord]
@@ -37,9 +38,8 @@ extension AutopilotEngine: AutopilotWork {}
     @Published private(set) var preview: [PreviewRow] = []
     @Published private(set) var previewingRuleID: String?
     @Published private(set) var banner: String?
-    /// Which folder the banner is about, so it can be taken down when that
-    /// folder is. "Swept 0 of 5" outlived the folder it described: stop
-    /// watching, and the report stayed on screen reporting on nothing.
+    /// Which folder the banner is about, so it is taken down with that folder
+    /// rather than reporting on one no longer watched.
     private var bannerFolderID: WatchedFolder.ID?
 
     private let work: any AutopilotWork
@@ -61,18 +61,14 @@ extension AutopilotEngine: AutopilotWork {}
     /// list made last is the list stored last.
     private var lastSave: Task<Void, Never>?
 
-    /// Built once, by the descriptor's `makeModule`, at launch, and held by the
-    /// host for the life of the module — so **the initialiser asks the engine
-    /// nothing**: a load here would read the rule store, and with it the
-    /// keychain key, at every launch of somebody who never opened Autopilot
-    /// (`AStoppedAutopilotModelReachesNoWorkTests`). The page calls `appear()`.
+    /// Built once at launch and held for the life of the module, so **the
+    /// initialiser asks the engine nothing**: a load here would read the rule
+    /// store, and the keychain key with it, for somebody who never opened
+    /// Autopilot → Architecture/Autopilot.md § How Autopilot's model reaches its engine.
     ///
-    /// The stream is captured here and `self` re-acquired per signal, the way
-    /// `DuplicatesViewModel` does and for the reason it documents: handing the
-    /// loop to an instance method holds `self` for a call that never returns,
-    /// and the `deinit` below then cancels nothing. The subscription lives here
-    /// and not in the page, so a pass the engine announces while no page is
-    /// open lands in the model, and the page finds it there when it opens.
+    /// The stream is captured here and `self` re-acquired per signal, as in
+    /// `DuplicatesViewModel`: a loop in an instance method holds `self` for a
+    /// call that never returns, and the `deinit` below then cancels nothing.
     init(work: any AutopilotWork,
          historyChanges: AsyncStream<Void>,
          presetFolders: any PresetFolderPort = SystemPresetFolders(),
@@ -116,10 +112,9 @@ extension AutopilotEngine: AutopilotWork {}
         // for a page without them. Hide only — whether to *offer* waits for the
         // status, since `[]` is also what a refused set answers.
         if hasRules { presets = [] }
-        // Asked for in the same breath as the folders, because an empty list is
-        // not a fact on its own: the engine hands `[]` out for a rule set
-        // something else wrote exactly as it does for a Mac that never had one,
-        // and a folder that is gone looks exactly like one with nothing to do.
+        // Asked in the same breath as the folders: an empty list is not a fact
+        // on its own (`readFolders`), and a folder that is gone looks exactly
+        // like one with nothing to do.
         let status = await work.readStatus()
         refusal = status.refusal
         folderStates = status.folders
@@ -137,16 +132,12 @@ extension AutopilotEngine: AutopilotWork {}
     /// asks `FileManager` where two folders are.
     @Published private(set) var presets: [OfferedPreset] = []
 
-    /// **Nothing is offered while the rules are refused.** Every preset is a
-    /// save, and while the rules are refused a save is refused with them — so
-    /// the whole section would be buttons whose only outcome is a line in the
-    /// log.
+    /// **Nothing is offered while the rules are refused**: every preset is a
+    /// save, and a save is refused with them.
     ///
-    /// **Nor once any rule exists.** The block is a way to begin, and a page that
-    /// has a rule — switched on or off, in whichever folder — has begun. It is
-    /// decided here, from the same `folders` the page draws its rules from, so
-    /// the two places that draw the block (the empty screen and the folder list)
-    /// agree without either asking «are there rules» a second time.
+    /// **Nor once any rule exists**, on or off, in any folder: the block is a way
+    /// to begin. Decided here from the `folders` the page draws, so the empty
+    /// screen and the folder list agree on it.
     private var hasRules: Bool { folders.contains { !$0.rules.isEmpty } }
 
     private func refreshPresets() {
@@ -161,10 +152,9 @@ extension AutopilotEngine: AutopilotWork {}
     /// What reading each watched folder came to, by folder id, and whether a
     /// stream is running over them.
     ///
-    /// Both are facts about the world rather than about the rules, and both can
-    /// stop being true with nobody touching Helm — a folder is renamed, a volume
-    /// unmounts, a permission is declined. `nil` for `watching` is "nothing has
-    /// asked yet", which is not "nothing is watching".
+    /// Both can stop being true with nobody touching Helm: a folder is renamed,
+    /// a volume unmounts, a permission is declined. `nil` for `watching` is
+    /// "nothing has asked yet", not "nothing is watching".
     @Published private(set) var folderStates: [String: FolderState] = [:]
     @Published private(set) var watching: Bool?
 
@@ -183,11 +173,7 @@ extension AutopilotEngine: AutopilotWork {}
         }
     }
 
-    /// What the page draws where the folder list goes.
-    ///
-    /// A value rather than three `if`s in the body, so the one case that used to
-    /// be missing — a refusal drawn as an empty Mac — is a case of an enum the
-    /// page switches over without a `default`.
+    /// What the page draws where the folder list goes (`AutopilotScreen`).
     var screen: AutopilotScreen {
         if let refusal { return .rulesRefused(refusal) }
         return folders.isEmpty && removedFolderRules.isEmpty ? .noFolders : .folders
@@ -213,12 +199,9 @@ extension AutopilotEngine: AutopilotWork {}
         return groups
     }
 
-    /// Throw away a rule set that was not written by Helm.
-    ///
-    /// The only gesture a refused page may make. Everything else it could send
-    /// is a save, and while the rules are refused a save is refused with them —
-    /// so without this the page never takes another edit.
-    func discardRefusedRules() async {
+    /// Throw away a rule set that was not written by Helm: the only gesture a
+    /// refused page may make, since every other one is a save, refused with it.
+    private func discardRefusedRules() async {
         guard !closed else { return }
         await work.dropRefusedRules()
         await load()
@@ -235,12 +218,10 @@ extension AutopilotEngine: AutopilotWork {}
 
     /// The pass the banner is about, when there is one to offer.
     ///
-    /// **The moment somebody most wants a return.** A rule has just run on a
-    /// folder they were watching it run on, and the report says it acted on
-    /// twelve files; the gesture that belongs beside that sentence is "put
-    /// those twelve back", not "scroll down and find the pass". Nil when the
-    /// run acted on nothing, because the newest pass in the history is then
-    /// somebody else's work from an hour ago.
+    /// **The moment somebody most wants a return**: the report says a rule
+    /// acted on twelve files, and "put those twelve back" belongs beside it.
+    /// Nil when the run acted on nothing, because the newest pass in the
+    /// history is then older work.
     @Published private(set) var bannerRun: ActionRun?
 
     /// Asked for rather than pushed, like the folders — the announcement that
@@ -249,29 +230,24 @@ extension AutopilotEngine: AutopilotWork {}
     func loadHistory() async {
         guard !closed else { return }
         history = await work.readHistory()
-        // The one place the grouping is computed. Five hundred rows is not a
-        // thing anybody can act on, and "the twelve files that arrived at
-        // 14:22" is.
+        // The one place the grouping is computed (`HistorySection` says why).
         runs = ActionHistory.runs(of: history)
     }
 
-    /// Why the record is empty, when it is. Three states wore one sentence, and
-    /// two of them are about the rules rather than about the module — which is
-    /// why this is asked of the folders as well as of the passes.
+    /// Why the record is empty, when it is. Asked of the folders as well as the
+    /// passes: two of the three reasons are about the rules.
     var historyEmpty: HistoryEmpty.Reason? {
         HistoryEmpty.reason(folders: folders, runs: runs)
     }
 
-    /// Whether the history card has anything to draw: a pass, a reason to state
-    /// that there is none, or a refused history whose card carries the way out.
-    /// A folder with no rules and nothing done has none of the three, and the
-    /// page's own «No rules yet» is its sentence — a titled card over nothing
-    /// says nothing.
+    /// Whether the history card has anything to draw: a pass, a reason there is
+    /// none, or a refused history's way out. A folder with no rules and nothing
+    /// done has none of the three; the page's «No rules yet» says it.
     var drawsHistory: Bool {
         !runs.isEmpty || historyEmpty != nil || historyRefused
     }
 
-    func clearHistory() async {
+    private func clearHistory() async {
         guard !closed else { return }
         await work.dropHistory()
         await load()
@@ -311,20 +287,16 @@ extension AutopilotEngine: AutopilotWork {}
 
     // MARK: - Putting it back
 
-    /// Whether a row may be offered a return.
-    ///
-    /// Two questions, both cheap: the record's own shape — is there anywhere to
-    /// go back from, and anything to check it against — and whether the history
-    /// it came out of is Helm's. **Neither touches the disk**, on purpose: this
-    /// is asked once per row and the page draws up to five hundred of them, and
-    /// the verdict that needs a `stat` is the engine's, after the press.
+    /// Whether a row may be offered a return: the record's own shape, and
+    /// whether its history is Helm's. **Neither touches the disk**: this is
+    /// asked per row, up to five hundred, and the verdict that needs a `stat`
+    /// is the engine's, after the press.
     func canPutBack(_ record: ActionRecord) -> Bool { !historyRefused && record.undoable }
 
     func canPutBack(_ run: ActionRun) -> Bool { !historyRefused && run.canBePutBack }
 
     /// The passes the section draws, held rather than derived on every body
-    /// pass: grouping five hundred records is cheap once and not cheap thirty
-    /// times a second, and the history only changes when it is read back.
+    /// pass: the history only changes when it is read back.
     @Published private(set) var runs: [ActionRun] = []
 
     func undo(_ record: ActionRecord) async {
@@ -335,11 +307,9 @@ extension AutopilotEngine: AutopilotWork {}
         await putBack { await $0.putBack(run: run.id) }
     }
 
-    /// Both gestures, which differ only in what the id names.
-    ///
-    /// The history is read back afterwards, because the rows the page would
-    /// offer again are exactly what has changed — and the banner is the report,
-    /// composed from the lines rather than from a count the engine sent.
+    /// Both gestures, which differ only in what the id names. The history is
+    /// read back afterwards, because the rows on offer are what changed; the
+    /// banner is composed from the report's lines, not from a count.
     private func putBack(_ ask: (any AutopilotWork) async -> UndoReport) async {
         guard !closed else { return }
         let report = await ask(work)
@@ -353,12 +323,9 @@ extension AutopilotEngine: AutopilotWork {}
         await loadHistory()
     }
 
-    /// What became of one row's return, keyed by the record's id.
-    ///
-    /// The banner reports the whole pass, which for a single return is one line
-    /// standing at the foot of the page far from the file it names. A file that
-    /// did not go back, or came back under another name, is a fact about *that
-    /// row* — so it is said on it too.
+    /// What became of one row's return, keyed by the record's id. The banner
+    /// stands at the foot of the page, far from the file it names, so a file
+    /// that did not go back or came back renamed is said on its row too.
     @Published private(set) var undoNotes: [String: String] = [:]
 
     /// The note for one row, or nothing.
@@ -384,12 +351,9 @@ extension AutopilotEngine: AutopilotWork {}
             : ApStr.notPutBack(line.file, reason(for: line.outcome))
     }
 
-    /// The rules the last return could not re-mark, by name.
-    ///
-    /// The one line in a return's report with something to *do* about it: the
-    /// mark that stops a rule acting twice did not stick, so the rule takes the
-    /// file again within the hour. One button each, named, because a person with
-    /// four rules needs to know which one is about to take the file back.
+    /// The rules the last return could not re-mark, by name: the mark that
+    /// stops a rule acting twice did not stick, so the rule takes the file again
+    /// within the hour. One button each, named, so a person knows which rule.
     @Published private(set) var unmarkedRules: [UnmarkedRule] = []
 
     /// Walked from each unmarked line back through the history to the record that
@@ -407,10 +371,9 @@ extension AutopilotEngine: AutopilotWork {}
             .sorted { $0.name < $1.name }
     }
 
-    /// Switch off a rule the last return could not re-mark, through the same
-    /// write a rule's own toggle takes — off, it stops taking the file back. The
-    /// offer goes with the press: the rule cannot un-stick a mark it no longer
-    /// writes.
+    /// Switch off a rule the last return could not re-mark, through the write a
+    /// rule's own toggle takes, so it stops taking the file back. The offer goes
+    /// with the press.
     func turnOffRule(_ rule: UnmarkedRule) {
         for folderIndex in folders.indices {
             for ruleIndex in folders[folderIndex].rules.indices
@@ -422,13 +385,10 @@ extension AutopilotEngine: AutopilotWork {}
         save()
     }
 
-    /// What a return says afterwards.
-    ///
-    /// Both counts always, then a line per file that did not go back with its
-    /// own reason, then the names that changed, then the one warning that has
-    /// something to do about it. Nothing is rounded and nothing is summarised:
-    /// a pass is not atomic, and «8 back» over a pass where two refused is the
-    /// sentence this whole report exists to avoid.
+    /// What a return says afterwards: both counts, a line per file that did not
+    /// go back with its reason, the names that changed, then the one warning
+    /// with something to do. Nothing is summarised: a pass is not atomic, and
+    /// «8 back» over a pass where two refused is what this report exists to avoid.
     private func sentence(for report: UndoReport) -> String {
         var lines = [ApStr.putBackReport(report.restored.count, notPutBack: report.notPutBack.count)]
         // Failures with their reasons first, then the files that changed name —
@@ -481,20 +441,15 @@ extension AutopilotEngine: AutopilotWork {}
     /// The same write, waited for, **and then the engine asked what became of
     /// it.**
     ///
-    /// One caller needs the waiting: a folder arriving with a preset in it is
-    /// swept straight afterwards, and the sweep names the folder by id — so a
-    /// `runNow` that overtook the write would ask the engine about a folder it
-    /// had not been told about yet, and answer nothing.
+    /// One caller needs the waiting: a folder arriving with a preset is swept
+    /// straight afterwards by id, and a `runNow` that overtook the write would
+    /// ask about a folder the engine does not hold yet, and answer nothing.
     ///
-    /// Every caller needs the asking. Whether a save was taken is a fact about
-    /// the store, not about this page: the rules are JSON in a plist any process
+    /// Every caller needs the asking: the rules are JSON in a plist any process
     /// running as this user can rewrite, and `SealedRules.write` turns down a
-    /// rule set it did not write — so a save can be refused at any moment by
-    /// something the page never saw happen. `refusal` read once at load is the
-    /// local flag standing in for that live fact, and `save` answers nothing
-    /// whether it saved or refused, so the answer cannot carry it either. The
-    /// re-read is the reverse channel, and it is the same gesture
-    /// `discardRefusedRules` makes one method up.
+    /// rule set it did not write, so a save can be refused at any moment.
+    /// `save` answers nothing either way and `refusal` read at load is only a
+    /// stand-in, so the re-read is the reverse channel.
     private func sendFolders(_ list: [WatchedFolder]) async {
         guard !closed else { return }
         await work.save(list)
@@ -526,21 +481,17 @@ extension AutopilotEngine: AutopilotWork {}
     ///
     /// **Asked of the gate itself.** `WatchScope` judges where a path *leads*, so
     /// `/private/var/…`, a link to the folder and another case of one component
-    /// pass it as the one directory; an identity that compared the strings would
-    /// store that directory twice, and the second copy is new to the page and is
-    /// swept at once. This used to be a second reading of the same question
-    /// (`PathCanonical` plus a follow of every link) and the two disagreed on a
-    /// link to a folder that is not there; the offer in the engine asks
-    /// `WatchScope.sameFolder`, so this does too — one rule, in one place.
+    /// pass it as the one directory; comparing the strings would store that
+    /// directory twice, and the second copy is swept at once as new. The
+    /// engine's offer asks `WatchScope.sameFolder` too, so the two cannot disagree.
     private func watchedFolder(at path: String) -> WatchedFolder? {
         folders.first { WatchScope.sameFolder($0.path, path) }
     }
 
-    /// The same gate the engine applies, asked early so the refusal is a
-    /// sentence rather than a rule that silently never fires. Both ways in —
-    /// the panel and a preset's folder — come through here, so the sentence is
-    /// decided once. It is `WatchScope`'s, which refuses by *position*: sending
-    /// this person for a grant would earn them the same refusal twice.
+    /// The engine's gate, asked early so a refusal is a sentence rather than a
+    /// rule that silently never fires. Both ways in, the panel and a preset's
+    /// folder, come through here. `WatchScope` refuses by *position*, so sending
+    /// the person for a grant would earn them the same refusal twice.
     private func admitted(_ path: String) -> Bool {
         guard WatchScope.allows(path, home: home) else {
             banner = ApStr.folderOutOfReach
@@ -565,31 +516,24 @@ extension AutopilotEngine: AutopilotWork {}
 
     // MARK: - Rules
 
-    /// The draft «New rule» opens the editor on. A draft and nothing else:
-    /// this used to write the rule into the folder — through `update`, which
-    /// saves and re-seals — before the editor had even opened, so Cancel meant
-    /// «keep an Untitled rule». The editor's Done already goes through
-    /// `save(_:in:)`, which appends a rule the folder has never seen — the
-    /// same discipline as a preset's draft, whose folder is not even watched
-    /// yet.
+    /// The draft «New rule» opens the editor on, and nothing is written: only
+    /// Done saves (`save(_:in:)` appends a rule the folder has not seen), so
+    /// Cancel leaves no untitled rule behind.
     func newRule() -> Rule {
         Rule(name: ApStr.untitledRule, action: .sortIntoSubfolder(.kind))
     }
 
-    /// The editor's Done, for every rule in the module.
-    ///
-    /// Asynchronous for the one folder that is not being watched yet: a preset's
-    /// draft. Waiting is the whole of it — the write has to land before the
-    /// sweep that follows can name the folder.
+    /// The editor's Done, for every rule. Asynchronous for a preset's draft,
+    /// whose folder is not watched yet: the write has to land before the sweep
+    /// that follows can name the folder.
     func save(_ rule: Rule, in folder: WatchedFolder) async {
         guard folders.contains(where: { $0.id == folder.id }) else {
             await saveRuleWithItsFolder(rule, in: folder)
             return
         }
-        // Changed and written in one breath rather than through `update`, whose
-        // write is a detached task: the two branches of this function have to
-        // finish at the same point, or a caller that waits for one is racing the
-        // other.
+        // Changed and written here, not through `update`, whose write is a
+        // detached task: both branches must finish at the same point for a
+        // caller that waits.
         change(folder) { current in
             guard let index = current.rules.firstIndex(where: { $0.id == rule.id }) else {
                 current.rules.append(rule); return
@@ -603,28 +547,21 @@ extension AutopilotEngine: AutopilotWork {}
 
     /// **A folder that arrives with a rule already in it, and no panel.**
     ///
-    /// The single named exception to «a folder gets in through the open panel»,
-    /// and it is narrow by construction: the path was `FileManager`'s answer —
-    /// or the one the person chose in the editor's own panel, through
-    /// `draftFolder` — the editor said which folder in words, and the dry run
-    /// the person just read was of that folder. The same gate the panel path applies is applied
-    /// here too — the runner refuses out-of-scope work anyway, and this is the
-    /// half that says so in a sentence instead of in the log.
+    /// The one exception to «a folder gets in through the open panel», narrow by
+    /// construction: the path was `FileManager`'s answer or the one chosen in the
+    /// editor's own panel (`draftFolder`), the editor named the folder, and the
+    /// dry run the person read was of it. The panel's gate applies here too, so
+    /// a refusal is a sentence and not only a log line.
     ///
-    /// Only the rule that was shown. The draft handed to the editor is a whole
-    /// `WatchedFolder`, and a dry run of the folder fills it with every other
-    /// rule that would run there; storing it as it stands would store rules
-    /// nobody agreed to.
+    /// Only the rule that was shown: the draft is a whole `WatchedFolder`, and
+    /// storing it as it stands would store rules nobody agreed to.
     ///
-    /// **And then the one automatic sweep in the module.** A rule is a decision
-    /// carried out from then on, and «from then on» starting an hour later
-    /// leaves somebody looking at a folder that has not changed. This is the
-    /// only place it happens, because it is the only place Helm knows the folder
-    /// holds nothing but what a preset just put there: a folder somebody was
-    /// already watching has their own rules in it, and sweeping it on their
-    /// behalf would run all of them over everything in it. And only for a rule
-    /// that is on: `sweepsAfterSaving` decides, for this and for the sheet's
-    /// sentence alike.
+    /// **And then the one automatic sweep in the module**, so a new rule acts
+    /// now rather than an hour later. Only here, because only here does Helm
+    /// know the folder holds nothing but what a preset put there; sweeping a
+    /// folder already watched would run all of somebody's rules over it. Only
+    /// for a rule that is on: `sweepsAfterSaving` decides, for this and the
+    /// sheet's sentence alike.
     private func saveRuleWithItsFolder(_ rule: Rule, in folder: WatchedFolder) async {
         guard refusal == nil else { return }
         guard admitted(folder.path) else { return }
@@ -643,12 +580,9 @@ extension AutopilotEngine: AutopilotWork {}
     ///
     /// **One expression, read by the sweep and by the editor's sentence**, so the
     /// sheet cannot promise «straight away» over a save that then does nothing,
-    /// nor say nothing over one that acts. A rule set refused — possibly only
-    /// after the sheet was opened — is written over by nothing, so it sweeps
-    /// nothing and promises nothing. A rule saved switched off acts on
-    /// nothing — the engine would still walk the folder and report «Processed 0
-    /// of 10» — so it neither sweeps nor promises to; a folder that is already
-    /// watched has its own rules in it and is never swept on a preset's behalf.
+    /// nor say nothing over one that acts. A refused rule set, even one refused
+    /// after the sheet opened, is written over by nothing; a rule saved off acts
+    /// on nothing; a folder already watched is never swept on a preset's behalf.
     func sweepsAfterSaving(_ rule: Rule, in folder: WatchedFolder) -> Bool {
         refusal == nil && rule.enabled && !folders.contains { $0.id == folder.id }
     }
@@ -662,24 +596,19 @@ extension AutopilotEngine: AutopilotWork {}
     /// names of `~/Library/Messages` in the sheet. No banner: the page's banner
     /// sits under the sheet and would stay stale on the page after Cancel.
     ///
-    /// A folder that is already watched comes back as the stored one, never as a
-    /// second `WatchedFolder` for the same path — the duplicate `PresetOffer`
-    /// takes care not to make — so the save joins it instead of storing the path
-    /// twice.
+    /// A folder already watched comes back as the stored one, so the save joins
+    /// it instead of storing the path twice.
     func draftFolder(at path: String) -> WatchedFolder? {
         guard WatchScope.allows(path, home: home) else { return nil }
         return watchedFolder(at: path) ?? WatchedFolder(path: path)
     }
 
-    /// What a preset's rule is called while it watches `path`: the name the
-    /// preset gave it in the folder it began in, and a name over the folder's own
-    /// display name anywhere else.
+    /// What a preset's rule is called while it watches `path`: the preset's own
+    /// name in its own folder, and a name over the folder's display name elsewhere.
     ///
     /// **The one place the name is decided**, so the editor can ask «is this
-    /// still the name the preset gave» of the folder the rule is leaving and set
-    /// the answer for the folder it is going to — the same unedited-only rule the
-    /// action follows. The preset's own folder is the port's answer, read in the
-    /// gate's terms (`WatchScope.sameFolder`) so a spelling of it is still it.
+    /// still the preset's name» of the folder being left and set it for the next.
+    /// The own folder is compared in the gate's terms (`WatchScope.sameFolder`).
     func presetName(_ preset: RulePreset, at path: String) -> String {
         if let own = presetFolders.path(of: preset.folder),
            WatchScope.sameFolder(own, path) {
@@ -718,17 +647,13 @@ extension AutopilotEngine: AutopilotWork {}
 
     // MARK: - Seeing before doing
 
-    /// What this folder's rules would do to what is in it right now.
-    ///
-    /// Asked with the rule as it stands in the editor, not as it was saved, so
-    /// the preview answers the rule being written rather than the one before
-    /// the last keystroke.
+    /// What this folder's rules would do to what is in it right now, asked with
+    /// the rule as it stands in the editor, not as it was saved.
     func runPreview(for folder: WatchedFolder, rule: Rule) async {
         guard !closed else { return }
         previewingRuleID = rule.id
-        // The whole folder, in the order it is read. This used to send a folder
-        // holding this rule alone — which answers a question nobody asked, since
-        // the first match wins and a rule above takes the files first.
+        // The whole folder, in order: the first match wins, so a rule above
+        // takes files before this one does.
         let probe = folder.previewing(rule)
         let rows = await work.dryRun(probe)
         // A cancelled ask is one the editor has already replaced — the folder
@@ -739,10 +664,7 @@ extension AutopilotEngine: AutopilotWork {}
     }
 
     /// What the rule being written takes, and what another rule takes instead.
-    ///
-    /// Split by rule identity, never by name: two rules in one folder may be
-    /// called the same thing, and the row this tells apart is the row the editor
-    /// dims.
+    /// Split by rule id, never by name: two rules in one folder may share one.
     var previewByThisRule: [PreviewRow] { preview.filter { $0.ruleID == previewingRuleID } }
     var previewByOtherRules: [PreviewRow] { preview.filter { $0.ruleID != previewingRuleID } }
 
@@ -763,21 +685,17 @@ extension AutopilotEngine: AutopilotWork {}
         undoNotes = [:]
         banner = ApStr.swept(report.acted, report.examined,
                              notCompleted: report.refused + report.failed)
-        // The run just walked the folder, so its reading is newer than the one
-        // the page opened with — and «examined 0» over a folder that has since
-        // been renamed is the sentence this whole state exists to stop.
+        // The run just walked the folder, so its reading is newer than the
+        // page's: «examined 0» over a renamed folder is what this state stops.
         folderStates[folder.id] = report.folder
         // **The record was written by the sweep this call just waited for.** The
-        // page read the history when it opened, and the engine's announcement of
-        // this pass reaches the model's own loop at some later turn — so without
-        // this read «Acted on 0 of 3» would arrive over a history that still said
-        // nothing, and the offer below would be taken from the previous pass.
+        // engine's announcement of this pass reaches the model's loop later, so
+        // without this read the report would stand over a stale history and the
+        // offer below would come from the previous pass.
         await loadHistory()
-        // The pass this run just made, which is the newest one in the history
-        // it has only now read back. A run that acted on nothing has none —
-        // the newest pass is then work from an hour ago, and offering to put
-        // *that* back beside «Acted on 0 of 3» would be the wrong sentence
-        // attached to the wrong twelve files.
+        // The pass this run just made, the newest in the history just read. A
+        // run that acted on nothing has none: the newest pass is then older
+        // work, and offering it would put the wrong files beside the sentence.
         bannerRun = report.acted > 0 ? runs.first.flatMap { offerable($0.id) } : nil
     }
 
@@ -799,10 +717,10 @@ extension AutopilotEngine: AutopilotWork {}
 
 /// A rule a return could not re-mark, as the banner offers to switch it off.
 ///
-/// Named for display and identified by the ids the record carried, so the button
-/// says which rule and switches the right one — two rules in one folder may be
-/// called the same thing, and the id is what tells them apart. Grouped by name,
-/// so one button turns off both when they do share it.
+/// Named for display and identified by the ids the record carried, so the
+/// button switches the right rule when two in one folder share a name; grouped
+/// by name, so one button turns off both.
+
 struct UnmarkedRule: Identifiable, Equatable {
     let name: String
     let ruleIDs: Set<String>
@@ -817,10 +735,8 @@ struct UnmarkedRule: Identifiable, Equatable {
 
 /// What the page draws where the folder list goes.
 ///
-/// Three states and no `default` at the switch that draws them, because the
-/// fourth one is what this enum was made for: a rule set the engine refuses used
-/// to arrive on screen as `folders.isEmpty`, which is the sentence «point Helm at
-/// a folder» over rules the person already wrote.
+/// No `default` at the switch that draws it, so a refused rule set never falls
+/// through to «point Helm at a folder» over rules the person already wrote.
 enum AutopilotScreen: Equatable {
     /// The stored rules are not Helm's to run, for one of two reasons the person
     /// can do different things about.

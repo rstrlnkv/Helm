@@ -2,24 +2,20 @@ import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
-/// One press of Stop used to end two things: the session somebody started, and
-/// any rule that was holding the Mac alongside it. The second half was never
-/// asked for — it was inferred from a trigger being true.
+/// What a press of Stop ends: the session somebody started, and a rule holding
+/// the Mac alongside it, decided by the person's whereabouts.
 ///
-/// The rule now is the person's whereabouts. **The timer switch is about being
-/// away**: it runs out while you are asleep or out of the room, and the rules
-/// stand down without you. **Stop is about being at the Mac**, so with that
+/// The timer switch is about being away: it runs out while you are asleep or
+/// out of the room, and the rules stand down without you. Stop is about being
+/// at the Mac, so with that
 /// switch on it hands the steps back — the first press ends the session and
 /// leaves the rules running, the second ends the rules. With the switch off the
 /// timer never touches the rules, there is nothing for a second step to mean,
-/// and Stop stays the one press it has always been.
+/// and Stop stays one press.
 ///
-/// The half this file exists to hold down is the second one in the brief: the
-/// step is **derived from what is true**, never stored. Nothing in here plants
+/// The step is derived from what is true, never stored. Nothing in here plants
 /// a flag and nothing waits for one to expire; every case below changes the
 /// world between the two presses and reads what the next press does.
-///
-/// Guards: f68265fe (one Stop press ended the session and the rules).
 final class TheSecondPressIsWhatEndsTheRulesTests: XCTestCase {
     private let render = "com.example.render"
     private var backing: InMemoryKeyValueStore!
@@ -189,7 +185,7 @@ final class TheSecondPressIsWhatEndsTheRulesTests: XCTestCase {
         XCTAssertTrue(engine.isActive)
     }
 
-    /// **The timer keeps its own promise.** It is the control for being away,
+    /// The timer keeps its own promise. It is the control for being away,
     /// so when it runs out it does both halves in one act — there is nobody
     /// there to press anything a second time.
     func testATimerRunningOutStillEndsTheRuleByItself() {
@@ -217,7 +213,7 @@ final class TheSecondPressIsWhatEndsTheRulesTests: XCTestCase {
         XCTAssertFalse(engine.isActive)
     }
 
-    /// **Nothing survives the process, because there is nothing to survive.**
+    /// Nothing survives the process, because there is nothing to survive.
     /// A stored «the first press has happened» would come back from disk and
     /// turn an ordinary Stop into one that switches off somebody's automation.
     /// What comes back instead is the world: a rule holding and no session, and

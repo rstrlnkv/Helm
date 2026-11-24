@@ -4,21 +4,15 @@ import XCTest
 /// Finder shows "Программы", not "Applications". The names come from macOS's
 /// own SystemFolderLocalizations table; only the folders macOS itself
 /// localizes are eligible.
-///
-/// Guards: 9e9734fb (Chinese never reached the system folder table).
 final class SystemFolderNamesTests: XCTestCase {
     private let home = "/Users/me"
 
     /// Every language Helm ships must actually reach a table.
     ///
-    /// Testing Russian alone hid a defect for the whole life of the module:
-    /// the lproj directory was built from `AppLanguage.rawValue`, which
-    /// happens to equal the directory name for seven of the eight — and does
-    /// not for Chinese, where macOS ships `zh_CN.lproj`, `zh_TW.lproj` and
-    /// `zh_HK.lproj` and no `zh.lproj`. The table silently came back empty, so
-    /// the Disk ring showed a Chinese user `Applications` where Finder says
-    /// 应用程序. The module's whole premise is that folders carry the names
-    /// Finder gives them.
+    /// `AppLanguage.rawValue` equals the lproj name for seven of the eight, not
+    /// for Chinese: macOS ships `zh_CN.lproj` and no `zh.lproj`, so a table
+    /// read by raw value comes back empty and Disk shows `Applications` where
+    /// Finder says 应用程序.
     func testEveryShippedLanguageResolvesTheSystemTable() throws {
         let root = "/System/Library/CoreServices/SystemFolderLocalizations"
         try XCTSkipUnless(FileManager.default.fileExists(atPath: root + "/ru.lproj"))

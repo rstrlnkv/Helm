@@ -1,13 +1,8 @@
 import XCTest
 @testable import HelmRuntime
 
-/// The budget says two runs a day, and until now the second could never happen.
-///
-/// `lastScanAt` was written when a scan *started*, and `.notDue` refuses for
-/// twenty-four hours after it — so any attempt, including one that came back
-/// with nothing because the walk was cut short or the root was refused, spent
-/// the whole day. The allowance whose stated purpose is "a second run if the
-/// first was cut short" was unreachable by construction.
+/// The budget allows a second run a day if the first was cut short, so an
+/// attempt that came back with nothing must not spend the whole day.
 ///
 /// So the schedule is told two different facts: when a scan last **finished**,
 /// and when one was last **attempted**. A finish holds the day; an attempt holds

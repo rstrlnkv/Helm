@@ -4,22 +4,13 @@ import HelmTestSupport
 
 /// A path that went since the scan, reported as «macOS would not move this».
 ///
-/// **Measured by the Disk survey:** `FileManager.trashItem` on a path that has
-/// been deleted throws `NSFileNoSuchFileError` — code 4 — and `TrashFailure`
-/// had no case for it, so it fell to `.systemRefused`, whose sentence is «macOS
-/// would not move this. Show it in the Finder and try from there». That is an
-/// instruction to go and look at a file that is not there.
+/// `FileManager.trashItem` on a deleted path throws `NSFileNoSuchFileError`
+/// (code 4). Classified as `.systemRefused`, it would tell the person to look in
+/// the Finder for a file that is not there; it is a refusal with its own
+/// reason: the list is stale.
 ///
-/// `HelmTrash.remove`'s own comment says what should happen: "A path that was
-/// already gone before any of this started is still a refusal with a reason —
-/// the person is looking at a stale list and should be told so." The classifier
-/// one file over had no such reason, so they were not told.
-///
-/// It is the ordinary refusal in Disk, not an exotic one: that module acts on a
-/// tree up to 24 h old, and the folders it is interesting about — Caches,
-/// DerivedData, Downloads — are exactly the ones that change under it.
-///
-/// Guards: b1afbb57 (a path gone since the scan was reported as macOS refusing it).
+/// The ordinary refusal in Disk: that module acts on a tree up to 24 h old, and
+/// Caches, DerivedData and Downloads change under it.
 final class AFileThatIsGoneIsNotARefusalTests: XCTestCase {
 
     /// End to end: the loop every deleting module goes through, handed a path

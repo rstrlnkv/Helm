@@ -32,8 +32,8 @@ final class OverlayView: NSView {
     let highlightLayer = CAShapeLayer()
     let selectionLayer = CAShapeLayer()
     /// The selected object's box and handles: over the dim, since a handle on the selection's
-    /// edge is half outside its hole. The box is a layer of its own with no fill: one path holding the
-    /// box and the handles under a white fill painted the box white, over the very object it frames.
+    /// edge is half outside its hole. The box is a layer of its own with no fill: one path for the box and the
+    /// white-filled handles would paint the box white over the object it frames.
     let frameLayer = CAShapeLayer()
     let handleLayer = CAShapeLayer()
     /// The area's own handles, eight or four on a small area (`AreaFrame.offered`): round and white on a dark edge, where an object's are squares
@@ -136,8 +136,7 @@ final class OverlayView: NSView {
     /// Pops `menu` up under the ⋯ circle, its left edge at the circle's, so that the circle and its badge stay in
     /// view; where there is no room below, AppKit flips it. The circle's place is the palette's own reading,
     /// converted from the host's top-left points to this view's. The menu's window rises `menuLift` above the
-    /// point it is given (4.5 pt measured in-process on a real popUp: window top 512.0 with the ring's bottom at
-    /// 511.5 at a lift of 4); where the body sits inside its window has no public reader. The point therefore lies
+    /// point it is given, and where the body sits inside its window has no public reader. The point therefore lies
     /// that far plus the badge's reach below the circle.
     func popUp(_ menu: NSMenu, below circle: CGPoint) {
         let menuLift: CGFloat = 4.5
@@ -302,8 +301,7 @@ final class OverlayView: NSView {
                               flags: event.modifierFlags)
     }
     override func mouseUp(with event: NSEvent) { live?.mouseUp(on: frozen.id) }
-    /// The trackpad's rotate gesture: forwarded to `rotateRuler`, which turns the ruler when one is on the picture. Whether the
-    /// non-activating panel is sent the gesture was not tried.
+    /// The trackpad's rotate gesture: forwarded to `rotateRuler`, which turns the ruler when one is on the picture.
     override func rotate(with event: NSEvent) { live?.rotateRuler(by: CGFloat(event.rotation), phase: event.phase) }
     override func rightMouseDown(with event: NSEvent) {
         live?.rightMouseDown(on: frozen.id, at: local(convert(event.locationInWindow, from: nil)))

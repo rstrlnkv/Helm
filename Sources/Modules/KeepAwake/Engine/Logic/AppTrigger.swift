@@ -46,12 +46,8 @@ public struct AppTrigger: Codable, Equatable, Sendable, Identifiable {
 }
 
 enum AppTriggerRules {
-    /// **Which** rules are satisfied, not merely whether any is.
-    ///
-    /// The screen said «App» — the only rule type anybody actually uses, and
-    /// the only one that could not say what it was talking about. A person with
-    /// four apps in the list could not tell which of them was holding the Mac,
-    /// on the screen whose whole job is to answer that.
+    /// **Which** rules are satisfied, not merely whether any is, so the screen
+    /// can say which app is holding the Mac.
     ///
     /// Bundle ids, not names: the ids are what the module stores and what it
     /// matched on, and turning one into a name is a Launch Services lookup that
@@ -74,9 +70,7 @@ enum AppTriggerRules {
     /// **The value is unbounded input read on every recompute.** It is one string
     /// in `~/Library/Preferences`, which any process running as this user can
     /// write, and `recompute()` runs from three observers — a display moving, the
-    /// charger, an app launching. Measured on what a plist can hold: 4.7 MB of
-    /// rules decodes to 50 001 of them at about 57 ms a recompute, and one bundle
-    /// id can be a million characters long.
+    /// charger, an app launching.
     ///
     /// Nobody reaches these numbers by choosing apps: the picker adds one at a
     /// time from a file dialog, and 256 characters is already far past
@@ -88,8 +82,8 @@ enum AppTriggerRules {
     static let maxRules = 200
     static let maxBundleIDLength = 256
     /// Checked **before** anything is decoded, which is where the cost is: a
-    /// refusal after `JSONDecoder` has already parsed 4.7 MB still pays the 57 ms
-    /// on every event. 128 KB is comfortably above the worst legitimate file —
+    /// refusal after `JSONDecoder` has parsed megabytes still pays for them on
+    /// every event. 128 KB is comfortably above the worst legitimate file —
     /// `maxRules` rules whose ids are all `maxBundleIDLength` long encode to about
     /// 64 KB — and far below anything written to be expensive.
     static let maxEncodedBytes = 128 * 1024
@@ -125,13 +119,9 @@ enum AppTriggerRules {
     /// Earlier versions stored a plain list of bundle ids. Those apps kept the
     /// Mac awake unconditionally, so that is what they migrate to.
     ///
-    /// **The ceilings above guard one of the two readers, and the file chooses
-    /// which reader it goes to.** This one mapped whatever it found and answered
-    /// with all of it: 50 001 rules, ids a million characters long, on
-    /// `recompute`'s path — which runs from three observers. And reaching it takes
-    /// no cunning at all, because an absent or empty `autoAppRules` is exactly
-    /// what an older file looks like: the whole ceiling was one missing key away
-    /// from not existing.
+    /// **The file chooses which of the two readers it goes to**, so the
+    /// ceilings guard both: an absent or empty `autoAppRules` is exactly what an
+    /// older file looks like, and this path is one missing key away.
     ///
     /// So `nil` here means the same as `nil` from `readable` — refused, not
     /// truncated, and the refusal has a place to go (`AppRulesReading.unreadable`,

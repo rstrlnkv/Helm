@@ -5,21 +5,12 @@ import HelmTestSupport
 
 /// What the walk does when the filesystem says no.
 ///
-/// The walk used the error-handler-less `enumerator` overload, and the report
-/// against it said such an enumerator stops at the first error. Measured on
-/// this OS it does not: an unreadable directory is walked past and the rest of
-/// the tree still arrives. What it does do is walk past it *silently* — a whole
-/// subtree missing from "what is duplicated", with the log printing a plausible
-/// `walked N files` and no hint that the answer has a hole in it.
+/// Both halves are pinned: the walk carries on past an unreadable directory,
+/// and what it could not read is counted rather than swallowed — a subtree
+/// skipped in silence leaves a plausible `walked N files` with a hole in it.
 ///
-/// So both halves are pinned here: that the walk carries on past an unreadable
-/// directory, and that what it could not read is counted rather than swallowed.
-///
-/// The existing fixtures chmod individual *files*, which the walk reads past
-/// without a directory being refused; only an unreadable *directory* reaches
-/// this path.
-///
-/// Guards a past defect: 76756c64 fix(duplicates,disk): the walk says what it could not read; roots stop naming volumes.
+/// Only an unreadable *directory* reaches this path; a chmod'ed *file* is read
+/// past without a directory being refused.
 final class DuplicateWalkErrorsTests: XCTestCase {
     private var root: URL!
 
@@ -29,11 +20,10 @@ final class DuplicateWalkErrorsTests: XCTestCase {
 
     /// Unreadable now, readable again before anything tries to delete it.
     ///
-    /// The restore is a teardown block rather than a `tearDown`, and that is
-    /// the whole of it: teardown blocks run *before* `tearDown`, so the scratch
-    /// directory's own removal reached a folder still at 0o000 and left it in
-    /// `$TMPDIR` for ever. Registered here, later than the directory's, it runs
-    /// first — blocks are unwound in reverse.
+    /// The restore is a teardown block rather than a `tearDown`: teardown blocks
+    /// run *before* `tearDown` and are unwound in reverse, so this one, registered
+    /// after the scratch directory's, runs before that removal reaches a folder
+    /// still at 0o000.
     private func wall(in directory: URL) throws -> URL {
         let url = directory.appendingPathComponent("wall")
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

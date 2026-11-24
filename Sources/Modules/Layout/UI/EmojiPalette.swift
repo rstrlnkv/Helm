@@ -4,33 +4,21 @@ import Carbon
 
 /// Opens macOS's emoji palette over whichever app holds the keyboard.
 ///
-/// There is no API that does this from a menu-bar app, and the obvious one was
-/// measured not to (2026-08-16, macOS 27): `orderFrontCharacterPalette` shows
-/// the palette only for the *calling* app, and only while it is active with a
-/// key window holding a text context — from Helm at menu-click time it is a
-/// silent no-op, and activating Helm first both steals focus and still shows
-/// nothing. Selecting the `com.apple.CharacterPaletteIM` input source — the
-/// historical route — answers success, starts the viewer's process and draws
-/// no window. Synthesising the shortcut is worse than dead: the item's key
-/// equivalent is Globe+E now, and a forged Fn+E arrives as plain typing,
-/// putting a letter into the person's document.
+/// No API does this from a menu-bar app on macOS 27.
+/// `orderFrontCharacterPalette` shows the palette only for the calling app,
+/// while it is active with a key window holding a text context, so from Helm
+/// it is a silent no-op and activating Helm first steals focus and still shows
+/// nothing. `TISSelectInputSource(com.apple.CharacterPaletteIM)` returns
+/// `noErr` and draws no window. A synthesised shortcut is worse: the item's key
+/// equivalent is Globe+E, and a forged Fn+E arrives as plain typing, putting a
+/// letter into the person's document.
 ///
-/// **Re-measured 2026-09-04, macOS 27, and the three still answer the same
-/// way.** `TISSelectInputSource(com.apple.CharacterPaletteIM)` returns
-/// `noErr` and draws no window; `orderFrontCharacterPalette` from an
-/// `LSUIElement` bundle with TextEdit frontmost and focused draws nothing
-/// across four seconds; the same call from an unbundled accessory binary
-/// draws nothing. The door was taken out of the menu once for needing
-/// Accessibility and is back behind that grant rather than in front of it —
-/// `LanguageIndicator` draws the item only when the grant exists, so the
-/// settings page's «works without this permission» stays true of the menu a
-/// person without the grant actually sees.
-///
-/// What still works is what the person does by hand: the item AppKit puts in
-/// every Edit menu. Pressing *the focused app's own* item over Accessibility
-/// runs the action inside that app, so the palette anchors to its insertion
-/// point and focus never moves — measured with the palette opening over a
-/// TextEdit document while TextEdit stayed active.
+/// What works is what the person does by hand: the item AppKit puts in every
+/// Edit menu. Pressing the focused app's own item over Accessibility runs the
+/// action inside that app, so the palette anchors to its insertion point and
+/// focus never moves. `LanguageIndicator` draws the item only when the grant
+/// exists, so the settings page's «works without this permission» stays true
+/// of the menu a person without the grant sees.
 enum EmojiPalette {
 
     /// AppKit's own table for its input-related menu items — the one place

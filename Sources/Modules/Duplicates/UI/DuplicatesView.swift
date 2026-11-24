@@ -13,8 +13,7 @@ import SwiftUI
 struct DuplicatesView: View {
     @ObservedObject var dvm: DuplicatesViewModel
     /// The row the keyboard is on. A List with no selection has no focusable
-    /// rows at all: arrow keys did nothing, and the row that stays — an image,
-    /// a name and a badge, no control anywhere — could not be reached at all.
+    /// rows, so the row that stays, which holds no control, could not be reached.
     @State private var selection: String?
     /// The copy being previewed in the sheet, nil when it is closed.
     /// A String rather than a URL because the selection is one, and
@@ -109,10 +108,9 @@ struct DuplicatesView: View {
                 .font(HelmText.groupLabel)
             // What the group is worth, not only what it is: «21 MB × 2» invites
             // multiplying, and for a clone pair the product is space the disk
-            // will not give back. `wasted` is the clone-aware fold every other
-            // figure on the page already uses, and the tail is the total line's
-            // own sentence, so the two cannot drift apart. It yields with the
-            // reason — the buttons stay pinned.
+            // will not give back. `wasted` is the clone-aware fold the page's
+            // other figures use, and the tail is the total line's own sentence.
+            // It yields with the reason; the buttons stay pinned.
             Text(DupStr.onceEmptied(Bytes(group.wasted)))
                 .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.faint)
@@ -154,8 +152,8 @@ struct DuplicatesView: View {
             // action below carry, which is why all three read one string.
             if stays {
                 Image(systemName: "checkmark.circle")
-                    // The token, not SwiftUI's green: that one measures 2.22:1
-                    // in light mode against `HelmSignal.success`'s 4.58:1.
+                    // The token, not SwiftUI's green, which is too faint for
+                    // text contrast in light mode.
                     .foregroundStyle(HelmSignal.success)
                     .accessibilityHidden(true)
             } else {
@@ -223,13 +221,11 @@ struct DuplicatesView: View {
 
 /// The circle that chooses this copy as the one to keep.
 ///
-/// **A pixel from the status glyph beside it.** The copy that already stays wears
-/// a green `checkmark.circle`; an empty grey `circle` is what marks the ones that
-/// do not — and at rest the second reads as a second status icon rather than a
-/// button. On hover it fills with the same green the outcome wears, so the
-/// pointer previews «press and this becomes the kept one» and the control reads
-/// as pressable. Its own view for the `@State` a hover needs, which a row-drawing
-/// method cannot hold.
+/// At rest the empty grey `circle` reads as a status icon beside the kept
+/// copy's green `checkmark.circle`, so on hover it fills with the same green:
+/// the pointer previews «press and this becomes the kept one». Its own view for
+/// the `@State` a hover needs, which a row-drawing method cannot hold.
+
 private struct KeepThisCopyButton: View {
     let keep: () -> Void
     @State private var hovering = false

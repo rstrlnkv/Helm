@@ -10,16 +10,13 @@ import Foundation
 /// asks the list it is drawing. A drawn layer that holds a number is stale as soon as another step goes before it, so a cache of
 /// them keeps the number it was built with beside the layer.
 ///
-/// **The digit.** The system font, bold, set by CoreText at 0.6 of the circle's diameter (12 pt in a 20 pt circle), centred on the
-/// circle by the ink of its glyphs and not by the line's room. The count goes on past 99 and the font shrinks instead: a number
-/// wider than 0.8 of the diameter is set smaller until it is, so three digits and more stay inside the circle and the count is
-/// never cut. Two digits are set at the full size from 10 on in every circle but for 99 in the 16 and 20 pt ones, which is a little smaller
-/// (`digitSize(of:diameter:)`); the 20 pt circle shows 10 at 12 pt. Its colour is the one of the two, white or black, that reads on the ink (`digitColor(on:)`).
+/// **The digit.** The system font, bold, at `digitShare` of the circle's diameter, centred by the ink of its glyphs and not
+/// by the line's room. A number wider than `widestShare` of the diameter is set smaller until it fits, so the count goes on
+/// past 99 and is never cut (`digitSize(of:diameter:)`). Its colour is white or black, whichever reads on the ink (`digitColor(on:)`).
 public enum AnnotationStep {
     /// The digit's size as a share of the circle's diameter, and the widest share of the diameter the number may take.
     static let digitShare: CGFloat = 0.6
     static let widestShare: CGFloat = 0.8
-    /// The weight trait of the digit's bold.
     static let bold: CGFloat = 0.4
 
     /// The square the circle is in: centred on where the step was placed, as wide as the thickness step says.

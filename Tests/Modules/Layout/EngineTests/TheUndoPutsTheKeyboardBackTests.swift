@@ -7,19 +7,9 @@ import XCTest
 ///
 /// `convert` does two things on success: it retypes the word and it calls
 /// `sources.select(to)`, because the person who mistyped `ghbdtn` is about to
-/// continue in Russian. The undo takes back exactly half of that: `undoLast`
-/// rebuilds the text and never touches the source, so the keyboard stays on
-/// the layout of the conversion that was just rejected. The person keeps
-/// typing the identifier they defended — and every keystroke now comes out
-/// Cyrillic, which is the very defect this module exists to fix, manufactured
-/// by its own undo. The engine's own comment promises «tapping twice converts
-/// and converts back»; the text does, the keyboard does not.
-///
-/// Would have been unrepresentable before `FakeSources` learned to follow
-/// `select()` — `current()` answered "en" for ever, so «the keyboard is still
-/// on ru after the undo» was a state no test could hold.
-///
-/// Guards a past defect: an undo left the keyboard on the layout of the rejected conversion (fix commit `973d05d1`).
+/// continue in Russian. The undo takes back both: rebuilding only the text
+/// would leave the keyboard on the rejected layout, and every keystroke after
+/// it would come out Cyrillic, the very thing this module exists to fix.
 final class TheUndoPutsTheKeyboardBackTests: XCTestCase {
 
     func testUndoPutsTheKeyboardBackWhereTheWordWasTyped() {

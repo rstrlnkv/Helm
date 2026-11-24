@@ -127,9 +127,8 @@ final class UpdateBuildTagOutcomeTests: XCTestCase {
     }
 }
 
-/// Gaps the mutants of `isNewer` and of the list picker found in the first
-/// set: the nil build against a final version, a build tag against a build
-/// tag, and the order the picker itself uses.
+/// The nil build against a final version, a build tag against a build tag,
+/// and the order the list picker itself uses.
 final class UpdateBuildTagGapTests: XCTestCase {
     /// An unknown build must not offer the tag of the running final version:
     /// that tag may be the running build, and every check would offer it again.

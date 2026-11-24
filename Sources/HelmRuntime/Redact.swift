@@ -13,10 +13,9 @@ public enum Redact {
     /// Replaces the home directory prefix with `~`. Everything else about the
     /// path stays: which module touched what is the point of the line.
     /// On an APFS boot volume group every file under the home directory is
-    /// reachable twice — as `/Users/name/…` and as
-    /// `/System/Volumes/Data/Users/name/…` — and matching the literal prefix
-    /// caught only the first. The second spelling is not exotic: a scan can be
-    /// pointed at `/System/Volumes/Data` by hand, and the scan root is logged.
+    /// reachable twice, as `/Users/name/…` and as
+    /// `/System/Volumes/Data/Users/name/…`; a scan can be pointed at the second
+    /// by hand, and the scan root is logged.
     public static func path(_ path: String, home: String = NSHomeDirectory()) -> String {
         guard !home.isEmpty else { return path }
         for prefix in [home, DataVolume.mount + home] {
@@ -30,12 +29,10 @@ public enum Redact {
     /// line about one may stay in clear.
     ///
     /// For Disk and Duplicates it is a document of the person's own, and `path`
-    /// above is the whole of the redaction: their folders are the point of those
-    /// screens. For the app-cleanup modules the leaf **is a bundle id** —
-    /// `~/Library/Preferences/com.acme.tool.plist` — which is the thing `app`
-    /// exists for: (ARCHITECTURE.md § Diagnostics log) says a bundle id names a
-    /// person's habits. Two kinds of leaf, one shared removal loop, and a
-    /// caller has to say which it hands over.
+    /// above is the whole of the redaction. For the app-cleanup modules the leaf
+    /// **is a bundle id** (`~/Library/Preferences/com.acme.tool.plist`), which
+    /// names a person's habits (Architecture/DiagnosticsLog.md § Diagnostics log).
+    /// One shared removal loop, so a caller has to say which it hands over.
     public enum Leaf: Sendable {
         case fileName, softwareName
     }
@@ -60,13 +57,11 @@ public enum Redact {
     ///
     /// **Not `deletingPathExtension`**, which takes the last dot of anything for an
     /// extension: a folder named by a bundle id (`Containers/com.acme.SecretTool`)
-    /// has no extension, and reading its last component as one left the product's
-    /// name in clear beside a tag of the vendor. Only the suffixes the app-cleanup
-    /// modules actually meet count. A list rather than `UTType`, because a type
-    /// registry answers for *this* Mac: an installed app can register its own
-    /// product name as a filename extension, and a gate that opens for it on one
-    /// machine and not another is a redaction that fails open where nobody looks.
-    /// **Known defect Redact-F2:** a bundle id that happens to end in one of these words
+    /// would leave the product's name in clear beside a tag of the vendor. Only
+    /// the suffixes the app-cleanup modules meet count. A list rather than
+    /// `UTType`, because an installed app can register its own product name as
+    /// an extension on *this* Mac, and the redaction would fail open there.
+    /// **Known defect:** a bundle id that happens to end in one of these words
     /// (`com.acme.log`) is read as a name plus an extension and wears two tags, and
     /// several ids of one vendor can share the vendor's tag.
     private static func softwareStem(_ path: String) -> String {
@@ -94,25 +89,19 @@ public enum Redact {
     /// and comparing across restarts is exactly what triage does.
     ///
     /// **Salted**, because a keyless hash of a name drawn from a small public
-    /// list is not redaction — it is an index into that list. Hashing the 104
-    /// bundle ids installed on one Mac and inverting the table identified
-    /// **every one of them**, and the same holds with more room to spare for
-    /// VPN providers (a few hundred names) and Homebrew formulae (about seven
-    /// thousand). The salt is per install and lives beside the log, so the
-    /// property this was chosen for — a line from yesterday still compares
-    /// equal to a line from today — is untouched, while a tag copied into a bug
-    /// report no longer means anything on anyone else's machine.
+    /// list (installed bundle ids, VPN providers, Homebrew formulae) is an index
+    /// into that list, inverted in moments. The salt is per install and lives
+    /// beside the log, so a line from yesterday still compares equal to one
+    /// from today, while a tag copied into a bug report means nothing anywhere
+    /// else.
     static func tag(_ value: String, prefix: String) -> String {
         tag(value, prefix: prefix, salt: salt)
     }
 
     /// The same digest over a salt named outright.
     ///
-    /// The two-argument call above reads a `static let` that is decided once per
-    /// process, which is right for the app and leaves a test no way to ask what
-    /// a *different* salt would give — and «the same name tags the same way in
-    /// two launches that could not save the salt» is a question about two
-    /// salts. Nothing else about the digest changes.
+    /// The two-argument call reads a salt decided once per process; a test needs
+    /// to ask what a *different* salt would give.
     static func tag(_ value: String, prefix: String, salt: [UInt8]) -> String {
         var hash: UInt32 = 2_166_136_261
         for byte in salt {
@@ -143,33 +132,22 @@ public enum Redact {
     /// Read once per process: `tag` runs on every logged name.
     ///
     /// The ports are named here rather than defaulted inside the function, so a
-    /// test cannot reach the real log directory by forgetting to mention it —
-    /// which is how eleven engine tests once rolled back the owner's Autopilot.
+    /// test cannot reach the real log directory by forgetting to mention it.
     private static let salt: [UInt8] = loadOrCreateSalt(
         at: HelmLog.directory.appendingPathComponent("salt"),
-        // `return` outright: a closure hands its one expression back with no
-        // word for it, which reads exactly like a dropped answer — see
-        // `ARefusalFromTheDiskIsNotASuccessTests`, which says so and means this.
-        writing: { data, url in return PrivateFile.writeMakingTheFolder(data, at: url) })
+        writing: { data, url in PrivateFile.writeMakingTheFolder(data, at: url) })
 
     /// The salt file sits beside the log, `0600`, and is created on first use.
     ///
     /// Deliberately **not** the keychain: this guards against someone reading a
     /// log the user handed them, not against someone with the user's disk — and
     /// a keychain prompt for a logging detail is a worse trade than the one it
-    /// would buy. If the file cannot be written the tags stay stable and
-    /// unsalted rather than changing every launch, because a tag that means
-    /// nothing across restarts is useless for the triage it exists for.
+    /// would buy.
     ///
-    /// **That last sentence was false for as long as it stood.** The write's
-    /// answer was dropped and the fresh bytes were used whatever it said, so a
-    /// salt file that could not be written salted every launch differently —
-    /// which is precisely the outcome the sentence rules out, and the one that
-    /// costs the tag the only property it has. `app#1a2f` on Monday and
-    /// `app#c40b` on Tuesday are one application, and the log cannot say so.
-    /// The two properties pull against each other and only one survives an
-    /// unwritable disk; the paragraph had already chosen, and the code now
-    /// obeys it. `ASaltThatCannotBeSavedIsNotASaltTests` holds the promise.
+    /// If the file cannot be written the tags stay stable and unsalted rather
+    /// than salted differently every launch, because a tag that means nothing
+    /// across restarts is useless for triage. Only one of the two properties
+    /// survives an unwritable disk, and this is the one kept.
     static func loadOrCreateSalt(at url: URL, writing write: (Data, URL) -> Bool) -> [UInt8] {
         if let existing = try? Data(contentsOf: url), existing.count == 16 {
             return [UInt8](existing)
@@ -180,10 +158,9 @@ public enum Redact {
         }
         guard write(Data(fresh), url) else {
             // Said out loud, because unsalted tags are a fact about how much
-            // this log can be trusted to hide and whoever triages it should not
-            // have to guess. No name reaches the line — there is none to reach
-            // it — and the log's own writer is a different port from this one,
-            // so a disk that refused the salt may still take the line.
+            // this log can be trusted to hide. The log's own writer is a
+            // different port, so a disk that refused the salt may still take
+            // the line.
             HelmLog.shared.warn("log", "the redaction salt could not be saved — tags stay "
                                 + "comparable across launches but are unsalted, so anyone "
                                 + "holding this log can invert them against a list of names")

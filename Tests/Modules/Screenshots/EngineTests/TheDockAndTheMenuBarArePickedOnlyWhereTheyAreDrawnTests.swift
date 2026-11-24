@@ -3,12 +3,11 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Screenshots_Engine
 
-/// The list `CGWindowListCopyWindowInfo` gave on the owner's Mac, front to back:
-/// the menu bar (layer 24, 1512x33) is its own rect and a target; the Dock keeps a
+/// The list `CGWindowListCopyWindowInfo` gives, front to back:
+/// the menu bar (layer 24) is its own rect and a target; the Dock keeps a
 /// full-screen transparent sheet at layer 20 above every normal window, of which
-/// only the strip (measured: `visibleFrame` gives up 74 points at the bottom) is
-/// drawn. A rule of "layer 0 and above" picked the Dock at every point; a rule of
-/// "never" refused what macOS offers. The ports file lists the Dock at the strip.
+/// only the strip (what `visibleFrame` gives up at the bottom) is drawn. The Dock is
+/// picked at the strip and nowhere else, and never refused there. The ports file lists the Dock at the strip.
 /// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/WindowPick.swift`: `|| window.layer == dockLevel` -> `|| window.layer == dockLevel + 1`.
 final class TheDockAndTheMenuBarArePickedOnlyWhereTheyAreDrawnTests: XCTestCase {
     override func setUp() { super.setUp(); ScreenshotsLog.begin() }

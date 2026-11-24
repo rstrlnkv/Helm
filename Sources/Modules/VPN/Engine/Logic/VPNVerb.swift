@@ -5,15 +5,9 @@ import Foundation
 
 /// Which way a request to `scutil --nc` goes — the one place this module says it.
 ///
-/// It was written down three times over: as the card's own `Verb`, as the
-/// `verb: String` the engine passed its own log line, and as the wording of the
-/// sentence a refusal draws, which had no verb at all and therefore said
-/// «refused to connect» about a *stop* the tool would not perform. A person who
-/// asked to bring a tunnel down then read that it was down while it was up,
-/// which is the one sentence this module must never produce.
-///
-/// `String`-backed because the log word is the same declaration rather than a
-/// literal typed beside it.
+/// The card, the log line and a refusal's sentence all read it, so a refused
+/// *stop* can never be worded as a refused connect. `String`-backed because the
+/// log word is the same declaration rather than a literal typed beside it.
 public enum VPNVerb: String, Equatable, Sendable {
     case connect, disconnect
 

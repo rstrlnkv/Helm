@@ -6,23 +6,14 @@ import HelmTestSupport
 /// space it puts beside a mark, are looked up in macOS's own bundles rather
 /// than remembered — the same rule the units and the pane names follow.
 ///
-/// `Quoted` already carries that ruling for a name it wraps at runtime
-/// (`L10n.swift`), and the `.lproj` files went their own way regardless: the
-/// 0.8.0 entries quoted Spanish with `“…”` and the 0.9.0 entries with `«…»`,
-/// which is one file disagreeing with itself about a language. Counted in
-/// Finder's own `.lproj`: es 424 `“…”` against 0 `«…»`, pt-BR 419 against 0.
+/// `Quoted` (`L10n.swift`) carries that ruling for a name it wraps at runtime,
+/// and this holds every catalog to it, so no file quotes one language two ways.
+/// All eight languages are checked: a held-out language is a guard that cannot
+/// fail. The corner brackets are seeded into the union below because no
+/// language's `Quoted` produces them, so nothing else would make them foreign.
 ///
-/// Japanese was held out of this for one release, and the exclusion was the
-/// reason the file could stay 118/118 on 「…」 while `Quoted` answered “…” for
-/// the same language: the filter dropped it from the offender loop *and* from
-/// the union, so it neither obeyed the ruling nor made 「…」 foreign to anyone.
-/// A held-out language is a guard that cannot fail. All eight are checked now,
-/// and the corner brackets stay seeded below because no language's `Quoted`
-/// produces them, so nothing else would put them in the union.
-///
-/// Both predicates below read every catalog through `ModuleCatalogs` — the kit's, each module's, the
-/// host's and the changelog's: a value is judged by its marks and its spaces, and does not know or care
-/// which file it came out of. There is no inline table left to read.
+/// Both predicates read every catalog through `ModuleCatalogs`: a value is
+/// judged by its marks and its spaces, whichever file it came out of.
 final class PunctuationIsTerminologyTests: XCTestCase {
 
     /// Every symbol's value in `language`, named `Module.symbol` — one entry per symbol, so two symbols
@@ -36,11 +27,9 @@ final class PunctuationIsTerminologyTests: XCTestCase {
 
     /// A language's own marks, asked of `Quoted` rather than written down here.
     ///
-    /// `Quoted` is the ruling — eight languages, each counted in macOS's
-    /// bundles, with the counts in its doc comment — and a second copy of it in
-    /// a test is a second thing to keep in step. Wrapping the empty string
-    /// leaves exactly the pair, plus French's unbreakable spaces, which are the
-    /// other test's subject.
+    /// `Quoted` is the ruling, so a second copy of it here would be a second
+    /// thing to keep in step. Wrapping the empty string leaves exactly the pair,
+    /// plus French's unbreakable spaces, which are the other test's subject.
     private func marks(of language: AppLanguage) -> Set<Character> {
         Set(Quoted("", language: language).filter { !$0.isWhitespace })
     }
@@ -53,7 +42,7 @@ final class PunctuationIsTerminologyTests: XCTestCase {
     }
 
     /// Every mark any of the eight writes, plus the corner brackets, which none
-    /// of them do — three Chinese values had them, and Japanese had 118.
+    /// of them do.
     private var everyMark: Set<Character> {
         AppLanguage.allCases.reduce(into: Set<Character>(["「", "」"])) { $0.formUnion(marks(of: $1)) }
     }
@@ -78,17 +67,11 @@ final class PunctuationIsTerminologyTests: XCTestCase {
 
     /// French's space is a character, and the wrong one breaks the line.
     ///
-    /// macOS French is 413 for 413 on the unbreakable space inside guillemets
-    /// and writes 129 before a colon and 121 before a question mark with never
-    /// an ordinary one. An ordinary space there is not merely the wrong
-    /// character: it is a *breaking* one, so the name can end up on the line
-    /// below the mark that opened it, and the colon can start a line by itself.
-    ///
-    /// Cleanly expressible because French is the only language of the eight
-    /// that spaces its punctuation at all, and because nothing in the file
-    /// quotes an untranslated English label — the one value that names a macOS
-    /// setting writes it in French inside French marks. Neither pattern has a
-    /// legitimate occurrence to excuse.
+    /// macOS French puts an unbreakable space inside guillemets and before a
+    /// colon or a question mark, never an ordinary one, which would break the
+    /// line between a name and its mark. Cleanly expressible, because French is
+    /// the only one of the eight that spaces its punctuation, and neither
+    /// pattern has a legitimate occurrence to excuse.
     private func frenchSpacingOffences(in value: String) -> [String] {
         let breaking: Character = " "        // U+0020
         let unbreakable: Character = "\u{00A0}"

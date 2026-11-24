@@ -29,7 +29,7 @@ public enum TimerPolicy {
     public static let longestSessionMinutes = 24 * 60
 
     /// The same ceiling in seconds, which is the shape everything holding a
-    /// deadline wants it in; `minutes * 60` was being spelled at each of them.
+    /// deadline wants it in.
     static let longestSession = TimeInterval(longestSessionMinutes * 60)
 
     /// The session the panel tile's "+15" asks for: what is left of the

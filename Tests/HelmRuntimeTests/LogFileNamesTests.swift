@@ -3,16 +3,9 @@ import XCTest
 
 /// Every file the log can create is a file the log knows how to destroy.
 ///
-/// The one-time purge of the pre-redaction log — written because the file had
-/// been carrying VPN names, application names and home paths, and there is a
-/// "Copy log" button whose whole purpose is pasting it into a bug report —
-/// removed `helm.log` and `helm.log.1`. Rollover has never written
-/// `helm.log.1`; it writes `helm.previous.log`. The name was guessed at the
-/// moment the purge was written and never checked against the rotation twenty
-/// lines below it, so the half of the log that most needed destroying survived
-/// it, and survived the Clear button too.
-///
-/// These are about the names agreeing, because that is what came apart.
+/// The purge and the Clear button must remove the names rollover writes
+/// (`helm.previous.log`), not a guessed `helm.log.1`, or the older half of a
+/// log carrying names and paths survives both.
 final class LogFileNamesTests: XCTestCase {
 
     func testTheRolloverIsOneOfTheFilesTheLogAccountsFor() {
@@ -24,13 +17,10 @@ final class LogFileNamesTests: XCTestCase {
 
     /// The purge's latch is the one file the log must **not** clear.
     ///
-    /// It records that the one-time purge already happened. A purge that
-    /// removed its own latch could run again — which is the failure this whole
-    /// file exists around, wearing different clothes: the latch used to live in
-    /// `UserDefaults.standard`, i.e. in the *calling process's* domain, so
-    /// "once" meant once per process identity and any tool linking HelmRuntime
-    /// wiped the user's log the first time it ran. It did exactly that, to a
-    /// dev build's triage evidence, before it was caught.
+    /// It records that the one-time purge already happened, so a purge that
+    /// removed it would run again and wipe the fresh log. It is a file beside
+    /// the log, not a `UserDefaults.standard` key, whose domain is the calling
+    /// process's, so any tool linking HelmRuntime would purge on first run.
     func testTheResetMarkerIsNotSomethingClearingTheLogDestroys() {
         XCTAssertFalse(HelmLog.allFileURLs.contains(HelmLog.resetMarkerURL),
                        "clearing the log would delete the record that the purge already ran, "

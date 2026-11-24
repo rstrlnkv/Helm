@@ -2,13 +2,19 @@ import AppKit
 import HelmUI
 import SwiftUI
 
-/// The toolbar item's view: exactly the control's size (its segments and the track's inset either side), 36 pt high (see `SettingsToolbar`: a taller container makes
-/// a taller glass track and takes drags). The attention dots and the accessibility elements lie over the segments'
-/// places and take no press.
+/// The toolbar item's view: the control's width (its segments and the track's inset either side) and `lift` more than
+/// its 36 pt in height, the control at the bottom (see `SettingsToolbar`). The control is the `contentView` of the
+/// strip's own glass track, and both are fresh each time the strip enters a window (a glass that re-enters draws
+/// empty; a control that re-enters draws a divider between unselected segments every second entry). The attention
+/// dots and the accessibility elements lie over the segments' places and take no press.
 @MainActor final class TabsStrip: NSView {
     var onPick: (Int) -> Void = { _ in }
 
-    private let control = NSSegmentedControl()
+    /// The toolbar centres an item at window y 26 and the row centres at 30, so the strip reaches 8 above the control.
+    static let lift = CGFloat(8)
+
+    private var control = NSSegmentedControl()
+    private var glass = NSGlassEffectView()
     private var dots: [NSView] = []
     private var elements: [SegmentElement] = []
     private var declaration: HelmTabsDeclaration?
@@ -17,17 +23,42 @@ import SwiftUI
     override var isFlipped: Bool { true }
 
     init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 1, height: HelmTabsMetrics.height))
+        super.init(frame: NSRect(x: 0, y: 0, width: 1, height: HelmTabsMetrics.height + Self.lift))
         translatesAutoresizingMaskIntoConstraints = false
         widthConstraint = widthAnchor.constraint(equalToConstant: 1)
-        NSLayoutConstraint.activate([widthConstraint, heightAnchor.constraint(equalToConstant: HelmTabsMetrics.height)])
+        NSLayoutConstraint.activate([widthConstraint, heightAnchor.constraint(equalToConstant: HelmTabsMetrics.height + Self.lift)])
+        control = makeControl()
+        glass.contentView = control
+        glass.cornerRadius = HelmTabsMetrics.height / 2
+        addSubview(glass)
+        setAccessibilityElement(false)
+    }
+
+    private func makeControl() -> NSSegmentedControl {
+        let control = NSSegmentedControl()
         control.trackingMode = .selectOne
         control.controlSize = .extraLarge
+        // `.capsule`: with the default style even a fresh control draws a divider between unselected segments at times.
+        control.segmentStyle = .capsule
         control.target = self
         control.action = #selector(picked(_:))
         control.setAccessibilityElement(false)
-        addSubview(control)
-        setAccessibilityElement(false)
+        return control
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard window != nil else { return }
+        let fresh = NSGlassEffectView()
+        fresh.cornerRadius = HelmTabsMetrics.height / 2
+        fresh.frame = glass.frame
+        glass.contentView = nil
+        control = makeControl()
+        fresh.contentView = control
+        glass.removeFromSuperview()
+        addSubview(fresh, positioned: .below, relativeTo: nil)
+        glass = fresh
+        apply(declaration)
     }
 
     required init?(coder: NSCoder) { fatalError("not supported") }
@@ -66,7 +97,7 @@ import SwiftUI
         control.isEnabled = declaration.enabled
         let total = HelmTabsMetrics.total(tabs, style)
         widthConstraint.constant = total
-        control.frame = NSRect(x: 0, y: 0, width: total, height: HelmTabsMetrics.height)
+        glass.frame = NSRect(x: 0, y: Self.lift, width: total, height: HelmTabsMetrics.height)
         layoutDots(widths)
         refreshElements()
     }
@@ -88,10 +119,10 @@ import SwiftUI
             // is; on a glyph alone it sits on the glyph's top right, as `.flat`'s does.
             let mid = x + widths[index] / 2
             if declaration.style == .icons {
-                dot.frame = NSRect(x: mid + 7, y: 8, width: size, height: size)
+                dot.frame = NSRect(x: mid + 7, y: Self.lift + 8, width: size, height: size)
             } else {
                 dot.frame = NSRect(x: mid + HelmTabsMetrics.labelHalf(tab, declaration.style) + HelmTabsMetrics.dotGap,
-                                   y: (HelmTabsMetrics.height - size) / 2, width: size, height: size)
+                                   y: Self.lift + (HelmTabsMetrics.height - size) / 2, width: size, height: size)
             }
             // Dimmed with the control, as `.flat`'s group is.
             dot.alphaValue = declaration.enabled ? 1 : HelmTabNumbers.dimmed
@@ -127,7 +158,7 @@ import SwiftUI
             element.setAccessibilityValue(control.selectedSegment == index ? 1 : 0)
             element.setAccessibilityParent(self)
             element.setAccessibilityEnabled(declaration.enabled)
-            element.setAccessibilityFrameInParentSpace(NSRect(x: x, y: 0, width: widths[index],
+            element.setAccessibilityFrameInParentSpace(NSRect(x: x, y: Self.lift, width: widths[index],
                                                               height: HelmTabsMetrics.height))
             element.press = { [weak self] in
                 guard let self, declaration.enabled else { return false }

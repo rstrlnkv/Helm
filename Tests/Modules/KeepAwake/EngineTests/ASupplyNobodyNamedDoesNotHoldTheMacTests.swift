@@ -4,22 +4,13 @@ import HelmRuntime
 
 /// A power source the system will not name must not hold somebody's Mac awake.
 ///
-/// The port's mains answer used to be a `Bool` folded out of the battery
-/// reading: `guard let reading = current() else { return true }`. Two things
-/// followed from that `true`, and they are opposite ends of the same defect.
+/// Folded to «on power», an unreadable source would start the power rule
+/// holding the Mac, and `BatteryGuard.shouldDeactivateWithNoReading`'s
+/// `!isOnMains` branch, the one thing that ends an unattended session with no
+/// reading, could never be taken: ending a session early is this module's
+/// safe failure.
 ///
-/// `powerCondition()` read a source it could not read at all as **on** power and
-/// started holding the Mac — against its own comment, which said nil for an
-/// incomplete dictionary «still has to mean not-on-power, because ending a
-/// session early is this module's safe failure». And
-/// `BatteryGuard.shouldDeactivateWithNoReading(enabled:isOnMains:)`, whose whole
-/// reason for being is the `!isOnMains` branch, could never take it: with no
-/// reading the fold answered `true` every time, so the one thing that ever ends
-/// an unattended session was unreachable on the path written for it. Its test
-/// passed, because `FakePower` could plant a state the real port could not
-/// produce.
-///
-/// So the port answers `PowerSource.Supply?` now — mains, battery, or nothing
+/// So the port answers `PowerSource.Supply?` — mains, battery, or nothing
 /// named — and this module folds «nothing named» to not-on-mains. The scan folds
 /// it the other way at its own call site, which is why the fold is not inside
 /// the port (`PowerSource.isOnMains(_:)`).
@@ -68,13 +59,10 @@ final class ASupplyNobodyNamedDoesNotHoldTheMacTests: XCTestCase {
 
     /// The rule tests below switch the floor off, and it is not tidying.
     ///
-    /// `batteryVetoes` is a veto over *everything*, and with no charge and no
-    /// named supply it fires on any Mac that has a battery — so on the machine
-    /// this suite usually runs on, «the rule did not hold» would have been true
-    /// whatever `powerCondition` decided. That is a test passing for a reason
-    /// that has nothing to do with what it is about, and the control below is
-    /// what caught it. With the floor off, the power fold is the only thing left
-    /// that can refuse.
+    /// `batteryVetoes` is a veto over everything, and with no charge and no
+    /// named supply it fires on any Mac that has a battery, so «the rule did not
+    /// hold» would be true whatever `powerCondition` decided. With the floor
+    /// off, the power fold is the only thing left that can refuse.
     private func withoutTheBatteryFloor() {
         store.set(false, for: KeepAwakeSettings.Key.batteryGuardEnabled)
     }
@@ -96,7 +84,7 @@ final class ASupplyNobodyNamedDoesNotHoldTheMacTests: XCTestCase {
     }
 
     /// The control, and it is the half the fix may not cost: a desktop names its
-    /// supply, so the rule that was dead on every desktop stays alive.
+    /// supply, so the rule stays alive on every desktop.
     func testThePowerRuleStillHoldsADesktopWhoseSupplyIsNamed() {
         withoutTheBatteryFloor()
         aDesktopOnMains()
@@ -135,12 +123,11 @@ final class ASupplyNobodyNamedDoesNotHoldTheMacTests: XCTestCase {
         XCTAssertTrue(engine.activeConditions.contains(.app))
     }
 
-    // MARK: - And the guard the fold had made unreachable
+    // MARK: - And the guard the fold must reach
 
     /// A laptop with an indefinite session, whose power source stops answering.
     /// `BatteryGuard.shouldDeactivateWithNoReading` is reached with a mains
-    /// answer of *false* for the first time — in production it only ever got
-    /// `true`.
+    /// answer of false.
     ///
     /// A Mac with a battery is the precondition (`batteryVetoes` opens on
     /// `lidInfo.hasBattery()`, which `FakeLidInfo` answers yes).
@@ -175,8 +162,8 @@ final class ASupplyNobodyNamedDoesNotHoldTheMacTests: XCTestCase {
         XCTAssertFalse(engine.batteryStopped)
     }
 
-    /// The other side of the same guard, which the fold got right by accident: a
-    /// desktop names mains, has no charge to read, and must keep its session.
+    /// The other side of the same guard: a desktop names mains, has no charge to
+    /// read, and must keep its session.
     func testADesktopKeepsItsSessionWhenThereIsNoChargeToRead() {
         engine.activate()
         engine.startSession(minutes: 0)

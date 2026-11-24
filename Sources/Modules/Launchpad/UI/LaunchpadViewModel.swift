@@ -36,11 +36,8 @@ enum LaunchNotice: Equatable {
     case removalBusy
 }
 
-/// The module's state, the one door to its engine and the one door to its window.
-///
-/// The window is opened only here (`showLaunchpad`, `toggleLaunchpad`), by the hotkey and by the page's button; `present`
-/// is what builds it, set by the descriptor, and a model without it (a test) opens nothing. Whatever shows a snapshot
-/// runs `whileShown()`: the snapshot is held only while somebody does, so a closed window holds no list of apps.
+/// The module's state, the one door to its engine and the one door to its window
+/// (Architecture/Launchpad.md § How Launchpad's model reaches its engine, § The window).
 ///
 /// `snapshot` is nil until the engine has answered once — busy, not empty. Every answer
 /// from a hop off the main actor is dropped when a newer request exists or the model is closed — a

@@ -165,9 +165,8 @@ struct ScreenshotsSettingsPage: View {
         }
     }
 
-    /// The combination a shortcut holds **now**: what was recorded, or — for a
-    /// store nothing was ever recorded into — the one it ships with. Nil for one
-    /// that was cleared.
+    /// The combination a shortcut holds **now**: what was recorded, or the default while the store holds no key
+    /// (Architecture/Screenshots.md § The settings page). Nil for one that was cleared.
     static func combination(of hotkey: ScreenshotsHotkey, in store: NamespacedStore) -> (keyCode: Int, modifiers: Int)? {
         let keys = HotkeyStoreKeys(prefix: hotkey.storePrefix)
         guard store.object(keys.keyCode) != nil else {
@@ -297,10 +296,7 @@ struct ScreenshotsSettingsPage: View {
     }
 
     /// **Warning ink is for a conflict and for nothing else.** A box that is on is
-    /// macOS's ordinary state — it is on in every install that has not moved a
-    /// shortcut — and painting it in the warning colour put the brightest thing on
-    /// a page that accuses nothing, over a pair of shortcuts that did not collide.
-    /// It is a warning only when a combination Helm holds is the one the box holds.
+    /// macOS's ordinary state, so it is a warning only when a combination Helm holds is the one the box holds.
     static func conflicts(_ reading: SystemBoxReading,
                           with combinations: [(keyCode: Int, modifiers: Int)]) -> Bool {
         combinations.contains {
@@ -374,7 +370,7 @@ struct ScreenshotsSettingsPage: View {
                         EditorSwatch(color: color, selected: ink == color) {
                             ink = color
                             store.set(color.rawValue, for: ScreenshotsSettings.Key.editorColor)
-                            // The shared ink of before each tool kept its own would be read first and hide this pick.
+                            // `editorInk`, read before this key, would hide this pick.
                             store.set(nil, for: ScreenshotsSettings.Key.editorInk)
                         }
                     }

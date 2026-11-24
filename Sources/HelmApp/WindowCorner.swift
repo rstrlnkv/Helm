@@ -15,22 +15,22 @@ import HelmRuntime
 ///    `HelmReadNumber` so that an absent selector, a method of that name that is
 ///    not a getter of a floating-point number and an accessor that throws all
 ///    read as "did not answer" — only when it answers above zero. Zero is what a
-///    borderless window answered on 27.2, and it is also what a key that means
-///    nothing would answer; the two cannot be told apart, so the ladder goes on
-///    to the guess;
+///    borderless window answers, and also what a key that means nothing would
+///    answer; the two cannot be told apart, so the ladder goes on to the guess;
 /// 2. a guess by system (`guess(systemMajor:)`), called a guess in `rung` and in
 ///    the line;
 /// 3. a square corner, where nobody has stated a guess.
 ///
-/// **What the guess rests on.** macOS 26, 16 pt, for a window with no toolbar,
-/// which the settings window is now: stated on the web, measured by nobody. Any other
-/// system: nobody has stated one, so there is no guess.
+/// **What the guess rests on.** macOS 26, 16 pt, for a window with no toolbar:
+/// stated on the web, measured by nobody. The settings window wears a toolbar,
+/// so the guess may not be its corner. Any other system: nobody has stated
+/// one, so there is no guess.
 ///
 /// That the window's `_cornerRadius` is answered by an `NSWindow` on macOS 26,
 /// and that its number is the corner the window is drawn with, is measured by
-/// nobody; there is no macOS 26 machine here. On 27.2 it agreed with the system's
-/// own reading in three kinds of window. The line `logLine` builds is how a
-/// machine that was not measured reports what its window answered.
+/// nobody; there is no macOS 26 machine here. On macOS 27 it agrees with the
+/// system's own reading. The line `logLine` builds is how a machine that was
+/// not measured reports what its window answered.
 ///
 /// `ShellContentView` reads the corner in its `layout()` on macOS 26 and writes
 /// the line. Whoever writes the line owns one `Journal` for the window it is in,

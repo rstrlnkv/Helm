@@ -26,10 +26,9 @@ enum SidebarLayoutStore {
         let stored = store.data(key).flatMap {
             try? JSONDecoder().decode(SidebarLayout.self, from: $0)
         }
-        // No layout yet: seed, then honour the flat order the person may have
-        // arranged before sections existed. Dropping it would be the upgrade
-        // rearranging their sidebar for them. Once a layout exists the flat key
-        // is history and is not consulted again.
+        // No layout yet: seed, then honour a flat order the person may have
+        // stored under the older key, so an upgrade does not rearrange their
+        // sidebar. Once a layout exists the flat key is not consulted again.
         let base = stored ?? migrated(from: store.stringArray("moduleOrder"), registry: registry)
         return base.reconciled(with: registry)
     }

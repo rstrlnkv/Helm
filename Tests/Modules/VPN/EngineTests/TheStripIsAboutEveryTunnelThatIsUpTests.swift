@@ -7,24 +7,15 @@ import HelmRuntime
 import XCTest
 @testable import Module_VPN_Engine
 
-/// **Two tunnels up, and the second was drawn nowhere.**
+/// **Every tunnel that is up reaches the page**, ordered so that «the first»
+/// means the one the traffic actually leaves through.
 ///
-/// The payload carried one `VPNTunnelState` — the tunnel holding the default
-/// route, or the first that was up — so a Mac with a work tunnel and a home
-/// tunnel had one of them on the page and no way to reach the other. It carries
-/// every connected tunnel that has an interface reading now, ordered so that
-/// «the first» means the one the traffic actually leaves through.
-///
-/// And the thing that ordering is *for*: a measurement cannot be taken for a
-/// tunnel that is not carrying the default route. `networkQuality` cannot be
-/// bound to an interface on this build of macOS — `-I utunN` prints
-/// `error_code -1009` at exit status 0 — so an unbound run follows the default
-/// route whatever the switcher is showing. Offering it on a non-routed tunnel
-/// would file one tunnel's figure under another's name, and the refusal is here
-/// in the engine rather than only in the view because the view is not the only
-/// thing that can send a command.
-///
-/// Past defect: commit 38cc0b77, «feat(vpn): the strip is about a tunnel you choose, not the only one it knew».
+/// And what that ordering is *for*: a measurement cannot be taken for a tunnel
+/// that is not carrying the default route. `networkQuality` cannot be bound to
+/// an interface, so an unbound run follows the default route whatever the
+/// switcher is showing, and one tunnel's figure would be filed under another's
+/// name. The refusal is in the engine and not only in the view, because the
+/// view is not the only thing that can send a command.
 final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
 
     private let at = Date(timeIntervalSince1970: 1_700_000_000)
@@ -108,9 +99,9 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
 
     // MARK: - The refusal
 
-    /// **The one rule this whole change turns on.** A run for «work» while the
-    /// route is on «home» would measure «home» and file the figure under
-    /// «work» — so it never starts, and no subprocess is spent finding that out.
+    /// **The rule the strip turns on.** A run for «work» while the route is on
+    /// «home» would measure «home» and file the figure under «work» — so it never
+    /// starts, and no subprocess is spent finding that out.
     func test_a_measurement_on_a_tunnel_that_is_not_routed_starts_nothing() async throws {
         let (runner, interfaces) = bothUp(routed: "utun7")      // the route is on «home»
         let news = EngineNews<VPNEngine.StatePayload>()
@@ -157,11 +148,9 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
     /// turn for ever if the flag were set and then never cleared.
     ///
     /// Asserted on the flag rather than on «a payload was emitted»: the refusal
-    /// leaves every field of the state as it was, so `emitState` withholds it as
-    /// a duplicate — and the news replays its last event to every new
-    /// subscriber, so counting arrivals here would pass with the whole refusal
-    /// deleted. The page never puts a spinner up for this case in any event: the
-    /// button it would come from is not drawn on a tunnel that is not routed.
+    /// leaves every field as it was, so `emitState` withholds it as a duplicate,
+    /// and the news replays its last event to every new subscriber — counting
+    /// arrivals would pass with the refusal deleted.
     func test_a_refused_measurement_leaves_no_run_in_flight() async throws {
         let (runner, interfaces) = bothUp(routed: "utun7")
         let news = EngineNews<VPNEngine.StatePayload>()
@@ -199,9 +188,8 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
 
     // MARK: - Whose run it is
 
-    /// **The flag was already per tunnel in the state and could not be honest.**
-    /// One `Bool` in the engine meant every tunnel in the list would say it was
-    /// measuring; the engine holds the *name* now, so exactly one does.
+    /// **The flag is per tunnel**: the engine holds the measured *name*, so
+    /// exactly one tunnel says it is measuring.
     func test_only_the_measured_tunnels_flag_is_set() async throws {
         let (runner, interfaces) = bothUp(routed: "utun7")
         let news = EngineNews<VPNEngine.StatePayload>()
@@ -238,11 +226,9 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
     // MARK: - A figure belongs to the tunnel it was taken on
 
     /// **The figure stays with its tunnel when the route moves.** It was taken
-    /// while that tunnel held the route, so it is that tunnel's own reading —
-    /// and it carries its age on the screen once it is older than
-    /// `VPNTunnelFacts.speedGoesStaleAfter`. Dropping it on a route change would
-    /// throw away a correctly attributed number; what does drop it is the tunnel
-    /// going, which is where the reading stops being about anything.
+    /// while that tunnel held the route, so it is that tunnel's own reading, and
+    /// it carries its age on screen once older than
+    /// `VPNTunnelFacts.speedGoesStaleAfter`. What drops it is the tunnel going.
     func test_a_figure_stays_with_its_tunnel_when_the_route_moves() async throws {
         let (runner, interfaces) = bothUp(routed: "utun7")      // «home» holds the route
         let news = EngineNews<VPNEngine.StatePayload>()
@@ -291,10 +277,8 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         watcher.cancel()
 
         // **Each step is waited for.** `refresh()` returns before the work
-        // starts, so changing the runner's answers straight afterwards raced the
-        // refresh that was meant to see the old ones — the tunnel never went
-        // away, and the assertion below fell over on its own precondition
-        // roughly two runs in three.
+        // starts, so changing the runner's answers straight afterwards would race
+        // the refresh meant to see the old ones.
         runner.listOutput = list("Connected", "Disconnected")
         let gone = await refreshed(engine, on: news) { state in
             !state.tunnels.contains { $0.name == "home" }

@@ -13,7 +13,7 @@ import XCTest
         let model = LaunchpadViewModel(work: engine, store: NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore()))
         let shown = Task { await model.whileShown(reason: .settings) }
         defer { shown.cancel() }
-        for _ in 0..<500 where model.snapshot == nil { try await Task.sleep(for: .milliseconds(10)) }
+        await waitUntil("the page's snapshot") { model.snapshot != nil }
         XCTAssertEqual(model.snapshot?.launchCounts, [:], "the control: a page is shown, nothing counted, so Reset would be disabled")
         let opened = await model.launch("a", name: "A")
         XCTAssertTrue(opened)

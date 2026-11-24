@@ -26,13 +26,9 @@ build error, not a refused string.
 States come the other way through `KeepAwakeEngine.stream()`, one task in the model
 that the descriptor's `stop(_:)` cancels before the engine's `deactivate()`. The
 stream replays the latest state and registers the subscriber in the one hold of
-`EngineNews`'s lock (`EngineNews.stream`); reading the state and then subscribing
-leaves a window in which an emit is lost, and registering before replaying delivers an
-older state after a newer one. It is synchronous and not actor-isolated so that the
-model takes it in its own synchronous `init`, before the first suspension: no emit
-falls between the model's construction and its subscription. `TheStreamReplaysTheStateInOrderTests` races an emit against the
-subscription and asserts the order is kept, and
-`ASwitchedOffModuleLetsItsSubscriberGoTests` that stopping the model returns the
+`EngineNews`'s lock (`EngineNews.stream`): reading the state and then subscribing
+loses an emit, and registering before replaying delivers an older state after a newer one. It is synchronous and not actor-isolated so that the
+model takes it in its own synchronous `init`, before the first suspension. `ASwitchedOffModuleLetsItsSubscriberGoTests` holds that stopping the model returns the
 subscriber.
 
 `emitState()` compares each payload with the last one said, under one lock, and says
@@ -69,10 +65,7 @@ gives; the mitigation that ships instead is the gesture: a forged value can enga
 grant the person already gave, and cannot raise a password dialog by itself, but with
 no grant only the lid switch's own gesture does (`lidSwitchTurned`, its rising edge as `consumeEdge` reads it at a settings edit, in a session or not, on a Mac with a lid). A start press does not, with the stored option on or off.
 
-`PmsetClamshellPort` is the only code that runs the grant's privileged commands. Its two administrator-dialog halves take an injected
-`privileged` runner (default `PrivilegedRun.run`) and the rule's path, and `PmsetClamshellPortPrivilegedTests` records which command
-`installSudoers` (`installCommand(user:)`) and `removeSudoers` (`removeCommand()`) send and reads `.done`, `.declined` and `.failed` for each, so a swap or an
-inverted outcome goes red. A third injected `pmset` runner lets `PmsetReportIsNilWhenPmsetFailsTests` pin that a non-zero `pmset -g` has no report; `WorkspaceAppPortForgetsItsTokensTests` pins that `stopObserving` clears the tokens. Not covered: the `sudo -n` halves (`setDisableSleep`, `canDisableSleepWithoutPassword`, `removeSudoersWithoutPassword`) call
+`PmsetClamshellPort` is the only code that runs the grant's privileged commands. `PmsetClamshellPortPrivilegedTests` records which command `installSudoers` and `removeSudoers` send through the injected `privileged` runner and reads `.done`, `.declined` and `.failed` for each; `PmsetReportIsNilWhenPmsetFailsTests` pins that a non-zero `pmset -g` has no report and `WorkspaceAppPortForgetsItsTokensTests` that `stopObserving` clears the tokens. Not covered: the `sudo -n` halves (`setDisableSleep`, `canDisableSleepWithoutPassword`, `removeSudoersWithoutPassword`) call
 `HelmProcess.run` directly. Held by reading only: every call against the grant goes through `withoutPassword` (`sudo -n`, or a dialog-less caller blocks on a
 prompt no window owns), and the argv words come from `SudoersRule` (`disableSleepArguments`, `removeArguments`), never typed here. A change to this class is read
 against `SudoersRule` line by line and run once by hand on Helm Dev (switch the closed-lid option on, then off, and look for the file at
@@ -100,22 +93,20 @@ cannot do what it says is worse than none.
 A sleep assertion IOKit refused is in the payload as `assertionRefused` (set on refusal, cleared by the next one that succeeds and by every release, the battery guard's included), and the notice slot says it (`KAStr.assertionRefused`, one sentence for the hero and the panel): the order is battery guard, then the refusal, then a paused rule, and like the guard's it carries no button.
 
 Hardware facts reach the engine through `LidInfoPort` (`hasLid()`, `hasBattery()`): `batteryVetoes` opens on `lidInfo.hasBattery()`, so a test stands up a Mac with or without a battery with `FakeLidInfo`. Every port observer, `AppRunningPort` included, is stopped in `deactivate`. `ClamshellPort.pmsetReport()` is nil when `pmset -g` did not answer (non-zero status), which is not an empty report: launch recovery with Helm's note set restores sleep on nil, with only the rule on disk it leaves sleep alone. `ClamshellCoordinator.engage` keeps one `canDisableSleepWithoutPassword()` probe (a write: `sudo -n pmset disablesleep 0`) in flight and ORs the `mayPrompt` of calls made meanwhile into the answer, so a gesture's prompt is never dropped. `lookForTheRule` reads `clamshellEnabled` inside the block that lands on main, not before the hop, and `ALookThatWasOutReadsTheOptionWhenItLandsTests` holds the look on a semaphore, switches the option on, and reads the notice follow the later value.
-
+A sleep assertion IOKit refused is in the payload as `assertionRefused` (set on refusal, cleared by the next one that succeeds and by every release, the battery guard's included), and the notice slot says it (`KAStr.assertionRefused`): the order is battery guard, then the refusal, then a paused rule, and like the guard's it carries no button.
 The battery floor is inclusive: `BatteryGuard.shouldDeactivate` is `percent <= threshold`, so the session ends *at* the figure. Every sentence that names
-it says "or less" (the slider's note, the hero's and the panel's notice, the system notification), in all eight languages; ja and zh also have a strict
-word (未満, 低于) that would say the opposite, and do not use it here. Compose them from the one phrase (`KAStr.atPercentOrLess`), never write the boundary
-out again in a new string; a translator who writes "below" is wrong about what the Mac does.
+Hardware facts reach the engine through `LidInfoPort` (`hasLid()`, `hasBattery()`), so a test stands up a Mac with or without a battery with `FakeLidInfo`. Every port observer, `AppRunningPort` included, is stopped in `deactivate`. `ClamshellPort.pmsetReport()` is nil when `pmset -g` did not answer (non-zero status), which is not an empty report: launch recovery with Helm's note set restores sleep on nil, with only the rule on disk it leaves sleep alone. `ClamshellCoordinator.engage` keeps one `canDisableSleepWithoutPassword()` probe (a write: `sudo -n pmset disablesleep 0`) in flight and ORs the `mayPrompt` of calls made meanwhile into the answer, so a gesture's prompt is never dropped. `lookForTheRule` reads `clamshellEnabled` inside the block that lands on main, not before the hop; `ALookThatWasOutReadsTheOptionWhenItLandsTests` holds it.
+out again in a new string.
 
 `KeepAwakeEngine` takes the battery veto's notification channel as an optional, and `nil` means silent. The only place the real port and its words are
 handed over is `KeepAwakeDescriptor.keepAwakeEngine`; a rebuild of that call that drops `batteryVeto:` switches the notification off and no engine test
 notices, because they all build the engine with a fake. The sentence comes from the UI target (`KAStr.batteryVetoNotice`), the engine cannot spell it.
 
-The reason line in the log ("holding sleep: manual+timer") is composed by `ConditionLabel`, which orders the reasons. `activeConditions` is a `Set`;
-a line built by iterating it prints the same session in a different order on each launch, and `grep -c` over two logs counts nothing.
-
-What the Stop button says and what the next press does both come from `StopPress.next`, called by the engine (`KeepAwakeEngine.swift`, the press) and by
-the hero (`KeepAwakeHero.stopPress`, the word). There is no armed flag: its three inputs are read again on every rebuild, so the word is true only while
-the state it names is true. A second spelling of the decision in a view is a button that promises one act and does another.
+`KeepAwakeEngine` takes the battery veto's notification channel as an optional, and `nil` means silent. The only place the real port and its words are
+handed over is `KeepAwakeDescriptor.keepAwakeEngine`; a rebuild of that call that drops `batteryVeto:` switches the notification off and no engine test
+notices, because they all build the engine with a fake.
+the hero (`KeepAwakeHero.stopPress`). There is no armed flag: its three inputs are read again on every rebuild, so the word is true only while
+the state it names is true; a second spelling of the decision in a view is a button that promises one act and does another.
 
 ## Rules read from the machine
 
@@ -175,7 +166,7 @@ live tiles (VPN profile names, disk): it is proof for the owner's eyes, never ke
 | `left-behind` | lid option off, its sudoers rule still there; an unreadable rules value | the rule: real use, left by an earlier run that could not withdraw it; the unreadable rules value: a stored value that does not parse (`--arg module.keep-awake.autoAppRules garbage`, or a damaged settings file) |
 | `worst` | three conditions, eight app rules (one not installed), lid held, longest numbers | a person sets the largest numbers the page offers and the most app rules; the clamp maximum (1440 minutes) is reached only by a stored value, e.g. `--arg module.keep-awake.jiggleIntervalMinutes '<integer>1440</integer>'`; the app not installed is real use: an app removed after its rule was added |
 
-`worst` has no launch sample: the one that drew it was removed (f1951bed), so every part of it is set by a person or by `--arg`, which reaches settings only. Do not put `module.keep-awake.clamshellEnabled` in an unattended shot: while a rule holds the Mac awake, a grant already installed runs `pmset disablesleep 1` for real (`KeepAwakeEngine.recompute`, the `lidInfo.hasLid(), settings.clamshellEnabled` branch (`lidInfo` is a `LidInfoPort`, `MacHardware.hasLid` in production), `lid.engage(mayPrompt: false)`); a `--press` on a start control never raises the administrator dialog.
+`worst` has no launch sample: every part of it is set by a person or by `--arg`, which reaches settings only. Do not put `module.keep-awake.clamshellEnabled` in an unattended shot: while a rule holds the Mac awake, a grant already installed runs `pmset disablesleep 1` for real (`KeepAwakeEngine.recompute`, the `lidInfo.hasLid(), settings.clamshellEnabled` branch, `lid.engage(mayPrompt: false)`); a `--press` on a start control never raises the administrator dialog.
 
 Longest strings come from the language: add `--arg module.app.interfaceLanguage ru`, and once with `de` for the German wrap.
 

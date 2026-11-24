@@ -6,11 +6,9 @@ import HelmRuntime
 
 /// What the + button on a Recommendations row really asks for.
 ///
-/// From a live dev round: pressing + on `Caches — 3,84 ГБ` produced
-/// `trash refused ~/Library/Caches: NSCocoaErrorDomain 513`, because macOS
-/// carries `group:everyone deny delete` on that folder and on none of its
-/// children. The row offered an action the app could not perform. It offers the
-/// contents now — one row still, one size, one button.
+/// macOS carries `group:everyone deny delete` on `~/Library/Caches` and on none
+/// of its children, so the row offers the contents: one row, one size, one
+/// button.
 @MainActor
 final class CacheAdviceRemovesContentsTests: XCTestCase {
     private let caches = "/Volumes/Big/Library/Caches"
@@ -50,8 +48,8 @@ final class CacheAdviceRemovesContentsTests: XCTestCase {
         return (dvm, work)
     }
 
-    /// The defect itself. The engine must never be handed the folder macOS
-    /// protects — and the person must still have pressed one button.
+    /// The engine is never handed the folder macOS protects, and the person
+    /// still presses one button.
     func testTheEngineIsAskedForTheContentsAndNotTheFolder() async {
         let (dvm, work) = await scannedWithTheCacheRowTicked(
             answering: DiskRemoval(removed: [firefox, adobe], refused: [], freedBytes: 600))

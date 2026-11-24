@@ -7,10 +7,9 @@ import XCTest
 ///
 /// **Why this is a test.** The switch reaches outside both of Helm's folders —
 /// `launchctl disable` is a change to the user's own launchd domain that
-/// survives a reboot and survives deleting Helm — and for a year nothing put it
-/// back, while the reset's first step was `handBackWhatIsOutsideHelm`
-/// (`ResetPlan.Step.handBackWhatIsOutsideHelm`). The give-back is one port call; what was missing was the
-/// record of which labels were ours to give back.
+/// survives a reboot and survives deleting Helm — and the reset's first step is
+/// `ResetPlan.Step.handBackWhatIsOutsideHelm`. The give-back is one port call;
+/// the record says which labels are ours to give back.
 ///
 /// **Why the record and not the system's list.** `disabledLabels()` answers what
 /// *the system* has disabled, which includes every switch the person threw in

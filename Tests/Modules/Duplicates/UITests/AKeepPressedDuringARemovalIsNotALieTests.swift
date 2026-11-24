@@ -6,18 +6,13 @@ import Module_Duplicates_Engine
 
 /// A press that re-decides which copy stays, made while a removal that already
 /// holds that copy is in flight, must not leave the page saying «stays» about a
-/// file the engine then moves to the Trash (backlog M261).
+/// file the engine then moves to the Trash.
 ///
 /// `emptyBasket` captures its plans at the first line, so the request is out with
-/// the extra in it. `keep`, `choose` and `toggleBasket` had no `busy` guard (the
-/// neighbour `clearBasket` has one): `keep` pinned the extra, put it first and
-/// unticked it, the reply then trashed it anyway. The person loses the copy they
-/// had just chosen to keep, and the page showed the badge that says it was safe.
-///
-/// The expectation is the one `ClearSelectionIsNotAWayOutOfRemovalTests` holds:
-/// the press is refused while `busy`, so what the page shows and what the engine
-/// was asked to remove stay the same thing. A removal that is parked is the only
-/// way into the window.
+/// the extra in it; an unguarded `keep` would pin the extra, put it first and
+/// untick it, and the reply would trash the copy the person had just chosen to
+/// keep. As in `ClearSelectionIsNotAWayOutOfRemovalTests`, the press is refused
+/// while `busy`. A parked removal is the only way into the window.
 @MainActor
 final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
 
@@ -76,6 +71,21 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
 
         assertAgrees(dvm, "toggleBasket")
         await releaseRemoval(dvm, work)
+    }
+
+    /// The press itself, twice: the second «Remove» while the first is held sends
+    /// nothing to the engine.
+    func testASecondRemovePressWhileOneRunsSendsNothing() async throws {
+        let (dvm, work) = try await removalInFlight()
+
+        // Started, not awaited: with no guard the second press parks on the held
+        // fake too, and awaiting it would hang instead of failing.
+        let second = Task { await dvm.emptyBasket() }
+        await grace()
+
+        XCTAssertEqual(work.removals.count, 1, "a second removal reached the engine")
+        await releaseRemoval(dvm, work)
+        await second.value
     }
 
     /// A group where the two policies disagree, so one of them would put the

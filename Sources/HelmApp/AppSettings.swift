@@ -16,10 +16,9 @@ extension Notification.Name {
 /// App-level (not per-module) settings, e.g. the menu-bar icon shape.
 @MainActor enum AppSettings {
     /// The literal stays a literal, and `StoreNamespacesAreModuleIdsTests` says
-    /// why: it is the host's own namespace, it names no module, and it is the
-    /// one place that scan has left to find. A migration that needs the same
-    /// namespace over another store asks this one for it (`over(_:)`) rather
-    /// than spelling «app» a second time.
+    /// why: it is the host's own namespace and names no module. A migration
+    /// that needs the same namespace over another store asks this one for it
+    /// (`over(_:)`) rather than spelling «app» a second time.
     static let store = NamespacedStore(namespace: "app", backing: UserDefaults.standard)
 
     /// Light, dark, or the system's choice. Applied to `NSApp`, which covers
@@ -88,7 +87,7 @@ extension Notification.Name {
     /// (`HelmHeaderSearch.rests`): chosen from the row's right-click menu (`HeaderBarMenu`). Off unless somebody
     /// turns it on. A query left in the field keeps it open. A `Bool` is bounded by its type and nothing
     /// unattended reads it, so it is not sealed; a write equal to the stored value is refused, so nothing is posted
-    /// for it. The key is the toolbar's day one (`HelmHeaderChoices`), spelt here so `ObsoleteDefaultsTests`' scan covers it.
+    /// for it. The key is spelt here so `ObsoleteDefaultsTests`' scan covers it.
     static var alwaysCollapseSearch: Bool {
         get { alwaysCollapseSearch(in: store) }
         set { setAlwaysCollapseSearch(newValue, in: store) }
@@ -122,15 +121,6 @@ extension Notification.Name {
         store.set(value, for: "sidebarCollapsed")
     }
 
-    /// **The width the sidebar has when it is expanded**, brought into `ShellGeometry.sidebarRange`
-    /// (`ShellGeometry.sidebarWidth(stored:)`). A missing key and a value that is not a number read
-    /// as not-a-number, which that function reads as `ShellGeometry.defaultSidebarWidth`; an
-    /// infinity reads as the bound on its side. Nothing in the window writes it (nothing drags the
-    /// sidebar), and a refused read writes nothing back. Read once, when a window is built; not sealed.
-    static func sidebarWidth(in store: NamespacedStore) -> CGFloat {
-        ShellGeometry.sidebarWidth(stored: CGFloat(store.double("sidebarWidth", default: .nan)))
-    }
-
     /// The language the interface is drawn in, or nil for the Mac's own.
     ///
     /// **Dev builds only** — `AppBuild.isDev` gates the row that writes it, and
@@ -138,8 +128,7 @@ extension Notification.Name {
     /// beta that once ran a dev build cannot come up in Japanese.
     ///
     /// It exists because checking a translation against the running app
-    /// otherwise costs a logout: eight languages, and the only way to see the
-    /// seventh was to change the Mac's own preference and start again.
+    /// otherwise costs changing the Mac's own preference and a logout.
     static var language: AppLanguage? {
         get { AppLanguage.override }
         set {
@@ -191,7 +180,7 @@ extension Notification.Name {
     /// enable flags use.
     ///
     /// Disk starts in it. The other two answer a question the person asked by
-    /// installing the module; Disk builds and refreshes an 8 MB index of every
+    /// installing the module; Disk builds and refreshes an index of every
     /// filename on the volume, on machines whose owner never ran a disk scan.
     ///
     /// **Sealed, because it decides whether an unattended reader reads at all.**
@@ -203,14 +192,10 @@ extension Notification.Name {
     static var disabledScans: Set<String> {
         get {
             guard let stored = store.object("disabledScans") as? [String] else {
-                // Nothing stored, and this is where the seal's one door used to
-                // stand open: `.adopt` is granted while the keychain item does
-                // not exist, and returning here never created it. So no
-                // installation ever spent its own first use, and the first value
-                // the app saw — `defaults write com.helm.app
-                // module.app.disabledScans -array`, a full-volume walk switched
-                // on unattended — was adopted and sealed as Helm's own. Day one
-                // is Helm's.
+                // Nothing stored: create the key now, or `.adopt` would stay
+                // granted and the first value written from outside (a
+                // full-volume walk switched on with `defaults write`) would be
+                // adopted and sealed as Helm's own. Day one is Helm's.
                 scanGuard.establishKey()
                 return defaultDisabledScans
             }
@@ -245,10 +230,9 @@ extension Notification.Name {
     /// **The getter above cannot be read from the thread that draws**, and this
     /// type is `@MainActor`, so every reader of it is on that thread. Verifying
     /// the seal needs the key, the key comes from the login keychain, and on an
-    /// ad-hoc build a keychain read is a modal authorization dialog: measured on
-    /// the owner's Mac as `HelmApp_2026-08-19-235500_MacBook.hang`, 19,09 s of a
-    /// settings window that could not answer a mouse-up while `warmKey()` sat in
-    /// securityd (`SealKeyCache` § Two locks has the other half of that story).
+    /// ad-hoc build a keychain read is a modal authorization dialog that holds
+    /// the thread until answered (`SealKeyCache`'s doc comment has the locking
+    /// side of it).
     ///
     /// Nil is **«not yet»**, a third answer beside `.sealed` and `.broken`, and
     /// the screens hold it as `Set<String>?` for exactly that reason: an empty
@@ -281,10 +265,9 @@ extension Notification.Name {
     ///
     /// Behind `SettingsSealKey.overScanSettings`, so the keychain is asked once for the
     /// whole process rather than once per verdict: the getter above is read on
-    /// every coordinator tick and, until 2026-08-15, inside the settings
-    /// window's own construction — where the round trip is a modal
-    /// authorization dialog on every ad-hoc build. `warmKey()` is how a screen
-    /// pays for it off the main thread before it needs the answer.
+    /// every coordinator tick, and the round trip is a modal authorization
+    /// dialog on an ad-hoc build. `warmKey()` is how a screen pays for it off
+    /// the main thread before it needs the answer.
     ///
     /// **Shared with the duplicate finder's guard, rather than a cache of its
     /// own.** It is the same item, and a cache serialises only the callers that
@@ -292,11 +275,9 @@ extension Notification.Name {
     /// is a second dialog for anyone who answers the first with "Allow".
     static var scanGuard = SettingGuard(keys: SettingsSealKey.overScanSettings)
 
-    /// When each background scan last **completed** — came back with a report.
-    ///
-    /// The comment used to say this while the coordinator wrote it at the start
-    /// of every attempt, which is what made the day's second run unreachable:
-    /// see `lastScanAttemptAt`.
+    /// When each background scan last **completed**, with a report. Never
+    /// written for an attempt (`lastScanAttemptAt`), or the day's second run
+    /// could never come.
     static var lastScanAt: [String: Date] {
         get { store.doubleTable("lastScanAt").mapValues(Date.init(timeIntervalSince1970:)) }
         set { store.set(newValue.mapValues(\.timeIntervalSince1970), for: "lastScanAt") }
@@ -331,8 +312,7 @@ extension Notification.Name {
     }
 
     /// The three buttons at the foot of the panel, each its own switch.
-    /// `PanelFooterSetting` holds their keys, their default and the migration
-    /// out of the one key they spent a build folded into.
+    /// `PanelFooterSetting` holds their keys and their default.
     static func shows(_ button: PanelFooterSetting.Button) -> Bool {
         PanelFooterSetting.shows(button, in: store)
     }
@@ -340,22 +320,6 @@ extension Notification.Name {
     static func setShows(_ button: PanelFooterSetting.Button, _ on: Bool) {
         store.set(on, for: button.rawValue)
         NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
-    }
-
-    /// Reads what the retired keys still have to say, then lets them go.
-    ///
-    /// **One function because the order is the whole of it.** The unfold reads
-    /// `showPanelFooter`, which `ObsoleteDefaults` is about to delete, so a purge
-    /// that ran first would hand every panel the default instead of the
-    /// arrangement its owner chose — and two calls at the call site is an
-    /// ordering somebody has to remember. There is nothing to remember here.
-    ///
-    /// **The store is a parameter, never a default.** A forgetful call taking
-    /// `UserDefaults.standard` would make every test of this an edit of the
-    /// settings the test is about.
-    static func migrateAndPurge(in backing: KeyValueStore) {
-        PanelFooterSetting.restore(in: store.over(backing))
-        ObsoleteDefaults.purge(from: backing)
     }
 
     /// The shape Helm wears in the menu bar. Typed, so the fallback for a value
@@ -368,12 +332,8 @@ extension Notification.Name {
         }
     }
 
-    /// The same, and it is the reason this one is typed too. It read
-    /// `default: "small"` here while `MenuBarIconSize(stored:)` fell back to
-    /// `.extraSmall`: 15 pt and «L» against 13 pt and «M», two defaults for one
-    /// setting. Nobody saw it, because the only reader always passed a non-empty
-    /// string — and the next person to drop that literal for the type's own fallback would have
-    /// moved everybody from L to M without touching a number. The answer is `MenuBarIconSize`'s, once.
+    /// The same: typed, so the default is `MenuBarIconSize`'s and there is no
+    /// second one here to disagree with it.
     static var menuBarIconSize: MenuBarIconSize {
         get { MenuBarIconSize(stored: store.string("menuBarIconSize", default: "")) }
         set {

@@ -19,12 +19,10 @@ struct InstallCounts: Sendable, Equatable {
     /// at all. An endpoint that has moved must not read as a world where nobody
     /// installs anything.
     ///
-    /// **`{"formulae":{}}` is not one of those**, and neither is a document
-    /// whose every entry this parser skips: the field is there, so the endpoint
-    /// answered — with nothing in it. That is a reading, and the caller
-    /// (`PopularityRefresh.answer`) adopts it. The distinction this nil carries
-    /// is "nobody answered" against "the answer was empty", and only the first
-    /// of the two may leave the stored reading standing.
+    /// **`{"formulae":{}}` is not one of those**, nor a document whose every
+    /// entry is skipped: the endpoint answered, with nothing in it, and
+    /// `PopularityRefresh.answer` adopts that. Only "nobody answered" may leave
+    /// the stored reading standing.
     static func parse(_ data: Data) -> InstallCounts? {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let packages = root["formulae"] as? [String: Any] else { return nil }
@@ -33,9 +31,8 @@ struct InstallCounts: Sendable, Equatable {
         for (name, entries) in packages {
             guard let first = (entries as? [[String: Any]])?.first,
                   let raw = first["count"] as? String,
-                  // Published as "1,162". `Int(_:)` answers nil on that, which
-                  // would have cost a rank to precisely the packages people
-                  // install most.
+                  // Published as "1,162", which `Int(_:)` refuses: exactly
+                  // the packages people install most.
                   let value = Int(raw.replacingOccurrences(of: ",", with: ""))
             else { continue }
             counts[name] = value

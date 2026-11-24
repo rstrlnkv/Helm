@@ -18,12 +18,10 @@ public enum ItemStatus: String, Sendable, Equatable {
     /// Apple's, shared plumbing, or a system location: never removable.
     case protectedItem
     /// The job's own definition could not be read — corrupt, truncated, an array
-    /// at the root, or a file this process may not open. Not a leftover: the
-    /// scanner's rule is that anything whose owner cannot be identified stays
-    /// put, and a file whose contents nobody could read is the plainest case of
-    /// one. It used to be folded into «this job has no `Program`» → «points at
-    /// nothing» → `.orphaned`, which is a tick from «Select all» and a place in
-    /// the batch (`APlistNobodyCouldReadTests`).
+    /// at the root, or a file this process may not open. Not a leftover: anything
+    /// whose owner cannot be identified stays put, and a file whose contents nobody
+    /// could read is the plainest case. As «no `Program`» it would read as «points
+    /// at nothing» → `.orphaned`, a tick from «Select all» (`APlistNobodyCouldReadTests`).
     case unreadable
     /// The file read fine and a reading its verdict depends on did not happen, so
     /// Helm cannot say whether anything still uses it.
@@ -34,11 +32,10 @@ public enum ItemStatus: String, Sendable, Equatable {
     /// macOS has loaded, when the tool that answers it did not
     /// (`LoadedItemsPort.installedExtensions` → nil).
     ///
-    /// **Its own case rather than `.unreadable`**, which is the sentence
-    /// «Helm could not read this file» — false of both of these, and drawn over a
-    /// plist that reads perfectly. (ARCHITECTURE.md § Module pattern) is the rule
-    /// being followed: a reason that
-    /// needs telling apart gets named, not read out of a shared one.
+    /// **Its own case rather than `.unreadable`**, which is the sentence «Helm
+    /// could not read this file» — false of both of these. A reason that needs
+    /// telling apart gets named, not read out of a shared one
+    /// (Architecture/ModulePattern.md § Module pattern).
     case undetermined
     /// The row is not an item at all: it is one of the scan's eight **source**
     /// directories, which was not the directory it names, so the scan refused to
@@ -46,12 +43,10 @@ public enum ItemStatus: String, Sendable, Equatable {
     ///
     /// **A refusal that reaches only the log is a green tick over a folder nobody
     /// opened.** The refusal is right — a link at `~/Library/QuickLook` moves the
-    /// whole enumeration somewhere else, under Helm's Full Disk Access — and it
-    /// used to leave nothing behind: the rows were *missing* rather than unjudged,
-    /// `uncheckedCount` was zero, and the page drew «No leftovers found» under a
-    /// green check over a source it had never read. One of the eight is enough,
-    /// because it is the filtered list that has to be empty for that message and
-    /// not the scan.
+    /// whole enumeration somewhere else, under Helm's Full Disk Access — but with no
+    /// row the page would draw «No leftovers found» under a green check over a
+    /// source it never read: it is the filtered list that has to be empty for that
+    /// message, not the scan.
     case sourceRedirected
     /// The same hole with no link in it: a source directory this process could not
     /// open — a mode, an ACL, a folder belonging to somebody else, or a TCC grant
@@ -81,17 +76,15 @@ public enum ItemStatus: String, Sendable, Equatable {
 
     /// Whether this status is a verdict about the item at all.
     ///
-    /// Four of the seven are the *absence* of one, and the page had no way to ask:
-    /// none is `.orphaned`, so the default filter drops them all, the list comes
-    /// out empty and «No leftovers found» — this module's strongest claim about
-    /// somebody's Mac — was drawn under a green check over items nobody had
-    /// judged. `LeftoversEmpty.reason` counts the unjudged ones through this.
+    /// Four of the seven are the *absence* of one. None is `.orphaned`, so the
+    /// default filter drops them all, and without this question «No leftovers
+    /// found» would be drawn over items nobody had judged.
+    /// `LeftoversEmpty.reason` counts the unjudged ones through this.
     ///
     /// Exhaustive on purpose: a further status has to be placed on one side of this
-    /// line by whoever adds it, and a `default` here is how one would come to be
-    /// counted as a verdict it never reached. The two source statuses are the
-    /// unjudged side by construction — a folder nobody read is every verdict it
-    /// would have held, missing.
+    /// line by whoever adds it. The two source statuses are the unjudged side by
+    /// construction — a folder nobody read is every verdict it would have held,
+    /// missing.
     public var judged: Bool {
         switch self {
         case .orphaned, .inUse, .protectedItem: true
@@ -128,25 +121,21 @@ public struct StaleItem: Equatable, Sendable, Identifiable {
     /// **launchd's switch is aimed at a label, and a label is not a file.**
     /// `com.vendor.updater` sits in `~/Library/LaunchAgents` and in
     /// `/Library/LaunchAgents` on plenty of Macs, and both load into `gui/<uid>`:
-    /// two rows, one of them badged «Leftover» and the other «In use», and one
-    /// `launchctl disable gui/<uid>/com.vendor.updater` between them. Helm cannot
-    /// say which of the two registrations launchd kept — that would need a
-    /// `launchctl print` this app does not have — so neither row offers the switch
-    /// (`LeftoverActions.available`), and each names the other so the person can
-    /// see what the two rows are.
+    /// two rows and one `launchctl disable gui/<uid>/com.vendor.updater` between
+    /// them. Helm cannot say which registration launchd kept, so neither row
+    /// offers the switch (`LeftoverActions.available`), and each names the other.
     public private(set) var labelAlsoClaimedBy: String?
 
     /// What the checkbox offers: clearing leftovers in bulk. Anything in use
     /// is deleted one at a time, through the row's own menu, so a careless
     /// "select all" can never take out working software.
     ///
-    /// Asked of the same rule the row's menu obeys, not a second one written
-    /// beside it. The two had already parted: the menu withholds delete from a
-    /// launch daemon, because unloading one needs root and a button that always
-    /// fails is worse than no button — while the checkbox offered it, "Select
-    /// all" ticked it, and `RemovableScope` lets `/Library/LaunchDaemons/*.plist`
-    /// through, so the batch went ahead and tried. The safer of two answers has
-    /// to be the only answer.
+    /// Asked of the same rule the row's menu obeys, not a second one beside it:
+    /// the menu withholds delete from a launch daemon, because unloading one needs
+    /// root and a button that always fails is worse than no button, and
+    /// `RemovableScope` lets `/Library/LaunchDaemons/*.plist` through, so a
+    /// checkbox with its own answer would send one to a batch that tries. The
+    /// safer of two answers has to be the only answer.
     public var removable: Bool {
         status == .orphaned && actions.contains(.delete)
     }
@@ -171,10 +160,9 @@ public struct StaleItem: Equatable, Sendable, Identifiable {
 
     /// The same row, told which other file in this scan registers its label.
     ///
-    /// The claim is a fact about the *pair*, and the pair is only known once every
-    /// launch item has been read — so it is written here rather than passed to the
-    /// initialiser, which is what the one caller
-    /// (`LeftoversScanner.namingRivalClaims`) has in hand at that point.
+    /// The claim is a fact about the *pair*, known only once every launch item
+    /// has been read, so it is written here rather than passed to the
+    /// initialiser (`LeftoversScanner.namingRivalClaims`).
     func claiming(alsoRegisteredBy path: String) -> StaleItem {
         var claimed = self
         claimed.labelAlsoClaimedBy = path
@@ -182,20 +170,14 @@ public struct StaleItem: Equatable, Sendable, Identifiable {
     }
 
     /// The one call into `LeftoverActions`, and the answer `removable` and
-    /// `canToggle` are read off. All three used to call it themselves — the same
-    /// question asked three ways, which is how the checkbox and the row's menu
-    /// came to disagree about a launch daemon in the first place.
+    /// `canToggle` are read off, so the checkbox and the row's menu cannot
+    /// disagree.
     public var actions: Set<LeftoverAction> {
         LeftoverActions.available(for: self)
     }
 
     /// Whether Helm can switch this one off without a password.
     /// Asked of the rule the row's menu obeys.
-    ///
-    /// There were two, and they disagreed about a protected agent — the second
-    /// took a `status` and never read it, which is exactly the argument that
-    /// would have caught it. Deleted rather than merged: everything it said is
-    /// already here, and what it did not say was the bug.
     public var canToggle: Bool { actions.contains(.turnOff) }
 }
 

@@ -3,25 +3,15 @@ import XCTest
 
 /// `DoctorFixCandidate` — the bridge from an issue's body to a candidate argv.
 ///
-/// The fixture is captured verbatim from:
+/// The fixture is `brew doctor`'s real standard error, the same 1194 bytes
+/// `DoctorParserTests` holds, captured separately rather than copied across.
 ///
-///     $ /opt/homebrew/bin/brew doctor > /tmp/doc.out 2> /tmp/doc.err
-///     exit=1
-///        1 /tmp/doc.out
-///     1194 /tmp/doc.err
+/// **No block of real `brew doctor` output prints a literal `brew …` command
+/// line.** What exists is a heading followed by an indented list of names, so
+/// the cases are about recognising that shape and refusing everything else.
 ///
-/// on this machine, Homebrew 7.0.1, 2026-09-15 — the same 1194 bytes
-/// `DoctorParserTests` holds, re-captured rather than copied across.
-///
-/// **The finding this whole file is shaped by: neither block in that run
-/// printed a literal `brew …` command line, and no block did.** There is no
-/// command in `brew doctor`'s real output to lift out. What exists is a heading
-/// followed by an indented list of names, so the cases below are about
-/// recognising that shape and refusing everything else — not about parsing a
-/// command out of prose, which would have nothing to parse.
-///
-/// Every issue under test is produced by running `DoctorParser.parse` over that
-/// captured text, so no case can pass against a body somebody typed to suit it.
+/// Every issue under test is produced by `DoctorParser.parse` over the captured
+/// text, so no case can pass against a body typed to suit it.
 final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
 
     /// Byte-for-byte what `/tmp/doc.err` held.
@@ -48,8 +38,7 @@ final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
 
         """
 
-    /// The real `postflight` block — the one whose body is a sentence and a
-    /// path.
+    /// The real `postflight` block, whose body is a sentence and a path.
     private func postflightIssue() throws -> DoctorIssue {
         let issues = try XCTUnwrap(DoctorParser.parse(Self.capturedOutput))
         return try XCTUnwrap(issues.first { $0.title.hasPrefix("Calling `postflight`") })
@@ -64,10 +53,8 @@ final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
     // MARK: - The one shape this machine produces
 
     /// The heading is on the list and the list under it holds one name, so the
-    /// candidate is that name as the operand of `uninstall`. Both halves are
-    /// asserted: the subcommand the heading maps to, and the name lifted off
-    /// the indented line — a candidate carrying the right name under the wrong
-    /// verb, or the reverse, is a different command.
+    /// candidate is that name as the operand of `uninstall`. Both the verb and
+    /// the name are asserted: either one wrong is a different command.
     func testTheDeprecatedFormulaeIssueProposesUninstallingTheNameItLists() throws {
         let issue = try deprecatedFormulaeIssue()
         XCTAssertEqual(DoctorFixCandidate.argv(inBodyOf: issue.body), ["uninstall", "periphery"])
@@ -87,11 +74,8 @@ final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
                        try deprecatedFormulaeIssue())
     }
 
-    /// The same issue, the same argv, and a `.copyOnly` fix — because the name
-    /// came out of prose and this Mac does not have it. The extractor is
-    /// unchanged between this case and the one above; **the judge is what
-    /// differs**, which is the point: nothing in `DoctorFixCandidate` decides
-    /// `.runnable`.
+    /// The same issue and argv give a `.copyOnly` fix when this Mac does not
+    /// have the name: the judge decides `.runnable`, never `DoctorFixCandidate`.
     func testTheSameIssueIsCopyOnlyWhenTheNameIsNotInstalled() throws {
         let issue = try deprecatedFormulaeIssue()
         for installed in [[], ["wget", "jq"], ["periphery-extra"]] as [[String]] {
@@ -103,29 +87,21 @@ final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
 
     // MARK: - Everything else is nothing
 
-    /// The real `postflight` issue carries no fix at all — not a `.copyOnly`
+    /// The real `postflight` issue carries no fix at all, not even a `.copyOnly`
     /// one, which would draw a command in the inspector for a person to copy.
     ///
-    /// **Why it is nil is worth stating, because it is not the reason a reader
-    /// expects:** its body names a path, but the path never gets looked at. The
-    /// body holds no line matching any `Heading`, so the scan stops before rule
-    /// 4 is ever reached. This case would stay green with the path rule
-    /// deleted — `testAPathUnderTheHeadingIsNotAName` below is the one that
-    /// holds that rule up, and it exists because this one cannot.
+    /// It is nil because its body holds no `Heading` line, not because of its
+    /// path; `testAPathUnderTheHeadingIsNotAName` holds the path rule.
     func testThePostflightIssueProposesNothing() throws {
         let issue = try postflightIssue()
         XCTAssertNil(DoctorFixCandidate.argv(inBodyOf: issue.body))
         XCTAssertNil(DoctorFixCandidate.judging(issue, installed: ["periphery"]).fix)
     }
 
-    /// An indented item under the **real** heading that is an absolute path
-    /// rather than a name proposes nothing. Brew prints paths on indented lines
-    /// of their own throughout its output, so the day a heading on the list
-    /// gains one this is the rule standing between it and
-    /// `brew uninstall /opt/homebrew/…`.
-    ///
-    /// The heading line is lifted from the captured fixture and the item line
-    /// from the `postflight` block's own path line, so neither is invented.
+    /// An indented absolute path under the real heading proposes nothing. Brew
+    /// prints paths on indented lines throughout its output, so this rule is what
+    /// stands between such a line and `brew uninstall /opt/homebrew/…`. Both
+    /// lines are lifted from the captured fixture.
     func testAPathUnderTheHeadingIsNotAName() throws {
         let heading = try XCTUnwrap(
             Self.capturedOutput.components(separatedBy: "\n")
@@ -139,12 +115,8 @@ final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
     }
 
     /// A line under the heading that *mentions* a package name inside a
-    /// sentence proposes nothing. Without this, the first word of the sentence
-    /// becomes the operand — `brew uninstall consider` — which is a real
-    /// command against a real machine and would have been offered as a button.
-    ///
-    /// The heading is the real one, so this case is not passing because nothing
-    /// matched; it reaches the item rules and is refused by them.
+    /// sentence proposes nothing, not `brew uninstall consider`. The heading is
+    /// the real one, so the case reaches the item rules and is refused by them.
     func testAPackageNameInsideASentenceIsNotAnItem() throws {
         let heading = "You should find replacements for the following formulae:"
         for line in ["  consider periphery's replacement before upgrading",
@@ -154,14 +126,9 @@ final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
         }
     }
 
-    /// Two names under the heading propose **nothing** — the decision this file
-    /// makes, written in `argv(inBodyOf:)`'s doc comment and pinned here.
-    ///
-    /// Two reasons, either sufficient: `DoctorIssue.fix` is one optional fix,
-    /// so two argvs cannot both be carried; and taking one of two names offered
-    /// is not the act the person read. The trap is a scan that stops at the
-    /// first item and offers `brew uninstall periphery` over a list that also
-    /// named `qt@5`.
+    /// Two names under the heading propose **nothing** (`argv(inBodyOf:)`'s doc
+    /// comment): `DoctorIssue.fix` carries one fix, and taking one of two names
+    /// offered is not the act the person read.
     func testTwoNamesUnderTheHeadingProposeNothing() {
         let heading = "You should find replacements for the following formulae:"
         XCTAssertNil(DoctorFixCandidate.argv(inBodyOf: heading + "\n\n  periphery\n  qt@5"))
@@ -182,22 +149,18 @@ final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
         XCTAssertNil(DoctorFixCandidate.argv(inBodyOf: heading + "\n\nperiphery"))
     }
 
-    /// The same heading printed twice in one body proposes nothing. Brew
-    /// repeats whole blocks — the fixture holds the `postflight` one three
-    /// times — so two lists in one body is a shape this output can reach, and
-    /// two lists are two acts of which only one would have been offered.
+    /// The same heading printed twice in one body proposes nothing. Brew repeats
+    /// whole blocks, so two lists in one body is a reachable shape, and two lists
+    /// are two acts of which only one would be offered.
     func testTwoHeadingsInOneBodyProposeNothing() {
         let heading = "You should find replacements for the following formulae:"
         XCTAssertNil(DoctorFixCandidate.argv(
             inBodyOf: heading + "\n\n  periphery\n" + heading + "\n\n  qt@5"))
     }
 
-    /// A heading is matched by equality on the whole line, so the same words
-    /// carried inside a longer line are not a heading. A substring or
-    /// case-folded match would let brew's ordinary prose — which quotes its own
-    /// headings back at the reader — open a list of names, and the widening
-    /// would be invisible until the day a sentence quoting the heading also
-    /// indented something under it.
+    /// A heading is matched by equality on the whole line. brew's prose quotes
+    /// its own headings back at the reader, so a substring or case-folded match
+    /// would let a sentence open a list of names.
     func testAHeadingEmbeddedInALongerLineIsNotAHeading() {
         let heading = "You should find replacements for the following formulae:"
         for line in ["Note: " + heading,
@@ -207,10 +170,8 @@ final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
         }
     }
 
-    /// The extraction never reads a title. An issue whose *title* is the
-    /// heading and whose body holds only the name proposes nothing — the
-    /// signature takes the body alone, and this pins that the body is genuinely
-    /// where the heading has to be.
+    /// The extraction never reads a title: an issue whose *title* is the heading
+    /// and whose body holds only the name proposes nothing.
     func testAHeadingInTheTitleIsNotAHeading() {
         let issue = DoctorIssue(
             severity: .caution,
@@ -222,13 +183,10 @@ final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
 
     // MARK: - The list itself
 
-    /// The hand-written heading list, named entry by entry. The house rule
-    /// for a hand-written list: adding one without coming here is a failure,
-    /// not a silent widening of what this app will offer to run.
-    ///
-    /// Both halves of each entry are spelled out — the line brew prints and the
-    /// subcommand it maps to — because the mapping is Helm's reading of brew's
-    /// sentence and not a quotation of it.
+    /// The hand-written heading list, named entry by entry, so adding one
+    /// without coming here fails rather than silently widening what this app
+    /// offers to run. Both halves of each entry are spelled out: the mapping is
+    /// Helm's reading of brew's sentence, not a quotation of it.
     func testEveryHeadingOnTheListIsNamedHere() {
         XCTAssertEqual(DoctorFixCandidate.Heading.allCases.count, 1,
                        "A heading was added or removed. Name it here and read the checklist "
@@ -240,8 +198,7 @@ final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
     }
 
     /// Every heading on the list is a line `brew doctor` really prints, checked
-    /// against the captured output rather than against itself. A heading nobody
-    /// can reach is a rule that will never fire and will never be noticed.
+    /// against the captured output; a heading nobody can reach never fires.
     func testEveryHeadingOnTheListAppearsInTheCapturedOutput() {
         let lines = Self.capturedOutput.components(separatedBy: "\n")
             .map { $0.trimmingCharacters(in: .whitespaces) }
@@ -250,10 +207,8 @@ final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
         }
     }
 
-    /// Every subcommand a heading maps to is one `DoctorFix.Allowed` can admit.
-    /// A heading mapping to a verb no entry admits produces an argv that can
-    /// only ever be copied — legal, but it should be a decision rather than an
-    /// accident, and today it is not the case.
+    /// Every subcommand a heading maps to is one `DoctorFix.Allowed` can admit;
+    /// otherwise its argv could only ever be copied.
     func testEverySubcommandAHeadingMapsToCanBeAdmitted() {
         for heading in DoctorFixCandidate.Heading.allCases {
             let argv = [heading.subcommand, "periphery"]

@@ -5,14 +5,10 @@ public struct KeepAwakeSettings {
     let store: NamespacedStore
     public init(store: NamespacedStore) { self.store = store }
 
-    /// Every name this module has on disk, written down once.
-    ///
-    /// Seven of them were spelled again in the settings page and once more in the
-    /// panel tile — with their defaults, and with the jiggle clamp below — so the
-    /// module carried three copies of each in three targets. A drift in any one
-    /// showed the person a switch in one position while the Mac acted on the
-    /// other, and nothing in the build would have said so. `MenuBarLook` holds
-    /// the same shape for the six keys the engine never reads.
+    /// Every name this module has on disk, written down once, so the page, the
+    /// panel tile and the engine cannot drift into showing a switch in one
+    /// position while the Mac acts on the other. `MenuBarLook` holds the same
+    /// shape for the keys the engine never reads.
     public enum Key {
         public static let autoExternalDisplay = "autoExternalDisplay"
         public static let autoPower = "autoPower"
@@ -28,9 +24,7 @@ public struct KeepAwakeSettings {
         static let defaultDurationMinutes = "defaultDurationMinutes"
         static let timerEndsAutomation = "timerEndsAutomation"
         /// Not a preference — a note to the *next launch* that this app turned
-        /// system sleep off and may not have turned it back on. It was spelled
-        /// as a literal at four sites inside the very file whose doc comment is
-        /// about not spelling a key twice.
+        /// system sleep off and may not have turned it back on.
         static let clamshellGuard = "clamshellGuard"
     }
 
@@ -43,15 +37,9 @@ public struct KeepAwakeSettings {
     /// What the file says about the app rules — **once**, for both the rules and
     /// the banner over them.
     ///
-    /// The two used to be read separately and disagreed in the migration case.
-    /// `appTriggers` asked `store.string`, an `as? String`, so a value of the
-    /// wrong type came back as the empty string, read as «nothing was ever
-    /// written», and fell through to migrating the older `autoApps` list;
-    /// `appRulesUnreadable` asked `store.object`, saw something that was not a
-    /// string, and said so. A plist with an *array* under the rules key on a Mac
-    /// that still has the legacy list therefore held the Mac awake on two rules
-    /// under a banner saying no app could be read — and that file is one plist
-    /// type away from ordinary, since `autoApps` *is* a `[String]`.
+    /// Read separately, the two disagree in the migration case: a value of the
+    /// wrong type under the rules key would migrate the legacy `autoApps` list
+    /// and hold the Mac awake under a banner saying no app could be read.
     ///
     /// So there is one reading, and «unreadable» means no rules: the module fails
     /// toward the Mac sleeping and says so on screen. Absent and empty are not
@@ -96,9 +84,9 @@ public struct KeepAwakeSettings {
     /// True when the file holds something under the rules key that nothing can
     /// read.
     ///
-    /// Somebody whose rules stopped holding the Mac awake had nothing to look at,
-    /// so `activate` says so once. Not from `appTriggers` itself: that is read
-    /// from `recompute`, which runs from three observers.
+    /// `activate` says so once in the log, so somebody whose rules stopped
+    /// holding the Mac awake has something to look at. Not from `appTriggers`
+    /// itself: that is read from `recompute`, which runs from three observers.
     public var appRulesUnreadable: Bool {
         switch appRulesReading {
         case .unreadable: true
@@ -106,8 +94,8 @@ public struct KeepAwakeSettings {
         }
     }
 
-    /// Encoded here, beside the decode above: the page used to spell the key and
-    /// call `encode` itself, one target away from the only reader.
+    /// Encoded here, beside the decode above, so the key and the encoding have
+    /// one owner.
     public func setAppTriggers(_ triggers: [AppTrigger]) {
         store.set(AppTriggerRules.encode(triggers), for: Key.autoAppRules)
     }
@@ -135,30 +123,23 @@ public struct KeepAwakeSettings {
         store.set(minutes, for: Key.jiggleIntervalMinutes)
     }
 
-    /// **Not sealed, and that was tried.** This is the one setting here that
-    /// decides whether `sudo pmset disablesleep 1` runs, so it is exactly the
-    /// shape the sealing rule is written for — a stored value steering
-    /// privileged work nobody is watching.
+    /// **Not sealed.** This is the one setting here that decides whether
+    /// `sudo pmset disablesleep 1` runs, so it is exactly the shape the sealing
+    /// rule is written for — a stored value steering privileged work nobody is
+    /// watching.
     ///
-    /// A `SettingGuard` over it was written, tested and then taken out, because
-    /// on this app it cannot be read. Measured with `sample` on a real launch:
-    /// the main thread sat in `SecItemCopyMatching` → `SecKeychainItemCopyContent`,
-    /// called from this getter, called from `KeepAwakeEngine.init` — the app
-    /// stopped at «enable keep-awake» and went no further, behind a system
-    /// keychain dialog. **A released bundle is ad-hoc signed** (`package-app.sh` →
-    /// `--sign -`, no Team ID; a local build is too unless this Mac names an
-    /// identity (`signing-identity.sh` says where)), so its code identity changes with every
-    /// build and a keychain ACL written by one build never matches the next; that
-    /// dialog is not a one-off, it is every install. And a person who dismisses
-    /// it loses the lid feature with nothing on screen saying why.
+    /// But a seal is read through the keychain, and this getter runs from
+    /// `KeepAwakeEngine.init` and from `recompute`, on every display, charger and
+    /// application event. **A released bundle is ad-hoc signed** (`package-app.sh`
+    /// → `--sign -`, no Team ID; a local build is too unless this Mac names an
+    /// identity (`signing-identity.sh` says where)), so its code identity changes
+    /// with every build and a keychain ACL written by one build never matches the
+    /// next: launch would stop behind a system keychain dialog on every install,
+    /// and a person who dismisses it loses the lid feature with nothing on screen
+    /// saying why. `AppSettings.disabledScans` seals fine because it is read
+    /// rarely and never at launch.
     ///
-    /// `AppSettings.disabledScans` seals fine because it is read rarely and
-    /// never at launch. This one is read from `recompute`, which runs on every
-    /// display, charger and application event.
-    ///
-    /// So it waits for a Developer ID, which an `SMAppService` helper,
-    /// notarization and TCC grants surviving an install also wait for. Until then the plist is what it is, and the
-    /// mitigation that *did* ship is the one that matters most: the
+    /// So it waits for a Developer ID. The mitigation meanwhile: the
     /// administrator dialog needs a gesture — only the lid switch's own, as
     /// `KeepAwakeEngine.lidSwitchTurned` reports it — so a forged value cannot
     /// raise a password prompt by itself. It can engage a grant the person
@@ -202,11 +183,11 @@ public struct KeepAwakeSettings {
     ///
     /// Off by default, and deliberately: on by default would change what an
     /// existing timer does at the moment somebody updates, with nothing on
-    /// screen having moved. The changelog invites it instead.
+    /// screen having moved.
     ///
     /// Unclamped, unlike its neighbours, because a `Bool` off a plist is one of
-    /// two answers whatever the file says — and the answer this setting fails
-    /// to is the one that keeps today's behaviour.
+    /// two answers whatever the file says — and the one it fails to leaves the
+    /// rules alone.
     public var timerEndsAutomation: Bool {
         store.bool(Key.timerEndsAutomation, default: false)
     }

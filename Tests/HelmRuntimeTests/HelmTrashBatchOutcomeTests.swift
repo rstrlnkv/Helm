@@ -10,22 +10,14 @@ import HelmTestSupport
 /// and `toggleBasket` only dedupes by exact path. Both go into one basket and
 /// one `trash` call.
 ///
-/// Whichever goes first, both are gone afterwards — trashing a folder takes its
-/// contents. But if the parent went first, the child's own `trashItem` fails
-/// with `NSFileNoSuchFileError`, which `TrashFailure.reason` classifies as
-/// `.systemRefused`, and the screen tells the person that macOS refused to move
-/// a file that is already in their Trash. `UninstallerEngine.trashSync` has the
-/// guard for exactly this ("already gone … is not a failure"); the shared loop
-/// the other three modules were moved onto does not. The order a batch arrives
-/// in is a hash seed's (`DiskEngine.trash` feeds this `Array(Set(paths))`).
+/// Whichever goes first, both are gone afterwards. If the parent went first,
+/// the child's own `trashItem` fails with `NSFileNoSuchFileError`, which must
+/// not reach the screen as macOS refusing a file already in the Trash. The
+/// order is a hash seed's (`DiskEngine.trash` feeds `Array(Set(paths))`).
 ///
-/// Comparing a parent-first run with a child-first run proves nothing: `remove`
-/// sorts the batch before it starts, so the two agree by construction, and two
-/// wrongs of equal size agree too.
-///
-/// So the assertion that a person actually cares about is absolute, not
-/// comparative: whichever order the basket arrives in, both paths are gone,
-/// nothing is reported as a refusal, and the bytes are counted once.
+/// Comparing the two orders proves nothing, since `remove` sorts the batch
+/// first, so the assertion is absolute: both paths gone, no refusal, the bytes
+/// counted once.
 final class HelmTrashBatchOutcomeTests: XCTestCase {
 
     /// A folder holding one 300 KB file. Returns (parent, child).
@@ -63,8 +55,7 @@ final class HelmTrashBatchOutcomeTests: XCTestCase {
         }
     }
 
-    /// The other half of the rule, which the shared loop states in a comment and
-    /// which nothing pins: a path that was *already* gone before the batch
+    /// The other half of the rule: a path that was already gone before the batch
     /// started stays a refusal. The list on screen is minutes old, and "it was
     /// not there" is the one thing worth telling the person about it.
     func testAPathGoneBeforeTheBatchIsStillARefusalEvenBesideARemovedFolder() throws {

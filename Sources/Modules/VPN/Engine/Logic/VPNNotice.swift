@@ -31,19 +31,16 @@ public enum VPNNotice: String, CaseIterable, Codable, Sendable {
     /// twice.
     ///
     /// **A teardown Helm performed is announced no more quietly than a fall.**
-    /// `.disconnected` used to answer to the rules' setting alone, and the two
-    /// settings pull apart exactly where it matters: with `notice = silent` and
+    /// The two settings pull apart exactly where it matters: with `notice = silent` and
     /// `dropNotice = system` the person has said «tell me loudly when I lose a
     /// tunnel, quietly when a rule does as it was told» — and a tunnel taken down
     /// because a mapped app quit is a loss of protection wearing the quiet label.
-    /// It is not only a volume, either: a quit can be provoked. Anything running
-    /// as this user can launch and quit a bundle carrying a mapped identifier, and
-    /// the teardown that follows is booked as a rule doing as asked, which also
-    /// clears the books that would let the *later* real absence be reported.
+    /// A quit can also be provoked by anything running as this user
+    /// (`VPNRuleTrust`).
     ///
     /// Exhaustive on purpose — no `default`: a fourth kind of firing must be a
     /// build error here rather than something that silently inherits the rules'
-    /// volume, which is the defect this function was written for.
+    /// volume.
     public static func mode(for kind: VPNAutomation.Kind,
                             rules: VPNNotice, drop: VPNNotice) -> VPNNotice {
         switch kind {
@@ -70,9 +67,8 @@ public enum VPNNotice: String, CaseIterable, Codable, Sendable {
 
     /// Whether a card of these choices has to say that macOS is refusing them.
     ///
-    /// **Asked of the card, not of a row.** The notice card decides two events
-    /// and each row asked for itself, so choosing the banner for both and then
-    /// revoking the permission drew one sentence twice, 20 pt apart.
+    /// **Asked of the card, not of a row.** The notice card decides two events,
+    /// and asked per row the banner chosen for both would draw one sentence twice.
     ///
     /// `nil` is not a refusal: it means nobody has asked macOS this launch,
     /// which is what the page holds until its `.task` has run.

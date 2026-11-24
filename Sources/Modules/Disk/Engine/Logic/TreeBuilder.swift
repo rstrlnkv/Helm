@@ -22,12 +22,10 @@ final class TreeBuilder: @unchecked Sendable {
     func addFile(path: String, bytes: Int, fileID: UInt64, modified: TimeInterval = 0) {
         // A hard link's target is one allocation however many names it has.
         //
-        // 0 is not an id — it is the absence of one. `BulkWalk`
-        // leaves it there when the filesystem does not return `ATTR_CMN_FILEID`,
-        // and treating that as an id like any other means the first such file is
-        // counted and every later one is dropped from the tree *and* from the
-        // totals. Nobody could name a volume that withholds the attribute, so
-        // this is a guard rather than a fix: an unknown id deduplicates nothing.
+        // 0 is not an id but the absence of one: `BulkWalk` leaves it when the
+        // filesystem does not return `ATTR_CMN_FILEID`. Taken as an id, every
+        // such file after the first would be dropped from the tree and the
+        // totals; an unknown id deduplicates nothing.
         guard fileID != 0 else { insert(path: path, bytes: bytes, modified: modified); return }
         guard seenFileIDs.insert(fileID).inserted else { return }
         insert(path: path, bytes: bytes, modified: modified)
@@ -56,12 +54,10 @@ final class TreeBuilder: @unchecked Sendable {
 
     /// nil for a path that does not descend from the scan root.
     ///
-    /// The walk up had no base case but finding the root in the index, and
-    /// `/`'s parent is `/` — so one path from outside the root recursed until
-    /// the stack was gone. Every caller descends from the root, which is why
-    /// nobody has seen it. Nothing is invented on the way out either: charging
-    /// a stray path to the root would trade the crash for a folder that was
-    /// never scanned marking the whole volume unreadable.
+    /// `/`'s parent is `/`, so without this base case a path from outside the
+    /// root would recurse until the stack is gone. Nothing is invented either:
+    /// charging a stray path to the root would let a folder never scanned mark
+    /// the whole volume unreadable.
     private func directory(for path: String) -> DiskNode? {
         if let hit = index[path] { return hit }
         let above = (path as NSString).deletingLastPathComponent
@@ -85,8 +81,7 @@ final class TreeBuilder: @unchecked Sendable {
     }
 
     /// Walks up by trimming the path rather than by following a parent
-    /// reference, which is what it always did — the index is keyed by path and
-    /// holds directories only, so this never needed the node to know its own.
+    /// reference: the index is keyed by path and holds directories only.
     private func charge(_ bytes: Int, from directoryPath: String) {
         var currentPath = directoryPath
         while let current = index[currentPath] {

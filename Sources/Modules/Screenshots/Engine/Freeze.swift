@@ -17,12 +17,10 @@ public struct DisplayID: Hashable, Sendable {
 ///
 /// **`image` never has the pointer in it; `withCursor` does.** The overlay draws
 /// `image` under a live crosshair, and a pointer baked into that would be a
-/// second one beside it. The cut — `CaptureSession.crop` and the full-screen
-/// shot — takes `withCursor` when it exists, which is a second capture of the same
-/// display, taken just after `image`, with the pointer macOS draws, in the size and colour Accessibility
-/// gives it. It exists only when the setting asked for it, and only for the
-/// display the pointer was on: the others hold no pointer, and `shot` falls back
-/// to `image` for them.
+/// second one beside it. `withCursor` is a second capture of the same display,
+/// just after `image`, with the pointer macOS draws; it exists only when the
+/// setting asked for it, and only for the display the pointer was on. The cut
+/// (`CaptureSession.crop`, the full-screen shot) takes `shot`.
 public struct FrozenDisplay: @unchecked Sendable {
     public let id: DisplayID
     public let frame: CGRect
@@ -112,9 +110,10 @@ public struct PictureOnScreen: @unchecked Sendable {
     /// The picture at its own size.
     let picture: CGImage
 
-    /// The room kept clear round a picture on its display, in points: at the sides what the area's handles (a dot of 4.5 pt radius and a target of `AreaFrame.reach`, 10 pt, on its edge)
-    /// need, above and below what `EditorChrome.place` needs to stand the palette outside the area on either side, the palette,
-    /// the gap and the margin (`EditorChrome`'s own constants, so the two cannot drift). `place` passes it to `frame` as the inset; the tests write the 16 and the sum of `EditorChrome`'s three by hand, so that a wrong margin here turns them red.
+    /// The room kept clear round a picture on its display, in points: at the sides what the area's handles need (a dot
+    /// of 4.5 pt radius and a target of `AreaFrame.reach` on its edge), above and below what `EditorChrome.place` needs
+    /// to stand the palette outside the area: the palette, the gap and the margin, `EditorChrome`'s own constants so
+    /// the two cannot drift.
     static let margin = CGSize(width: 24, height: EditorChrome.paletteHeight + EditorChrome.gap + EditorChrome.margin)
 
     /// The picture's pixels to one point of the screen: the display's scale while the picture fits, more when it
@@ -126,12 +125,11 @@ public struct PictureOnScreen: @unchecked Sendable {
     /// Where a picture of `pixels` stands on a display whose frame is `display` pixels at `scale`: centred, on
     /// whole pixels, reduced to fit with its proportions kept and never enlarged. **The side that does not decide the
     /// reduction is rounded so that the pixels per point read off the other side still reach the last row or column
-    /// of the picture:** the height up where the width decides, the width down where the height does. Rounded to
-    /// nearest, a picture of 12 × 250 at 2× lost its last rows to an edit. Nil for a size with no area or one that
-    /// is not a number.
+    /// of the picture:** the height up where the width decides, the width down where the height does; rounded to
+    /// nearest, a thin picture loses its last rows to an edit. Nil for a size with no area or one that is not a number.
     ///
-    /// `inset` is the room in points kept clear round the picture on every side (at most a quarter of the side), so that a picture as large as the display is
-    /// reduced to the display less it and stays centred on the whole display. The one caller in Sources passes `margin`; the default, no room, is the bare fit the tests of it ask for.
+    /// `inset` is the room in points kept clear round the picture on every side (at most a quarter of the side), so
+    /// that a picture as large as the display is reduced to the display less it and stays centred on the whole display.
     static func frame(pixels: CGSize, on display: CGSize, scale: CGFloat, inset: CGSize = .zero) -> CGRect? {
         guard pixels.width.isFinite, pixels.height.isFinite, pixels.width >= 1, pixels.height >= 1,
               display.width.isFinite, display.height.isFinite, display.width >= 1, display.height >= 1,

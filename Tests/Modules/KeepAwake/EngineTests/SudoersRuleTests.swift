@@ -4,13 +4,10 @@ import XCTest
 
 /// What root is asked to do, pinned by shape rather than by outcome.
 ///
-/// The install used to stage the rule in `$TMPDIR` and hand root the *path*:
-/// the staged path stood in `ps auxww` for as long as the password prompt was
-/// up, `visudo -cf` checks syntax and not authorship, and `install` copies
-/// whatever is at the path when it runs. Swapping the file for
-/// `<user> ALL=(ALL) NOPASSWD: ALL` passed the check and bought permanent
-/// passwordless root. These tests say the content travels, never a path the
-/// user can write.
+/// Root gets content, never a path the user can write: a staged path stands in
+/// `ps auxww` while the password prompt is up, `visudo -cf` checks syntax and
+/// not authorship, and a file swapped for `<user> ALL=(ALL) NOPASSWD: ALL` would
+/// pass the check and buy permanent passwordless root.
 final class SudoersRuleTests: XCTestCase {
 
     private let user = "someone"
@@ -134,9 +131,9 @@ final class SudoersRuleTests: XCTestCase {
         XCTAssertFalse(command.contains("me' ALL=(ALL) NOPASSWD: ALL #"))
     }
 
-    /// The escaping lives in `AppleScript` (HelmRuntime) now — it was here and
-    /// in Homebrew's privileged runner, two copies of the one thing standing
-    /// between a command root runs and a command somebody appends to.
+    /// The escaping lives once, in `AppleScript` (HelmRuntime): it is the one
+    /// thing standing between a command root runs and a command somebody
+    /// appends to.
     func test_apple_script_literal_escapes_backslash_and_quote() {
         XCTAssertEqual(AppleScript.literal(#"a\b"c"#), #"a\\b\"c"#)
     }

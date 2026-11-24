@@ -4,58 +4,28 @@ import Module_Homebrew_Engine
 
 /// What the inspector draws, decided without a view.
 ///
-/// **Two of the three tabs have an inspector; Health does not.** Its findings
-/// open in place in a card of their own and its configuration opens the same
-/// way (`HomebrewHealthPage`), so there is nothing to select there and nothing
-/// for this type to describe: `.health` answers `.nothingToSelect`, which the
-/// page never mounts.
+/// **Health has no inspector** (Architecture/Homebrew.md § The Health tab):
+/// `.health` answers `.nothingToSelect`, which the page never mounts.
 ///
-/// `AvailableSection.of` is the shape this follows: the page asks a value type
-/// what it is looking at, and the decision is held by a test
-/// (`InspectorStateDecisionsTests`, optional) rather than by a screenshot. Everything here is a function of what the page already has — no
-/// query of its own, and nothing that can be waited on.
-///
-/// Internal, not `public` — nothing outside `Module_Homebrew_UI` reads this
-/// (`public` in this tree means "another target uses this").
+/// Like `AvailableSection.of`, a value a test reads without a view, and a
+/// function of what the page already has: no query of its own.
 enum InspectorState: Equatable {
-    /// **There are rows, and none of them is picked.** The invitation, and the
-    /// only reading it is honest under.
+    /// **There are rows, and none of them is picked:** the invitation.
     case nothingSelected
-    /// **There is nothing to pick.** The list beside this is empty — because
-    /// the query is still out, because it answered nothing, or because it could
-    /// not be put at all — and «Select a package» over it invites a choice
-    /// nobody can make: the invitation occupied half the pane, beside a master
-/// saying Homebrew had not answered.
-    ///
-    /// **One case for all three of waiting, empty and refused, and that is the
-    /// point.** The list's own three sentences are `ListScreen`'s job and they
-    /// differ; the inspector's answer to all three is the same, because what
-    /// makes the invitation wrong is that the list holds nothing, not why. Two
-    /// accounts of one fact on one screen is what the page is being repaired
-    /// of — the inspector repeating the master's sentence in its own words
-    /// would be a third.
+    /// **There is nothing to pick.** The list beside this is empty — waiting,
+    /// answered nothing, or refused — and «Select a package» would invite a
+    /// choice nobody can make. One case for all three: the list's sentences
+    /// are `ListScreen`'s, and the inspector does not repeat them.
     case nothingToSelect
     case package(InspectorSubject)
-    /// `hits` is what the "Available to install" section under whichever list
-    /// is on screen actually draws (`HomebrewViewModel.shownHits`) — already
-    /// filtered to what is not on this Mac, by id — so both package segments
-    /// fall back to it the same way and neither needs its own "already
-    /// installed" reading any more (`PackageStanding.notInstalled` is where
-    /// that exclusion happens once). The health segment never gets this far:
-    /// it answers `.nothingToSelect` before `hits` is read.
+    /// `hits` is what the "Available to install" section draws
+    /// (`HomebrewViewModel.shownHits`), already without what is on this Mac.
     ///
-    /// `shownEmpty` is nil for a caller with no filter of its own — every
-    /// existing test keeps the two-list reading below byte for byte. The
-    /// page passes its own segment's filtered emptiness once a query is in
-    /// the field: `installed`/`outdated` stay the *full*
-    /// lists here regardless, because a lookup by id and the update fact a
-    /// selected package's row carries (`PackageStanding.updates`) are correct
-    /// off the full list whenever `selected` is reachable at all — dropping a
-    /// row from the shown lists always drops its selection first
-    /// (`reconcileVisible`) — and only the *emptiness* question needs the
-    /// filtered count: a list a query has emptied is not the same fact as a
-    /// Cellar with nothing in it, and "Select a package" over the first is
-    /// exactly the invitation `.nothingToSelect` exists to withhold.
+    /// `shownEmpty` is the page's filtered emptiness once a query is in the
+    /// field, nil without a filter. `installed`/`outdated` stay the *full*
+    /// lists: a lookup by id is correct off them, since a row the filter hides
+    /// loses its selection first (`reconcileVisible`). Only emptiness needs
+    /// the filtered count.
     static func of(segment: HomebrewViewModel.Segment,
                    selected: String?,
                    installed: [BrewPackage],
@@ -64,17 +34,9 @@ enum InspectorState: Equatable {
                    hits: [SearchHit],
                    descriptions: [String: String],
                    shownEmpty: Bool? = nil) -> InspectorState {
-        // **Asked before the selection is, and of the same lists the master
-        // draws.** A pane with nothing in it cannot have something picked out
-        // of it, so a stale `selected` left over from a list that has since
-        // emptied is not a reason to go on offering the invitation either.
-        // `hits` counts on the two package tabs, since the section it
-        // describes sits under those and not under Health.
-        //
-        // **Health first, and whatever it is holding.** It has no inspector
-        // (see the type's own comment), so a selection left on it is not
-        // something this could describe, and the section draws no hit there to
-        // offer an install for.
+        // **Emptiness is asked before the selection,** of the lists the
+        // master draws: a stale `selected` from a list since emptied offers
+        // nothing. Health first, whatever it holds.
         if segment == .health { return .nothingToSelect }
         let empty: Bool
         if let shownEmpty {
@@ -103,17 +65,13 @@ enum InspectorState: Equatable {
                 return .package(InspectorSubject(
                     id: p.id, name: p.name, isCask: p.isCask,
                     version: p.versionStep, desc: desc, updates: .notApplicable,
-                    // A pinned formula is listed and not offered: `brew upgrade`
-                    // answers it with "…is pinned", so the button could only
-                    // ever fail.
+                    // `brew upgrade` refuses a pinned formula.
                     action: p.pinned ? .pinned : .upgrade))
             }
         case .health:
             return .nothingToSelect // answered above
         }
-        // The one hit lookup every segment falls back to — a package offered
-        // under the section is never anything but an install, since `hits`
-        // has already had what is on this Mac filtered out of it.
+        // A hit is only ever an install: `hits` holds nothing on this Mac.
         guard let h = hits.first(where: { $0.id == selected }) else { return .nothingSelected }
         return .package(InspectorSubject(id: h.id, name: h.name, isCask: h.isCask,
                                          version: "", desc: desc, updates: .notApplicable,
@@ -123,16 +81,11 @@ enum InspectorState: Equatable {
 
 /// What `brew doctor` answered — **and which of the three things it answered**.
 ///
-/// The enum exists because two of the three are the same empty array, and the
-/// port's own doc comment (`DoctorParser.parse`) says so: nil is "the tool said
-/// nothing", `[]` is "it ran and found nothing". A caller that must tell them
-/// apart gets an enum naming each reason rather than a convention for reading
-/// one optional two ways — and here the caller that must tell them apart is a
-/// sentence a person decides whether to trust their Mac on.
+/// An enum because "found nothing" and "could not be asked" must be told
+/// apart (`DoctorParser.parse`), and the page's verdict is that sentence.
 enum DoctorReading: Equatable {
-    /// Nobody has asked yet. The ordinary state of every launch: `loadIfNeeded`
-    /// does not run `brew doctor`, which is the slowest query in the module, so
-    /// this is what the segment shows until somebody opens it.
+    /// Nobody has asked yet: `loadIfNeeded` does not run `brew doctor`, the
+    /// slowest query, so this holds until somebody opens the tab.
     case notAsked
     /// `brew doctor` ran and this is what it found — possibly nothing, which is
     /// the one reading that may be drawn as a healthy machine.
@@ -140,20 +93,17 @@ enum DoctorReading: Equatable {
     /// The question could not be put: brew is gone, the run timed out, the
     /// tool printed nothing at all where it always prints something, or it
     /// exited non-zero with nothing in its answer this build could read
-    /// (`HomebrewEngine.doctor` — the reasons all arrive as the same empty
-    /// reply, and this case is all of them). Not a
-    /// clean machine — an unexamined one.
+    /// (`HomebrewEngine.doctor` folds them into one empty reply). Not a clean
+    /// machine — an unexamined one.
     case refused
 }
 
 /// One group of `brew config`'s lines, under one of the three headings this
 /// app invented for them.
 ///
-/// **The grouping is presentation and lives here rather than in the engine.**
-/// `brew config` prints one flat list; `ConfigLine.section` is the engine's
-/// answer for *which* heading a line belongs under, and this is the list the
-/// configuration card draws a block for. A group with no lines in it is not a group:
-/// an empty heading over nothing is a promise the document did not make.
+/// **The grouping is presentation and lives here rather than in the engine,**
+/// which only says which heading a line belongs under (`ConfigLine.section`).
+/// A group with no lines is not drawn.
 struct ConfigGroup: Equatable, Identifiable {
     let section: ConfigSection
     let lines: [ConfigLine]
@@ -162,12 +112,9 @@ struct ConfigGroup: Equatable, Identifiable {
     /// own text around NUL separators.
     var id: String { "cfg:" + section.rawValue }
 
-    /// The groups in `ConfigSection.allCases` order — which is the order the
-    /// approved drawing puts them in — each keeping brew's own order inside it.
-    ///
-    /// Not a `Dictionary(grouping:)`: that answers in whatever order the hash
-    /// happens to give, so the three headings would change places between
-    /// launches, and the lines inside a group would too.
+    /// The groups in `ConfigSection.allCases` order, each keeping brew's own
+    /// order inside it. Not a `Dictionary(grouping:)`, whose order changes
+    /// between launches.
     static func grouping(_ lines: [ConfigLine]) -> [ConfigGroup] {
         ConfigSection.allCases.compactMap { section in
             let own = lines.filter { $0.section == section }
@@ -179,25 +126,13 @@ struct ConfigGroup: Equatable, Identifiable {
 /// **What `brew doctor` says about this Mac, in the one line the tab opens with
 /// — the verdict.**
 ///
-/// What `brew doctor`'s reading comes to for the health tab — **four answers,
-/// and the middle two are the whole point.** It is a value the header is drawn
-/// from, read off the *unfiltered* reading and never off what the search field
-/// leaves: a word typed over the page must not be able to say the Mac is clean
-/// (`HealthScreen.of`).
-///
-/// `AvailableSection.of` is the shape this follows, for the reason that file
-/// gives: which sentence stands over which state is the whole of the decision.
+/// Read off the *unfiltered* reading, never off what the search field leaves:
+/// a typed word must not make the Mac look clean (`HealthScreen.of`).
 ///
 /// `.clean` and `.unexaminable` are both an empty list of findings and they are
-/// not the same sentence. One is `brew doctor` having looked and found nothing, which
-/// is the only reading that may be drawn as a healthy machine («Nothing to
-/// fix»); the other is the question never having been put — brew gone, the run
-/// cut off at the deadline, a tool that printed nothing where it always prints
-/// something, or one that exited non-zero with nothing in its answer this build
-/// could read. Collapsed into one they read as «Nothing to fix» over a Mac
-/// nobody examined, which is this app telling somebody their machine is fine on
-/// the strength of an answer it never got. The count rides on `.findings` so a
-/// verdict of zero findings cannot be spelled.
+/// not the same sentence: only `.clean` may be drawn as a healthy machine
+/// (`DoctorReading.refused` names the reasons). The count rides on `.findings`
+/// so a verdict of zero findings cannot be spelled.
 enum HealthVerdict: Equatable {
     /// Nobody has asked yet, or the ask is out.
     case checking
@@ -212,17 +147,10 @@ enum HealthVerdict: Equatable {
 /// **What the whole health tab puts on screen: a verdict, the findings the
 /// search field leaves, and the configuration the search field leaves.**
 ///
-/// The tab is one page: the verdict first, then a card of findings that each
-/// open in place, then the configuration in a card of its own
-/// (`HomebrewHealthPage`), so what the three parts hold is decided here, once,
-/// and not in a `body`.
+/// Decided here, once, and not in `HomebrewHealthPage`'s `body`.
 ///
-/// **The fourth reading, `noMatches`, is about the findings and not about the
-/// Mac.** `brew doctor` really finding nothing and a query hiding what it did
-/// find are two different facts, and collapsing them would let a stray
-/// character in the search field tell somebody their Mac has nothing wrong
-/// with it. So the verdict is always the unfiltered one, and a filter that
-/// empties a non-empty list is `noMatches` under it, in the place of the card.
+/// **`noMatches` is about the findings and not about the Mac:** a filter that
+/// empties a non-empty list says so under the unfiltered verdict.
 struct HealthScreen: Equatable {
     let verdict: HealthVerdict
     /// The findings a needle keeps, in brew's order. Empty for every verdict
@@ -231,22 +159,17 @@ struct HealthScreen: Equatable {
     /// The needle hides every finding there is.
     let noMatches: Bool
     /// The groups a needle keeps — all of them without one. Empty when `brew
-    /// config` has answered nothing, and then the card is not drawn at all: a
-    /// card with nothing in it is a promise the document did not make.
+    /// config` has answered nothing, and then the card is not drawn.
     let configuration: [ConfigGroup]
 
-    /// The findings a needle keeps — its title and its body. `of(_:config:needle:)`
-    /// is its one caller; it is a function of its own so that what an unmatched
-    /// finding is stays one sentence, apart from the screen that is built
-    /// around it.
+    /// The findings a needle keeps, matched on title and body.
     static func matchingIssues(_ needle: String?, _ issues: [DoctorIssue]) -> [DoctorIssue] {
         guard let needle else { return issues }
         return issues.filter { ListFilter.matches(needle, [$0.title, $0.body]) }
     }
 
     /// The groups a needle keeps — a group's own heading, or any line's key
-    /// or value. Whole groups rather than lines: there is no reading in which
-    /// the page shows a group with some of its own lines missing.
+    /// or value. Whole groups, never a group with some lines missing.
     static func matchingConfigGroups(_ needle: String?, _ groups: [ConfigGroup]) -> [ConfigGroup] {
         guard let needle else { return groups }
         return groups.filter { group in
@@ -279,16 +202,10 @@ struct HealthScreen: Equatable {
 struct InspectorSubject: Equatable {
     enum Action: Equatable { case uninstall, upgrade, install, pinned }
 
-    /// Four named reasons rather than one optional read three ways:
     /// `loadIfNeeded` never asks `brew outdated`, so `.notAsked` is the
     /// ordinary state on first open and must not be drawn as `.upToDate`.
-    /// `pinned` rides on `.available` rather than standing beside it because it
-    /// is a fact about *that* update and nothing else: a pinned formula still
-    /// has a newer version, so the row's marker and the sentence are unchanged,
-    /// and only the action beside them is. `brew upgrade` answers a pinned
-    /// formula with "…is pinned", so a button offered here could only ever
-    /// fail — the same reason `Action.pinned` exists one segment over, said
-    /// once so the two cannot disagree about one package.
+    /// `pinned` rides on `.available`: a pinned formula still has a newer
+    /// version, and only the action changes (`brew upgrade` refuses it).
     enum Updates: Equatable {
         case notApplicable, notAsked, upToDate
         case available(String, pinned: Bool = false)
@@ -311,9 +228,6 @@ struct InspectorSubject: Equatable {
 
 /// One row of the package view's second tier: a label, and a value that was
 /// actually read.
-///
-/// A value type rather than a view, for the reason `InspectorState` above gives:
-/// which rows an answer earns is the whole of the decision.
 struct PackageFact: Equatable {
     let label: String
     let value: String
@@ -323,24 +237,15 @@ struct PackageFact: Equatable {
 /// right now, or a figure.
 ///
 /// **Three states rather than an optional, because the middle one is not an
-/// absence.** `brew info --json=v2` carries no size in either direction, so the
-/// figure is a walk of the package's own Cellar directory — the one reading in
-/// the inspector that takes long enough to be worth saying something about. An
-/// `Int?` folded «nobody has asked», «a walk is out» and «the walk answered
-/// nothing» into one nil, and a view given that nil can only ever draw the same
-/// thing for all three: it cannot say a measurement is under way without
-/// claiming one where none was started, which is the whole of what
-/// `PackageFacts` refuses.
+/// absence.** The figure is a walk of the package's Cellar directory, long
+/// enough to be worth saying something about; an `Int?` could not say a walk
+/// is under way without claiming one where none was started.
 ///
-/// A fourth state for «the walk was refused» would be a distinction with nothing
-/// to say: the row is absent either way, and a person who never saw one cannot
-/// tell «no walk» from «a walk that failed» because neither is a fact about the
-/// package. So a refusal lands back on `.notMeasured`, deliberately.
+/// A refused walk lands on `.notMeasured`: the row is absent either way.
 ///
 /// Never `.measured(0)` from the engine: a missing keg, a directory that would
-/// not open and a cask are all nil there (`HomebrewEngine.size`), because a zero
-/// in a row is not a gap on the page — it is a measurement, and it says the
-/// package occupies nothing.
+/// not open and a cask are all nil there (`HomebrewEngine.size`), because a
+/// zero in a row says the package occupies nothing.
 enum SizeReading: Equatable, Sendable {
     /// Nothing has been walked and nothing is being walked: no row.
     case notMeasured
@@ -354,43 +259,21 @@ enum SizeReading: Equatable, Sendable {
 /// Which rows `brew info`'s answer earns — and no others.
 ///
 /// **An absent fact is an absent row.** Installed and not installed are two
-/// different sets rather than one set with holes in it: "Version" over the
-/// catalogue's number is a different sentence from "Installed version" over what
-/// is on disk, and a package that is not installed has no install date and
-/// nobody asked for it. Inside each set every row is still dropped when its own
-/// fact is nil, because the fields are optional for reasons that happen
-/// constantly rather than rarely — a cask's document records neither a licence
-/// nor who asked for it, so a cask simply has fewer rows than a formula.
+/// sets: "Version" over the catalogue's number is not "Installed version" over
+/// what is on disk. Inside each set a row is dropped when its fact is nil; a
+/// cask records neither a licence nor who asked for it. A placeholder would be
+/// worse: a dash reads as "Homebrew had nothing", a zero as a measurement.
 ///
-/// A placeholder would be worse than the gap in both directions: a dash reads as
-/// "Homebrew answered and had nothing", and a zero reads as a measurement.
-///
-/// **The size is the one fact here that did not come with the answer.** `brew
-/// info` carries no size in either direction, so it is a walk of the package's
-/// own Cellar directory that lands later than everything else — a separate
-/// parameter rather than a field of `PackageInfo`.
-///
-/// **It is also the one row that may stand for a state rather than a figure,
-/// and only for the one state that is really happening.** `.measuring` means a
-/// walk is out *now, for this package*, so the row says the figure is being
-/// counted and then swaps it in place; `.notMeasured` covers everything else —
-/// nothing selected, not installed, the walk refused — and earns no row at all,
-/// by exactly the rule the four above obey. There is deliberately still no «you
-/// will know once it is installed» for a package that is not here: nothing is
-/// walking, nothing ever will, and that sentence promises a number that never
-/// comes. The distinction is carried by `SizeReading` rather than by a word this
-/// enum would have to recognise, because a string a caller can spell is a state
-/// a caller can invent.
+/// **The size** is a walk that lands later (`SizeReading`), so a separate
+/// parameter. It is the one row that may stand for a state, and only while a
+/// walk is out for this package; `.notMeasured` earns no row.
 enum PackageFacts {
     static func of(_ info: PackageInfo, size: SizeReading) -> [PackageFact] {
         var facts: [PackageFact] = []
         if let installed = info.installedVersion {
             facts.append(PackageFact(label: HbStr.tileInstalledVersion, value: installed))
             if let at = info.installedAt {
-                // The shared helper, keyed by the app's language: a
-                // `DateFormatter` built with no locale answers in the
-                // *system's*, which on a Mac outside Helm's eight means an
-                // English page with somebody else's dates spliced into it.
+                // The app's language, not the system's.
                 facts.append(PackageFact(label: HbStr.tileInstalledOn,
                                          value: HelmDates.day(at)))
             }
@@ -407,16 +290,9 @@ enum PackageFacts {
                 facts.append(PackageFact(label: HbStr.tileLicence, value: licence))
             }
         }
-        // Last, and in both sets: it is the row that arrives last, and a list
-        // whose earlier rows moved when it landed would re-flow the page under
-        // somebody's eyes. Holding the place while the walk is out is the other
-        // half of that — the figure then swaps into a row that is already
-        // there rather than pushing one in beside the others.
-        //
-        // `Bytes` and not a formatter of its own — a Foundation one built with
-        // no locale answers in the *system's* language, which on a Mac outside
-        // Helm's eight is an English page with somebody else's units spliced
-        // into it.
+        // Last, in both sets: the row that arrives last moves no other row,
+        // and the figure swaps into the row that held its place. `Bytes`, in
+        // the app's language.
         switch size {
         case .notMeasured: break
         case .measuring:
@@ -441,7 +317,7 @@ extension BrewPackage: NamedPackage {}
 extension OutdatedPackage: NamedPackage {}
 
 /// The two questions the rows and the inspector both ask, answered once —
-/// published sets built once from the same expressions the behaviour consults (ARCHITECTURE.md § Vetoes and the notice).
+/// published sets built once from the same expressions the behaviour consults (Architecture/KeepAwake.md § Vetoes and the notice).
 enum PackageStanding {
     /// Whether an installed package has an update waiting, without asking
     /// `brew outdated` again: it reads the list the page already holds, and

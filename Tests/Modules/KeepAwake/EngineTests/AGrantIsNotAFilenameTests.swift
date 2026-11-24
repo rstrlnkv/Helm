@@ -7,13 +7,10 @@ import HelmRuntime
 /// filename — when the thing that matters is whether `sudo -n pmset
 /// disablesleep` runs without a password.
 ///
-/// The difference is not theoretical. On the machine this was written on,
-/// `/etc/sudoers.d` held a `vorssaint-clamshell` from a predecessor whose
-/// contents are this app's rule character for character, under another name.
-/// `sudo -n -l` listed the grant; the file check said no. So Helm asked for an
-/// administrator password to install what was already there — and after a
-/// removal it reported the grant taken back while every process running as
-/// this user still had it.
+/// A rule with this app's contents can sit under another name, from another
+/// tool. A file check would then ask for an administrator password to install
+/// what is already there, and after a removal report the grant taken back while
+/// every process running as this user still has it.
 final class AGrantIsNotAFilenameTests: XCTestCase {
     private var store: NamespacedStore!
     private var clamshell: FakeClamshell!
@@ -40,7 +37,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
         engine.settingsChanged() // the option is seen off before the switch is turned
         engine.lidSwitchTurned(true)
 
-        // The grant question is `sudo -n`, asked off the drawing thread now.
+        // The grant question is `sudo -n`, asked off the drawing thread.
         await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
         XCTAssertEqual(clamshell.installCalls, 1, "precondition: this is the path that prompts")
     }
@@ -60,8 +57,8 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
         XCTAssertTrue(engine.clamshellActive, "and the feature works, because the grant is there")
     }
 
-    /// The expensive half. Our file goes; the capability stays; the module used
-    /// to report the whole thing done.
+    /// The expensive half. Our file goes; the capability stays; the module must
+    /// not report the whole thing done.
     @MainActor
     func testARemovalThatLeavesTheGrantBehindIsSaidOutLoud() async {
         tailTheLog()
@@ -99,17 +96,14 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
         XCTAssertEqual(survivorLines(), 0)
     }
 
-    /// **Quitting leaves the rule, and that is the decision.**
+    /// Quitting leaves the rule, and that is the decision.
     ///
-    /// It used to remove it here, which read well and could not work:
     /// `deactivate()` is what `applicationWillTerminate` calls on every live
-    /// engine, and `removeSudoers` dispatches to a global queue and puts up an
-    /// `osascript` administrator dialog — for an app that is already gone. The
-    /// two abandoned NOPASSWD files on this machine are what that looks like a
-    /// year later, and Helm's own removal was written the same way.
+    /// engine, and a removal there would put up an `osascript` administrator
+    /// dialog for an app that is already gone.
     ///
-    /// The grant belongs to the *feature*, and there are two falling edges of it
-    /// now: the lid option's own switch (`releaseIfUnneeded`, the two tests above)
+    /// The grant belongs to the feature, and there are two falling edges of it:
+    /// the lid option's own switch (`releaseIfUnneeded`, the two tests above)
     /// and the module's (`willDisable`, which the host calls from the person's
     /// switch and never from quitting —
     /// `ALidThatDidNotWorkSaysSoTests`). `deactivate()` is the one route out that
@@ -127,7 +121,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
                        + "do — and the app about to stop existing is the last chance to say so")
     }
 
-    /// The half that has to stay: a rule that cannot withdraw itself is **left**
+    /// The half that has to stay: a rule that cannot withdraw itself is left
     /// rather than answered with a dialog nobody is there for.
     func testQuittingLeavesARuleItCannotTakeOutForFree() {
         clamshell.sudoersInstalled = true

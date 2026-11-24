@@ -4,13 +4,13 @@ import HelmTestSupport
 @testable import Module_Autopilot_UI
 
 /// The engine says a pass went into the history while no page is open, and the
-/// model, which now outlives the page, is the one that hears it.
+/// model, which outlives the page, is the one that hears it.
 ///
 /// An unattended sweep (the hourly timer, a file arriving) writes the history with
 /// nobody looking. The model re-asks once a page has opened it, so the history it
 /// holds is the engine's when the person comes back; before any page opened it,
 /// the first `appear()` reads everything and a ping is not a reason to read the
-/// rule store early. No view is built anywhere in this class. Defect class kept: an
+/// rule store early. No view is built anywhere in this class. Guards: an
 /// announced pass is lost without a page, or read in without anyone having asked.
 @MainActor
 final class AnAnnouncedPassReachesTheModelWithNoPageTests: XCTestCase {
@@ -33,10 +33,6 @@ final class AnAnnouncedPassReachesTheModelWithNoPageTests: XCTestCase {
     /// The descriptor's own, so its buffering is what is under test.
     private func slot() -> (AsyncStream<Void>, AsyncStream<Void>.Continuation) {
         AutopilotDescriptor.historyChannel()
-    }
-
-    private func settle() async {
-        await grace()
     }
 
     /// Total failure (a loop that reads nothing) prints `history.count 0` against 1.
@@ -62,7 +58,7 @@ final class AnAnnouncedPassReachesTheModelWithNoPageTests: XCTestCase {
         let rvm = model(work, changes)
 
         changed.yield()
-        await settle()
+        await grace()
         XCTAssertEqual(work.calls, [], "a ping before any page opened read the engine")
         XCTAssertTrue(rvm.history.isEmpty)
 
@@ -92,7 +88,7 @@ final class AnAnnouncedPassReachesTheModelWithNoPageTests: XCTestCase {
         changed.yield()
         changed.yield()
         await waitUntil("a ping is read") { work.count("readHistory") > reads }
-        await settle()
+        await grace()
         let extra = work.count("readHistory") - reads
         XCTAssertGreaterThanOrEqual(extra, 1, "the pings were never read")
         XCTAssertLessThanOrEqual(extra, 2,

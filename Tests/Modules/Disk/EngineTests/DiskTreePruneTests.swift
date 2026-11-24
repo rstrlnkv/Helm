@@ -1,10 +1,8 @@
 import XCTest
 @testable import Module_Disk_Engine
 
-/// Trashing a folder invalidates the tree — but re-walking a whole disk to
-/// learn something we already know (those bytes are gone) costs a minute.
-/// Pruning applies the deletion to the tree we have.
-/// Past defect: fixed in commit 76f18e41.
+/// Pruning applies a removal to the tree in hand, since re-walking a whole disk
+/// to learn that those bytes are gone costs a minute.
 final class DiskTreePruneTests: XCTestCase {
     private var tree: DiskEntry {
         entry("/root", 1000, [

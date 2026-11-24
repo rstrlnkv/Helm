@@ -3,16 +3,12 @@ import os
 
 /// What the app is doing, while it is doing it.
 ///
-/// The memory trail says what a phase cost once it is over, and that has never
-/// been enough: a spike of 75 → 508 → 1066 → 1338 MB across ninety seconds sat
-/// in the log with no operation named beside it, and a run of timer samples was
-/// read as an idle app while `listApps` and `appSizes` were running between
-/// them. A footprint with no phase against it can only be guessed at.
+/// The memory trail says what a phase cost once it is over; a footprint with no
+/// phase named against it can only be guessed at.
+/// Architecture/DiagnosticsLog.md § The activity registry.
 ///
-/// Written by engines, read by whoever asks — the same shape as `HelmLog`, and
-/// for the same reason: a module publishes what it is doing without anyone being
-/// able to reach in and command it. Nothing here takes a command, because
-/// nothing here carries a decision.
+/// Written by engines, read by whoever asks, like `HelmLog`: a module publishes
+/// what it is doing, and nothing here takes a command.
 ///
 /// Also emits `os_signpost` intervals, so the same boundaries land on the
 /// Instruments timeline beside the allocator's own. One call site, two readers;
@@ -89,25 +85,18 @@ public enum HelmActivity {
 
     public static var running: [Running] { lock.withLock { Array(live.values) } }
 
-    /// For tests, which must not inherit another test's phases.
-    static func reset() { lock.withLock { live.removeAll() } }
-
     /// The phrase that goes after a memory reading.
     ///
     /// Oldest first, because a phase that has been running for forty minutes is
     /// the finding. Never timed out and never hidden for being too old — that
     /// would hide the one class of defect this exists to surface.
-    /// `excluding` is the phase asking. A phase's own line reports what it cost,
-    /// and it knows its own name — what it cannot know is what else was running
-    /// beside it, which is the only thing worth appending. Without this the line
-    /// read `uninstaller.appSizes: 59 MB — nothing running`, which denies the
-    /// operation named at the start of the same sentence.
+    /// `excluding` is the phase asking: its line already names it, and what is
+    /// worth appending is what else ran beside it.
     ///
     /// «No phases running», not «nothing running»: an empty registry means no
-    /// *named phase* is open, and that is all it means. The SwiftUI render, a
-    /// VPN refresh, the Layout tap, the update check and the trash sweep all
-    /// run outside this registry — a reading taken beside any of them is not a
-    /// reading of an idle app, and the line must not say it is.
+    /// *named phase* is open. The SwiftUI render, a VPN refresh, the Layout tap,
+    /// the update check and the trash sweep all run outside this registry, so
+    /// the line must not call the app idle.
     static func describe(_ running: [Running], now: Date = Date(),
                                 excluding label: String? = nil) -> String {
         let running = running.filter { $0.label != label }

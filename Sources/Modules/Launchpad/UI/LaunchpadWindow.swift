@@ -19,8 +19,7 @@ import Module_Launchpad_Engine
 /// menu the press goes on to the view under it (the search field's text menu). While a menu tracks, `menuOpen` keeps the window from closing on the
 /// resign and the activation it may cause; once the menu is gone, a panel that is no longer key ends the window as a resign would have.
 ///
-/// What was measured of menus and tooltips in a panel like this is `OverlayPanel`'s doc comment; this panel's own live
-/// readings (typing, the menu, closing on resign) are the owner's, in Helm Dev.
+/// How an `NSMenu` behaves in a non-activating panel like this is `OverlayPanel`'s doc comment.
 final class LaunchpadPanel: NSPanel {
     var state: LaunchpadScreenState?
     var onResignKey: (() -> Void)?
@@ -197,21 +196,15 @@ private final class LaunchpadWindowEnders {
     deinit { for entry in tokens { entry.center.removeObserver(entry.token) } }
 }
 
-/// The Launchpad window: built when the person asks for it, gone when it closes, holding nothing in between.
-///
-/// **Level.** One below the Dock's (20, so 19): above every ordinary window, under the Dock, which stays drawn and
-/// clickable over the panel, as macOS's own Launchpad leaves it; a click on the pinned Dock helper then reaches
-/// it. The frame is still the whole screen. Every Space and over full-screen apps, as `OverlayPanel`.
+/// The Launchpad window: built when the person asks for it, gone when it closes, holding nothing in between
+/// (Architecture/Launchpad.md § The window). Its level is Architecture/Launchpad.md § The Dock icon; every Space and over
+/// full-screen apps, as `OverlayPanel`.
 ///
 /// Built on the screen the pointer is on, its geometry worked out from the grid then in force (`regrid` makes it again). The model's `whileShown()` runs for as long as
-/// the window is open, and its snapshot goes when the window does. It closes on Esc, a click on the empty background, an
-/// app that opened, the panel losing key, another app coming forward (neither while the Hidden prompt is up), the Space or the screens changing, the model
-/// stopping and the shortcut's second press.
+/// the window is open, and its snapshot goes when the window does.
 ///
-/// **One writer of how much of it shows** (`apply`): the panel's alpha and the screen's zoom and fade (`state.reveal`) both come from
-/// one number, which is the fingers' progress while a scrub runs (`beginScrub`, `scrub`, `endScrub`) and a settle's own clock after
-/// it (`settle`, one display-link tick at a time along `HelmMotion.interfaceProgress`). A pinch's scrub shows the window without
-/// making it key, so the app in front keeps the keyboard until the scrub completes.
+/// **One writer of how much of it shows** (`apply`): the fingers' progress while a scrub runs (`beginScrub`, `scrub`, `endScrub`) and a
+/// settle's own clock after it (`settle`, one display-link tick at a time along `HelmMotion.interfaceProgress`).
 @MainActor final class LaunchpadWindow: LaunchpadWindowHandle {
     private enum Phase {
         case settled
@@ -259,8 +252,7 @@ private final class LaunchpadWindowEnders {
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         let frame = screen?.frame ?? CGRect(origin: .zero, size: LaunchpadGeometry.fallback)
         // The strip the screen keeps at the top, one way on every screen: the notch's room or the menu bar's, whichever is taller. `safeAreaInsets.top` is 0 on
-        // a screen without a notch although the menu bar draws over the window there, which put the header row 28 pt under the menu bar on a notched
-        // screen and a few points under it on any other.
+        // a screen without a notch although the menu bar draws over the window there.
         let topSafe = screen.map { Self.topSafe(safeTop: $0.safeAreaInsets.top, frame: $0.frame, visible: $0.visibleFrame) } ?? 0
         let geometry = LaunchpadGeometry.make(for: frame.size, topSafe: topSafe, settings: model.grid)
         state = LaunchpadScreenState(geometry: geometry, view: model.viewMode, hidden: LaunchpadHiddenGate(port: model.makeAuth()),

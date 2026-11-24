@@ -43,7 +43,7 @@ final class TheModuleEndingMidCaptureTakesNothingTests: XCTestCase {
     private func heldFreeze() async throws -> (PanelRig.Rig, PromptGate) {
         let box = try PanelRig.rig(in: self)
         let gate = PromptGate()
-        box.screen.hold = { _ in gate }
+        box.screen.gate = gate
         return (box, gate)
     }
 

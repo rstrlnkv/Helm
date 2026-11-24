@@ -5,8 +5,8 @@ import Security
 
 /// What Helm needs from macOS, and why. Read on every launch, and the person is
 /// told when the build's signature changed and a grant an enabled module needs is
-/// denied, so they find out before a removal silently leaves files behind —
-/// which is exactly how the gap was discovered.
+/// denied, so they find out before a removal silently leaves files behind.
+/// Architecture/TheGates.md § Permissions.
 public enum PermissionState: String, Sendable, Equatable {
     case granted, denied
 }
@@ -20,24 +20,17 @@ public enum PermissionCheck {
 
     /// Files only readable with Full Disk Access. Detection has to be a READ:
     /// writing into ~/Library/Containers is refused even when access has been
-    /// granted, so a write probe reported "denied" to users who had granted it.
+    /// granted.
     ///
     /// **Files, and never a directory.** `FileHandle(forReadingFrom:)` throws on
-    /// every directory — `/tmp` refuses it as flatly as somebody's Messages
-    /// database does — so a directory here is an entry that answers "denied" on
-    /// a Mac that granted everything. `~/Library/Application Support/AddressBook`
-    /// was one for as long as this list had four entries, and being last it was
-    /// opened only on the runs where the answer was already going to be
-    /// "denied": every launch after an ad-hoc update, which is the one state
-    /// this probe most needs to read correctly.
+    /// every directory, protected or not, so a directory here answers "denied"
+    /// on a Mac that granted everything.
     ///
-    /// **The system-wide `TCC.db` goes first**, and it is why the list can be
-    /// short. It is a plain file, it is on every Mac — the per-user one beside
-    /// it is absent on macOS 26 — and it is gated by Full Disk Access and
-    /// nothing else. Reaching it first also means the ordinary granted case
-    /// never opens anybody's Safari bookmarks or their Messages database at all;
-    /// those two stay as the fallback for a Mac that has somehow mislaid the
-    /// first, which is what the fold below is for.
+    /// **The system-wide `TCC.db` goes first**, which is why the list can be
+    /// short: a plain file, on every Mac (the per-user one can be absent), gated
+    /// by Full Disk Access and nothing else. The ordinary granted case then
+    /// never opens anybody's Safari bookmarks or Messages database; those stay
+    /// as the fallback.
     static var probeURLs: [URL] {
         let home = FileManager.default.homeDirectoryForCurrentUser
         return [
@@ -59,12 +52,8 @@ public enum PermissionCheck {
 
     /// Whether one probe path hands over a byte.
     ///
-    /// Its own member rather than a closure inside the fold below, because the
-    /// shape is the thing that has to be checked: `FileHandle(forReadingFrom:)`
-    /// throws on **every** directory, protected or not, so a directory in
-    /// `probeURLs` is a probe that can only ever answer "denied" —
-    /// `TheProbeAsksPathsItCanAnswerFromTests` is that check, and it needs
-    /// somewhere to point.
+    /// Its own member so `TheProbeAsksPathsItCanAnswerFromTests` can check that
+    /// every entry of `probeURLs` is a path it can answer from.
     static func canRead(_ url: URL) -> Bool {
         guard FileManager.default.fileExists(atPath: url.path) else { return false }
         guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
@@ -79,28 +68,15 @@ public enum PermissionCheck {
     /// The same answer, off the thread that draws — for the settings pages that
     /// ask for it as they appear, through `helmTracksFullDiskAccess`.
     ///
-    /// **Measured here, warm and cold**: 0.09 ms a call once the paths are in
-    /// the cache, 1.85 ms for the first call of the process, with three of the
-    /// four probe files present and the grant withheld — taken against the list
-    /// `probeURLs` held before the system-wide `TCC.db` went to the front of it,
-    /// and left at those numbers rather than guessed forward. So the warm case
-    /// is not what this is about, and saying it was would be a claim the numbers
-    /// do not support. What it is about is that those milliseconds have no
-    /// ceiling: each is a synchronous `open` and a `read`, on whatever volume
-    /// the path is on, and a blocking syscall answers when it answers. Five
-    /// pages made that call while building themselves.
+    /// Usually a millisecond or less, but with no ceiling: each probe is a
+    /// synchronous `open` and `read`, and a blocking syscall answers when it
+    /// answers. The withheld case pays for every entry.
     ///
-    /// The *granted* case is now one `open` rather than a walk down the list,
-    /// because the entry that is on every Mac is first; it is the withheld case
-    /// that still pays for all four, and that is the case this hop is for.
+    /// Off the **cooperative** pool, not merely off the main actor: a plain
+    /// `async` body lands on the pool that has one thread per core, where a
+    /// blocking read is what `offTheCooperativePool` keeps out.
     ///
-    /// Off the **cooperative** pool, not merely off the main actor. A plain
-    /// `async` body would already leave the main thread, and would land on the
-    /// pool that has one thread per core — where a blocking read is exactly the
-    /// thing `offTheCooperativePool` exists to keep out.
-    ///
-    /// `probing` is a seam, not a feature: it is how `FullDiskAccessProbeTests`
-    /// can see which thread the probe ran on.
+    /// `probing` is a seam, so a test can see which thread the probe ran on.
     public static func fullDiskAccess(
         probing probe: @escaping @Sendable () -> PermissionState = { currentFullDiskAccess() }
     ) async -> PermissionState {
@@ -162,8 +138,8 @@ extension PermissionCheck {
     }
 
     /// Notifications is not a Privacy & Security pane and not a `PermissionNeed`
-    /// — macOS answers for this grant through its own API — so it is only ever
-    /// a destination. The identifier is the settings extension's own
+    /// (macOS answers for this grant through its own API), so it is only a
+    /// destination. The identifier is the settings extension's own
     /// (`NotificationsSettings.appex`), not the legacy prefPane's.
     public static func openNotificationSettings() {
         open("x-apple.systempreferences:com.apple.Notifications-Settings.extension")
@@ -201,32 +177,29 @@ public enum TrashFailure {
         /// before the move, the pair no longer matches — edited since, or a
         /// hard link, or one of them gone. Nothing was attempted.
         case changedSinceScan
-        /// Helm could not read the file — or, in Duplicates, the surviving
-        /// copy it had to be compared against — at the moment of the move. A
-        /// permission withdrawn, a volume gone, a file busy. **Not
-        /// `changedSinceScan`:** that one says «it is not where Helm found it»
-        /// about a file that may be exactly there, and the two are acted on
-        /// differently — a person told «it moved» looks for the file, a person
-        /// told «it could not be read» checks the access. Nothing was attempted.
+        /// Helm could not read the file (or, in Duplicates, the surviving copy
+        /// it is compared against) at the moment of the move: a permission
+        /// withdrawn, a volume gone, a file busy. **Not `changedSinceScan`:** a
+        /// person told «it moved» looks for the file, a person told «it could
+        /// not be read» checks the access. Nothing was attempted.
         case unreadable
     }
 
     /// Cocoa's "you may not write here" error.
     private static let noPermissionCode = 513   // NSFileWriteNoPermissionError
     /// Nothing at that path. The ordinary refusal wherever a list outlives the
-    /// disk it describes — Disk acts on a tree up to 24 h old, and Caches,
-    /// DerivedData and Downloads are exactly the folders that change under it.
+    /// disk it describes: Caches, DerivedData and Downloads change under a
+    /// tree that can be a day old.
     private static let noSuchFileCode = NSFileNoSuchFileError
-    /// The two other Cocoa codes a move to the Trash actually produces, and
-    /// which used to arrive as the general refusal — a sentence with no cause
-    /// in it and no step out.
+    /// The two other Cocoa codes a move to the Trash produces, named so the
+    /// person gets a cause and a step out rather than the general refusal.
     private static let readOnlyVolumeCode = 642 // NSFileWriteVolumeReadOnlyError
     private static let outOfSpaceCode = 640     // NSFileWriteOutOfSpaceError
 
     /// Classifies using the error macOS returned. The shape of the path decides
     /// two cases only: an `.app` with an active system extension, and code 513
     /// under a container folder. Blaming Full Disk Access for every container
-    /// failure sent users to a setting they had already granted.
+    /// failure would send users to a setting they had already granted.
     public static func reason(path: String, errorCode: Int, hasSystemExtension: Bool) -> Reason {
         // **Before the extension**, which is a test of the path's *shape* while
         // this is what macOS answered: «turn off its system extension» is an

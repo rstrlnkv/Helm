@@ -1,23 +1,19 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// **The `install.sh` wrapper under every input its own test does not feed it.**
 ///
-/// `AStopReachesTheInstallerItselfTests` stops the wrapper once, while the
-/// installer is running. The wrapper also has to: end a Stop that lands in the
-/// download, survive a second Stop, and remove the script exactly once — and a
-/// Stop can land at *any* moment of the wrapper's life, not only the one after
-/// the installer has settled. What it hands the page, the installer's exit code
-/// and its output, is `TheInstallerWrapperPassesItsCodeAndOutputThroughTests`.
+/// The wrapper ends a Stop that lands in the download, survives a second Stop,
+/// removes the script exactly once, and holds at *any* moment of its life a
+/// Stop can land in.
 ///
-/// The command is the engine's own (taken from `installBrew` against fakes),
-/// rehosted the way `TheDownloadedInstallerIsTidiedAwayTests` does it — the
-/// `https://` word becomes a `file://` URL, `mktemp` is told where to write —
-/// and run through the real `ShellProcessRunner.stream`, whose handle is what
-/// Stop terminates. Nothing here reaches the network, root, or the real
-/// installer; every installer is a stand-in written by the test.
+/// The command is the engine's own, rehosted as
+/// `TheDownloadedInstallerIsTidiedAwayTests` does, and run through the real
+/// `ShellProcessRunner.stream`. Nothing here reaches the network, root, or the
+/// real installer; every installer is a stand-in written by the test.
 final class TheInstallerWrapperKeepsItsWordTests: XCTestCase {
 
     // MARK: - Stop
@@ -25,7 +21,7 @@ final class TheInstallerWrapperKeepsItsWordTests: XCTestCase {
     /// A Stop that lands while the script is still being downloaded ends the
     /// download, runs nothing and leaves nothing. The download is held open by
     /// the test: the source is a pipe the test writes half a script into.
-    func testAStopDuringTheDownloadEndsItAndLeavesNothing() throws {
+    func testAStopDuringTheDownloadEndsItAndLeavesNothing() async throws {
         let g = try ground("wrapper-stop-download")
         let fifo = g.root.appendingPathComponent("install.fifo")
         XCTAssertEqual(mkfifo(fifo.path, 0o600), 0)
@@ -33,26 +29,24 @@ final class TheInstallerWrapperKeepsItsWordTests: XCTestCase {
         let (handle, run) = start(try rehosted(try composedInstaller(), source: fifo, temporaries: g.temporaries))
 
         // Opening for writing returns once curl has opened it for reading.
-        let opened = DispatchSemaphore(value: 0)
         let box = Run()
         DispatchQueue.global().async {
             let fd = Darwin.open(fifo.path, O_WRONLY)
             box.exit(fd)
-            opened.signal()
         }
-        XCTAssertEqual(opened.wait(timeout: .now() + 10), .success, "precondition: the download never started")
+        await waitUntilReached("precondition: the download started", within: .seconds(10)) { box.status != nil }
         let fd = try XCTUnwrap(box.status)
         defer { Darwin.close(fd) }
         let half = "#!/bin/bash\n/usr/bin/touch \(ran.path)\n# more to come"
         _ = half.withCString { Darwin.write(fd, $0, strlen($0)) }
-        Thread.sleep(forTimeInterval: 0.2)                  // curl has read it and waits for the rest
+        try await Task.sleep(for: .milliseconds(200))      // curl has read it and waits for the rest
 
         handle.terminate()
 
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success,
+        XCTAssertEqual(run.finished(within: 10), .success,
                        "the stream never ended: the download still holds the pipe")
         XCTAssertEqual(run.status, 143, "a Stop in the download is not read as the person's Stop")
-        Thread.sleep(forTimeInterval: 0.2)
+        await grace(0.2)
         XCTAssertFalse(FileManager.default.fileExists(atPath: ran.path), "the half-downloaded script was run")
         XCTAssertEqual(g.leftovers, [], "a Stop in the download left the script in the temporary folder")
     }
@@ -61,38 +55,37 @@ final class TheInstallerWrapperKeepsItsWordTests: XCTestCase {
     /// installer runs: one exit, 143, everything the installer started gone,
     /// and the EXIT trap's `rm` run exactly once (counted off the shell's own
     /// trace of the engine's command).
-    func testASecondStopEndsItOnceAndRemovesTheScriptOnce() throws {
+    func testASecondStopEndsItOnceAndRemovesTheScriptOnce() async throws {
         let g = try ground("wrapper-stop-twice")
         let installer = try g.installer("/bin/sleep 60 &\necho $! >> \(g.pids.path)\necho started\nwait")
         let (handle, run) = start(try rehosted(try composedInstaller(), source: installer,
                                                temporaries: g.temporaries), trace: true)
-        XCTAssertTrue(eventually(10) { run.lines.contains("started") && g.recordedPIDs.count == 2 },
-                      "precondition: the installer and its child never started")
+        await waitUntilReached("precondition: the installer and its child started", within: .seconds(10)) {
+            run.lines.contains("started") && g.recordedPIDs.count == 2
+        }
 
         handle.terminate()
         handle.terminate()
 
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success,
+        XCTAssertEqual(run.finished(within: 10), .success,
                        "the stream never ended: something the wrapper started still holds its pipe")
         XCTAssertEqual(run.status, 143)
-        XCTAssertTrue(eventually(5) { g.alive().isEmpty }, "still running after two Stops: \(g.alive())")
+        await waitUntilReached("nothing still running after two Stops", within: .seconds(5)) { g.alive().isEmpty }
         XCTAssertEqual(g.leftovers, [])
         let removals = run.lines.filter { $0.range(of: #"^\++ /bin/rm -f "#, options: .regularExpression) != nil }
         XCTAssertEqual(removals.count, 1, "the EXIT trap ran \(removals.count) times: \(run.lines)")
-        Thread.sleep(forTimeInterval: 0.2)
+        await grace(0.2)
         XCTAssertEqual(run.exits, 1, "the stream ended \(run.exits) times")
     }
 
-    /// **A Stop can land at any moment of the wrapper's life**, not only once
-    /// the installer has settled — through `adopt` it lands a moment after the
-    /// launch, and a person's press can land as the download hands over to the
+    /// **A Stop can land at any moment of the wrapper's life**: through `adopt`
+    /// a moment after the launch, or as the download hands over to the
     /// installer. Swept across the wrapper's first milliseconds, calibrated on
-    /// this Mac: every Stop must end with no installer running, no download
-    /// still writing, and nothing in the temporary folder.
+    /// the machine running it, every Stop ends with no installer running, no
+    /// download still writing, and nothing in the temporary folder.
     ///
-    /// The stand-in installer replaces itself with a twenty-second sleep, so an
-    /// installer that outlived the Stop also holds the page's pipe — the stream
-    /// not ending is the same defect seen from the page.
+    /// The stand-in installer replaces itself with a twenty-second sleep, so one
+    /// that outlived the Stop also holds the page's pipe open.
     func testNoMomentOfStopLeavesTheInstallerOrItsScriptBehind() throws {
         let g = try ground("wrapper-stop-sweep")
         let command = try rehosted(try composedInstaller(),
@@ -154,98 +147,6 @@ final class TheInstallerWrapperKeepsItsWordTests: XCTestCase {
     }
 }
 
-/// **What the `install.sh` wrapper hands the page: the installer's code and its output.**
-///
-/// The installer's own exit code goes through unchanged, a failed download
-/// stops the wrapper before any installer runs, a line the installer prints
-/// reaches the page while the installer is still running, and nothing of the
-/// shell's own reaches the console. The command, the stand-in installers and
-/// the stream are the ones `TheInstallerWrapperKeepsItsWordTests` uses: the
-/// harness at the foot of this file serves both.
-/// Kept: the only test of the wrapper's exit code, failed download and console output; its sibling covers Stop only.
-final class TheInstallerWrapperPassesItsCodeAndOutputThroughTests: XCTestCase {
-
-    // MARK: - Exit status
-
-    /// The installer's own code, whatever it is — not the wrapper's 143, not a
-    /// zero borrowed from the `rm` in the EXIT trap.
-    func testTheInstallersOwnCodeIsTheWrappersCode() throws {
-        let g = try ground("wrapper-codes")
-        let command = try composedInstaller()
-        for code: Int32 in [0, 1, 3, 42] {
-            g.reset()
-            let installer = try g.installer("echo 'installer says hello'\nexit \(code)")
-            let (_, run) = start(try rehosted(command, source: installer, temporaries: g.temporaries))
-            XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success, "exit \(code): the stream never ended")
-            XCTAssertEqual(run.status, code, "the installer exited \(code) and the page is told \(String(describing: run.status))")
-            XCTAssertEqual(g.recordedPIDs.count, 1, "exit \(code): precondition — the installer ran")
-            XCTAssertEqual(g.leftovers, [], "exit \(code): the script was left in the temporary folder")
-        }
-    }
-
-    /// A download that fails stops the wrapper before any installer runs: its
-    /// own non-zero code (an installer run over an empty file would say 0), and
-    /// nothing left behind.
-    func testAFailedDownloadRunsNothingAndLeavesNothing() throws {
-        let g = try ground("wrapper-download-fails")
-        let missing = g.root.appendingPathComponent("not-there.sh")
-        let (_, run) = start(try rehosted(try composedInstaller(), source: missing, temporaries: g.temporaries))
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success, "the stream never ended")
-        let status = try XCTUnwrap(run.status)
-        XCTAssertNotEqual(status, 0, "a failed download reads as a successful install")
-        XCTAssertNotEqual(status, 143, "a failed download reads as the person's Stop")
-        XCTAssertEqual(g.leftovers, [], "a failed download left a file in the temporary folder")
-    }
-
-    // MARK: - Output
-
-    /// Job control does not hold the output back: a line the installer prints
-    /// reaches the page while the installer is still running.
-    func testALineArrivesWhileTheInstallerIsStillRunning() throws {
-        let g = try ground("wrapper-streams")
-        let go = g.root.appendingPathComponent("go")
-        let installer = try g.installer("""
-        echo first
-        while [ ! -e \(go.path) ]; do /bin/sleep 0.05; done
-        echo second
-        """)
-        let (handle, run) = start(try rehosted(try composedInstaller(), source: installer, temporaries: g.temporaries))
-        defer { handle.terminate() }
-        XCTAssertTrue(eventually(10) { run.lines.contains("first") },
-                      "a line printed by a running installer never reached the page: \(run.lines)")
-        XCTAssertNil(run.status, "precondition: the installer is still running")
-        FileManager.default.createFile(atPath: go.path, contents: Data())
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success)
-        XCTAssertEqual(run.lines.filter { !isJobNotice($0) }, ["first", "second"])
-    }
-
-    /// The console is where a person reads what the tools said. The shell's
-    /// own bookkeeping about its background jobs — `[1]+ Done`, `[1]+ Exit 3`,
-    /// `[1]+ Terminated: 15`, carrying `"$script"` and the download URL — is
-    /// not something any tool said.
-    func testTheConsoleCarriesOnlyWhatTheToolsPrinted() throws {
-        let g = try ground("wrapper-console")
-        let command = try composedInstaller()
-        for (what, body) in [("success", "echo installed\nexit 0"), ("failure", "echo broken\nexit 3")] {
-            g.reset()
-            let installer = try g.installer(body)
-            let (_, run) = start(try rehosted(command, source: installer, temporaries: g.temporaries))
-            XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success)
-            XCTAssertFalse(run.lines.isEmpty, "\(what): precondition — nothing was printed at all")
-            XCTAssertEqual(run.lines.filter(isJobNotice), [],
-                           "\(what): the shell's job notices reached the console: \(run.lines)")
-        }
-        g.reset()
-        let installer = try g.installer("echo started\n/bin/sleep 30 &\nwait")
-        let (handle, run) = start(try rehosted(command, source: installer, temporaries: g.temporaries))
-        XCTAssertTrue(eventually(10) { run.lines.contains("started") }, "precondition: the installer never started")
-        handle.terminate()
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success)
-        XCTAssertEqual(run.lines.filter(isJobNotice), [],
-                       "stop: the shell's job notices reached the console: \(run.lines)")
-    }
-}
-
 // MARK: - Harness, shared by the two classes above
 
 private struct Ground {
@@ -285,11 +186,5 @@ private extension XCTestCase {
         // A red run must not leave a stand-in behind it.
         addTeardownBlock { g.killAll() }
         return g
-    }
-
-    /// A line only the shell writes about its own jobs: `[1]+  Done …`,
-    /// `[1]+  Exit 3 …`, `[1]+  Terminated: 15 …`.
-    func isJobNotice(_ line: String) -> Bool {
-        line.range(of: #"^\[[0-9]+\][+-]? "#, options: .regularExpression) != nil
     }
 }

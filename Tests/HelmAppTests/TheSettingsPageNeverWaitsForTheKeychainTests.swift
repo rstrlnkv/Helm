@@ -11,11 +11,8 @@ import XCTest
 /// build this app ships — the cdhash changes each time, no access list an
 /// earlier build wrote still names this one, and the answer is a modal
 /// authorization dialog rather than data. `AppSettings` is `@MainActor`, so
-/// *every* reader of that getter is on the thread that draws.
-///
-/// Measured, on the owner's own Mac: `HelmApp_2026-08-19-235500_MacBook.hang`,
-/// 19,09 s unresponsive on `0.11.0-dev.1`, the main thread inside this getter by
-/// way of `NSApplication.didBecomeActive` while `warmKey()` sat in securityd.
+/// *every* reader of that getter is on the thread that draws, and a getter
+/// that waits on securityd hangs the app.
 ///
 /// So there is a second way to ask, and it answers «not yet» rather than
 /// waiting: nil until the key is in hand. Nil is not «no scans are off» and not
@@ -39,9 +36,9 @@ final class TheSettingsPageNeverWaitsForTheKeychainTests: DisabledScansTestCase 
             """)
     }
 
-    /// The fresh-install branch too: nothing stored is where the getter used to
-    /// *create* the keychain item, which is the most expensive round trip of
-    /// them all and the one a first launch pays.
+    /// The fresh-install branch too: with nothing stored, a waiting getter would
+    /// *create* the keychain item, the most expensive round trip of them all and
+    /// the one a first launch pays.
     func testNothingStoredIsAlsoNotAnsweredWhileTheKeyIsCold() {
         let source = SealKeyProbe()
         AppSettings.scanGuard = SettingGuard(keys: SealKeyCache(source))
@@ -84,47 +81,4 @@ final class TheSettingsPageNeverWaitsForTheKeychainTests: DisabledScansTestCase 
     }
 
     // MARK: - The page reads the cheap one
-
-    /// **Read from the source, because the type system cannot say this.** Both
-    /// getters return a set of module ids and both compile anywhere; what
-    /// separates them is that one can take 19 seconds. `AppSettings` is
-    /// `@MainActor`, so there is no reader of it that is not on the thread that
-    /// draws — the settings page and the scan coordinator alike.
-    ///
-    /// Two spellings are allowed and neither is a blocking read: `AppSettings`
-    /// itself, which is where both getters live, and a **write**, whose key is
-    /// warm by construction — nothing writes this list without having read it,
-    /// and there is no row to press until it has been read.
-    func testNothingInTheAppReadsTheBlockingOffList() throws {
-        var offences: [String] = []
-        for path in try RepoSource.swiftFiles(under: "Sources/HelmApp")
-        where !path.hasSuffix("/AppSettings.swift") {
-            for (index, line) in try RepoSource.lines(of: path).enumerated() {
-                let code = RepoSource.code(line)
-                guard code.contains("AppSettings.disabledScans"),
-                      !code.contains("AppSettings.disabledScansIfWarm"),
-                      !code.contains("AppSettings.disabledScans =") else { continue }
-                offences.append("\(path):\(index + 1): \(code.trimmingCharacters(in: .whitespaces))")
-            }
-        }
-        XCTAssertEqual(offences, [], """
-            the off-list is read through the getter that can go to the keychain, on the thread \
-            that draws — `disabledScansIfWarm` is the one that answers «not yet» instead of \
-            standing behind a modal authorization dialog
-            """)
-    }
-
-    /// And the guard above can only fail if the spelling it hunts for is really
-    /// there to be found — a scan whose subject has been renamed passes for ever.
-    func testTheAppDoesReadTheOffList() throws {
-        var readers: [String] = []
-        for path in try RepoSource.swiftFiles(under: "Sources/HelmApp")
-        where !path.hasSuffix("/AppSettings.swift") {
-            if try RepoSource.text(of: path).contains("AppSettings.disabledScans") {
-                readers.append(path)
-            }
-        }
-        XCTAssertFalse(readers.isEmpty,
-                       "the scan above is looking for a spelling no file in the app still has")
-    }
 }

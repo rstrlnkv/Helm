@@ -6,11 +6,9 @@ import HelmAppStrings
 
 /// What colour each update channel is, decided once.
 ///
-/// The page names each channel twice — the badge on the wordmark says which
-/// build this is, the picker says which one to follow — and they used to
-/// disagree: the badge drew a dev build blue and a beta build orange. Two
-/// controls fifty points apart, saying the same word in different colours,
-/// each right on its own.
+/// The page names each channel twice (the badge on the wordmark says which
+/// build this is, the picker says which one to follow), and the two must say
+/// the same word in the same colour.
 ///
 /// Orange is `HelmSignal.warning` because that is what it means: this channel
 /// ships rough edges on purpose. Beta is the accent, which is what macOS uses
@@ -57,11 +55,9 @@ struct AboutHelmView: View {
     private var moduleCount: Int { ModuleRegistry.all.count }
 
     var body: some View {
-        // A ScrollView because the page grows by ~50 pt when an update is
-        // available — a full-width prominent button — and it already measured
-        // 617 pt against the 540 pt minimum window. It overflowed at the
-        // default size precisely in the state that matters, dropping the
-        // Update button off the bottom.
+        // A ScrollView because the page grows when an update is available (a
+        // full-width prominent button) and is taller than the minimum window:
+        // without it the Update button would drop off the bottom.
         ScrollView {
             VStack(spacing: 0) {
             Spacer(minLength: HelmSpace.s5)
@@ -69,10 +65,8 @@ struct AboutHelmView: View {
             Spacer(minLength: HelmSpace.s6).frame(maxHeight: HelmSpace.s7)
             instrumentRow
                 .padding(.bottom, HelmSpace.s5)
-            // 10, the same gap the strip above it takes. Down the page the
-            // gaps were 22, 10, 20, 14, 24 — the author card glued to the
-            // strip above and adrift from the update card below, which is one
-            // card reading as two different distances from its neighbours.
+            // The same gap the strip above it takes, so the author card sits
+            // at one distance from both neighbours.
             authorRow
                 .padding(.bottom, HelmSpace.s5)
             updateCard
@@ -95,13 +89,10 @@ struct AboutHelmView: View {
             .controlSize(.large)
             .padding(.top, HelmSpace.s5)
             Spacer(minLength: HelmSpace.s6)
-            // The flag credit was the second line here, and the comment above
-            // it named CC BY 4.0 — the licence of the EmojiOne set that was
-            // dropped, not of the flag-icons artwork that replaced it. MIT
-            // asks for its notice to *accompany* the copy, and `NOTICE.md`
-            // ships inside the bundle carrying the copyright and the full
-            // permission text. `NoticeShipsWithTheAppTests` is what keeps it
-            // there now that nothing on screen would show its absence.
+            // The flag-icons artwork is MIT, which asks for its notice to
+            // accompany the copy: `NOTICE.md` ships inside the bundle, and
+            // `NoticeShipsWithTheAppTests` keeps it there, since nothing on
+            // screen would show its absence.
             Text("© 2026 Helm · GPL-3.0")
                 .padding(.top, HelmSpace.s3)
                 .font(HelmText.smallPrint)
@@ -112,11 +103,10 @@ struct AboutHelmView: View {
             .padding(.vertical, HelmSpace.s7)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // The name of the page this one is a tab of, for the window's title.
-        // Without it nothing publishes a title, and
-        // `SettingsWindow.applyTitle(_:)` falls back to the window's own name
-        // («Настройки Helm» for the Window menu). A no-op where the card does not
-        // draw the header (`helmHeaderInCard` false).
+        // The name of the page this one is a tab of, for the window's title;
+        // without it `SettingsWindow.applyTitle(_:)` falls back to the
+        // window's own name. A no-op where the card does not draw the header
+        // (`helmHeaderInCard` false).
         .helmPageBar(title: AppStr.settingsPane)
         .sheet(isPresented: $showWhatsNew) {
             WhatsNewView(onClose: { showWhatsNew = false })
@@ -132,27 +122,15 @@ struct AboutHelmView: View {
                     spoken: badgeAccessibilityLabel) { badge }
     }
 
-    /// One badge: what this copy *is*.
+    /// One badge: what this copy *is*. Pre-1.0 and "on the early channel" both
+    /// answer "how finished is what I am running", so two badges would make the
+    /// reader work out which one wins.
     ///
-    /// It was two — BETA for the program and DEV for the channel — on the
-    /// reasoning that both facts were true. They are, but they are not two
-    /// things to the person reading: pre-1.0 and "on the early channel" both
-    /// answer "how finished is what I am running", and a pair reading BETA DEV
-    /// makes the reader work out which one wins.
-    ///
-    /// It then answered from the wrong fact. The badge read the *channel
-    /// preference*, so switching the segmented control to Beta on a
-    /// `0.7.2-dev.34` build relabelled the running build BETA — while the row
-    /// above it went on offering dev releases, because a preference is not a
-    /// binary. The badge describes the build; the picker below it describes
-    /// what will be offered next, and those are allowed to differ.
-    /// `AppBuild.isDev`, which is where that argument now lives — it was written
-    /// out here and twice more, and both other copies had stopped being read.
+    /// It describes the build (`AppBuild.isDev`), never the channel
+    /// preference: the picker below describes what will be offered next, and
+    /// the two are allowed to differ.
     private var badge: some View {
-        // The tint comes from `ChannelInk`, the same place the pills below read
-        // it. It used to be spelled here — dev blue, beta orange — which is the
-        // opposite of what the picker says, so a dev build showed a blue DEV
-        // over an orange Dev pill fifty points apart.
+        // The tint comes from `ChannelInk`, the same place the pills below read it.
         HelmBadge(AppBuild.isDev ? AppStr.devBadge : AppStr.betaBadge,
                   tint: ChannelInk.fill(AppBuild.isDev ? .dev : .beta),
                   emphasis: .prominent)
@@ -168,23 +146,14 @@ struct AboutHelmView: View {
     /// Who wrote it, and where to say something about it.
     ///
     /// Under the version and the build rather than in the small print at the
-    /// foot: the licence and the flag credit down there are obligations, and
-    /// this is not one — it is the answer to «who made this», which is a
-    /// question people actually ask of a menu-bar app they were handed.
-    /// The glyph belongs to the handle, not between the two items.
+    /// foot: the small print is obligations, and this answers «who made this».
     ///
-    /// As a `Label` the paperplane sat 10.5 pt from the name and 10.5 pt from
-    /// the handle — measured ink, both gaps equal — so it read as a separator
-    /// between three things rather than as the mark on a Telegram link. An
-    /// `HStack` at 3 inside the `Link` and 12 between the row's own items puts
-    /// it at 13.5 and 6.0: the glyph is now nearer the thing it belongs to by
-    /// more than twice.
-    ///
-    /// `.firstTextBaseline` for the row, which is the same change: a `Label`'s
-    /// box is 14.12 pt against the text's 16.00, so centring the two hung the
-    /// link 1.50 pt above the name's baseline. Measured after: 0.00. It is
-    /// worth applying only with the glyph change — on its own it grew the card
-    /// from 40 to 41.
+    /// The glyph belongs to the handle, not between the two items: an `HStack`
+    /// with a tight gap inside the `Link` and a wider one between the row's
+    /// items, so it reads as the mark on a Telegram link rather than a
+    /// separator. `.firstTextBaseline`, because the glyph's box is shorter
+    /// than the text's and centring would hang the link above the name's
+    /// baseline.
     private var authorRow: some View {
         HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s5) {
             Text(AppStr.author)
@@ -216,18 +185,14 @@ struct AboutHelmView: View {
     // MARK: - Update card
 
     /// 12 horizontally, which is what `helmCard(padding: 12)` gives the two
-    /// cards above. At 14 the left text edge stepped 227 → 229 between the
-    /// author card and this one — two cards in one column starting their text
-    /// in two places, which is visible as a wobble long before anybody can say
-    /// what it is.
+    /// cards above, so the column's text starts in one place.
     private var updateCard: some View {
         VStack(spacing: 0) {
             updateRow
                 .padding(.horizontal, HelmSpace.s5)
                 .padding(.vertical, HelmSpace.s5)
             // The token, not a divider dimmed by eye: every other hairline in
-            // the app is this colour, and 0.6 of a system divider is not a
-            // value anybody can match on the next screen over.
+            // the app is this colour.
             Rectangle()
                 .fill(HelmSurface.hairline)
                 .frame(height: 1)
@@ -235,8 +200,7 @@ struct AboutHelmView: View {
                 HStack {
                     Text(AppStr.updateChannel)
                         // A row's own name, at the size every other row name on
-                        // the page is set in. `.callout` is 12, and it was the
-                        // fifth size on a page the type scale gives four.
+                        // the page is set in.
                         .font(HelmText.rowTitle)
                     Spacer()
                     channelPills
@@ -261,11 +225,8 @@ struct AboutHelmView: View {
         })
     }
 
-    /// What this card is drawing, decided in one place that can be asked.
-    ///
-    /// It was a chain of `else if`s inside the builder, and the order of that
-    /// chain is what made the manual-install sentence unreachable — see
-    /// `UpdateCard`.
+    /// What this card is drawing, decided in one place that can be asked
+    /// (`UpdateCard`): an order of `else if`s inside a builder cannot be tested.
     private var card: UpdateCard {
         UpdateCard.drawn(installState: updater.installState, checking: updater.checking,
                          hasRelease: updater.available != nil,
@@ -331,12 +292,8 @@ struct AboutHelmView: View {
         case .cannotReplaceItself:
             noticeRow("exclamationmark.triangle.fill", HelmSignal.warning, AppStr.updateCannotReplaceItself, lines: 3, wraps: false)
         case .checkFailed:
-            // Two lines, like the `ahead` arm below. At one this sentence
-            // was cut in five of the eight languages: a German whose update
-            // check failed read «Update-Prüfung fehl…», where the string
-            // wants 198 pt of the roughly 240 the row leaves it. French
-            // wants 253, Portuguese 234, Russian 225, Spanish 215. Only en,
-            // ja and zh ever fitted.
+            // Two lines, like every notice arm here: at one, the longer
+            // languages are cut beside the button.
             noticeRow("exclamationmark.triangle.fill", HelmSignal.warning, AppStr.updateCheckFailed, lines: 2,
                       button: (AppStr.retry, { updater.checkNow() }))
         case .ahead:
@@ -344,17 +301,8 @@ struct AboutHelmView: View {
                       AppStr.aheadOfChannel(updater.aheadOfChannel ?? ""), lines: 2,
                       button: (AppStr.checkNow, { updater.checkNow() }))
         case .upToDate:
-            // **The same repair as the two arms above, applied to the two
-            // that were left.** «Установлена последняя версия.» wants 203 pt
-            // and this row leaves it about 197 beside «Проверить» — six
-            // short, so the state somebody sees most often was the one that
-            // read «Установлена последняя верс…». Portuguese is 197 and
-            // French 180, so Russian is the first to fall and not the last.
-            //
-            // The comment on `.checkFailed` measured against «roughly 240 pt
-            // of the row», which is not this row: the column is 380 and the
-            // card takes 12 a side. A number carried in prose about a
-            // neighbour is a number about nothing.
+            // Two lines: beside «Check Now», Russian, Portuguese and French
+            // need more than one.
             noticeRow("checkmark.circle.fill", HelmSignal.success, AppStr.upToDate, lines: 2,
                       button: (AppStr.checkNow, { updater.checkNow() }))
         case .unfinishedUpdate:
@@ -367,9 +315,8 @@ struct AboutHelmView: View {
             }
         case .lastChecked:
             // Nothing has been decided this session: report when the last
-            // check happened rather than claiming to be current.
-            // «Проверено 2 часа назад» is longer than the line above it in
-            // every language, so if that one did not fit, this one never did.
+            // check happened rather than claiming to be current. Two lines,
+            // for the reason the arm above has them.
             noticeRow("arrow.triangle.2.circlepath", HelmText.quiet, lastCheckedText, lines: 2,
                       quiet: true, button: (AppStr.checkNow, { updater.checkNow() }))
         }
@@ -392,9 +339,7 @@ struct AboutHelmView: View {
         return AppStr.lastChecked(age)
     }
 
-    /// Always spinning: every state that draws this line is work in flight. It
-    /// took a `spinning:` flag that all three call sites passed `true` and the
-    /// body never read.
+    /// Always spinning: every state that draws this line is work in flight.
     private func statusLine(_ text: String) -> some View {
         HStack(spacing: HelmSpace.s5) {
             ProgressView().controlSize(.small)
@@ -445,8 +390,6 @@ private struct WhatsNewView: View {
             HelmPageHeader(symbol: "sparkles", tint: ModuleTint.whatsNewColour,
                            title: AppStr.whatsNew) {
                 // Escape closes it, like every sheet on the machine.
-                // `HelmHotkeyRecorder` special-cases Escape during capture and
-                // explains why; that care never reached the sheets.
                 Button(HelmWord.close, action: onClose)
                     .keyboardShortcut(.cancelAction)
             }
@@ -480,9 +423,7 @@ private struct WhatsNewView: View {
     }
 
     private func badge(_ kind: ChangeKind) -> some View {
-        // The one pill. This was the last hand-rolled one, and the worst:
-        // orange text on orange fill at 11 pt is about 1.6:1, on the screen
-        // every user sees right after an update.
+        // The kit's badge, which keeps its text legible on its tint.
         HelmBadge(kind.label, tint: kind.color)
             // Fixed width wrapped half the languages onto a second line.
             .fixedSize()

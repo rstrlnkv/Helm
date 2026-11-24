@@ -27,12 +27,8 @@ enum KeepAwakeNotice: Equatable {
 /// and the notice goes by itself when the charger goes in. A refusal has none
 /// either. Only a paused rule carries the way back.
 ///
-/// `compact` is the panel: the short sentences (the hero says «— plug in»
-/// after the battery one, which is the way out; in a 320 pt card there is no
-/// room for a second clause beside a symbol, and the long pause sentence wraps
-/// to four lines beside a button), the compact banner, and a small button. The
-/// panel's battery banner needs no button: the presets going grey above it say
-/// the panel cannot help.
+/// `compact` is the panel: the short sentences (a 320 pt card has no room for
+/// the way-out clause beside a symbol), the compact banner, and a small button.
 /// The hero's banner does not fill the width; the panel's does.
 struct KeepAwakeNoticeBanner: View {
     let notice: KeepAwakeNotice
@@ -74,12 +70,8 @@ struct KeepAwakeNoticeBanner: View {
 /// the engine's mutable state is written from.
 @MainActor public final class KeepAwakeViewModel: ObservableObject {
     @Published private(set) var isActive = false
-    /// The engine's own cases, not the strings they travel as. Held as
-    /// `Set<String>`, every view that asked a question about them had to spell
-    /// the raw names again — `["externalDisplay", "power", "app"]`, twice —
-    /// and `KAStr` switched over five more literals to turn one back into a
-    /// word. A name that stops matching is not an error anywhere; the row just
-    /// goes quiet.
+    /// The engine's own cases, not the strings they travel as: a raw name that
+    /// stops matching is an error nowhere, and the row just goes quiet.
     @Published private(set) var activeConditions: Set<ActiveCondition> = []
     @Published private(set) var clamshellActive = false
     @Published private(set) var endDate: Date?
@@ -126,33 +118,18 @@ struct KeepAwakeNoticeBanner: View {
     }
 
     private let engine: KeepAwakeEngine
-    private var eventsTask: Task<Void, Never>?
+    private var events: StreamFollower?
 
-    /// The stream is taken here, synchronously, before the first suspension:
-    /// `stream()` registers the subscriber and replays the latest state in one
-    /// step, so the latest state emitted before this line, and every one after it,
-    /// reaches `apply` once and in order.
     init(engine: KeepAwakeEngine) {
         self.engine = engine
-        let states = engine.stream()
-        eventsTask = Task { [weak self] in
-            for await state in states {
-                guard let self else { break }
-                self.apply(state)
-            }
-        }
+        events = StreamFollower(engine.stream(), owner: self) { $0.apply($1) }
     }
 
     /// Ends the event loop, which unregisters the engine's subscriber. The
     /// host calls it through the descriptor's `stop(_:)` before the engine goes.
     func stop() {
-        eventsTask?.cancel()
-        eventsTask = nil
+        events?.cancel()
     }
-
-    /// The backstop for a model dropped without `stop()`: the loop re-acquires
-    /// `self` per state, so it does not keep the model alive.
-    deinit { eventsTask?.cancel() }
 
     private func apply(_ p: KeepAwakeEngine.StatePayload) {
         isActive = p.isActive
@@ -187,8 +164,7 @@ struct KeepAwakeNoticeBanner: View {
     ///
     /// The pair is the point: the settings are read at every access, but the
     /// engine re-applies a running session's assertion, lid and jiggle only when
-    /// `settingsChanged` is called. The settings page and the panel tile each
-    /// carried their own copy of these two lines.
+    /// `settingsChanged` is called.
     func save(in store: NamespacedStore, _ change: (KeepAwakeSettings) -> Void) {
         change(KeepAwakeSettings(store: store))
         engine.settingsChanged()

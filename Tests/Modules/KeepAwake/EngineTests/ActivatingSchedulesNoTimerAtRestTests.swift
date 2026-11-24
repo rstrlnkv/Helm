@@ -3,7 +3,7 @@ import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
 /// What `KeepAwakeEngine` does per minute while nothing is happening.
-/// Kept, and run by default (no `HELM_BENCH`): it is the only test that
+/// Run by default: it is the only test that
 /// `activate()` schedules no timer at rest (work done while nobody watches). With
 /// `scheduleBatteryWatch()` added to `activate()` only this class goes red.
 final class ActivatingSchedulesNoTimerAtRestTests: XCTestCase {
@@ -46,13 +46,9 @@ final class ActivatingSchedulesNoTimerAtRestTests: XCTestCase {
     /// however long the Mac stays up. `FakeClock.schedule` records every timer
     /// the engine asks for; none of the three (`scheduleExpiry`,
     /// `scheduleJiggle`, `scheduleBatteryWatch`) should fire from `activate()`
-    /// alone; a background scan gate elsewhere in this house
-    /// (`ScanRoot`/`WatchScope`) is exactly the shape a poll here would take,
-    /// and this module has none — its three observers are edge-triggered
+    /// alone. The module's three observers are edge-triggered
     /// (`NSApplication.didChangeScreenParametersNotification`, an IOKit power
-    /// callback, `NSWorkspace` launch/terminate). This is a fact about the
-    /// engine's own logic, not the machine. It fails the moment a rewrite adds a
-    /// polling timer at rest.
+    /// callback, `NSWorkspace` launch/terminate), so it needs no poll.
     func testActivateWithNothingConfiguredSchedulesNoTimer() {
         engine.activate()
         XCTAssertEqual(clock.scheduledCount, 0,
@@ -89,14 +85,11 @@ final class ActivatingSchedulesNoTimerAtRestTests: XCTestCase {
     /// stored JSON on every read, with nothing cached between calls, and
     /// `appCondition()` reads it once per `recompute()`. `recompute()` runs from
     /// every one of the three observer callbacks, including `apps` firing for
-    /// *any* app launching or quitting — not only a watched one. This does not
-    /// count decode calls directly (nothing in the engine exposes that without
-    /// a fake standing in for `AppTriggerRules` itself, which would be simpler
-    /// than the thing it replaces and prove nothing about the real path); it
-    /// fires the real observer three times in a row on an app that is already
-    /// running and checks the real settings type answers correctly each time —
-    /// proof `appCondition()` re-reads and re-decodes rather than caching a
-    /// first answer.
+    /// any app launching or quitting. It fires the real observer three times on
+    /// an app that is already running and checks the real settings type answers
+    /// correctly each time: `appCondition()` re-reads rather than caching a
+    /// first answer. (A fake `AppTriggerRules` counting decodes would prove
+    /// nothing about the real path.)
     func testAppConditionReEvaluatesOnEveryAppEvent() {
         let triggers = (0..<5).map { AppTrigger(bundleID: "com.example.app\($0)") }
         settings.setAppTriggers(triggers)

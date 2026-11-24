@@ -4,17 +4,13 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
-/// `installBrew` is the module's most dangerous path and had no test at all: it
-/// builds a string a **root shell** evaluates (through the system's own admin
-/// dialog) and then downloads and runs an installer off the network. Nothing
-/// here executes any of that — the privileged runner and the process runner are
-/// fakes that record what they were handed, which is the machine boundary this
-/// suite must not cross.
+/// `installBrew` builds a string a **root shell** evaluates (through the
+/// system's admin dialog) and then downloads and runs an installer off the
+/// network. Nothing here executes any of that: the privileged runner and the
+/// process runner are fakes that record what they were handed.
 ///
-/// The events are read back through the news's replay: `EngineNews<HomebrewNews>`
-/// keeps the last event per name and replays it to a new subscriber, so what a
-/// test sees is exactly what a page opened after the fact would see — the
-/// final `opState` and the final console line.
+/// Events are read back through the news's replay, so a test sees what a page
+/// opened after the fact would see: the final `opState` and console line.
 final class InstallBrewTests: XCTestCase {
 
     // MARK: - Fakes
@@ -36,7 +32,7 @@ final class InstallBrewTests: XCTestCase {
     // MARK: - Plumbing
 
     private func makeEngine(user: String, privileged: RecordingPrivileged,
-                            runner: HangingRunner = HangingRunner(),
+                            runner: ScriptedRunner = ScriptedRunner(streams: .hold),
                             news: EngineNews<HomebrewNews> = EngineNews())
     -> (HomebrewEngine, EngineNews<HomebrewNews>) {
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
@@ -48,13 +44,13 @@ final class InstallBrewTests: XCTestCase {
     // MARK: - The account name gate
 
     /// `user` is `NSUserName()`, and on a managed Mac that is whatever the
-    /// directory says — including a name that is code once a root shell
-    /// evaluates the string it sits in. The check must run *before* the dialog:
-    /// a password prompt for a command that would then be refused teaches the
-    /// person to type their password into prompts they cannot judge.
+    /// directory says, including a name that is code once a root shell
+    /// evaluates it. The check runs *before* the dialog: a password prompt for a
+    /// command that is then refused teaches the person to type their password
+    /// into prompts they cannot judge.
     func testAnImplausibleAccountNameNeverReachesTheRootShell() async {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, news) = makeEngine(user: "$(whoami)", privileged: privileged, runner: runner)
 
         engine.installBrew()
@@ -77,11 +73,10 @@ final class InstallBrewTests: XCTestCase {
                        "the refused installBrew left the one-operation gate shut")
     }
 
-    /// The names the guard must refuse are the ones that stop being data in a
-    /// root shell line or in sudoers; the ones it must admit are real macOS
-    /// short names. Both directions, or the guard could be `return false`. The
-    /// hostile side is spelled as literals here, never derived from the
-    /// production rule — a test whose two sides read one constant cannot fail.
+    /// The names the guard must refuse stop being data in a root shell line or
+    /// in sudoers; the ones it must admit are real macOS short names. The
+    /// hostile side is spelled as literals, never derived from the production
+    /// rule.
     func testTheAccountNameGateCutsWhereRootSyntaxBegins() {
         for hostile in ["$(whoami)", "`id`", "a'b", "a;rm -rf /", "ALL", "-flag", "", "имя", "a b"] {
             XCTAssertFalse(AccountName.isPlausible(hostile),
@@ -99,7 +94,7 @@ final class InstallBrewTests: XCTestCase {
     /// the page must say so, and the next attempt must be admitted.
     func testADeclinedDialogDownloadsNothingAndReleasesTheGate() async {
         let privileged = RecordingPrivileged(answer: .declined)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, news) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
@@ -147,17 +142,14 @@ final class InstallBrewTests: XCTestCase {
 
     // MARK: - The installer stage
 
-    /// Download to a file, then run the file — never `eval "$(curl …)"`, where
-    /// a failed download evaluates the empty string, exits 0, and the module
-    /// reports a successful install of nothing. And `NONINTERACTIVE=1`, because
-    /// there is no terminal for the installer to ask its questions in: without
-    /// it the child waits for a keypress that can never come, forever, holding
-    /// the busy gate (the operation has no deadline of its own; a Stop ends
-    /// it, and so does switching the module off, which terminates the wrapper
-    /// through `deactivate()`).
+    /// Download to a file, then run the file, never `eval "$(curl …)"`, where a
+    /// failed download evaluates the empty string, exits 0, and reads as a
+    /// successful install of nothing. `NONINTERACTIVE=1`, because with no
+    /// terminal the child would wait forever for a keypress, holding the busy
+    /// gate (the operation has no deadline; Stop or a switch-off ends it).
     func testTheInstallerIsDownloadedToAFileNeverEvaledFromTheNet() {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, _) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
@@ -182,12 +174,10 @@ final class InstallBrewTests: XCTestCase {
     }
 
     /// The installer stage is not run as root: the admin dialog covers only the
-    /// `mkdir`/`chown` preparation, and the download runs as the user. A root
-    /// `curl | bash` of a network script would be the single worst line in the
-    /// app.
+    /// `mkdir`/`chown` preparation, and the download runs as the user.
     func testTheDownloadedInstallerRunsAsTheUserNotThroughTheDialog() {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, _) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
@@ -211,7 +201,7 @@ final class InstallBrewTests: XCTestCase {
     /// prompt appear over it.
     func testInstallBrewHoldsTheGateAndIsRefusedBeforeASecondDialog() async {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, news) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
@@ -239,7 +229,7 @@ final class InstallBrewTests: XCTestCase {
     /// password dialog on the screen.
     func testARunningOperationRefusesInstallBrewBeforeTheDialog() {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, _) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.install(name: "wget", isCask: false)
@@ -253,10 +243,10 @@ final class InstallBrewTests: XCTestCase {
     }
 
     /// A failed installer reports the exit code it failed with, and the gate
-    /// opens again — the retry is the whole recovery story here.
+    /// opens again so the person can retry.
     func testAFailedInstallerReportsItsExitCodeAndReleasesTheGate() async {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, news) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
@@ -281,7 +271,7 @@ final class InstallBrewTests: XCTestCase {
     /// had failed.
     func testABusyRefusalSaysSoWithoutForgingAFailedState() async {
         let privileged = RecordingPrivileged(answer: .done)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let (engine, news) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.install(name: "wget", isCask: false)

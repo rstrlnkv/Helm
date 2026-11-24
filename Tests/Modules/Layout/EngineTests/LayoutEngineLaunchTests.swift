@@ -16,13 +16,13 @@ import HelmRuntime
 /// One test per cached field, and each one is arranged so that the value in the
 /// **store** and the value in the **initialiser** disagree. That is the whole
 /// method: a test that passes because the initialiser happened to hold the
-/// right thing is a test that would have passed while the bug shipped. No
-/// `settingsChanged` is sent anywhere in this file — a launch does not send one.
+/// right thing proves nothing. No `settingsChanged` is sent anywhere in this
+/// file — a launch does not send one.
 final class LayoutEngineLaunchTests: XCTestCase {
     private var typing = FakeTyping()
     private var context = FakeSecure()
     private var tap = FakeTap()
-    private var sources = StuckSources()
+    private var sources = FakeSources(follows: false)
     private var sound = FakeSound()
 
     private func store(_ write: (NamespacedStore) -> Void = { _ in }) -> NamespacedStore {
@@ -40,9 +40,9 @@ final class LayoutEngineLaunchTests: XCTestCase {
                         automatic: Bool = true,
                         audible: Bool = false) -> LayoutEngine {
         typing = FakeTyping(); context = FakeSecure()
-        tap = FakeTap(); sources = StuckSources(); sound = FakeSound()
+        tap = FakeTap(); sources = FakeSources(follows: false); sound = FakeSound()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
-                                  translation: SameLengthTranslation(), spell: CyrillicSpell(latin: ["Hello"]),
+                                  translation: FakeTranslation(sameLength: true), spell: FakeSpell(valid: ["Hello"], cyrillic: true),
                                   secure: context, activation: FakeActivation(), sound: sound,
  fixCapitals: fixCapitals,
                                   rules: rules, exceptions: exceptions,
@@ -101,21 +101,12 @@ final class LayoutEngineLaunchTests: XCTestCase {
 
     /// The documented default beats the initialiser.
     ///
-    /// `ConversionTriggers` says Return is off and says why at length:
-    /// in a chat Return sends the message and empties the field, so the
-    /// backspaces delete nothing, the correction is typed into an empty box and
-    /// the newline sends it — the other person gets the mistyped word and then
-    /// a second message correcting it.
+    /// `ConversionTriggers` says Return is off and why: in a chat Return sends
+    /// the message, so the correction would arrive as a second message.
     ///
     /// Nothing is in the store: this is a fresh install reading its own
     /// defaults on its first launch, which is the one moment a
     /// `settingsChanged` never arrives.
-    ///
-    /// This used to hand the initialiser Return *on*, so that a pass could not
-    /// come from the initialiser happening to agree. There is no initialiser to
-    /// hand it to now — `ConversionTriggers` is an enum with no state, because
-    /// `reloadSettings` overwrote whatever it was given anyway. The test is the
-    /// same claim with the instrument gone.
     func testAFreshInstallRunsOnTheDocumentedDefaults() {
         let engine = engine(settings: store())
         tap.type("ghbdtn")
@@ -142,8 +133,8 @@ final class LayoutEngineLaunchTests: XCTestCase {
     func testAChangeStillArrivesThroughSettingsChanged() async throws {
         let settings = store()
         let engine = engine(settings: settings)
-        // Over «Fix as I type» rather than over a trigger switch: the three of
-        // those are gone, and the engine reads no key for them any more.
+        // Over «Fix as I type»: the triggers are not settings, and the engine
+        // reads no key for them.
         settings.set(false, for: LayoutKey.automatic)
         await rereadSettings(engine)
         tap.type("ghbdtn")

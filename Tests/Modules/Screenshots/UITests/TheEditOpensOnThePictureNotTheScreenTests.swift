@@ -35,7 +35,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let board: Board
         let trash: AsideTrash
         let shutter: Shutter
-        let capture: PileFrames
+        let capture: FakeScreen
         let box: PileScene.Box
         let store: NamespacedStore
         let desktop: URL
@@ -49,10 +49,10 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
 
     private let clock = StepClock()
 
-    override func tearDown() {
+    override func tearDown() async throws {
         AppLanguage.override = nil
         clock.finish()
-        super.tearDown()
+        try await super.tearDown()
     }
 
     private func scene(target: SaveTarget = .desktop, thumbnail: Bool = true) throws -> Scene {
@@ -304,15 +304,13 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
 
     /// Empties the regions of this process's own address space that their owner has marked volatile (memory it has said
     /// it can do without) and no other: it walks this task's regions, asks each for its purgeable state, and sets
-    /// EMPTY on those answering VOLATILE. Measured here: with the picture made from the file's path (before the
-    /// bytes were read at the opening), a file moved before this call could no longer be encoded after it.
+    /// EMPTY on those answering VOLATILE: a picture made lazily from the file's path would then need the file again.
     ///
     /// It allocates a purgeable region of its own, writes into it, marks it VOLATILE and asserts that the walk itself
     /// emptied it. Whether ImageIO or CoreGraphics leave a volatile region of theirs at this point depends on the
-    /// system's caches (the earlier "emptied something" precondition failed on about one run in three), so the walk is
-    /// proven to run and to empty by a region that is certain to be there; the system's own volatile regions, when
-    /// present, are emptied by the same walk. The kernel itself may purge a volatile region before the walk reaches it
-    /// (measured: about one run in twenty); that attempt proves nothing and is made again with a fresh region, up to
+    /// system's caches, so the walk is proven to run and to empty by a region that is certain to be there; the system's
+    /// own volatile regions, when present, are emptied by the same walk. The kernel itself may purge a volatile region
+    /// before the walk reaches it; that attempt proves nothing and is made again with a fresh region, up to
     /// `attempts` times. The region proves the walk, not the editor: whether the editor's decoded picture is ever
     /// purgeable is the system's choice, and what the tests below prove is that the editor does not need a second
     /// read of the file whichever regions the system took back.

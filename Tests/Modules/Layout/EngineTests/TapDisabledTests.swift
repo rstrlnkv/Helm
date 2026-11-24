@@ -12,8 +12,6 @@ import CoreGraphics
 /// repair is to enable the tap again. Revocation is not that — the grant is
 /// gone, re-enabling would fail every time, and the honest thing is to stand
 /// down and let the module say it is not watching.
-///
-/// Guards a past defect: an event tap switched off by macOS went unnoticed (fix commit `1b9fd4f2`).
 final class TapDisabledTests: XCTestCase {
 
     func testBothWaysTheSystemDisablesATapAreRecognised() {

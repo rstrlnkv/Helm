@@ -6,19 +6,9 @@ public protocol SleepAssertions: AnyObject {   // IOKit
     /// Whether the Mac is now being held awake — **everything that was asked
     /// for**, so `display: true` answers no if only the system half went up.
     ///
-    /// It answered `Void`, and `IOPMAssertionCreateWithName`'s `IOReturn` was
-    /// read for one thing only: whether to keep the id. So a refused assertion
-    /// left the engine setting `isActive`, writing «holding sleep» and lighting
-    /// the menu bar for a Mac that then slept on schedule — the same «a refusal
-    /// that is not a success» the clamshell half of this module was corrected
-    /// for, on the port that could not even say it. A state a port has no word
-    /// for is a state no fake can stand in and no test can be written about.
-    ///
-    /// Which is why the requirement is not `@discardableResult`. It was, and both
-    /// callers happened to use the answer anyway — so the attribute was a standing
-    /// permission to commit the defect the paragraph above records, left on a
-    /// port whose refusal means a Mac sleeps while the menu bar says it will
-    /// not. `PrivateFile` was the same permission taken up eight times.
+    /// A refused assertion read as a success lights the menu bar for a Mac that
+    /// then sleeps on schedule. Not `@discardableResult` for the same reason: a
+    /// caller that drops the answer cannot tell the person.
     func preventSleep(display: Bool) -> Bool
     func release()
 }
@@ -30,16 +20,14 @@ public protocol DisplayInfoPort: AnyObject {
 }
 
 public protocol PowerInfoPort: AnyObject {
+    /// nil both for a Mac with no battery and for an incomplete IOKit dictionary.
     func snapshot() -> (onBattery: Bool, percent: Int)?
     /// Which supply is running the Mac, which is **not** derivable from
-    /// `snapshot()` — that is nil both for a Mac with no battery and for an
-    /// incomplete IOKit dictionary, and reading the two as one thing left the
-    /// power rule dead on every desktop. `PowerSource.supply()` has the rest.
+    /// `snapshot()`, whose nil folds a desktop together with a failed read.
+    /// `PowerSource.supply()` has the rest.
     ///
-    /// **Three answers, because the system has three.** It used to be a `Bool`
-    /// folding «I don't know» into `true`, which is how a power source nothing
-    /// could read came to *start* holding a Mac awake; this module folds that
-    /// third answer to «not on mains», because letting the Mac sleep is its safe
+    /// **Three answers, because the system has three.** This module folds «I
+    /// don't know» to «not on mains», because letting the Mac sleep is its safe
     /// failure. The battery guard reads `snapshot()`; on nil it asks
     /// `BatteryGuard.shouldDeactivateWithNoReading`, which ends the session when
     /// the guard is on and this answer is not `.mains`.
@@ -50,13 +38,9 @@ public protocol PowerInfoPort: AnyObject {
     /// it, and anything still holding a pointer to the port is holding freed
     /// memory.
     ///
-    /// This used to say `NotificationCenter` observers were exempt because the
-    /// centre keeps its own tokens. It keeps them; it does not remove them.
-    /// `WorkspaceAppPort` had already learned that and holds its tokens with a
-    /// comment saying why, while `ScreenParamsObserver` took the exemption at
-    /// face value and stacked another observer on every enable. There is no
-    /// exemption: the centre's token is the thing you have to keep in order to
-    /// take the observer back out.
+    /// `NotificationCenter` observers are no exemption: the centre keeps its
+    /// tokens but does not remove them, so the token is the thing to keep in
+    /// order to take the observer back out.
     func stopObserving()
 }
 
@@ -94,15 +78,11 @@ public protocol ClamshellPort: AnyObject {
     func isSudoersInstalled() -> Bool
     /// Whether `pmset disablesleep` can actually be run without a password.
     ///
-    /// Not the same question as «is our file there», and the difference was
-    /// measured on the machine this was written on: `/etc/sudoers.d` held a
-    /// `vorssaint-clamshell` from a predecessor whose contents are this app's
-    /// rule character for character, under another name. So the file check
-    /// answered no while the capability was granted — Helm asked for a password
-    /// to install what already existed — and after removal it answered no again
-    /// while any process running as this user still had passwordless
-    /// `pmset disablesleep`. A revocation that revokes nothing is worse than
-    /// none, because it is reported as done.
+    /// Not the same question as «is our file there»: another file in
+    /// `/etc/sudoers.d` can grant the same command under another name. Then the
+    /// file check says no while the capability is granted, and after removal it
+    /// says no while passwordless `pmset disablesleep` remains — a revocation
+    /// reported as done that revoked nothing.
     ///
     /// **The probe is a write.** It runs `sudo -n pmset disablesleep 0`, a real
     /// child process that changes system state, so it is not asked casually.
@@ -116,11 +96,10 @@ public protocol ClamshellPort: AnyObject {
     ///
     /// Synchronous on purpose. It is the one withdrawal a *terminating* process
     /// can carry out: anything posted to a queue on the way out is a promise the
-    /// process may not live to keep, which is how two orphaned predecessor rules
-    /// came to sit in `/etc/sudoers.d` on the machine this was written on.
+    /// process may not live to keep, and the rule is then orphaned.
     ///
-    /// `false` is an ordinary answer, not a fault: a rule written before the
-    /// withdrawal line existed, or by something else, does not permit it.
+    /// `false` is an ordinary answer, not a fault: a rule with no withdrawal
+    /// line, or one written by something else, does not permit it.
     func removeSudoersWithoutPassword() -> Bool
     func setDisableSleep(_ on: Bool) -> Bool                // pmset (passwordless)
     /// `pmset -g`'s output; nil when it did not answer (non-zero status), which

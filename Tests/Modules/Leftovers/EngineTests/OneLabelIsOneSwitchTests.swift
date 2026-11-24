@@ -4,32 +4,19 @@ import XCTest
 
 /// **launchd's switch is aimed at a label, and a label is not a file.**
 ///
-/// `ScanOrderIsTotalTests` records the ordinary Mac this is about: «`com.vendor.updater`
-/// sits in `~/Library/LaunchAgents` and in `/Library/LaunchAgents` on plenty of
-/// Macs — one agent per user, one for everybody». The scan returns both, and it is
-/// right to: they are two files, and one of them may well be dead while the other
-/// is the one doing the work.
+/// `com.vendor.updater` sits in `~/Library/LaunchAgents` and in
+/// `/Library/LaunchAgents` on plenty of Macs — one agent per user, one for
+/// everybody. The scan returns both, rightly: they are two files, and one of
+/// them may be dead while the other does the work.
 ///
 /// What is not two is the switch. `ActiveExtensions.setDisabled` runs
-/// `launchctl disable gui/<uid>/<label>` and `bootout` beside it, and neither
-/// takes a path — `LaunchLabel.mayBeSwitched` reads the path only to decide
-/// whether the *label* may be aimed at. Both rows pass it: each sits in a folder
-/// ending `/Library/LaunchAgents` and each is named after the label it claims. So
-/// the page draws «Turn off» twice, on two rows wearing the same name, and either
-/// press is the same act on the same label.
+/// `launchctl disable gui/<uid>/<label>` and `bootout`, and neither takes a path;
+/// both rows pass `LaunchLabel.mayBeSwitched`. One row is badged «Leftover»,
+/// the other «In use»: turning off the leftover, the obvious tidy-up, would stop
+/// the job the other row says is running.
 ///
-/// The cost is not the duplicate button, it is which row a person presses. One of
-/// these rows is badged «Leftover» — orange, with a checkbox — and the other «In
-/// use», green. Turning off the leftover is the obvious tidy-up, and it stops the
-/// job the other row says is running: the vendor's updater no longer loads at
-/// login, with nothing on screen having claimed that it would.
-///
-/// The assertion is about the pair rather than about the button, so a fix is free
-/// to be any of the ones available — withhold the switch where a label is claimed
-/// twice in one scan, fold the pair into a row that says «two files, one job», or
-/// ask before the press. What it may not be is wording alone: two rows carrying
-/// one name, one of them green and one orange, do not leave a person able to act
-/// correctly on either.
+/// The assertion is about the pair rather than about the button: two rows
+/// carrying one name, one green and one orange, may not both offer one switch.
 final class OneLabelIsOneSwitchTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
@@ -66,8 +53,8 @@ final class OneLabelIsOneSwitchTests: XCTestCase {
                        "precondition: one is a leftover and the other is in use")
     }
 
-    /// **The finding.** The switch on the leftover row is the switch on the live
-    /// one.
+    /// **The guard.** The leftover row does not offer the switch that is the
+    /// live one's.
     func testNoSwitchOnALeftoverStopsAJobTheSameScanCallsInUse() throws {
         let items = scan()
 
@@ -84,8 +71,7 @@ final class OneLabelIsOneSwitchTests: XCTestCase {
         }
     }
 
-    /// And the other half of it, said once so a fix can be measured against it:
-    /// one label, at most one row offering to switch it.
+    /// And the other half of it: one label, at most one row offering to switch it.
     func testOneLabelIsOfferedOneSwitch() {
         let items = scan()
         let offered = items.filter(\.canToggle)

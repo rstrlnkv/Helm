@@ -20,22 +20,14 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
 
     private typealias Disk = FakeWorkDisk
 
-    /// A grant nobody asks about: a hand-off never freezes anything.
-    private struct NeverAsked: ScreenCapturing {
-        func access() -> CaptureAccess { .denied }
-        func requestAccess() {}
-        func freeze(cursor: Bool) async -> FreezeOutcome { .failed }
-        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .failed }
-    }
-
     private func controller(saving target: SaveTarget) -> (CaptureController, Board, Disk) {
         let board = Board(), disk = Disk()
         let backing = InMemoryKeyValueStore()
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: backing)
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
-        let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: NeverAsked(), writer: disk, trash: NoTrash(), pasteboard: board, preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
+        let home = scratchDirectory("shots-handoff")
+        let session = CaptureSession(capture: FakeScreen(outcome: .failed, access: .denied, window: .failed), writer: disk, trash: AsideTrash.refusing(), pasteboard: board, preferences: NoPreferences(), shutter: CountingShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(store: store,

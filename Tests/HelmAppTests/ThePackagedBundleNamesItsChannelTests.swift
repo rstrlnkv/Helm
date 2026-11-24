@@ -15,9 +15,6 @@ import HelmTestSupport
 /// plist is what is read back. `Scripts/make-dmg.sh` is run against a tiny
 /// ad-hoc-signed bundle with a `swift` that records its arguments and stops: the
 /// `--dev` flag on the background drawing is what the case reads.
-///
-/// Past defect: a DEV build carried `0.11.2`, no `-dev` suffix, and got the
-/// non-dev window and the Beta badge.
 final class ThePackagedBundleNamesItsChannelTests: XCTestCase {
 
     private struct SetupFailure: Error, CustomStringConvertible { let description: String }

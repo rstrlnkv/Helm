@@ -8,7 +8,7 @@ set -euo pipefail
 # --filter 'A|B|C'` where every alternative matches nothing prints `warning:
 # No matching test cases were run` and this script fails on that too — but
 # where only SOME alternatives match, it exits 0 with no warning at all
-# (measured: `--filter 'TheMapNamesRealDirectoriesTests|NoSuchTestsAtAll'`
+# (measured: `--filter 'EveryPointerArrivesTests|NoSuchTestsAtAll'`
 # -> EXIT=0, zero warnings, "Executed 1 test"). A mistyped guard name in a
 # family run is then silently not run. This script fails non-zero and names
 # the alternative, on Gradle's `failOnNoMatchingTests` model. `swift test`
@@ -17,10 +17,10 @@ set -euo pipefail
 #
 # Reading a run: this script prints its own verdict last, on stdout; the log
 # it names is a file, and its closing lines do not stand for that verdict. A
-# full run (HELM_FULL_SUITE=1, no --filter) closes each bundle with "Test
-# Suite 'All tests' passed" or "failed" and, after the last bundle, prints
-# Swift Testing's empty runs, each closing on a line that begins "✔ Test run
-# with 0 tests in 0 suites passed"; a default or --filter run closes each
+# run with no --filter closes each bundle with "Test Suite 'All tests' passed"
+# or "failed" and, after the last bundle, prints Swift Testing's empty runs,
+# each closing on a line that begins "✔ Test run with 0 tests in 0 suites
+# passed"; a --filter run closes each
 # bundle with "Test Suite 'Selected tests' passed" or "failed". The last
 # bundle can close "passed" in a run whose earlier bundle failed, and an empty
 # run's "passed" is about 0 tests: neither speaks for the suite. A summary
@@ -43,14 +43,10 @@ set -euo pipefail
 # Swift 6.4, 26.10.2026): $STATUS is the verdict, not that line.
 #
 # Usage: Scripts/test.sh [swift test arguments...]
-# Without a --filter every class `Tests/optional-tests.txt` names is skipped;
-# HELM_FULL_SUITE=1 runs them too, as a release does (ARCHITECTURE.md § What
-# proves what). A class gated on HELM_BENCH=1 keeps its body skipped even then,
-# because the body is a benchmark or report (it writes and hashes over a
-# gigabyte, mounts a volume, or builds a very large fixture); a release does
-# not run those bodies.
-# A listed name no `class <Name>:` under Tests/ declares refuses the run before
-# swift test, naming it.
+# Without a --filter every test class runs. A class gated on HELM_BENCH=1 keeps
+# its body skipped, because the body is a benchmark or report (it writes and
+# hashes over a gigabyte, mounts a volume, or builds a very large fixture); a
+# release does not run those bodies.
 # The log path is $HELM_TEST_LOG if set, otherwise a fresh file under
 # ${TMPDIR:-/tmp}; the summary line always prints where it went.
 #
@@ -82,7 +78,7 @@ set -euo pipefail
 # — and is reported on its own line instead, failing closed rather than
 # passing an alternative nothing here actually checked. Swift Testing
 # bundles read `--filter` differently again: `--filter
-# '(?<=\.)TheMapNamesRealDirectoriesTests'` still ran the XCTest case but
+# '(?<=\.)EveryPointerArrivesTests'` still ran the XCTest case but
 # `swift test` itself exited 1, the log's `Note: Some test targets reported
 # failures:` naming every Swift Testing bundle — that exit is read here
 # through `$STATUS` regardless of its cause, which this script has not
@@ -93,7 +89,7 @@ set -euo pipefail
 # as something else entirely, an escape it does not recognise standing for
 # its literal letter and a character class collapsing to the characters
 # written inside it (measured: `MapNamesExists\z` and
-# `TheMap[\w]amesRealDirectoriesTests` each ran their case under `swift
+# `EveryPointer[\w]rrivesTests` each ran their case under `swift
 # test` and counted 0 selected cases here). This checker cannot tell that
 # count apart from a genuine typo or an unrelated `--skip`, so all three
 # land in the same "ran no test case" message below rather than one of them
@@ -137,7 +133,7 @@ done
 # carries one as two patterns split on that byte, and the empty side of
 # such a split matches every line it is asked about, so a misspelled
 # alternative followed by a newline then counts as a match instead of a
-# miss (measured: `TheMapNamesRealDirectoriesTests|` followed by a newline
+# miss (measured: `EveryPointerArrivesTests|` followed by a newline
 # and `NoSuchTestsAtAll` counted every selected case and printed PASS).
 # Refuse any --filter value carrying one — in either the `--filter X` or
 # `--filter=X` form, and on any occurrence — before swift test runs at all,
@@ -165,54 +161,6 @@ if [ "${#FILTER_VALUES[@]}" -gt 0 ]; then
   FILTER_VALUE="$(printf '%s|' "${FILTER_VALUES[@]}")"
   FILTER_VALUE="${FILTER_VALUE%|}"
 fi
-
-# The optional classes. Every run without a --filter skips each class
-# `Tests/optional-tests.txt` names, one class per line; HELM_FULL_SUITE=1 runs
-# them too, and a --filter runs whatever it names, optional or not. The list
-# is read before swift test spends the run and refused whole when it is empty,
-# on a line that is not one bare class name, a name written twice, a name no
-# `class <Name>:` under Tests/ declares, or a name two classes declare: a stale
-# name skips nothing and says so nowhere. Any superclass counts, so a test
-# class built on a shared rig is declared like any other. Each name reaches
-# swift test as `--skip '[.]<Name>/'`, matched like --filter against
-# `<Target>.<Class>/<method>` (below), so it skips that class and no other —
-# a bare name matches as a substring, and `AutomationNoticeTests` would skip
-# `SystemAutomationNoticeTests` with it. /bin/bash is 3.2 here: no
-# associative array, no mapfile, and an empty array expanded under `set -u`
-# is an error, hence sort, comm and the count guard.
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OPTIONAL_LIST="$ROOT/Tests/optional-tests.txt"
-refuse_list() {
-  echo "!! $OPTIONAL_LIST: $1 — refused before swift test runs" >&2
-  echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  log=not written"
-  exit 1
-}
-{ [ -f "$OPTIONAL_LIST" ] && [ -r "$OPTIONAL_LIST" ]; } || refuse_list "not a readable file"
-set +e
-NOT_A_NAME="$(command grep -nvE '^[A-Za-z_][A-Za-z0-9_]*$' "$OPTIONAL_LIST")"
-NOT_A_NAME_STATUS=$?
-DECLARING="$(command grep -rhoE --include='*.swift' '^[[:space:]]*((@[A-Za-z]+|final|public|open|internal)[[:space:]]+)*class[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*:' "$ROOT/Tests")"
-DECLARING_STATUS=$?
-set -e
-case "$NOT_A_NAME_STATUS" in 0|1) ;; *) refuse_list "unreadable (grep exited $NOT_A_NAME_STATUS)" ;; esac
-[ "$DECLARING_STATUS" -eq 0 ] || refuse_list "the test classes under $ROOT/Tests could not be read (grep exited $DECLARING_STATUS)"
-[ -z "$NOT_A_NAME" ] || refuse_list "a line that is not one bare class name: $(echo $NOT_A_NAME)"
-OPTIONAL_NAMES="$(LC_ALL=C sort "$OPTIONAL_LIST")"
-[ -n "$OPTIONAL_NAMES" ] || refuse_list "names no class"
-DECLARED="$(printf '%s\n' "$DECLARING" | sed -E 's/.*class[[:space:]]+([A-Za-z_][A-Za-z0-9_]*).*/\1/' | LC_ALL=C sort)"
-TWICE="$(printf '%s\n' "$OPTIONAL_NAMES" | uniq -d)"
-UNDECLARED="$(LC_ALL=C comm -23 <(printf '%s\n' "$OPTIONAL_NAMES" | uniq) <(printf '%s\n' "$DECLARED" | uniq))"
-AMBIGUOUS="$(LC_ALL=C comm -12 <(printf '%s\n' "$OPTIONAL_NAMES" | uniq) <(printf '%s\n' "$DECLARED" | uniq -d))"
-[ -z "$TWICE" ] || refuse_list "named twice: $(echo $TWICE)"
-[ -z "$UNDECLARED" ] || refuse_list "no class <Name>: under Tests/ declares: $(echo $UNDECLARED)"
-[ -z "$AMBIGUOUS" ] || refuse_list "more than one class is declared as: $(echo $AMBIGUOUS)"
-SKIP_ARGS=()
-if [ "${#FILTER_VALUES[@]}" -eq 0 ] && [ "${HELM_FULL_SUITE:-}" != "1" ]; then
-  while IFS= read -r NAME; do
-    SKIP_ARGS+=(--skip "[.]${NAME}/")
-  done <<< "$OPTIONAL_NAMES"
-fi
-SKIPPED_CLASSES=$(( ${#SKIP_ARGS[@]} / 2 ))
 
 if [ -n "${HELM_TEST_LOG:-}" ]; then
   LOG="$HELM_TEST_LOG"
@@ -262,10 +210,6 @@ if ! { : > "$LOG"; } 2>/dev/null; then
 fi
 
 echo "==> swift test --explicit-target-dependency-import-check error $* (log: $LOG)"
-if [ "$SKIPPED_CLASSES" -gt 0 ]; then
-  echo "==> skipping the $SKIPPED_CLASSES classes Tests/optional-tests.txt names (HELM_FULL_SUITE=1 or a --filter runs them)"
-  set -- "$@" "${SKIP_ARGS[@]}"
-fi
 set +e
 swift test --explicit-target-dependency-import-check error "$@" > "$LOG" 2>&1
 STATUS=$?
@@ -349,7 +293,7 @@ fi
 
 # swift test's own --filter matches a regular expression against
 # <target>.<class>/<method> (measured: --filter
-# 'DocumentsNameTheTreeTests/testTheReaderRecognisesEveryFileLineShape' selects
+# 'EveryPointerArrivesTests/testTheHubLinksExactlyThePagesOnDisk' selects
 # exactly that one case, and a bare class name or a partial name matches by
 # substring the same way). Sequentially the log spells a run case with a
 # space where the filter wants a slash — `Test Case '-[Target.Class
@@ -407,20 +351,6 @@ if [ "$SELECTION_UNREADABLE" -eq 1 ]; then
   echo "!! cannot read how many test case(s) swift test selected from the log at $LOG (a count's exit status was neither 0 nor 1, or its output was not a plain integer) — refusing to judge a run from a log this script cannot read" >&2
   echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  log=$LOG (unreadable)"
   exit 1
-fi
-
-# What the list did, read from the cases that ran: under the skip no case of
-# a listed class may have run — one that did means swift test no longer reads
-# `--skip '[.]<Name>/'` as this script does — and a full run that swift test
-# passed must have run a case of every listed class, the run's own proof
-# that each name still selects something.
-OPTIONAL_RAN=""
-OPTIONAL_SILENT=""
-RAN_CLASSES="$(printf '%s\n' "$SELECTED" | sed -nE 's#^[A-Za-z0-9_]+[.]([A-Za-z0-9_]+)/.*#\1#p' | LC_ALL=C sort -u)"
-if [ "$SKIPPED_CLASSES" -gt 0 ]; then
-  OPTIONAL_RAN="$(LC_ALL=C comm -12 <(printf '%s\n' "$OPTIONAL_NAMES") <(printf '%s\n' "$RAN_CLASSES"))"
-elif [ "${#FILTER_VALUES[@]}" -eq 0 ] && [ "$STATUS" -eq 0 ]; then
-  OPTIONAL_SILENT="$(LC_ALL=C comm -23 <(printf '%s\n' "$OPTIONAL_NAMES") <(printf '%s\n' "$RAN_CLASSES"))"
 fi
 
 UNMATCHED=()
@@ -513,15 +443,6 @@ fi
 if [ "$ZERO_RAN" -eq 1 ]; then
   [ "$FAIL" -eq 0 ] && FAIL=1
 fi
-if [ -n "$OPTIONAL_RAN" ]; then
-  echo "!! classes Tests/optional-tests.txt names ran under the skip: $(echo $OPTIONAL_RAN)" >&2
-  [ "$FAIL" -eq 0 ] && FAIL=1
-fi
-if [ -n "$OPTIONAL_SILENT" ]; then
-  echo "!! classes Tests/optional-tests.txt names ran no case in a full run: $(echo $OPTIONAL_SILENT)" >&2
-  [ "$FAIL" -eq 0 ] && FAIL=1
-fi
-
 # The last line printed has to carry this runner's own verdict, not just
 # swift test's exit status — swift test can exit 0 while an unmatched
 # --filter alternative still fails the run (or exit non-zero itself), and a
@@ -532,5 +453,5 @@ if [ "$FAIL" -eq 0 ]; then
 else
   VERDICT=FAIL
 fi
-echo "==> $VERDICT (runner exit=$FAIL, swift test exit=$STATUS)  failure-lines=$FAILURE_COUNT  selected=$SELECTED_COUNT  skipped-classes=$SKIPPED_CLASSES  log=$LOG"
+echo "==> $VERDICT (runner exit=$FAIL, swift test exit=$STATUS)  failure-lines=$FAILURE_COUNT  selected=$SELECTED_COUNT  log=$LOG"
 exit $FAIL

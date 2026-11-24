@@ -7,12 +7,10 @@ import HelmRuntime
 ///
 /// `power.snapshot()` is nil for two different reasons — a machine with no
 /// battery, and an IOKit dictionary that came back incomplete — which is why
-/// `PowerInfoPort` carries `isOnMains` separately; `powerCondition` and the app
-/// rules were each dead on every desktop until it did. The battery guard was
-/// left reading `snapshot()` alone and answering **no veto** for nil, so on a
-/// laptop running on battery with an unreadable charge the one thing that ever
-/// ends an unattended session was silently switched off. The floor exists
-/// because `defaultDurationMinutes` ships as «indefinitely».
+/// `PowerInfoPort` carries `isOnMains` separately. Answering «no veto» for nil
+/// would switch off, on a laptop on battery with an unreadable charge, the one
+/// thing that ever ends an unattended session (`defaultDurationMinutes` ships
+/// as «indefinitely»).
 ///
 /// The two questions are separable and both are asked here: nil *and not on
 /// mains* is battery power with an unknown charge, and this module's safe
@@ -21,9 +19,8 @@ import HelmRuntime
 /// because a dictionary was short would be the guard firing where it has no
 /// business.
 ///
-/// The second half of the file is the log line that accounts for it. It said
-/// `percent ?? 0` — «battery guard stopped the session at 0%» — which is a
-/// number nobody measured, in the only record of an unattended stop, and 0 % is
+/// The second half of the file is the log line that accounts for it: «0%» would
+/// be a number nobody measured, in the only record of an unattended stop, and
 /// the reading that means the Mac is about to die.
 ///
 /// A Mac with a battery is a precondition of the engine-level checks, as it is
@@ -122,8 +119,7 @@ final class AChargeNobodyCanReadIsNotZeroTests: XCTestCase {
         XCTAssertEqual(lines.count, 1, "precondition: the guard accounted for the stop once")
         let line = try XCTUnwrap(lines.first)
         // The charge, not the floor: the line carries the floor as a percentage
-        // too, so a bare «0%» is in «floor 20%» whatever the reading was — the
-        // first spelling of this check could not fail.
+        // too, so a bare «0%» is in «floor 20%» whatever the reading was.
         XCTAssertFalse(line.contains("at 0%"),
                        "«\(line)» — the charge could not be read and the log names 0%, "
                        + "which is both a measurement nobody took and the one figure that "

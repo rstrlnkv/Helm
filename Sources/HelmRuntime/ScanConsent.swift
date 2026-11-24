@@ -3,13 +3,11 @@ import Foundation
 /// What the person is told about the reads nobody is watching, and how their
 /// answer is written down.
 ///
-/// **The switch existed and had no writer.** `AppSettings.disabledScans` decides
-/// whether `ScanCoordinator` walks the volume while the Mac is idle, and until
-/// this screen nothing in `Sources/` ever wrote it: the only way to learn that
-/// Helm reads the disk on its own was the log. This is the arithmetic behind
-/// that screen — which rows there are and what an answer does to the stored
-/// list — kept here beside `ScanRunner` and `ScanSchedule` rather than in the
-/// view, for the reason those two give.
+/// `AppSettings.disabledScans` decides whether `ScanCoordinator` walks the
+/// volume while the Mac is idle; this is the arithmetic behind the screen that
+/// writes it (which rows there are, what an answer does to the stored list),
+/// beside `ScanRunner` and `ScanSchedule` rather than in the view, so it is
+/// testable.
 public enum ScanConsent {
 
     public struct Row: Equatable, Sendable {
@@ -29,15 +27,12 @@ public enum ScanConsent {
     /// for it would be a switch over something that cannot happen either way.
     ///
     /// **`disabledScans` is optional because the read is not free.** The list is
-    /// sealed, so getting it can reach the login keychain — and on an ad-hoc
-    /// build that is an authorization dialog, which is why it cannot be read on
-    /// the path that builds the screen (`MenuBarSettingsView`). Nil is "not read
-    /// yet" and draws nothing. It is deliberately not the empty set: an empty
-    /// off-list means *every* scan is on, so standing in for an unknown answer
-    /// with it would show a whole-volume walk switched on to somebody who has
-    /// never said so. Nil is also not `[]` on the way out — no rows because
-    /// there is nothing to ask about is a different sentence from nothing to say
-    /// yet, and the screen draws its heading over one and not the other.
+    /// sealed, so reading it can raise a keychain dialog on an ad-hoc build, and
+    /// it is not read on the path that builds the screen
+    /// (`MenuBarSettingsView`). Nil is "not read yet" and draws nothing; the
+    /// empty set would mean *every* scan is on. Nil is also not `[]` on the way
+    /// out: the screen draws its heading over "nothing to ask about" and not
+    /// over "nothing to say yet".
     public static func rows(scannable: [String], enabled: Set<String>,
                             disabledScans: Set<String>?,
                             lastRun: [String: Date]) -> [Row]? {

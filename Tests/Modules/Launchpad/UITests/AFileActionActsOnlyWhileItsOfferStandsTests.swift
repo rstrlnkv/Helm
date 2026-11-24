@@ -4,8 +4,7 @@ import XCTest
 
 /// Show in Finder and Copy Path are offered when a menu is built and pressed later. What was offered is not what is true at the press:
 /// the Hidden card may have locked (the path of a hidden app is as private as its name), or the app may have been hidden in between. A press
-/// hands the closure nothing it would not hand if the menu were built now. An app removed or moved is the sibling class's
-/// (`AFileActionNamesThePathTheCatalogHoldsNowTests`).
+/// hands the closure nothing it would not hand if the menu were built now.
 @MainActor final class AFileActionActsOnlyWhileItsOfferStandsTests: XCTestCase {
     private let hiddenApp = HiddenRig.unreconciled().apps[HiddenRig.hidden]!
 

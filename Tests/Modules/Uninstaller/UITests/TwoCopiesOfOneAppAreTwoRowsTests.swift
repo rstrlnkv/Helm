@@ -5,40 +5,18 @@ import XCTest
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-/// **One bundle id, two things on disk — and two lists still identify by the
-/// id.**
-///
-/// The module settled this once already, at `UninstallGroup.id`: «The copy on
-/// disk, not the bundle id. Two builds of one app — a Setapp copy beside a
-/// direct download — share an id and are two rows, and `ForEach` given one
-/// identity for two draws one of them.» `AppSizeIdentityTests` says the same
-/// about the sizes and about the plan.
-///
-/// The two lists that were not looked at are the ones on either side of it:
-///
-/// - `InstalledApp: Identifiable { bundleID }` (`UninstallerSettingsPage.swift`)
-///   is what the picker's `ForEach(filtered)` draws — the step *before* the
-///   review that was fixed. `WorkspaceAppLister` reads four folders, Setapp's
-///   among them, and deduplicates by path precisely because one id can arrive
-///   twice.
-/// - `TrashedAppLeftovers: Identifiable { bundleID }`
-///   (`TrashedLeftoversView.swift`) is what the unprompted window's
-///   `ForEach(model.groups)` draws. Two copies of one app reach the Trash the
-///   ordinary way: delete, reinstall, delete again — the Finder keeps both and
-///   calls the second one «Foo 2.app».
-///
-/// SwiftUI's own words for what it does with the result are «this will give
-/// undefined results», in a window whose rows are checkboxes over somebody's
-/// files.
+/// One bundle id, two copies on disk, two rows: the picker's `InstalledApp`
+/// and the Trash window's `TrashedAppLeftovers` identify by path, as
+/// `UninstallGroup.id` does (`AppSizeIdentityTests` for the sizes and the
+/// plan). A `ForEach` given one identity for two rows has undefined results,
+/// over checkboxes on somebody's files.
 @MainActor
 final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
 
-    /// Reports the Trash and the installed set independently — an app can be in
     // MARK: -
 
-    /// The unprompted window, end to end: the engine really does hand back two
-    /// groups for two copies of one app in the Trash, so this is not a fact
-    /// invented in a fixture.
+    /// The unprompted window, end to end: the engine hands back two groups for
+    /// two copies of one app in the Trash.
     func testTheTrashOfferGivesEachTrashedCopyItsOwnIdentity() async {
         let home = URL(fileURLWithPath: "/Users/ann")
         let store = NamespacedStore(namespace: "uninstaller", backing: InMemoryKeyValueStore())
@@ -49,7 +27,7 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
             TrashedApp(bundleID: "com.acme.tool", name: "Tool", path: "/Users/ann/.Trash/Tool.app"),
             TrashedApp(bundleID: "com.acme.tool", name: "Tool", path: "/Users/ann/.Trash/Tool 2.app"),
         ])
-        let engine = UninstallerEngine(home: home, apps: lister, fs: EveryPathExists(size: 4_096),
+        let engine = UninstallerEngine(home: home, apps: lister, fs: FakeFS(everyPathExistsAt: 4_096),
                                        trash: NoTrash(), running: NoRunning(), store: store)
 
         let groups = await engine.trashedAppLeftovers()
@@ -88,9 +66,8 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
         XCTAssertEqual(batch.paths, [setapp.path])
     }
 
-    /// The control. Two different apps were always two rows, so the assertion
-    /// above, and the picker's in `TheAppPickerGivesEachCopyItsOwnIdentityTests`,
-    /// cannot pass by identifying everything as itself.
+    /// The control: two different apps are two rows, so the assertions above and
+    /// in `TheAppPickerGivesEachCopyItsOwnIdentityTests` cannot pass vacuously.
     func testTwoDifferentAppsAreStillTwoRows() {
         let one = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
                                path: "/Applications/Tool.app")
@@ -109,7 +86,6 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
 /// The picker's half of the same rule: two installed copies of one app share a
 /// bundle id, and the picker still has to tell them apart.
 @MainActor
-/// Past defect: backlog uninstaller-U20 (C139).
 final class TheAppPickerGivesEachCopyItsOwnIdentityTests: XCTestCase {
 
     /// The picker. Two installed copies, one row.

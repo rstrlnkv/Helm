@@ -6,24 +6,15 @@ import Module_Duplicates_Engine
 /// The copy somebody chose by hand is still the copy that stays after a removal
 /// has taken one of that group's other copies.
 ///
-/// **Why this is the case that breaks.** A pin is held by `DuplicateGroup.id`,
-/// and that id is a digest of the group's paths — chosen so that pinning would
-/// survive «the very rearrangement it records», which it does. It does not
-/// survive a change of *membership*, and `emptyBasket` is exactly that: the reply
-/// arrives, the group is rebuilt from the copies that are left, and the rebuilt
-/// group has a different id. The set `pinned` then holds an id nothing on screen
-/// answers to.
+/// **Why this is the case that breaks.** `DuplicateGroup.id` is a digest of the
+/// group's paths, and `emptyBasket` changes membership: the group is rebuilt
+/// from the copies that are left, under a different id. A pin keyed by that id
+/// would answer to nothing, the next policy change would hand the group back to
+/// the ladder, and `basketAllExtras`, which marks every copy after the first,
+/// would tick the copy the person chose to keep.
 ///
-/// Nothing says so. The header stops reading «you chose this copy» and starts
-/// giving a rung, and the next policy change — a popup, one click, no
-/// confirmation — quietly hands the group back to the ladder and moves the
-/// person's chosen copy out of first place. On this page first place is the
-/// invariant everything else reads: `basketAllExtras` marks every copy after the
-/// first, so the copy they chose to keep becomes one of the ticked ones.
-///
-/// The order of the gesture is the ordinary one. Choose which copy to keep, tick
-/// the ones to remove, press the button — and the choice is spent on the press
-/// that acts on it.
+/// The order of the gesture is the ordinary one: choose which copy to keep,
+/// tick the ones to remove, press the button.
 @MainActor
 final class AChosenSurvivorOutlivesARemovalTests: XCTestCase {
 

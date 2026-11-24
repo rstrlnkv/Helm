@@ -2,31 +2,18 @@ import Foundation
 
 /// The arithmetic a background scan runs on.
 ///
-/// **Here rather than in the coordinator, and that is the whole point.**
-/// `ScanCoordinator` lives in `HelmApp` and this lives here, where a test per
-/// verdict holds it with its ordering mutation-checked — four defects found in
-/// the coordinator on 2026-08-03 could be argued about and not pinned. What is
-/// left up there is the clock, the observer and the call into the engine: the parts
-/// that genuinely need a running app.
-///
-/// This paragraph used to say `HelmApp` had no test target anywhere in
-/// `Package.swift`. It has one — `HelmAppTests`, declared there like any other —
-/// and the assumption is what `ListsAgreeWithTheTreeTests` was written to
-/// disprove. Pure logic still belongs here; the reason is the rigour, not an
-/// impossibility.
-///
-/// The line number that used to be in that sentence is gone: adding one target
-/// to the manifest moved it, and a figure nobody re-reads is worse than the
-/// name, which `grep` finds.
+/// **Here rather than in `ScanCoordinator`**, so a test per verdict holds it,
+/// ordering included. What stays in the coordinator is the clock, the observer
+/// and the call into the engine: the parts that need a running app.
+/// Architecture/BackgroundScans.md § Background scans.
 public enum ScanRunner {
 
     /// Which modules have a background scan.
     ///
-    /// A literal list, deliberately: a module gaining a scan is a decision that
-    /// costs a walk of the volume, and it should take an edit rather than
-    /// following from a protocol somebody conformed to. The list living beside
-    /// the schedule instead of inside the app layer is what lets a test hold it
-    /// against the registry.
+    /// A literal list, deliberately: a module gaining a scan costs a walk of the
+    /// volume, and should take an edit rather than follow from a protocol
+    /// somebody conformed to. Beside the schedule, so a test can hold it against
+    /// the registry.
     public static let scannableModules = ["duplicates", "uninstaller", "disk"]
 
     // MARK: - Idleness
@@ -55,19 +42,13 @@ public enum ScanRunner {
     ///
     /// **The counter cannot tell Helm's own events from a person's.** Keep
     /// Awake's pointer nudge posts a `mouseMoved` and the counter drops to
-    /// nothing — measured, 284,97 s to 0,30 s — while the person has not moved.
-    /// Its default interval is five minutes, exactly `ScanSchedule.idleThreshold`,
-    /// so a caller that trusts the counter finds that no scan ever runs for
-    /// anybody with that switch on.
+    /// nothing while the person has not moved. Its default interval is
+    /// `ScanSchedule.idleThreshold`, so trusting the counter would mean no scan
+    /// ever runs with that switch on.
     ///
-    /// The first attempt at the discount answered `sinceNudge + system`, and its
-    /// own guard fired precisely when those two were equal — so it returned
-    /// **roughly double**, and a scan whose threshold is five minutes could
-    /// start after two and a half of real stillness. The repair is not a better
-    /// formula over one reading: two readings of a counter that was reset by a
-    /// known event carry the answer, and one does not. So the estimate
-    /// accumulates across ticks, and a reset only clears it when the reset was
-    /// somebody's hand rather than ours.
+    /// No formula over one reading answers this: two readings of a counter
+    /// reset by a known event do. So the estimate accumulates across ticks, and
+    /// a reset clears it only when it was somebody's hand rather than ours.
     ///
     /// - Parameter tolerance: the notification and the counter are not read at
     ///   the same instant, so the moment of the reset is compared against the

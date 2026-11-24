@@ -95,8 +95,7 @@ struct ListsBoard: View {
                     HelmAppRuleRow(bundleID: Sample.ruleApp) {
                         Toggle(Sample.title, isOn: .constant(true)).labelsHidden()
                     } remove: {}
-                    HelmAppRuleRow(bundleID: Sample.title, controls: { Button(Sample.short) {} },
-                                   note: { HelmSettingsNote(Sample.russianNote) }, remove: {})
+                    HelmAppRuleRow(bundleID: Sample.title, controls: { Button(Sample.short) {} }, remove: {})
                     HelmAppRuleRow(bundleID: Sample.title) {
                         Toggle(Sample.title, isOn: .constant(false)).labelsHidden()
                     } remove: {}

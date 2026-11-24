@@ -2,27 +2,19 @@ import Foundation
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// **A read that was refused reads as «the program is gone», and the row then says
-/// so about working software.**
+/// **A read that was refused does not read as «the program is gone».**
 ///
 /// `LeftoversScanner.launchItems` decides whether a login item is alive with
 ///
 ///     let targetAlive = info.program.map(files.exists) ?? false
 ///
-/// and the port behind `exists` was `FileManager.fileExists`, which answers `false`
-/// both for a path that is not there and for one inside a directory this process
-/// may not search — measured on this Mac: a file under a mode-000 parent gives
-/// `fileExists == false` while `stat` gives `EACCES`.
-///
-/// `targetAlive` is the only thing between a live job and `.orphaned`, so a login
-/// item that runs at every login wears the orange «Leftover» badge, claims «Points
-/// at a missing file», is ticked by «Select all» and offers a «Turn off» that really
-/// does stop working software. Any refusal does it — a
-/// mode, an ACL, somebody else's folder, a missing TCC grant.
-///
-/// This is the fold commit `6de0a337` closed for the plist read and left open one
-/// line below it, so the repair is the module's own: the port answers three ways,
-/// and «I could not tell» is not «it is not there».
+/// `FileManager.fileExists` answers `false` both for a path that is not there and
+/// for one inside a directory this process may not search (a file under a
+/// mode-000 parent gives `false` while `stat` gives `EACCES`). `targetAlive` is
+/// the only thing between a live job and `.orphaned`, so a working login item
+/// would wear the «Leftover» badge, claim «Points at a missing file», be ticked by
+/// «Select all» and offer a «Turn off» that stops working software. The port
+/// answers three ways, and «I could not tell» is not «it is not there».
 final class ARefusedReadIsNotAMissingProgramTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
     private let program = "/Library/Application Support/Vendor/updater"
@@ -38,7 +30,7 @@ final class ARefusedReadIsNotAMissingProgramTests: XCTestCase {
         return try firstAgent(home: home, files: files)
     }
 
-    /// **The finding.** Nobody could look, and the row calls it a leftover.
+    /// **The guard.** Nobody could look, and the row is not called a leftover.
     func testAProgramThisProcessMayNotLookAtIsNotAMissingProgram() throws {
         let item = try agent { $0.unreadable = [self.program] }
 

@@ -4,23 +4,15 @@ import XCTest
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-/// **The Leftovers tab starts a removal from a `busy` flag with nothing
-/// standing beside the request.**
+/// `OrphansModel` refuses a second removal while one runs: «The model
+/// refuses; the page dims» (Architecture/Removal.md § One removal at a time).
 ///
-/// «The model refuses; the page dims. Both, or neither is reliable» —
-/// Architecture/Removal.md § One removal at a time. `OneRemovalAtATimeEverywhereTests`
-/// (HelmAppTests) enforces it for every module by reading the files that send a
-/// removal; this is the behavioural half for `OrphansModel`, which holds what
-/// the eight of the tab's `@State`s that moved into it held, and so can be driven.
+/// A second press is not a second deletion but a wrong report about the
+/// first: every path comes back refused, and the last round to answer writes
+/// `failures`, `removedCount` and `banner`.
 ///
-/// What a second press costs is not a second deletion — the files are already in
-/// the Trash. It is a **wrong report about the first**: every path comes back
-/// refused, and `trashSelected` writes `failures`, `removedCount` and `banner`
-/// from whichever round answers last.
-///
-/// **The work does not answer until it is told to** (`HeldWork`): a fake that
-/// answers synchronously releases the gate before the call it is gating
-/// returns, so a test built on one passes whether or not the gate exists.
+/// The work does not answer until told to (`HeldWork`), or the test would pass
+/// without the gate.
 @MainActor
 final class TheOrphansTabRefusesASecondPressTests: XCTestCase {
 
@@ -41,10 +33,8 @@ final class TheOrphansTabRefusesASecondPressTests: XCTestCase {
         XCTAssertEqual(work.trashRequests, 1, "precondition: the first batch is in flight")
         XCTAssertTrue(model.busy, "nothing on the tab can tell that a removal is running")
 
-        // A task as well, so the second press is not awaited inline: the count
-        // below is what fails when the guard is gone. A second request would
-        // wait on `HeldWork`'s one `released` stream, which is shared by every
-        // call; what that does to the run was not tried.
+        // A task, so the second press is not awaited inline: the count below
+        // is what fails when the guard is gone.
         let second = Task { await model.trashSelected() }
         await grace()
 

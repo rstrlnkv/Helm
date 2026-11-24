@@ -6,21 +6,15 @@ import Module_Duplicates_Engine
 
 /// The fixture every page test in this target is built on can finish its read.
 ///
-/// `duplicatesModel` handed the page a bare `SealKeyProbe`, which takes
-/// `SealKeyPort`'s default `keyIfWarm() -> nil` — so `SettingGuard.isWarm` was
-/// false for ever, `DuplicatesSettings.keepPolicyIfWarm` answered «not yet»
-/// whatever was stored, and the popup sat on the default however long a test
-/// waited. That is a keychain permanently mid-answer, which the real one is
-/// never permanently in: `SettingGuard.warmKey()` makes exactly one round trip
-/// and `SealKeyCache` keeps what it brings back.
+/// A bare `SealKeyProbe` takes `SealKeyPort`'s default `keyIfWarm() -> nil`, so
+/// `SettingGuard.isWarm` stays false, `DuplicatesSettings.keepPolicyIfWarm`
+/// answers «not yet» whatever is stored, and the popup sits on the default for
+/// ever. The real keychain is never permanently mid-answer:
+/// `SettingGuard.warmKey()` makes one round trip and `SealKeyCache` keeps what
+/// it brings back.
 ///
-/// Nothing was vacuous while the page did nothing with the answer. Since
-/// `readTheStoredPolicy` re-decides the list, a fixture that can never answer is
-/// a fixture in which that never runs — so this is the claim the shared fixture
-/// now has to keep, asserted where the fixture is, rather than only inside the
-/// one test that builds its own ports.
-///
-/// Guards a past defect: 69505181 fix(duplicates): the batch is read against itself, and four other ways the page lied.
+/// `readTheStoredPolicy` re-decides the list, so a fixture that can never answer
+/// is one in which that never runs; the claim is asserted where the fixture is.
 @MainActor
 final class TheSharedPageOpensOnWhatIsStoredTests: XCTestCase {
 

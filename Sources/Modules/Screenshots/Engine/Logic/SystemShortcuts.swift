@@ -44,8 +44,7 @@ public enum SystemBox: Int, CaseIterable, Sendable {
 
     /// What macOS ships: the key code and the Cocoa modifier mask, copied from
     /// the system's own `DefaultShortcutsTable.xml` in the Keyboard settings
-    /// extension — `TheSystemDefaultsAreMacOSsOwnTests` reads that file and
-    /// compares, so a number here is checked rather than remembered.
+    /// extension, not remembered.
     var defaultKey: (keyCode: Int, cocoaModifiers: Int) {
         switch self {
         case .saveScreen: (20, 1_179_648)

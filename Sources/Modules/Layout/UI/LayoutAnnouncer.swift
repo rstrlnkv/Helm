@@ -9,13 +9,12 @@ import Module_Layout_Engine
 /// engine holds no strings. Everything here is gated on VoiceOver being on:
 /// with no reader, an announcement is work with no audience.
 ///
-/// **The announcement alone is not trusted to arrive.** It is posted by Helm —
-/// a background process — while the reader's focus is in the app being typed
-/// in, and whether VoiceOver speaks another process's announcement could not be
-/// measured on the machine this shipped from (VoiceOver off; enabling it is a
-/// live system setting). So a conversion also plays the module's switch sound
-/// whenever VoiceOver is on — unless the person already asked for the sound,
-/// in which case the engine plays it and a second copy would double it.
+/// The announcement alone is not trusted to arrive: it is posted by Helm, a
+/// background process, while the reader's focus is in the app being typed in,
+/// and whether VoiceOver speaks another process's announcement is unverified.
+/// So a conversion also plays the module's switch sound whenever VoiceOver is
+/// on, unless the person already asked for the sound, which the engine plays.
+///
 /// `@unchecked` for the same reason and in the same shape as the engine, which
 /// holds the same store across the same threads: `NamespacedStore` is a thin
 /// prefix over `UserDefaults`, whose reads are thread-safe, and every read here

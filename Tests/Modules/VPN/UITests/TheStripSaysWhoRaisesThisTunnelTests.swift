@@ -8,11 +8,10 @@ import XCTest
 /// The strip on a card: which applications raise this tunnel, how many of them
 /// are drawn, and how many are left over.
 ///
-/// It is the card's answer to «who raises this», which is the question the flat
-/// list of rules never answered — and it has to be an answer that fits in a
-/// card, so it is capped and says how many it did not draw.
+/// It is the card's answer to «who raises this», and it has to fit in a card,
+/// so it is capped and says how many it did not draw.
 ///
-/// Guards: the strip's cap, its overflow count and the orphan rule (no fix commit; the code and this test landed together in 1eadc939).
+/// Guards: the strip's cap, its overflow count and the orphan rule.
 final class TheStripSaysWhoRaisesThisTunnelTests: XCTestCase {
 
     private func rule(_ vpn: String) -> VPNAppRule { VPNAppRule(vpnName: vpn) }
@@ -37,12 +36,10 @@ final class TheStripSaysWhoRaisesThisTunnelTests: XCTestCase {
         XCTAssertEqual(strip.total, 0)
     }
 
-    /// **Four, and the number is a width.** Measured at the narrowest card this
-    /// app can draw — the settings column clamps to the pane, so at the minimum
-    /// window a card is about 297 pt with 273 of content: the strip's own
-    /// chrome plus four icons plus the overflow chip plus the notices door comes
-    /// to 214. Five icons would fit there and not in a 190 pt card, which is the
-    /// floor the grid still declares.
+    /// **Four, and the number is a width.** At the minimum window a card is
+    /// about 297 pt with 273 of content: the strip's chrome, four icons, the
+    /// overflow chip and the notices door come to 214. Five icons would fit there
+    /// and not in a 190 pt card, the floor the grid declares.
     func testTheStripIsCappedAndSaysHowManyItDidNotDraw() {
         let many = Dictionary(uniqueKeysWithValues: (1...9).map { ("app\($0)", rule("One")) })
         let strip = VPNTenants.of("One", rules: many, sorted: byName)

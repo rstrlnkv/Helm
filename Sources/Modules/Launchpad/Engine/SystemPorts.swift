@@ -66,8 +66,7 @@ struct FileSystemAppCatalog: AppCatalogPort {
 
     /// When Finder says the bundle was added to its folder (`ATTR_CMN_ADDEDTIME`, the attribute behind `addedToDirectoryDateKey`).
     /// nil for a symlinked bundle (Safari in `/Applications` is one: the link's date is not the app's) and for a date that would not
-    /// read. One `getattrlist` per app: `resourceValues` measured 350 bytes an app more than the walk without it
-    /// (`TheDateAddedIsReadOncePerAppAndCostsTheWalkNothingTests`), and this makes no object.
+    /// read. One `getattrlist` per app: `resourceValues` costs more memory an app, and this makes no object.
     /// The length check below is a defensive guard no test reaches: the kernel always fills the `timespec` for a directory, and
     /// `getattrlist` has no fake.
     private static func dateAdded(_ url: URL) -> Date? {
@@ -114,27 +113,9 @@ struct FileSystemAppCatalog: AppCatalogPort {
         return lstat(url.path, &info) == 0 && (info.st_mode & S_IFMT) == S_IFDIR
     }
 
-    /// **The one door every bundle file is read through.** Opened without blocking and without following a link at
-    /// the last component, so a pipe planted as `Info.plist` cannot hold the walk, and read only when it is a regular
-    /// file no larger than the shared ceiling; nil for anything else, a missing file included.
-    private static func cappedRead(_ path: String) -> Data? {
-        let fd = open(path, O_RDONLY | O_NONBLOCK | O_NOFOLLOW)
-        guard fd >= 0 else { return nil }
-        let handle = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
-        var info = stat()
-        guard fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG,
-              let data = try? handle.read(upToCount: LaunchpadLimits.maxFileBytes + 1),
-              data.count <= LaunchpadLimits.maxFileBytes else { return nil }
-        return data
-    }
-
-    private static func dictionary(at path: String) -> [String: Any]? {
-        cappedRead(path).flatMap { try? PropertyListSerialization.propertyList(from: $0, format: nil) } as? [String: Any]
-    }
-
     /// The bundle's `Info.plist`; nil for a missing, unparseable or oversize one.
     private static func infoPlist(at url: URL) -> [String: Any]? {
-        dictionary(at: url.appendingPathComponent("Contents/Info.plist").path)
+        PropertyListFile.infoPlist(ofBundleAt: url)
     }
 
     /// The bundle's `InfoPlist.strings` in the person's language, as Finder picks it; nil when it has none or none reads.
@@ -142,7 +123,7 @@ struct FileSystemAppCatalog: AppCatalogPort {
         let held = Bundle(url: url)?.localizations ?? []
         for code in Bundle.preferredLocalizations(from: held, forPreferences: nil) {
             let strings = url.appendingPathComponent("Contents/Resources/\(code).lproj/InfoPlist.strings").path
-            if let found = dictionary(at: strings) { return found }
+            if let found = PropertyListFile.dictionary(atPath: strings) { return found }
         }
         return nil
     }

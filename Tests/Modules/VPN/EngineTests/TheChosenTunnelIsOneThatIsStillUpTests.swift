@@ -16,8 +16,6 @@ import XCTest
 /// The fallback is the *first*, which is the one carrying the default route
 /// (`VPNTunnelChoice.primaryFirst`) — «the first» means something exactly
 /// because of that ordering, and the two live in one file for that reason.
-///
-/// Past defect: commit 38cc0b77, «feat(vpn): the strip is about a tunnel you choose, not the only one it knew».
 final class TheChosenTunnelIsOneThatIsStillUpTests: XCTestCase {
 
     private func tunnel(_ name: String,
@@ -91,8 +89,7 @@ final class TheChosenTunnelIsOneThatIsStillUpTests: XCTestCase {
 
     /// The engine refuses a measurement on a tunnel this is false of and the
     /// page draws a sentence instead of the button for the same tunnel. One
-    /// predicate, so the two cannot disagree about which tunnel a fifteen-second
-    /// run belongs to.
+    /// predicate, so the two cannot disagree about which tunnel a run belongs to.
     func testOnlyTheRoutedVerdictCarriesTheDefaultRoute() {
         XCTAssertTrue(VPNExitVerdict.throughTunnel(countryCode: "NL").carriesTheDefaultRoute)
         XCTAssertTrue(VPNExitVerdict.throughTunnel(countryCode: nil).carriesTheDefaultRoute)

@@ -1,4 +1,5 @@
 import HelmContract
+import HelmTestSupport
 import HelmRuntime
 import HelmUI
 import SwiftUI
@@ -7,21 +8,17 @@ import XCTest
 
 /// **The seam has two sides, and only one of them is in the module.**
 ///
-/// Keyboard's menu-bar indicator moved out of the engine's construction — where it decorated
-/// the Mac of every process that asked a descriptor for an engine, the render
-/// harness included — and into `attachMenuBarPresence()`, which the host calls
-/// when a module starts running. That leaves the familiar hazard: the module now
-/// has a door nothing has to open. Delete the host's call and no test of the
-/// module notices, no build fails, and the app quietly loses a feature that is
-/// switched on in somebody's settings.
+/// Keyboard's menu-bar indicator is built in `attachMenuBarPresence()`, which
+/// the host calls when a module starts running, not at the engine's
+/// construction, where it would decorate the Mac of every process that asks a
+/// descriptor for an engine. That makes it a door nothing has to open: delete
+/// the host's call and no test of the module notices, no build fails, and the
+/// app quietly loses a feature switched on in somebody's settings.
 ///
-/// So this is the other half, asserted through a descriptor that records rather
-/// than through Keyboard's own — a real `LanguageIndicator` here would be the
-/// status item this whole change exists to keep out of a test run.
-///
-/// Both directions, because either can rot on its own: switching a module off
-/// used to leave Keyboard's flag in the menu bar until somebody switched it back
-/// on, which was what rebuilt it.
+/// So this is the other half, asserted through a descriptor that records: a
+/// real `LanguageIndicator` would put a status item into the test run. Both
+/// directions, because either can rot on its own: switching a module off must
+/// take its item out of the menu bar.
 @MainActor
 final class TheHostPutsAModulesOwnItemInTheMenuBarTests: XCTestCase {
 
@@ -35,7 +32,7 @@ final class TheHostPutsAModulesOwnItemInTheMenuBarTests: XCTestCase {
         var detached = 0
 
         func makeModule(store: NamespacedStore) -> ModuleParts<PageModel> {
-            ModuleParts(engine: Stub(), model: PageModel())
+            ModuleParts(engine: FakeEngine(), model: PageModel())
         }
         func attachMenuBarPresence() { attached += 1 }
         func detachMenuBarPresence() { detached += 1 }
@@ -43,18 +40,12 @@ final class TheHostPutsAModulesOwnItemInTheMenuBarTests: XCTestCase {
 
     private final class PageModel {}
 
-    private final class Stub: ModuleEngine {
-        func activate() {}
-        func deactivate() {}
-    }
-
     /// The host's store is `UserDefaults.standard`, so the enabled flag this
-    /// writes is a key in the shared domain: taken back out here rather than
-    /// left for the 3028 that had accumulated once already.
-    override func tearDown() {
+    /// writes is a key in the shared domain, taken back out here.
+    override func tearDown() async throws {
         ModuleHost.shared.shutdown()
         UserDefaults.standard.removeObject(forKey: "module.\(Self.moduleID).enabled")
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testEnablingAModuleAttachesItsMenuBarPresenceAndDisablingTakesItAway() {

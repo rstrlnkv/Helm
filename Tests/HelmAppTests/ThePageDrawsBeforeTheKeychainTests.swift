@@ -8,34 +8,24 @@ import XCTest
 
 /// **A sealed setting must not be read on the path that builds a window.**
 ///
-/// Measured 2026-08-15: `SettingsWindow.init` → SwiftUI layout →
-/// `AppSettings.disabledScans.getter` → `SettingGuard.establishKey()` →
-/// `KeychainSealKey.read()`. The bundle is ad-hoc signed, so every build has a
-/// new cdhash and no keychain ACL written by an earlier one matches it: the
-/// keychain answers with a modal authorization dialog, and it stood in front of
-/// the settings window *before the window had drawn anything*, twice blocking
-/// the screenshot harness.
-///
-/// This is (ARCHITECTURE.md § Sealed settings) arriving through the
-/// second door. `clamshellEnabled` is unsealed because `init` reads it;
-/// `disabledScans` is sealed because it is read rarely and never at launch —
-/// and a `@State` initializer on the settings page is a read at construction,
-/// whatever else is true of it.
+/// The path is `AppSettings.disabledScans.getter` → `SettingGuard.establishKey()`
+/// → `KeychainSealKey.read()`. An ad-hoc signed build has a new cdhash that no
+/// earlier keychain ACL matches, so the keychain answers with a modal
+/// authorization dialog, in front of a window that has drawn nothing
+/// (Architecture/StoredSettings.md § Sealed settings). A `@State` initializer
+/// on the settings page is a read at construction.
 ///
 /// **The subject is the hosting view, not the struct.** `MenuBarSettingsView()`
-/// on its own reads nothing: SwiftUI takes a `@State` initial value as an
-/// autoclosure and evaluates it when the state is installed into the view graph.
-/// Measured on this page — the count goes 0 → 1 at `NSHostingView(rootView:)`
-/// and does not move again at `layoutSubtreeIfNeeded()`. A test that constructed
-/// the struct and asserted zero was green with the defect fully in place.
+/// on its own reads nothing: SwiftUI evaluates a `@State` initial value when
+/// the state is installed into the view graph, at `NSHostingView(rootView:)`.
+/// A test that constructed the struct and asserted zero would pass with the
+/// defect in place.
 ///
-/// **And the question is which thread, not which line.** Moving the read into
-/// the page's `.task` was measured *not* fixing this: the continuation is
-/// drained by the same `layoutSubtreeIfNeeded()` that draws the page, so a
-/// blocking read inside it still stood between the window and its first frame —
-/// an inert fix, and green under any test that only asked where the call was
-/// written. What these hold is that the keychain is never asked on the thread
-/// that draws, and that the page draws while it is still being asked.
+/// **And the question is which thread, not which line.** A read moved into the
+/// page's `.task` is drained by the same `layoutSubtreeIfNeeded()` that draws
+/// the page, so it still stands between the window and its first frame. What
+/// these hold is that the keychain is never asked on the thread that draws,
+/// and that the page draws while it is still being asked.
 @MainActor
 final class ThePageDrawsBeforeTheKeychainTests: DisabledScansTestCase {
 
@@ -102,13 +92,11 @@ final class ThePageDrawsBeforeTheKeychainTests: DisabledScansTestCase {
     /// that does not draws a full frame with the dialog still up — which is what
     /// the person in front of the Mac needs to be true.
     ///
-    /// The watchdog is the difference between a red test and a hung suite. A
-    /// gate that only ever opens in the `defer` leaves the mutant deadlocked on
-    /// the main thread and the run never ends; opening it from another thread
-    /// after five seconds lets the mutant get to the assertion and fail it. Five
-    /// seconds is not a threshold the passing path is measured against — it
-    /// draws and asserts immediately, and only a page that *waits* can still be
-    /// there when the watchdog fires.
+    /// The watchdog is the difference between a red test and a hung suite: a
+    /// gate opened only in the `defer` leaves a waiting page deadlocked on the
+    /// main thread. Five seconds is no threshold for the passing path, which
+    /// draws and asserts at once; only a page that *waits* is still there when
+    /// it fires.
     func testThePageDrawsWhileTheKeychainIsStillAnswering() {
         let gate = DispatchSemaphore(value: 0)
         let keychain = freshMac(cached: true, gate: gate)
@@ -124,22 +112,21 @@ final class ThePageDrawsBeforeTheKeychainTests: DisabledScansTestCase {
     /// The reason none of the above is satisfied by deleting the setting: once
     /// the keychain answers, the page does read the off-list. An absence that is
     /// permanent is a section that never appears.
-    func testThePageReadsTheOffListOnceTheKeychainAnswers() {
+    func testThePageReadsTheOffListOnceTheKeychainAnswers() async {
         let keychain = freshMac(cached: true)
         let drawn = drawThePage()
-        for _ in 0..<200 where keychain.reads == 0 {
+        await waitUntil("the page reads the off-list") {
             drawn.host.layoutSubtreeIfNeeded()
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+            return keychain.reads > 0
         }
         XCTAssertGreaterThan(keychain.reads, 0,
                              "the page never reads the off-list at all, so the switches it "
                              + "exists to draw would never appear")
     }
 
-    /// The honest half of the same fix. A page that has not read the off-list
-    /// yet must not draw switches, because the only set it could draw them from
-    /// is the empty one — and «no scan is disabled» is «every scan is on», which
-    /// is the wrong answer in the dangerous direction.
+    /// A page that has not read the off-list yet must not draw switches: the
+    /// only set it could draw them from is the empty one, and «no scan is
+    /// disabled» is «every scan is on», wrong in the dangerous direction.
     func testThePageSaysNothingAboutScansItHasNotReadYet() throws {
         let everyModule = Set(ModuleRegistry.all.map(\.idRaw))
         XCTAssertNil(MenuBarSettingsView.scanRows(enabled: everyModule, disabledScans: nil,

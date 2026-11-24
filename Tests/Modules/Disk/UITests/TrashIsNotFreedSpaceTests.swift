@@ -7,22 +7,14 @@ import HelmUI
 
 /// What emptying the basket may claim.
 ///
-/// `HelmTrash` moves the paths to `~/.Trash`, which is a folder on the same
-/// volume: the bytes changed parent and nothing else. `emptyBasket` nevertheless
-/// rebuilt the result as `freeBytes: previous.freeBytes + freed`, so the ring's
-/// pale wedge and the "free" figure beside it grew by an amount no disk had
-/// gained — and stayed wrong until the next real scan, because the number is
-/// then saved to `ScanStore` and restored on the next launch.
+/// `HelmTrash` moves the paths to `~/.Trash`, a folder on the same volume, so
+/// no space is freed and `freeBytes` stays as measured; the figure is saved to
+/// `ScanStore` and would stay wrong until the next real scan. `DiskTreePrune`
+/// takes the removed subtrees out of the tree, so what the volume is using
+/// falls by exactly what left.
 ///
-/// The honest half is the other one: `DiskTreePrune` takes the removed subtrees
-/// out of the tree, so what the volume is *using* falls by exactly what left.
-///
-/// This is not the same claim as `StopLeavesNothingBehindTests`, which reaches
-/// `emptyBasket` across a Stop. Once Stop empties the basket that test's
-/// removal is a no-op — it passes with the arithmetic never running — so the
-/// arithmetic is pinned here, on the single-volume path the button actually
-/// takes.
-/// Past defect: fixed in commit 9e9734fb.
+/// The arithmetic is pinned here, on the single-volume path the button takes;
+/// `StopLeavesNothingBehindTests` reaches `emptyBasket` with an empty basket.
 @MainActor
 final class TrashIsNotFreedSpaceTests: XCTestCase {
 
@@ -83,8 +75,7 @@ final class TrashIsNotFreedSpaceTests: XCTestCase {
         XCTAssertTrue(dvm.basket.isEmpty)
     }
 
-    /// The sentence under the ring. It named an outcome that had not happened:
-    /// "Removed — 600 bytes freed" of files sitting in the Trash, whole.
+    /// The sentence under the ring names a move to the Trash, not freed space.
     func testTheBannerReportsTheMoveRatherThanFreedSpace() async {
         let dvm = await scannedWithABasketedFolder()
 

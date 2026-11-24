@@ -3,12 +3,9 @@ import HelmRuntime
 /// What the module draws in the menu bar, and what it draws when nobody has
 /// said otherwise.
 ///
-/// Six settings, and every one of them was spelled out twice: once where the
-/// settings page seeds its state, once where the descriptor builds the status
-/// item — plus `activeTintColor` a third time, in `KeepAwakeSettings`, which
-/// the engine never reads. Three files, one key, three copies of its default.
-/// A drift in any of them shows the page one thing and draws the menu bar
-/// another, and nothing in the build would say so.
+/// Each key and its default are spelled once, here: the settings page seeds
+/// from it and the descriptor draws the status item from it, so the page and
+/// the menu bar cannot disagree unseen.
 ///
 /// This lives in the UI target because the engine reads none of it: what the
 /// menu bar looks like is not a fact the module acts on.
@@ -36,19 +33,14 @@ enum MenuBarLook {
     static func showTimerText(_ store: NamespacedStore) -> Bool {
         store.bool(Key.showTimerText, default: false)
     }
-    /// Orange, the same as `activeTint` above — so out of the box a countdown
-    /// looks like the module rather than like something wrong.
+    /// Orange, the same as `activeTint` above, so out of the box a countdown
+    /// looks like the module rather than like something wrong (red is
+    /// `HelmSignal.danger`).
     ///
-    /// It was `red`, and red is `HelmSignal.danger`: a session running normally
-    /// was painted in the app's own failure colour, and the page showed two
-    /// palettes disagreeing — orange ringed under «Active icon colour», red
-    /// ringed under «Timer colour», neither of them chosen by anybody.
-    ///
-    /// **This value is always applied**: a stored tint is never empty, so the
-    /// reader in `KeepAwakeDescriptor` has no fallback path to take.
-    /// Changing the active colour therefore does not change the countdown's —
-    /// that is a second decision, and it is the person's to make in the row
-    /// below it.
+    /// This value is always applied: a stored tint is never empty, so the
+    /// reader in `KeepAwakeDescriptor` has no fallback path to take. Changing
+    /// the active colour therefore does not change the countdown's; that is a
+    /// second decision, the person's, in the row below it.
     static func timerTint(_ store: NamespacedStore) -> String {
         store.string(Key.timerTint, default: "orange")
     }

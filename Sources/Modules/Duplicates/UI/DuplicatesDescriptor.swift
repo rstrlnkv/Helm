@@ -35,12 +35,11 @@ import SwiftUI
         DuplicatesEngine(store: store, trashing: HelmTrash.moveToTrash)
     }
 
-    /// The engine and the model that calls it, built over one store. The keychain is
-    /// not asked here — the model's `init` reads only the remembered folder from
-    /// the store; the keychain waits for the first draw
-    /// (`DuplicatesViewModel.appear()`), so the module starting at launch asks
-    /// it nothing. The model's state outlives the settings page because the
-    /// host keeps these parts, not because the page does.
+    /// The engine and the model that calls it, built over one store. The
+    /// keychain is not asked here: it waits for the first draw
+    /// (`DuplicatesViewModel.appear()`), so a module starting at launch asks it
+    /// nothing. The host keeps these parts, so the model outlives the page.
+
     public func makeModule(store: NamespacedStore) -> ModuleParts<DuplicatesViewModel> {
         let engine = productionEngine(store: store)
         return ModuleParts(engine: engine, model: DuplicatesViewModel(work: engine, store: store))

@@ -5,15 +5,13 @@ import HelmUI
 
 /// Registers Helm's global shortcuts (Carbon, so no Accessibility needed).
 ///
-/// One action per binding, not one binding: Keep Awake's toggle was the only
-/// shortcut for a long time and the manager was written around it, so the
-/// Layout module's chord had nowhere to go.
+/// One action per binding, any number of bindings, each owned by a module.
 @MainActor final class HotkeyManager {
     static let shared = HotkeyManager()
 
     /// Whether a binding is actually live. A combination another app already
-    /// owns registers as nothing, and the old code threw that answer away — the
-    /// settings row then showed a shortcut that did nothing.
+    /// owns registers as nothing, and the settings row must not show a
+    /// shortcut that does nothing.
     enum Status: Equatable { case none, registered, taken }
 
     private struct Binding {
@@ -62,9 +60,9 @@ import HelmUI
     static func combination(store: NamespacedStore, prefix: String,
                             fallback: HotkeyFallback?, isLive: Bool) -> HotkeyCombination? {
         guard isLive else { return nil }
-        // What a stored pair may be is Carbon's question, not this loop's:
-        // the guard that stood here converted it with `UInt32(_:)`, which
-        // traps. `HotkeyCombination` has the argument and the bounds.
+        // What a stored pair may be is Carbon's question, not this loop's
+        // (`UInt32(_:)` traps): `HotkeyCombination` has the argument and the
+        // bounds.
         let keys = HotkeyStoreKeys(prefix: prefix)
         if store.object(keys.keyCode) == nil, let fallback {
             return HotkeyCombination(keyCode: fallback.keyCode, modifiers: fallback.modifiers)

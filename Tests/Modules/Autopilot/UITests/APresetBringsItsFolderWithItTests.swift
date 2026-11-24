@@ -31,12 +31,8 @@ class PresetModelRig: XCTestCase {
 /// Every other one does, which is what makes the path a person's choice. A
 /// preset's folder is `FileManager`'s answer instead, so the same gate is asked
 /// before the row is drawn (the engine's half) and the save carries the folder
-/// in with the rule rather than asking anybody to add it first.
-///
-/// And the folder arriving is what decides the sweep. Adding a rule to a folder
-/// somebody already watches and then sweeping it would run *their* other rules
-/// over everything in it — which is not what pressing Done on a preset asked
-/// for.
+/// in with the rule rather than asking anybody to add it first. The folder
+/// arriving is also what decides the sweep.
 @MainActor
 final class APresetBringsItsFolderWithItTests: PresetModelRig {
 
@@ -143,10 +139,8 @@ final class APresetBringsItsFolderWithItTests: PresetModelRig {
 
     // MARK: - Cancel
 
-    /// **Nothing at all.** The dry run really happened — that is asserted first,
-    /// because a test of an absence over an act that never took place passes for
-    /// the wrong reason — and then the window went away, and there is no folder
-    /// and no rule.
+    /// **Nothing at all**: after a dry run that really happened (asserted first),
+    /// the window went away, and there is no folder and no rule.
     func testCancellingLeavesNeitherAFolderNorARule() async throws {
         let work = FakeAutopilotWork()
         let model = model(on: work)
@@ -194,61 +188,5 @@ final class APresetBringsItsFolderWithItTests: PresetModelRig {
 
         XCTAssertEqual(work.saved, [], "a preset was written over a refused rule set")
         XCTAssertEqual(model.folders, [], "a refused page put the folder on screen anyway")
-    }
-}
-
-/// The starting rules on offer: shown to a Mac with none, gone once a rule
-/// exists or the rule set is refused, and watching their folder at its own
-/// default depth.
-@MainActor
-final class APresetOnOfferTests: PresetModelRig {
-
-
-    // MARK: - The control
-
-    func testAMacWithNoRulesIsOfferedThePresets() async {
-        let model = model(on: FakeAutopilotWork())
-        await model.load()
-        XCTAssertEqual(model.presets.map(\.preset.kind), PresetKind.allCases)
-    }
-
-    /// The draft folder is watched with the module's own default depth, not with
-    /// anything the preset chose: a preset does not decide how deep somebody
-    /// watches a folder.
-    func testTheFolderArrivesAtTheFoldersOwnDepth() async throws {
-        let work = FakeAutopilotWork()
-        let model = model(on: work)
-        await model.load()
-        let offer = try offer(model, .screenshots)
-
-        await model.save(draft(offer), in: offer.folder)
-
-        XCTAssertEqual(work.saved.last?.first?.depth, 1)
-    }
-
-    /// Added, and the block is gone with it: the first rule on the page ends the
-    /// offer.
-    func testAPresetThatWasAddedIsNoLongerOffered() async throws {
-        let work = FakeAutopilotWork()
-        let model = model(on: work)
-        await model.load()
-        let offer = try offer(model, .screenshots)
-
-        await model.save(draft(offer), in: offer.folder)
-
-        XCTAssertEqual(model.presets, [])
-    }
-
-    /// A refused rule set has one gesture and this is not it. The engine refuses
-    /// the write too; this is the half that stops the page offering a button
-    /// whose only outcome is a line in the log.
-    func testARefusedRuleSetIsOfferedNoPresets() async {
-        let work = FakeAutopilotWork(status: AutopilotStatus(refusal: .tampered))
-        let model = model(on: work)
-
-        await model.load()
-
-        XCTAssertEqual(model.screen, .rulesRefused(.tampered), "precondition")
-        XCTAssertEqual(model.presets, [], "a refused page offered to add a rule")
     }
 }

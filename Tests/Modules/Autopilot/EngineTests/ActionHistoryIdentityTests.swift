@@ -2,16 +2,12 @@ import XCTest
 import HelmRuntime
 @testable import Module_Autopilot_Engine
 
-/// `PreviewRow.id` was changed today from the file's name to its path, because
-/// "two files called `report.pdf` in two folders were two plans and one row —
-/// so the screen a person reads before letting a rule loose hid a file the rule
-/// was about to touch."
+/// A history record says which file it is about, not only its name.
 ///
-/// The history written on the same day records `plan.facts.name` and nothing
-/// else, and then collapses records it considers repeats by
-/// `kind + file + detail + rule`. Two different files that share a name are
-/// indistinguishable to it — and unlike the preview, where the cost was a row
-/// not drawn, here the newer record *deletes* the older one from the store.
+/// The history collapses records it considers repeats by
+/// `kind + file + detail + rule`. Two different files that share a name would
+/// be one to it, and unlike the preview (whose `PreviewRow.id` is the path for
+/// the same reason), the newer record would *delete* the older one.
 ///
 /// A folder watched with `depth` set to include subfolders is the ordinary way
 /// to get two of a name; `~/Downloads/2025/report.pdf` and
@@ -28,9 +24,9 @@ final class ActionHistoryIdentityTests: XCTestCase {
                   kind: .document, bytes: 1, added: at(0), modified: at(0), now: at(0))
     }
 
-    /// Two files, two refusals, two things still sitting where they were. The
-    /// page says "not completed: 1" and lists one row, and whichever of the two
-    /// the person goes looking for, the report is about the other one.
+    /// Two files, two refusals, two things still sitting where they were: one
+    /// row would leave the person reading about the other file, whichever one
+    /// they looked for.
     ///
     /// A refusal about the file itself — `.missing`. A refusal for scope writes
     /// down no file at all, so it is one row per rule by design
@@ -69,7 +65,7 @@ final class ActionHistoryIdentityTests: XCTestCase {
 
     /// A record has to be able to say which file it is about. `id` is what
     /// `ForEach` draws the report by, so two records that are about two files
-    /// must not share one — the identity bug `PreviewRow` was fixed for.
+    /// must not share one, for the reason `PreviewRow.id` is the path.
     func test_a_record_identifies_the_file_it_is_about() throws {
         let a = try XCTUnwrap(ActionRecord.of(
             RulePlan(facts: facts("/Users/x/Downloads/2025/report.pdf"), rule: rule),
@@ -82,9 +78,8 @@ final class ActionHistoryIdentityTests: XCTestCase {
                           "two files trashed in the same sweep share one identity: \(a.id)")
     }
 
-    /// Guard against the obvious over-correction: the flood control the same
-    /// change added must keep working. One file refused every hour is still one
-    /// row, not twenty-four.
+    /// Guard against the obvious over-correction: the flood control must keep
+    /// working. One file refused every hour is still one row, not twenty-four.
     func test_the_same_file_refused_twice_is_still_one_row() throws {
         let path = "/Users/x/Downloads/shortcut"
         let first = try XCTUnwrap(ActionRecord.of(

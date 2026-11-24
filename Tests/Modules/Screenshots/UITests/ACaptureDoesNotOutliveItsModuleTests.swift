@@ -8,8 +8,7 @@ import XCTest
 
 /// **A capture the module was switched off under does nothing afterwards.**
 ///
-/// The freeze is the one long wait in a capture — some hundred milliseconds of
-/// ScreenCaptureKit on three displays — and the module's switch can be turned
+/// The freeze is the one long wait in a capture, and the module's switch can be turned
 /// in it. The model's `stop()` then calls `CaptureController.cancel`, which cancels the press and
 /// closes an overlay that does not exist yet, and the model lets the controller go;
 /// the task that was waiting on the freeze still holds the controller and
@@ -39,8 +38,8 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
-        let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: capture, writer: disk, trash: NoTrash(), pasteboard: board, preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
+        let home = scratchDirectory("shots-capture-module")
+        let session = CaptureSession(capture: capture, writer: disk, trash: AsideTrash.refusing(), pasteboard: board, preferences: NoPreferences(), shutter: CountingShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(store: store,

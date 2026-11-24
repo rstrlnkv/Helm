@@ -6,12 +6,9 @@ import XCTest
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-/// **The Apps tab's sort at the inputs its first tests did not feed in.**
-///
-/// This file takes the order to the path that deletes: ticks made under one order
-/// and a review built under another, with the sizes landing in the middle of it.
-/// The review, the scans it asks for and the batch sent to the Trash must name
-/// exactly the ticked apps.
+/// The Apps tab's sort on the path that deletes: ticks made under one order and
+/// a review built under another, with the sizes landing in between. The
+/// review, its scans and the batch name exactly the ticked apps.
 @MainActor
 final class TheSortedListUnderOddInputsTests: XCTestCase {
 
@@ -52,12 +49,9 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
 
     // MARK: - The path that deletes
 
-    /// Ticks made under the size order, the list re-sorted twice, and the review
-    /// built: it holds exactly the ticked apps, the scans asked for exactly them,
-    /// and the batch sent to the Trash names exactly their bundles. The ticked
-    /// pair is not the first two in the name order (the list `apps` holds) nor in
-    /// the order the review is built under, so a selection that followed a
-    /// position rather than an identity picks different apps.
+    /// Ticks made under the size order, the list re-sorted twice, the review
+    /// built. The ticked pair is first in neither the name order nor the review's
+    /// order, so a selection that followed a position picks different apps.
     func testReSortingKeepsTheTicksAndTheReviewAndTheBatchAreExactlyTheTicked() async throws {
         let work = work()
         let uvm = modelOver(work)
@@ -88,12 +82,9 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
         XCTAssertEqual(Set(batch.paths), [Self.gamma.path, Self.beta.path])
     }
 
-    /// The same path in the order it really happens, under every order: the
-    /// list is drawn from names, the dates land, the person ticks the second and
-    /// the fourth row they see, presses Review while the sizes are still being
-    /// measured, and the sizes land in the middle of the review's scans — so
-    /// under Size the rows change places between the ticks and the review. The
-    /// review, the scans and the batch name exactly the ticked apps, each once.
+    /// The same path in real order, under every order: ticks on the second and
+    /// fourth rows, Review pressed before the sizes land, the sizes landing during
+    /// the scans (so under Size the rows move between ticks and review).
     func testUnderEveryOrderWithTheSizesArrivingTheBatchIsExactlyTheTicked() async throws {
         for order in AppSortOrder.allCases {
             let work = work()
@@ -101,7 +92,7 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
             let uvm = modelOver(work)
             await uvm.setSortOrder(order)
             let load = Task { await uvm.loadAppsIfNeeded() }
-            await until("\(order): the list and the dates are in") {
+            await waitUntil("\(order): the list and the dates are in") {
                 uvm.apps.count == Self.apps.count && uvm.lastOpened != nil
             }
             XCTAssertTrue(uvm.measuredSizes.isEmpty, "\(order): precondition — the sizes are still being measured")
@@ -114,7 +105,7 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
 
             work.holdScans()
             let review = Task { await uvm.prepareReview() }
-            await until("\(order): the review asked for both scans") { work.scansAsked == 2 }
+            await waitUntil("\(order): the review asked for both scans") { work.scansAsked == 2 }
             work.land()
             await load.value
             XCTAssertEqual(uvm.measuredSizes.count, Self.apps.count, "\(order): precondition — the sizes landed mid-review")
@@ -136,14 +127,5 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
             XCTAssertEqual(batch.paths.sorted(), picked.map(\.path).sorted(),
                            "\(order): the batch sent to the Trash is not the ticked apps")
         }
-    }
-
-    /// A wait on the clock, bounded — the thing waited for happens on another
-    /// task, and a yield buys a turn rather than time.
-    private func until(_ what: String, file: StaticString = #filePath, line: UInt = #line,
-                       _ condition: () -> Bool) async {
-        let limit = Date().addingTimeInterval(5)
-        while !condition(), Date() < limit { await HelmTestSupport.grace(0.01) }
-        XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
     }
 }

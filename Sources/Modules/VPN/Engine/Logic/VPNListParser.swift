@@ -15,8 +15,6 @@ enum VPNListParser {
         }
     }
 
-    /// Parse the multi-line `scutil --nc list` output. Lines that don't match the
-    /// expected shape (status in parens + a quoted name) are skipped.
     /// The header `scutil --nc list` prints before it enumerates anything. It is
     /// there on a machine with no VPN configured at all, which is what makes it
     /// a usable sign of "the tool spoke".
@@ -24,14 +22,11 @@ enum VPNListParser {
 
     /// Whether this output is an answer at all.
     ///
-    /// Callers hand this only the stdout of the result `ScutilRunner` returns, and
-    /// its exit status is not read, so a read that failed arrives here as an
-    /// empty string — and an empty string
-    /// parses, perfectly happily, into "this Mac has no VPNs". The two are not
-    /// the same fact and the caller must not confuse them: the page told a user
-    /// their connections were gone while both were up, and the drop detection,
-    /// which asks what is no longer in this list, concluded that everything Helm
-    /// had raised had fallen over at once.
+    /// Callers hand this only the stdout of the result `ScutilRunner` returns,
+    /// so a read that failed arrives here as an empty string — and an empty
+    /// string parses into "this Mac has no VPNs". The two are not the same fact:
+    /// confused, the page says the connections are gone while they are up, and
+    /// the drop detection announces everything Helm raised as fallen at once.
     ///
     /// An answer carries the header, or at least one row we could read. Anything
     /// else — silence, or a complaint from the tool — is not an answer.
@@ -55,15 +50,11 @@ enum VPNListParser {
                   // the command, and a configuration whose name really does end
                   // in a space has to be spelled the way it was stored.
                   !quoted.name.trimmingCharacters(in: .whitespaces).isEmpty,
-                  // **A name that spans a line break wrote a row of this
-                  // format, and no row of this format is a configuration.** The
-                  // Service Name field is free text and takes a newline, and
-                  // this output is line-oriented: one such name printed two
-                  // rows, the second of which said `(Connected)` — the header
-                  // badge, the tile's dot and the 1×1 widget all lit for a
-                  // tunnel that does not exist, which is the false assurance
-                  // `VPNAutomation.Kind.dropped` exists to warn about,
-                  // manufactured here. Measured with this parser.
+                  // **A name that spans a line break is not a configuration.**
+                  // The Service Name field is free text and takes a newline,
+                  // and this output is line-oriented: such a name can forge a
+                  // second row saying `(Connected)` for a tunnel that does not
+                  // exist.
                   //
                   // The row is dropped rather than repaired: `records(in:)`
                   // above has already refused to read the forged half as a
@@ -77,23 +68,17 @@ enum VPNListParser {
             // of what it raised by id.
             //
             // **The tie is broken by how many rows of that name came before, not
-            // by how many rows came before.** The row's place in the list was the
-            // first thing to hand and it is not a fact about the configuration:
-            // `_cameUp` reads an id to tell «this came up and then went» from
-            // «this is not up yet», so a list printed in another order changed
-            // the identity of a stationary tunnel and the module announced a
-            // drop — the one event it interrupts somebody for — for a tunnel
-            // that never went. Counting namesakes keeps the ids unique, which is
-            // the other half of the question, and leaves them alone when nothing
-            // but the order moved.
+            // by how many rows came before.** The row's place in the list is not
+            // a fact about the configuration: `_cameUp` reads an id to tell «this
+            // came up and then went» from «this is not up yet», so an id that
+            // moved with the order would announce a drop for a tunnel that never
+            // went. Counting namesakes keeps the ids unique and stable.
             let sameName = result.count { $0.name == quoted.name }
             let id = uuidLike(in: line) ?? "\(quoted.name)#\(sameName)"
             // The kind comes from after the name, not from anywhere on the line:
             // `scutil` writes the protocol in brackets *following* the quoted
-            // name, and searching the whole line found a connection called
-            // `Office [old]` first — so the row reported its protocol as "old".
-            // Where the name ends is `quotedName`'s answer rather than a second
-            // search for the same closing quote, so the two cannot disagree.
+            // name, and a name such as `Office [old]` carries brackets of its own.
+            // Where the name ends is `quotedName`'s answer, so the two cannot disagree.
             let kind = between(quoted.after, "[", "]") ?? kindBeforeQuote(line)
             result.append(VPNConnection(id: id, name: quoted.name,
                                         status: parseStatus(statusToken), kind: kind))
@@ -115,8 +100,7 @@ enum VPNListParser {
     /// **Exactly one**, not "an odd number": a name may legitimately carry an
     /// unbalanced quotation mark, which prints three on a perfectly whole row —
     /// `quotedName` reads first-to-last quote precisely so that «Office "B» can
-    /// be spelled back to the tool. Counting parity instead swallowed the row
-    /// after that one.
+    /// be spelled back to the tool. Counting parity would swallow the next row.
     private static func records(in output: String) -> [String] {
         var records: [String] = []
         var pending: String?
@@ -141,17 +125,13 @@ enum VPNListParser {
     /// quoted pair, and what is left of the line after it.
     ///
     /// The Service Name field in Network Settings is free text and takes a
-    /// quotation mark, and `between(line, "\"", "\"")` stopped at the first
-    /// closing one: «Office "B"» came back as «Office ». Every command this
-    /// module sends is spelled with that string, so the button on that card
-    /// could only ever be answered `No service` — and the neighbouring
-    /// «Office "A"» came back as «Office » too, which is two cards under one
-    /// name, one tag in the rule picker, and one key in both of the engine's
-    /// books.
+    /// quotation mark. Stopping at the first closing one would read «Office "B"»
+    /// as «Office », and every command this module sends is spelled with that
+    /// string: the card's button could only be answered `No service`, and
+    /// «Office "A"» would share its name and its keys.
     ///
     /// The remainder comes back with it because the protocol is read from there:
-    /// one answer to «where does the name end», rather than the same `.backwards`
-    /// search written twice with nothing keeping the two in step.
+    /// one answer to «where does the name end».
     private static func quotedName(_ line: String) -> (name: String, after: String)? {
         guard let first = line.firstIndex(of: "\""),
               let last = line.range(of: "\"", options: .backwards)?.lowerBound,

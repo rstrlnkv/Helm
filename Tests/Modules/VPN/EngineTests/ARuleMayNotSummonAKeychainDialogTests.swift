@@ -9,27 +9,18 @@ import HelmTestSupport
 /// **A rule is not a person, and only a person's gesture may reach the System
 /// keychain.**
 ///
-/// `vpnAppRules` is an unsealed plist string, decoded in `reloadRulesNow` — which
-/// `activate()` calls at launch. A forged rule therefore names a configuration of
-/// the attacker's choosing at a moment of the attacker's choosing, and the
-/// credential read that follows reaches `/usr/bin/security` against
-/// `/Library/Keychains/System.keychain` on a cache miss. macOS gates that read
-/// behind a dialog — one attributed to `security`, not to Helm — so the rule can
-/// summon an authorization prompt in front of somebody who did nothing.
+/// `vpnAppRules` is an unsealed plist string, decoded in `reloadRulesNow` at
+/// `activate()`, so a forged rule names a configuration at a moment of the
+/// attacker's choosing. A credential read that misses Helm's cache reaches
+/// `/usr/bin/security` against `/Library/Keychains/System.keychain`, which
+/// macOS gates behind a dialog attributed to `security`, not to Helm. So an
+/// automatic connect may read Helm's own cache and gives up if the secret is
+/// not there; only a person's press may prompt.
 ///
-/// Sealing the rules is the wrong repair and is refused: they are read during
-/// `activate()`, and (ARCHITECTURE.md § Sealed settings) records what a
-/// keychain read at launch costs on this ad-hoc-signed bundle. What is gated
-/// instead is the prompt itself: an automatic connect may read Helm's own cache
-/// and must give up if the secret is not there.
-///
-/// **That refusal was a sentence with nothing under it until 2026-09-08**, which
-/// is the shape this house names: a promise written in prose is a rule nobody
-/// can break loudly. `testTheRulesAreReadOnTheLaunchPath` is the sentence made
-/// checkable — it reads the *keys* `activate()` asks the store for. The day that
-/// read moves off the launch path the test fails, and that is the day sealing
-/// them becomes a question worth reopening rather than a change that puts a
-/// keychain dialog in front of every launch.
+/// The rules stay unsealed because they are read during `activate()`
+/// (Architecture/StoredSettings.md § Sealed settings).
+/// `testTheRulesAreReadOnTheLaunchPath` checks that: if the read moves off the
+/// launch path, sealing them becomes a question worth reopening.
 final class ARuleMayNotSummonAKeychainDialogTests: XCTestCase {
 
     /// A store that remembers which keys were asked for, so a test can say
@@ -50,19 +41,13 @@ final class ARuleMayNotSummonAKeychainDialogTests: XCTestCase {
         }
     }
 
-    /// **Why `vpnAppRules` is not sealed, as a measurement rather than a
-    /// sentence.** `ModuleHost.bootstrap` runs from
-    /// `applicationDidFinishLaunching` and calls `activate()` on every enabled
-    /// module; `activate()` reloads the rules. So a seal over this key is a
-    /// `SettingGuard.verdict` on the launch path, and a verdict is one
-    /// `SealKeyPort.key()` — a login-keychain round trip that, on a bundle signed
-    /// `--sign -`, is an authorization dialog rather than data, at every launch
-    /// after every install (ARCHITECTURE.md § Sealed settings).
-    ///
-    /// The `IfWarm` shape the other two sealed settings use does not rescue it:
-    /// `disabledScans` and `keepPolicy` are read when a page opens or a scan
-    /// starts, and answering «not yet» there costs a redraw. Answering «not yet»
-    /// here is auto-connect not firing at launch, which is the feature.
+    /// **Why `vpnAppRules` is not sealed.** `ModuleHost.bootstrap` calls
+    /// `activate()` from `applicationDidFinishLaunching`, and `activate()`
+    /// reloads the rules, so a seal would put `SealKeyPort.key()`, a
+    /// login-keychain round trip that is a dialog on an ad-hoc-signed bundle, on
+    /// every launch (Architecture/StoredSettings.md § Sealed settings). The
+    /// `IfWarm` shape does not rescue it: «not yet» here is auto-connect not
+    /// firing at launch.
     func testTheRulesAreReadOnTheLaunchPath() {
         let backing = KeyNotingStore()
         let runner = FakeRunner()
@@ -86,10 +71,9 @@ final class ARuleMayNotSummonAKeychainDialogTests: XCTestCase {
                       + "instead of leaving this test failing: \(duringActivate)")
     }
 
-    /// The other half of the same measurement, so the sentence above does not
-    /// rest on «a seal is presumably expensive»: one verdict is one fetch of the
-    /// key, every time, because whether a value is Helm's own is a live fact and
-    /// is never cached (`SealKeyCache` caches the key alone).
+    /// The other half: one verdict is one fetch of the key, every time, because
+    /// whether a value is Helm's own is never cached (`SealKeyCache` caches the
+    /// key alone).
     func testOneSealedReadIsOneTripToTheKeychain() {
         let probe = SealKeyProbe()
         let sealed = SettingGuard(keys: probe)
@@ -144,8 +128,8 @@ final class ARuleMayNotSummonAKeychainDialogTests: XCTestCase {
         XCTAssertEqual(runner.supplied.first?.credentials.secret, "s")
     }
 
-    /// And a rule whose secret Helm has already cached works as it always did:
-    /// the gate is on the prompt, not on automatic connecting.
+    /// A rule whose secret Helm has cached still connects: the gate is on the
+    /// prompt, not on automatic connecting.
     func testARuleStillUsesHelmsOwnCache() {
         let creds = FakeCreds()
         creds.map["Office"] = VPNCredentials(user: "u", password: "p", secret: "s")
@@ -157,11 +141,10 @@ final class ARuleMayNotSummonAKeychainDialogTests: XCTestCase {
         XCTAssertEqual(runner.supplied.first?.credentials.secret, "s")
     }
 
-    /// **Nothing needs doing, so nothing is read.** `--nc start` on a tunnel that
-    /// is already up is a no-op the code says so about itself, and `activate()`
-    /// replays `appLaunched` for every app already running — so a rule whose app
-    /// runs all day re-read the secret at every launch of Helm and put it in an
-    /// argument list every time, for nothing.
+    /// **Nothing needs doing, so nothing is read.** A start on a tunnel already
+    /// up is a no-op, and `activate()` replays `appLaunched` for every app
+    /// already running, so a rule whose app runs all day would otherwise read the
+    /// secret and hand it to the system at every launch of Helm.
     func testATunnelThatIsAlreadyUpIsNotWorthASecret() {
         let creds = FakeCreds()
         creds.map["Office"] = VPNCredentials(user: "u", password: "p", secret: "s")

@@ -3,16 +3,11 @@ import Foundation
 /// Whether a batch of changed paths could be an application arriving in the
 /// Trash.
 ///
-/// The watcher fires for everything a person throws away, and looking again is
-/// not free: a directory read, then the candidate paths under `~/Library` looked
-/// up for each app the offer has not already ruled out. This is the cheap
-/// question asked first.
+/// The watcher fires for everything a person throws away, and a sweep is not
+/// free, so this cheap question is asked first.
 ///
-/// It judges the path and never the disk. A file somebody named `x.app` passes
-/// here and is refused one step later, when its `Info.plist` turns out not to
-/// exist — one plist read, in the place that already knows how to refuse. A rule
-/// that stat'ed the disk to answer would be doing that work twice and would be
-/// wrong the moment the file changed between the two.
+/// It judges the path and never the disk: a file named `x.app` passes here and
+/// is refused one step later, when it has no `Info.plist`.
 enum TrashArrival {
 
     static func namesAnApp(_ changed: [String], trash: String) -> Bool {
@@ -22,9 +17,8 @@ enum TrashArrival {
             // somebody else's folder.
             guard path.hasPrefix(prefix) else { return false }
             let rest = String(path.dropFirst(prefix.count))
-            // The first component below the Trash is the only one the sweep can
-            // see — `trashedApps()` reads the top level and no deeper — so a
-            // bundle inside a folder in the Trash is a scan that finds nothing.
+            // Only the first component below the Trash: `trashedApps()` reads
+            // the top level and no deeper.
             guard let top = rest.split(separator: "/").first else { return false }
             // As spelled, the rule `trashedApps()` filters on: a `.App` would wake
             // a sweep that lists nothing.

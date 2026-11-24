@@ -5,16 +5,14 @@ launch paths and the `@try`/`@catch` has to sit in Objective-C, with no Swift fr
 between it and the raise; `HelmReadNumber` has the same `@try` around a call to a window's own getter for
 `WindowCorner`, and catches anything thrown there, not only an `NSException`. The reasons
 are on the doc comments of `HelmLaunchTask`, `HelmLaunchExceptionNameKey` and `HelmReadNumber` in `Sources/HelmLaunch/include/HelmLaunch.h`.
-`Tests/HelmAppTests/NoBareLaunchInTheShellTests.swift` refuses a bare
-`try process.run()` anywhere but `HelmProcess`'s own door.
+`Tests/HelmRuntimeTests/TheRulesTheCompilerCannotHoldTests.swift` refuses a bare
+`try process.run()` in `Sources/HelmApp`.
 
 `Sources/HelmRuntime/HelmProcess.swift` is the one way to run a tool, and its doc
 comments hold the rules: output is read to the end before the wait; stderr is the null
 device where nobody parses it, never an undrained `Pipe`; `launchCeiling` bounds how many
 tools `run` and `runData` have out at once, and a caller that asks for more gets a queue;
-a launch through `start` (the streamed runs and the updater) takes no slot. The ceiling
-exists because Homebrew's search once put every press of Return on its own
-unbounded `Task`; the doc comment of `launchCeiling` tells it.
+a launch through `start` (the streamed runs and the updater) takes no slot. The reason for the ceiling is the doc comment of `launchCeiling`.
 
 Output that gets *streamed* is a different port and keeps stderr on purpose, merged
 onto the one pipe (`stream` in `Sources/Modules/Homebrew/Engine/SystemPorts.swift`) — a
@@ -41,3 +39,22 @@ VPN's secret has no terminal form to go to, so it goes to the system in process
 A blocking call is hopped through `Sources/HelmRuntime/OffTheCooperativePool.swift`,
 since an `async` engine method a model awaits runs on the Swift-concurrency pool and a process waited on or a
 recursive scan parks a pool thread for seconds.
+
+## Running applications
+
+`NSWorkspace.runningApplications` and `.frontmostApplication` are read on the
+main thread only: a read from another thread crashes the process, and moving work
+off the main thread is a change to every AppKit call it can reach. The crash is on
+the doc comment of `RunningApps` (`Sources/HelmRuntime/RunningApps.swift`) and of
+`FrontmostApp` (`Sources/HelmRuntime/FrontmostApp.swift`).
+
+There is no safe shape for "a live list, off the main thread", and neither port
+offers one. `RunningApps` and `FrontmostApp` read AppKit on the main thread and hand
+every other thread a snapshot: whoever was running, or in front, a moment ago.
+`FrontmostApp` refreshes from the notification that arrives on the main thread anyway;
+`RunningApps` has no observer, and the ports that watch (Keep Awake's, VPN's) call
+`refreshOnMain` from theirs. Layout's fix
+gesture calls through the snapshot rather than straight into AppKit, because it runs
+off the main thread by construction. A port that must ask AppKit directly hops to the
+main thread itself, as the Uninstaller's `WorkspaceRunningApps` does for its scan and
+its quit loop, both of which run on a pool.

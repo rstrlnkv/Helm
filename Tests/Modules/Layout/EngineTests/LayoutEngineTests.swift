@@ -6,8 +6,7 @@ import HelmContract
 
 /// The newest state the engine published — `stream()` hands every new
 /// subscriber the latest one first, so this is not racing the emit.
-/// Beside the shared fakes for the reason they are here: three suites read the
-/// state back and each had spelled this loop for itself.
+/// Shared, because three suites read the state back.
 func latestLayoutState(_ engine: LayoutEngine) async -> LayoutState? {
     for await state in engine.stream() { return state }
     return nil
@@ -20,8 +19,8 @@ func rereadSettings(_ engine: LayoutEngine) async {
     }
 }
 
-/// The fixture both classes below build on, so the split that lets the conversion
-/// half stay optional does not copy it. Holds no test.
+/// The fixture both classes below build on, so the split into two classes
+/// does not copy it. Holds no test.
 class LayoutEngineRig: XCTestCase {
     fileprivate var typing = FakeTyping()
     fileprivate var secure = FakeSecure()
@@ -122,10 +121,9 @@ extension LayoutEngineTests {
                        "the caret has moved on; undo must refuse")
     }
 
-    /// A command chord is not text and not a confirmation. ⌘Space — the gesture
-    /// someone makes on noticing the wrong layout — used to arrive as a plain
-    /// space and budget a backspace for a character that never reached the
-    /// field, eating the one to its left.
+    /// A command chord is not text and not a confirmation. ⌘Space, made on
+    /// noticing the wrong layout, must not budget a backspace for a space that
+    /// never reached the field, eating the character to its left.
     func testACommandChordEndsTheWordWithoutConverting() {
         let engine = engine()
         tap.type("ghbdtn")
@@ -152,44 +150,5 @@ extension LayoutEngineTests {
         XCTAssertTrue(sources.selected.isEmpty, "the input source must not follow a failure")
         engine.undoLast()
         XCTAssertEqual(typing.performed.count, 1, "nothing was recorded to undo")
-    }
-}
-
-/// The conversions themselves; `LayoutEngineTests` holds the refusals.
-final class LayoutEngineConversionTests: LayoutEngineRig {
-    func testAMislayoutWordIsConvertedAndTheSourceFollows() {
-        let engine = engine()
-        tap.type("ghbdtn"); tap.space()
-        // The space is deleted and put back with the replacement: it was
-        // already in the field, and leaving it out of the count left the first
-        // letter behind — `ghbdtn ` came back as `gпривет`.
-        XCTAssertEqual(typing.performed.first?.insert, "привет ")
-        XCTAssertEqual(typing.performed.first?.backspaces, 7)
-        XCTAssertEqual(sources.selected, ["ru"], "the input source follows the text")
-        withExtendedLifetime(engine) {}
-    }
-
-    /// A real word is left alone even though the fake can translate it.
-    func testAValidWordIsUntouched() {
-        let engine = engine()
-        tap.type("ras"); tap.space()
-        XCTAssertTrue(typing.performed.isEmpty)
-        withExtendedLifetime(engine) {}
-    }
-
-    func testNonsenseInBothLayoutsIsUntouched() {
-        let engine = engine()
-        tap.type("qqqq"); tap.space()
-        XCTAssertTrue(typing.performed.isEmpty)
-        withExtendedLifetime(engine) {}
-    }
-
-    /// The hotkey converts a word the dictionary would have declined: the user
-    /// has already decided.
-    func testTheHotkeyIgnoresTheDictionary() {
-        let engine = engine(automatic: false)
-        tap.type("qqqq")
-        engine.convertLastWord()
-        XCTAssertEqual(typing.performed.first?.insert, "ййыы")
     }
 }

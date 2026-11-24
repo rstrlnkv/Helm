@@ -8,7 +8,7 @@ import Foundation
 /// two, the frame difference over a crop, a process's windows, the close of one window by its id, executable path and accessibility
 /// elements, the press of a control by its name, the scroll of a page, and the press of a status item. It prints and never judges:
 /// no threshold lives here, so no number can be argued with by a rule written
-/// before the reading (ARCHITECTURE.md § Two screen instruments).
+/// before the reading (Architecture/TestsAndMeasurement.md § Two screen instruments).
 ///
 /// A tool, not a module: no dependency on any other target, and declared in no
 /// product (SwiftPM synthesises one for it, but `HelmApp` does not depend on it, so

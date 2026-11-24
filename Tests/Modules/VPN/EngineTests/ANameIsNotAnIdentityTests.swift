@@ -7,18 +7,10 @@ import XCTest
 /// **The name is the only handle this module has, and it is not unique.**
 ///
 /// `scutil --nc start` takes a name, so the name is what a rule stores and what
-/// the two commands are spelled with — but `VPNConnection` carries an `id`
-/// precisely because the name does not identify anything. macOS lets two service
-/// configurations carry one display name (the Service Name field in Network
-/// Settings is free text, and nothing there is unique-constrained), and every
-/// book this engine keeps — `_autoConnected`, `_cameUp`, `up`, `status(_:)`,
-/// `VPNAppRule.vpnName` — is keyed by that name.
-///
-/// The two failures below are what that costs, and they run in opposite
-/// directions: a drop that is never reported, and a name whose spelling the
-/// parser silently changes so that two configurations become one.
-///
-/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity».
+/// the commands are spelled with, but macOS lets two service configurations
+/// carry one display name (the Service Name field is free text). Two failures
+/// follow, in opposite directions: a drop never reported because a namesake is
+/// up, and a name the parser rewrites so that two configurations become one.
 final class ANameIsNotAnIdentityTests: XCTestCase {
 
     private let clock = TestClock()
@@ -45,14 +37,8 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
     /// person keeps for a different gateway. The rule's tunnel falls over; the
     /// other one is up at that moment for its own reasons.
     ///
-    /// `up` is a `Set<String>` of names, so «Office» is in it — and the drop
-    /// detection asks nothing else. The person is never told that the tunnel their
-    /// rule was holding went away, which is the one event this module posts a
-    /// system notification for, and Helm's own dot stays green over a rule that
-    /// has stopped working.
-    ///
-    /// The control below it is what makes this a finding rather than an assertion
-    /// that drops are never reported at all.
+    /// The drop must still be announced: it is the one event this module posts
+    /// a system notification for.
     func testADropIsStillADropWhenANamesakeIsUp() {
         let runner = FakeRunner()
         runner.listOutput = [header,
@@ -72,8 +58,8 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
                              row("Disconnected", a, "Office"),
                              row("Connected", b, "Office")].joined(separator: "\n")
         e.refresh()
-        // The drop is held for the settle window now; a namesake being up must
-        // not shorten or cancel it, which is what this test is about.
+        // The drop is held for the settle window; a namesake being up must not
+        // shorten or cancel it.
         clock.advance(VPNDropSettle.window)
         e.refresh()
 
@@ -83,8 +69,6 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
     }
 
     /// The control for the test above: with no namesake, the same fall is reported.
-    /// Without this, a module that had stopped reporting drops entirely would make
-    /// the assertion above look like a narrow bug instead of a dead feature.
     func testTheSameFallIsReportedWithNoNamesake() {
         let runner = FakeRunner(list: [header, row("Disconnected", a, "Office")].joined(separator: "\n"))
         let e = engine(runner)
@@ -105,14 +89,9 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
 
     /// **A quote in the name, which the Service Name field accepts.**
     ///
-    /// `between(line, "\"", "\"")` takes the first quoted run, so «Office "B"»
-    /// comes back as «Office » — a name `scutil --nc start` will answer `No
-    /// service` to for ever, and one that two different configurations share.
-    ///
-    /// The assertion is written so that either repair passes: the line may be
-    /// skipped the way an empty name already is (a name we cannot read is not a
-    /// connection), or read to the last quote. What must not happen is a
-    /// *silently different* name, because the name is the command.
+    /// The line may be skipped, as an empty name is, or read to the last quote.
+    /// What must not happen is a *silently different* name, such as «Office »
+    /// from the first quoted run, because the name is the command.
     func testANameContainingAQuoteIsNotSilentlyTruncated() {
         for spelling in ["Office \"B\"", "Office \\\"B\\\""] {
             let parsed = VPNListParser.parseList(row("Disconnected", a, spelling))
@@ -125,10 +104,8 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
         }
     }
 
-    /// The consequence, stated on its own so it cannot be argued away as cosmetic:
-    /// two configurations that differ become one name. The grid draws two cards,
-    /// the rule picker offers two entries with one tag, and both of this engine's
-    /// books hold a single key for the pair.
+    /// Two configurations that differ must not become one name: the rule picker
+    /// would offer two entries with one tag, and the engine's books one key.
     func testTwoConfigurationsDoNotCollapseIntoOneName() {
         let parsed = VPNListParser.parseList([header,
                                               row("Connected", a, "Office \"A\""),
@@ -141,9 +118,8 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
                        + "answers for both")
     }
 
-    /// A name that is nothing but spaces walks past the empty-name guard, which
-    /// was written for exactly this failure one character earlier: a row with no
-    /// readable label whose verb sends `--nc start "   "`.
+    /// A name of nothing but spaces is no more a name than an empty one: a row
+    /// with no readable label whose verb sends `--nc start "   "`.
     func testANameOfNothingButSpacesIsNoMoreANameThanAnEmptyOne() {
         XCTAssertTrue(VPNListParser.parseList(row("Disconnected", a, "   ")).isEmpty,
                       "a card with a blank label, and a button that can only fail")
@@ -151,9 +127,8 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
 
     /// The identity two SwiftUI `ForEach`es are keyed by must not repeat.
     /// `VPNConnection.id` falls back to `<name>#<namesakes before it>` when no
-    /// UUID-shaped token is on the line, so the fallback turns the identity question back into the one
-    /// this whole file is about — and duplicate ids in a `ForEach` are undefined,
-    /// not merely ugly.
+    /// UUID-shaped token is on the line; duplicate ids in a `ForEach` are
+    /// undefined behaviour.
     func testTheIdentityOfTwoConnectionsIsNeverTheSame() {
         let parsed = VPNListParser.parseList([header,
                                               "* (Connected) IPSec \"Office\" [IPSec:1]",

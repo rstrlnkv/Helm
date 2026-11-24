@@ -6,10 +6,8 @@ import Foundation
 public enum VPNStatus: String, Equatable, Sendable {
     case connected, connecting, disconnected, disconnecting, unknown
 
-    /// Up, or on its way up. Nine places asked this, six of them by spelling
-    /// out the two cases and four of those inside SwiftUI — which statuses
-    /// count as up is the engine's vocabulary, and a view that answers it for
-    /// itself is a view that can answer it differently.
+    /// Up, or on its way up. Which statuses count as up is the engine's
+    /// vocabulary, and a view that answers it for itself can answer it differently.
     public var isUp: Bool { self == .connected || self == .connecting }
 
     /// Mid-change, so the screen shows a spinner and the engine keeps polling.
@@ -49,12 +47,8 @@ public struct VPNFailure: Equatable, Sendable {
     }
     public let name: String
     public let reason: Reason
-    /// Which command was refused.
-    ///
-    /// **The screen said «connect» whatever had happened.** A refused `--nc stop`
-    /// drew «macOS refused to connect «Office»», so the person who had just asked
-    /// to bring a tunnel down read a sentence about bringing one up — and the
-    /// tunnel they wanted closed was still carrying their traffic. The reason and
-    /// the verb are two different facts and the sentence needs both.
+    /// Which command was refused. The reason and the verb are two different
+    /// facts and the sentence needs both: a refused stop must not read as a
+    /// refused connect while the tunnel still carries the traffic.
     public let verb: VPNVerb
 }

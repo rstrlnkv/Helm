@@ -6,10 +6,9 @@ import HelmContract
 import XCTest
 @testable import Module_VPN_Engine
 
-/// Reading the states the engine emits, the ways a test needs it. Shared
-/// rather than private to whichever file needed it first: the sentinel below is
-/// the difference between a count and a race, and a second copy of it is a
-/// second chance to leave the sentinel out.
+/// Reading the states the engine emits, the ways a test needs it. Shared, so
+/// the sentinel below — the difference between a count and a race — is
+/// written once.
 ///
 /// Every state the news carried while `work` ran: the subscriber registers
 /// before the work and reads until it meets a state the test itself said after
@@ -72,12 +71,10 @@ func watchState(_ news: EngineNews<VPNEngine.StatePayload>,
 
 /// Kick the engine and **wait for the state that shows it happened.**
 ///
-/// `VPNEngine.refresh()` puts the work on a queue and returns at once, so a test
-/// that reads the news straight afterwards is reading whatever had already
-/// arrived — usually the state before the one it asked for. Worse, a test that
-/// then changes the runner's answers is racing the refresh it just started: the
-/// read may pick up the *next* fixture, and the step it meant to exercise never
-/// happens at all.
+/// `VPNEngine.refresh()` puts the work on a queue and returns at once, so a
+/// test reading the news straight afterwards reads the state before the one it
+/// asked for, and a test that then changes the runner's answers races the
+/// refresh it just started.
 ///
 /// The subscription is taken **before** the engine is kicked, because the
 /// news replays only the last value per slot: subscribing afterwards can

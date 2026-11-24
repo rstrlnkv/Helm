@@ -4,19 +4,11 @@ import XCTest
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-/// **The review's «Running» flag is a reading, and the page treated it as the
-/// last word twice.**
-///
-/// It came from `ScanResult.runningNow`, read once when the review was built.
-/// The person who quit the app themselves while reading found «Move to Trash»
-/// dead for good — the only way out was Back → Review, which pays for a fresh
-/// scan of every ticked app — and the person whose app came back up had it never
-/// asked to quit at all, its bundle moved out from under a live process that
-/// then writes its preferences back on exit.
-///
-/// So the question left the view model: the batch carries the person's answer to
-/// «Force quit and remove anyway», and the engine asks who is up at the moment
-/// it moves anything.
+/// The review's «Running» flag (`ScanResult.runningNow`) is a reading, not
+/// the last word, in both directions: an app quit while the person reads must
+/// not leave «Move to Trash» dead, and one that came back up must be asked.
+/// The batch carries the person's answer to «Force quit and remove anyway»,
+/// and the engine asks who is up at the move.
 @MainActor
 final class TheReviewIsNotTheLastWordTests: XCTestCase {
 
@@ -43,8 +35,8 @@ final class TheReviewIsNotTheLastWordTests: XCTestCase {
 
     // MARK: - The question travels with the batch
 
-    /// The permission the person gave, in the request that acts on it — rather
-    /// than a `quit` sent from here, decided from the flag the scan left behind.
+    /// The permission the person gave travels in the request that acts on it,
+    /// not as a `quit` decided here from the scan's flag.
     func testThePersonsAnswerAboutQuittingTravelsWithTheBatch() async {
         for allowed in [true, false] {
             let work = work(runningAtScan: true,
@@ -60,9 +52,8 @@ final class TheReviewIsNotTheLastWordTests: XCTestCase {
         }
     }
 
-    /// Direction one, at the model: the person quit the app themselves, so the
-    /// press must reach the engine rather than being refused here against a
-    /// reading taken minutes ago.
+    /// Direction one: the person quit the app themselves, so the press reaches
+    /// the engine rather than being refused against an old reading.
     func testAPressReachesTheEngineEvenWhileTheReviewSaysSomethingIsRunning() async {
         let work = work(runningAtScan: true,
                         removal: UninstallResult(trashed: [tool.path], freedBytes: 10))
@@ -81,9 +72,8 @@ final class TheReviewIsNotTheLastWordTests: XCTestCase {
 
     // MARK: - What a held batch says
 
-    /// Direction two: the app came back up, the engine moved nothing and said
-    /// which app it was. Nothing may claim a removal, and the review — with the
-    /// fresh reading in it — is what the person needs to act.
+    /// Direction two: the app came back up and the engine moved nothing. Nothing
+    /// claims a removal, and the review stays with the fresh reading.
     func testABatchHeldForARunningAppKeepsTheReviewAndSaysWhatToDo() async {
         let work = work(runningAtScan: false,
                         removal: UninstallResult(trashed: [], freedBytes: 0,

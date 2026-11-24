@@ -1,21 +1,16 @@
 import Foundation
 import HelmLaunch
 
-/// The one way Helm runs a command-line tool.
+/// The one way Helm runs a command-line tool. Architecture/RunningOtherPrograms.md § Running other programs.
 ///
-/// There were five of these, and they disagreed on the two things that matter.
-///
-/// **Order.** Two of them called `waitUntilExit()` *before* reading the pipe. A
-/// child whose output exceeds the pipe buffer blocks on the write while the
-/// parent blocks on the wait, and neither ever finishes. The outputs happen to
-/// be short today; the pattern was there to be copied.
+/// **Order.** Output is read to the end before the wait. A child whose output
+/// exceeds the pipe buffer blocks on the write while a parent waiting first
+/// blocks on the wait, and neither ever finishes.
 ///
 /// **The wait itself.** `Process.waitUntilExit()` polls a run loop in 50 ms
-/// steps, so every call paid about 67 ms whether or not the child had already
-/// finished — measured at 70.6 ms for `/usr/bin/true` against 1.3 ms for a bare
-/// spawn. `Leftovers` ran three tools per scan and spent two thirds of the scan
-/// inside that poll. Reading to EOF already proves the child closed its output;
-/// the termination handler supplies the status without the poll.
+/// steps, so every call pays tens of milliseconds whether or not the child has
+/// finished. Reading to EOF already proves the child closed its output; the
+/// termination handler supplies the status without the poll.
 public enum HelmProcess {
     /// Where a tool's standard error goes. `discarded` for every parsed query;
     /// `merged` only for the one caller whose whole answer is a diagnostic
@@ -36,36 +31,26 @@ public enum HelmProcess {
 
     /// **How many tools `run` and `runData` will have out at once.**
     ///
-    /// Nothing bounded this, and nothing in the app asked to: the bound existed
-    /// because no screen had ever started more than a few. Homebrew's search
-    /// field put every press of Return on its own unbounded `Task`, and each
-    /// press is two `brew search` runs of about nine seconds followed by a
-    /// `brew desc` per kind — so ten presses were twenty-odd Ruby processes and
-    /// the thread that started the twenty-first is the one in the crash report.
+    /// A repeatedly pressable control can start tools faster than they finish
+    /// (a Homebrew search is several Ruby processes of seconds each), and enough
+    /// of them at once crash the launch itself. A screen should not ask
+    /// (`SharedLatestRequest`); this is the floor under every screen that goes
+    /// through `run` or `runData`: a caller asking for more gets a queue rather
+    /// than more processes. **`start` takes no slot**, so a tool launched
+    /// through it (Homebrew's streamed runs, the updater's swap) is not counted
+    /// and not held back.
     ///
-    /// The `SharedLatestRequest` that now sits in `HomebrewViewModel` stops that
-    /// particular screen from asking. This is the floor under every screen that
-    /// has not been written yet and goes through `run` or `runData`: a caller
-    /// may still ask for more than eight, and what it gets is a queue rather
-    /// than eight more processes. **`start` takes no slot**, so a tool launched
-    /// through it (Homebrew's streamed runs, the updater's swap)
-    /// is not counted and not held back by this number.
-    ///
-    /// Eight, and it is a ceiling on *concurrency* rather than a guess at what
-    /// the machine can take. These are subprocesses that spend their time
-    /// waiting on a network or a disk, so the useful number is not the core
-    /// count; what matters is that it is small, fixed, and far below the point
-    /// where a page can exhaust anything.
+    /// A ceiling on *concurrency*, not a guess at what the machine can take:
+    /// these tools wait on a network or a disk, so the core count is not the
+    /// useful number. Small, fixed, and far below what a page can exhaust.
     static let launchCeiling = 8
 
     /// The slots, and the count for a test to read.
     ///
     /// A semaphore rather than a queue of work: `runData` already blocks its own
-    /// thread for the life of the child by design — every caller is on a queue
-    /// of its own that expects to wait — so waiting for a slot is the same kind
-    /// of wait it was already doing. Nothing here can deadlock on itself: a
-    /// thread holding a slot is inside `readDataToEndOfFile`, not running code
-    /// that could ask for a second one.
+    /// thread for the life of the child, so waiting for a slot is the same kind
+    /// of wait. It cannot deadlock on itself: a thread holding a slot is inside
+    /// `readDataToEndOfFile`, not running code that could ask for a second one.
     private static let slots = DispatchSemaphore(value: launchCeiling)
     private static let live = LiveLaunches()
 
@@ -77,29 +62,25 @@ public enum HelmProcess {
     /// The status of a run whose deadline passed before the tool answered.
     ///
     /// A named constant, because whoever reads it has to tell a timeout from a
-    /// failure: every Homebrew query turns an empty answer into an empty list,
-    /// and "brew is hung" shown as "no packages installed" is a lie about the
-    /// machine. Distinguishable from anything a child can produce — exit codes
-    /// are 0…255, a signal death reports the signal number, and -1 here already
-    /// means the spawn itself failed.
+    /// failure: "brew is hung" shown as "no packages installed" is a lie about
+    /// the machine. Distinguishable from anything a child can produce: exit
+    /// codes are 0…255, a signal death reports the signal number, and -1 means
+    /// the spawn itself failed.
     public static let timedOutStatus: Int32 = -2
 
     /// The most arguments one launch takes, the executable path not counted.
     /// `NSTask` raises `NSInvalidArgumentException` ("too many arguments (N) --
     /// limit is 4096") past it, and `HelmLaunchTask` turns that into status -1.
-    /// It is `NSTask`'s own count limit, not `ARG_MAX` bytes (one run, macOS
-    /// 27.3, 2026-11-16: a Swift `Process` on `/usr/bin/true` with 4096 arguments
-    /// launched and with 4097 raised). Here
-    /// because this type owns launching for every caller; the one caller whose
-    /// argv grows with the data cuts its list by it.
+    /// It is `NSTask`'s own count limit, not `ARG_MAX` bytes. Here because this
+    /// type owns launching; a caller whose argv grows with the data cuts its
+    /// list by it.
     public static let maxArguments = 4096
 
     /// A run with no `timeout` waits for the tool as long as it takes. With one,
     /// a tool that has not closed its output by then is terminated (TERM, then
     /// KILL after a two-second grace for tools that trap it) and the result is
-    /// `timedOutStatus` with no output — a hung `brew` waiting on another brew's
-    /// lock otherwise parks the calling thread for the life of the process, and
-    /// everything behind it queues.
+    /// `timedOutStatus` with no output. Without one, a hung `brew` waiting on
+    /// another brew's lock parks the calling thread for the life of the process.
     @discardableResult
     public static func run(_ path: String,
                            _ arguments: [String],
@@ -109,12 +90,9 @@ public enum HelmProcess {
         return Result(status: r.status, output: String(data: r.output, encoding: .utf8) ?? "")
     }
 
-    /// The bytes themselves, for a caller whose parser wants `Data` — a JSON
-    /// decode routed through `run` pays a String it never reads: the bytes were
-    /// already here, became a String on return, and were copied straight back
-    /// into `Data` at the call site. Measured on `outdated()` at 13 MB of
-    /// payload: 79–80 MB held at peak through the String round-trip, 50–51 MB
-    /// handing the bytes through (measured once; the benchmark is gone).
+    /// The bytes themselves, for a caller whose parser wants `Data`: a JSON
+    /// decode routed through `run` pays for a String it never reads, and the
+    /// round-trip holds both copies at the peak.
     ///
     /// `standardError: .merged` points stderr at the same pipe as stdout, in
     /// write order; the deadline, TERM, grace and KILL are the same.
@@ -130,14 +108,9 @@ public enum HelmProcess {
     /// diagnostics are not its output, and every other caller parses what it gets.
     ///
     /// `nullDevice`, not a `Pipe()`. A pipe nobody reads holds about 64 KB
-    /// and then blocks the child in `write(2)` — so it never exits, never
-    /// closes stdout, and the read below never returns. That is the same
-    /// deadlock this function reads-before-waiting to avoid on the stdout
-    /// side, reintroduced on the other one. A `brew` command with a
-    /// deprecation warning per formula reaches 64 KB easily, and the caller
-    /// is parked for the life of the process with an orphan child blocked
-    /// behind it. Discarding means sending it nowhere, not sending it
-    /// somewhere with no reader.
+    /// and then blocks the child in `write(2)`, so it never closes stdout and
+    /// the read below never returns: the read-before-wait deadlock on the other
+    /// side. A `brew` warning per formula reaches 64 KB easily.
     private static func runData(_ path: String,
                                 _ arguments: [String],
                                 env: [String: String]?,
@@ -161,9 +134,7 @@ public enum HelmProcess {
         process.terminationHandler = { _ in finished.signal() }
 
         // The slot is taken around the whole run and given back on every way
-        // out — the failed launch below included, which is the one path a
-        // `defer` written next to `wait()` would still have covered and a
-        // hand-balanced release would not.
+        // out, the failed launch below included.
         slots.wait()
         live.entered()
         defer { live.left(); slots.signal() }
@@ -205,34 +176,19 @@ public enum HelmProcess {
 
     /// **Starting the child, through the one door that cannot kill the app.**
     ///
-    /// This was `do { try process.run() } catch { … }`, and for one class of
-    /// refusal that guard could not fire: `NSTask` raises an Objective-C
-    /// exception on some launch paths, which goes past a Swift `catch` into
-    /// `std::terminate`. A build shipped and died with SIGABRT inside
-    /// `-[NSConcreteTask launchWithDictionary:error:]`, from a Homebrew page
-    /// that had twenty tools out at once. `HelmLaunch.h` carries what was
-    /// measured about which paths raise and which return.
+    /// `try process.run()` cannot guard every refusal: `NSTask` raises an
+    /// Objective-C exception on some launch paths, which goes past a Swift
+    /// `catch` into `std::terminate`. `HelmLaunch.h` says which paths raise.
     ///
-    /// The refusal is **logged rather than swallowed**. `-1` was already the
-    /// answer for a spawn that failed and stays it — every caller reads a status
-    /// — but a launch Helm's own arguments were refused for is a defect in Helm,
-    /// and the only place it could be seen is the log. The path is redacted for
-    /// the same reason every path in this log is; the exception's name is a
-    /// Foundation constant and carries nothing of anybody's.
-    /// Start a child this caller owns, through the same door.
+    /// The refusal is **logged rather than swallowed**: a launch Helm's own
+    /// arguments were refused for is a defect in Helm, and the log is the only
+    /// place it shows. The path is redacted; the exception's name is a
+    /// Foundation constant.
     ///
-    /// `run` and `runData` read a child to EOF and wait for its status; two
-    /// callers cannot use either, because their child outlives the call — the
-    /// updater's swap script waits for *this* process to exit before it does
-    /// any work, and Homebrew's streaming port hands its pipes to a page. Both
-    /// had their own `try process.run()`, which is the spelling that aborts the
-    /// app: `NSTask` raises an Objective-C exception on some launch paths and a
-    /// Swift `catch` cannot see it.
-    ///
-    /// False rather than a throw, because the refusal is already logged here
-    /// and a caller that owns the process owns what to do about it — the
-    /// updater has a hand-over note to take back, and the streaming port has a
-    /// page to tell.
+    /// Public for a caller whose child outlives the call (the updater's swap
+    /// script, Homebrew's streaming port), which cannot use `run` or `runData`.
+    /// False rather than a throw, because the refusal is already logged and the
+    /// caller that owns the process owns what to do about it.
     public static func start(_ process: Process, path: String) -> Bool {
         var failure: NSError?
         if HelmLaunchTask(process, &failure) { return true }
@@ -244,9 +200,8 @@ public enum HelmProcess {
 
     /// How many runs are in flight, and the most there have ever been at once.
     ///
-    /// Its own object rather than two `static var`s because it is touched from
-    /// every thread that runs a tool: an unguarded pair would be the race this
-    /// class of code exists to avoid, in the counter that measures it.
+    /// Its own locked object rather than two `static var`s, because it is
+    /// touched from every thread that runs a tool.
     private final class LiveLaunches: @unchecked Sendable {
         private let lock = NSLock()
         private var now = 0

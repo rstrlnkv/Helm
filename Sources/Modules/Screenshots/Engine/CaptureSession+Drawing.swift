@@ -103,10 +103,7 @@ extension CaptureSession {
     ///
     /// **A JPEG is drawn onto an opaque ground first,** so the ground is Helm's
     /// choice and not whatever ImageIO makes of an alpha channel it is about to
-    /// drop. (On the macOS this was written on, ImageIO alone also lands on
-    /// white — a clear picture and a half-transparent one both came out right
-    /// with the flattening taken out — so this pins the ground rather than
-    /// repairing a defect that was seen.)
+    /// drop.
     public static func encode(_ image: CGImage, as format: ShotFormat) -> Data? {
         autoreleasepool {
             let source: CGImage

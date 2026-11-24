@@ -2,20 +2,13 @@ import SwiftUI
 
 /// **Which edges of a scrolled list have something hidden past them.**
 ///
-/// The menu-bar panel's grid scrolls between two pinned bars, and a widget
-/// cut off by the scroll view's clip used to stop at a hard line with nothing
-/// to say it went on: the tab strip, the grid and the footer read as one flat
-/// sheet, and a clipped tile read as a short one. The edge is marked only
-/// where content really continues, so a grid that fits draws no mark at all.
+/// The menu-bar panel's grid scrolls between two pinned bars, and a widget cut
+/// off by the clip with nothing to say it goes on reads as a short tile. The
+/// edge is marked only where content really continues, so a grid that fits
+/// draws no mark at all.
 ///
 /// A value rather than the offset, for the reason `PageHeaderOverContent`
-/// gives: `onScrollGeometryChange` wakes its action when the projection
-/// changes, so projecting two booleans fires on the crossings and not on every
-/// frame of a scroll.
-///
-/// `0.5` of slack on both sides: a rubber-band bounce and a fractional inset
-/// put a few hundredths on the offset at rest, and an edge lit by rounding is
-/// lit for ever.
+/// gives, and `0.5` of slack on both sides, for the same reason.
 struct PanelScrollEdges: Equatable, Sendable {
     /// Content is scrolled up past the top edge.
     let above: Bool
@@ -52,14 +45,10 @@ extension View {
     /// Marks the edges of a panel scroll view that have content past them: the
     /// content fades out over the last `HelmSpace.s5` before the clip.
     ///
-    /// **A fade, not glass.** The panel is already Liquid Glass, and a second
-    /// glass or material band over the list is the glass-on-glass the panel's
-    /// tabs were redrawn to get rid of. A fade is what the system's own soft
-    /// scroll edge does, with nothing drawn on top.
-    ///
-    /// **No rule at either edge.** A hairline under the tab strip and another
-    /// over the footer were drawn and taken out again (2026-09-17): two lines
-    /// across a panel of cards read as bands cutting it into thirds.
+    /// **A fade, not glass**: the panel is already Liquid Glass, and a band of
+    /// glass over the list would be glass on glass. A fade is what the system's
+    /// soft scroll edge does. **No rule at either edge**: two lines across a
+    /// panel of cards read as bands cutting it into thirds.
     public func helmPanelScrollEdges() -> some View {
         modifier(PanelScrollEdgeMarks())
     }
@@ -76,8 +65,7 @@ private struct PanelScrollEdgeMarks: ViewModifier {
                 withAnimation(HelmMotion.interface) { edges = now }
             }
             // Opacities rather than a mask that comes and goes: SwiftUI
-            // interpolates one gradient between two stops, and never a mask
-            // that was not there into one that is.
+            // interpolates a gradient's stops, never a mask appearing.
             .mask {
                 VStack(spacing: 0) {
                     LinearGradient(colors: [.black.opacity(edges.above ? 0 : 1), .black],

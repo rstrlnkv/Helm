@@ -16,10 +16,7 @@ import HelmRuntime
 /// builds the other's numbers, so one rule read from one structure is what keeps
 /// the two triggers from drifting into different ideas of what is news.
 ///
-/// Only `Tally`'s three counts cross the target boundary — the UI writes the
-/// sentence from them — so only those are public. Everything else is answered
-/// inside this target, and `public` here means «another target uses this» and
-/// nothing else.
+/// Only `Tally`'s three counts are public: the UI writes the sentence from them.
 public enum SweepNews {
 
     /// What a pass did that somebody would want to know about, per kind.
@@ -69,18 +66,16 @@ public enum SweepNews {
 /// Where an unattended pass's one banner goes, the words for it, and the task
 /// that waits on macOS.
 ///
-/// **One value rather than three settings on the engine**, the shape
-/// `BatteryVetoChannel` already has one module over: a port with no sentence is
-/// as silent as a sentence with no port, so the half-configured pair is made
-/// unrepresentable rather than left as optionals to check. The words are written
-/// outside the engine because `L()` lives in `HelmUI`, which no engine target
-/// may import.
+/// **One value rather than three settings on the engine**, like
+/// `BatteryVetoChannel`: a port with no sentence is as silent as a sentence
+/// with no port, so the half-configured pair is unrepresentable. The words are
+/// written outside the engine because `L()` lives in `HelmUI`, which no engine
+/// target may import.
 ///
-/// The **task** lives here too, and that is the part `BatteryVetoChannel` leaves
-/// to its engine. Nothing in the engine waits for macOS — a notification prompt
-/// can stand on screen for minutes — so somebody has to hold the task and cancel
-/// it when the module is switched off, and the object that owns the port is the
-/// one that can do it without the engine growing a second field to forget.
+/// The **task** lives here too. A notification prompt can stand on screen for
+/// minutes, so somebody has to hold the task and cancel it when the module is
+/// switched off, and the owner of the port can do it without a second field on
+/// the engine.
 ///
 /// Locked rather than actor-isolated: `tell` arrives from the engine's own
 /// serial queue on the FSEvents leg and from the sweep timer on the other, and

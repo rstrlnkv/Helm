@@ -7,10 +7,8 @@ import Module_Layout_Engine
 /// app's own icon offers, so the two indicators sit at a matching weight rather
 /// than one of them shouting.
 ///
-/// Flags are artwork now (`FlagAsset`), not geometry. Helm drew them itself
-/// for a while and the drawings were honest, but a table of bands and crosses
-/// cannot hold an eagle, an armillary sphere or a set of trigrams, and half a
-/// dozen flags were approximations because of it.
+/// Flags are artwork (`FlagAsset`), not geometry: a table of bands and
+/// crosses cannot hold an eagle, an armillary sphere or a set of trigrams.
 enum BadgeImage {
     static func make(label: String, region: String?,
                      style: BadgeStyle, points: CGFloat) -> NSImage {
@@ -20,8 +18,7 @@ enum BadgeImage {
         case .outlined: return text(label, points: points, inverted: false, box: .outlined)
         // Never asked for: `LanguageIndicator` draws the name as the button's
         // title, with no image at all. Answered rather than defaulted, because
-        // this switch has no `default` — an unhandled style is a build error
-        // here, which is how the case above was found the moment it landed.
+        // this switch has no `default`: an unhandled style is a build error.
         case .sourceName: return text(label, points: points, inverted: false, box: nil)
         case .flagDrawn:
             // Letters in the same rounded rectangle the flag would have
@@ -42,12 +39,10 @@ enum BadgeImage {
         let font = NSFont.systemFont(ofSize: points * 0.72, weight: .semibold)
         let size = (label as NSString).size(withAttributes: [.font: font])
         let padding: CGFloat = box == nil ? 0 : points * 0.28
-        // **Exactly `points` tall, whatever the style.** A framed badge used to
-        // add 2 for the stroke — but the path is already `insetBy(0.5)`, which
-        // is what keeps a 1 pt stroke inside its own rectangle, so the 2 bought
-        // nothing and cost the one thing `points` is for: at 15 pt requested,
-        // filled and outlined drew 17 while plain drew 15. A style that moves
-        // the badge as far as a size step does makes the size a suggestion.
+        // Exactly `points` tall, whatever the style: the path is already
+        // `insetBy(0.5)`, which keeps a 1 pt stroke inside its own rectangle,
+        // so a framed badge needs no extra height. A style that moved the badge
+        // as far as a size step would make the size a suggestion.
         let canvas = NSSize(width: ceil(size.width) + padding * 2, height: points)
 
         return NSImage(size: canvas, flipped: false) { rect in

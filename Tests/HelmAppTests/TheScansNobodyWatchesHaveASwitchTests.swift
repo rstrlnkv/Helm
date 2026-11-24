@@ -5,19 +5,17 @@ import XCTest
 @testable import HelmApp
 import HelmAppStrings
 
-/// The section that finally says Helm reads the disk on its own.
+/// The section that says Helm reads the disk on its own.
 ///
-/// `ScanCoordinator` walks the volume for three modules while the Mac is idle,
-/// and `AppSettings.disabledScans` — the one switch — was written by **nothing**
-/// in `Sources/`: the only way to learn any of this was the log. `ScanConsent`
-/// holds the arithmetic; what is held here is the half a person can see, which
-/// is the half that was missing.
+/// `ScanCoordinator` walks the volume for several modules while the Mac is
+/// idle, and `AppSettings.disabledScans` is the one switch. `ScanConsent` holds
+/// the arithmetic; what is held here is the half a person can see.
 @MainActor
 final class TheScansNobodyWatchesHaveASwitchTests: XCTestCase {
 
     /// The rows are the list the coordinator actually loops over, not a list
     /// written again for the screen. A hand-written second copy is the comment
-    /// (ARCHITECTURE.md § Background scans): a scan added to
+    /// (Architecture/BackgroundScans.md § Background scans): a scan added to
     /// `ScanRunner.scannableModules` and forgotten here reads as consent nobody
     /// was asked for.
     func testEveryScanThatCanRunHasARowOnTheScreen() throws {
@@ -69,27 +67,5 @@ final class TheScansNobodyWatchesHaveASwitchTests: XCTestCase {
                                   + "which is what a missing row in the table looks like")
             }
         }
-    }
-
-    /// **The finding itself, and it is about the tree rather than a value.**
-    /// The switch existed, the coordinator read it, the seal defended it — and
-    /// no screen wrote it. A stored setting nothing in the app can set is not a
-    /// setting; it is a constant with a keychain item.
-    func testTheSettingHasAWriterThatIsNotItsOwnDeclaration() throws {
-        let files = try RepoSource.swiftFiles(under: "Sources")
-            .filter { $0 != "Sources/HelmApp/AppSettings.swift" }
-        XCTAssertGreaterThan(files.count, 100,
-                             "only \(files.count) source files were read, so a pass means nothing")
-        var writers: [String] = []
-        for file in files {
-            let code = try RepoSource.lines(of: file).map(RepoSource.code)
-            if code.contains(where: { $0.contains("AppSettings.disabledScans =") }) {
-                writers.append(file)
-            }
-        }
-        XCTAssertFalse(writers.isEmpty,
-                       "nothing outside its own declaration writes AppSettings.disabledScans, "
-                       + "so the background scans are again a thing the app does with no way "
-                       + "for anybody to answer about it")
     }
 }

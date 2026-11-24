@@ -3,24 +3,16 @@ import AppKit
 /// Which application is in front, readable from any thread.
 ///
 /// `NSWorkspace` is main-thread-only. Reading it from anywhere else does not
-/// give stale data — it takes the process down (ARCHITECTURE.md § Running
-/// applications); the doc comment of `RunningApps` carries the stack trace of the
-/// VPN engine's crash.
+/// give stale data, it takes the process down
+/// (Architecture/RunningOtherPrograms.md § Running applications; `RunningApps`
+/// carries the stack trace). Layout's fix gesture runs on a background queue,
+/// so it reads through here.
 ///
-/// Layout's fix gesture then proved it a second time. `frontmostBundleID` read
-/// `NSWorkspace.shared.frontmostApplication` on whatever thread asked, which was
-/// survivable while the callers were the tap's own main-thread callback — and
-/// stopped being survivable the moment the gesture moved to a background queue
-/// to keep a slow accessibility call off the main run loop. Eight call sites
-/// went with it, and the first use with text selected took the process down.
-///
-/// So the same answer `RunningApps` already gives: AppKit is read on the main
-/// thread and every other thread reads the snapshot. This one is refreshed from
-/// the workspace notification that arrives on the main thread anyway. There is no way to offer "who is in front,
-/// right now, from a background queue", so this does not offer one. A caller off
-/// the main thread gets who was in front a moment ago — which, for deciding
-/// whether a conversion may touch the app the person is typing in, is the same
-/// answer.
+/// AppKit is read on the main thread and every other thread reads the
+/// snapshot, refreshed from the workspace notification that arrives on the main
+/// thread anyway. A caller off the main thread gets who was in front a moment
+/// ago, which for deciding whether a conversion may touch the app the person is
+/// typing in is the same answer.
 public final class FrontmostApp: @unchecked Sendable {
     public static let shared = FrontmostApp()
 
@@ -64,21 +56,18 @@ public final class FrontmostApp: @unchecked Sendable {
     }
 
     /// **Told, not asked.** A caller that wants to act when the front
-    /// application changes had no way to hear it and would have added a second
-    /// observer for a notification this type already owns — and `NSWorkspace`
-    /// is main-thread-only, which is why there is exactly one observer.
+    /// application changes hears it here rather than adding a second observer
+    /// for a notification this type already owns.
     ///
     /// The handler runs on the main thread, with the new bundle id, and only
     /// when it differs from the last one delivered: coming back to a window you
     /// were already in is not a change, and a caller acting on it would select
     /// an input source for nothing.
     ///
-    /// The token is the caller's to keep and to hand back. A watcher that
-    /// cannot be stopped is a watcher that outlives whatever owned it.
-    /// **Not `@discardableResult`, unlike `refresh()` three methods up.** That
-    /// one returns a *value*; this returns a *handle* into a dictionary this
-    /// singleton never prunes. Letting a caller drop it on the floor is the
-    /// mistake the paragraph above warns about, blessed by the compiler.
+    /// The token is the caller's to keep and to hand back: a watcher that
+    /// cannot be stopped outlives whatever owned it. **Not
+    /// `@discardableResult`**: it is a handle into a dictionary this singleton
+    /// never prunes.
     public func onChange(_ handler: @escaping (String) -> Void) -> UUID {
         let token = UUID()
         lock.lock(); watchers[token] = handler; lock.unlock()
@@ -91,18 +80,15 @@ public final class FrontmostApp: @unchecked Sendable {
 
     /// Every watcher, on the main thread, outside the lock.
     ///
-    /// Outside deliberately: a handler is other people's code and may call
-    /// straight back into this type, and a lock held across a call out is the
-    /// shape that would deadlock a handler that calls back into this type.
+    /// Outside deliberately: a handler may call straight back into this type,
+    /// and a lock held across that call would deadlock.
     private func tell(_ bundleID: String) {
         lock.lock(); let handlers = Array(watchers.values); lock.unlock()
         for handler in handlers { handler(bundleID) }
     }
 
     /// Stores the new snapshot and tells the watchers only if it actually
-    /// changed — the one compare-and-swap both `refresh()` and
-    /// `setForTesting` need, so there is exactly one place a caller can
-    /// forget the guard rather than two.
+    /// changed: the one compare-and-swap `refresh()` and `setForTesting` share.
     private func record(_ bundleID: String) {
         lock.lock()
         let changed = snapshot != bundleID
@@ -112,8 +98,7 @@ public final class FrontmostApp: @unchecked Sendable {
     }
 
     /// Tests only: seeds the snapshot without AppKit, and tells the watchers,
-    /// because the whole point of the seam is that a test can drive what the
-    /// workspace would have driven.
+    /// so a test can drive what the workspace would have driven.
     public func setForTesting(_ bundleID: String) {
         record(bundleID)
     }

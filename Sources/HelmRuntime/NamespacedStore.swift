@@ -8,22 +8,17 @@ public protocol KeyValueStore: AnyObject {
 /// `UserDefaults` without the disk, for tests and for a module that has no
 /// business persisting anything.
 ///
-/// **Without the disk, not without the plist.** `UserDefaults` writes to a file
-/// and reads it back, so every number it hands over is an `NSNumber` whatever
-/// Swift type went in — and an `NSNumber` casts by value rather than by
-/// declaration. `<integer>1</integer>` under a `Bool` key is `true` in
-/// production; `<real>5.0</real>` under an `Int` key is `5`. Holding Swift
-/// natives, this answered the module's *default* for both, which made every
-/// wrong-type test in the suite a test of the fake: they proved a value was
-/// refused that production accepts.
+/// **Without the disk, not without the plist.** Every number `UserDefaults`
+/// hands over is an `NSNumber`, which casts by value rather than by
+/// declaration: `<integer>1</integer>` under a `Bool` key is `true`,
+/// `<real>5.0</real>` under an `Int` key is `5`. Holding Swift natives, the
+/// fake would refuse values production accepts, and every wrong-type test
+/// would test the fake.
 ///
-/// Locked, because the thing it stands in for is safe to touch from any thread
-/// and the engines handed one are not single-threaded: they read their own state
-/// from their own queues while the test that owns them writes from its. A bare
-/// `Dictionary` under two threads is undefined behaviour rather than a race with
-/// a bad answer — it took the Autopilot bundle down with no assertion and no
-/// message, about once in thirty runs under load, until the thread sanitizer
-/// named it.
+/// Locked, because the thing it stands in for is safe to touch from any thread,
+/// and engines read from their own queues while a test writes from its. A bare
+/// `Dictionary` under two threads is undefined behaviour, a silent crash rather
+/// than a bad answer.
 public final class InMemoryKeyValueStore: KeyValueStore, @unchecked Sendable {
     private let lock = NSLock()
     private var values: [String: Any] = [:]
@@ -76,13 +71,11 @@ public final class NamespacedStore {
 
     /// The same namespace over a different store.
     ///
-    /// A migration needs both halves — this view to read and write its own keys,
-    /// and the raw store `ObsoleteDefaults.purge` walks by full key — so it is
-    /// handed the raw one and asks for this. Written here rather than as a second
-    /// `NamespacedStore(namespace:)` at the call site: that would be the prefix
-    /// spelled twice, and two spellings drifting is a migration writing where
-    /// nothing reads. It is also the only way a test can point the app's own
-    /// namespaced view at a store of its own.
+    /// A migration needs both halves: this view for its own keys, and the raw
+    /// store `ObsoleteDefaults.purge` walks by full key. Here rather than a
+    /// second `NamespacedStore(namespace:)` at the call site, so the prefix is
+    /// spelled once; it is also how a test points the app's own view at a store
+    /// of its own.
     public func over(_ other: KeyValueStore) -> NamespacedStore {
         NamespacedStore(namespace: namespace, backing: other)
     }
@@ -105,10 +98,8 @@ public final class NamespacedStore {
     public func bool(_ key: String, default d: Bool) -> Bool { backing.object(forKey: k(key)) as? Bool ?? d }
     public func int(_ key: String, default d: Int) -> Int { backing.object(forKey: k(key)) as? Int ?? d }
     public func string(_ key: String, default d: String) -> String { backing.object(forKey: k(key)) as? String ?? d }
-    /// For a stored `Date`, which is a `Double` and not an `Int`. Rounding an
-    /// epoch to the second makes a restored deadline differ from the one that was
-    /// written — a session that comes back a fraction of a second off is a session
-    /// whose stored end is no longer its real end.
+    /// For a stored `Date`, which is a `Double` and not an `Int`: rounding an
+    /// epoch to the second makes a restored deadline differ from the one written.
     public func double(_ key: String, default d: Double) -> Double {
         backing.object(forKey: k(key)) as? Double ?? d
     }
@@ -143,11 +134,8 @@ public final class NamespacedStore {
 
     /// The fourth table shape, beside `doubleTable`, `intTable` and `boolTable`.
     ///
-    /// Keyboard binds an application to an input source, which is a
-    /// `[String: String]`. Added here rather than in the module because the three
-    /// functions above it are the same three lines with a different value type, and
-    /// a module reaching for `backing.object(forKey:)` itself would be the
-    /// fourth spelling of a cast this type exists to own.
+    /// Keyboard binds an application to an input source, a `[String: String]`.
+    /// Here rather than in the module, because this type owns the casts.
     public func stringTable(_ key: String) -> [String: String] {
         backing.object(forKey: k(key)) as? [String: String] ?? [:]
     }

@@ -7,10 +7,8 @@ enum ExternalDisplaySupport {
     /// dock's monitor is left. That second case is the whole reason this rule
     /// exists, so the reading that serves it wins.
     ///
-    /// Requiring a built-in among them would fix the desktop and break the
-    /// laptop, so the two are not told apart here. The callers do it with a
-    /// hardware fact this list does not carry: the engine asks
-    /// `lidInfo.hasLid()` first (`externalDisplayCondition`, `holdingAppRules`),
-    /// so on a Mac with no lid the rule is false whatever this answers.
+    /// The callers tell the two apart with a hardware fact this list does not
+    /// carry: the engine asks `lidInfo.hasLid()` first
+    /// (`Architecture/KeepAwake.md § Rules read from the machine`).
     static func hasExternal(builtInFlags: [Bool]) -> Bool { builtInFlags.contains(false) }
 }

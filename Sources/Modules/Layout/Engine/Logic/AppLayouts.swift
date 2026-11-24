@@ -2,16 +2,9 @@ import Foundation
 
 /// Which layout an application is typed in, when the person has said so.
 ///
-/// **The module does not learn this, and that was a decision rather than a
-/// simplification.** An earlier design watched which layout you left each
-/// application on, acted after two agreeing departures, and forgot its belief
-/// if you switched back by hand within a few seconds. It was dropped because
-/// the module already owns a per-application table a person fills in
-/// themselves — `AppScope`, drawn as a row with a picker in the lists window —
-/// and three decisions that design needed (what to learn from, how many
-/// observations, what counts as a veto) stop existing once the person is asked.
-/// A binding cannot mis-learn. It can only go out of date, and then it is
-/// changed where it was set.
+/// The module does not learn this: the person sets it, in the row the lists
+/// window already draws per application. A binding cannot mis-learn; it can
+/// only go out of date, and then it is changed where it was set.
 ///
 /// `AppScope` does **not** gate this. «Do not rewrite my text here» and «I
 /// write English here» are different questions, and the second is more likely

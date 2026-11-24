@@ -4,55 +4,36 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// **A source that is a symbolic link passes «is this the directory it names»
-/// whenever the link's target is not there yet — and then vanishes from the scan
-/// entirely.**
+/// **A source that is a symbolic link to a target not yet there is not its own
+/// place, and does not vanish from the scan.**
 ///
-/// `LeftoversScanner.isItsOwnPlace` is the whole defence against a planted source:
-/// four of the eight directories the scan is compiled with do not exist on a stock
-/// install, so any process running as the person can create one as a link and have
-/// the enumeration happen wherever it points, under Helm's Full Disk Access, with
-/// every row still spelling the folder that was compiled in. The guard is
+/// `LeftoversScanner.isItsOwnPlace` is the defence against a planted source:
+/// four of the eight directories the scan is compiled with do not exist on a
+/// stock install, so any process running as the person can create one as a link
+/// and have the enumeration happen wherever it points, under Helm's Full Disk
+/// Access. The guard is
 ///
 ///     files.resolvingSymlinks(directory).path == directory.path
 ///
-/// and `FileSystemLeftovers.resolvingSymlinks` was `URL.resolvingSymlinksInPath()`,
-/// which is `realpath` underneath. **`realpath` fails on a link whose target does
-/// not exist**, and Foundation's answer to a failure is the path it was handed,
-/// unchanged. So a link to a folder that is not there read as its own place.
+/// and `URL.resolvingSymlinksInPath()` is `realpath` underneath, which **fails on
+/// a link whose target does not exist** and hands back the path unchanged. The
+/// port answers through `PathCanonical.followingEveryLink` instead, which follows
+/// the leaf with `readlink` whether or not the target is there; this file guards
+/// that the port keeps answering something other than Foundation.
 ///
-/// The port now answers through `PathCanonical.followingEveryLink`, which follows the
-/// leaf with `readlink` — the call that answers whether or not the target is there.
-/// The Foundation reading has not changed and is not Helm's to change: it is measured
-/// below off `URL.resolvingSymlinksInPath()` itself, and what this file guards is that
-/// the port keeps answering something else.
+/// The second half is what would make it silent. `DirectoryListing.contents`
+/// calls `opendir`, which for that link fails with `ENOENT`, read — correctly,
+/// for an ordinary path — as `.listed([])`, which produces no row of any kind.
+/// The planted link would be **nothing at all**, and the page would draw «No
+/// leftovers found» under a green check (`ASourceNobodyWalkedIsNotACleanMacTests`).
+/// The target can be created afterwards, and from the next scan on the walk
+/// would run there.
 ///
-/// The second half is what makes it silent rather than merely mislabelled.
-/// `DirectoryListing.contents` calls `opendir`, which for that same link fails with
-/// `ENOENT`, and `ENOENT` is read — correctly, for an ordinary path — as «there is
-/// nothing there»: `.listed([])`, not `.refused`. A source that answers `.listed([])`
-/// produces no row of any kind. So the planted link is not a redirected source, not
-/// an unreadable source, and not an item: it is **nothing at all**, and with the
-/// other sources honest the page draws «No leftovers found» under a green check —
-/// the message `ASourceNobodyWalkedIsNotACleanMacTests` was written to stop, reached
-/// by the one route that leaves no row behind to be counted.
-///
-/// And the planting is a two-step: the link is placed while its target does not
-/// exist, so nothing is reported; the target is created afterwards, and from the
-/// next scan onward the walk runs there while `isItsOwnPlace` — which resolves the
-/// live link and now refuses it — is the only thing between them. Whether the
-/// second step is ever taken, the first step is already invisible, and invisible is
-/// what this guard exists not to be.
-///
-/// **Why the existing coverage does not reach it.**
-/// `ADirectoryThatIsNotTheOneItNamesTests` drives `LeftoversFakeFiles.redirects`, a
-/// dictionary lookup that resolves a link to a target whether or not the target
-/// exists — so the fake can resolve what the real port cannot. That is a fake
-/// *freer* than its port (ARCHITECTURE.md § Fakes),
-/// and what it buys is a branch that is proven for a state production never
-/// reaches: the dangling case has no fixture there, because in that fake there is
-/// no such thing as dangling. This file therefore drives the real
-/// `FileSystemLeftovers` and the real filesystem, and nothing else on this Mac.
+/// `ADirectoryThatIsNotTheOneItNamesTests` drives `LeftoversFakeFiles.redirects`,
+/// which resolves a link whether or not its target exists — a fake *freer* than
+/// its port (Architecture/TestsAndMeasurement.md § Fakes) with no dangling case.
+/// This file therefore drives the real `FileSystemLeftovers` and the real
+/// filesystem, and nothing else on this Mac.
 final class ADanglingSourceIsNotItsOwnPlaceTests: XCTestCase {
 
     /// The real port, fenced to one directory.
@@ -65,9 +46,8 @@ final class ADanglingSourceIsNotItsOwnPlaceTests: XCTestCase {
     /// hands the path straight back so they pass `isItsOwnPlace` and contribute no
     /// row.
     ///
-    /// A local helper that does *more* than the shared one keeps its own body and
-    /// calls it, as the house rules order. It calls `FileSystemLeftovers` for
-    /// everything it answers.
+    /// A local helper that does *more* than the shared one keeps its own body
+    /// and calls `FileSystemLeftovers` for everything it answers.
     private struct FilesUnder: LeftoversFilePort {
         let root: String
         private let real = FileSystemLeftovers()
@@ -116,15 +96,13 @@ final class ADanglingSourceIsNotItsOwnPlaceTests: XCTestCase {
     /// calls, taken off Foundation itself, and the demand they put on the shipping
     /// port.
     ///
-    /// The Foundation half is green before the repair and after it — `realpath` and
-    /// `opendir` are not Helm's to change. Read it off `URL.resolvingSymlinksInPath()`
-    /// **directly**, never off `FileSystemLeftovers.resolvingSymlinks`: taken off the
-    /// port, «unchanged» is a statement about Helm's own choice of call, and it froze
-    /// the defect as the expected answer — that is how this file first went red at the
-    /// repair rather than at the defect.
+    /// The Foundation half is green whatever Helm does — `realpath` and `opendir`
+    /// are not Helm's to change. Read it off `URL.resolvingSymlinksInPath()`
+    /// **directly**, never off `FileSystemLeftovers.resolvingSymlinks`: off the port,
+    /// «unchanged» would freeze the defect as the expected answer.
     ///
-    /// The port's own reading is the opposite demand, and it is the one that is red
-    /// against any port that answers a dangling link the way Foundation does.
+    /// The port's own reading is the opposite demand, red against any port that
+    /// answers a dangling link the way Foundation does.
     func testFoundationCannotFollowADanglingLinkAndTheShippingPortMust() throws {
         let home = canonicalHome("leftovers-dangling-port")
         let target = home.appendingPathComponent("elsewhere")
@@ -233,12 +211,10 @@ final class ADanglingSourceIsNotItsOwnPlaceTests: XCTestCase {
     // MARK: - Controls
 
     /// **The control that proves the harness reaches the guard.** The same planting
-    /// with the target created first — a link the port *can* resolve — is reported
-    /// today.
-    ///
-    /// Without it, a red result above would be indistinguishable from a fixture that
-    /// never reached `isItsOwnPlace` at all: a wrong home, a source name that moved,
-    /// a fenced port answering `.listed([])` for everything.
+    /// with the target created first — a link the port *can* resolve — is reported.
+    /// Without it, a red result above could be a fixture that never reached
+    /// `isItsOwnPlace` at all: a wrong home, a source name that moved, a fenced port
+    /// answering `.listed([])` for everything.
     func testALiveRedirectedSourceIsReportedToday() throws {
         let home = canonicalHome("leftovers-live-redirect")
         let target = home.appendingPathComponent("planted/QuickLook")
@@ -257,9 +233,8 @@ final class ADanglingSourceIsNotItsOwnPlaceTests: XCTestCase {
     /// **The control that keeps the scan.** An ordinary directory with an ordinary
     /// file in it produces its item and no source row.
     ///
-    /// So a repair cannot be «treat every source as redirected»: that would leave
-    /// this red, and it is what a guard written from the failure message alone would
-    /// most easily become.
+    /// So a repair cannot be «treat every source as redirected», which is what a
+    /// guard written from the failure message alone would most easily become.
     func testAnOrdinarySourceIsWalkedAndProducesNoSourceRow() throws {
         let home = canonicalHome("leftovers-ordinary-source")
         let plist = try write("Library/Preferences/com.nobody.leftover.plist", in: home)

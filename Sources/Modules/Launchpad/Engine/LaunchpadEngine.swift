@@ -235,7 +235,7 @@ public final class LaunchpadEngine: ModuleEngine, @unchecked Sendable {
     /// While a scrub has an owner: when its pad has sent no frame for `silenceLimit`, the scrub is over (the pad no longer owns one, so what it sends later is dropped), and main is told `.ended(.revert)`. Otherwise looks again later; nothing is scheduled with no scrub.
     func checkSilence() {
         let (schedule, again, silent) = pinchLock.withLock { () -> (Bool, Bool, Bool) in
-            guard watching, let owner = scrubOwner else { silenceCheckScheduled = false; return (false, false, false) }
+            guard watching, scrubOwner != nil else { silenceCheckScheduled = false; return (false, false, false) }
             guard now() - ownerHeardAt >= Self.silenceLimit else { return (false, true, false) }
             silenceCheckScheduled = false
             return (endScrubs(), false, true)

@@ -6,14 +6,8 @@ import HelmTestSupport
 
 /// Removal, through the engine, over real files.
 ///
-/// This path had no test at all. The port that exists to make it fakeable
-/// (`LeftoversFilePort.trash`) is stubbed to `.success` by both fakes and
-/// driven by nothing, so the seam bought a fake success and no coverage of the
-/// thing that matters: what the engine refuses, what it counts, and what it
-/// says happened.
-///
-/// Written before the loop moves onto `HelmTrash`, so the move has something to
-/// be measured against rather than a promise that it is equivalent.
+/// `LeftoversFilePort.trash` is stubbed by the fakes, so this drives the real
+/// removal: what the engine refuses, what it counts, and what it says happened.
 final class LeftoversRemovalTests: XCTestCase {
 
     private var home: URL!
@@ -23,14 +17,12 @@ final class LeftoversRemovalTests: XCTestCase {
     /// **The removal here is real**: `HelmTrash.remove` calls
     /// `FileManager.trashItem`, so a file the engine takes leaves the temporary
     /// home below and lands in `~/.Trash`, where deleting the temp directory
-    /// cannot reach it. Six removals a run, kept for good, on the machine of
-    /// whoever runs `swift test`.
+    /// cannot reach it, on the machine of whoever runs `swift test`.
     ///
     /// `trashItem` is called with `resultingItemURL: nil`, so the name is all
     /// the cleanup has to go on — which is why every name `write` makes carries
     /// a UUID. A cleanup that removed `~/.Trash/cache.bin` would be deleting
-    /// somebody's file. `HelmTrashBatchOutcomeTests` is where this pattern is
-    /// written down; this file is one of the eight that did not follow it.
+    /// somebody's file (`HelmTrashBatchOutcomeTests` writes the pattern down).
     private var trashedNames: [String] = []
 
     override func setUpWithError() throws {
@@ -92,8 +84,8 @@ final class LeftoversRemovalTests: XCTestCase {
         XCTAssertEqual(result.removed, [inside])
         XCTAssertEqual(result.failed, [outside],
                        "a refused path reached neither list and the count then lied")
-        // The reason is a reason now that this is the shared result, so the
-        // refusal can be asked *why* rather than only *whether*.
+        // The reason is typed in the shared result, so the refusal can be asked
+        // *why* rather than only *whether*.
         XCTAssertEqual(result.refused.map(\.reason), [.outOfScope])
         XCTAssertFalse(FileManager.default.fileExists(atPath: inside))
     }

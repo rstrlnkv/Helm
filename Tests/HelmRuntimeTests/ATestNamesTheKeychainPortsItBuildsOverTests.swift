@@ -5,45 +5,24 @@ import XCTest
 /// A test that builds an engine or a view model names the ports it builds it
 /// over — or it runs against the person's own login keychain.
 ///
-/// Three separate incidents in one wave, each the same shape and each invisible
-/// to every other check in this suite:
+/// A defaulted keychain port in a test reads, and where the item is absent
+/// creates, an item in the keychain of whoever runs the suite: a seal key, or a
+/// rule-set high-water mark that a rolled-back rule set is judged against for
+/// ever after. Nothing else can see it: the call compiles, and the item is then
+/// indistinguishable from one the app created. A test may read the Mac it runs
+/// on; it may not leave an item in its keychain.
 ///
-/// - an Autopilot test left `sequence:` on its default and raised the high-water
-///   mark of the rule-set item on the machine running the suite, which is the
-///   number a rolled-back rule set is judged against for ever after;
-/// - the undo fakes were added while a keychain port was still defaulted, so the
-///   first run of the file created the item it was meant to stand in for;
-/// - three files in Duplicates' UI target built a `DuplicatesViewModel` on the
-///   production `SettingGuard`, and `init` reads the keep policy through it —
-///   `DuplicatesSettings.keepPolicy` answers `.unset` for an empty store and
-///   spends `establishKey()` on the way out, which is `SecItemAdd` of
-///   `com.helm.app / settings-seal` into somebody's login keychain.
+/// The subjects are derived, not listed (Architecture/TestsAndMeasurement.md § What makes a check):
+/// every `init` in `Sources/` with a parameter whose default reaches the
+/// keychain is a subject, and that parameter's label is what a test must name.
+/// A new port arrives here without anybody remembering it.
 ///
-/// **The machine is a boundary of its own.** A test may read the Mac it runs on;
-/// it may not leave an item in its keychain. Nothing else in the suite can see
-/// this happen: the call compiles, the default is the production port, and the
-/// only evidence is an item that appears on the developer's machine and is then
-/// indistinguishable from one the app itself created.
+/// The source and not the behaviour, because asking the behaviour means
+/// reading the keychain, the boundary this test defends
+/// (`TheRulesTheCompilerCannotHoldTests` has the same shape).
 ///
-/// **The list of subjects is not written here.** A hand-written list of types is
-/// tied to the thing it names or it is a comment (Architecture/TestsAndMeasurement.md § What makes a check), so the subjects are
-/// *derived*: every `init` in `Sources/` with a parameter whose default reaches
-/// the keychain is a subject, and that parameter's own label is what a test has
-/// to name. A module that grows a fourth port arrives in this scan without
-/// anybody remembering it, and a port renamed makes the scan ask for the new
-/// label.
-///
-/// **Why the source and not the behaviour.** The behaviour is "the suite left
-/// nothing in the keychain", and the only way to ask it is to read the keychain
-/// — which is the boundary this test defends.
-/// `StoresOfTheirsAskIfThisIsATestTests` is the family sibling and gives the same
-/// reason for the same shape.
-///
-/// **What it deliberately does not cover.** A type whose port has *no* default —
-/// `SealedRules(store:keys:sequence:)` — cannot be built wrong, because the
-/// compiler asks for the argument. That is the better fix, and this scan does not
-/// need to know about it: a port with a production default is exactly the case
-/// the compiler cannot help with, which is why the default is what selects a
+/// A port with no default (`SealedRules(store:keys:sequence:)`) cannot be built
+/// wrong, because the compiler asks for it; the default is what selects a
 /// subject.
 final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
 
@@ -52,14 +31,10 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
     /// Constructions where the production port is the *subject* of the test, so
     /// handing it a double would be testing the double.
     ///
-    /// Empty, and that is a finding rather than an oversight: nothing in this
-    /// tree exercises `KeychainSealKey`, `KeychainRuleKey` or
-    /// `KeychainRuleSequence` against the real item, because doing so would write
-    /// into the developer's own keychain. All three are covered through doubles.
-    /// The list exists so the next person who genuinely needs the real item — a
-    /// check gated behind `HELM_BENCH=1`, say — writes the reason down beside it
-    /// instead of deleting the rule. The shape is a repo-relative `file:line`
-    /// and why.
+    /// Empty on purpose: the keychain ports are covered through doubles,
+    /// because the real item is the developer's own keychain. A check that
+    /// needs the real item adds a repo-relative `file:line` and its reason here
+    /// instead of deleting the rule.
     private static let allowed: [String: String] = [:]
 
     // MARK: - The rule
@@ -83,12 +58,10 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
     /// A scan that has stopped matching is a green test about nothing, so both
     /// halves are asserted before the rule that reads them.
     ///
-    /// The floors name types rather than counting them, because a count is the
-    /// thing this suite has been wrong about before. `AutopilotEngine` and
-    /// `DuplicatesViewModel` are the two the incidents happened on; both take a
-    /// keychain-defaulted port today, and a build in which neither does is a
-    /// build where this rule guards nothing and should be read rather than left
-    /// green.
+    /// The floors name types rather than count them. `AutopilotEngine` and
+    /// `DuplicatesViewModel` both take a keychain-defaulted port; a build in
+    /// which neither does is one where this rule guards nothing and should be
+    /// read rather than left green.
     func testTheScanStillFindsTheSubjectsAndTheirCallSites() throws {
         let subjects = try Self.subjects()
         XCTAssertEqual(subjects["AutopilotEngine"], ["keys", "sequence"],
@@ -114,9 +87,8 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
     /// all: its default is `DuplicatesSettings.guardOfScanSettings`, and the word
     /// «Keychain» is one declaration further down.
     ///
-    /// The owner is half of what is asserted, and deliberately: the member name
-    /// alone is what this scan used to key by, and
-    /// two statics sharing a name overwrote each other, which is why it no longer does (`merge`).
+    /// The owner is half of what is asserted: keyed by the member name alone,
+    /// two statics sharing a name would overwrite each other (`merge`).
     func testAPortNamedThroughAConstantIsStillAPort() throws {
         let names = try Self.keychainNames()
         XCTAssertTrue(names.contains(Self.constant), """
@@ -128,19 +100,12 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
 
     // MARK: - Deriving the subjects
 
-    /// **Every derivation below is computed once a process, and the reason is
-    /// XCTest's own shape.** It builds a fresh instance per test case, so an
-    /// instance's worth of scanning is paid by every case in the class — this
-    /// one has three, and each of them starts a whole-tree derivation. Before
-    /// these three memos it walked and parsed `Sources/` five times over and
-    /// `Tests/` twice more, and the class cost 11.1 s of a suite whose other
-    /// hundred-odd classes are milliseconds.
+    /// Every derivation below is computed once a process: XCTest builds an
+    /// instance per test case, and each case here starts a whole-tree
+    /// derivation.
     ///
-    /// A `static let` is the memo because Swift computes one lazily and exactly
-    /// once, however many cases race for it, and `Result` is what lets a
-    /// throwing derivation live in one. `SwiftSource.code(under:)` underneath
-    /// does the same for the reading itself, so the two derivations that both
-    /// read `Sources/` load it once between them.
+    /// A `static let` is computed lazily and exactly once, however many cases
+    /// race for it, and `Result` lets a throwing derivation live in one.
     private static let namesOnce = Result { try deriveKeychainNames() }
     private static let subjectsOnce = Result { try deriveSubjects() }
     private static let scanOfTestsOnce = Result {
@@ -199,19 +164,15 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
 
     /// Whether `text`, written inside `owner`, names one of `reaching`.
     ///
-    /// Two spellings and no more, because they are the two Swift itself resolves:
-    /// the qualified `Owner.member`, which is how every use site outside the
-    /// owning type writes it — `DuplicatesSettings.guardOfScanSettings` is the
-    /// one this tree turns on — and the bare `member`, which means that
-    /// declaration only inside the type that declares it.
+    /// Two spellings, the two Swift resolves: the qualified `Owner.member`, as
+    /// every use site outside the owning type writes it, and the bare `member`,
+    /// which means that declaration only inside its own type.
     ///
-    /// **A bare name is never matched across owners**, and that is the half that
-    /// keeps the qualified key honest. Match `shared` against every `X.shared`
-    /// and the fixed point swallows the tree: a body that merely says the word
-    /// joins the set it was being tested against, every `init` defaulted to
-    /// anything called `shared` becomes a keychain port, and the rule fails over
-    /// call sites that never went near a keychain. A dot counts as a name
-    /// character on either side, so `Elsewhere.shared` is not a bare `shared`.
+    /// A bare name is never matched across owners: matching `shared` against
+    /// every `X.shared` would let the fixed point swallow the tree, and every
+    /// `init` defaulted to anything called `shared` would become a keychain
+    /// port. A dot counts as a name character, so `Elsewhere.shared` is not a
+    /// bare `shared`.
     private static func references(_ text: String, from owner: String?,
                                    _ reaching: Set<String>) -> Bool {
         reaching.contains { name in
@@ -240,8 +201,7 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
         return character.isLetter || character.isNumber || character == "_" || character == "."
     }
 
-    /// Hoisted out of `merge`, which is called once per file: the pattern was
-    /// compiled 483 times a pass and there is one pattern.
+    /// Hoisted out of `merge`, which is called once per file.
     private static let declaration = try? NSRegularExpression(
         pattern: #"static\s+(?:let|var)\s+([A-Za-z_]\w*)\s*(?::[^=]+)?=\s*(.*)$"#,
         options: .anchorsMatchLines)
@@ -251,17 +211,12 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
     /// is simply not recognised, which errs towards reporting a call site rather
     /// than excusing it.
     ///
-    /// **The key carries the owner, and that is the whole of it.** It was the
-    /// bare member name, so two declarations sharing one overwrote each other
-    /// and whichever the walk reached last was the only one this scan could ever
-    /// see — `command grep -rn 'static let shared' Sources/` says how many names
-    /// are already shared. A keychain port hidden behind the loser never entered
-    /// `reaching`, no default naming it was ever a port, and the rule went green
-    /// over the call sites it exists for with nothing on screen to say so.
-    /// `SwiftSource.innermost` over
-    /// `SwiftSource.typeBodies` is the same owner reading `ports(in:reaching:)`
-    /// does, and it is right for the same reason: the owner is the type whose
-    /// braces are around the declaration, not the last one declared above it.
+    /// The key carries the owner. Keyed by the bare member name, two
+    /// declarations sharing one (`static let shared`) would overwrite each
+    /// other, and a keychain port behind the loser would never be a port. The
+    /// owner is the type whose braces are around the declaration
+    /// (`SwiftSource.innermost` over `SwiftSource.typeBodies`), as in
+    /// `ports(in:reaching:)`.
     private static func merge(_ bodies: inout [String: String], from source: String) {
         guard let declaration = Self.declaration else { return }
         let types = SwiftSource.typeBodies(in: source)
@@ -283,9 +238,7 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
     private static func deriveSubjects() throws -> [String: [String]] {
         let reaching = try keychainNames()
         var out: [String: [String]] = [:]
-        // The same reading `keychainNames` walked; it had its own second walk
-        // of `Sources/` here, so one call to this cost two loads and two parses
-        // of the tree.
+        // The same memoised reading `keychainNames` walked.
         for file in try SwiftSource.code(under: "Sources") {
             for (owner, labels) in ports(in: file.text, reaching: reaching) {
                 out[owner, default: []] += labels

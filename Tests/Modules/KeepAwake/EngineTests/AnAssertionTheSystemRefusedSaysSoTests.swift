@@ -5,21 +5,14 @@ import HelmRuntime
 
 /// «A `pmset` refusal that is not a success», on the IOKit side.
 ///
-/// `IOPMAssertionCreateWithName` returns an `IOReturn` and
-/// `IOKitSleepAssertions` used it for one thing — deciding whether to keep the
-/// id — while `preventSleep(display:)` returned `Void`. So a refused assertion
-/// left the engine setting `isActive`, writing «holding sleep» to the log and
-/// lighting the menu bar for a Mac that goes to sleep on schedule. The clamshell
-/// half of this module has read its answer since
-/// `APmsetThatRefusedIsNotASuccessTests`; this half could not, because **the
-/// port could not say it** — no fake could stand in a state the protocol has no
-/// word for, so no test of it could exist whatever anybody wrote.
+/// `IOPMAssertionCreateWithName` returns an `IOReturn`, and the port passes the
+/// answer on: otherwise a refused assertion would leave the engine setting
+/// `isActive`, writing «holding sleep» to the log and lighting the menu bar for
+/// a Mac that goes to sleep on schedule.
 ///
-/// What is fixed here is that: the port answers, the engine reads the answer,
-/// and the trail and the payload carry it. The hero and the panel tile draw the
+/// The port answers, the engine reads the answer, and the trail and the payload
+/// carry it. The hero and the panel tile draw the
 /// payload's flag as a notice (`KeepAwakeNotice.assertionRefused`).
-///
-/// Guards: bf6c973b (a refused IOKit assertion counted as held).
 final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
 
     private var store: NamespacedStore!

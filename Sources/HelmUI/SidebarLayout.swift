@@ -3,23 +3,18 @@ import Foundation
 /// What the sidebar looks like, as a value the person owns.
 ///
 /// `ModuleCategory` seeds the first arrangement and then stops deciding
-/// anything. Somebody who moves Disk into a section they called «Каждый день»
-/// has said something the enum cannot represent, and the enum is not the place
-/// to argue with them.
+/// anything: a section somebody arranged by hand says something the enum
+/// cannot represent.
 ///
-/// **Every registry module appears exactly once**, enforced by `reconciled(with:)`
-/// on every read rather than on write. The bytes were written by a build that is
-/// not necessarily this one: modules arrive and leave between versions, and a
-/// layout that loses one makes it unreachable — the sidebar and Settings are the
-/// only two places that can switch a module back on, and both draw from here.
+/// **Every registry module appears exactly once**, enforced on every read by
+/// `reconciled(with:)`. A layout that loses a module makes it unreachable: the
+/// sidebar and Settings are the only places that switch a module back on
+/// (Architecture/TheSettingsWindow.md § The sidebar is an arrangement).
 ///
-/// **A default name is not a name.** A seeded section is called «Питание»,
-/// «Power» or «電源» depending on the language, translated from its seed through
-/// eight languages of a string catalog. Storing the displayed string would freeze
-/// whichever language was current the day it was stored — and renaming one
-/// section would quietly stop the others following the app. So a section keeps
-/// its seed *and* an optional hand-set name, and clearing the name translates
-/// again.
+/// **A default name is not a name.** A seeded section is named from its seed in
+/// the app's language; storing the displayed string would freeze the language
+/// of the day it was stored. So a section keeps its seed and an optional
+/// hand-set name, and clearing the name translates again.
 public struct SidebarLayout: Equatable, Codable, Sendable {
 
     public struct Section: Equatable, Codable, Sendable, Identifiable {
@@ -97,17 +92,15 @@ public struct SidebarLayout: Equatable, Codable, Sendable {
         for (id, category) in registry where !seen.contains(id) {
             let seed = category.rawValue
             if let index = sections.firstIndex(where: { $0.seed == seed }) {
-                // The section seeded for the category wins even when it is empty:
-                // the seed is the person's own mark of where the category lives,
-                // and an empty section they kept is a home they chose to keep.
+                // The section seeded for the category wins even when it is
+                // empty: an empty section the person kept is a home they chose.
                 sections[index].modules.append(id)
             } else if let index = Self.sectionHoldingMost(of: category, in: sections, categoryOf: categoryOf) {
                 sections[index].modules.append(id)
             } else {
-                // No section is seeded for the category and no module of it is
-                // placed anywhere, so there is no neighbour to join. A module
-                // with nowhere to go is a module they cannot switch on; put the
-                // section back rather than inventing a home for it.
+                // No section is seeded for the category and none holds one of
+                // its modules. A module with nowhere to go cannot be switched
+                // on, so the seeded section comes back.
                 sections.append(Section(id: "seed.\(seed)", seed: seed, name: nil, modules: [id]))
             }
             seen.insert(id)
@@ -118,14 +111,11 @@ public struct SidebarLayout: Equatable, Codable, Sendable {
     /// The index of the section holding the most modules of `category`, or nil
     /// when none holds one.
     ///
-    /// **The category comes from the registry (`categoryOf`) and never from a
-    /// section's seed or name**, so a hand-made section the person filled with
-    /// the category's modules is found as readily as a seeded one, whatever it
-    /// is called in whichever language.
-    ///
-    /// **A tie goes to the first section in layout order.** Top-first is the
-    /// order the sidebar is read in, and it depends on nothing but the stored
-    /// order, so every read of the same bytes picks the same section.
+    /// The category comes from the registry (`categoryOf`), never from a
+    /// section's seed or name, so a hand-made section filled with the
+    /// category's modules is found as readily as a seeded one. A tie goes to
+    /// the first section in layout order, so every read of the same bytes picks
+    /// the same section.
     private static func sectionHoldingMost(of category: ModuleCategory, in sections: [Section],
                                            categoryOf: [String: ModuleCategory]) -> Int? {
         var best: (index: Int, count: Int)?
@@ -194,9 +184,8 @@ public struct SidebarLayout: Equatable, Codable, Sendable {
             // already there and the reading order is unchanged.
             copy.sections[index - 1].modules.append(contentsOf: leaving.modules)
         } else {
-            // Rehoming forward: they were *above* the section receiving them, so
-            // appending would turn the sidebar upside down for the person who
-            // arranged it. They go in front.
+            // Rehoming forward: they were above the receiving section, so they
+            // go in front, keeping the reading order.
             copy.sections[0].modules.insert(contentsOf: leaving.modules, at: 0)
         }
         return copy

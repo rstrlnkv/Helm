@@ -5,24 +5,19 @@ import HelmRuntime
 ///
 /// A basket row is usually its own removal, and for a cache it is not: the row
 /// names `~/Library/Caches` and the removal is everything inside it. The
-/// expansion happens **here**, at the last moment before the engine, and not in
-/// `DiskEngine.trash`, because it is the claim the advice made that is being
-/// kept — an engine that expanded every basketed folder into its children would
-/// be inventing an intention for somebody who picked a folder off the ring.
+/// expansion happens **here** and not in `DiskEngine.trash`, because it keeps
+/// the claim the advice made; a folder picked off the ring means the folder.
 ///
-/// The gate is untouched by any of this. `DiskEngine.trash` still runs
-/// `UserFileScope.partition` over whatever comes out of here (ARCHITECTURE.md § Removal), and
-/// `HelmTrash` still re-reads the path before each move (ARCHITECTURE.md § The gates).
+/// The gate is untouched by this. `DiskEngine.trash` still runs
+/// `UserFileScope.partition` over whatever comes out of here (Architecture/Removal.md § Removal), and
+/// `HelmTrash` still re-reads the path before each move (Architecture/TheGates.md § The gates).
 public enum DiskRemovalPlan {
 
     /// What the confirmation is about.
     ///
-    /// **Taken from the plan, never from the basket.** The two are different for
-    /// a cache row by design — one row, and everything inside the folder it names
-    /// — so a dialog built from the basket asked about «1 item» and named a
-    /// folder that is still there afterwards, while the press sent its four
-    /// children. A confirmation that misstates its own act is the worst string in
-    /// a module that deletes things, and this one understated.
+    /// **Taken from the plan, never from the basket.** The two differ for a
+    /// cache row by design (one row, everything inside the folder it names), and
+    /// a confirmation must not misstate its own act.
     public struct Question: Equatable, Sendable {
         /// Exactly what the engine will be handed, in the order it will be.
         public let paths: [String]
@@ -45,16 +40,14 @@ public enum DiskRemovalPlan {
 
     /// The question the person is answering.
     ///
-    /// The paths are `targets` itself — the very list the press hands over, not a
-    /// second walk of the basket that agrees with it today. The size comes from
-    /// the advice's own total, which `DiskAdvice` derives from those same targets.
+    /// The paths are `targets` itself, the very list the press hands over. The
+    /// size comes from the advice's own total, which `DiskAdvice` derives from
+    /// those same targets.
     ///
-    /// **A folded bucket never leaves here**, and this is the last place that can
-    /// say so: the flag stops at this question, and everything past this point is
-    /// strings — `UserFileScope` and `HelmTrash` see a path that is the path a
-    /// real file named `…` would have, and cannot tell the aggregate from the
-    /// file. The row and the basket refuse it first; this is the step between the
-    /// two of them and the engine.
+    /// **A folded bucket never leaves here**, the last place that can tell:
+    /// past this point is strings, and `UserFileScope` and `HelmTrash` see the
+    /// path a real file named `…` would have. The row and the basket refuse it
+    /// first.
     public static func question(basket: [DiskEntry], advice: [DiskAdvice]) -> Question {
         let named = basket.filter { !$0.isFolded }
         return Question(paths: targets(basket: named.map(\.path), advice: advice),
@@ -76,13 +69,11 @@ public enum DiskRemovalPlan {
     /// The advice that survives a removal, each shrunk to what is left of it.
     ///
     /// `~/Library/Caches` has hundreds of children and some belong to running
-    /// applications, so a cache emptied *in part* is the normal outcome rather
-    /// than the exception — and the row that stays behind has to say what is
-    /// still there. An advice whose targets are all gone goes with them.
+    /// applications, so a cache emptied *in part* is the normal outcome, and
+    /// the row that stays behind says what is still there.
     ///
     /// One rule covers both shapes: an advice is spent when every target is.
-    /// For everything but a cache that is the single target `path`, which is
-    /// the rule the view model carried before targets existed.
+    /// For everything but a cache that is the single target `path`.
     public static func remaining(_ advice: [DiskAdvice], after removed: [String]) -> [DiskAdvice] {
         guard !removed.isEmpty else { return advice }
         return advice.compactMap { item in

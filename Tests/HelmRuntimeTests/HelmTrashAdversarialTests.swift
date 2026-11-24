@@ -9,12 +9,10 @@ import HelmTestSupport
 /// contradicts, a symlink, a name with a tab in it, and a path that merely
 /// *looks* like a child of another.
 ///
-/// **Nothing here reaches anybody's Trash.** `remove` takes the move as a
-/// parameter, so these hand it a closure that really moves the item — into a
-/// bin inside the test's own temporary tree. A closure that recorded the path
-/// and left the file alone would make half this file unwritable: a folder and
-/// something inside it would both "succeed", and the rules that exist for that
-/// case could not fail whatever anybody asserted.
+/// Nothing here reaches anybody's Trash: the move is a closure that really
+/// moves the item into a bin inside the test's own temporary tree. A closure
+/// that only recorded the path would let a folder and something inside it both
+/// "succeed", and the rules for that case could not fail.
 final class HelmTrashAdversarialTests: XCTestCase {
 
     private var root: URL!
@@ -51,14 +49,11 @@ final class HelmTrashAdversarialTests: XCTestCase {
 
     // MARK: - A port that contradicts the disk
 
-    /// **A port may lie, and the loop reads its answer against the disk.** The
-    /// "it went with its parent" branch forgives an `NSFileNoSuchFileError` —
-    /// but only when the file really is gone *and* this batch is what took its
-    /// parent. A port that reports the file missing while it is still sitting
-    /// there (an XPC helper answering for a volume that has since remounted,
-    /// a stubbed port in the wrong state) must not have that forgiveness: the
-    /// file is on the disk, and telling the person it moved is the one answer
-    /// they cannot check.
+    /// A port may lie, so the loop reads its answer against the disk. The "it
+    /// went with its parent" branch forgives `NSFileNoSuchFileError` only when
+    /// the file really is gone and this batch took its parent. Telling the
+    /// person a file moved while it is still there is the one answer they
+    /// cannot check.
     func testAPortThatCallsAFileMissingWhileItIsStillThereIsRefusedNotForgiven() throws {
         let parent = try write("Ghost/inside/child.bin", in: root, bytes: 40_000).path
         let folder = root.appendingPathComponent("Ghost").path
@@ -98,17 +93,10 @@ final class HelmTrashAdversarialTests: XCTestCase {
         XCTAssertLessThan(result.freedBytes, 120_000, "the folder was counted once per spelling")
     }
 
-    /// The normalisation used to strip **one** trailing separator, and a path
-    /// joined onto a root that already ended in one has two. `…/Ghost` and
-    /// `…/Ghost//` then survived the dedupe as two different strings; the first
-    /// was moved, the second met `NSFileNoSuchFileError`, and the "went with its
-    /// parent" branch fired — because `"…/Ghost/".hasPrefix("…/Ghost" + "/")` is
-    /// true. One folder came back as two removals, and `removed.count` is what
-    /// the banner counts.
-    ///
-    /// The stated rule is "one outcome per path, whatever the caller handed
-    /// over", and it is stated because `removed` and `failed` are read as one
-    /// description of one batch.
+    /// A path joined onto a root that already ended in a separator has two.
+    /// Stripping only one would let `…/Ghost//` survive the dedupe and come back
+    /// as a second removal "with its parent", and `removed.count` is what the
+    /// banner counts. One outcome per path, whatever the caller handed over.
     func testAPathCarryingADoubledSeparatorIsStillOneOutcome() throws {
         try write("Ghost/inside.bin", in: root, bytes: 60_000)
         let folder = root.appendingPathComponent("Ghost").path
@@ -123,11 +111,9 @@ final class HelmTrashAdversarialTests: XCTestCase {
 
     // MARK: - Looks like a child, is not one
 
-    /// The ancestry test is a raw prefix comparison, and `…/Ghost` is a prefix
-    /// of `…/Ghostly.bin`. The separator is what makes it an ancestry test
-    /// rather than a spelling coincidence — without it, a stale row whose name
-    /// merely starts with a folder's name would be reported as moved when it
-    /// was never there at all.
+    /// `…/Ghost` is a string prefix of `…/Ghostly.bin`. The separator makes the
+    /// ancestry test one: without it, a stale row whose name merely starts with
+    /// a folder's name would be reported as moved.
     ///
     /// The folder is asserted removed first, so the refusal below is a refusal
     /// and not the whole batch failing.
@@ -148,13 +134,11 @@ final class HelmTrashAdversarialTests: XCTestCase {
 
     // MARK: - Order
 
-    /// The batch's answer may not depend on the order it arrived in. `DiskEngine`
-    /// hands over a `Set`, whose order is a hash seed — the same basket gave two
-    /// different answers on two runs before the sort went in.
+    /// The batch's answer does not depend on the order it arrived in: `DiskEngine`
+    /// hands over a `Set`, whose order is a hash seed.
     ///
-    /// Asserted absolutely as well as across the two orders: two wrong answers
-    /// of equal size satisfy a comparison, so each order is also checked against
-    /// what the tree really holds.
+    /// Each order is also checked against what the tree holds, because two
+    /// equal wrong answers satisfy a comparison.
     func testAFolderAndAFileInsideItAnswerTheSameInEitherOrder() throws {
         var answers: [HelmTrash.Result] = []
         for (index, parentFirst) in [true, false].enumerated() {
@@ -183,12 +167,10 @@ final class HelmTrashAdversarialTests: XCTestCase {
 
     // MARK: - A symlink
 
-    /// A leftover is often a symlink — a helper's cache linked into an app's
-    /// own folder. Trashing the link frees the link, and what it points at is
-    /// still there taking up the space. Claiming the target's bytes would tell
-    /// somebody they got back 400 KB that never left the disk, and walking the
-    /// link would also mean a link pointing outside the scope was measured
-    /// through a gate it never passed.
+    /// A leftover is often a symlink. Trashing the link frees the link; what it
+    /// points at still takes the space. Weighing through the link would claim
+    /// bytes that never left the disk, measured past a gate the target never
+    /// passed.
     func testTrashingASymlinkFreesTheLinkAndNotWhatItPointsAt() throws {
         try write("Real/big.bin", in: root, bytes: 400_000)
         let target = root.appendingPathComponent("Real")
@@ -212,9 +194,8 @@ final class HelmTrashAdversarialTests: XCTestCase {
     // MARK: - Names
 
     /// The name is the caller's key back into its own list: a row is matched to
-    /// its outcome by string equality. So whatever a filename is made of, the
-    /// string that comes back is the string that went in — the normalisation
-    /// that strips a trailing separator must not touch anything else.
+    /// its outcome by string equality, so the string that comes back is the
+    /// string that went in.
     func testEveryKindOfNameComesBackSpelledExactlyAsItWentIn() throws {
         let names = ["two words.bin", "с кириллицей.bin", "emoji 🗑️.bin",
                      "with\ta tab.bin", ".hidden", "trailing dot.", "dash-—-dash.bin",
@@ -244,9 +225,8 @@ final class HelmTrashAdversarialTests: XCTestCase {
         XCTAssertEqual(moved, [])
     }
 
-    /// A basket the gate turned away entirely still produces its refusals. The
-    /// refusals have to arrive with the batch or the count and the list
-    /// disagree, and "the batch" can be nothing but refusals.
+    /// A basket the gate turned away entirely still reports its refusals, or
+    /// the count and the list disagree.
     func testABatchThatIsNothingButRefusalsStillReportsThem() {
         let result = remove([], outOfScope: ["/System/Library/CoreServices", "/usr/bin/env"])
 

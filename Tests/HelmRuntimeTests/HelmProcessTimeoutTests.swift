@@ -27,15 +27,13 @@ final class HelmProcessTimeoutTests: XCTestCase {
     /// from outside that the signal arrived. (`sleep` runs in the background and
     /// `wait` is interruptible, so the trap fires at the signal rather than
     /// after the sleep.)
-    func testTheChildIsTerminatedNotAbandoned() {
+    func testTheChildIsTerminatedNotAbandoned() async {
         let dir = scratchDirectory("process-timeout")
         let marker = dir.appendingPathComponent("terminated")
         let script = "trap 'echo gone > \"\(marker.path)\"; exit 0' TERM; sleep 30 & wait"
         _ = HelmProcess.run("/bin/sh", ["-c", script], timeout: 0.3)
         // The trap needs a moment to write after the signal lands.
-        for _ in 0..<200 where !FileManager.default.fileExists(atPath: marker.path) {
-            usleep(10_000)
-        }
+        await waitUntilReached("the trap wrote its marker") { FileManager.default.fileExists(atPath: marker.path) }
         XCTAssertTrue(FileManager.default.fileExists(atPath: marker.path),
                       "the deadline passed and the child was left running")
     }

@@ -10,12 +10,11 @@ enum BatteryGuard {
     /// that came back incomplete on a Mac that has one.
     ///
     /// So the mains reading decides it, exactly as it does for `powerCondition`
-    /// and the app rules — both of which were dead on every desktop while nil was
-    /// read as one thing. Not plugged in and no reading is battery power with an
+    /// and the app rules. Not plugged in and no reading is battery power with an
     /// unknown charge, and letting the Mac sleep is this module's safe failure;
     /// plugged in, there is no battery to run out and the guard has nothing to
-    /// say. Answering «no veto» to both left the only thing that ever ends an
-    /// unattended session switched off whenever the dictionary was short.
+    /// say. «No veto» to both would switch off the only thing that ends an
+    /// unattended session whenever the dictionary is short.
     ///
     /// `enabled` is asked here as it is above: a person who switched the floor off
     /// did not ask for it back on the strength of a failed read.

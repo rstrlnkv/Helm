@@ -6,12 +6,8 @@ import XCTest
 /// For the last word the answer is free: it was typed a moment ago with the
 /// current layout active, so the conversion goes from that one to the other.
 /// A selection carries no such history — it may have been typed yesterday, by
-/// somebody else, in either layout. Deciding by what happens to be active is
-/// how "select ghbdtn while Russian is on and press the key" ended up doing
-/// nothing at all: Helm asked for Russian → English, and `g` is not on the
-/// Russian keyboard, so the translation declined and the app stayed silent.
-///
-/// Guards a past defect: a selection was converted in one direction only (fix commit `c5a26610`).
+/// somebody else, in either layout: `ghbdtn` selected while Russian is on has
+/// no Russian → English reading, since `g` is not on the Russian keyboard.
 final class TwoWayConversionTests: XCTestCase {
 
     /// Latin gibberish while Russian is active: the forward direction has

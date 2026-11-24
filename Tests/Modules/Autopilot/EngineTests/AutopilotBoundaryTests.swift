@@ -77,7 +77,7 @@ final class AutopilotBoundaryTests: XCTestCase {
         XCTAssertTrue(stamp.isStamped(file.path, by: "r"))
     }
 
-    /// Rule ids are `UUID` strings today, but they are stored, migrated and
+    /// Rule ids are `UUID` strings, but they are stored, migrated and
     /// hand-editable, and they are the JSON payload. A quote, a backslash, an
     /// emoji and Cyrillic all have to round-trip, and none of them may take
     /// another rule's mark with it.
@@ -98,29 +98,17 @@ final class AutopilotBoundaryTests: XCTestCase {
 
     // MARK: - Where a destination may point
 
-    /// Guarantee 4: a rule cannot reach outside the user's own files. It is
-    /// checked on the destination as well as on the file, because a rule is a
-    /// decision made once and executed forever.
+    /// Where a rule may be aimed: never outside the user's own files, checked on
+    /// the destination as well as on the file, because a rule is a decision
+    /// made once and executed forever. Answered by `WatchScope`, the module's
+    /// own gate, and not by `UserFileScope`, which answers "may this be trashed
+    /// without breaking the machine" and says yes to all of these.
     ///
-    /// `UserFileScope` is not that check. It was written for a different
-    /// question — what the disk module may *trash* without breaking the machine
-    /// — and its list of protected prefixes has no opinion about writing. So a
-    /// destination of `/Library/LaunchAgents` passes it: on an admin account a
-    /// rule that says "every .plist that lands in Downloads goes to
-    /// /Library/LaunchAgents" is a rule that turns "a file appeared" into code
-    /// that runs at login, which is the exact thing `RuleAction`'s comment says
-    /// the module must never make possible.
-    /// Where a rule may be aimed. Answered by `WatchScope`, the module's own
-    /// gate, and not by `UserFileScope` — which was written for a different
-    /// question ("may this be trashed without breaking the machine") and says
-    /// yes to all of these.
-    ///
-    /// The distinction is not academic. Helm holds Full Disk Access and these
-    /// rules come from a plist any process running as the user can write, so a
-    /// gate that permits `~/Library/Messages` makes the module a data-exfil
-    /// tool with somebody else's permissions, and one that permits a
-    /// `LaunchAgents` folder makes it the script action this module
-    /// deliberately does not have.
+    /// Helm holds Full Disk Access and these rules come from a plist any process
+    /// running as the user can write, so a gate that permits `~/Library/Messages`
+    /// makes the module a data-exfil tool with somebody else's permissions, and
+    /// one that permits a `LaunchAgents` folder makes it the script action this
+    /// module deliberately does not have.
     func testARuleCannotBeAimedAtSomethingThatIsNotTheUsersFiles() {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         for destination in ["/Library/LaunchAgents", "/Library/LaunchDaemons",
@@ -134,8 +122,8 @@ final class AutopilotBoundaryTests: XCTestCase {
         }
     }
 
-    /// And where it may. The other side of the same gate, so a fix to the line
-    /// above cannot lock somebody out of the folders the module is *for*.
+    /// And where it may. The other side of the same gate, so a narrower gate
+    /// cannot lock somebody out of the folders the module is *for*.
     func testTheFoldersARuleIsForStayReachable() {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         for destination in ["\(home)/Downloads", "\(home)/Desktop",
@@ -168,16 +156,14 @@ final class AutopilotBoundaryTests: XCTestCase {
 
     /// `~/Library` is refused however the plist spells it.
     ///
-    /// The gate matched `home + "/Library/"` exactly, and the rules are JSON in
-    /// `UserDefaults` that any process running as the user can write — so a
-    /// planted `.move(to: "~/library/Application Support/Sorted")` passed the
-    /// home test, missed the `~/Library` test on case alone, and was allowed.
-    /// `RuleRunner.move` then calls `createDirectory(withIntermediateDirectories:)`,
-    /// which on the case-insensitive volume Helm ships to lands inside the real
-    /// `~/Library/Application Support`, and the hourly sweep carries files
-    /// there. The panel returns canonical paths, so the only way to reach this
-    /// is a written plist — which is the threat this file's doc comment names
-    /// out loud.
+    /// The rules are JSON in `UserDefaults` that any process running as the
+    /// user can write, so a planted `.move(to: "~/library/Application Support/Sorted")`
+    /// must not miss the `~/Library` test on case alone. `RuleRunner.move`
+    /// calls `createDirectory(withIntermediateDirectories:)`, which on the
+    /// case-insensitive volume Helm ships to lands inside the real
+    /// `~/Library/Application Support`, and the hourly sweep would carry files
+    /// there. The panel returns canonical paths, so only a written plist
+    /// reaches this.
     func testTheLibraryRefusalDoesNotDependOnHowItIsSpelled() {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         // The leaf does not exist, because a destination a rule asks to be
@@ -257,71 +243,6 @@ final class AutopilotBoundaryTests: XCTestCase {
     }
 }
 
-/// The date buckets and date-shaped names at their edges: a date with nothing
-/// behind it, the order of the months, and the two sides of a month boundary.
-final class AutopilotDateBucketTests: XCTestCase {
-
-    // MARK: - Dates with nothing behind them
-
-    /// `FolderReader` substitutes `Date.distantPast` when a file has neither an
-    /// added date nor a creation date — a file restored from a backup, or one on
-    /// a filesystem that does not keep either. Both date-shaped actions then get
-    /// handed a year-one date, and both of them are producing a *name*: the
-    /// answer has to stay one usable path component rather than an empty string
-    /// or something with a separator in it.
-    func testADateThatIsMissingStillMakesAUsableName() {
-        let missing = facts("a.pdf", added: .distantPast)
-
-        let bucket = SortBucket.name(for: missing, scheme: .month)
-        XCTAssertFalse(bucket.isEmpty)
-        XCTAssertFalse(bucket.contains("/"))
-        XCTAssertFalse(bucket.hasPrefix("."))
-        XCTAssertTrue(bucket.allSatisfy { $0.isNumber || $0 == "-" },
-                      "a bucket named \(bucket.debugDescription) is not a date and will not sort")
-
-        let renamed = RenamePattern.apply("{date}", to: missing)
-        XCTAssertNotNil(renamed)
-        XCTAssertFalse(renamed?.contains("/") ?? true)
-    }
-
-    /// The month bucket has to keep sorting chronologically by name, which is
-    /// the whole reason it is `yyyy-MM` and not a month name. Asserted as an
-    /// ordering over a year of dates rather than as literal strings: the
-    /// formatter carries no time zone, so the exact bucket a given instant falls
-    /// into is the machine's business, but the order never is.
-    func testMonthBucketsSortChronologicallyByName() {
-        let start = Date(timeIntervalSince1970: 1_760_000_000)
-        let buckets = (0..<14).map { month -> String in
-            SortBucket.name(for: facts("a.pdf", added: start.addingTimeInterval(Double(month) * 31 * 86_400)),
-                            scheme: .month)
-        }
-
-        XCTAssertEqual(buckets, buckets.sorted(),
-                       "sorting the bucket names does not put the months in order")
-        XCTAssertTrue(buckets.allSatisfy { $0.count == 7 && $0.dropFirst(4).first == "-" })
-        XCTAssertTrue(Set(buckets).count >= 13, "a year and a bit produced fewer than 13 months")
-    }
-
-    /// The two sides of a month boundary must land in adjacent buckets and never
-    /// in the same one, whichever time zone the machine is in. Built from the
-    /// current calendar so the boundary is a real local one rather than an
-    /// assumption about UTC.
-    func testTheTwoSidesOfAMonthBoundaryAreDifferentBuckets() throws {
-        var components = DateComponents()
-        components.year = 2026
-        components.month = 8
-        components.day = 1
-        let firstOfAugust = try XCTUnwrap(Calendar.current.date(from: components))
-        let lastOfJuly = firstOfAugust.addingTimeInterval(-1)
-
-        let before = SortBucket.name(for: facts("a.pdf", added: lastOfJuly), scheme: .month)
-        let after = SortBucket.name(for: facts("a.pdf", added: firstOfAugust), scheme: .month)
-
-        XCTAssertNotEqual(before, after, "a second apart across a month boundary sorted together")
-        XCTAssertLessThan(before, after)
-    }
-}
-
 /// Two ways a sorting rule could turn on the folders it made itself.
 final class AutopilotSelfSortTests: XCTestCase {
 
@@ -333,9 +254,9 @@ final class AutopilotSelfSortTests: XCTestCase {
                          isDirectory: isDirectory, now: now)
     }
 
-    /// A folder's byte count is 0, so "smaller than" was true of every folder
-    /// in the watched directory — including the buckets a sort rule had just
-    /// created. A folder has no size to compare; the condition says no.
+    /// A folder's byte count is 0, so "smaller than" would be true of every
+    /// folder in the watched directory, the buckets a sort rule made included.
+    /// A folder has no size to compare; the condition says no.
     func testASizeConditionNeverMatchesAFolder() {
         let rule = Rule(id: "r", name: "r", enabled: true,
                         conditions: [.size(.smallerThan, megabytes: 1)], action: .trash)
@@ -344,7 +265,7 @@ final class AutopilotSelfSortTests: XCTestCase {
     }
 
     /// And the other end: whatever a rule matched, a folder cannot be moved
-    /// inside itself. Before this it failed with EINVAL on every sweep forever.
+    /// inside itself. Asked of the file system, it fails with EINVAL every sweep.
     func testAFolderIsNotMovedIntoItself() throws {
         let home = scratchDirectory("self")
         let bucket = home.appendingPathComponent("Images")

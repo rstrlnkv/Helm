@@ -2,36 +2,23 @@ import Foundation
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// **A launchd job Helm could not read is offered for one-click bulk deletion, on
-/// the strength of its file name.**
+/// **A launchd job Helm could not read is not offered for bulk deletion on the
+/// strength of its file name.**
 ///
-/// `LeftoversScanner.launchItems` reads each job with
+/// `readPlist` is nil for every reason a file resists being read:
+/// `PropertyListFile.dictionary(atPath:followingLink:)` answers nil for a corrupt
+/// plist, a truncated one, one whose root is an array, one the process may not
+/// open, a pipe, and one over `PropertyListFile.byteCeiling`. Read as «this job
+/// has no `Program`», that would make `targetAlive = false`, and a job that
+/// points at nothing is a leftover — ticked by «Select all» and trashed.
 ///
-///     LaunchAgentReader.read(plist: files.readPlist(url)?.raw ?? [:], path: url.path)
+/// The scanner's rule is that **anything whose owner cannot be identified**
+/// stays put, and a file whose contents could not be read is the plainest case.
 ///
-/// and `readPlist` is nil for every reason a file resists being read:
-/// `NSDictionary(contentsOf:)` answers nil for a corrupt plist, for a truncated
-/// one, for a plist whose root is an array rather than a dictionary, and for one
-/// the process may not open. `?? [:]` turns all of that into «this job has no
-/// `Program`», the next line turns *that* into `targetAlive = false`, and a job
-/// that points at nothing is a leftover — ticked by «Select all», counted in the
-/// batch, and moved to the Trash.
-///
-/// The scanner's own documentation is the argument for calling this a defect
-/// rather than a judgement call: «the rules err on the side of leaving things
-/// alone: anything Apple's, anything in a system location, anything whose owner is
-/// still installed, and **anything whose owner cannot be identified** stays put».
-/// A file whose contents could not be read is the plainest case of an owner that
-/// cannot be identified, and it is the one case the rule does not cover — because
-/// the unreadability is spent one line before the rule runs.
-///
-/// The distinction that has to survive the fix is in the second test: a plist that
+/// The distinction that has to survive is in the second test: a plist that
 /// really *is* empty is a job launchd cannot load and a leftover Helm should
-/// offer. «I read it and there is nothing in it» and «I could not read it» are two
-/// facts, and `?? [:]` is where they became one.
-///
-/// The first test is the tester's and is **expected to fail** until the two are
-/// told apart.
+/// offer. «I read it and there is nothing in it» and «I could not read it» are
+/// two facts.
 final class APlistNobodyCouldReadTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
@@ -46,8 +33,7 @@ final class APlistNobodyCouldReadTests: XCTestCase {
             .first { $0.kind == .launchAgent }
     }
 
-    /// **The finding.** Nothing was read, and the row says «Leftover» with a tick
-    /// beside it.
+    /// **The guard.** Nothing was read, and the row is not a ticked «Leftover».
     func testAnAgentWhosePlistCouldNotBeReadIsNotOfferedForBulkDeletion() throws {
         let item = try XCTUnwrap(agent(named: "com.vendor.updater.plist", plist: nil),
                                  "precondition: the unreadable job is still listed, which it "
@@ -85,8 +71,7 @@ final class APlistNobodyCouldReadTests: XCTestCase {
     ///
     /// Not asserted as a defect — a job launchd itself would refuse to load is
     /// arguably rubbish worth clearing — but recorded, because it is the same
-    /// `nil`-means-two-things shape and a fix for the test above may well cover it.
-    /// If it does, this assertion is the one that says so.
+    /// `nil`-means-two-things shape.
     func testAProgramInAShapeTheReaderCannotTakeReadsAsNoProgramAtAll() throws {
         let item = try XCTUnwrap(agent(named: "com.vendor.updater.plist",
                                        plist: PlistData(["Label": "com.vendor.updater",

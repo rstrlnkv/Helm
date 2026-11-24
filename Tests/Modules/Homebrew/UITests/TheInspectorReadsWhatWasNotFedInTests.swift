@@ -4,18 +4,12 @@ import XCTest
 
 /// **The inputs `InspectorStateTests.swift` does not put in.**
 ///
-/// That file proves the ordinary shape of every branch. These are the values
-/// the branches were written against an assumption about: a `pinned` cask,
-/// which the row comment calls impossible; a name that is a formula on this Mac
-/// and a cask in the search results, which is the collision `BrewKey` exists
-/// for and which `testLookupIsByIdAndNotByName` only pins on the *installed*
-/// branch; and a package that is in `installed` and in `outdated` at once,
-/// where the two segments must answer with two different actions about one id.
-///
-/// The rule under all four: `InspectorState.of` is the only thing that decides
-/// what a button does, and every one of these inputs reaches it from a real
-/// `brew`.
-/// Kept: guards the reconcile gaps closed in ea433871 Guard the three inputs the inspector's own family never put in.
+/// That file proves the ordinary shape of every branch. These are the values a
+/// branch could assume away: a `pinned` cask; a name that is a formula on this
+/// Mac and a cask in the search results (the collision `BrewKey` exists for);
+/// a package in `installed` and in `outdated` at once; and a list that emptied.
+/// `InspectorState.of` alone decides what a button does, and every one of these
+/// inputs reaches it from a real `brew`.
 final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
 
     private let node = BrewPackage(name: "node", version: "26.8.2", isCask: false)
@@ -42,12 +36,9 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
     // MARK: - A pinned cask
 
     /// **`brew pin` being formulae-only is a fact about brew, not about this
-    /// type.** `BrewOutdatedParser` reads `pinned` out of the JSON
-    /// for whichever array it is in, so the day a cask carries it the value
-    /// arrives here. Refusing the upgrade is the safe answer either way — an
-    /// `Upgrade` button that brew answers with «…is pinned» is a button that
-    /// can only fail — so the judgement must be made on `pinned` alone and
-    /// never on «it is a cask, so it cannot be pinned».
+    /// type.** `BrewOutdatedParser` reads `pinned` for whichever array it is in,
+    /// and an `Upgrade` button brew answers with «…is pinned» can only fail, so
+    /// the refusal is made on `pinned` alone, never on «it is a cask».
     func testAPinnedCaskIsRefusedTheUpgradeToo() {
         let cask = OutdatedPackage(name: "figma", installed: "124.0", latest: "125.0",
                                    isCask: true, pinned: true)
@@ -62,11 +53,10 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
     // MARK: - The collision, on the search branch
 
     /// `docker` is a formula and a cask. The installed formula must not make the
-    /// *cask* under the section read as already here — the inspector would
-    /// offer to uninstall an application this Mac has never had. Read on
-    /// Установленные — any tab does, since a hit is `HomebrewViewModel.shownHits`
-    /// on every one of them and `PackageStanding.notInstalled` is the one place
-    /// that excludes by id.
+    /// *cask* under the section read as already here, or the inspector offers to
+    /// uninstall an application this Mac never had. Any tab does: a hit is
+    /// `HomebrewViewModel.shownHits` on each, and `PackageStanding.notInstalled`
+    /// is the one place that excludes by id.
     func testACaskHitIsNotAlreadyInstalledBecauseItsFormulaIs() {
         let formula = BrewPackage(name: "docker", version: "1.0.0", isCask: false)
         let hit = SearchHit(name: "docker", isCask: true)
@@ -80,8 +70,7 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
         XCTAssertEqual(s.version, "", "the cask took the installed formula's version")
     }
 
-    /// And the other way round, because a lookup by name is wrong in both
-    /// directions and a guard that only tries one of them proves half of it.
+    /// And the other way round: a lookup by name is wrong in both directions.
     func testAFormulaHitIsNotAlreadyInstalledBecauseItsCaskIs() {
         let cask = BrewPackage(name: "docker", version: "2.0.0", isCask: true)
         let hit = SearchHit(name: "docker", isCask: false)
@@ -97,11 +86,10 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
 
     // MARK: - One id, two segments
 
-    /// A package that is installed *and* outdated is in two lists at once, and
-    /// the id is the same string in both. Which segment is open decides what the
-    /// button does — Uninstall under Установленные, Upgrade under Обновления —
-    /// and the update itself is still named on the installed side, because the
-    /// row's dot and the inspector read one fact.
+    /// A package installed *and* outdated is in two lists under one id. The open
+    /// segment decides the button (Uninstall under Установленные, Upgrade under
+    /// Обновления), and the update is still named on the installed side, because
+    /// the row's dot and the inspector read one fact.
     func testOneIdInTwoListsAnswersWithTheSegmentsOwnAction() {
         guard let onInstalled = subject(state(.installed, node.id, installed: [node],
                                               outdated: [nodeOutdated]), "installed"),
@@ -125,32 +113,22 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
     // MARK: - A list that emptied rather than changed
 
     /// The three lists are replaced wholesale, and «replaced with nothing» is an
-    /// ordinary answer: the last package upgraded, a search for a word brew
-    /// knows nothing about. The selection is reconciled away by the view model,
-    /// but the state function is asked before and after that and must never
-    /// fall back to whatever row happens to be first.
-    ///
-    /// **`.nothingToSelect` and not `.nothingSelected`**: a list that emptied
-    /// has nothing to offer, and the invitation the second case draws is an
-    /// instruction nobody can follow. What this file is about is unchanged:
-    /// the lookup must not fall back to whatever row happens to be first, and
-    /// neither answer is a row.
+    /// ordinary answer. The state function is asked before and after the view
+    /// model reconciles the selection, and never falls back to whatever row is
+    /// first. It answers `.nothingToSelect`, not `.nothingSelected`: the
+    /// invitation the second draws is an instruction nobody can follow.
     func testASelectionIntoAnEmptiedListIsNothingSelectedInEverySegment() {
         XCTAssertEqual(state(.installed, node.id, installed: []), .nothingToSelect)
         XCTAssertEqual(state(.updates, nodeOutdated.id, outdated: []), .nothingToSelect)
         // Состояние has no inspector, so an id it once could have held is
-        // nothing there either (`InspectorStateDecisionsTests.testTheHealthSegmentHasNoInspector`).
+        // nothing there either.
         XCTAssertEqual(state(.health, "f:helm", hits: []), .nothingToSelect)
     }
 
-    /// The same, asked for an id that a *different* list holds — the shape a
-    /// selection standing across a segment switch would take if `installed`
-    /// and `outdated` shared one. `hits` is deliberately not this test's
-    /// concern any more: it is the one list every segment now shares on
-    /// purpose on the two package tabs
-    /// (`testAHitUnderTheSectionOffersInstallationOnUpdatesToo`,
-    /// `InspectorStateTests.swift`), so a hit resolving under a segment that is
-    /// not Установленные is the feature working rather than a collision.
+    /// The same, asked for an id that a *different* list holds: a selection
+    /// standing across a segment switch. `hits` is left out on purpose: it is
+    /// shared by both package tabs, so a hit resolving under another segment is
+    /// the feature (`testAHitUnderTheSectionOffersInstallationOnUpdatesToo`).
     func testASelectionFromAnotherSegmentsListIsNothingSelected() {
         // `node`'s id, asked of Установленные without `node` in its own
         // `installed` list — only `outdated` names it here.

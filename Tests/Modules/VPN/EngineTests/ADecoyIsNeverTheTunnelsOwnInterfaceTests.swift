@@ -5,49 +5,21 @@ import Foundation
 import XCTest
 @testable import Module_VPN_Engine
 
-/// **«The outermost `InterfaceName` wins» is implemented as «the shallowest one
-/// seen», and those differ when the tunnel's own line is not there.**
+/// **An `InterfaceName` inside an excluded route is never the tunnel's.**
 ///
-/// `VPNStatusParser` spends a paragraph on the seven `InterfaceName : en0` lines
-/// a configuration's excluded routes carry, and calls them the decoys: «A parser
-/// taking the first match answers `en0`, the verdict then compares `en0` against
-/// a primary interface of `utun8` and the page says «traffic is not going
-/// through the tunnel» on a Mac where it is: a false alarm in the one sentence
-/// this feature exists to get right.»
-///
-/// The walk it built answers the decoy anyway whenever the tunnel's own line is
-/// absent, because the winner is «the shallowest of whatever turned up» and a
-/// decoy that is the only candidate is the shallowest candidate. There is no
-/// state in `Reading` for «I saw interfaces, and none of them was the tunnel's»,
-/// so the function cannot say it.
-///
-/// **How the input arises.** `scutil` prints a dictionary's keys in order, and
-/// in the `IPv4` dictionary that order is `Addresses`, `ExcludedRoutes`,
-/// `InterfaceName`, `Router`, `ServerAddress` — the decoys come **before** the
-/// line that overrules them. So any `IPv4` dictionary that is populated as far
-/// as its excluded routes and no further is this input: a tunnel a moment past
-/// `Connected` whose `utunN` has not been filed yet, which is precisely the
-/// state the parser's caller already expects («a tunnel that is still coming up
-/// names no interface yet, and the next refresh asks again»). It is also what
-/// output cut short at any point inside `ExcludedRoutes` looks like.
-///
-/// **And the wrong answer is then permanent.** `VPNEngine.readInterfaces` caches
-/// a reading that is not nil for the whole life of the tunnel — it re-asks only
-/// while the answer is nil — so one transient read of `en0` is a tile that draws
-/// `en0`'s byte counters (which count since boot, the trap the design spec names
-/// by name) under a verdict of `.throughTunnel` whenever the default route is
-/// also `en0`. A green dot, a country, and a throughput figure, all about the
-/// interface the traffic is leaving the tunnel *by*.
-///
-/// Nil is the answer, and the caller is already written for it.
-///
-/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
+/// A configuration's excluded routes carry `InterfaceName : en0` lines, the
+/// decoys `VPNStatusParser` steps over. `scutil` prints the `IPv4` dictionary's
+/// keys in order (`Addresses`, `ExcludedRoutes`, `InterfaceName`, ...), so the
+/// decoys come before the line that overrules them, and a dictionary filled as
+/// far as its excluded routes and no further (a tunnel a moment past
+/// `Connected`, or output cut short) holds only decoys. «The shallowest one
+/// seen» would then answer a decoy. Nil is the answer: the caller re-asks while
+/// it is nil, but caches a non-nil reading for the life of the tunnel, so one
+/// decoy would draw `en0`'s since-boot counters under «through the tunnel».
 final class ADecoyIsNeverTheTunnelsOwnInterfaceTests: XCTestCase {
 
-    /// The control, and it is the committed fixture's own shape: with the
-    /// tunnel's line present the decoys are stepped over. Run first so the
-    /// assertion below cannot be satisfied by a parser that has stopped reading
-    /// `InterfaceName` at all.
+    /// The control: with the tunnel's line present the decoys are stepped over,
+    /// so the test below cannot pass on a parser that reads no `InterfaceName`.
     func testTheTunnelsOwnLineStillWinsOverTheDecoys() throws {
         let reading = try XCTUnwrap(VPNStatusParser.reading(in: """
         Connected
@@ -69,9 +41,8 @@ final class ADecoyIsNeverTheTunnelsOwnInterfaceTests: XCTestCase {
                        "precondition: the decoys are not being stepped over at all")
     }
 
-    /// **The finding.** The same dictionary, cut off before the tunnel's own
-    /// line, and the parser answers the interface the traffic leaves *around*
-    /// the tunnel by.
+    /// The same dictionary, cut off before the tunnel's own line, names no
+    /// interface.
     func testAReadingWithOnlyDecoysInItNamesNoInterface() {
         let reading = VPNStatusParser.reading(in: """
         Connected

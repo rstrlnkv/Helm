@@ -7,16 +7,12 @@ import HelmTestSupport
 ///
 /// `DuplicatesEngine.init`'s `settings:` defaults to
 /// `DuplicatesSettings.guardOfScanSettings`, which is `com.helm.app /
-/// settings-seal` in the **person's** login keychain. Eight constructions here
-/// took that default. None of them asks the guard anything today — `find` and
-/// `trash` never reach `storedKeepPolicy()` — so nothing was written; what they
-/// were was one refactor away from writing, with no way for the suite to notice,
-/// which is what `ATestNamesTheKeychainPortsItBuildsOverTests` exists to stop.
+/// settings-seal` in the **person's** login keychain. A construction that takes
+/// the default is one refactor away from writing there
+/// (`ATestNamesTheKeychainPortsItBuildsOverTests`).
 ///
-/// `SealKeyProbe` rather than a fourth hand-rolled port: it is
-/// `HelmTestSupport`'s, it spends first use exactly once the way
-/// `KeychainSealKey` does, and it records the thread it was asked on. A test that
-/// wants a keychain which will not answer asks for `SilentSealKey` instead —
-/// those are two ports, not a flag on one, because no keychain turns into the
-/// other mid-run.
+/// `SealKeyProbe` spends first use exactly once the way `KeychainSealKey` does,
+/// and records the thread it was asked on. A test that wants a keychain which
+/// will not answer asks for `SilentSealKey` instead — two ports, not a flag on
+/// one, because no keychain turns into the other mid-run.
 func suiteSealGuard() -> SettingGuard { SettingGuard(keys: SealKeyProbe()) }

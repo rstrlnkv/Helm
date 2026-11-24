@@ -2,11 +2,9 @@ import Foundation
 import XCTest
 @testable import Module_Disk_Engine
 
-/// The tile said 40 GB free on a disk Finder reported 90 GB free on: the engine
-/// read `volumeAvailableCapacity`, which on APFS leaves purgeable space out.
-/// These tests hold the choice between the readings, through a fake port that
-/// carries every reading the real one does.
-/// Past defect: fixed in commit 4ce355a9.
+/// Free space is the figure Finder shows: `volumeAvailableCapacity` leaves
+/// purgeable space out on APFS. These tests hold the choice between the
+/// readings, through a fake port that carries every reading the real one does.
 final class FreeSpaceIsWhatFinderShowsTests: XCTestCase {
 
     private let gb = 1_000_000_000
@@ -56,3 +54,6 @@ final class FreeSpaceIsWhatFinderShowsTests: XCTestCase {
         XCTAssertTrue(DiskEngine(capacity: FakeCapacity(volumes: [readout]), trashing: neverTrashes).volumes().isEmpty)
     }
 }
+
+/// The move of a volume-only test: it must never be reached.
+let neverTrashes: @Sendable (URL) throws -> Void = { _ in XCTFail("a volume test reached the move") }

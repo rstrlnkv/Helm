@@ -15,7 +15,7 @@ enum LaunchpadMenuAction: Equatable {
 
 /// **The menu of a tile, the window's background and a category block's large icon, as a value** with no AppKit in it: the panel pops it as an `NSMenu`
 /// (`LaunchpadNSMenu`) on a right-click or a Control-click, and VoiceOver's "show menu" action pops the same one. SwiftUI's own context menu is not
-/// used: it owns the `NSMenu` and rebuilds its items on every render of the hosting view, which starved an open menu for seconds.
+/// used: it owns the `NSMenu` and rebuilds its items on every render of the hosting view, which starves an open menu.
 ///
 /// An app's menu: Hide (Show in the Hidden card, which has no Move), "Move to category" with the app's own category as the undo on top
 /// (disabled while the app is not moved) and every category under it, the one the app is in now checked, "Others" last; Show in Finder and

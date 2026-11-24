@@ -9,12 +9,9 @@ import HelmRuntime
 public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///
-    /// It reaches disk in shapes nothing would flag if they disagreed: the
-    /// `module.uninstaller.*` keys of a store, the directory `ScanJournal` names after
-    /// it, and the removal attributed to it in the log. `UninstallerDescriptor.id`
-    /// is built from this rather than repeating it, so the two spellings are
-    /// one. **The string itself never changes** — it names folders and stored
-    /// settings that are already on people's machines.
+    /// It names stored keys, the `ScanJournal` directory and the log's removals,
+    /// and `UninstallerDescriptor.id` is built from it. The string never changes:
+    /// it names folders and settings already on people's machines.
     public static let moduleID = "uninstaller"
 
     private let home: URL
@@ -25,17 +22,13 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private let extensions: SystemExtensionPort
     private let fullDiskAccess: FullDiskAccessPort
     private let store: NamespacedStore
-    /// The one mutable field without a lock, and main-actor confinement is what
-    /// makes the `@unchecked Sendable` above true of it; the others are under
-    /// `watchLock` and `openedWorkerLock`. `activate` and `deactivate` are called
-    /// from `ModuleHost`, which is `@MainActor`, and `setWatchingTrash` is called
-    /// only by the `@MainActor` model.
+    /// The one mutable field without a lock: main-actor confinement makes the
+    /// `@unchecked Sendable` true of it. Its callers (`ModuleHost`, the model)
+    /// are `@MainActor`.
     private var watcher: FolderWatcher?
-    /// The two live facts behind the Trash-offer switch, and the lock is because
-    /// neither of them arrives on the main actor: the watcher answers on its own
-    /// queue, and the Trash read happens inside a sweep off the cooperative pool.
-    /// `nil` means "no answer yet" in both, which `TrashWatch.state` reads as
-    /// nothing-known-against-it rather than as a failure.
+    /// The two live facts behind the Trash-offer switch, under a lock because
+    /// neither arrives on the main actor. `nil` is "no answer yet", which
+    /// `TrashWatch.state` does not read as a failure.
     private let watchLock = NSLock()
     private var watcherStarted: Bool?
     private var trashReadable: Bool?
@@ -52,11 +45,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private var previewed: [String: Set<String>] = [:]
 
 
-    /// `store` holds three things: which trashed apps the person has already
-    /// declined to clean up after, the Trash-offer switch, and the remembered sort
-    /// order. Defaulted to memory so the tests that build this engine
-    /// directly keep working — and a fresh record per test is what a test wants
-    /// anyway.
+    /// `store` holds the declined trashed apps, the Trash-offer switch and the
+    /// sort order. It defaults to memory, a fresh record per test.
     public init(home: URL, apps: AppLister, fs: FileSystemPort, trash: TrashPort,
                 running: RunningAppsPort,
                 extensions: SystemExtensionPort = NoSystemExtensions(),
@@ -80,19 +70,15 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// Watches `~/.Trash` so that an app dragged there while Helm is running is
     /// noticed then, and not at the next launch.
     ///
-    /// The watcher belongs to the engine and the judgement stays with it: the
-    /// host is told "look again", never "an app arrived", and it learns that
-    /// through `trashChanged`. The host's sweep at launch and when the module is
-    /// switched on stays — it is the only thing that catches an app deleted while
-    /// Helm was closed.
+    /// The judgement stays with the engine: the host is told "look again"
+    /// through `trashChanged`, never "an app arrived". The host's own sweep at
+    /// launch is what catches an app trashed while Helm was closed.
     public func activate() {
         startWatchingTrashIfAsked()
     }
 
-    /// Off unless somebody turned it on. A window that opens unasked, a second
-    /// after a drag, is not something to hand people without their say-so — so the
-    /// default is silence, and the switch on the module's Leftovers tab is what
-    /// changes it.
+    /// Off unless the person turned it on: a window that opens unasked after a
+    /// drag needs their say-so. The switch is on the Leftovers tab.
     private static let watchKey = "watchTrash"
 
     private var watchingTrash: Bool { store.bool(Self.watchKey, default: false) }
@@ -123,8 +109,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             self.trashChanged()
         }
         watcher = made
-        // The stream's own answer, which used to be thrown away — so this method
-        // logged «trash offer switched on» whether or not anything was watching.
+        // The stream's own answer: «on» is true only if something is watching.
         made.watch([trash]) { [weak self] started in
             guard let self else { return }
             self.watchLock.withLock { self.watcherStarted = started }
@@ -135,12 +120,10 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         }
     }
 
-    /// Whether Helm can read the Trash, from a read that really happened — a `nil`
-    /// out of `trashedApps()` is a refused `contentsOfDirectory`, not a probe of
-    /// the grant. Recorded when the switch goes on, because the person is owed the
-    /// answer at the moment they press it, and by every sweep after that, which is
-    /// what notices the grant being taken away or given back. Logged on every
-    /// refusal rather than on a change: each one is an offer that did not happen.
+    /// Whether Helm can read the Trash, from a read that really happened (a nil
+    /// `trashedApps()` is a refused listing, not a probe of the grant). Recorded
+    /// when the switch goes on and by every sweep, which notices the grant going
+    /// and coming back. Logged on every refusal: each is an offer that did not happen.
     private func recordTrashReadable(_ readable: Bool) {
         watchLock.withLock { trashReadable = readable }
         guard !readable else { return }
@@ -167,10 +150,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         return list
     }
 
-    /// Sizes for the list already on screen — which is why the list arrives as
-    /// an argument. Asking `installedApps()` for it again re-read the app
-    /// folders and re-parsed every `Info.plist` seconds after `listApps()` did,
-    /// for a list the caller was already holding.
+    /// Sizes for the list already on screen, passed in so the app folders and
+    /// every `Info.plist` are not read a second time.
     public func appSizes(_ list: [InstalledApp]) async -> [String: Int] {
         let sizes = await HelmActivity.phase("uninstaller.appSizes") {
             await offTheCooperativePool { self.apps.appSizes(list) }
@@ -183,11 +164,10 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     private static let sortOrderKey = "sortOrder"
 
-    /// The remembered order, read from the store every time it is asked — so a
-    /// value written by anything else, or by an older build, is judged when it
-    /// is used and there is nothing cached to go stale across an activation.
-    /// Not sealed: it steers no unattended work, and a seal read while a view is
-    /// built is a keychain dialog on every install.
+    /// Read from the store on every ask, so a value written elsewhere is judged
+    /// when used and nothing cached goes stale. Not sealed: it steers no
+    /// unattended work, and a seal read while a view is built is a keychain
+    /// dialog on every install.
     public var sortOrder: AppSortOrder {
         AppSortOrder(stored: store.string(Self.sortOrderKey, default: ""))
     }
@@ -197,26 +177,22 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         store.set(order.rawValue, for: Self.sortOrderKey)
     }
 
-    /// The most bundles one read looks up, and the longest it may take. Each
-    /// lookup is a millisecond or so on an indexed Mac; the ceilings are for a
-    /// Mac where Spotlight is busy reindexing and one call takes far longer.
-    /// What the read did not reach comes back as `unread`, which is not "no record".
+    /// The most bundles one read looks up, and the longest it may take: the
+    /// ceilings are for a Mac where Spotlight is reindexing. What the read did
+    /// not reach comes back as `unread`, which is not "no record".
     public static let lastOpenedCeiling = 1_000
     public static let lastOpenedDeadline: TimeInterval = 5
 
     /// Off the pool, bounded, and a date later than now is dropped: a clock that
     /// was wrong when the app was opened is not evidence of when it was.
     ///
-    /// **The deadline bounds the whole read, not the gap between two lookups.**
-    /// Checked only before each call it let one hung Spotlight call carry the
-    /// read as long as it hung (0.2 s asked, 2.01 s taken). The lookups run on a
-    /// worker of their own and the caller is answered at the deadline with what
-    /// the worker had by then; the call in flight and everything behind it read
-    /// as `unread`. A hung call cannot be interrupted, so the worker is told to
-    /// stop and ends as soon as that call returns, never later than that. While
-    /// one is still stuck a new read starts no second worker behind it — Refresh
-    /// pressed again would otherwise stack a thread per press — and answers
-    /// everything as `unread`, which is what the screen already draws for it.
+    /// The deadline bounds the whole read, not the gap between two lookups, so
+    /// one hung Spotlight call cannot carry it. The lookups run on a worker of
+    /// their own and the caller is answered at the deadline with what the worker
+    /// had; the rest reads as `unread`. A hung call cannot be interrupted, so the
+    /// worker stops when it returns. While one is stuck, a new read starts no
+    /// second worker (Refresh would stack a thread per press) and answers
+    /// everything as `unread`.
     public func lastOpened(_ list: [InstalledApp],
                            deadline: TimeInterval = UninstallerEngine.lastOpenedDeadline,
                            ceiling: Int = UninstallerEngine.lastOpenedCeiling,
@@ -235,8 +211,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                         guard let date = apps.lastOpened(path: path), date <= now else { return nil }
                         return date
                     }
-                    // Given back **before** the caller is answered: a read made
-                    // straight after this one returns finds the worker free.
+                    // Given back before the caller is answered, so a read made
+                    // straight after finds the worker free.
                     self.releaseOpenedWorker()
                     read.answer()
                 }
@@ -274,26 +250,17 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         // Prefix globs overlap the exact candidates they generalise; the same
         // directory must not be listed (or trashed) twice.
         var seenPaths: Set<String> = []
-        // The candidates built from the app's bundle id are judged by facts that
-        // can refute a claim on one and so refute the claim on all of them, so
-        // they are gathered once per scan rather than per candidate — and
-        // only when there is something to judge, since an app with no leftovers
-        // should not pay for a directory listing.
+        // The ownership facts are gathered once per scan, and only when there is
+        // something to judge: an app with no leftovers pays for no listing.
         var ownership: LeftoverOwnership?
-        // Refusals are the point of this gate, so they are counted by path (a
-        // glob and the exact candidate it generalises reach the same entry).
+        // Counted by path: a glob and the exact candidate it generalises reach
+        // the same entry.
         var refusedPaths: Set<String> = []
         for c in LeftoverMatcher.candidates(bundleID: bundleID, appName: appName, library: library) {
             var urls: [URL] = c.isGlob ? fs.glob(c.url) : (fs.exists(c.url) ? [c.url] : [])
-            // A candidate built from the display name is a different guess with
-            // a different default — `defaultSelection` leaves it unticked — and
-            // carries no id for these rules to weigh. **Not a check that was
-            // skipped: applying it here deletes the guesses**, since `claims`
-            // asks where the bundle id sits in the name and a display name holds
-            // none — measured, and the log then calls them another app's
-            // (`ANameIsAGuessNotAnOwnershipQuestionTests`). Whether another
-            // installed app is *called* this is a different question, and
-            // nothing on this path reads the installed display names.
+            // A candidate built from the display name arrives unticked and holds
+            // no id for these rules to weigh: `claims` would refuse every one of
+            // them (`ANameIsAGuessNotAnOwnershipQuestionTests`).
             if !c.matchedByName, !urls.isEmpty {
                 let owner = ownership ?? makeOwnership(bundleID: bundleID)
                 ownership = owner
@@ -316,9 +283,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     /// The per-scan ownership facts, read once each: the app folders' listing,
     /// the bundles declaring this id, and LaunchServices for what neither of
-    /// those can see. Its answers are remembered for the length of the scan —
-    /// five folders of entries ask about the same handful of ids, and each
-    /// question is a round trip to the system.
+    /// those can see. Its answers are remembered for the scan: the folders ask
+    /// about the same few ids, each a round trip to the system.
     private func makeOwnership(bundleID: String) -> LeftoverOwnership {
         LeftoverOwnership(
             bundleID: bundleID,
@@ -357,15 +323,11 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     /// Waits for a quit to have actually happened.
     ///
-    /// `quit` only *asks*. The caller then moves the app's bundle, and it used
-    /// to guess the gap with `Task.sleep(800ms)` in the view model — a number
-    /// where the answer was already available, since this engine holds the port
-    /// that can be asked. Too short and the bundle moves while the app still
-    /// runs: the process keeps going from the moved bundle and writes its
-    /// preferences on exit, so the leftovers an uninstall just removed come
-    /// back. Too long and everyone waits for an app that stopped in 50 ms.
+    /// `quit` only asks. A bundle moved while its app still runs gets its
+    /// preferences written back on exit, so the removed leftovers return; a fixed
+    /// sleep is either that or a needless wait.
     ///
-    /// **The deadline ends the wait, not the question.** An app that ignores a
+    /// The deadline ends the wait, not the question. An app that ignores a
     /// quit does not make this fail or throw; `trashPaths` asks whether the app
     /// still runs once this returns, and a batch still holding one moves nothing.
     func waitUntilGone(bundleID: String,
@@ -373,7 +335,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                       poll: TimeInterval = 0.05) async {
         let until = Date().addingTimeInterval(deadline)
         // Each poll is a blocking AppKit read: off the cooperative pool, the sleep
-        // between polls stays a suspension (ARCHITECTURE.md § Running applications).
+        // between polls stays a suspension (Architecture/RunningOtherPrograms.md § Running applications).
         while await offTheCooperativePool({ self.running.isRunning(bundleID: bundleID) }),
               Date() < until {
             try? await Task.sleep(nanoseconds: UInt64(poll * 1_000_000_000))
@@ -398,28 +360,21 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     private static let dismissedKey = "trashOfferDismissed"
 
-    /// One lock over read-judge-record of the dismissed set: the sweep's prune and
-    /// a cancel both read it, change it and write it back, and without this one
-    /// overwrites the other's change. Neither path suspends while holding it.
+    /// One lock over read-change-write of the dismissed set, so the sweep's prune
+    /// and a cancel cannot overwrite each other. Neither suspends while holding it.
     private let dismissedLock = NSLock()
 
     /// What is sitting in the Trash that left something behind, minus what has
-    /// already been declined.
-    ///
-    /// The order is the order the Trash listed, which is the order the window draws
-    /// its groups in.
+    /// already been declined, in the order the Trash listed, which the window draws.
     public func trashedAppLeftovers() async -> [TrashedAppLeftovers] {
         await offTheCooperativePool { self.trashedAppLeftoversSync() }
     }
 
     private func trashedAppLeftoversSync() -> [TrashedAppLeftovers] {
-        // Judged here rather than by whoever asks. The engine is the module's one
-        // authority on what it will offer, and a host that had the answer and was
-        // trusted to keep quiet about it is a rule enforced in the wrong place.
+        // Judged here, not by the caller: the engine is the one authority on
+        // what it offers.
         guard watchingTrash else { return [] }
-        // The read is the reverse channel: a refusal here is the switch's own row
-        // being wrong, and it used to arrive as «the Trash holds no apps» — the
-        // same silence a working sweep of an empty Trash gives.
+        // A refused read is the switch's row being wrong, not an empty Trash.
         guard let found = apps.trashedApps() else {
             recordTrashReadable(false)
             HelmLog.shared.info(UninstallerEngine.moduleID,
@@ -427,11 +382,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             return []
         }
         recordTrashReadable(true)
-        // Four different outcomes used to look identical from outside — no
-        // window — and one of them is a defect while three are the feature
-        // working: the Trash holds no app, the app was declined before, another
-        // copy is still installed, or it left nothing behind. Counts only; a
-        // bundle id names somebody's habits.
+        // Four outcomes give no window, and the log tells them apart: no app in
+        // the Trash, declined before, another copy installed, nothing left
+        // behind. Counts only; a bundle id names somebody's habits.
         var stillInstalled = 0, nothingLeft = 0
         dismissedLock.lock()
         var dismissed = Set(store.stringArray(Self.dismissedKey))
@@ -448,12 +401,10 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         let offerable = TrashOfferMemory.toOffer(found: found, dismissed: dismissed)
         let groups = offerable
             .compactMap { app -> TrashedAppLeftovers? in
-                // Two copies of one app share a bundle id, and dragging one to the
-                // Trash leaves the other installed with its support files in use.
-                // `installedPaths` is what makes that answerable: LaunchServices
-                // reports every copy it has ever seen — five stale build copies of
-                // Helm itself, on this machine — and `InstalledLocation` is the
-                // positional rule that keeps only the ones that count.
+                // Two copies of one app share a bundle id, and trashing one leaves
+                // the other using its support files. LaunchServices reports every
+                // copy it has seen, stale builds included; `InstalledLocation`
+                // keeps only the ones that count.
                 guard apps.installedPaths(forBundleID: app.bundleID).isEmpty else {
                     stillInstalled += 1
                     return nil
@@ -475,17 +426,12 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         return groups
     }
 
-    /// The switch, read and written through the engine so that turning it on
-    /// starts the watcher in the same breath — a setting that only takes effect
-    /// at the next launch is a setting people report as broken.
+    /// The switch, written through the engine so turning it on starts the
+    /// watcher at once rather than at the next launch.
     ///
-    /// Turning it on also emits `trashChanged`, which makes the host sweep: the
-    /// person just asked to be told about apps in the Trash, and the ones already
-    /// sitting there are the first thing they meant.
-    /// Turning it on also asks the one question the whole feature rests on — can
-    /// this process read the Trash — because the person is owed the answer at the
-    /// moment they press the switch and not at whichever sweep comes next. One
-    /// `contentsOfDirectory`, on a press.
+    /// Turning it on also asks whether the Trash is readable, so the person gets
+    /// the answer at the press, and emits `trashChanged`, so the host sweeps the
+    /// apps already there.
     public func setWatchingTrash(_ on: Bool) {
         guard on != watchingTrash else { return }
         store.set(on, for: Self.watchKey)
@@ -514,38 +460,22 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     /// The same orphan hunt the page runs, started by the timer.
     ///
-    /// **No `ScanRoot` gate here, and that is not an oversight.** The other
-    /// unattended scan reads a folder the person chose and Helm stored, so a
-    /// rewritten plist would redirect it. This one walks `orphanScanDirs` under
-    /// `~/Library` — a list in the source, not a setting — so there is nothing
-    /// stored for anybody to point somewhere else.
+    /// No `ScanRoot` gate: this walks `orphanScanDirs` under `~/Library`, a list
+    /// in the source, so nothing stored can point it elsewhere.
     ///
-    /// Every leftover is an item: what acting on the finding removes is each
-    /// path, and the bytes are its own. Unlike duplicates there is no survivor
-    /// to keep — the app these belong to is already gone.
+    /// Every leftover is an item, with its own bytes; there is no survivor to
+    /// keep, since the owning app is gone.
     public func backgroundScan() async -> ScanReport? {
-        // `FileSystemPort.children` answers "empty" for missing **and** for
-        // unreadable — its own doc says so — and `installedBundleIDs` has no
-        // error channel at all. Neither matters on the page, where a person is
-        // looking at the result and knows whether they granted the permission.
-        // With nobody watching, both failures wear the shape of an answer, and
-        // the two directions are not equally bad.
+        // `FileSystemPort.children` answers empty for missing and for unreadable,
+        // and `installedBundleIDs` has no error channel. With nobody watching,
+        // both failures look like answers. A failed installed list is worse than
+        // an unread folder: `OrphanDetector.isOrphan` would then make every
+        // bundle-id-shaped folder under `~/Library` a removal candidate.
         //
-        // Reporting nothing found is a lie about a folder nobody read. Reporting
-        // everything found is worse: `OrphanDetector.isOrphan` treats "not among
-        // the installed apps" as evidence, so an `installedBundleIDs()` that
-        // failed is indistinguishable from a Mac with no apps — and then every
-        // bundle-id-shaped folder under `~/Library` becomes a removal candidate,
-        // unattended.
-        //
-        // A local install drops (ARCHITECTURE.md § Signing and grants) the Full Disk Access
-        // grant **every time**, so an unreadable Library is the ordinary state
-        // after an update, not an exotic one.
-        //
-        // So the grant is asked first, before a single listing. Without it the
-        // leftovers under `~/Library/Containers` cannot be read, and a Library
-        // that lists at the top can still be missing the folders that matter;
-        // only `.granted` goes on, and no answer is not one.
+        // A local install drops the Full Disk Access grant every time
+        // (Architecture/Release.md § Signing and grants), so the grant is asked
+        // first, before a single listing; only `.granted` goes on, and no answer
+        // is not one.
         let access = await offTheCooperativePool { [fullDiskAccess] in fullDiskAccess.fullDiskAccess() }
         let refused = access != .granted
         let wasRefused = watchLock.withLock { () -> Bool in
@@ -603,25 +533,18 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             .sorted { $0.totalBytes > $1.totalBytes }
     }
 
-    /// Trashes a batch of paths, which may hold app bundles, with
-    /// the one question that must not be carried from the scan asked again first.
+    /// Trashes a batch of paths, which may hold app bundles, asking first who
+    /// is running.
     ///
-    /// The review screen's `running` flag is `ScanResult.runningNow`, read when
-    /// the review was built, and it is stale in both directions by the time
-    /// anybody presses anything: an app the person has since quit still shows
-    /// as running, and an app started since then does not, so on the flag alone
-    /// its bundle would be moved out from under a live process — which then
-    /// writes its preferences on exit and puts back the leftovers this batch has
-    /// just taken. That is the family
-    /// (ARCHITECTURE.md § The gates) of a local flag standing in for a live external fact. The flag is not
-    /// made fresher; the question is asked where the answer is used, and again
-    /// after the quitting — which is itself long enough to have changed it.
+    /// The review's `running` flag (`ScanResult.runningNow`) is stale in both
+    /// directions by the press, and a bundle moved from under a live process
+    /// gets its leftovers written back on exit: a local flag standing in for a
+    /// live fact (Architecture/TheGates.md § The gates). So the question is asked
+    /// where the answer is used, and again after the quitting.
     ///
-    /// **The deadline ends the wait, not the question.** Inside the quit loop's
-    /// deadline per app, one comes back up while the batch quits the others — a
-    /// login item, a helper, a double click — or it ignores the quit and
-    /// `waitUntilGone` gives up. macOS moves a running app's bundle without a
-    /// word, so neither refuses anything of its own accord.
+    /// The deadline ends the wait, not the question: an app can come back up
+    /// while the others quit, or ignore the quit, and macOS moves a running
+    /// app's bundle without a word.
     public func trashPaths(_ paths: [String],
                            quittingRunningApps mayQuit: Bool = false) async -> UninstallResult {
         await trashPaths(paths, quittingRunningApps: mayQuit, stillAllowed: nil)
@@ -632,8 +555,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private func trashPaths(_ paths: [String], quittingRunningApps mayQuit: Bool,
                             stillAllowed: (@Sendable () -> Bool)?) async -> UninstallResult {
         // Off the pool: this reads each bundle's `Info.plist`, and the running
-        // port reaches AppKit through the main thread (ARCHITECTURE.md § Running
-        // applications).
+        // port reaches AppKit through the main thread
+        // (Architecture/RunningOtherPrograms.md § Running applications).
         let upNow = await offTheCooperativePool { self.runningApps(among: paths) }
         switch UninstallPlan.verdict(running: upNow, mayQuit: mayQuit) {
         case .proceed:
@@ -644,12 +567,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             for app in apps {
                 HelmLog.shared.info(UninstallerEngine.moduleID, "force quit \(Redact.app(app.bundleID))")
                 await offTheCooperativePool { self.quit(bundleID: app.bundleID, force: true) }
-                // Returns when the app is actually gone. It used to be the view
-                // model's business, decided there from the same stale flag.
                 await waitUntilGone(bundleID: app.bundleID)
             }
-            // `mayQuit: false` because the quit has been spent, which is
-            // `verdict`'s existing rule at a later moment.
+            // `mayQuit: false`: the quit has been spent.
             let stillUp = await offTheCooperativePool { self.runningApps(among: paths) }
             if case .refuse(let up) = UninstallPlan.verdict(running: stillUp, mayQuit: false) {
                 return held(up, because: "still up after the quit")
@@ -664,8 +584,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     // MARK: - Removing one app for another module
 
-    /// How long the preview waits for the bundle's size. A big bundle takes seconds to walk
-    /// (Xcode, 3 s) and the card is not worth that wait: it says no size instead of a wrong one.
+    /// How long the preview waits for the bundle's size. A big bundle takes seconds to walk,
+    /// and the card says no size rather than wait or show a wrong one.
     static let appSizeDeadline: TimeInterval = 2
 
     /// The verdict, as the Uninstaller would give it now: the folder, link and scope rules
@@ -733,9 +653,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// removal this module has — so the gate and the "is it running" question are the ones a batch
     /// from the page meets, the second asked again after the quit loop.
     ///
-    /// **The verdict is asked first and again here, not trusted from a list read earlier**, and again
-    /// after a quit (`stillAllowed`): the app can have been swapped, linked or started since the card.
-    /// **The bundle goes alone and first.** A batch of both would send the leftovers to the Trash while
+    /// The verdict is asked here, not trusted from a list read earlier, and again after a quit
+    /// (`stillAllowed`): the app can have been swapped, linked or started since the card.
+    /// The bundle goes alone and first. A batch of both would send the leftovers to the Trash while
     /// macOS refused the bundle, and the app would be back with its data gone. The leftovers are the
     /// ones the preview counted and the fresh scan still finds — nothing that appeared after the card.
     public func removeApp(_ candidate: AppRemovalCandidate,
@@ -760,9 +680,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     }
 
     /// Nothing moved, and the applications that are why. One result for both
-    /// refusals because they are one outcome — a leftover carries no link back
-    /// to the app it was found for, so there is no "the rest of it"
-    /// (`UninstallPlan.verdict`).
+    /// refusals: a leftover carries no link back to its app, so there is no
+    /// "the rest of it" to move (`UninstallPlan.verdict`).
     private func held(_ apps: [UninstallPlan.RunningApp], because why: String) -> UninstallResult {
         // Counts and tags: a bundle id names somebody's habits.
         HelmLog.shared.info(UninstallerEngine.moduleID, "batch held: \(apps.count) app(s) running, "
@@ -772,10 +691,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     /// The applications in a batch that are up at this moment.
     ///
-    /// The id comes from the bundle's own `Info.plist` — the same read that ties
-    /// a refusal to the app owning a system extension — because a path is what a
-    /// batch carries and the port answers about ids. A batch of leftovers alone
-    /// asks nothing of anybody.
+    /// The id comes from the bundle's own `Info.plist`: a batch carries paths and
+    /// the port answers about ids. A batch of leftovers alone asks nothing.
     private func runningApps(among paths: [String]) -> [UninstallPlan.RunningApp] {
         paths.filter(Self.isAppBundle).compactMap { path in
             guard let id = WorkspaceAppLister.bundleID(forAppAt: path),
@@ -792,28 +709,17 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// Shared trashing core: `HelmTrash` runs the batch — the order, the sizing,
     /// the classification and the refusals — and this supplies the two things
     /// only the uninstaller knows.
-    ///
-    /// It used to be a copy of that loop, and the copy was missing what only
-    /// shows up on a tree: a file basketed with the folder above it was reported
-    /// as neither moved nor refused, two names for one file were counted twice
-    /// over, and which of those happened depended on the order the paths
-    /// arrived in.
     private func trashSync(_ paths: [String]) -> UninstallResult {
-        // Same rule as the leftovers engine: the plan is built in a view model,
-        // and a view model is not allowed to be the last word on what gets
-        // deleted. A candidate that escaped its folder stops here.
+        // A view model built the plan and is not the last word on what is
+        // deleted: a candidate that escaped its folder stops here.
         let (allowed, refused) = RemovableScope.partition(paths, home: home.path)
-        // Only queried when a bundle actually fails to move — the lookup shells
-        // out. **A silence is never stored here**: this holds an answer, so nil
-        // means "ask again". One `systemextensionsctl` that failed to run was
-        // remembered as «this Mac has no extensions» for the rest of the batch, and
-        // every bundle after it lost the one reason on that sheet a person can act
-        // on. Asking again costs one shell-out per *failing* app bundle.
+        // Asked only when a bundle fails to move, since the lookup shells out.
+        // A silence is never stored: nil means "ask again", so one failed
+        // `systemextensionsctl` does not read as «no extensions» for the rest of
+        // the batch.
         var extensionHosts: Set<String>?
-        // What macOS said, verbatim, per path. `HelmTrash` classifies the error
-        // and logs the sentence, and the sentence does not cross its `Result`;
-        // the failure sheet draws it under the classified reason as the evidence
-        // behind it, so this module keeps it as it goes past.
+        // What macOS said, verbatim, per path. It does not cross `HelmTrash`'s
+        // `Result`, and the failure sheet draws it under the classified reason.
         var saidByPath: [String: String] = [:]
         let result = HelmTrash.remove(
             allowed: allowed, outOfScope: refused, module: Self.moduleID,
@@ -826,10 +732,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 // never contains "com.vendor.x".
                 guard let id = WorkspaceAppLister.bundleID(forAppAt: path) else { return false }
                 guard let hosts = extensionHosts ?? self.extensions.activeExtensionHosts() else {
-                    // The tool did not answer, so nothing here knows whether an
-                    // extension is why macOS refused. It claims neither way and
-                    // says so: `HelmTrash` keeps macOS's own classification, and
-                    // the log is where a missing button is explained.
+                    // The tool did not answer: claim neither way, keep macOS's
+                    // own classification, and say so in the log.
                     HelmLog.shared.warn(Self.moduleID,
                                         "the extension list could not be read, so a refusal "
                                         + "cannot be blamed on a live extension")
@@ -837,9 +741,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 }
                 extensionHosts = hosts
                 // The separator matters: "at.obdev.littlesnitchmini" starts with
-                // "at.obdev.littlesnitch" and is a different product. Without the
-                // dot, the user is sent to turn off someone else's extension while
-                // the real reason — no permission — is hidden.
+                // "at.obdev.littlesnitch" and is a different product, whose
+                // extension the person would be sent to turn off.
                 return hosts.contains { id == $0 || id.hasPrefix($0 + ".") }
             },
             trashing: { url in

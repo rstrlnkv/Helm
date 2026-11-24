@@ -1,15 +1,13 @@
+import HelmTestSupport
 import HelmRuntime
 import XCTest
 @testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
-/// **Past defect: the older list could be the one stored.** Each gesture sent its
-/// list in a Task of its own, `offTheCooperativePool` runs those on the global
-/// concurrent queue, and so two quick edits raced for the engine's lock: the
-/// earlier full-list snapshot could land last and the later edit reverted after a
-/// reload. Saves now form one chain, each waiting for the one before.
+/// **The later of two quick edits is the list stored**: saves form one chain,
+/// each waiting for the one before (Architecture/Autopilot.md § How Autopilot's model reaches its engine).
 ///
-/// The old format is untouched, only the order of writes; its guard is
+/// The stored format is untouched, only the order of writes; its guard is
 /// `RuleOverwriteTests`.
 @MainActor
 final class TheLaterSaveLandsLastTests: XCTestCase {
@@ -24,15 +22,15 @@ final class TheLaterSaveLandsLastTests: XCTestCase {
 
         rvm.addFolder(at: NSHomeDirectory() + "/Downloads")
         // The first save has reached the engine and is held there.
-        while work.count("save") < 1 { try? await Task.sleep(nanoseconds: 1_000_000) }
+        await waitUntil("the first save reached the engine") { work.count("save") >= 1 }
         rvm.addFolder(at: NSHomeDirectory() + "/Documents")
         // Where the saves are not chained the second one arrives now; chained, it
-        // cannot, so a bounded wait stands for "had its chance".
-        for _ in 0..<50 where work.count("save") < 2 { try? await Task.sleep(nanoseconds: 2_000_000) }
+        // cannot, so a grace stands for "had its chance"; the control is the second save below.
+        await grace(0.1)
         work.releaseTheFirstSave()
-        while work.count("save") < 2 { try? await Task.sleep(nanoseconds: 1_000_000) }
+        await waitUntil("the second save reached the engine") { work.count("save") >= 2 }
         // The page re-reads after the last write; the reload is what ends the chain.
-        while work.count("readFolders") < 3 { try? await Task.sleep(nanoseconds: 1_000_000) }
+        await waitUntil("the page re-read after the last write") { work.count("readFolders") >= 3 }
 
         XCTAssertEqual(work.saved.map(\.count), [1, 2], "the premise: both saves reached the engine, in order")
         let stored = await work.readFolders()

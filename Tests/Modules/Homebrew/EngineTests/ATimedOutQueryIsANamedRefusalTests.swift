@@ -3,41 +3,32 @@ import XCTest
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
-/// The runner bounds a hung query now (`AQueryRunnerHasADeadlineTests`), but a
-/// deadline alone only moves the lie: every query used to hand whatever came
-/// back to a parser, so a timeout — empty stdout — became an empty list, and
-/// the page said "No packages installed." about a machine with 54 of them.
+/// The runner bounds a hung query (`AQueryRunnerHasADeadlineTests`), but a
+/// timeout's empty stdout handed to a parser would become an empty list, and
+/// the page would say "No packages installed." about a full Cellar.
 ///
 /// A list query that timed out answers *nothing*, which this codebase
 /// distinguishes from an empty answer: `nil` here, and the view model keeps the
 /// list it had.
-/// Kept: guards the defect fixed in 882fe986 fix(homebrew): the batch — a hang has a deadline, a press has an answer, a phase has a name.
 final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
 
     /// What `ShellProcessRunner` answers once its deadline has passed.
-    private final class TimedOutRunner: QueryOnlyRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _calls: [[String]] = []
-        var calls: [[String]] { lock.lock(); defer { lock.unlock() }; return _calls }
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) {
-            lock.lock(); _calls.append(args); lock.unlock()
-            return (HelmProcess.timedOutStatus, "")
-        }
+    private func timedOutRunner() -> ScriptedRunner {
+        ScriptedRunner(answers: [BrewAnswer([], HelmProcess.timedOutStatus, "")])
     }
 
     func testAListThatTimedOutIsNotAnEmptyMachine() {
-        XCTAssertNil(brewEngine(TimedOutRunner()).listInstalled(),
+        XCTAssertNil(brewEngine(timedOutRunner()).listInstalled(),
                      "a hung brew list came back as \"no packages installed\"")
     }
 
     func testAnOutdatedCheckThatTimedOutIsNotAllCurrent() {
-        XCTAssertNil(brewEngine(TimedOutRunner()).outdated(),
+        XCTAssertNil(brewEngine(timedOutRunner()).outdated(),
                      "a hung brew outdated came back as \"everything is up to date\"")
     }
 
     func testASearchThatTimedOutIsNotNoResults() {
-        XCTAssertNil(brewEngine(TimedOutRunner()).search("wget"),
+        XCTAssertNil(brewEngine(timedOutRunner()).search("wget"),
                      "a hung brew search came back as \"no results\"")
     }
 
@@ -45,10 +36,10 @@ final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
     /// bad name, catastrophic for a timeout: each half hangs for the same full
     /// deadline, so a fifty-name batch would park the queue for hours.
     func testATimedOutDescriptionsBatchIsNotSplitAndRetried() {
-        let runner = TimedOutRunner()
+        let runner = timedOutRunner()
         _ = brewEngine(runner).descriptions(names: ["a", "b", "c", "d"], isCask: false)
-        XCTAssertEqual(runner.calls.count, 1,
-                       "a timed-out desc batch was split and re-asked: \(runner.calls.count) calls, "
+        XCTAssertEqual(runner.queries.count, 1,
+                       "a timed-out desc batch was split and re-asked: \(runner.queries.count) calls, "
                        + "each of which hangs for the whole deadline again")
     }
 
@@ -57,7 +48,7 @@ final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
     /// keeps nothing.
     func testTheLogSaysWhatWasKeptOnlyForTheQueriesThatKeepOne() {
         tailTheLog()
-        let e = brewEngine(TimedOutRunner())
+        let e = brewEngine(timedOutRunner())
         _ = e.search("wget")
         _ = e.listInstalled()
         let lines = loggedLines("homebrew")
@@ -72,7 +63,7 @@ final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
     /// one out of `HomebrewEngine.outcome(of:)` turns this red.
     func testOutdatedConfigAndDescriptionsAreLoggedAsKept() {
         tailTheLog()
-        let e = brewEngine(TimedOutRunner())
+        let e = brewEngine(timedOutRunner())
         _ = e.outdated()
         _ = e.config()
         _ = e.descriptions(names: ["a"], isCask: false)

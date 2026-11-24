@@ -15,10 +15,8 @@ import HelmUI
 /// directions, so the placement changes once, at the travel's start or its end.
 ///
 /// **Held by origin, on both axes.** Measured: AppKit puts the buttons back at its own origins (below).
-/// A change of the titlebar's height moves the home on both axes (measured, in a window never shown, under
-/// the window toolbar the app wore before the header row moved into the card: the buttons stood at 19 and 19 from
-/// the corner instead of 9 and 9, held by no row). Assumed: that it does the same in a shown window and in
-/// full screen.
+/// A change of the titlebar's height moves the home on both axes (measured in a window never shown).
+/// Assumed: that it does the same in a shown window and in full screen.
 /// Every placement writes each button's origin: its home plus the offset. A write to a button's origin that
 /// this object did not make and that reaches it (`NSView.frameDidChangeNotification`, an origin other than
 /// the one written here) is taken for AppKit's: it becomes the new home and is answered in the same turn
@@ -64,9 +62,9 @@ final class ShellWindowButtons {
     /// The placement for `home`, the union of the three buttons where AppKit puts them in the content's
     /// coordinates. Nil when `home` is nil, empty, null or not a finite place: nothing is moved or hidden.
     /// `toolbar`: AppKit put them there with the window's toolbar on, `ShellGeometry.toolbarShift` further right
-    /// and down than without it. The place Helm holds them is the same either way (the window's own state, not the
-    /// stored look, since a flip moves the buttons a turn later): the offset is the flat one from the home
-    /// less the shift, so it is absolute.
+    /// and down than without it. The place Helm holds them is the same either way, judged by the window's own
+    /// state, never the stored look: the offset is the flat one from the home less the shift, so it is absolute.
+    /// The settings window wears its toolbar under both looks, so every home it reads is a toolbar one.
     nonisolated static func placed(home: CGRect?, rail: Bool, toolbar: Bool = false) -> Placement? {
         guard let home, !home.isNull, !home.isInfinite, home.width > 0, home.height > 0,
               [home.minX, home.minY, home.width, home.height].allSatisfy(\.isFinite) else { return nil }
@@ -97,10 +95,9 @@ final class ShellWindowButtons {
     /// Where AppKit puts each button, and where this object last put it, in the button's superview.
     private var homes: [ObjectIdentifier: CGPoint] = [:]
     /// Whether the window wore its toolbar when a home was read: AppKit's place differs by it (`placed`). Judged by
-    /// `toolbar?.isVisible`, never `toolbar != nil`: inside `window.toolbar = nil` AppKit moves the buttons back to
-    /// the flat place and posts the frame change while `window.toolbar` is still set, but `isVisible` is already false
-    /// (and true at the move inside `window.toolbar = toolbar`), measured on macOS 27.3; by `!= nil` a flat home was
-    /// taken for a toolbar one and the shift subtracted from it.
+    /// `toolbar?.isVisible`, never `toolbar != nil`: when a toolbar is assigned or removed, AppKit moves the buttons
+    /// and posts the frame change while `window.toolbar` still holds the old value, but `isVisible` already
+    /// answers the new state. The settings window assigns its toolbar once and keeps it under both looks.
     private var homesUnderToolbar: [ObjectIdentifier: Bool] = [:]
     private var wanted: [ObjectIdentifier: CGPoint] = [:]
     private var isPlacing = false

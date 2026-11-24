@@ -2,29 +2,24 @@ import Foundation
 
 /// What a directory holds, as paths.
 ///
-/// Written twice, byte for byte, in the two engines that hunt for what an
-/// application left behind — `FileSystemLeftovers.children` and
-/// `FMFileSystem.children`. It sits beside `FileWeight` because the two are
-/// always used together: list a `~/Library` folder, then weigh what came back.
+/// Shared by the two engines that hunt for what an application left behind
+/// (`FileSystemLeftovers.children`, `FMFileSystem.children`). Beside
+/// `FileWeight`, because the two are used together: list a `~/Library` folder,
+/// then weigh what came back.
 public enum DirectoryListing {
 
     /// What one reading of a directory found — or that there was no reading.
     ///
     /// **Two answers for three facts.** `children(of:)` folds «nothing is in it»,
     /// «nothing is there» and «this process may not read it» into one empty array,
-    /// and only the first two of those lead to the same finding. The third is a
-    /// permission being reported as a fact about somebody's Mac: a scan says a
-    /// folder holds nothing when it never opened it, and every screen built on that
-    /// scan repeats the claim. It is the fold `exists(atPath:)` was taken
-    /// apart for one file over — `false` there meant `ENOENT` *and* `EACCES` — and
-    /// the repair is the same shape, a third answer nobody can mistake for the
-    /// other two.
+    /// and only the first two lead to the same finding. The third reports a
+    /// permission as a fact about somebody's Mac: a folder said to hold nothing
+    /// that was never opened. `exists(atPath:)` makes the same split for a file.
     ///
-    /// «Not there» stays folded into `.listed([])` on purpose, and that is not the
-    /// same compromise: both scanners ask about folders that need not exist — a
-    /// machine that has never run a sandboxed app has no `Group Containers` — and a
-    /// caller that wants to tell an absent folder from an empty one is asking about
-    /// a file, which is `exists`'s question and not this one.
+    /// «Not there» stays folded into `.listed([])` on purpose: both scanners ask
+    /// about folders that need not exist (no `Group Containers` on a Mac that has
+    /// never run a sandboxed app), and telling an absent folder from an empty one
+    /// is `exists`'s question.
     public enum Contents: Equatable, Sendable {
         /// The directory opened, and these are its entries — hidden ones included,
         /// and empty for a directory that holds nothing or is not there at all.
@@ -79,12 +74,9 @@ public enum DirectoryListing {
 
     /// The directory's entries as full URLs, hidden ones included.
     ///
-    /// A missing directory is empty rather than an error: both scanners ask
-    /// about folders that need not exist — a machine that has never run a
-    /// sandboxed app has no `Group Containers` — and "not there" and "nothing
-    /// in it" lead to the same finding. A directory that would not *open* is
-    /// empty here too, which is the fold `contents(of:)` exists to undo: a caller
-    /// that concludes anything from an empty answer asks that one instead.
+    /// Empty for a missing directory, and also for one that would not *open*:
+    /// a caller that concludes anything from an empty answer asks
+    /// `contents(of:)` instead.
     public static func children(of url: URL) -> [URL] {
         (try? FileManager.default.contentsOfDirectory(atPath: url.path))?
             .map { url.appendingPathComponent($0) } ?? []

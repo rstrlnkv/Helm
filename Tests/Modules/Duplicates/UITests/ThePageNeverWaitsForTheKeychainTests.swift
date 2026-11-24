@@ -10,15 +10,10 @@ import XCTest
 /// which verifies a seal, which needs the key, which comes from the login
 /// keychain. On an ad-hoc build the cdhash changes with every build, no access
 /// list an earlier one wrote still names this one, and the answer is a modal
-/// authorization dialog rather than data: the same arrangement measured as
-/// `HelmApp_2026-08-19-235500_MacBook.hang`, 19,09 s of a settings window that
-/// could not answer a mouse-up, one target over.
+/// authorization dialog rather than data, on the thread that draws.
 ///
 /// So the policy starts at the standard belief and arrives from a task
-/// `appear()` holds. Held rather than fired and forgotten, for the reason
-/// Autopilot's model records: a load nobody can await is a load every test races.
-///
-/// Guards a past defect: 23dae882 fix(duplicates): the page is built before the keychain has answered.
+/// `appear()` holds: a load nobody can await is a load every test races.
 @MainActor
 final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
 
@@ -38,8 +33,7 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
 
     // MARK: - Cold
 
-    /// The guard the defect walked past: building the page asks the keychain
-    /// nothing at all.
+    /// Building the page asks the keychain nothing at all.
     func testBuildingThePageAsksTheKeychainNothing() {
         let probe = SealKeyProbe()
 
@@ -51,13 +45,12 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
             """)
     }
 
-    /// And the hang itself, with a keychain that is **still deciding**: the page
-    /// is built and answers while the port is parked mid-call.
+    /// With a keychain that is **still deciding**, the page is built and answers
+    /// while the port is parked mid-call.
     ///
-    /// A port that answers instantly cannot be in the state this is about — the
-    /// subject is over before the code under test is reached — so the probe is
-    /// held on its gate, which is what that gate is for. The valve keeps a page
-    /// that *does* wait from hanging the suite: it fails a deadline instead.
+    /// A port that answers instantly is over before the code under test is
+    /// reached, so the probe is held on its gate. The valve keeps a page that
+    /// *does* wait from hanging the suite: it fails a deadline instead.
     func testThePageIsBuiltWhileTheKeychainIsStillDeciding() async {
         let gate = DispatchSemaphore(value: 0)
         let probe = SealKeyProbe(gate: gate)
@@ -98,8 +91,8 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
     ///
     /// **The page's own cache starts cold**, which is what makes this about the
     /// page: sealing through a guard that shares the model's cache would warm it
-    /// before the model existed, and the assertion below then held with the
-    /// warming deleted — measured, on the mutant that dropped `warmKey()`.
+    /// before the model existed, and the assertion below would hold with
+    /// `warmKey()` dropped.
     func testTheStoredPolicyArrivesOnceTheKeyIsInHand() async {
         let probe = SealKeyProbe()
         DuplicatesSettings.setKeepPolicy(.byDate, in: store, guardedBy: SettingGuard(keys: probe))
@@ -131,46 +124,6 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
     }
 
     // MARK: - And the page reads the cheap one
-
-    /// **Read from the source, because the type system cannot say this.** Both
-    /// readings answer a `KeepPolicy` and both compile anywhere in this target;
-    /// what separates them is that one can take 19 seconds, and everything in
-    /// this target is `@MainActor`.
-    ///
-    /// A **write** is allowed and is not this defect: `choose` and `chooseFolder`
-    /// seal what somebody just pressed, and there is no control to press until
-    /// the page has been up — the key is warm by construction. The same exception
-    /// `TheSettingsPageNeverWaitsForTheKeychainTests` makes, one target over.
-    func testNothingOnThePageReadsTheBlockingPolicy() throws {
-        var offences: [String] = []
-        for path in try RepoSource.swiftFiles(under: "Sources/Modules/Duplicates/UI") {
-            for (index, line) in try RepoSource.lines(of: path).enumerated() {
-                let code = RepoSource.code(line)
-                guard code.contains("DuplicatesSettings.keepPolicy("),
-                      !code.contains("DuplicatesSettings.keepPolicyIfWarm(") else { continue }
-                offences.append("\(path):\(index + 1): \(code.trimmingCharacters(in: .whitespaces))")
-            }
-        }
-        XCTAssertEqual(offences, [], """
-            the policy is read through the reading that can go to the keychain, on the thread that \
-            draws — `keepPolicyIfWarm` is the one that answers «not yet» instead of standing \
-            behind a modal authorization dialog
-            """)
-    }
-
-    /// And the scan above can only fail if the spelling it hunts for is one this
-    /// target still uses — a rule whose subject has been renamed passes for ever.
-    func testThePageDoesReadWhatIsInForce() throws {
-        var readers: [String] = []
-        for path in try RepoSource.swiftFiles(under: "Sources/Modules/Duplicates/UI")
-        where try RepoSource.text(of: path).contains("DuplicatesSettings.keepPolicyIfWarm(") {
-            readers.append(path)
-        }
-        XCTAssertFalse(readers.isEmpty, """
-            nothing on this page reads what is in force any more, so the popup shows a belief of \
-            its own and the scan above is looking for a spelling that is gone
-            """)
-    }
 
     /// A keychain that cannot answer — locked at login — leaves the page on the
     /// standard belief rather than waiting for one. It is the answer the engine

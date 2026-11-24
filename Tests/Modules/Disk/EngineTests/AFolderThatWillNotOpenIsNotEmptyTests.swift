@@ -6,28 +6,19 @@ import XCTest
 /// A directory the walk could not open weighs nothing and says nothing about
 /// why — unless it is flagged.
 ///
-/// **The `.denied` branch had no test at all.** No file under `Tests/Modules/Disk`
-/// produced an unreadable directory (`grep -rn chmod` was empty); `TreeBuilderTests`
-/// calls `markNoAccess` directly, so what was pinned was the builder rather than
-/// the classification. The row that says «No access» is the module's whole answer
-/// to a missing permission, and it was unguarded end to end.
-///
-/// And `readDirectory` folded every failure but two into «an empty directory»:
-/// `errno == EACCES || errno == EPERM ? .denied : .entries([])`. The two that
-/// matter are on the right side of that line — every TCC refusal measured on a
-/// real Mac answers `EPERM` — but a failing or disconnected disk (`EIO`,
-/// `ETIMEDOUT`) and a directory replaced by a file under the walk (`ENOTDIR`)
-/// each read as a folder holding nothing, drawn as a genuine zero on a map whose
-/// whole job is where the space went.
-/// Past defect: fixed in commit 1c32d7cb.
+/// The row that says «No access» is the module's whole answer to a missing
+/// permission, so the classification is held end to end through a real walk,
+/// not through `markNoAccess` called by hand. A TCC refusal answers `EPERM`; a
+/// failing disk (`EIO`, `ETIMEDOUT`) or a directory replaced by a file under the
+/// walk (`ENOTDIR`) is not emptiness either, and read as an empty folder it
+/// would draw a false zero on a map of where the space went.
 final class AFolderThatWillNotOpenIsNotEmptyTests: XCTestCase {
 
     /// The permission case, produced rather than described: a real directory at
     /// mode 000, opened by the real walk.
     ///
-    /// The mode is put back in a teardown registered *after* `scratchDirectory`'s
-    /// and therefore run before it — a 000 directory cannot be recursed into, so
-    /// the scratch teardown would fail to remove the tree and say so 200 times.
+    /// The mode is put back in a teardown registered after `scratchDirectory`'s,
+    /// so it runs first: a 000 directory cannot be recursed into and removed.
     func testADirectoryWithNoPermissionsIsFlaggedRatherThanCountedAsEmpty() throws {
         let root = scratchDirectory("disk-denied")
         let closed = root.appendingPathComponent("closed")
@@ -57,9 +48,8 @@ final class AFolderThatWillNotOpenIsNotEmptyTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(open.bytes, 40_000)
     }
 
-    /// The `default:` case, and the errno the survey measured for it: a
-    /// directory that is a file by the time the walk reaches it answers 20,
-    /// `ENOTDIR`, which is not a permission and is not emptiness either.
+    /// The `default:` case: a directory that is a file by the time the walk
+    /// reaches it answers `ENOTDIR`, neither a permission nor emptiness.
     func testAPathThatIsNoLongerADirectoryIsNotReportedAsAnEmptyFolder() throws {
         let root = scratchDirectory("disk-notdir")
         let file = root.appendingPathComponent("was-a-folder")

@@ -2,11 +2,9 @@ import Foundation
 
 /// Tells an engine that something happened in a watched folder.
 ///
-/// Shared plumbing, in `HelmRuntime` because two modules now need it: Autopilot
-/// watches the folders its rules name, and the Uninstaller watches `~/.Trash` so
-/// that dragging an app there is noticed while Helm is running. It lived inside
-/// Autopilot until the second caller appeared — which is the point at which the
-/// house rule says it moves rather than being written twice.
+/// Shared plumbing: Autopilot watches the folders its rules name, and the
+/// Uninstaller watches `~/.Trash` so that dragging an app there is noticed
+/// while Helm is running.
 ///
 /// FSEvents rather than a poll, because "a file appeared and was sorted a
 /// moment later" is the behaviour the module is for. It is not enough on its
@@ -28,21 +26,15 @@ public final class FolderWatcher: @unchecked Sendable {
     /// changes, which is rare enough that rebuilding the stream is simpler than
     /// adding to it — and an FSEvents stream cannot have paths added anyway.
     ///
-    /// **`started` is how a caller finds out that it is not watching anything.**
-    /// This used to answer nothing at all: `FSEventStreamStart`'s return was
-    /// discarded and a nil from `FSEventStreamCreate` returned silently, so both
-    /// engines logged that they were watching a folder with no way to know whether
-    /// they were — the Uninstaller's switch said «on» over a Trash nothing was
-    /// looking at. Watching *nothing* answers `false` too: an empty folder list is
-    /// how a caller reaches this with nothing to do, and that is not a stream.
+    /// **`started` is how a caller finds out that it is not watching anything**:
+    /// a nil from `FSEventStreamCreate` or a false from `FSEventStreamStart`, so
+    /// a switch does not say «on» over a folder nothing is looking at. Watching
+    /// *nothing* (an empty list) answers `false` too.
     ///
-    /// A channel rather than a return value, and the queue is the reason: the work
-    /// is handed to this instance's serial queue, where the change callbacks are
-    /// delivered as well — so a `queue.sync` here would park whoever asked, up to
-    /// and including the thread that draws, until a change notification finished.
-    /// How long a callback takes is the caller's decision, not this class's:
-    /// Autopilot's used to read a keychain item on this queue before it learned
-    /// to enqueue instead, and nothing stops the next caller doing the same.
+    /// A channel rather than a return value: the work runs on this instance's
+    /// serial queue, where change callbacks are delivered too, so a
+    /// `queue.sync` here would park whoever asked, the thread that draws
+    /// included, behind a callback whose length is the caller's decision.
     public func watch(_ folders: [String], started: (@Sendable (Bool) -> Void)? = nil) {
         queue.async { [self] in
             stopStream()
@@ -79,10 +71,9 @@ public final class FolderWatcher: @unchecked Sendable {
         guard let stream else { return false }
         FSEventStreamSetDispatchQueue(stream, queue)
         guard FSEventStreamStart(stream) else {
-            // A stream that never started must not be stopped — and leaving it in
-            // `self.stream` would have `stopStream` do exactly that, on an object
-            // FSEvents never scheduled. Released here, so the next `watch` builds
-            // a fresh one rather than reusing a dead handle.
+            // A stream that never started must not be stopped, so it is not left
+            // in `self.stream` for `stopStream`. Released here, so the next
+            // `watch` builds a fresh one.
             FSEventStreamInvalidate(stream)
             FSEventStreamRelease(stream)
             self.stream = nil

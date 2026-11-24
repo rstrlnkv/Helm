@@ -5,19 +5,14 @@ import XCTest
 
 /// What the rule's own withdrawal line buys, read from the engine.
 ///
-/// Until it existed the only way out of `/etc/sudoers.d/helm-keepawake` was an
-/// administrator dialog, so the grant could only be taken back with somebody at
-/// the screen — and dragging `Helm.app` to the Trash, which is how a Mac
-/// application is normally removed, runs no code at all. The grant stayed for
-/// the life of the machine, naming an app that no longer existed, and anything
-/// running as that account could hold the Mac awake with no password. On a
-/// laptop in a bag that is a thermal event.
+/// Dragging `Helm.app` to the Trash runs no code, so a grant that can only be
+/// taken back with a dialog stays for the life of the machine, and anything
+/// running as that account can hold the Mac awake with no password.
 ///
 /// With the withdrawal in the rule the removal is `sudo -n`: no dialog, nothing
-/// to decline, nothing for a person to be present for. So it becomes affordable
-/// at the moment the app goes — **but only where the grant has nothing left to
-/// do.** Every case in which it is load-bearing keeps it, and those are the
-/// three the second half of this file is about:
+/// to decline. So it is affordable at the moment the app goes, but only where
+/// the grant has nothing left to do. Every case in which it is load-bearing
+/// keeps it, and those are the three the second half of this file is about:
 /// `AGrantIsNotRevokedByQuittingTests` argues the same three from the other
 /// side, against the restore rather than the withdrawal.
 final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
@@ -58,8 +53,8 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
                        "the rule permits its own removal, so there is nothing to ask a password for")
     }
 
-    /// A rule installed by a version of Helm from before the withdrawal line —
-    /// or written by something else — cannot take itself out, and that is the
+    /// A rule without the withdrawal line, or one written by something else,
+    /// cannot take itself out, and that is the
     /// one removal that still costs a password. It is asked for here because
     /// there is somebody at the screen: this is the option's own switch.
     @MainActor
@@ -76,7 +71,7 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
 
     // MARK: - Quitting
 
-    /// The case this whole change exists for: quit, then drag the app to the
+    /// The case this file is for: quit, then drag the app to the
     /// Trash. Nothing is holding the Mac, sleep is back, and the grant names an
     /// application that is about to stop existing.
     @MainActor
@@ -110,9 +105,7 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
 
     /// The withdrawal at quit is `sudo -n` or it is nothing. A rule too old to
     /// take itself out is left where it is rather than answered with a dialog
-    /// nobody will be there for — which is the defect this module was corrected
-    /// for once already, and the two orphaned predecessor rules in
-    /// `/etc/sudoers.d` on the development Mac are what it looks like years on.
+    /// nobody will be there for.
     @MainActor
     func testAnOlderRuleIsLeftAtQuitRatherThanPromptedFor() async {
         clamshell.withdrawalIsGranted = false
@@ -128,8 +121,8 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
                       "and the rule stays, for the lid option's own switch to take out")
     }
 
-    /// And the next launch does **not** put it back to keep the next enable
-    /// seamless. That would reopen the window this change closed: a rule
+    /// And the next launch does not put it back to keep the next enable
+    /// seamless: a rule
     /// installed at every launch is a rule present whenever the app is deleted.
     /// It is asked for when the feature is actually needed — one dialog per run
     /// of the app, at the moment it means something: the person's own turn of
@@ -180,7 +173,7 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
 
     // MARK: - Where the grant is still load-bearing
 
-    /// **The updater's relaunch.** Helm terminates and a detached script starts
+    /// The updater's relaunch. Helm terminates and a detached script starts
     /// it again, and a session the person asked for is deliberately resumed —
     /// with `mayPrompt: false`, because nobody touched anything. Withdrawing the
     /// grant on the way out would bring that session back with the lid silently
@@ -216,11 +209,9 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
     /// would leave a Mac that never sleeps again with every screen saying Keep
     /// Awake is idle.
     ///
-    /// The session is **stopped first**, deliberately: with one still running
-    /// the case above already keeps the grant, and this one would then be a
-    /// green light for a guard that was not there. It was written the other way
-    /// round first, and a mutation removing `!active` from `withdrawAtQuit`
-    /// passed the whole file.
+    /// The session is stopped first, deliberately: with one still running the
+    /// case above already keeps the grant, and this one would not guard the
+    /// `!active` half of `withdrawAtQuit`.
     @MainActor
     func testARefusedRestoreKeepsTheGrantItsOwnRecoveryNeeds() async {
         engine.startSession(minutes: 0)
@@ -238,7 +229,7 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
     }
 
     /// And the note is not the only anchor, because the note is a plist entry
-    /// **anything running as this user can rewrite**. Clear it while sleep is
+    /// anything running as this user can rewrite. Clear it while sleep is
     /// really off and the withdrawal must still refuse: `active` is this
     /// process's own knowledge, and it is the half no other process can edit.
     /// `RecoveryAnchorIsNotAWritableFlagTests` makes the same argument about the

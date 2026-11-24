@@ -23,8 +23,7 @@ struct DiskSettingsPage: View {
         let question = dvm.removalQuestion
         return VStack(spacing: 0) {
             // Page-level, not phase-level: without the grant a scan still runs
-            // and still draws a ring, it simply under-reports — and the result
-            // screen used to say nothing at all about that.
+            // and draws a ring, and under-reports on every screen.
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: DkStr.scanNeedsAccess)
                     .helmPageStrip()
@@ -50,24 +49,20 @@ struct DiskSettingsPage: View {
             await dvm.appear()
         }
         .animation(HelmMotion.interface, value: dvm.phase)
-        // The basket bar inserts a divider and 45 pt under the ring; without
-        // this the whole screen jumped upward when the sheet closed.
+        // The basket bar inserts a divider and 45 pt under the ring; this keeps
+        // the screen from jumping when the sheet closes.
         .animation(HelmMotion.interface, value: dvm.basket.isEmpty)
         // The verdict of a removal grows into the bar without moving focus, so
         // it is silent to a VoiceOver reader unless said.
         .helmAnnounces(dvm.banner)
-        // **The question is asked of the plan.** Both halves used to be built from
-        // the basket, which for a cache row is one entry standing for the contents
-        // of a folder that stays exactly where it is: «Move 1 item (120 MB) to the
-        // Trash?» over a press that sent four paths and left the named folder
-        // behind. `removalQuestion` is what the press hands over, so the count,
-        // the size and the names are the act itself.
+        // **The question is asked of the plan**, not the basket, which for a
+        // cache row is one entry standing for a folder's contents.
+        // `removalQuestion` is what the press hands over, so the count, the
+        // size and the names are the act itself.
         //
-        // Paths, not display names: the ring shows localized folder names, so
-        // "Library" in this list could equally be /Library or ~/Library — and one
-        // of those is the system's. Abbreviated by AppKit, not by `Redact` — that
-        // one exists for the log, and if it is ever made to hash a component this
-        // dialog would start asking about `app#3f9a`.
+        // Paths, not display names: "Library" could be /Library or ~/Library,
+        // and one of those is the system's. Abbreviated by AppKit, not by
+        // `Redact`, which exists for the log and may hash a component.
         .confirmationDialog(DkStr.confirmTrash(question),
                             isPresented: $confirming, titleVisibility: .visible) {
             Button(HelmWord.moveToTrash, role: .destructive) {
@@ -85,8 +80,7 @@ struct DiskSettingsPage: View {
         ScrollView {
             VStack(spacing: HelmSpace.s5) {
                 // The same leading pin as the note under it and the cards
-                // below: without a frame the `VStack` centred this one line
-                // over a left-aligned column.
+                // below; the `VStack` would otherwise centre this one line.
                 Text(DkStr.startHint)
                     .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -105,9 +99,7 @@ struct DiskSettingsPage: View {
             }
             // 20, the same inset the header, the permission note, the scanning
             // state and the result all use. The centred 744 pt column belongs
-            // to a grouped `Form`, and this page has none: a column here put the
-            // cards 32.5 pt right of the note introducing them at the default window, and 202.5 at
-            // 1400.
+            // to a grouped `Form`, and this page has none.
             .padding(HelmLayout.formInset)
         }
     }
@@ -137,10 +129,8 @@ struct DiskSettingsPage: View {
 
     // MARK: - Scanning (only until the first partial snapshot arrives)
 
-    /// Duplicates draws the same event — a walk that has nothing to show yet —
-    /// as a small spinner and a quiet caption, one row away in the sidebar.
-    /// This was a large spinner under a bold headline because the component had
-    /// nowhere to put Stop; it has a slot for it now.
+    /// A walk that has nothing to show yet, drawn as Duplicates draws it: a
+    /// small spinner, a quiet caption, and Stop in the component's slot.
     private var scanningState: some View {
         HelmBusyState(DkStr.scanning) {
             Button(HelmWord.stopScan) { dvm.cancel() }
@@ -151,12 +141,10 @@ struct DiskSettingsPage: View {
 
     /// The report of the last press, and what is waiting for the next one.
     ///
-    /// A column, because the two are no longer alternatives: a removal nobody
-    /// answered keeps the basket, so the sentence about it stands over rows that
-    /// are still ticked. As a passenger in that row it would have been a
-    /// two-clause sentence sharing a line with a menu and a button, and the
-    /// clause that says what to do next is the one that gets truncated — the
-    /// shape `UninstallerSettingsPage.reviewReport` already landed on.
+    /// A column, because the two can stand together: a removal nobody answered
+    /// keeps the basket. Sharing a line with a menu and a button, the clause
+    /// that says what to do next would be truncated
+    /// (`UninstallerSettingsPage.reviewReport` has the same shape).
     private var basketBar: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
             removalReport
@@ -206,8 +194,7 @@ struct DiskSettingsPage: View {
                 // reply in flight is about — so this is the third door the same
                 // guard covers, dimmed beside the button it sits next to.
                 .disabled(dvm.busy)
-                // "Basket" was the only place the English UI used the word: no visible
-                // label says it — the bar itself is headed "To remove".
+                // Not "Basket": no visible label says it; the bar is headed "To remove".
                 .help(HelmWord.showWhatIsMarkedForRemoval)
                 Spacer()
                 Button(HelmWord.moveToTrash) { confirming = true }

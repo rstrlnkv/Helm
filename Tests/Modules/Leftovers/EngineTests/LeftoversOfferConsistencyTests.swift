@@ -2,8 +2,7 @@ import Foundation
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// A row on this page makes two offers, and they are computed by two different
-/// pieces of code that never consult each other.
+/// A row on this page makes two offers, and they must agree.
 ///
 /// `StaleItem.removable` draws the checkbox, and the checkbox is the bulk path:
 /// "Select all" ticks every one of them and one button sends the lot to the
@@ -12,8 +11,6 @@ import XCTest
 ///
 /// Where the two disagree, the person is told both that this cannot be deleted
 /// and, by a ticked box in a batch of thirty, that it is about to be.
-///
-/// Past defect: fixed in `6dec5f2f`.
 final class LeftoversOfferConsistencyTests: XCTestCase {
 
     private let home = URL(fileURLWithPath: "/Users/x")
@@ -25,11 +22,9 @@ final class LeftoversOfferConsistencyTests: XCTestCase {
 
     /// A daemon whose owner is gone, in a folder that can be written to.
     ///
-    /// `LeftoverActions` refuses `.delete` for a daemon on purpose — "Daemons
-    /// load in the system domain: switching one off needs root, so the row
-    /// offers nothing rather than a button that always fails". `removable`
-    /// checks the status, the kind-is-not-an-extension and the writability, and
-    /// never asks about the daemon at all.
+    /// `LeftoverActions` refuses `.delete` for a daemon on purpose: unloading one
+    /// needs root, so the row offers nothing rather than a button that always
+    /// fails. `removable` must not offer it either.
     func testABulkTickIsNeverOfferedForSomethingTheRowRefusesToDelete() {
         var files = LeftoversFakeFiles()
         files.listing["/Library/LaunchDaemons"] = ["com.gone.vendor.helper.plist"]
@@ -55,11 +50,9 @@ final class LeftoversOfferConsistencyTests: XCTestCase {
         files.listing["/Library/LaunchAgents"] = ["com.gone.other.agent.plist"]
         files.listing["/Library/LaunchDaemons"] = ["com.gone.vendor.helper.plist"]
         // **Listed *and* readable, which are two facts in the fake as they are on
-        // disk.** These three were listed and never given a plist, so the scan read
-        // them as jobs whose definition would not come — `.unreadable` since
-        // `APlistNobodyCouldReadTests`, and before that `.orphaned` by way of «no
-        // `Program`, so it points at nothing». A row this file is about is an
-        // ordinary orphan: a job Helm read, whose owner is gone.
+        // disk**: a job with no plist is `.unreadable` (`APlistNobodyCouldReadTests`).
+        // A row this file is about is an ordinary orphan: a job Helm read, whose
+        // owner is gone.
         for (directory, label) in [("/Users/x/Library/LaunchAgents", "com.gone.vendor.agent"),
                                    ("/Library/LaunchAgents", "com.gone.other.agent"),
                                    ("/Library/LaunchDaemons", "com.gone.vendor.helper")] {

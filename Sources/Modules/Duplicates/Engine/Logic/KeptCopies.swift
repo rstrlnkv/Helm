@@ -6,23 +6,17 @@ import Foundation
 /// **The gates beside this one answer about a path or about a pair, and neither
 /// can see this.** `UserFileScope.partition` asks whether a path belongs to the
 /// person; `DuplicateVerification` asks whether one pair is still what the scan
-/// said it was. Both say yes to each half of `[a→keep b, b→keep a]` — two plans
-/// that are each perfectly valid, and that together take every copy of the
-/// content. The reply had nowhere to say so either: both paths came back under
-/// `removed`, no refusal beside them, and the banner reported a clean removal.
+/// said it was. Both say yes to each half of `[a→keep b, b→keep a]`: two plans
+/// each valid alone that together take every copy of the content.
 ///
-/// **The view model cannot build that batch today, which is the argument for
-/// checking it here rather than there.** `RemovableScope`'s own reasoning is
-/// that a view model is the wrong place for the last word, because the engine
-/// takes the list and acts on it — and this module made the same argument to
-/// itself when it deleted its bare-paths entrance: a caller sending something
-/// unverifiable gets nothing removed rather than something removed unchecked.
-/// A batch whose survivors sit in its own removal set is the one remaining
-/// shape of "removed unchecked", and what it costs is the content.
+/// **The view model does not build such a batch; the check is here because the
+/// engine takes the list and acts on it.** A view model is the wrong place for
+/// the last word (`RemovableScope` reasons the same way). A batch whose
+/// survivors sit in its own removal set is content removed unchecked.
 ///
 /// Nothing here reads a disk. It is arithmetic over the batch, so a contradiction
 /// is refused before the verification spends minutes reading the pair it is
-/// about (ARCHITECTURE.md § Duplicates).
+/// about (Architecture/Duplicates.md § Duplicates).
 enum KeptCopies {
 
     /// The plans that may be acted on, and the copies refused for contradicting

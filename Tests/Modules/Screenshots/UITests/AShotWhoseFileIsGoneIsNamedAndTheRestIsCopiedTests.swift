@@ -8,15 +8,14 @@ import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **«Copy All» with one shot's file gone puts every shot that is still found on the board in one write, and tells the
-/// person which shot is missing; it does not refuse the whole copy.** The owner's decision of 2026-11-11 (option 3:
-/// the pile keeps no full picture of a written shot, so a gone file cannot be copied, and is said). The scene is the
-/// app's own over real files in a scratch folder; the file is removed or moved on disk before the press.
+/// person which shot is missing; it does not refuse the whole copy.** The pile keeps no full picture of a written
+/// shot, so a gone file cannot be copied, and is said. The scene is the app's own over real files in a scratch folder;
+/// the file is removed or moved on disk before the press.
 ///
-/// Written against API that does not exist yet, and red by compile error until it does:
-/// `CaptureRefusal.filesGone([Int])`, the zero-based places, in the list `ShotToast.sources()` hands the session, of the
-/// shots whose file was not found; `ScStr.refusal(_:)` words it. The wording is not asserted, the kind and the places are.
+/// `CaptureRefusal.filesGone([Int])` carries the zero-based places, in the list `ShotToast.sources()` hands the session,
+/// of the shots whose file was not found. The wording is not asserted, the kind and the places are.
 ///
-/// Total failure of the subject prints: a board with nothing on it (the whole-copy refusal of today), a board with all
+/// Total failure of the subject prints: a board with nothing on it (a whole-copy refusal), a board with all
 /// three (a gone file read from nowhere), the missing shot named as another place, nothing told.
 /// Mutant, red here: `Sources/Modules/Screenshots/Engine/CaptureSession.swift`: `delivery.refusals.append(.filesGone(encoded.gone))` -> `_ = encoded.gone`.
 @MainActor
@@ -30,7 +29,7 @@ final class AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests: XCTestCase {
             var shots: [ShotToastModel.Shot] = []
             for width in widths { shots.append(try await s.take(width: width)) }
             let file = try XCTUnwrap(shots[gone].file)
-            let singles = s.board.singles
+            let singles = s.board.copies
             if move {
                 try FileManager.default.moveItem(at: file, to: file.deletingLastPathComponent().appendingPathComponent("elsewhere.png"))
             } else {
@@ -40,7 +39,7 @@ final class AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests: XCTestCase {
             await waitUntil("\(gone)/\(move): the others were written") { s.board.lists.count >= 1 }
             await grace(0.1)
             XCTAssertEqual(s.board.lists.count, 1, "\(gone)/\(move): the found shots were \(s.board.lists.count) writes")
-            XCTAssertEqual(s.board.singles, singles, "\(gone)/\(move): a shot went by the single write")
+            XCTAssertEqual(s.board.copies, singles, "\(gone)/\(move): a shot went by the single write")
             XCTAssertEqual(try XCTUnwrap(s.board.lists.first).map(PileScene.width(of:)),
                            widths.enumerated().filter { $0.offset != gone }.map(\.element),
                            "\(gone)/\(move): not every shot that is found, in the list's order")
@@ -60,12 +59,12 @@ final class AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests: XCTestCase {
         let s = try PileScene(self, name: "copy-all-gone")
         var shots: [ShotToastModel.Shot] = []
         for width in [400, 420] { shots.append(try await s.take(width: width)) }
-        let singles = s.board.singles
+        let singles = s.board.copies
         for shot in shots { try FileManager.default.removeItem(at: try XCTUnwrap(shot.file)) }
         s.toast.model.copyAll()
         await waitUntil("the person was told") { s.toast.model.refusal != nil }
         XCTAssertEqual(s.board.lists.count, 0)
-        XCTAssertEqual(s.board.singles, singles)
+        XCTAssertEqual(s.board.copies, singles)
         XCTAssertEqual(s.refusalBody, ScStr.refusal(.filesGone([0, 1])))
     }
 }

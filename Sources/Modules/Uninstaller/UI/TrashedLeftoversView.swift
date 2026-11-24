@@ -4,27 +4,20 @@ import HelmRuntime
 import HelmUI
 import Module_Uninstaller_Engine
 
-/// Where the copy sits in the Trash, not the bundle id. Delete, reinstall,
-/// delete again and the Finder keeps both — «Tool.app» and «Tool 2.app», one
-/// `Info.plist` and one id between them — and the sweep really does offer both.
-/// A card that is in `groups` but not on screen still contributes its paths to
-/// what Move to Trash sends, and «what one press sends has to be exactly what
-/// was listed above it» is this window's own promise.
+/// Where the copy sits in the Trash, not the bundle id: delete, reinstall,
+/// delete again and the Trash holds «Tool.app» and «Tool 2.app» with one id.
+/// A card in `groups` but not on screen would still send its paths, and one
+/// press sends exactly what was listed.
 extension TrashedAppLeftovers: Identifiable { public var id: String { appPath } }
 
-/// The one door the host uses. `HelmApp` depends on the UI targets only — a
-/// direct edge to an engine would be "a door past the descriptor into an engine's
-/// internals" (Package.swift) — so the host cannot name `TrashedAppLeftovers`
-/// and must not be able to. It hands over the module's model and gets a view or
-/// nothing.
+/// The one door the host uses. `HelmApp` depends on the UI targets only, so it
+/// cannot name `TrashedAppLeftovers`: it hands over the module's model and gets
+/// a view or nothing.
 @MainActor public enum TrashedAppOffer {
 
-    /// One sweep of the Trash. Returns the window's content when there is
-    /// something to offer and `nil` when there is not, which is the answer the
-    /// host acts on: no groups, no window, nothing said.
-    ///
-    /// `onClose` runs when the window has finished its business — the host closes
-    /// the `NSWindow` and drops its reference.
+    /// One sweep of the Trash: the window's content when there is something to
+    /// offer, `nil` (no window, nothing said) when there is not. `onClose` runs
+    /// when the window is done; the host closes the `NSWindow`.
     public static func sweep(uvm: UninstallerViewModel,
                              onClose: @escaping () -> Void) async -> AnyView? {
         guard !uvm.closed else { return nil }
@@ -43,23 +36,19 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { appPath } 
         return AnyView(TrashedLeftoversView(model: model, onClose: onClose))
     }
 
-    /// The window's title. The host sets it — `NSWindow.title` is not something a
-    /// SwiftUI view can reach from inside its own content — and it is spelled
-    /// here so that the window and the module say the same word.
+    /// The window's title. The host sets it (a SwiftUI view cannot reach
+    /// `NSWindow.title`); spelled here so the window and the module agree.
     public static var windowTitle: String { UnStr.trashOfferTitle }
 }
 
 /// What the window knows: the groups the engine returned, what is ticked, and
 /// how the removal went.
 ///
-/// Its own object rather than `UninstallerViewModel`: that one is the settings
-/// page's state — two steps, a scan, a failure report — kept for the life of the
-/// module, and this window is a visitor that appears, is answered and goes away.
+/// Its own object, not `UninstallerViewModel`: that is the page's state for
+/// the module's life, and this window appears, is answered and goes away.
 ///
-/// While it is on screen it is `uvm.openOffer`: the model hands it the Trash
-/// arrival the host would otherwise answer with a window — a second app dropped
-/// a moment after the first is one gesture to the person, and answering it with a
-/// second window, or with nothing at all, are both wrong.
+/// While on screen it is `uvm.openOffer`: a second app dropped a moment after
+/// the first joins this window instead of opening another.
 @MainActor final class TrashedLeftoversModel: ObservableObject {
     private let uvm: UninstallerViewModel
     /// Run when there is nothing left to ask about — every app was put back
@@ -69,25 +58,20 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { appPath } 
     @Published private(set) var groups: [TrashedAppLeftovers] = []
     @Published var selected: Set<String> = []
     @Published private(set) var busy = false
-    /// Set when something was refused. The window stays open on a refusal — a
-    /// window that closes over files that are still there has told the person
-    /// the job is done.
+    /// Set when something was refused. The window stays open on a refusal: closing
+    /// over files still there would say the job is done.
     @Published private(set) var failures: [TrashFailureInfo] = []
     @Published private(set) var outcome: String?
     @Published private(set) var removedCount = 0
     /// The apps on screen this window has **not** been able to answer for: macOS
     /// refused their files, or the batch came back with nothing at all.
     ///
-    /// `TrashOfferPlan.answered` refuses to file them — and the close would undo
-    /// it, because it declines every group on screen and after a refusal the
-    /// only control left in the footer is Done. `trashOfferDismissed` is final
-    /// for as long as the app sits in the Trash, over files that are on no other
-    /// screen Helm has, so the window standing open is the whole of what those
-    /// two rules buy: the way out has to know which apps it may not answer for.
+    /// `TrashOfferPlan.answered` does not file them, and the close, which declines
+    /// every group on screen, must not either: `trashOfferDismissed` is final while
+    /// the app sits in the Trash, over files on no other screen.
     ///
-    /// Bundle ids, where the cards are identified by path: two copies of one app
-    /// in the Trash are two cards and **one** record, because
-    /// `dismissTrashedApp` is keyed by the id and cannot tell them apart either.
+    /// Bundle ids, where cards are paths: two copies in the Trash are two cards and
+    /// one record, since `dismissTrashedApp` is keyed by the id.
     private var unresolved: Set<String> = []
 
     init(uvm: UninstallerViewModel) {
@@ -107,16 +91,14 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { appPath } 
     /// Takes in whatever the Trash holds now, keeping every decision already made
     /// about what was on screen — see `TrashOfferPlan.selectionAfterRefresh`.
     ///
-    /// Skipped while a removal is in flight: the answer would be about a Trash
-    /// that is mid-change, and the outcome screen is what comes next anyway.
+    /// Skipped while a removal is in flight: the Trash is mid-change, and the
+    /// outcome screen comes next.
     func refresh() async {
         guard !busy, outcome == nil else { return }
         // Nil only when the module has been stopped: nothing to take in.
         guard let fresh = await uvm.trashedAppLeftovers() else { return }
-        // Everything went back: the person pressed Put Back in the Finder while
-        // this was open. The question is void, so the window goes rather than
-        // standing there empty, asking about files that are not there — and
-        // nothing is recorded as declined, because nobody declined anything.
+        // Everything went back (Put Back in the Finder): the question is void,
+        // so the window goes, and nothing is recorded as declined.
         if fresh.isEmpty {
             groups = []
             HelmLog.shared.info(UninstallerEngine.moduleID, "trash offer: the Trash gave everything back")
@@ -138,62 +120,49 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { appPath } 
         if on { selected.insert(path) } else { selected.remove(path) }
     }
 
-    /// Move to Trash. The paths go through the model to the engine's `trashPaths`, which
-    /// partitions them against `RemovableScope` before anything moves — this
-    /// window is not a second gate and must not become one.
+    /// Move to Trash, through the model to the engine's `trashPaths`, which
+    /// partitions against `RemovableScope`: this window is not a second gate.
     ///
-    /// Returns true when the window has said everything it has to say and may
-    /// close.
+    /// Returns true when the window has said everything and may close.
     func removeSelection() async -> Bool {
-        // The model refuses a second run itself rather than trusting the footer
-        // to have dimmed the button: `.disabled(model.busy)` is a redraw away,
-        // and what a second press costs here is not a second deletion — the
-        // files are already in the Trash — but a wrong report about the first.
-        // The second round finds every path gone, comes back with a refusal
-        // apiece, and overwrites the report of the removal that worked.
+        // Refused here, not trusted to the dimmed button (`.disabled` is a
+        // redraw away): a second round would find every path gone and
+        // overwrite the report of the removal that worked.
         guard !busy else { return false }
-        // Fixed before the work starts: an app that lands in the Trash while this
-        // is running was never on screen, and answering a question on somebody's
-        // behalf is exactly what the record must not do.
+        // Fixed before the work starts: an app that lands in the Trash meanwhile
+        // was never on screen, and nobody answered for it.
         let answering = groups
         let paths = TrashOfferPlan.paths(groups, selected: selected)
         guard !paths.isEmpty else { return true }
         busy = true
-        // Down after the record is written and the report is built, not on the
-        // line the reply arrives: `refresh()` skips itself while a removal is in
-        // flight, and a flag lowered mid-operation opens that door over a Trash
-        // the batch is still changing.
+        // Down after the record and the report, not when the reply arrives:
+        // `refresh()` skips itself while this is up, and the Trash is still
+        // changing until then.
         defer { busy = false }
         HelmLog.shared.info(UninstallerEngine.moduleID, "trash offer: trashing \(paths.count) path(s)")
-        // No app bundle is ever in this batch — the one the person dragged to the
-        // Trash is deliberately not offered — so there is nothing here to quit.
-        // Nil only when the module has been stopped under the window: nothing
-        // moved, nothing is recorded, and the window may close.
+        // No app bundle is ever in this batch, so there is nothing to quit.
+        // Nil only when the module was stopped under the window: nothing moved
+        // or is recorded, and the window may close.
         guard let result = await uvm.trashPaths(paths, quittingRunningApps: false) else {
             HelmLog.shared.info(UninstallerEngine.moduleID,
                                 "trash offer: the uninstaller is off, nothing moved, nothing recorded")
             return true
         }
-        // Only the apps this actually answered for. A refusal from macOS is not
-        // the person's "no", and the record is final for as long as the app sits
-        // in the Trash — see `TrashOfferPlan.answered`. The rest are held back
-        // from the close as well, which is where they used to be filed anyway.
+        // Only the apps this answered for (`TrashOfferPlan.answered`); the rest
+        // are held back from the close as well.
         let settled = TrashOfferPlan.answered(answering, to: result)
         unresolved.formUnion(Set(answering.map(\.bundleID)).subtracting(settled.map(\.bundleID)))
         await answered(settled)
-        // Said even when everything worked. The window vanishes on success, and
-        // an outcome nobody can read afterwards is the shape of the report that
-        // took two days to trace once already.
+        // Logged even when everything worked: the window vanishes on success,
+        // and the log is the only record left.
         let leftUnticked = answering.flatMap(\.leftovers).count - paths.count
         HelmLog.shared.info(UninstallerEngine.moduleID,
                             "trash offer: \(result.trashed.count) moved, "
                             + "\(Bytes(result.freedBytes)), "
                             + "\(leftUnticked) left by choice, \(result.failed.count) refused")
-        // The engine held the batch: an application in it was up and nothing
-        // moved at all. No app bundle is ever offered here, so this window
-        // cannot produce that state on its own — which is exactly why it must
-        // not be read as "nothing failed". The list stays, the offer stands, and
-        // nothing was recorded above.
+        // The engine held the batch for a running application and nothing
+        // moved. This window cannot cause that, which is why it must not read
+        // as "nothing failed": the list stays and nothing was recorded.
         guard result.stillRunning.isEmpty else {
             HelmLog.shared.info(UninstallerEngine.moduleID,
                                 "trash offer: the batch was held, nothing moved")
@@ -206,20 +175,16 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { appPath } 
         return false
     }
 
-    /// Cancel, and the close button too: shutting the window is a "no" like any
-    /// other, and a "no" that is not recorded comes back at the next launch.
+    /// Cancel, and the close button too: shutting the window is a "no", and one
+    /// not recorded comes back at the next launch.
     ///
-    /// Awaited rather than fired: the write outlives the process only if it
-    /// happens, and every caller here closes the window in the next line.
-    /// Takes the groups it answers for, rather than reading `groups`: by the time
-    /// this runs the list may have grown, and an app nobody has seen yet has not
-    /// been declined by anybody.
+    /// Awaited rather than fired: every caller closes the window next. Takes the
+    /// groups it answers for rather than reading `groups`, which may have grown
+    /// with apps nobody has seen.
     ///
-    /// Called with nothing — which is how the close calls it — it declines every
-    /// app on screen **except** the ones this window was not able to answer for.
-    /// A refusal from macOS is not a "no" one click later either: the person can
-    /// grant Full Disk Access, unlock the file, quit whatever was holding it, and
-    /// the offer has to still be there when they do.
+    /// Called with nothing, as the close calls it, it declines every app on screen
+    /// except those macOS refused: the person can still fix the cause, and the
+    /// offer has to be there when they do.
     func answered(_ answering: [TrashedAppLeftovers]? = nil) async {
         for group in answering ?? groups.filter({ !unresolved.contains($0.bundleID) }) {
             await uvm.dismissTrashedApp(bundleID: group.bundleID)
@@ -229,18 +194,15 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { appPath } 
 
 /// Files left behind by apps the person dragged to the Trash themselves.
 ///
-/// Grouped by app, because the bundle id under each name is what tells two apps
-/// of the same name apart and is what every path below it was derived from.
+/// Grouped by app: the bundle id under each name tells two apps of one name
+/// apart, and every path below was derived from it.
 struct TrashedLeftoversView: View {
     @ObservedObject var model: TrashedLeftoversModel
     let onClose: () -> Void
     /// The window's width.
     ///
-    /// 560, not the 460 the group header needed: that comment said outright
-    /// the footer was never measured, and the footer's two verbs are the wide
-    /// part — 544 pt in Spanish with the count between them. The verbs never
-    /// truncate (a cut «Keep these files» is the worst button in the window to
-    /// cut); the count is the half that yields.
+    /// Set by the footer, the wide part: its two verbs never truncate (a cut
+    /// «Keep these files» is the worst button to cut), and the count yields.
     static let windowWidth: CGFloat = 560
     /// The list's height: from one short card to the tallest the window grows before it scrolls.
     static let listHeights: ClosedRange<CGFloat> = 80...420
@@ -262,16 +224,11 @@ struct TrashedLeftoversView: View {
             footer
         }
         .frame(width: Self.windowWidth)
-        // No growth animation. Measured at 120 Hz, the window went 374 -> 596 pt
-        // between consecutive samples: `NSHostingController` resizes the window
-        // in one step and a SwiftUI token cannot reach an `NSWindow` frame, so
-        // the animation that was here played no frames and only read as if it
-        // did.
+        // No growth animation: `NSHostingController` resizes the window in
+        // one step, and a SwiftUI token cannot reach an `NSWindow` frame.
         .onAppear { model.onVoid = onClose }
-        // Every way out of this window is an answer, including the close button,
-        // and an answer that is not recorded comes back at the next launch. The
-        // one place that catches all three — Cancel, Move to Trash, and the red
-        // button in the corner — is the view going away.
+        // Every way out is an answer, the close button included. The view going
+        // away is the one place that catches Cancel, Move to Trash and the close.
         .onDisappear {
             model.stopWatching()
             Task { await model.answered() }
@@ -285,9 +242,8 @@ struct TrashedLeftoversView: View {
         .uninstaller(model.outcome, removed: model.removedCount, failures: model.failures)
     }
 
-    /// The standing line, and it is the honest cost of offering now rather than
-    /// waiting for the Trash to be emptied: the app is in the Trash, not gone,
-    /// and putting it back does not bring these files with it.
+    /// The standing line, the cost of offering now rather than when the Trash is
+    /// emptied: putting the app back does not bring these files with it.
     private var header: some View {
         Text(UnStr.trashOfferNote)
             .font(HelmText.rowTitle)
@@ -299,13 +255,9 @@ struct TrashedLeftoversView: View {
 
     /// One card per app, rather than a `List` of sections.
     ///
-    /// Measured, the `List` was drawing three things wrong that it does not let
-    /// anyone fix: a hairline under the *first* section header and none under the
-    /// second, so two identical groups looked different; rows out-dented from
-    /// their own header by 11.5 pt; and a height nothing could ask for, so it had
-    /// to be guessed from per-row constants that were 1.2 pt out and 35 pt out at
-    /// one file. The card is the house container and says "these belong to this
-    /// app" without a separator having to.
+    /// A `List` draws a hairline under the first section header only, out-dents
+    /// rows from their header and offers no height to ask for. The card is the
+    /// house container and groups without a separator.
     private var list: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpace.s5) {
@@ -324,10 +276,8 @@ struct TrashedLeftoversView: View {
         .frame(height: contentHeight.clamped(to: Self.listHeights))
     }
 
-    /// The app is the subject of this window and its files are the predicate, so
-    /// the name is what should be read first. The bundle id stays under it: it is
-    /// what tells two apps of the same name apart, and it is what every row below
-    /// was derived from.
+    /// The app's name is read first. The bundle id stays under it: it tells two
+    /// apps of one name apart, and every row below was derived from it.
     private func groupHeader(_ group: TrashedAppLeftovers) -> some View {
         HStack(spacing: HelmSpace.s5) {
             Image(nsImage: AppInfo.icon(forFile: group.appPath))
@@ -346,14 +296,10 @@ struct TrashedLeftoversView: View {
 
     /// The row leads with the kind of file, not its path.
     ///
-    /// Measured on a real window: the six paths carried 17 590 dark pixels
-    /// against 1 585 for the two app names, and a third of that ink was the same
-    /// `/Users/<name>/Library/` on every line — invariant by construction, since
-    /// `LeftoverMatcher` builds every candidate as library/kind/id. The kind is
-    /// that folder said in the person's own language, and the leaf is the bundle
-    /// id already printed in the header. The full path is one hover away, and
-    /// Show in Finder is one right-click away, which is more than the old row
-    /// offered: it could only be read, and only if it fitted.
+    /// Every path is library/kind/id (`LeftoverMatcher`), so the library prefix
+    /// is the same on every line and the id is in the header: the kind, in the
+    /// person's language, is what differs. The full path is a hover away, and
+    /// Show in Finder a right-click.
     private func row(_ item: Leftover, in group: TrashedAppLeftovers) -> some View {
         Toggle(isOn: binding(for: item.path)) {
             HStack(spacing: HelmSpace.s3) {
@@ -376,10 +322,8 @@ struct TrashedLeftoversView: View {
         }
     }
 
-    /// The last path component, and only when the kind alone would name two rows
-    /// in one group — a prefix glob and the exact candidate it generalises both
-    /// land in Caches. Shown always, it would put the bundle id back on every
-    /// line, which is the ink this row was built to stop spending.
+    /// The last path component, only when the kind alone would name two rows in
+    /// one group (a prefix glob and its exact candidate both land in Caches).
     private func distinguishingLeaf(_ item: Leftover, in group: TrashedAppLeftovers) -> String? {
         guard group.leftovers.filter({ $0.kind == item.kind }).count > 1 else { return nil }
         return (item.path as NSString).lastPathComponent
@@ -398,9 +342,8 @@ struct TrashedLeftoversView: View {
                 ProgressView().controlSize(.small)
                 Text(UnStr.removing).helmQuietDetail()
             }
-            // The report replaces the list, whichever report it is: a window that
-            // has said something has nothing left to offer, and a second press
-            // would be about a list that is no longer on screen.
+            // The report replaces the list: a second press would be about a list
+            // no longer on screen.
             if removalReport == nil {
                 if !model.busy {
                     Text(UnStr.selectedSummary(model.selected.count, Bytes(model.totalBytes)))
@@ -414,10 +357,9 @@ struct TrashedLeftoversView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .fixedSize()
-                // No `.defaultAction`. This window arrives unasked, a second
-                // after a drag, and puts itself in front; a Return meant for
-                // whatever the person was typing must not be able to delete
-                // their files. Escape still cancels, which is the safe direction.
+                // No `.defaultAction`: this window arrives unasked in front, and a
+                // Return meant for something else must not delete files. Escape
+                // still cancels, the safe direction.
                 .disabled(model.selected.isEmpty || model.busy)
             } else {
                 Button(HelmWord.done) { onClose() }

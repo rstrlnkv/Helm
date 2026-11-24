@@ -2,17 +2,14 @@ import Foundation
 
 /// What the module probably saved, and the word «probably» is load-bearing.
 ///
-/// **This is an estimate, and it is the only figure in the app that is.** Every
-/// other number Helm draws is measured — bytes on disk, words fixed, seconds a
-/// tunnel has been up. This one is arithmetic over an assumption about how
-/// long a person takes to notice a word came out wrong and put it right, and
-/// the screen has to say so: «≈» before the figure, and a line naming the
-/// assumption under it. Without that it is a marketing counter — «Helm saved
-/// you four hours» — which nobody can check and nobody can argue with.
+/// This is an estimate, and it is the only figure in the app that is: every
+/// other number Helm draws is measured. It is arithmetic over an assumption
+/// about how long a person takes to notice a wrong word and put it right, so
+/// the screen says so, with «≈» before the figure and a line naming the
+/// assumption under it.
 ///
-/// The assumption is deliberately conservative. It was arrived at by writing
-/// down what actually happens, not by picking a round number that flatters the
-/// app, and it is stated here so it can be argued with in one place:
+/// The assumption is deliberately conservative, built from what actually
+/// happens, and stated here so it can be argued with in one place:
 ///
 /// - **noticing** — the eye reaches the end of the word and something is wrong
 /// - **clearing it** — a held backspace, roughly a character at a time

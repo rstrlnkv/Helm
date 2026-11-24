@@ -32,8 +32,8 @@ final class AReturnFromTheTrashKeepsTheMarkTests: XCTestCase {
     /// Not `scratchDirectory`, which is `$TMPDIR` by construction, and not its
     /// draining teardown either: the drain exists for a write arriving from
     /// somebody's own task after the test ends, and nothing here is
-    /// asynchronous. What is kept is its assertion — a teardown that cannot
-    /// fail is how 7621 directories accumulated.
+    /// asynchronous. Its assertion is kept: a teardown that cannot fail lets
+    /// directories pile up unseen.
     private func folderInTheRealHome() -> URL {
         let url = URL(fileURLWithPath: home)
             .appendingPathComponent(".helm-undo-\(UUID().uuidString)")

@@ -3,25 +3,14 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// **`scanSync` exempts the name-matched candidates from `LeftoverOwnership`,
-/// and that line had nothing under it.** A survey read the exemption as a hole —
-/// "the name-matched candidates get no ownership check at all" — and the
-/// smallest way to close a hole is to delete the `!c.matchedByName`. Measured
-/// here first: dropping it does not add a check, it deletes the feature.
-/// `Application Support/Player` disappears from the scan entirely, because
-/// `claims(name:)` asks whether the app's **bundle id** occurs in the entry
-/// name bounded by dots, and a folder named after a display name carries no id
-/// at all — and the refusal is then written to the log as a candidate
-/// "belonging to another installed app", which is a sentence about nobody.
+/// `scanSync` exempts the name-matched candidates from `LeftoverOwnership`,
+/// and the exemption is not a hole: `claims(name:)` looks for the bundle id
+/// in the name, a display-name folder carries none, and dropping the
+/// `!c.matchedByName` deletes every guess and logs it as another app's.
 ///
-/// Two facts, so that the next person reading that line is told what it costs
-/// rather than left to work it out: the pure rule cannot judge a display name,
-/// and the scan's own answer keeps the guess — unticked, for
-/// `UninstallPlan.defaultSelection` to leave out and the row to badge.
-///
-/// What the survey actually wanted is a different question — "is another
-/// installed app called this?" — answerable only from the installed apps'
-/// display names, which nothing on this path reads today.
+/// So the rule cannot judge a display name, and the scan keeps the guess,
+/// unticked. "Is another installed app called this?" is a different question,
+/// which nothing on this path reads.
 final class ANameIsAGuessNotAnOwnershipQuestionTests: XCTestCase {
 
     private var home: URL!
@@ -56,10 +45,8 @@ final class ANameIsAGuessNotAnOwnershipQuestionTests: XCTestCase {
 
     // MARK: -
 
-    /// The rule the exemption exists for: asked about a display name, the
-    /// ownership check answers **no** — not "this is somebody else's", but "this
-    /// is not a name I can read". Putting the name-matched candidates through it
-    /// therefore removes every one of them.
+    /// Asked about a display name, the ownership check answers no: not
+    /// "somebody else's" but "not a name I can read".
     func testTheOwnershipRuleCannotJudgeANameThatCarriesNoID() {
         let owner = LeftoverOwnership(bundleID: player.bundleID,
                                       installedBundleIDs: [player.bundleID],
@@ -96,9 +83,8 @@ final class ANameIsAGuessNotAnOwnershipQuestionTests: XCTestCase {
                        "a guess must not arrive ticked, and the id-named folder must")
     }
 
-    /// Nor is it written up as somebody else's. The refusal line exists so a
-    /// person reading the log can tell a scan that found nothing from one that
-    /// was refused; a guess that was never judged is neither.
+    /// Nor is it logged as somebody else's: a guess never judged is neither a
+    /// scan that found nothing nor a refusal.
     func testAGuessIsNotLoggedAsBelongingToAnotherApp() async throws {
         _ = try plantBoth()
 

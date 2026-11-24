@@ -2,7 +2,7 @@ import XCTest
 @testable import HelmRuntime
 @testable import Module_VPN_Engine
 
-/// Guards: the rules JSON round-trips, a legacy string map still decodes, garbage decodes empty and a rule naming a missing VPN is dropped (no fix commit; the sibling classes in this file carry 54abd430, 63e9bcfe).
+/// Guards: the rules JSON round-trips, a legacy string map still decodes, garbage decodes empty and a rule naming a missing VPN is dropped.
 final class VPNRulesTests: XCTestCase {
     func test_encode_decode_roundtrip() {
         let rules = ["com.x": VPNAppRule(vpnName: "A", connectOnLaunch: true, disconnectOnQuit: false)]
@@ -60,8 +60,6 @@ final class VPNRulesTests: XCTestCase {
 ///
 /// `isUp` means "something is happening here" — right for the panel tile's
 /// switch; the tile lights on `isConnected`.
-///
-/// Past defect: commit 54abd430, «fix: two screens that said one thing and did another».
 final class VPNStatusVocabularyTests: XCTestCase {
 
     func testConnectedIsNarrowerThanUp() {
@@ -86,20 +84,16 @@ final class VPNStatusVocabularyTests: XCTestCase {
 
 /// What the strip says Helm is holding up.
 ///
-/// `autoConnected` is the set Helm raised itself, and it was emptied only when
-/// Helm took one down. A VPN can also drop on its own — the network goes, the
-/// server hangs up, somebody stops it in System Settings — and the strip then
-/// read "ACTIVE 0 · AUTOMATIC 1" until the app restarted.
-///
-/// Past defect: commit 63e9bcfe, «fix: three more from the suspicions list».
+/// `autoConnected` is the set Helm raised itself. A VPN can also drop on its
+/// own — the network goes, the server hangs up, somebody stops it in System
+/// Settings — and the strip must not go on counting it as Helm's.
 final class AutoConnectedFollowsRealityTests: XCTestCase {
 
     /// **The credit runs out at `VPNDropSettle.window`, not at the first read
     /// showing the tunnel down.** That read is the one the settle exists to
     /// distrust — a NetworkExtension tunnel re-handshaking on a Wi-Fi change is
-    /// down for three seconds — and emptying the book on it cost Helm the
-    /// tunnel it was holding, and with it the next real drop
-    /// (`ABlipDoesNotCostHelmItsTunnelTests`).
+    /// down for a few seconds — and emptying the book on it would cost Helm the
+    /// tunnel it was holding (`ABlipDoesNotCostHelmItsTunnelTests`).
     func testANameNoLongerUpIsNoLongerCountedAsAutomatic() {
         let runner = FakeRunner()
         let clock = TestClock()
@@ -130,8 +124,7 @@ extension AutoConnectedFollowsRealityTests {
 
     /// The refresh that follows a connect usually still reports the old
     /// status — the handshake takes seconds. Forgetting on "not up right now"
-    /// would wipe a connection Helm had just raised, which is what broke
-    /// `test_auto_connect_on_app_launch` on the first attempt at this.
+    /// would wipe a connection Helm had just raised.
     func testAConnectionThatHasNotComeUpYetIsStillCredited() {
         let runner = FakeRunner(list: #"(Disconnected) 1111 IPSec "Work""#)
         let engine = VPNEngine(settings: VPNSettings.inMemory(),

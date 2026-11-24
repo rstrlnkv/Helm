@@ -2,9 +2,8 @@ import XCTest
 @testable import Module_Launchpad_Engine
 @testable import Module_Launchpad_UI
 
-/// Pass 3's page froze the run loop: tile frames measured by the views fed a hover state, the hover moved the tiles, and every
-/// move of the pointer set the layout going again. The lift of this window is fed by the pointer's own events and may publish
-/// only when the gap or the target changes: a hundred moves inside one cell publish **nothing**, and a lift ends in one of a
+/// Tile frames measured by the views and fed back into a hover state would set the layout going at every move of the
+/// pointer. The lift of this window is fed by the pointer's own events and may publish only when the gap or the target changes: a hundred moves inside one cell publish **nothing**, and a lift ends in one of a
 /// release or a cancel, Esc being a cancel and never the window's close.
 @MainActor final class ALiftEndsInOneOutcomeAndTheGapDoesNotFlickerTests: XCTestCase {
     private func rig() -> LiftRig { LiftRig(self, apps: ["a", "b", "c", "d", "e", "f"]) }

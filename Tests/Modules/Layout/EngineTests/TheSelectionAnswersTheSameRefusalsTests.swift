@@ -3,7 +3,7 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
-/// **One gesture, two doors, one set of refusals — and only one door has them.**
+/// One gesture, two doors, one set of refusals.
 ///
 /// `fix()` looks at what is selected and, finding nothing, converts the last
 /// word. Both outcomes are the same key press to the person making it. The word
@@ -15,52 +15,16 @@ import XCTest
 /// - a translation that turns a letter into a mark, because somebody typing
 ///   letters meant letters.
 ///
-/// The selection door never reached `LayoutVerdict` at all. `convertSelection` converted
-/// straight out of `TranslationPort` and wrote whatever
-/// came back. So the same key press, on the same word, honoured the list when
-/// nothing was selected and ignored it when the word was selected — which was the
-/// harder half to notice, because selecting the word first is what somebody
-/// does when the automatic path has *already* refused it.
+/// The selection door answers the same two (`LayoutVerdict`), or the same key
+/// press on the same word would honour the list with nothing selected and
+/// ignore it with the word selected — which is what somebody does when the
+/// automatic path has already refused it.
 ///
 /// The page's own promise has no footnote: «Never change these words» over
 /// «These are left exactly as you typed them, whatever the dictionary thinks.»
 final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
 
     // MARK: - Ports
-
-    /// Both halves of the secure check, kept apart the way the port keeps them:
-    /// `isSecureInput` is the system-wide syscall, `isSecure` also recognises an
-    /// app's own password field. Neither is on in this suite — they are here so
-    /// the fake cannot answer one question for the other.
-    private final class Context: SecureContextPort, @unchecked Sendable {
-        var bundle = "com.apple.Notes"
-        var systemWideSecure = false
-        var passwordField = false
-        func isSecureInput() -> Bool { systemWideSecure }
-        func isSecure() -> Bool { systemWideSecure || passwordField }
-        func frontmostBundleID() -> String { bundle }
-    }
-
-    /// Keyed by direction, because the selection path asks both ways round
-    /// (`TwoWayConversion`) and a table that ignores the pair cannot tell the
-    /// two apart — the real `UCTranslation` reads two different layouts and can
-    /// answer nil for one of them.
-    private struct Translation: TranslationPort {
-        let table: [String: [String: String]]
-        func translate(_ word: String, from: String, to: String) -> String? {
-            table["\(from)>\(to)"]?[word]
-        }
-    }
-
-    /// Nil is «no dictionary for this language», which the port's contract says
-    /// must never be read as «not a word» — so the fake can answer it.
-    private struct Spell: SpellPort {
-        let valid: Set<String>
-        let noDictionary: Set<String>
-        func isWord(_ word: String, sourceID: String) -> Bool? {
-            noDictionary.contains(sourceID) ? nil : valid.contains(word)
-        }
-    }
 
     // MARK: - The world
 
@@ -80,9 +44,9 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
                         sources: FakeSources) -> LayoutEngine {
         let engine = LayoutEngine(
             tap: FakeTap(), typing: typing, sources: sources,
-            translation: Translation(table: table),
-            spell: Spell(valid: ["привет", "las["], noDictionary: []),
-            secure: Context(), activation: FakeActivation(),
+            translation: FakeTranslation(byDirection: table),
+            spell: FakeSpell(valid: ["привет", "las["]),
+            secure: FakeSecure(), activation: FakeActivation(),
             selection: selection,
             ledger: LedgerStore(),
             exceptions: exceptions,
@@ -111,10 +75,9 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
 
     // MARK: - The never-list
 
-    /// The person put `ghbdtn` on «Never change these words» because Helm kept
-    /// rewriting it. The automatic path stopped; the gesture stopped. Then they
-    /// select the word — which is what somebody does when the module has been
-    /// refusing to touch it — and press the same key. It is rewritten.
+    /// The person put `ghbdtn` on «Never change these words». The automatic
+    /// path and the gesture leave it alone; selecting the word and pressing the
+    /// same key must too.
     func testANeverListedWordIsNotConvertedBecauseItWasSelected() async throws {
         let typing = FakeTyping()
         let selection = FakeSelection()
@@ -153,13 +116,11 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
 
     // MARK: - A letter is not a mark
 
-    /// The other absolute refusal, and the same door is missing it.
+    /// The other absolute refusal.
     ///
-    /// `дфых` read through the other layout is `las[` — measured, and the
-    /// reason `turnsALetterIntoAMark` exists: opening the key table so `,` can
-    /// be `б` gave every letter a key in the other direction too, and some of
-    /// those type punctuation. A spell checker accepts `las[`, so nothing else
-    /// stops it. The word path refuses it even when the person asked by name,
+    /// `дфых` read through the other layout is `las[`, the reason
+    /// `turnsALetterIntoAMark` exists. A spell checker accepts `las[`, so
+    /// nothing else stops it. The word path refuses it even when the person asked by name,
     /// because a bracket where a letter was is not the word they asked for.
     func testASelectionIsNotConvertedIntoAWordWithAMarkWhereALetterWas() async throws {
         let typing = FakeTyping()

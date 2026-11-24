@@ -15,8 +15,7 @@ import Foundation
 ///   they want it — ends the rules.
 ///
 /// With that switch off the timer never touches the rules, so there is nothing
-/// for a second step to mean and Stop stays the single press it has always
-/// been. Symmetry would only add a step to remember.
+/// for a second step to mean and Stop stays one press.
 ///
 /// **Nothing here is remembered.** The three inputs are read at the moment of
 /// the press, so there is no «the first press has happened» to expire, to
@@ -25,8 +24,7 @@ import Foundation
 /// now, not a mode the first press put it into.
 public enum StopPress: Equatable, Sendable {
     /// One press for both halves: the session ends and any rule holding the Mac
-    /// is paused with it. What Stop has always done, and what it goes on doing
-    /// whenever there is no second step to offer.
+    /// is paused with it, whenever there is no second step to offer.
     case stopEverything
     /// The first of two steps. The session ends; the rules go on holding the
     /// Mac, and the button becomes the second step.

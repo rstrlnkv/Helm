@@ -5,7 +5,7 @@ import HelmRuntime
 /// The real `AppActivation`: starting twice leaves one registration, `stopObserving()`
 /// removes it, and dropping the object removes it too.
 ///
-/// Defect class kept (ARCHITECTURE.md § State and lifetime): an observer token orphaned
+/// Defect class kept (Architecture/StateAndLifetime.md § An observer outlives the thing it points at): an observer token orphaned
 /// by a second start. `FrontmostApp.shared` is process-wide; a first token the
 /// port forgot is still registered, and every app change reaches the engine
 /// twice, or reaches a module that is switched off. Driven by

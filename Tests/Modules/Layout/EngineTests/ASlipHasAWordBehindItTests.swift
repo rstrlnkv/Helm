@@ -2,34 +2,18 @@ import XCTest
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-/// **The capital fix asks the dictionary now, because the shape of the letters
-/// cannot tell a slip from an abbreviation.**
+/// The capital fix asks the dictionary, because the shape of the letters
+/// cannot tell a slip from an abbreviation.
 ///
 /// `TypingHabits.corrected` sees two capitals and a lowercase third. That is a
 /// Shift held a beat too long — and it is also `IPhone`, `IPad`, `IPods`,
-/// `OSes`, `ТВшник`, `MPhil`. Measured by compiling the rule and running it: it
-/// rewrote every one of them, in somebody else's application, mid-sentence.
-/// Raising the threshold from three letters to four bought only the `CDs`
-/// family; everything four letters and longer went on being corrupted, and the
-/// note under the switch listed three refusals from which the only available
-/// conclusion was that abbreviations were safe.
+/// `OSes`, `ТВшник`, `MPhil`, each of which shape alone would rewrite in
+/// somebody else's application, mid-sentence.
 ///
-/// This was also the one path in the module that changed text without asking
-/// anything: `convert` runs the whole `LayoutVerdict` gauntlet, and
-/// `replaceWord` asked only about app scope and secure input.
-///
-/// A slip has a **word** behind it. `TypingHabits` stays a pure shape test —
+/// A slip has a word behind it. `TypingHabits` stays a pure shape test —
 /// that is all it can honestly be — and the engine asks whether what the shape
 /// proposes is a word in the layout being typed in.
-///
-/// Guards a past defect: abbreviations rewritten by the capital fix (fix commit `618a822d`).
 final class ASlipHasAWordBehindItTests: XCTestCase {
-
-    /// The real port's answer on a Mac with no dictionary for the layout: `nil`,
-    /// which `FakeSpell` (a set lookup) can never say.
-    private struct NoDictionarySpell: SpellPort {
-        func isWord(_ word: String, sourceID: String) -> Bool? { nil }
-    }
 
     private var typing = FakeTyping()
     private var tap = FakeTap()
@@ -52,12 +36,9 @@ final class ASlipHasAWordBehindItTests: XCTestCase {
         return engine
     }
 
-    /// **The switch is set in the store, not handed to `init`.**
-    /// `reloadSettings` runs on `activate()` and assigns `fixCapitals` from the
-    /// store over whatever the initialiser was given — the same shape
-    /// `ConversionTriggers` had before it became a stateless enum. A test that
-    /// passed `fixCapitals: true` would be testing a value the engine discards
-    /// one line later.
+    /// The switch is set in the store, not handed to `init`: `reloadSettings`
+    /// runs on `activate()` and assigns `fixCapitals` from the store over
+    /// whatever the initialiser was given.
     private static func boundStore() -> NamespacedStore {
         let store = layoutStore()
         store.set(true, for: LayoutKey.fixCapitals)
@@ -73,7 +54,7 @@ final class ASlipHasAWordBehindItTests: XCTestCase {
         withExtendedLifetime(engine) {}
     }
 
-    /// The case it was getting wrong, and the reason this file exists.
+    /// An abbreviation with a slip's shape.
     func testAnAbbreviationIsLeftAloneBecauseTheCorrectionIsNotAWord() {
         for word in ["IPhone", "IPads", "OSes", "MPhil"] {
             let engine = engine(dictionary: ["Hello"])   // «Iphone» &c. are not in it
@@ -85,12 +66,12 @@ final class ASlipHasAWordBehindItTests: XCTestCase {
         }
     }
 
-    /// **Nil is a refusal, not a yes.** `SpellPort`'s own contract says no
+    /// Nil is a refusal, not a yes. `SpellPort`'s own contract says no
     /// dictionary must never be read as «not a word»; it must not be read as
     /// «go ahead» either, or the rule is back to shape alone on exactly the
     /// Macs where nothing can check it.
     func testNoDictionaryMeansNoCorrection() {
-        let engine = engine(spell: NoDictionarySpell())
+        let engine = engine(spell: FakeSpell(noDictionary: ["en", "ru"]))  // a Mac with no dictionary for the layout: nil, which a set lookup can never say
         tap.type("HEllo"); tap.space()
         XCTAssertTrue(typing.performed.isEmpty,
                       "with no dictionary the rule fell back to the shape test alone")

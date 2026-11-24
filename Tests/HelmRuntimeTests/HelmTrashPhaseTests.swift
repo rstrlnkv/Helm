@@ -5,17 +5,13 @@ import HelmTestSupport
 /// A phase names itself while it runs — for every deleting module, not one.
 ///
 /// `HelmTrash.remove` weighs each path with `FileWeight` before it moves
-/// anything, a walk apiece for a folder, and only Disk wrapped its call in a
-/// phase: Disk was not the outlier, it was the one that got audited. The phase
-/// lives in the loop now, named `"\(module).trash"`, so Uninstaller, Leftovers
-/// and Duplicates carry a name beside their memory readings for free.
+/// anything, a walk apiece for a folder. The phase lives in the loop, named
+/// `"\(module).trash"`, so every deleting module carries a name beside its
+/// memory readings.
 ///
-/// Caught **during** the move rather than read off the source: `trashing` is a
+/// Caught during the move, not read off the source: `trashing` is a
 /// synchronous injection point inside the loop, so what `HelmActivity.running`
-/// answers there is what any memory reading taken mid-removal would see. No
-/// scheduling guess, no scan of a function body.
-///
-/// Guards: 669ff491 (only Disk named its trash phase).
+/// answers there is what a memory reading taken mid-removal would see.
 final class HelmTrashPhaseTests: XCTestCase {
 
     override func tearDown() {
@@ -53,7 +49,7 @@ final class HelmTrashPhaseTests: XCTestCase {
     /// And what it cost is written down, per module. The label is unique to
     /// this test, so the tracker's first-reading rule guarantees a line if the
     /// reading was taken at all.
-    func testTheRemovalLeavesAMemoryLineNamedForItsModule() throws {
+    func testTheRemovalLeavesAMemoryLineNamedForItsModule() async throws {
         let module = "memory-probe-\(UUID().uuidString.prefix(8))"
         let root = scratchDirectory("trash-memory")
         let file = root.appendingPathComponent("f.bin")
@@ -64,19 +60,11 @@ final class HelmTrashPhaseTests: XCTestCase {
                                       trashing: { try FileManager.default.removeItem(at: $0) })
         XCTAssertEqual(result.removed, [file.path], "the move never ran")
 
-        // The reading crosses two queues before it is a tail entry; polled
-        // rather than raced, and bounded so a missing line fails in seconds.
-        let deadline = Date().addingTimeInterval(5)
-        var found = false
-        while !found, Date() < deadline {
-            found = HelmLog.shared.recentEntries().contains {
+        // The reading crosses two queues before it is a tail entry.
+        await waitUntilReached("the removal's memory line is in the tail", within: .seconds(5)) {
+            HelmLog.shared.recentEntries().contains {
                 $0.category == "memory" && $0.message.hasPrefix("\(module).trash:")
             }
-            if !found { usleep(20_000) }
         }
-        XCTAssertTrue(found, """
-            the removal took no memory reading, so what the heaviest removal in \
-            a module cost is never in its log
-            """)
     }
 }

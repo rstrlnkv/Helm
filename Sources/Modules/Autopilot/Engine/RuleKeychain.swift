@@ -5,11 +5,9 @@ import Security
 /// The keychain items this module's two ports address.
 ///
 /// The service is one spelling, because it is deployed: it names the items on
-/// every Mac that has ever run Autopilot, and the two classes below would
-/// otherwise each carry a literal that only one of them needs changing to lose
-/// the other. Not derived from `AutopilotEngine.moduleID` for the same reason the
-/// doc below gives — a rename of the module must not move a keychain item
-/// somebody's rules are sealed under.
+/// every Mac that has run Autopilot. Not derived from
+/// `AutopilotEngine.moduleID`: a rename of the module must not move a keychain
+/// item somebody's rules are sealed under.
 ///
 /// **Helm Dev has accounts of its own**, because Dev shares the person's
 /// installed Helm's keychain and `rule-seq` is a counter: a rule saved in Dev
@@ -36,11 +34,10 @@ struct RuleKeychainItems: Equatable, Sendable {
 /// scans' seal stands on: the `SecItemAdd` dance, the "created once, never
 /// rewritten" rule and the treatment of an unreadable keychain are one implementation.
 ///
-/// **The service and account stay exactly what they were.** This item exists on
-/// every Mac that has ever run Autopilot, and moving it would read to all of
-/// them as "somebody rewrote your rules" — a refusal to run the person's own
-/// configuration, in the signal that exists to warn them about forgery. In Helm
-/// Dev the account is `dev-rule-seal` (`RuleKeychainItems`); no copy, no delete.
+/// **The service and account never change.** Moving the item would read on
+/// every Mac as "somebody rewrote your rules", a refusal to run the person's
+/// own configuration. In Helm Dev the account is `dev-rule-seal`
+/// (`RuleKeychainItems`); no copy, no delete.
 public final class KeychainRuleKey: RuleKeyPort {
     let items: RuleKeychainItems
     private let keychain: KeychainSealKey
@@ -71,8 +68,7 @@ public final class KeychainRuleKey: RuleKeyPort {
 /// the thing it is marking is not a mark. This item's access list names only
 /// Helm, so lowering it takes the user, exactly as deleting the key does.
 ///
-/// It is not in `HelmRuntime` because nothing else keeps a counter yet. The day
-/// a second sealed setting needs one, this is the file it moves out of.
+/// It is not in `HelmRuntime` because nothing else keeps a counter.
 public final class KeychainRuleSequence: RuleSequencePort {
     let items: RuleKeychainItems
 

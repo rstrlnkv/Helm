@@ -4,7 +4,6 @@
 import AppKit
 import Quartz
 import SwiftUI
-import Module_Duplicates_Engine
 
 /// The preview itself, as a view rather than the shared panel.
 ///

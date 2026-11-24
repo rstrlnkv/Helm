@@ -4,29 +4,22 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
-/// **The lie arrives after the person fixes the permission, not while it is
-/// withheld.**
+/// The recovery after the person fixes the permission.
 ///
-/// While the grant is missing the page is honest: `start` refuses, `tapped`
-/// stays false and the module says it is not watching. What was broken is the
-/// recovery. macOS revokes a tap mid-session and says so once, down the tap
-/// being switched off; `TapDisabled` rules that a revoked grant means stand
-/// down, and standing down stopped the tap **without clearing `tapped`** — so
-/// `startTap`'s `guard running, !tapped` refused to build another one for the
-/// rest of the process. The person restores Accessibility, switches back to
-/// Helm, `didBecomeActive` fires, the page goes green — and nobody is listening
-/// to the keyboard until they relaunch.
+/// macOS revokes a tap mid-session and says so once, down the tap being
+/// switched off; `TapDisabled` rules that a revoked grant means stand down.
+/// Standing down clears `tapped`, so when the person restores Accessibility and
+/// switches back to Helm, `startTap`'s `guard running, !tapped` builds a new
+/// tap rather than leaving the page green over nobody listening.
 ///
-/// A local flag standing in for a live external fact, with no channel back from the
-/// port that knows (ARCHITECTURE.md § Ports and logic). The
-/// channel is `died`.
+/// A local flag must not stand in for a live external fact: the channel back
+/// from the port that knows is `died`.
+/// Architecture/ModulePattern.md § Ports and logic.
 ///
-/// **What is not covered here, and cannot be.** No test process can make macOS
+/// What is not covered here, and cannot be. No test process can make macOS
 /// revoke a real `CGEvent` tap, so `CGKeyTap.theSystemDisabledUs` calling this
 /// channel is checked by reading it. What is covered is everything after the
 /// call: the state the page draws, and the rebuild on the next activation.
-///
-/// Guards a past defect: the page kept saying the tap was on after macOS took it away (fix commit `53525c9e`).
 @MainActor
 final class TheTapSaysWhenMacOSTakesItAwayTests: XCTestCase {
 
@@ -79,9 +72,7 @@ final class TheTapSaysWhenMacOSTakesItAwayTests: XCTestCase {
         engine.deactivate()
     }
 
-    /// The other half, and it is the state `FakeTap` could not be in until now:
-    /// `start` returned true unconditionally, so «macOS refused the tap» was
-    /// unrepresentable and no test of the honest path could exist.
+    /// The other half: «macOS refused the tap», which `FakeTap` can represent.
     func testWithoutTheGrantThePageSaysNobodyIsWatchingAndOneComesBackWithIt() async {
         let tap = FakeTap()
         tap.grant = false

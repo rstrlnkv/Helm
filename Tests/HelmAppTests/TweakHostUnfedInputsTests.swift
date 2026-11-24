@@ -15,12 +15,6 @@ final class TweakHostUnfedInputsTests: XCTestCase {
 
     private final class Calls { var log: [String] = [] }
     private final class FakeModel {}
-    private final class FakeEngine: ModuleEngine {
-        let calls: Calls
-        init(_ calls: Calls) { self.calls = calls }
-        func activate() { calls.log.append("activate") }
-        func deactivate() { calls.log.append("deactivate") }
-    }
     private final class Fake: TweakDescriptor {
         static var id: ModuleID { ModuleID("fake") }
         static var name: String { "fake" }
@@ -30,7 +24,7 @@ final class TweakHostUnfedInputsTests: XCTestCase {
         init(_ calls: Calls) { self.calls = calls }
         func makeTweak(store: NamespacedStore) -> ModuleParts<FakeModel> {
             calls.log.append("make")
-            return ModuleParts(engine: FakeEngine(calls), model: FakeModel())
+            return ModuleParts(engine: FakeEngine(record: { [calls] in calls.log.append($0) }), model: FakeModel())
         }
         func rows(_ model: FakeModel) -> [AnyView] { [] }
         func stop(_ model: FakeModel) { calls.log.append("stop") }
@@ -117,10 +111,10 @@ final class TweakHostUnfedInputsTests: XCTestCase {
         func stop(_ model: TweakHost) {}
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         ModuleHost.shared.shutdown()
         UserDefaults.standard.removeObject(forKey: "module.\(Self.entryID).enabled")
-        super.tearDown()
+        try await super.tearDown()
     }
 
     /// The entry off and on again: the tweak that was on comes back once, and one that was switched off while

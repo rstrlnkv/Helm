@@ -40,10 +40,9 @@ public enum ScanSchedule {
         ///
         /// Separate from `lastRun` because they refuse for different lengths of
         /// time: a scan that finished stands for the day, while one that came
-        /// back with nothing — a refused root, a cancelled walk, a directory it
-        /// could not read — has not measured anything and should be tried again
-        /// later. Writing one figure for both is what made `runsPerDay = 2`
-        /// unreachable.
+        /// back with nothing (a refused root, a cancelled walk, a directory it
+        /// could not read) has measured nothing and is tried again later. One
+        /// figure for both would make `runsPerDay = 2` unreachable.
         let lastAttempt: Date?
 
         public init(now: Date, lastRun: Date?, idleSeconds: TimeInterval,
@@ -88,12 +87,10 @@ public enum ScanSchedule {
     static let interval: TimeInterval = 24 * 3600
     /// How long an attempt that answered nothing holds the module.
     ///
-    /// It cannot be zero — a root that always refuses would be walked on every
-    /// tick until the day's budget is gone, which is the opposite of what the
-    /// budget is for — and it cannot be the day, because then the second run
-    /// exists only on paper. An hour is long enough that a person who unplugged
-    /// the drive has time to plug it back in, and short enough that a scan cut
-    /// short at breakfast still happens before evening.
+    /// Not zero, or a root that always refuses would spend the day's budget on
+    /// consecutive ticks; not the day, or the second run exists only on paper.
+    /// An hour gives a person time to plug a drive back in, and a scan cut short
+    /// in the morning still happens before evening.
     static let retryInterval: TimeInterval = 3600
 
     /// The order is the decision. Each guard below is above the next because
@@ -104,14 +101,11 @@ public enum ScanSchedule {
         // that exists to explain the delay.
         guard c.isEnabled else { return .off }
         guard c.runsToday < runsPerDay else { return .spent }
-        // A `lastRun` in the future reads as **never due**, not as due forever:
-        // `timeIntervalSince` is negative and negative is less than a day, so
-        // the plain rule below would refuse the scan every minute for thirty
-        // days while the Settings row said «не пора».
+        // A `lastRun` in the future is its own verdict: `timeIntervalSince` is
+        // negative, so the plain rule below would call it "not due" for as long
+        // as the clock is wrong.
         if let lastRun = c.lastRun, lastRun > c.now { return .clockSkew }
-        // The same reading of the same defect, on the other fact: an attempt
-        // stamped in the future read as "never attempted" would let a scan start
-        // every minute for as long as the clock is wrong.
+        // Likewise an attempt stamped in the future.
         if let lastAttempt = c.lastAttempt, lastAttempt > c.now { return .clockSkew }
         if let lastRun = c.lastRun, c.now.timeIntervalSince(lastRun) < interval { return .notDue }
         // An attempt that answered nothing measured nothing, so it does not

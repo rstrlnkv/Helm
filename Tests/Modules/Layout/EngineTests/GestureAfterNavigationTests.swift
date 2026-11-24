@@ -4,27 +4,13 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-/// The other half of the arrow-key defect.
+/// The convert half of a caret move; `UndoAfterNavigationTests` holds the undo
+/// half.
 ///
-/// `UndoAfterNavigationTests` pinned the undo half: type `ghbdtn `, watch it
-/// convert, press Left Arrow, tap the bound modifier — the undo used to fire and
-/// send backspaces at a caret it no longer knew. `undo?.invalidate()` on
-/// `.navigation` closed it.
-///
-/// The gesture has a second outcome and it reads the same blind edit off a
-/// different field. With no undo record to spend, `fix()` falls through to
-/// `convertLastWord()`, which reaches for `lastCompleted` — the word that most
-/// recently *ended*. `handle()` used to clear that field for `.click` alone and
-/// set it for everything else, so a bare arrow, Home, End, Tab or Escape
-/// *stored* the word it just ended instead of dropping it. It now clears it
-/// whenever `movedTheCaret` is true, which covers `.navigation` and `.click`.
-///
-/// Both fields carry the same promise. `RememberedWord`'s own doc says
-/// converting it "is only correct while the caret is still where the word left
-/// it — which is the same reasoning `UndoRecord` is built on, and the same check
-/// it makes"; `TypingBuffer.Event.navigation`'s says the caret moved and "what
-/// came before is no longer adjacent to what comes next". The check is the one
-/// thing that is not the same.
+/// With no undo record to spend, `fix()` falls through to `convertLastWord()`,
+/// which reaches for `lastCompleted`, the word that most recently ended.
+/// `handle()` clears it whenever `movedTheCaret` is true (`.navigation` and
+/// `.click`), the same check `UndoRecord` makes.
 ///
 /// The sequence, in a person's terms: type `ghbdtn` at the end of a paragraph,
 /// notice a typo three lines up, press ← to go and fix it, tap the bound
@@ -42,8 +28,8 @@ final class GestureAfterNavigationTests: XCTestCase {
     private func engine() -> LayoutEngine {
         typing = FakeTyping(); context = FakeSecure(); tap = FakeTap()
         let store = layoutStore(bound: true)
-        let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
-                                  translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: CyrillicSpell(),
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: FakeSources(follows: false),
+                                  translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: FakeSpell(cyrillic: true),
                                   secure: context, activation: FakeActivation(), settings: store)
         engine.activate()
         return engine
@@ -64,20 +50,13 @@ final class GestureAfterNavigationTests: XCTestCase {
                       + "at a caret the arrow key had already moved")
     }
 
-    /// How narrow the window is, written down so nobody mistakes it for a
-    /// reason not to close it.
+    /// `handle()` overwrites the remembered word with `finished.map { … }` on
+    /// most events, so a second event with nothing to finish clears it by
+    /// accident. The window is the caret move being the most recent thing, which
+    /// is the shape of the gesture: press ↑ or Home or Escape, then tap the key.
     ///
-    /// `handle()` overwrites the remembered word on *every* event that is not a
-    /// caret move or a chord other than the shortcut, and the overwrite is
-    /// `finished.map { … }` — so any second event, having nothing in the buffer
-    /// to finish, writes nil and clears it by accident. The word is therefore only exposed while the
-    /// caret move is the *most recent* thing that happened, which is exactly the
-    /// shape of the gesture: press ↑ or Home or Escape, then tap the key. A
-    /// second arrow, or one more character, hides it again.
-    ///
-    /// This test asserts the accident, not the behaviour, and exists so that a
-    /// fix which merely reorders `handle()` cannot be mistaken for one that
-    /// clears the field.
+    /// This asserts the accident, so a change that merely reorders `handle()`
+    /// cannot be mistaken for one that clears the field.
     func testASecondEventHidesTheWordOnlyByAccident() {
         let engine = engine()
         tap.type("ghbdtn")
@@ -126,8 +105,7 @@ final class GestureAfterNavigationTests: XCTestCase {
     /// caret moved — its keys reach the tap before Carbon dispatches the action
     /// — so a word ended by it is still the gesture's to convert.
     ///
-    /// It used to be every chord, which is how ⌘V came to leave a word
-    /// remembered while the paste changed the text in front of the caret.
+    /// Only that chord: ⌘V changes the text in front of the caret.
     /// `UndoAfterNavigationTests` holds the other half: a chord that is not the
     /// shortcut is not forgiven, and with nothing bound none is.
     func testTheShortcutsOwnChordStillLeavesTheWordConvertible() {

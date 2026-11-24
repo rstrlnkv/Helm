@@ -9,7 +9,7 @@ import XCTest
 /// a blur's blocks are cut out of it by pixel (`Pixelate`), and a picture that is not the whole one
 /// (a half of it, the cut itself) has no pixels under a layer in the other part, where the mosaic is skipped.
 ///
-/// Measured off the file, on a picture of a gradient (a mosaic differs from it): the pixels under a
+/// Read off the file, on a picture of a gradient (a mosaic differs from it): the pixels under a
 /// blur in the lower right of the picture are not the picture's own; the pixels
 /// away from the blur are. Total failure of the subject prints a file equal to the picture under the layer.
 ///
@@ -50,9 +50,8 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
         return total == 0 ? 0 : Double(different) / Double(total)
     }
 
-    /// The export, awaited from the test's own thread. An assertion made after an `await` in an `async` test is recorded by XCTest
-    /// only some of the time (measured: the same failing run recorded 2, 1 and 3 of its 4 failing assertions), so every measurement is
-    /// taken here and every assertion is made on the thread the test started on.
+    /// The export, awaited from the test's own thread. An assertion made after an `await` in an `async` test is not always
+    /// recorded by XCTest, so every measurement is taken here and every assertion is made on the thread the test started on.
     private func exported(_ session: CaptureSession, _ shown: PictureOnScreen, local: CGRect, layer: Annotation) -> CGImage? {
         final class Box: @unchecked Sendable {
             var result: CGImage?

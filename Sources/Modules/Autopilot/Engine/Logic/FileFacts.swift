@@ -13,11 +13,8 @@ import Foundation
 struct FileFacts: Equatable, Sendable {
     let name: String
     /// Where the file is. A rule is *decided* from the facts and *performed* on
-    /// this: without it the runner rebuilt the path as folder + name, which
-    /// names a different file for anything below the top level. At depth 2 a
-    /// plan about `sub/big.bin` was executed against `big.bin` — and where no
-    /// such twin existed, nothing below the top level ran at all while the dry
-    /// run promised it would.
+    /// this; folder + name would name a different file for anything below the
+    /// top level.
     let path: String
     let kind: FileKind
     let bytes: Int

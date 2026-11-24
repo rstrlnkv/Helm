@@ -3,26 +3,19 @@ import HelmTestSupport
 
 /// The release build builds the app, not the package.
 ///
-/// `HelmTestSupport` is a plain target — it has to be, because a test target
-/// cannot be depended on — and it imports XCTest. XCTest is not in the
-/// toolchain: it resolves out of the Xcode-only framework path. So
-/// `swift build -c release`, which builds every target in the manifest, made a
-/// full Xcode install a requirement of packaging Helm where a Swift toolchain
-/// had been enough, and left `HelmTestSupport.swiftmodule` in Release beside
-/// `HelmApp`. It never reached the bundle — `package-app.sh` copies one binary
-/// and the resource bundles — so nothing about the shipped app was wrong, and
-/// nothing about the shipped app would ever have said so.
+/// `HelmTestSupport` is a plain target (a test target cannot be depended on)
+/// and it imports XCTest, which resolves out of the Xcode-only framework path.
+/// A bare `swift build -c release` builds every target in the manifest, so it
+/// would make a full Xcode install a requirement of packaging Helm and leave
+/// the harness in Release, with nothing in the shipped app to say so.
 ///
-/// **Naming the product is the half that works.** Measured on a cleaned
-/// `Release` for `HelmApp` alone (before the Dock helper joined the line): a
-/// bare build was 466 steps and wrote the harness; `--product HelmApp` was 187
-/// and did not. A second line builds `HelmLaunchpadHelper`, which
-/// `package-app.sh` copies into the bundle; no step count is claimed for it. Declaring `products:` does *not* prune a bare
-/// build — it is here so the flag names something the manifest says exists,
-/// rather than the product SwiftPM synthesises for an executable target, which
-/// a rename would take away without a word.
-///
-/// Past defect: commit 5e153dfa, «build: the release build builds the app, not the package»; backlog #32 (a flag moved into a trailing comment).
+/// **Naming the product is the half that prunes.** `--product HelmApp` builds
+/// the app and not the harness, and a second line builds
+/// `HelmLaunchpadHelper`, which `package-app.sh` copies into the bundle.
+/// Declaring `products:` does *not* prune a bare build: it is there so the
+/// flag names something the manifest says exists, rather than the product
+/// SwiftPM synthesises for an executable target, which a rename would take
+/// away without a word.
 final class ReleaseBuildsTheProductTests: XCTestCase {
 
     /// Assert the hazard is real before asserting it is fenced off. A test that
@@ -40,7 +33,7 @@ final class ReleaseBuildsTheProductTests: XCTestCase {
 
     /// The half that prunes the graph, one build per product: given two
     /// `--product` flags SwiftPM honours only the last, so a single line naming
-    /// both left `HelmApp` unbuilt after an edit and shipped the old binary.
+    /// both leaves `HelmApp` unbuilt after an edit and ships the old binary.
     func testThePackagingScriptBuildsEachProductOnItsOwnLine() throws {
         let script = try RepoSource.lines(of: "Scripts/package-app.sh")
         let builds = script.filter { $0.hasPrefix("swift build") }.map(Self.words(of:))

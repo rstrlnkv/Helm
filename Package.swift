@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 import PackageDescription
 
 /// **A module is two source targets and the test targets it keeps, and the manifest says so once.**
@@ -165,15 +165,16 @@ let foundation: [Target] = [
 /// What lives here is what was written once per test file until it was written
 /// wrong: a scratch directory whose teardown **drains**, and the file-of-N-bytes
 /// every filesystem test needs. `Tests/Support/ScratchDirectory.swift` carries
-/// the measurement that says why.
-/// It depends on `HelmRuntime` for one reason: a stand-in for a *port* has to
-/// conform to that port's protocol, and `SealKeyPort` lives there. The
-/// dependency runs the only way it can — support may reach the shared plumbing,
-/// nothing may reach support.
+/// the reason.
+/// It depends on `HelmRuntime` and `HelmContract` because a stand-in for a *port*
+/// has to conform to that port's protocol (`SealKeyPort`, `ModuleEngine`), and on
+/// `HelmUI` for the measuring-bench declaration below. The dependency runs the
+/// only way it can — support may reach the shared plumbing, nothing may reach support.
 let support: [Target] = [
     // `HelmUI` for the measuring-bench declaration `MountedRender` makes:
-    // a page idles while its window is off screen, and every bench window is.
-    .target(name: "HelmTestSupport", dependencies: ["HelmRuntime", "HelmUI"], path: "Tests/Support"),
+    // a page idles while its window is off screen, and every bench window is;
+    // `HelmContract` for the `ModuleEngine` fake.
+    .target(name: "HelmTestSupport", dependencies: ["HelmRuntime", "HelmUI", "HelmContract"], path: "Tests/Support"),
 ]
 
 /// The Launchpad's Dock helper: a tiny app nested in Helm's bundle by `Scripts/package-app.sh`. Built by
@@ -256,3 +257,9 @@ let package = Package(
         + modules.flatMap(\.testTargets)
         + tweaks.flatMap(\.testTargets)
 )
+
+/// A warning the compiler gives is a defect in the line it names, so the build stops on it: every target of the package, tests and
+/// the harness included, and any settings a target already has are kept.
+for target in package.targets {
+    target.swiftSettings = (target.swiftSettings ?? []) + [.treatAllWarnings(as: .error)]
+}

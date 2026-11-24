@@ -43,8 +43,8 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
-        let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: FakeScreen(outcome: .frozen(freeze)), writer: disk, trash: NoTrash(), pasteboard: board,
+        let home = scratchDirectory("shots-editor-inputs")
+        let session = CaptureSession(capture: FakeScreen(outcome: .frozen(freeze)), writer: disk, trash: AsideTrash.refusing(), pasteboard: board,
                                      preferences: NoPreferences(), shutter: shutter, textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
@@ -93,7 +93,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
     /// module makes none. The engine cannot hold it back — the controller plays it before
     /// handing the picture over — so this is the check on the controller's own refusal.
     /// The control is the same press left alone, which sounds once.
-    func testAModuleSwitchedOffRightAfterAnExitSoundsNoShutter() async throws {
+    func testAModuleSwitchedOffRightAfterAnExitSoundsCountingShutter() async throws {
         let aloneShutter = Shutter()
         let (alone, _, _, aloneOverlay) = try await editedThroughTheController(.desktop, shutter: aloneShutter)
         aloneOverlay.keyDown(key(kReturn, "\r"))

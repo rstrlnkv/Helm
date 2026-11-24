@@ -28,16 +28,28 @@ enum Installer {
     }
 
     /// Unzips `zipURL`, validates the bundle, then swaps + relaunches (terminates the app).
-    /// Runs on the main actor, but the unzip does not: `ditto` on the 7.4 MB asset
-    /// is a blocking child process, and holding the main thread through it froze
-    /// the Installing line. Everything that touches `Bundle.main`, `NSApp` or the
+    /// Runs on the main actor, but the unzip does not: `ditto` is a blocking
+    /// child process, and holding the main thread through it would freeze the
+    /// Installing line. Everything that touches `Bundle.main`, `NSApp` or the
     /// swap stays on main.
     ///
     /// The unzipped payload is removed on every way out that does not hand it to
     /// the swap script; once handed over, the script owns it (and keeps it on a
     /// failed copy, `UpdateSwap`).
+    ///
+    /// `installedID` and `handOver` default to the running app and the real swap
+    /// plus `terminate`; they are what the refusals are driven through.
     @MainActor
-    static func installZip(at zipURL: URL, expectedVersion: String) async throws {
+    static func installZip(
+        at zipURL: URL, expectedVersion: String,
+        installedID: String? = Bundle.main.bundleIdentifier,
+        handOver: (_ newApp: URL, _ installPath: String, _ workDir: String, _ version: String) throws -> Void
+            = { newApp, installPath, workDir, version in
+                try launchSwapScript(newApp: newApp.path, installPath: installPath,
+                                     workDir: workDir, version: version)
+                NSApp.terminate(nil)
+            }
+    ) async throws {
         let fm = FileManager.default
         let work = fm.temporaryDirectory
             .appendingPathComponent("HelmUpdate-\(UUID().uuidString)", isDirectory: true)
@@ -62,14 +74,11 @@ enum Installer {
         guard accepts(version: got, build: build(ofBundleAt: newApp), expected: expectedVersion)
         else { throw InstallError.versionMismatch(got) }
 
-        // The swap goes to Bundle.main.bundlePath, whatever is standing there —
-        // so before it moves anything, the downloaded bundle must call itself
-        // the same program that is installed here. Without this, a dev build
-        // (a release build with its identifier rewritten after signing) reads
-        // Beta's release, which is newer than its own prerelease, and ends up
-        // holding a bundle that calls itself the release's identifier at the
-        // dev build's own address.
-        guard isSameProgram(newApp, as: Bundle.main.bundleIdentifier) else {
+        // The swap goes to Bundle.main.bundlePath, whatever is standing there,
+        // so the downloaded bundle must call itself the same program that is
+        // installed here: a dev build (identifier rewritten after signing) would
+        // otherwise take Beta's newer release into the dev build's own address.
+        guard isSameProgram(newApp, as: installedID) else {
             throw InstallError.identityMismatch
         }
 
@@ -79,10 +88,8 @@ enum Installer {
             throw InstallError.notReplaceable
         }
 
-        try launchSwapScript(newApp: newApp.path, installPath: installPath,
-                             workDir: work.path, version: expectedVersion)
+        try handOver(newApp, installPath, work.path, expectedVersion)
         handedOver = true
-        NSApp.terminate(nil)
     }
 
     // MARK: - Helpers
@@ -92,8 +99,8 @@ enum Installer {
         return items.first { $0.pathExtension == "app" }
     }
 
-    private static func info(ofBundleAt app: URL) -> NSDictionary? {
-        NSDictionary(contentsOf: app.appendingPathComponent("Contents/Info.plist"))
+    private static func info(ofBundleAt app: URL) -> [String: Any]? {
+        PropertyListFile.infoPlist(ofBundleAt: app)
     }
 
     private static func version(ofBundleAt app: URL) -> String? {
@@ -160,11 +167,9 @@ enum Installer {
         }
 
         // Not `HelmProcess.run`: that runner reads the child to EOF and waits
-        // for its status, and this child is waiting for *this* process to exit
-        // before it does any work. It is `HelmProcess.start` all the same —
-        // the launch itself has to go through the door that answers instead of
-        // raising, and this is the worst place in the app for an abort, since
-        // it happens while Helm is replacing itself.
+        // for its status, and this child waits for *this* process to exit.
+        // `HelmProcess.start` all the same, the door that answers instead of
+        // raising: an abort while Helm is replacing itself is the worst place.
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/bash")
         proc.arguments = [scriptURL.path]

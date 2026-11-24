@@ -111,15 +111,15 @@ final class DuplicateScanner: @unchecked Sendable {
     /// when cancelled — a partial answer to "what is duplicated" is a wrong
     /// answer, not a smaller right one.
     /// - Parameter cache: digests kept from the last search. Nil means read
-    ///   every candidate, which is what an interactive search does today and
+    ///   every candidate, which is what an interactive search does and
     ///   what any search does the first time. When one is supplied it is also
     ///   **filled**: whatever this search reads is written back, so the caller
     ///   can persist it and the next search reads less.
     /// - Parameter rule: which copy of identical content the search keeps. It is
     ///   needed **before** the hashing and not only after it: the name that
     ///   stands for a set of hard links is chosen by the same rule, and a
-    ///   representative picked one way while the survivor is picked another is
-    ///   the two-pipelines defect this module has already paid for once.
+    ///   representative picked one way while the survivor is picked another
+    ///   would keep a name the policy rejects.
     func find(under root: String, by rule: KeepRule,
               cache: HashCache? = nil,
               onProgress: (@Sendable (DuplicateProgress) -> Void)? = nil)
@@ -128,9 +128,8 @@ final class DuplicateScanner: @unchecked Sendable {
             walk(root, onProgress: onProgress)
         }
         // Before the cancellation check, not after it. Stop is pressed when the
-        // footprint is at its highest — that is why it is pressed — and the
-        // reclaim used to sit below this line, so the one run that most needed
-        // its memory handed back was the only run that never got it.
+        // footprint is at its highest — that is why it is pressed — so a
+        // stopped run is the one whose reading matters most.
         HelmLog.shared.memory("duplicates.walk")
         if isCancelled { return nil }
 
@@ -143,16 +142,14 @@ final class DuplicateScanner: @unchecked Sendable {
         let candidates = Duplicates.sizeGroups(files, minBytes: Self.minBytes, by: rule)
         let total = candidates.reduce(0) { $0 + $1.count }
         // Twice per candidate: the prefix pass, then the full pass for
-        // whatever survives it. Counting each candidate once parked the bar at
-        // 100% for the entire second pass, which is the longer one.
+        // whatever survives it. Counting each candidate once would park the bar
+        // at 100% for the entire second pass, which is the longer one.
         let progress = ThrottledProgress(total: total * 2, onProgress: onProgress)
         lock.withLock { unreadableDigests = 0 }
 
         // Size groups are independent by construction, and hashing is where
-        // the minutes go: a real home directory measured 70 GB of worst-case
-        // full-hash volume, which single-threaded is the difference between
-        // "a moment" and "go make tea". One group per iteration; the buckets
-        // keep results ordered without the workers sharing an array.
+        // the minutes go, so it runs in parallel. One group per iteration; the
+        // buckets keep results ordered without the workers sharing an array.
         // `nonisolated(unsafe)`, not a rewrite: the compiler cannot see
         // `bucketLock`, and the shape it objects to is the one that is wanted —
         // one write per index under the lock, and the read below runs after
@@ -169,9 +166,8 @@ final class DuplicateScanner: @unchecked Sendable {
                 let byPrefix = Duplicates.refine(candidates[index]) { file in
                     if self.isCancelled { return nil }
                     progress.bump()
-                    // The cache first, and the file only if it misses. The walk has
-                    // already seen this file, so nothing new can hide here — this
-                    // skips the *reading*, not the looking.
+                    // The cache first, and the file only if it misses: this skips
+                    // the *reading*, not the looking (`HashCache`).
                     if let known = cache?.prefix(fileID: file.fileID, bytes: file.bytes,
                                                  modified: file.modified) {
                         return known
@@ -217,13 +213,13 @@ final class DuplicateScanner: @unchecked Sendable {
                 bucketLock.lock(); buckets[index] = found; bucketLock.unlock()
             }
         }
-        // Same as the walk above: the hashing loop is the one that has already
-        // caused a 48 GB incident, and a stopped run is where it is biggest.
+        // Same as the walk above: a stopped run is where the hashing loop's
+        // footprint is biggest.
         HelmLog.shared.memory("duplicates.hash")
         if isCancelled { return nil }
         let groups = buckets.flatMap { $0 }.sorted { $0.wasted > $1.wasted }
         // Unreadable files leave the running silently by design; the count is
-        // what tells a triage session — and now the page — whether "no
+        // what tells a triage session — and the page — whether "no
         // duplicates" meant "none" or "nothing could be read". Named apart from
         // the `unreadable` property, which counts what the *walk* was refused.
         let digestFailures = lock.withLock { unreadableDigests }
@@ -241,12 +237,9 @@ final class DuplicateScanner: @unchecked Sendable {
     /// means reading gigabytes over whatever bus it hangs from.
     ///
     /// **`BulkWalk`, not `FileManager.enumerator`.** The same question asked the
-    /// same way as Disk asks it, and the reason the shared walker exists:
-    /// measured warm on this Mac, compiled `-O`, `~/Projects` at 105 000 files
-    /// costs 0,79 s enumerated and 0,23 s walked. What the enumerator used to
-    /// answer per entry — the size, the inode, the modification time, the date
-    /// added — the walk hands over with the entry, so the `lstat` this loop used
-    /// to make per candidate is gone too.
+    /// same way as Disk asks it, and several times faster. The walk hands over
+    /// the size, the inode, the modification time and the date added with each
+    /// entry, so no `lstat` is made per candidate.
     ///
     /// Internal rather than private so `WalkFootprintTests` can measure it apart
     /// from the hashing — the two are the module's two bulk loops and they have
@@ -278,7 +271,7 @@ final class DuplicateScanner: @unchecked Sendable {
                 seen += batch.files.count
                 for file in batch.files
                 where file.isRegularFile && file.logicalBytes >= Self.minBytes {
-                    // The date the copy arrived decides which copy stays
+                    // The date the copy arrived is a rung of which copy stays
                     // (`SurvivingCopy`), and the clone family is what tells the
                     // size of a copy from what removing it returns — one
                     // `getattrlist`, and only for files already past the floor.
@@ -290,9 +283,8 @@ final class DuplicateScanner: @unchecked Sendable {
                 }
                 // The walk is silent work; without a tick the sheet sits inert
                 // for the seconds a big folder takes, which reads as a hang.
-                // Once per directory rather than once per file: `Date()` in the
-                // inner loop was a reading taken a hundred thousand times to be
-                // thrown away, and a batch is a directory.
+                // Once per directory rather than once per file: a batch is a
+                // directory, and `Date()` per file is a reading mostly thrown away.
                 if Date().timeIntervalSince(lastEmit) > BulkWalk.progressInterval {
                     lastEmit = Date()
                     onProgress?(DuplicateProgress(candidates: 0, hashed: seen))
@@ -319,11 +311,8 @@ final class DuplicateScanner: @unchecked Sendable {
             noteSkippedLibrary()
             return true
         }
-        // Any other package: an `.app`, an `.rtfd`, a `.pkg`. This is the half
-        // `.skipsPackageDescendants` used to carry on the enumerator, and it has
-        // to travel with the walk rather than be left behind with it — offering
-        // half of an application bundle as "a duplicate" invites breaking the
-        // app.
+        // Any other package: an `.app`, an `.rtfd`, a `.pkg`. Offering half of
+        // an application bundle as "a duplicate" invites breaking the app.
         if isPackage(path) { return true }
         // `~/Library` and what is under it, on the timer's path only. The root
         // gate cannot cover this: the home is the commonest duplicate-scan root
@@ -348,13 +337,11 @@ final class DuplicateScanner: @unchecked Sendable {
 
     /// Whether macOS draws this directory as one item.
     ///
-    /// Asked only of a name that carries an extension, and that is a
-    /// measurement rather than a guess: of 221 packages under `~/Projects` and
-    /// 2452 under `/Applications`, every one had an extension, while asking the
-    /// question of *every* directory costs 0,34 s over the 12 000 in
-    /// `~/Projects` — a third of the walk it is part of. A directory carrying
-    /// the bundle bit and no extension is walked into, which is the one case
-    /// this differs from `.skipsPackageDescendants` in.
+    /// Asked only of a name that carries an extension: packages carry one in
+    /// practice, and asking the question of *every* directory costs about a
+    /// third of the walk. A directory carrying the bundle bit and no extension
+    /// is walked into, which is the one case this differs from
+    /// `.skipsPackageDescendants` in.
     private func isPackage(_ path: String) -> Bool {
         guard !(path as NSString).pathExtension.isEmpty else { return false }
         let values = try? URL(fileURLWithPath: path).resourceValues(forKeys: [.isPackageKey])
@@ -364,8 +351,8 @@ final class DuplicateScanner: @unchecked Sendable {
     // MARK: - Progress
 
     /// Hash-rate progress, throttled the way DiskScanner throttles partials:
-    /// pass one alone measured 7.6k events against the ~3/s a person can
-    /// read, and every one of them reached a main-actor publish.
+    /// a person reads a few ticks a second, and every tick reaches a
+    /// main-actor publish.
     private final class ThrottledProgress: @unchecked Sendable {
         private let total: Int
         private let onProgress: (@Sendable (DuplicateProgress) -> Void)?
@@ -392,16 +379,6 @@ final class DuplicateScanner: @unchecked Sendable {
 
     // MARK: - Hashing
 
-    /// SHA-256 of the file's first `limit` bytes, or of all of it. Streamed in
-    /// 1 MB slices so a video does not become a Data the size of the video.
-    ///
-    /// `expecting` is how many bytes must actually be hashed for the answer to
-    /// mean anything. Without it, a read that failed on the first slice — an
-    /// iCloud-evicted file, a dying disk, a file truncated between the walk
-    /// and the hash — returned the digest of *nothing*, which is the same
-    /// digest for every such file. Two unreadable files of equal size grouped
-    /// as duplicates and the sheet offered to trash content nobody had read.
-    /// Unknown is not identical: short reads answer nil and leave the running.
     /// What one slice of a read came to. An enum rather than three flags
     /// because the pool closure has to answer with a value, not with a
     /// `return` that would only leave the closure.
@@ -411,6 +388,16 @@ final class DuplicateScanner: @unchecked Sendable {
         case failed
     }
 
+    /// SHA-256 of the file's first `limit` bytes, or of all of it. Streamed in
+    /// 1 MB slices so a video does not become a Data the size of the video.
+    ///
+    /// `expecting` is how many bytes must actually be hashed for the answer to
+    /// mean anything. A read that fails on the first slice (an iCloud-evicted
+    /// file, a dying disk, a file truncated between the walk and the hash)
+    /// would otherwise give the digest of *nothing*, the same for every such
+    /// file, and two unreadable files of equal size would group as duplicates.
+    /// Unknown is not identical: short reads answer nil and leave the running.
+    ///
     /// Internal rather than private so `DuplicateVerification` can hash a file
     /// exactly the way the search did. A verification that hashes differently
     /// verifies something else — and this one stands between a stale offer and
@@ -425,12 +412,11 @@ final class DuplicateScanner: @unchecked Sendable {
             // The pool is INSIDE the loop, and it is the whole reason the
             // streaming above works. `FileHandle.read` hands back an
             // autoreleased `Data`, and `concurrentPerform` drains no pool per
-            // iteration — so without this, every slice ever read stayed alive
-            // until the entire parallel block finished, and the footprint
-            // tracked the volume read rather than the slice size. Measured:
-            // 1.8 GB of reads ended at 1760 MB as written, 6 MB with the pool.
-            // A user saw 48 GB. Around the loop is not enough either: one 20 GB
-            // video is a single iteration of the caller's work.
+            // iteration — so without this, every slice read would stay alive
+            // until the entire parallel block finished, and the footprint would
+            // track the volume read rather than the slice size. Around the loop
+            // is not enough either: one 20 GB video is a single iteration of the
+            // caller's work.
             let outcome: SliceOutcome = autoreleasepool {
                 let slice = min(remaining, 1024 * 1024)
                 // A thrown read is a failure; a nil/empty read is honest EOF.

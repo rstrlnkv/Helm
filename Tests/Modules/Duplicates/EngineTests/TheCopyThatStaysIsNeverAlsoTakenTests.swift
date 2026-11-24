@@ -4,29 +4,18 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_Engine
 
-/// The engine has the last word on deletion, and one thing it never checks is
-/// that a copy another plan is keeping is not itself being taken.
+/// The engine has the last word on deletion, so it checks that a copy another
+/// plan is keeping is not itself being taken.
 ///
-/// **What the gates it does run cannot see.** `UserFileScope.partition` asks
+/// **What the other gates cannot see.** `UserFileScope.partition` asks
 /// whether a path belongs to the user; `DuplicateVerification` asks whether one
 /// pair is still what the scan said it was. Both answer about a path or a pair,
 /// and both say yes to each half of `[a→keep b, b→keep a]` — two pairs that are
-/// each perfectly valid and together take every copy of the content. There is
-/// nowhere in the reply for the outcome either: `removed` lists both, `refused`
-/// is empty, and the banner reports a clean removal.
+/// each perfectly valid and together take every copy of the content.
 ///
-/// **Why an engine-side check, when the page cannot build such a plan today.**
-/// `emptyBasket` pairs each marked copy with `group.copies.first` and never
-/// sends the survivor, so the plan list is well formed — which is exactly the
-/// argument `RemovableScope` was written to refuse: "those gates live in view
-/// models, and a view model is the wrong place for the last word: the engine
-/// takes a list … and trashes them, so any defect upstream that produces a bad
-/// string produces a deleted folder." This module made the same argument when
-/// it deleted its bare-paths entrance: a caller sending something unverifiable
-/// gets nothing removed rather than something removed unchecked (`KeptCopies.swift`).
-/// A plan list whose survivors are in its own removal set is the one remaining
-/// shape of "removed unchecked", and it is the shape whose cost is the content
-/// itself.
+/// **Engine-side, though the page never builds such a plan.** A view model is
+/// the wrong place for the last word: any defect upstream that produces a bad
+/// plan would produce deleted content (`KeptCopies.swift`).
 ///
 /// Nothing moves here: the engine's `trashing` port is replaced, so the
 /// assertion is about what the batch **allowed**, which is the decision under

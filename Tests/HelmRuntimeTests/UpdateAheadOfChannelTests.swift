@@ -3,20 +3,14 @@ import XCTest
 
 /// Running a build the channel has not caught up with is not "up to date".
 ///
-/// `isNewer` compares numeric cores, so 0.7.1 is not newer than 0.7.2-dev.34
-/// and the check fell through to `.upToDate` — the About page then said
-/// "You're on the latest version" to somebody running an unreleased dev build
-/// on the Beta channel. That reading is worse than a wrong version number: it
-/// tells the one person most likely to be testing something that there is
-/// nothing to test.
+/// 0.7.1 is not newer than 0.7.2-dev.34, and "You're on the latest version"
+/// would tell somebody running an unreleased dev build on the Beta channel
+/// that there is nothing to test. So the outcome is `.ahead`.
 ///
-/// The outcome is deliberately about *prereleases* being ahead. A final release
-/// ahead of its own channel is a state the release flow does not produce
-/// (ARCHITECTURE.md § Release: everything ships to dev first), and calling it
-/// out would put a notice on the About page of every ordinary user the day a
-/// channel lags.
-///
-/// Past defect: commit 6a9a40a9, «refactor: what the screens say, what they keep, and what they look like», which added `.ahead` for it.
+/// Only a prerelease is ahead. A final release ahead of its own channel is a
+/// state the release flow does not produce (Architecture/Release.md § Release:
+/// everything ships to dev first), and flagging it would put a notice on every
+/// ordinary user's About page the day a channel lags.
 final class UpdateAheadOfChannelTests: XCTestCase {
 
     private func release(tag: String) -> Data {

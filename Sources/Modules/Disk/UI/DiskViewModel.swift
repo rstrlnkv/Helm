@@ -36,9 +36,8 @@ extension DiskEngine: DiskWork {}
     @Published private(set) var tick: ScanTick?
     /// Path stack from the scan root to the folder the ring is showing.
     @Published var focusPath: [DiskEntry] = []
-    /// Laid-out arcs for the current focus. Cached deliberately: recomputing
-    /// layout in the view's body meant a full O(n) relayout on every hover
-    /// frame — hovering only changes colours, never geometry.
+    /// Laid-out arcs for the current focus. Cached so a hover, which changes
+    /// colours and never geometry, does not relayout every arc.
     @Published private(set) var segments: [RingSegment] = []
     /// True while partial snapshots are still feeding the ring.
     @Published private(set) var live = false
@@ -53,17 +52,14 @@ extension DiskEngine: DiskWork {}
     @Published private(set) var measuring = false
     /// The scan root's human name: "Macintosh HD", not "/".
     @Published private(set) var rootTitle = ""
-    /// What the last scan measured, so it can be measured again. Without it
-    /// "Scan again" had nothing to scan and could only start over — it emptied
-    /// the screen and showed the volume picker, which is not what it says.
+    /// What the last scan measured, so "Scan again" measures it again rather
+    /// than starting over.
     @Published private(set) var scannedPath: String?
     @Published var basket: [DiskEntry] = []
     /// The verdict of the last removal, «Moved to the Trash — …»; nil until one has run.
     @Published var banner: String?
-    /// Paths macOS refused. Announcing only what was freed hides these.
-    /// With reasons. This was a list of bare paths, and the page printed the
-    /// same sentence against every one of them — including the ones macOS
-    /// refused for a reason the person could have acted on.
+    /// Paths macOS refused, each with its reason: announcing only what was
+    /// freed hides them, and some refusals are ones the person can act on.
     @Published var failures: [HelmTrash.Refusal] = []
     /// How many actually moved. The banner is built before the outcome is
     /// known, so it cannot be asked whether it is true.
@@ -75,7 +71,7 @@ extension DiskEngine: DiskWork {}
     var closed = false
     /// Held so the observers can be taken back out: a view model dropped when
     /// the module is switched off must not be woken by the next disk somebody
-    /// plugs in (ARCHITECTURE.md § An observer outlives the thing it points at).
+    /// plugs in (Architecture/StateAndLifetime.md § An observer outlives the thing it points at).
     private var mounts: AnyObject?
     private var appeared = false
     /// Injectable so a test does not read — and overwrite — the person's own
@@ -95,15 +91,12 @@ extension DiskEngine: DiskWork {}
     @Published private(set) var stopped = false
 
     /// Whether the tree on screen is a finished measurement, and so worth
-    /// keeping for the next launch. The one place that decides it, because the
-    /// consequence of getting it wrong is a partial tree presented as fact at
-    /// every launch — the failure "Choose another…" exists to give a way out of.
+    /// keeping for the next launch. The one place that decides it: a wrong yes
+    /// presents a partial tree as fact at every launch.
     ///
     /// **Both ways a tree can be unfinished, not only the one with a button.**
-    /// This was `!stopped` alone, and `stopped` is false while a walk is
-    /// *running* — so it answered yes about a tree still being built, which is
-    /// every removal made from a live ring (the bar is drawn over the snapshot
-    /// and dimmed only by `busy`).
+    /// `stopped` is false while a walk is running, and a removal can be made
+    /// from a live ring (the bar is drawn over the snapshot, dimmed only by `busy`).
     var treeIsComplete: Bool { !stopped && !live }
 
     /// Names for scans, handed out in order. Two are in flight whenever
@@ -152,17 +145,14 @@ extension DiskEngine: DiskWork {}
         if !appeared {
             appeared = true
             if !closed { Task { [weak self] in await self?.restoreLastScan() } }
-            // **A disk arriving or leaving is a fact only macOS knows.** Without
-            // this the volume list is a local copy of a live external fact with no
-            // channel from the port that knows — the family (ARCHITECTURE.md § Ports and logic). The
-            // page re-asked on every appearance and so covered it up; the panel
-            // tile is rebuilt rather than reappearing, and a drive plugged in
-            // while the page is open never showed up in the picker at all.
+            // **A disk arriving or leaving is a fact only macOS knows**, so the
+            // list needs a channel from the port that knows
+            // (Architecture/ModulePattern.md § Ports and logic). Re-asking on
+            // appearance misses a drive plugged in while the page is open.
             //
             // `loadVolumes` is one call and returns, so the strong hold the task
-            // takes on `self` once it starts lasts as long as a volume-attributes
-            // read — not the trap of a `for await` over a
-            // stream nothing finishes (ARCHITECTURE.md § State that outlives a page and ends with its module).
+            // takes on `self` lasts one volume-attributes read, not a `for await`
+            // over a stream nothing finishes (Architecture/StateAndLifetime.md § State that outlives a page and ends with its module).
             mounts = closed ? nil : work.watchMounts { [weak self] in
                 Task { @MainActor in await self?.loadVolumes() }
             }
@@ -179,21 +169,15 @@ extension DiskEngine: DiskWork {}
         // A scan may have started while the file was being read; the fresh one
         // wins.
         guard phase == .start else { return }
-        // And a memory of a folder that no longer exists is not worth showing.
-        // Restoring one put the module on a screen with a breadcrumb, a "Scan
-        // again" button and nothing else at all — no ring, no rows, no reason
-        // given — and the only way out was a back arrow that did not look like
-        // one. Folders get scanned and then deleted; volumes do not.
+        // A folder that no longer exists is not restored: it would draw a
+        // breadcrumb and "Scan again" with no ring, no rows and no reason.
         //
-        // **Off the main actor**, because the last thing a saved root can be is a
-        // network mount nobody is holding up any more: `fileExists` then blocks
-        // for the mount's own timeout, and this runs while the window is being
-        // drawn — the family the three frozen windows of 2026-08-20 came from.
-        // Through `offTheCooperativePool` and not a detached task: a detached
-        // task is still a task on the pool, so a stat that blocks for a minute
-        // holds one of its few threads whoever started it. The phase is asked
-        // again on the way back — a scan may have started across the suspension,
-        // and the fresh one wins.
+        // **Off the main actor**: a saved root can be a network mount nobody
+        // holds up any more, and `fileExists` then blocks for the mount's own
+        // timeout while the window is being drawn. Through
+        // `offTheCooperativePool` and not a detached task, which would still
+        // hold one of the pool's few threads. The phase is asked again on the
+        // way back, since a scan may have started across the suspension.
         let rootPath = cached.result.root.path
         let rootIsThere = await offTheCooperativePool {
             FileManager.default.fileExists(atPath: rootPath)
@@ -205,13 +189,10 @@ extension DiskEngine: DiskWork {}
         }
         result = cached.result
         scannedPath = cached.result.root.path
-        // A date ahead of the clock is no reading at all: the clock was set back
-        // after the scan, or the file came from a Mac whose clock ran fast. Kept
-        // as it stands it is later than every list this Mac reads until the clock
-        // passes it, so the wedge would draw the saved figure beside a tile that
-        // says another, and every re-save would carry the date on into the next
-        // launch. It is taken as no newer than the list already read, and failing
-        // that as now.
+        // A date ahead of the clock is no reading: kept, it would outrank every
+        // list this Mac reads, so the wedge would disagree with the tile, and
+        // every re-save would carry it on. It is taken as no newer than the list
+        // already read, and failing that as now.
         let now = Date()
         completedAt = cached.savedAt <= now ? cached.savedAt : (volumesReadAt ?? now)
         restored = true
@@ -242,10 +223,9 @@ extension DiskEngine: DiskWork {}
         newScan()
     }
 
-    /// A walk is running — the volume's, or one folder's measured on demand. The
-    /// header's question, and it had no name: `live` also gates whether snapshots
-    /// may repaint the ring and `measuring` is also the second-walk guard, so the
-    /// spinner hung on one of them and a folder measurement ran in silence.
+    /// A walk is running: the volume's, or one folder's measured on demand. The
+    /// header's spinner asks this, not `live` or `measuring`, which each also
+    /// carry another job (snapshot repaints, the second-walk guard).
     var walking: Bool { live || measuring }
 
     var focus: DiskEntry? { focusPath.last }
@@ -263,15 +243,12 @@ extension DiskEngine: DiskWork {}
         let list = await work.mountedVolumes()
         volumes = list
         volumesReadAt = Date()
-        // **The ring is laid out against this list, and this list arrives after
-        // it.** `recomputeSegments` asks `isVolumeScan`, a membership test of
-        // `scannedPath` against `volumes`; `restoreLastScan` draws the cached
-        // tree first and looks the volumes up afterwards, so a restored whole
-        // volume settled holding both halves of the answer and a ring built from
-        // neither — every arc a share of `data + free` with the free part left
-        // out, which is every angle on screen wrong. Here rather than at the
-        // restore, because the list is what changed: a disk mounted under an
-        // open ring arrives by the same door.
+        // **The ring is laid out against this list, which can arrive after it.**
+        // `recomputeSegments` asks `isVolumeScan`, a test of `scannedPath`
+        // against `volumes`, and `restoreLastScan` draws before the list is
+        // read; without this a restored volume's free part is left out of every
+        // angle. Here rather than at the restore, because a disk mounted under
+        // an open ring arrives by the same door.
         recomputeSegments()
     }
 
@@ -286,17 +263,13 @@ extension DiskEngine: DiskWork {}
         live = true
         tick = nil
         // A new tree is arriving, so nothing about the old one belongs to the
-        // screen any more. This lives here rather than in each caller: it is the
-        // invariant "the basket only holds entries from the tree on screen", and
-        // every route to a new tree comes through this method. `rescan()` and
-        // `newScan()` used to each clear it themselves and Stop had to as well,
-        // because Stop showed the volume picker — with Stop keeping the tree it
-        // measured, this is the only door left where a tree is replaced.
+        // screen. Here rather than in each caller: it keeps "the basket only
+        // holds entries from the tree on screen", and this is the one door
+        // where a tree is replaced.
         basket = []
         clearRemovalReport()
-        // There is no completed measurement while one is running; leaving the
-        // previous scan's date here made `expireIfStale` judge the new tree by
-        // the old tree's age.
+        // No measurement is complete while one runs; the old date would make
+        // `expireIfStale` judge the new tree by the old tree's age.
         completedAt = nil
         let mine = nextScanID()
         showingScan = mine
@@ -339,15 +312,12 @@ extension DiskEngine: DiskWork {}
         return volumes.contains { $0.path == path }
     }
 
-    /// Measure the same target again — what the button has always said.
-    ///
-    /// A restored tree carries its root but not the path it was scanned from,
-    /// so that is the fallback: the same place, either way.
+    /// Measure the same target again. A restored tree carries its root but not
+    /// the path it was scanned from, so the root is the fallback.
     ///
     /// Refused while a walk or a removal is running, as the button is dimmed:
-    /// under a folder measurement it started a second scan that left
-    /// `measuring` set for good, under a removal it replaced the tree the reply
-    /// is about to land on.
+    /// under a folder measurement a second scan would leave `measuring` set for
+    /// good, under a removal it would replace the tree the reply lands on.
     func rescan() async {
         guard !walking, !busy else { return }
         guard let path = scannedPath ?? result?.root.path else { newScan(); return }
@@ -356,19 +326,9 @@ extension DiskEngine: DiskWork {}
 
     /// Stop. Keeps what the walk had measured, and says that is what it is.
     ///
-    /// It used to put the phase back to `.start`, so a minute of watching the
-    /// ring grow ended at the volume picker with the tree thrown away — while
-    /// `result` still held it. Everything the ring needs was already on hand;
-    /// what was missing was somewhere to say the tree is unfinished.
-    ///
-    /// The clearing this used to do went with it, and the reason is worth
-    /// keeping: the basket only ever holds entries from the tree on screen, and
-    /// Stop **took the tree away**, which left the volume picker drawn over a
-    /// basket bar naming folders of an abandoned scan (the page draws that bar
-    /// outside `switch dvm.phase`). Stop no longer takes the tree away, so the
-    /// bar is over the tree it belongs to and the invariant holds by keeping
-    /// rather than by clearing. The clearing moved to `scan(path:)`, which is now
-    /// the only place a tree is replaced.
+    /// The basket only ever holds entries from the tree on screen, and the page
+    /// draws its bar outside `switch dvm.phase`. Stop keeps the tree, so the
+    /// basket stays with it; a path back to the volume picker clears the basket.
     func cancel() {
         // Nothing in flight belongs to the screen any more. The engine may
         // already have finished walking, in which case the call below
@@ -383,12 +343,10 @@ extension DiskEngine: DiskWork {}
         live = false
         measuring = false
         tick = nil
-        // There is a tree worth keeping only when a walk was actually running and
-        // had reported at least one snapshot. Two other callers arrive here:
-        // `newScan()`, which wants the screen emptied, and Stop pressed inside
-        // the first third of a second, before any partial. Both are the volume
-        // picker, as they always were — and a finished tree must never be marked
-        // stopped, which is the whole difference this flag carries.
+        // There is a tree worth keeping only when a walk was running and had
+        // reported at least one snapshot. `newScan()` and a Stop before the first
+        // partial both land on the volume picker, and a finished tree is never
+        // marked stopped.
         guard wasWalking || wasMeasuring, phase == .result, result != nil else {
             phase = .start
             basket = []
@@ -421,9 +379,8 @@ extension DiskEngine: DiskWork {}
         completedAt = nil
         restored = false
         stopped = false
-        // Stated here rather than inherited from `cancel()`, which no longer
-        // clears: this is the door that really does take the tree away, so it is
-        // the one that has to leave the volume picker with nothing under it.
+        // Stated here rather than left to `cancel()`, which may keep the tree:
+        // this door takes the tree away, so it leaves nothing under the picker.
         basket = []
         clearRemovalReport()
         focusPath = []
@@ -437,24 +394,17 @@ extension DiskEngine: DiskWork {}
                   isDirectory: false, noAccess: false, children: [])
     }
 
-    /// Opens a folder anywhere in the drawn rings, not only the innermost one.
-    ///
-    /// The ring paints three levels at once, and this used to accept a direct
-    /// child only — so every arc past the first ring highlighted on hover and
-    /// then did nothing. The whole chain is appended, so jumping two levels
-    /// still leaves breadcrumbs that describe where you are.
+    /// Opens a folder anywhere in the drawn rings, not only the innermost one,
+    /// since every drawn arc highlights on hover. The whole chain is appended,
+    /// so a jump of two levels still leaves breadcrumbs for each.
     func drill(into path: String) {
         guard let focus else { return }
         let chain = DiskFocus.chain(from: focus, to: path)
         guard let last = chain.last, last.isDirectory else { return }
-        // A folder with no children is not empty — it is the depth the scan
-        // stopped at. Measure it now and graft it in, or the ring simply ends
-        // six levels down with no way to say why.
-        //
-        // Except while the scan is still running, where it means something
-        // else: not walked yet. The walk in flight will bring it in, and a
-        // second walk of the same folder competes with the first for the same
-        // disk only to have its answer replaced by the next snapshot.
+        // A folder with no children is the depth the scan stopped at, not an
+        // empty one: it is measured now and grafted in. While the scan still
+        // runs it means not walked yet, and the walk in flight will bring it in;
+        // a second walk would only compete for the disk and be overwritten.
         guard !last.children.isEmpty else {
             if !live { Task { await measureAndDrill(into: path) } }
             return
@@ -490,11 +440,8 @@ extension DiskEngine: DiskWork {}
         guard let focus else { return }
         focusPath.append(contentsOf: DiskFocus.chain(from: focus, to: path))
         recomputeSegments()
-        // The rule `emptyBasket` already keeps, and this door had none at all —
-        // which is the worst place for that, because a stopped tree is exactly
-        // the tree full of folders the walk never reached, and measuring one on
-        // demand is what a stopped screen is for. Everything around the graft is
-        // still a floor.
+        // The rule `emptyBasket` keeps: a stopped tree stays unsaved after a
+        // graft, since everything around the measured folder is still a floor.
         if treeIsComplete { store.saveDetached(measured, at: completedAt ?? Date()) }
     }
 
@@ -510,8 +457,6 @@ extension DiskEngine: DiskWork {}
         guard focusPath.indices.contains(index), index < focusPath.count - 1 else { return }
         // There is always exactly one wedge to fold into, however far the jump:
         // the child of the level being returned to that leads to where we were.
-        // Believing otherwise left every jump of more than one level as a hard
-        // cut, which is what the ring looked worst doing.
         foldingBackLevels = focusPath.count - 1 - index
         foldingBackFrom = focusPath[index + 1].path
         focusPath = Array(focusPath.prefix(index + 1))
@@ -531,8 +476,7 @@ extension DiskEngine: DiskWork {}
                                   language: AppLanguage.current.rawValue)
     }
 
-    // The basket and the removal it feeds live in `DiskViewModel+Basket.swift`
-    // — this file sat exactly on the linter's length limit, and the basket is
+    // The basket and the removal it feeds live in `DiskViewModel+Basket.swift`,
     // the one section that reads whole on its own.
 
     /// A removal is running. The page dims what would start a second one.
@@ -569,15 +513,10 @@ extension DiskEngine: DiskWork {}
     // MARK: - Layout
 
     /// The layout the ring is about to become, computed before the animation
-    /// starts.
-    ///
-    /// The unfold used to interpolate the *current* layout and then swap trees
-    /// at the end, and the two did not agree: folding into "other" is decided
-    /// against the parent's total in one and the folder's own total in the
-    /// other, so the last frame of the animation held five arcs spanning 353°
-    /// and the first frame after it held three spanning 360. Every boundary
-    /// moved at once, which is what read as a tear. Animating *towards* this
-    /// makes the last frame the first frame by construction.
+    /// starts. Folding into "other" is decided against the parent's total in the
+    /// current layout and the folder's own total in the next, so the two
+    /// disagree; animating *towards* this makes the last frame the first frame
+    /// after it by construction.
     func ringLayout(forFocusAt path: String) -> [RingSegment] {
         guard let root = result?.root,
               let node = path == root.path ? root : DiskFocus.chain(from: root, to: path).last
@@ -590,20 +529,13 @@ extension DiskEngine: DiskWork {}
 
     func recomputeSegments() {
         guard let focus else { segments = []; return }
-        // Free space is a fact about a volume, not about a folder. On a folder
-        // scan it was still drawn: 102 GB of free disk against 6 MB of content
-        // made one pale wedge worth 99.99% of the circle, and every file in the
-        // folder fell under the minimum visible angle and was folded into
-        // "other". The ring came out a flat grey disc that said nothing about
-        // the folder it was measuring.
-        // The wedge draws the freshest of two readings of the same volume: the
+        // Free space is a fact about a volume, not about a folder: on a folder
+        // scan it would fill the circle and fold every file into "other".
+        // The wedge draws the fresher of two readings of the same volume: the
         // list the tile beside it draws (`volumesReadAt`) and the free space the
         // scan read at the end of its walk (`completedAt`, which a restore sets
-        // to the day the scan was saved). «Scan again» reads the second and not
-        // the first, so after emptying the Trash the list is the older one; a
-        // restored scan is older than any list read since, and a saved date ahead
-        // of the clock was already pulled back to the list's own at the restore
-        // (`restoreLastScan`). A tie goes to the list.
+        // to the day the scan was saved). «Scan again» refreshes only the second;
+        // a restored scan is older than any list read since. A tie goes to the list.
         let live = volumes.first { $0.path == scannedPath }?.freeBytes
         let scanIsNewer = volumesReadAt.map { read in completedAt.map { $0 > read } ?? false } ?? true
         let free = focusPath.count == 1 && isVolumeScan
@@ -618,13 +550,10 @@ extension DiskEngine: DiskWork {}
     /// RingLayout works on the engine's node type; the UI holds the
     /// flattened DiskEntry snapshot, so the focused subtree is rebuilt for it.
     ///
-    /// The entry's path is dropped here and handed to `layout` separately: a
-    /// `DiskNode` keeps only the name, and the layout composes the rest back
-    /// down from the focus. The paths that come out are the entries' own again,
-    /// which is what the basket and `UserFileScope` see.
-    ///
-    /// `noAccess` and `isFolded` are carried too: without them the ring drew
-    /// no unreadable-folder wedge and took the folded bucket for a file named `…`.
+    /// The entry's path is handed to `layout` separately: a `DiskNode` keeps
+    /// only the name, and the layout composes the paths back down from the
+    /// focus, so the basket and `UserFileScope` see the entries' own paths.
+    /// `noAccess` and `isFolded` are carried for the unreadable and folded wedges.
     private static func node(from entry: DiskEntry) -> DiskNode {
         DiskNode(name: entry.name, bytes: entry.bytes,
                  isDirectory: entry.isDirectory,

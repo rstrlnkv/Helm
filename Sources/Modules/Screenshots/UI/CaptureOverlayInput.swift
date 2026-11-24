@@ -231,8 +231,7 @@ extension CaptureOverlay {
             return
         }
         guard let current = drag, current.display == display else { return }
-        // A click that never moved is not a selection: the drag ends and the
-        // overlay waits for a real one — or goes on editing the one it had.
+        // A click that never moved is not a selection: the overlay waits for a real one, or goes on editing the one it had.
         guard current.drag.isUsable else { drag = nil; preselected = replacedByDrag; replacedByDrag = nil; render(); return }
         replacedByDrag = nil
         if selectionOnly {

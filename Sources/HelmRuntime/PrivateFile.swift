@@ -2,35 +2,20 @@ import Foundation
 
 /// Writing a file that names somebody's files.
 ///
-/// **Three places did this by hand and each carried a comment naming the other
-/// two** — the scan journal, the disk scan's cache and the duplicate finder's
-/// digest cache. A comment that names its own duplicates is the duplication
-/// confessing.
-///
-/// What they were all working around: **the mode belongs to the write, not to
-/// the file.** `.atomic` writes a temporary file and renames it over the
-/// target, so a fresh write takes its mode from the process umask and a rewrite
-/// takes it from the file it replaced — measured at 0644 both ways in a plain
-/// process. A single missed `setAttributes` in a file holding an index of every
-/// filename on a volume makes the privacy of that list an accident of whichever
-/// umask the app happened to run under.
+/// **The mode belongs to the write, not to the file.** `.atomic` writes a
+/// temporary file and renames it over the target, so a fresh write takes its
+/// mode from the process umask (0644 in a plain process). A missed
+/// `setAttributes` on a file indexing every filename on a volume makes its
+/// privacy an accident of the umask.
 ///
 /// Directories have the matching trap one level up: the `attributes:` argument
 /// applies only to directories *this call* creates, so a folder an earlier build
 /// left at 0755 stays there for ever unless it is set again.
 ///
-/// **Every call here answers, and none of them is `@discardableResult`.** It
-/// was, on all four, and eight callers took the invitation — the tree Disk
-/// reopens on, the salt the log's tags are derived from, the note that says an
-/// update is in flight, the scan journal, the digest cache, a marker and the log
-/// itself. A refusal that is not a success is a defect this house already names
-/// for `pmset`, for `launchctl` and for a removal that got no answer; it had
-/// simply not reached the filesystem, because `write(x, to: y)` and
-/// `_ = write(x, to: y)` differ by four characters and nothing could tell a
-/// decision from an oversight. So the compiler objects now, and
-/// `ARefusalFromTheDiskIsNotASuccessTests` reads `Sources` for the rest: use the
-/// answer, or discard it with `_ =` and write beside it why the refusal does not
-/// matter there.
+/// **Every call here answers, and none of them is `@discardableResult`**, so a
+/// refusal cannot pass for a success by oversight. The package makes the
+/// unused-result warning an error: use the answer, or discard it with `_ =`
+/// and write beside it why the refusal does not matter there.
 public enum PrivateFile {
 
     /// Encode, and write it the way `write(_ data:to:)` below does: into a file
@@ -39,8 +24,7 @@ public enum PrivateFile {
     /// - Returns: whether it landed. These files are caches, journals and
     ///   salts — a write that cannot happen is a missed optimisation, never a
     ///   reason to fail the work that asked for it — so the caller is told and
-    ///   decides, rather than being thrown at. Deciding is not optional: see the
-    ///   type's own note above.
+    ///   decides, rather than being thrown at.
     static func write<T: Encodable>(_ value: T, to url: URL) -> Bool {
         guard let data = try? JSONEncoder().encode(value) else { return false }
         return write(data, to: url)
@@ -48,21 +32,12 @@ public enum PrivateFile {
 
     /// The folder first, then the file.
     ///
-    /// **Six call sites had spelled this pair out, and each carried the same
-    /// comment explaining the `&&`** — Disk's saved tree, the Duplicates digest
-    /// cache, the Homebrew and VPN markers, the log's salt and the update note.
-    /// That is the shape this whole type was extracted for the first time: the
-    /// note at the top of the file says three places hand-rolled the write and
-    /// each named the other two. A pairing repeated six times under one repeated
-    /// sentence is the same confession.
-    ///
     /// Both answers spent on one, because they are one question: a folder that
     /// could not be made is a write that cannot land, so `&&` short-circuits and
     /// the caller has a single thing to decide about.
     ///
-    /// `HelmLog.append` keeps its own pair and is not a seventh: it makes the
-    /// folder once and then writes in either of two branches, so there is no one
-    /// answer for the two to share.
+    /// `HelmLog.append` keeps its own pair: it makes the folder once and writes
+    /// in either of two branches, so there is no one answer to share.
     public static func writeMakingTheFolder<T: Encodable>(_ value: T, at url: URL) -> Bool {
         return directory(at: url.deletingLastPathComponent()) && write(value, to: url)
     }
@@ -95,16 +70,10 @@ public enum PrivateFile {
     /// The inode the bytes go into: 0600 from the `open` that makes it, beside
     /// the file it is about to become.
     ///
-    /// **This is the repair of 2026-09-08, and the window it closes is the one
-    /// this whole type was written to close, one level down.** `Data.write` with
-    /// `.atomic` writes a temporary file and renames it, and the temporary is
-    /// created with the process umask on it — 0644 here. So the bytes lay in the
-    /// destination folder readable by anything running as this user for the
-    /// length of the write, and then under the destination *name* until the
-    /// `setAttributes` that used to follow. Nothing was reported and nothing
-    /// looked wrong: `PrivateFile.directory` makes the folder above 0700, which
-    /// covers it — a second defence standing in for a missing first one, and it
-    /// covers nothing at all the day a caller writes into a folder somebody else
+    /// `Data.write` with `.atomic` creates its temporary with the process umask
+    /// on it, so the bytes would lie readable by anything running as this user
+    /// until a later `setAttributes`. A 0700 folder above is a second defence,
+    /// and covers nothing the day a caller writes into a folder somebody else
     /// made.
     ///
     /// `O_EXCL` because the name is ours or the write does not happen: an
@@ -118,10 +87,8 @@ public enum PrivateFile {
     /// The caller owns the descriptor from here: it is closed by the
     /// `FileHandle` above on the way out of either branch.
     ///
-    /// Not `private`, and that is the only reason it is a function of its own:
-    /// «the mode arrives with the file» is the whole claim of this repair, and a
-    /// claim inside a `do` block cannot be asserted about. `TheModeBelongsToTheWriteTests`
-    /// names it.
+    /// A function of its own, and not `private`, so «the mode arrives with the
+    /// file» can be asserted (`TheModeBelongsToTheWriteTests`).
     static func bornPrivate(beside path: String) -> (descriptor: Int32, path: String)? {
         let folder = (path as NSString).deletingLastPathComponent
         let scratch = (folder as NSString)
@@ -140,10 +107,8 @@ public enum PrivateFile {
     ///
     /// For the one file this app **appends** to rather than replaces: the log
     /// never passes through `write`, so its mode is whatever the umask gave it
-    /// the day it was created — measured 0644 on the machine it was found on,
-    /// where (ARCHITECTURE.md § Diagnostics log) says 0700 and the folder was
-    /// doing all the work. Called once at launch, never per line: the mode of an
-    /// open file is not a question worth asking of every write to it.
+    /// the day it was created (Architecture/DiagnosticsLog.md § Diagnostics log).
+    /// Called once at launch, never per line.
     ///
     /// - Returns: whether there was a file to tighten. Absent is not a failure —
     ///   the log is hardened before anything has been written to it.

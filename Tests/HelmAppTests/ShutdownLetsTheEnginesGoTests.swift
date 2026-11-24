@@ -1,6 +1,7 @@
 import XCTest
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 @testable import HelmApp
 
 /// `shutdown()` is what stands between "a test called `bootstrap()`" and "the
@@ -9,8 +10,7 @@ import HelmRuntime
 /// `ModuleHost.shared` is a singleton, so a bootstrap in any test builds every
 /// enabled module's *real* engine: Layout's `CGKeyTap` sits on the main run
 /// loop with the accessibility grant and feeds every real keystroke into the
-/// engine, which spell-checks words — visible as endless contactsd/CoreData
-/// 4097 retry spam through the remainder of `swift test`. The teardowns in
+/// engine for the rest of `swift test`. The teardowns in
 /// `BootstrapDoesNotOrphanEnginesTests` and
 /// `TheHostPutsAModulesOwnItemInTheMenuBarTests` call `shutdown()` to prevent
 /// that; this test is what makes those calls a guard rather than a gesture.
@@ -18,7 +18,8 @@ import HelmRuntime
 /// The assertion is that the engines are **gone**, not that `live` is empty —
 /// `live` emptied is `shutdown()` reading back its own write. An engine still alive
 /// after the host let go of it is being held by something it should have cancelled
-/// (`Task { [weak self] }` holds strongly once the body runs, ARCHITECTURE.md § State that outlives a page and ends with its module), and whatever it registered is still
+/// (`Task { [weak self] }` holds strongly once the body runs,
+/// Architecture/StateAndLifetime.md § State that outlives a page and ends with its module), and whatever it registered is still
 /// registered. Freed is the state no leftover can survive: the tap's own `deinit`
 /// is unreachable while the engine lives, and certain once it does not.
 @MainActor
@@ -26,9 +27,9 @@ final class ShutdownLetsTheEnginesGoTests: XCTestCase {
 
     /// Belt and braces: if the assertion below ever fails, the suite should
     /// still not keep the engines that *did* deactivate.
-    override func tearDown() {
+    override func tearDown() async throws {
         ModuleHost.shared.shutdown()
-        super.tearDown()
+        try await super.tearDown()
     }
 
     private final class Grip {
@@ -36,7 +37,7 @@ final class ShutdownLetsTheEnginesGoTests: XCTestCase {
         init(_ engine: any ModuleEngine) { self.engine = engine }
     }
 
-    func testShutdownFreesEveryEngineBootstrapBuilt() {
+    func testShutdownFreesEveryEngineBootstrapBuilt() async {
         let host = ModuleHost.shared
         host.bootstrap()
         // The subject has to have happened first, or "no engine survived"
@@ -66,10 +67,7 @@ final class ShutdownLetsTheEnginesGoTests: XCTestCase {
                       "shutdown left \(host.live.keys.sorted().joined(separator: ", ")) live")
         // An engine's own tasks release it when they see the cancellation
         // `deactivate()` sent, which takes a turn of the run loop, not zero.
-        for _ in 0..<200 {
-            if grips.allSatisfy({ $0.grip.engine == nil }) { break }
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-        }
+        await waitUntil("every engine released") { grips.allSatisfy { $0.grip.engine == nil } }
         let survivors = grips.filter { $0.grip.engine != nil }.map(\.key).sorted()
         XCTAssertTrue(survivors.isEmpty,
                       "shutdown deactivated and dropped every engine, and "

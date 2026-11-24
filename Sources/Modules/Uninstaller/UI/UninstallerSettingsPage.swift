@@ -4,11 +4,9 @@ import HelmUI
 import HelmRuntime
 import Module_Uninstaller_Engine
 
-/// The copy on disk, not the bundle id — the same identity `UninstallGroup.id`
-/// carries, and for the same reason one step earlier: `WorkspaceAppLister` reads
-/// four folders and deduplicates by *path* precisely because a Setapp copy and a
-/// direct download share an id, and a `ForEach` given one identity for two rows
-/// is what SwiftUI answers with «undefined results».
+/// The copy on disk, not the bundle id, as in `UninstallGroup.id`: two copies
+/// of one app share an id, and a `ForEach` given one identity for two rows has
+/// undefined results.
 extension InstalledApp: Identifiable { public var id: String { path } }
 
 /// Two steps, AppCleaner-style: tick the apps to remove, then review the files
@@ -17,17 +15,14 @@ extension InstalledApp: Identifiable { public var id: String { path } }
 struct UninstallerSettingsPage: View {
     @ObservedObject private var uvm: UninstallerViewModel
 
-    /// What survives a sidebar click is exactly what the person cannot retype:
-    /// the permission is re-probed on every appearance and a search term costs a
-    /// second. Everything else — what is ticked, which step, the scan, the
-    /// failure report — is on the view model. See `UninstallerViewModel.step`.
+    /// Only what is cheap to lose lives here: the permission is re-probed on every
+    /// appearance, and a search term costs a second. The rest is on the view model
+    /// (`UninstallerViewModel.step`).
     @State private var diskAccess: PermissionState = .granted
     @State private var search = ""
 
-    /// Installed apps, or leftovers from apps that are already gone — a
-    /// string-backed id rather than an index, the way `HelmHeaderTab.id`
-    /// wants it: an index would silently mis-read if the two tabs ever
-    /// reordered.
+    /// Installed apps, or leftovers from apps already gone. A string-backed id,
+    /// as `HelmHeaderTab.id` wants: an index would mis-read if the tabs reordered.
     private enum Tab: String { case apps, orphans }
     @State private var tab: Tab = .apps
 
@@ -60,10 +55,7 @@ struct UninstallerSettingsPage: View {
     var body: some View {
         pageBody
             // Declared for every tab and step, so the band is lit from the first
-            // frame: over the permission note when there is one, otherwise over
-            // what the tab draws first, which is a list that scrolls under it,
-            // knowingly, where a list comes first.
-            // `HelmPageHeader.standsOnStillContent` says why it is kept.
+            // frame. `HelmPageHeader.standsOnStillContent` says why it is kept.
             .helmPageStandsOnStillContent()
             .helmTracksFullDiskAccess($diskAccess)
             .task {
@@ -73,19 +65,13 @@ struct UninstallerSettingsPage: View {
             }
     }
 
-    /// **The page's switcher and Refresh, in the header row of the window's card**, through the contract every
-    /// module page shares (`HelmHeaderContent.swift` in `HelmUI`).
+    /// The page's switcher and Refresh, in the header row of the window's card
+    /// (`HelmHeaderContent.swift` in `HelmUI`).
     ///
-    /// The switcher carries no width of its own — it sizes itself from what it
-    /// shows — and Refresh is only on the Apps tab: Orphans has its own scan
-    /// and its own Rescan button, so a Refresh there would spin an icon and
-    /// change nothing the user could see.
-    ///
-    /// **Dims rather than disables per tab.** `tabsEnabled: step != .review`
-    /// dims the whole tab strip while a
-    /// removal is being reviewed, when switching tabs would abandon it —
-    /// per-tab disabling was never asked for, and `HelmHeaderContent`
-    /// has no way to disable one tab and not the other.
+    /// Refresh is only on the Apps tab: Leftovers has its own scan button.
+    /// `tabsEnabled: step != .review` dims the whole strip while a removal is
+    /// reviewed, since switching tabs would abandon it; `HelmHeaderContent` cannot
+    /// disable one tab alone.
     private var headerContent: HelmHeaderContent {
         HelmHeaderContent(
             tabs: [
@@ -95,9 +81,8 @@ struct UninstallerSettingsPage: View {
             selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }),
             tabsEnabled: step != .review,
             actions: [
-                // Nothing to order on the review or the failure report, and
-                // nothing to order on the Leftovers tab. The choice is the
-                // engine's to remember; a press answers at once.
+                // Nothing to order on the review, the failure report or the
+                // Leftovers tab. The engine remembers the choice.
                 HelmHeaderAction(id: "sort", title: UnStr.sortBy, symbol: "arrow.up.arrow.down",
                                   isEnabled: step == .pick && failures.isEmpty,
                                   isVisible: tab == .apps,
@@ -120,12 +105,11 @@ struct UninstallerSettingsPage: View {
     private var pageBody: some View {
         // One token, `HelmMotion.interface`, on the step: the list and the review are the one change that moves.
         VStack(spacing: 0) {
-            // The switcher, Refresh and the search control are all the
-            // window's own toolbar's (`headerContent`, `.helmHeaderContent`
-            // below) — nothing is drawn in the page for any of them.
+            // The switcher, Refresh and the search are the window's header's
+            // (`headerContent`, `.helmHeaderContent` below).
             //
-            // Page level: the user used to tick apps, sit through a scan and
-            // only then learn the removal would be refused.
+            // Page level, so the person learns of a missing grant before ticking
+            // apps and sitting through a scan.
             if let note = permissionNote {
                 HelmPermissionNote(need: .fullDiskAccess, text: note)
                     .helmPageStrip()
@@ -145,42 +129,33 @@ struct UninstallerSettingsPage: View {
                 OrphansView(uvm: uvm)
             }
         }
-        // **Declared unconditionally, on every tab and every step, and not
-        // only under `tab == .apps && step == .pick`.** Dropping the field shifted every other item sharing the
-        // bar, Refresh included. The header row keeps the declared width of every action (`HelmHeaderActions`),
-        // and `filtered` still only narrows the Apps tab's list at `step == .pick`.
+        // Declared on every tab and step: dropping the field would shift every other
+        // item in the bar (`HelmHeaderActions` keeps each declared width). `filtered`
+        // still narrows only the Apps list at `step == .pick`.
         .helmHeaderContent(headerContent)
         .animation(HelmMotion.interface, value: step)
     }
 
     /// The one note about the one permission, or nil when there is nothing to say.
     ///
-    /// **Two readings stand behind it, and only one of them is a probe.**
-    /// `diskAccess` is `PermissionCheck`'s answer, taken on every appearance; the
-    /// other is a `contentsOfDirectory` on the Trash that the engine really
-    /// attempted and was refused (`TrashWatch.cannotReadTrash`). A refused read is
-    /// the stronger evidence of the two — reading `~/.Trash` is exactly what this
-    /// grant covers — so the note stands over it as well, and the switch on the
-    /// Leftovers tab stops being a control that says on with nothing behind it.
+    /// Two readings stand behind it: `diskAccess`, `PermissionCheck`'s probe on
+    /// every appearance, and a Trash read the engine attempted and was refused
+    /// (`TrashWatch.cannotReadTrash`), the stronger evidence, since `~/.Trash` is
+    /// what this grant covers.
     ///
-    /// One note for one permission. There used to be a second under the Trash
-    /// switch with its own Grant button — same grant, same pane, two rows a person
-    /// has to work out are the same thing. What the switch adds is a consequence,
-    /// not a notice, so it lands in this sentence instead.
+    /// One note for one permission: what the Trash switch loses is a consequence,
+    /// said in this sentence, not a second note with its own Grant button.
     private var permissionNote: String? {
         guard diskAccess == .denied || uvm.trashWatch == .cannotReadTrash else { return nil }
         return uvm.trashWatch.isOn ? UnStr.accessNeededWithWatch : UnStr.removalNeedsAccess
     }
 
-    /// Counts read as a quiet status line instead of a panel of dials — or
-    /// nothing at all, when the body above has already said why there is no
-    /// count.
+    /// Counts as a quiet status line, or nothing when the body has already said
+    /// why there is no count.
     ///
-    /// The count comes from the model — `loading ? nil : apps.count` here said «0
-    /// apps» about a list nobody had asked for yet, which is a sentence about
-    /// somebody's Mac that Helm did not check. `AppsEmpty.Status` is where that
-    /// is decided, and the switch here is exhaustive so a third answer cannot
-    /// arrive as a `default`.
+    /// `AppsEmpty.Status` decides it, so a list nobody asked for yet is not «0
+    /// apps»; the switch is exhaustive so a third answer cannot arrive as a
+    /// `default`.
     private var statusLine: String {
         let count: Int?
         switch AppsEmpty.status(answered: uvm.listAnswered, loading: loading, apps: apps.count) {
@@ -207,11 +182,9 @@ struct UninstallerSettingsPage: View {
     /// Why the list has no rows — and nil when it has some, which is what the
     /// body branches on.
     ///
-    /// **Not `filtered.isEmpty`.** The two ways this tab comes up empty want
-    /// two different sentences, and it drew the same empty inset `List` for both
-    /// of them: `AppsEmpty` holds the rule and says why there are two. The
-    /// «answered» half is the view model's own flag, the one the footer's count
-    /// reads, so the body cannot contradict the line under it.
+    /// Not `filtered.isEmpty`: the two ways this tab comes up empty want two
+    /// sentences (`AppsEmpty`). «Answered» is the flag the footer's count reads
+    /// too, so the body cannot contradict the line under it.
     private func appsEmpty(shown: Int) -> AppsEmpty.Reason? {
         AppsEmpty.reason(answered: uvm.listAnswered, apps: apps.count, shown: shown)
     }
@@ -222,10 +195,8 @@ struct UninstallerSettingsPage: View {
             if loading || !uvm.listAnswered {
                 HelmBusyState()
             } else if let nothing = appsEmpty(shown: shown.count) {
-                // A statement and no verb: «no applications» would offer to
-                // repeat a question just answered, and «nothing matches this
-                // search» to reload the Mac when the search field that hid the
-                // rows is a few points above the message.
+                // A statement and no verb: a Refresh would repeat a question just
+                // answered, and the search field that hid the rows is right above.
                 HelmEmptyState(message: UnStr.emptyMessage(nothing))
             } else {
                 List {
@@ -237,13 +208,8 @@ struct UninstallerSettingsPage: View {
                 .helmStripedList(rowPitch: HelmSpace.s8)
             }
             Divider()
-            // The same line the review step draws, and for the same reason: it was
-            // a `lineLimit(1)` passenger in the row below, between a status line
-            // and two buttons. Measured at 845 pt against 646, which is the detail
-            // pane at `contentMinSize`: English unchanged, German −30 %, Russian
-            // −39 %, and the row did not grow — so what a partly-failed removal
-            // lost was the tail of its own sentence, the half saying how many items
-            // stayed behind.
+            // The same line the review step draws (`resultLine`), full width so
+            // the clause saying how many items stayed behind is not truncated.
             report
             HStack(spacing: HelmSpace.s5) {
                 Button(HelmWord.clearSelection) { uvm.clearChecked() }
@@ -271,15 +237,12 @@ struct UninstallerSettingsPage: View {
         return HStack(spacing: HelmSpace.s5) {
             if system {
                 // Marked the way Disk marks a row it cannot remove: no
-                // checkbox, and a word saying why. Safari sat here tickable at
-                // 0 bytes, and macOS refuses it — after the scan and the click.
-                // The space keeps the icons in one column.
+                // checkbox, and a word saying why. The space keeps the icons
+                // in one column.
                 HelmCheckboxSlot()
             } else {
-                // Named, though the label stays hidden: `.labelsHidden()` hides a
-                // label visually and keeps it for VoiceOver, but an empty string
-                // leaves nothing to keep — a list of 250 rows read as "checkbox,
-                // unchecked" 250 times.
+                // Named, though the label stays hidden: `.labelsHidden()` keeps a
+                // label for VoiceOver, and an empty one reads as "checkbox" alone.
                 Toggle(app.name, isOn: Binding(
                     get: { uvm.isChecked(app) },
                     set: { on in uvm.setChecked(app, on) }
@@ -291,12 +254,9 @@ struct UninstallerSettingsPage: View {
                 .resizable().frame(width: UninstallerLayout.appIcon, height: UninstallerLayout.appIcon)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
-                // **Two lines in every row, whatever the row is.** The System
-                // mark used to be a third line, so the rows that had it stood
-                // taller than the rows that did not and the list went down the
-                // page in steps. It is a pill beside the name now — the house's
-                // one pill — which is where the eye is already looking for what
-                // a row *is*, and it costs the row no height at all.
+                // Two lines in every row, whatever the row is: the System mark is
+                // a pill beside the name, so it costs no height and the list does
+                // not go down the page in steps.
                 HStack(spacing: HelmSpace.s3) {
                     Text(app.name).lineLimit(1)
                     if system { HelmBadge(UnStr.systemApp) }
@@ -306,20 +266,13 @@ struct UninstallerSettingsPage: View {
                     .truncationMode(.middle)
             }
             // A name, a path and the System caption are one thing to read, in
-            // the order they are drawn — three stops per row down a list that
-            // holds hundreds, and the name arrived without the caption that
-            // qualifies it. The checkbox stays its own, being a thing to
-            // operate rather than to read.
+            // the order drawn. The checkbox stays its own: it is operated, not read.
             .accessibilityElement(children: .combine)
             Spacer()
             VStack(alignment: .trailing, spacing: HelmSpace.s1) {
-                // Nothing until measured: the list arrives unsized,
-                // and «0 bytes» is a claim nobody made. A bundle
-                // measured as nothing reads as the dash the total already uses.
-                // The place is kept either way — the sizes land seconds after the
-                // list, and a line that appeared above the date slid every date on
-                // screen down half a line at once. Hidden, so it draws and reads
-                // as nothing while it holds the line.
+                // Nothing until measured: «0 bytes» is a claim nobody made. A
+                // bundle measured as nothing reads as the total's dash. The place
+                // is held, hidden, so the date below does not slide when the size lands.
                 if let size = uvm.measuredSizes[app.path] {
                     Text(size > 0 ? Bytes(size) : "—")
                         .helmFigure().foregroundStyle(HelmText.quiet)
@@ -333,18 +286,15 @@ struct UninstallerSettingsPage: View {
         .onTapGesture { uvm.toggleChecked(app) }
     }
 
-    /// When the app was last opened, on every row in every order — the fact the
-    /// date order sorts by, so it can be checked by eye. Blank while Spotlight
-    /// is being asked and for an app the read did not reach, «no record» for one
-    /// Spotlight has no date for, and absent altogether when Spotlight answered
-    /// for no app at all: every row would say «no record».
+    /// When the app was last opened, on every row in every order, so the date
+    /// order can be checked by eye. Blank while Spotlight is asked and for an app
+    /// the read did not reach, «no record» for one with no date, and absent when
+    /// Spotlight answered for no app at all.
     ///
-    /// Written out in full — «hace 7 meses», «il y a 2 ans» — because the short
-    /// form of es and fr is one letter for a month and for a year («7 m», «2 a»),
-    /// unreadable in exactly the spans this line exists to show.
+    /// Written out in full («hace 7 meses»): the short form in es and fr is one
+    /// letter for both month and year.
     ///
-    /// Blank is a held place, not a missing line: the line's height stays, so the
-    /// size above it does not move when the date arrives.
+    /// Blank is a held place, so the size above does not move when the date arrives.
     @ViewBuilder private func openedLine(_ app: InstalledApp) -> some View {
         if let line = openedText(app) {
             Text(line).helmQuietDetail()
@@ -426,14 +376,10 @@ struct UninstallerSettingsPage: View {
                     HelmBusyLabel(uvm.busy ? UnStr.removing : HelmWord.moveToTrash, busy: uvm.busy)
                 }
                 .buttonStyle(.borderedProminent)
-                // **Not `!ready`.** That reads `group.running`, which is what the
-                // scan saw when the review was built: an app the person has quit
-                // since then left this button dead for good, and the only way out
-                // was Back → Review, which pays for a fresh scan of every ticked
-                // app. The live question is asked in the engine at the moment of
-                // removal now, and a batch it refuses says so above this row. The
-                // `.help` stays — it is the one part that says *why*, and it is
-                // advice rather than a claim about the button.
+                // Not `!ready`: that reads `group.running`, stale since the scan,
+                // and would leave the button dead after the app was quit. The
+                // engine asks at removal, and a refused batch says so above this
+                // row. The `.help` is advice, not a claim about the button.
                 .disabled(uvm.busy)
                 .help(ready ? "" : UnStr.blockedByRunning)
             }
@@ -443,14 +389,10 @@ struct UninstallerSettingsPage: View {
 
     /// What the last press said, drawn on the screen the person is still on.
     ///
-    /// A full-width line of its own rather than a `lineLimit(1)` passenger in the
-    /// bar below: every sentence that can stand here is two clauses long, and the
-    /// clause that says what happened to the rest is the one that gets truncated.
+    /// A full-width line of its own: every sentence here is two clauses, and in a
+    /// one-line slot the clause about the rest is the one truncated.
     ///
-    /// **One line for both steps.** It was written for the review step and the
-    /// picker kept a truncating copy of its own — two spellings of one act, and the
-    /// measured defect was in the copy. Whichever step is up, the last press reads
-    /// the same way.
+    /// One line for both steps, so the last press reads the same way on either.
     @ViewBuilder private var report: some View {
         if let banner = uvm.resultBanner {
             HelmSettingsNote(banner)
@@ -541,11 +483,9 @@ struct UninstallerSettingsPage: View {
         }
     }
 
-    /// The size of an app in the review, read from the measurement as it stands
-    /// and not from the snapshot the review was built from: that carries
-    /// no size for as long as the sizes have not landed, and «0 bytes» is a
-    /// claim nobody made. Nothing is drawn until it is measured, and it appears
-    /// when it lands.
+    /// The size of an app in the review, from the measurement as it stands, not
+    /// the review's snapshot. Nothing is drawn until it is measured: «0 bytes» is
+    /// a claim nobody made.
     @ViewBuilder private func sizeFigure(of app: InstalledApp) -> some View {
         if let size = uvm.measuredSizes[app.path] {
             Text(size > 0 ? Bytes(size) : "—")

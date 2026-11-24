@@ -8,12 +8,10 @@ import HelmRuntime
 /// assertion, still in force after Helm quits — reached through a NOPASSWD
 /// rule in `/etc/sudoers.d`. One port and a handful of flags, and no other part
 /// of the engine reads any of them: the session logic asks for the lid and is
-/// told whether it got it.
-///
-/// It lived inside `KeepAwakeEngine` among the timers and the battery guard.
-/// Out here, the code that can leave a Mac unable to sleep, and the code that
-/// can put a root password dialog on somebody's screen, is one file with one
-/// set of tests pointed at it.
+/// told whether it got it. The code that can leave a Mac unable to sleep, and
+/// the code that can put a root password dialog on somebody's screen, is one
+/// file with one set of tests pointed at it
+/// (`Architecture/KeepAwake.md § The closed lid`).
 ///
 /// Two things it must be told rather than ask, because both change *while a
 /// password prompt is up* and the prompt can take minutes:
@@ -25,7 +23,7 @@ import HelmRuntime
 /// shape and is load-bearing here: `removeSudoers` calls back on a background
 /// queue, and the check it makes there — «did the grant go with the file» —
 /// deliberately runs on that queue rather than after a hop. A hop would put it
-/// after the caller returned, which is how a synchronous fake releases a gate
+/// after the caller returned, and a synchronous fake would release a gate
 /// before the thing it gates has happened. What does hop is state of ours.
 final class ClamshellCoordinator: @unchecked Sendable {
     private let clamshell: ClamshellPort
@@ -35,15 +33,12 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// Where this port's child processes go.
     ///
     /// Most of `ClamshellPort` is `HelmProcess.run`, which waits for a child
-    /// with **no deadline** and takes one of eight slots shared with every other
-    /// module — Homebrew's search is two `brew search` runs of about nine
-    /// seconds each. And the callers here are the thread that draws: `activate()`
-    /// is the host's module enable, at launch, and `recompute` runs from the
-    /// display, power and application observers, which all deliver on main. So a
-    /// Mac whose Homebrew page was busy could have its main thread parked inside
-    /// this file before anything was drawn — the same shape
-    /// `fix(settings): the thread that draws never waits for the keychain`
-    /// (4dcc5fb6) took out of `SettingGuard`.
+    /// with **no deadline** and takes one of the slots shared with every other
+    /// module, Homebrew's long searches included. And the callers here are the
+    /// thread that draws: `activate()` is the host's module enable, at launch,
+    /// and `recompute` runs from the display, power and application observers,
+    /// which all deliver on main. Run here, a busy Homebrew page could park the
+    /// main thread before anything is drawn.
     ///
     /// Serial, not `.global()`: one launch asks `pmset` twice and the second
     /// question only makes sense after the first is answered, and nothing here
@@ -63,10 +58,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
 
     /// macOS was asked to turn sleep off and said no.
     ///
-    /// `active` going false already carried this, and carried it as *nothing has
-    /// happened* — which is what the row then said, in a paragraph about what an
-    /// administrator password buys. The two states have to be told apart in the
-    /// published state, because only one of them is a switch that says one thing while the
+    /// Not the same as `active` being false, which reads as *nothing has
+    /// happened*: only a refusal is a switch that says one thing while the
     /// machine does another, and this module's whole claim is that a lid is safe
     /// to close.
     ///
@@ -78,17 +71,12 @@ final class ClamshellCoordinator: @unchecked Sendable {
     ///
     /// A declined administrator dialog is an answer; what it leaves behind is a
     /// permanent passwordless `pmset disablesleep` for this account, which is the
-    /// price of a feature nobody is using any more. `removeSudoers`' own `Bool`
-    /// was discarded, so the only record of it was a log line blaming somebody
-    /// else for a rule Helm wrote.
+    /// price of a feature nobody is using any more.
     ///
-    /// **It is a reading, not a memory of one call.** Written only in the
-    /// removal's callback, it was a local flag standing in for a live fact about
-    /// `/etc/sudoers.d` — a directory this account cannot write and anything
-    /// with a password can — so an administrator taking the file out by hand
-    /// left the row naming a root grant that was gone, with the only thing it
-    /// offered being a way to remove it again. `lookForTheRule` is the reverse
-    /// channel, and the look it makes is `fileExists`, not a child process.
+    /// **It is a reading, not a memory of one call.** `/etc/sudoers.d` is a
+    /// directory this account cannot write and anything with a password can, so
+    /// an administrator may take the file out by hand. `lookForTheRule` keeps it
+    /// current, and the look it makes is `fileExists`, not a child process.
     private(set) var grantRemains = false
 
     /// State of ours, on the thread it belongs to.
@@ -115,11 +103,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
 
     /// Is our rule on disk — and say so while we are looking.
     ///
-    /// Every caller wanted the same fact and only the removal's callback ever
-    /// published it. The stat is the one `recoverAtLaunch` already pays for; its
-    /// answer is now kept rather than dropped. Callable from either thread: the
-    /// look belongs to the port and stays where it was asked from, the verdict
-    /// is ours and lands on main.
+    /// Callable from either thread: the look belongs to the port and stays
+    /// where it was asked from, the verdict is ours and lands on main.
     ///
     /// The read and the write are therefore not one critical section, and the
     /// cost is stated rather than engineered away: the launch look runs on
@@ -146,8 +131,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
     private var installInFlight = false
     /// The other half of the same guard. `removeSudoers` also puts up an
     /// administrator dialog, and `releaseIfUnneeded` runs on `settingsChanged`
-    /// — which the settings page sends on every control it draws. Five ordinary
-    /// edits with the lid option off produced five password prompts.
+    /// — which the settings page sends on every control it draws.
     private var removalInFlight = false
     /// A `canDisableSleepWithoutPassword()` probe is out on `shell`, and the
     /// OR of every `mayPrompt` asked while it was. Both are written on main.
@@ -172,22 +156,18 @@ final class ClamshellCoordinator: @unchecked Sendable {
     ///
     /// The guard flag is a note that this app *may* have turned system sleep
     /// off; it survives a crash, which is the case it exists for. **It does not
-    /// survive somebody editing the plist**, and it lives in one every process
-    /// running as this user can write — so on its own it made the recovery
-    /// switchable off by anything on the machine: clear the note and system sleep
-    /// stays off for good, with every screen saying Keep Awake is idle.
+    /// survive somebody editing the plist**, which every process running as this
+    /// user can write: on its own, clearing the note would leave system sleep off
+    /// for good, with every screen saying Keep Awake is idle.
     ///
-    /// The rule on disk is the second anchor, and it is the one that cannot be
-    /// arranged from this account. Measured: `/etc/sudoers.d` is `0755`, so
-    /// `fileExists` answers from uid 501 with no grant of any kind, while the rule
-    /// inside it is `0440 root:wheel` — unreadable, and removable only with a
-    /// password. Either anchor is a reason to go and *look*; what `pmset -g` says
-    /// is still what decides whether anything is put back.
+    /// The rule on disk is the second anchor, and it cannot be arranged from
+    /// this account: `/etc/sudoers.d` is `0755`, so `fileExists` answers with no
+    /// grant, while the rule inside it is `0440 root:wheel` and removable only
+    /// with a password. Either anchor is a reason to go and *look*; what
+    /// `pmset -g` says decides whether anything is put back.
     ///
-    /// The shell-out stays off the ordinary path: with neither anchor the
-    /// second half of this guard is never evaluated, which is what a Mac that has
-    /// never had the lid option switched on wants — the whole cost of it there is
-    /// two reads of local state.
+    /// With neither anchor nothing is shelled out: a Mac that has never had the
+    /// lid option switched on pays two reads of local state.
     ///
     /// **And when there is an anchor, the two child processes it leads to run on
     /// `shell`.** This is `activate()`, which the host calls on the main thread
@@ -199,8 +179,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
         shell.async { [self] in
             // Asked first rather than as the second half of an `||`, so the
             // launch that finds the note set still looks at the rule: this is
-            // the reading the lid row draws, and short-circuiting it left the
-            // page with nothing to say until the first settings edit.
+            // the reading the lid row draws.
             let ruleOnDisk = lookForTheRule()
             guard noted || ruleOnDisk else { return }
             // A nil report is not an empty one: nothing was read. With Helm's
@@ -230,12 +209,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// the next launch back to look, so the Mac would never sleep again while
     /// every screen said Keep Awake was idle.
     ///
-    /// Written once because it was written twice: launch recovery discarded the
-    /// result (`_ = clamshell.setDisableSleep(false)`) for as long as `disengage`
-    /// had been reading it, so the same defect the tests here were written for
-    /// survived its own fix on the other path.
-    /// The sentences are the caller's, so a refusal cannot be reported by one
-    /// path and swallowed by the other — which is the defect, not the wording.
+    /// One function for both callers, with the sentences theirs, so a refusal
+    /// cannot be reported by one path and swallowed by the other.
     ///
     /// **The call runs wherever it is called from and the state always lands on
     /// main.** Off `shell` at launch; on the caller's own thread from
@@ -249,11 +224,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
             guard putBack else {
                 HelmLog.shared.warn(KeepAwakeEngine.moduleID, refused)
                 // Told, for the same reason `reallyEngage`'s refusal tells: this
-                // class does not get to assume its callers emit. Every one of
-                // them does today — `recompute`, `releaseForBattery`,
-                // `reconcileActiveSettings`, `deactivate` and `activate` all end
-                // in `emitState()` — and the launch recovery no longer does,
-                // because it answers after `activate()` has returned.
+                // class does not assume its callers emit, and the launch
+                // recovery answers after `activate()` has returned.
                 stateChanged()
                 return
             }
@@ -267,35 +239,17 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// The module is being switched off, or Helm is quitting. **Sleep goes back,
     /// and the grant with it wherever it has nothing left to do.**
     ///
-    /// It used to remove the rule here too, and that was a promise this process
-    /// cannot keep: `removeSudoers` dispatches to a global queue and runs
-    /// `osascript … with administrator privileges`, while `deactivate()` is what
-    /// `applicationWillTerminate` calls on every live engine. So quitting put an
-    /// administrator password dialog on screen on behalf of an app that was
-    /// already gone. `/etc/sudoers.d` on the machine this was written on holds
-    /// two abandoned rules from predecessors — and this app's own removal was
-    /// written the same way, so it was on course to leave a third.
+    /// **No dialog is raised here.** `deactivate()` is what
+    /// `applicationWillTerminate` calls on every live engine, and a password
+    /// dialog for an app that is already gone is one nobody answers. The
+    /// withdrawal is `sudo -n`, because the rule permits its own removal; a rule
+    /// too old to make that promise is left where it is. **A refused restore
+    /// keeps its grant**, because the next launch needs
+    /// `sudo -n pmset disablesleep 0` to put sleep back; `withdrawAtQuit` names
+    /// all three states in which the rule is load-bearing.
     ///
-    /// It also ran straight after the restore, whatever the restore answered. A
-    /// refused restore leaves system sleep off machine-wide and keeps
-    /// `clamshellGuard` set precisely so the next launch comes back and looks —
-    /// and what that launch needs is `sudo -n pmset disablesleep 0`, i.e. this
-    /// grant. The one path where the rule is load-bearing was the one taking it
-    /// away.
-    ///
-    /// Both objections are answered rather than overruled, and only one of them
-    /// was about the password. **The dialog is still never raised here** — the
-    /// withdrawal is `sudo -n`, because the rule permits its own removal, and a
-    /// rule too old to make that promise is left where it is. **And the refused
-    /// restore still keeps its grant**, along with the two other states in which
-    /// the rule is load-bearing; `withdrawAtQuit` names all three. What changed
-    /// is the case neither objection covered: quit, then drag the app to the
-    /// Trash, which runs no code and left the grant naming an application that
-    /// no longer existed.
-    ///
-    /// `releaseIfUnneeded()` still takes it out on the option's own falling edge,
-    /// and that edge is now free too. A crash still leaves the rule, which is
-    /// what `recoverAtLaunch` wants.
+    /// `releaseIfUnneeded()` takes it out on the option's own falling edge. A
+    /// crash leaves the rule, which is what `recoverAtLaunch` wants.
     /// - Parameter sessionWillResume: a session the person asked for is still
     ///   running, so the next launch brings it back.
     func tearDown(sessionWillResume: Bool) {
@@ -307,22 +261,16 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// do.
     ///
     /// **This is the case dragging the app to the Trash leaves open**, and it is
-    /// how a Mac application is normally removed: no code runs, so a grant that
-    /// only a person at a screen could revoke stayed for the life of the machine
-    /// naming an application that no longer existed. Most people quit before
-    /// they delete, and quitting is code.
+    /// how a Mac application is normally removed: no code runs, so the grant
+    /// would stay for the life of the machine. Most people quit before they
+    /// delete, and quitting is code.
     ///
-    /// It became affordable because the rule permits its own withdrawal: this is
-    /// `sudo -n`, silent, with nothing to decline. **A dialog is never raised
-    /// here** — `applicationWillTerminate` reaches this on every live engine, and
-    /// nobody types a password into a dialog belonging to an app that is already
-    /// gone. A rule too old to withdraw itself is therefore left where it is, for
-    /// the lid option's own switch to take out.
+    /// This is `sudo -n`, silent, with nothing to decline; a rule too old to
+    /// withdraw itself is left for the lid option's own switch to take out.
     ///
     /// Synchronous, on the thread that is quitting, for the reason `restoreSleep`
     /// is: work posted to a queue on the way out is a promise this process may
-    /// not live to keep. It is one `sudo -n rm` beside the one `sudo -n pmset`
-    /// already spent there.
+    /// not live to keep.
     ///
     /// The three refusals are the three states in which the grant is still
     /// load-bearing, and each of them costs something a person would notice:
@@ -339,16 +287,12 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// `isSudoersInstalled()` rather than `lookForTheRule()`: the verdict that
     /// one publishes is posted to a main queue this process will not drain.
     ///
-    /// **One case stays open, and it is written here rather than papered over:
-    /// deleting Helm while it is still running leaves the rule.** No code runs,
-    /// so nothing withdraws it, and the file then names an application that is
-    /// gone. Nothing closes that without a Developer ID and a real privileged
-    /// helper the system removes with the app — one more thing that purchase is
-    /// blocking, beside `SMAppService`, notarization, the seal on
-    /// `clamshellEnabled` and a stable cdhash for TCC and the keychain (ARCHITECTURE.md § Sealed
-    /// settings). Until then the answer is a sentence: `KAStr.lidExplainer`
-    /// names the `sudo rm` that removes it, before the password is asked for
-    /// rather than after.
+    /// **One case stays open: deleting Helm while it is still running leaves
+    /// the rule.** No code runs, so nothing withdraws it. Nothing closes that
+    /// without a Developer ID and a privileged helper the system removes with
+    /// the app (`Architecture/StoredSettings.md § Sealed settings`). Until then
+    /// `KAStr.lidExplainer` names the `sudo rm` that removes it, before the
+    /// password is asked for.
     private func withdrawAtQuit(sessionWillResume: Bool) {
         guard !active,
               !store.bool(KeepAwakeSettings.Key.clamshellGuard, default: false),
@@ -368,17 +312,13 @@ final class ClamshellCoordinator: @unchecked Sendable {
 
     /// - Parameter mayPrompt: this follows something the person just did.
     ///   **Only a gesture may raise an administrator password dialog.** Engaging
-    ///   was reached on every false→true edge of «the Mac is now being held
-    ///   awake», including the edges a *rule* causes — so a watched app
-    ///   launching put a real system password prompt on screen with nothing on
-    ///   it naming the app, the rule or Helm, at a moment the person had touched
-    ///   nothing; and any process running as this user could choose that moment
-    ///   by launching the app.
+    ///   is reached on every false→true edge of «the Mac is now being held
+    ///   awake», including the edges a *rule* causes; a prompt there would name
+    ///   nothing the person did, and any process running as this user could
+    ///   choose its moment by launching a watched app.
     func engage(mayPrompt: Bool) {
-        // The capability, not our filename. A rule written by something else —
-        // a predecessor, an admin, a migration — grants exactly this, and
-        // asking about the file made Helm request a password to install what
-        // was already there.
+        // The capability, not our filename: a rule written by something else
+        // can grant exactly this (`ClamshellPort.canDisableSleepWithoutPassword`).
         //
         // It is also `sudo -n pmset disablesleep 0`: a child process, asked
         // *before* anything about a gesture is decided, from a recompute a
@@ -387,9 +327,9 @@ final class ClamshellCoordinator: @unchecked Sendable {
         //
         // One probe at a time, because `releaseIfUnneeded` and `recompute` run on
         // every `settingsChanged`, which the settings page sends on every control
-        // it draws: six edits was six `sudo` launches. A call while one is out
-        // adds its `mayPrompt` to what is pending and returns, so a gesture's
-        // prompt is never dropped by the probe a rule started.
+        // it draws. A call while one is out adds its `mayPrompt` to what is
+        // pending and returns, so a gesture's prompt is never dropped by the
+        // probe a rule started.
         pendingMayPrompt = pendingMayPrompt || mayPrompt
         guard !probeInFlight else { return }
         probeInFlight = true
@@ -420,7 +360,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
             return
         }
         // While a prompt is up the system still says the rule is missing, so
-        // without this the person got one dialog per click for a single
+        // without this the person gets one dialog per click for a single
         // decision. A *declined* prompt is a different state: the flag clears
         // when the prompt is answered, so the next turn of the lid switch asks again.
         guard !installInFlight else { return }
@@ -458,9 +398,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
         store.set(true, for: KeepAwakeSettings.Key.clamshellGuard)
         // The result is the whole point. `sudo -n` fails whenever the NOPASSWD
         // rule is gone — removed by an admin, by a migration, by somebody
-        // tidying `/etc/sudoers.d` — and both ends of this used to discard it.
-        // Claiming a lid is safe to close is the one claim in this module that
-        // costs somebody a dead battery in a bag.
+        // tidying `/etc/sudoers.d`. Claiming a lid is safe to close is the one
+        // claim in this module that costs somebody a dead battery in a bag.
         guard clamshell.setDisableSleep(true) else {
             HelmLog.shared.warn(KeepAwakeEngine.moduleID, "closed-lid sleep could not be disabled")
             active = false
@@ -480,11 +419,9 @@ final class ClamshellCoordinator: @unchecked Sendable {
         // outliving the process — the one thing here a crash can leave behind.
         // Both ends of it belong in the trail.
         HelmLog.shared.info(KeepAwakeEngine.moduleID, "closed-lid sleep disabled")
-        // Every route here now arrives after its caller has emitted — the
-        // grant is asked for on `shell`, and the install prompt takes minutes —
-        // so «the lid is safe to close» reaches the screen from here or not at
-        // all. It used to ride on `recompute`'s own emit, which is one frame
-        // earlier than the answer.
+        // Every route here arrives after its caller has emitted — the grant is
+        // asked for on `shell`, and the install prompt takes minutes — so «the
+        // lid is safe to close» reaches the screen from here or not at all.
         stateChanged()
     }
 
@@ -499,8 +436,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
     ///
     /// The edge, not the value: `settingsChanged` arrives for every control the
     /// page draws, and `clamshellEnabled` stays true after a password dialog is
-    /// *declined* — so acting on the value put a dialog in front of somebody for
-    /// every later edit of an unrelated setting. Both directions are answered
+    /// *declined* — so acting on the value would put a dialog in front of
+    /// somebody for every later edit of an unrelated setting. Both directions are answered
     /// here, from one reading, because both cost an administrator password and
     /// the two halves of a reconcile must not each take their own.
     ///
@@ -530,15 +467,11 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// is the price of the feature, not of having installed Helm.
     ///
     /// **Only the falling edge asks.** This runs on `settingsChanged`, which the
-    /// page sends for every control it draws, and the battery floor is a
-    /// `Slider` whose binding saves on every distinct rounded value: one drag
-    /// from 20 % to 50 % is six of these. Asking on the *value* — the option is
-    /// off, our file is there — made each one an administrator password dialog
-    /// for a decision already answered, and a declined removal leaves precisely
-    /// that state on disk for every future launch, so it was six dialogs a drag
-    /// for ever. `removalInFlight` only ever covered the seconds one dialog was
-    /// up. The install side reached this answer first (`consumeEdge`), and the
-    /// row's own words are already «Switch this on and off again to remove it».
+    /// page sends for every control it draws, a slider drag included. Asking on
+    /// the *value* — the option is off, our file is there — would make each one
+    /// an administrator password dialog, and a declined removal leaves exactly
+    /// that state on disk for every future launch. The row's own words are
+    /// «Switch this on and off again to remove it».
     ///
     /// - Parameter switchedOff: the option's falling edge — the gesture that
     ///   means «take that rule away». A decline is never final: switching it on
@@ -559,11 +492,10 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// The same falling edge as the option's own, arrived at from one screen over:
     /// a module that is off will not use the grant either, and this is the last
     /// moment there is somebody at the screen to answer the dialog. `tearDown`
-    /// cannot do it — `applicationWillTerminate` calls that on every live engine,
-    /// so removing the rule there put an administrator password dialog on screen
-    /// on behalf of an app that was already gone (`tearDown` has the story). What
-    /// tells the two apart is `ModuleEngine.willDisable`, which only the person's
-    /// own switch and «Reset all settings» call.
+    /// cannot do it, because `applicationWillTerminate` calls that too
+    /// (`tearDown` has why). What tells the two apart is
+    /// `ModuleEngine.willDisable`, which only the person's own switch and «Reset
+    /// all settings» call.
     ///
     /// On a switch-off the setting is left where it is: somebody who switches the
     /// module back on asked for the lid option once and will be asked for the
@@ -588,8 +520,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
         shell.async { [self] in
             // The rule permits its own withdrawal, so the ordinary route costs
             // nothing and asks nobody. Only a rule that cannot make that promise
-            // — one from before the line existed, one written by something else
-            // — reaches the dialog.
+            // — one with no `rm` line, one written by something else — reaches
+            // the dialog.
             if clamshell.removeSudoersWithoutPassword() {
                 finishedRemoving(true)
             } else {
@@ -603,12 +535,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// Everything this coordinator has queued has run.
     ///
     /// `removeGrant` ends in `shell.async`, so a caller that awaits the command
-    /// and then counts is counting a subject still in motion: the ask happens on
-    /// `shell`, not on the thread that sent the command. On an idle machine the
-    /// queue wins that race and on a loaded one it does not, which is how
-    /// `TheRemovalPromptIsAPromptTooTests` failed once in a full suite on
-    /// 2026-08-25 and never once alone — and, worse, how its «no second dialog»
-    /// assertions could pass over a second dialog that simply had not happened
+    /// and then counts is counting a subject still in motion: a «no second
+    /// dialog» assertion could pass over a second dialog that has not happened
     /// yet. `shell` is serial, so a block enqueued after the work runs after it:
     /// an ordering fact, not a sleep, the same shape as `drainMainQueue()` in the KeepAwake engine tests' `Fakes.swift`.
     func drainForTests() async {
@@ -617,28 +545,20 @@ final class ClamshellCoordinator: @unchecked Sendable {
 
     /// The one place a removal's answer is read, whichever route made it.
     private func finishedRemoving(_ removed: Bool) {
-        // **Which rule survived decides who is being talked about.** Both
-        // branches were one line accusing a third party, and one of the two
-        // cases it fired in is the case where Helm wrote the rule itself: a
-        // declined dialog leaves *our* file exactly where it was, and the
-        // report «a rule survives that Helm did not write» then sent whoever
-        // read the log looking for a second one.
+        // **Which rule survived decides who is being talked about.** A
+        // declined dialog leaves *our* file exactly where it was, and that is
+        // not a rule somebody else wrote.
         //
         // Read here rather than after a hop: these touch no state of ours,
-        // and a hop would put the check after the caller returns — which is
-        // how a synchronous fake releases a gate before the thing it gates
-        // has happened, and how a test of it passes for free.
+        // and a hop would put the check after the caller returns, where a
+        // synchronous fake releases a gate before the thing it gates.
         let ours = !removed && clamshell.isSudoersInstalled()
         if ours {
             HelmLog.shared.warn(KeepAwakeEngine.moduleID,
                                 "the passwordless pmset rule Helm wrote was not removed")
         } else if clamshell.canDisableSleepWithoutPassword() {
-            // The file is gone and the grant is not. Measured on a real
-            // machine: `/etc/sudoers.d` held the identical rule under another
-            // name, so «removed» was reported while any process running as
-            // this user still had passwordless `pmset disablesleep`. A
-            // revocation that revokes nothing is worse than none, because it
-            // is reported as done.
+            // The file is gone and the grant is not: another file grants the
+            // same command (`ClamshellPort.canDisableSleepWithoutPassword`).
             HelmLog.shared.warn(KeepAwakeEngine.moduleID,
                                 "a passwordless pmset rule survives that Helm did not write")
         }

@@ -6,8 +6,6 @@ import Module_Screenshots_Engine
 /// What the palette shows, and the one door it acts through. The overlay owns the
 /// state and writes it here after every change; a click goes back out as the same
 /// `EditorAction` the keys make.
-///
-/// The overlay's property for it is `palette`.
 @MainActor final class EditorBarModel: ObservableObject {
     @Published private(set) var tool: AnnotationTool?
     /// The eraser is on: its object stands raised and no tool's does, though `tool` is still the one chosen under it.

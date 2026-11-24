@@ -20,7 +20,6 @@ import HelmRuntime
 ///   run reports non-zero, and nothing is left in the temporary folder.
 ///
 /// Nothing here reaches the network, root or the real installer.
-/// Kept: guards the defect fixed in 4b5e0df9 feat(settings): … a Health page of its own.
 final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
 
     // MARK: - The page and the log
@@ -29,7 +28,7 @@ final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
         let tools = FakeCommandLineTools()
         let ticker = FakeWaitTicker()
         let privileged = ScriptedPrivileged(reply: .done, holds: false)
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let news = EngineNews<HomebrewNews>()
         let engine: HomebrewEngine
         let tape: AsyncStream<HomebrewNews>
@@ -107,27 +106,26 @@ final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
 
     /// An installer that answers the Stop by failing in its own way — exit 1
     /// from its own TERM handler. The Stop ended it, so the page reads 143.
-    func testAnInstallerThatAnswersAStopWithItsOwnFailureReadsAsStopped() throws {
+    func testAnInstallerThatAnswersAStopWithItsOwnFailureReadsAsStopped() async throws {
         let g = try ground("stop-own-failure",
                            installer: "trap 'exit 1' TERM\ntouch $MARK\necho installing\n"
                                     + "while :; do /bin/sleep 0.05; done")
         let (handle, run) = start(try rehosted(try composedInstaller(), source: g.installer, temporaries: g.temporaries))
-        XCTAssertTrue(eventually(10) { run.lines.contains("installing") }, "precondition: the installer never started")
+        await waitUntilReached("precondition: the installer started", within: .seconds(10)) { run.lines.contains("installing") }
 
         handle.terminate()
 
-        XCTAssertEqual(run.done.wait(timeout: .now() + 10), .success, "the stream never ended")
+        XCTAssertEqual(run.finished(within: 10), .success, "the stream never ended")
         XCTAssertEqual(run.status, 143, "a Stop that ended the installer read as its own failure")
         XCTAssertEqual(g.leftovers, [], "the downloaded installer stayed behind")
     }
 
     /// **A Stop at every moment of the wrapper's life, against an installer
-    /// that cannot be stopped once it has run its first line.** Every outcome
-    /// must be one of two: the installer ran and the wrapper reports its 0, or
-    /// the installer never ran and the wrapper reports non-zero — and the
-    /// temporary folder is empty either way. A 143 over an installer that ran
-    /// is the Stop claiming an install it did not stop; a 0 over one that did
-    /// not run is an install reported that never happened.
+    /// that cannot be stopped once it has run its first line.** Either the
+    /// installer ran and the wrapper reports its 0, or it never ran and the
+    /// wrapper reports non-zero, and the temporary folder is empty either way. A
+    /// 143 over an installer that ran claims a stop that did not happen; a 0
+    /// over one that did not run reports an install that never happened.
     func testEveryStopEitherLetTheInstallerFinishOrKeptItFromRunning() throws {
         let g = try ground("stop-sweep-success",
                            installer: "trap '' TERM\ntouch $MARK\necho installed\nexit 0")

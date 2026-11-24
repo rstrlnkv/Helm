@@ -4,8 +4,8 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// **The door takes what the Uninstaller's review ticks by default — the app and what is found under
-/// its bundle id — and nothing a name merely resembles, and every refusal is in the report.**
+/// The door takes what the Uninstaller's review ticks by default (the app and what is found under
+/// its bundle id) and nothing a name merely resembles, and every refusal is in the report.
 ///
 /// A file named for the app (`Application Support/Tool`) is a guess; another app's id that starts with
 /// this one's (`com.acme.toolbox`) is another app's. Neither is moved. A refusal by macOS is never
@@ -104,7 +104,8 @@ final class ALaunchpadRemovalMovesOnlyWhatTheIdOwnsAndListsEveryRefusalTests: XC
 
     /// A walk that does not finish in time is «no size», not a wrong one and not a wait.
     func testASizeThatIsNotMeasuredInTimeIsNilAndTheCardDoesNotWait() async {
-        let slow = SlowBundle(path: candidate.path, delay: 1.0)
+        // Every file measures as itself except the bundle, whose walk takes a second.
+        let slow = FakeFS(onDisk: true, slowSizes: [candidate.path: 1.0])
         let started = Date()
 
         let ask = await engine(trash: FakeTrash(), fs: slow).removalPreview(candidate, sizeDeadline: 0.1)
@@ -113,17 +114,4 @@ final class ALaunchpadRemovalMovesOnlyWhatTheIdOwnsAndListsEveryRefusalTests: XC
         XCTAssertNil(preview.appBytes)
         XCTAssertLessThan(Date().timeIntervalSince(started), 0.8, "the preview waited for the walk")
     }
-}
-
-/// Every file measures as itself except the bundle, whose walk takes `delay`.
-private struct SlowBundle: FileSystemPort {
-    let path: String
-    let delay: TimeInterval
-    func exists(_ url: URL) -> Bool { FMFileSystem().exists(url) }
-    func size(_ url: URL) -> Int {
-        if url.path == path { Thread.sleep(forTimeInterval: delay); return 1 }
-        return FMFileSystem().size(url)
-    }
-    func glob(_ pattern: URL) -> [URL] { FMFileSystem().glob(pattern) }
-    func children(of url: URL) -> [URL] { FMFileSystem().children(of: url) }
 }

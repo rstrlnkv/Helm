@@ -4,11 +4,9 @@ import HelmRuntime
 /// A seal-key port that can be in every state the login keychain can be in, and
 /// records what was asked of it.
 ///
-/// Written once here because it was written three times before: two identical
-/// copies in the tests for this fix and a third, thinner one that the door-shuts
-/// guard already depended on. The rule those broke is the one about a helper
-/// that stands in for something being no simpler than the thing — each capability
-/// below exists because a state was otherwise impossible to write down.
+/// A fake is no simpler than the thing (Architecture/TestsAndMeasurement.md § Fakes):
+/// each capability below exists because a state was otherwise impossible to
+/// write down.
 ///
 /// - **First use is spent.** `KeychainSealKey` answers `firstUse: true` only for
 ///   the run that creates the item and `false` for ever after; that is the
@@ -29,11 +27,9 @@ public final class SealKeyProbe: SealKeyPort, @unchecked Sendable {
     private let fixedFirstUse: Bool?
     /// Raised as each caller *enters*, before the gate is waited on.
     ///
-    /// `reads` cannot answer «somebody is inside right now»: it is incremented on
-    /// the way out, so a caller parked on the gate is invisible in it — which is
-    /// precisely the state a test about two callers arriving together has to be
-    /// able to wait for. Without it the interleaving is a guess about scheduling,
-    /// and the arrangement being tested may never occur.
+    /// `reads` is incremented on the way out, so a caller parked on the gate is
+    /// invisible in it, and that is the state a test of two callers arriving
+    /// together has to wait for.
     private let entered = DispatchSemaphore(value: 0)
 
     /// - Parameters:
@@ -61,9 +57,8 @@ public final class SealKeyProbe: SealKeyPort, @unchecked Sendable {
     public var wasAskedOnTheMainThread: Bool { lock.withLock { mainThread } }
 
     public func key() -> SealKey? {
-        // Read before the gate: a caller blocked inside here has already told us
-        // which thread it is, which is the only thing a deadlocked test could
-        // otherwise never report.
+        // Read before the gate, so a caller blocked here has already told us
+        // which thread it is.
         let onMain = Thread.isMainThread
         entered.signal()
         gate?.wait()

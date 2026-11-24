@@ -6,16 +6,10 @@ import HelmAppStrings
 
 /// Composing the sidebar, in a sheet.
 ///
-/// It used to be the page's largest block by a distance — ten module rows and
-/// their headings, always open, under four settings rows. And it did not line
-/// up with them: a grouped `Form` draws a card around a section's *content*
-/// and leaves its *header* outside, and the block was written as a header on
-/// purpose, to avoid a card inside a card. The price was a block 10 pt wider
-/// than everything above and below it.
-///
-/// A row that opens a sheet fixes both, and it is what the mockups say to do
-/// with an editor. The page keeps one row of its own width, which says what
-/// is arranged without opening anything.
+/// An editor this size, always open on the page, would outweigh every row
+/// around it, and a grouped `Form` cannot hold it without a card inside a
+/// card. So the page keeps one row of its own width, which says what is
+/// arranged without opening anything, and the row opens this sheet.
 struct SidebarComposerSheet: View {
     @ObservedObject var host: ModuleHost
     @Environment(\.dismiss) private var dismiss
@@ -23,15 +17,10 @@ struct SidebarComposerSheet: View {
     /// Bumped on every write so the sheet redraws from the stored value rather
     /// than from a copy that can drift away from it.
     @State private var revision = 0
-    /// Seeded from the arrangement, not from a placeholder.
-    ///
-    /// This started at a flat 200. A sheet's window is sized by AppKit at
-    /// presentation, and the measured height arrives a turn of the run loop
-    /// later — so the window took `200 + chrome`, clamped up to the 360 pt
-    /// floor, while the content asked for 631. What you saw was the middle
-    /// band of the sheet: no title, no «Готово», no footer buttons, the last
-    /// two modules below the window's edge, and Escape the only way out that
-    /// nothing on screen mentioned.
+    /// Seeded from the arrangement, not from a placeholder: AppKit sizes a
+    /// sheet's window at presentation, and the measured height arrives a turn
+    /// of the run loop later, so a placeholder would open the sheet cut to its
+    /// middle band, title and buttons outside.
     @State private var tableHeight: CGFloat
     /// Measured once, at init: `chromeHeight` builds a hosting controller to
     /// see how the note wraps, and the sheet's body is evaluated on every
@@ -64,18 +53,9 @@ struct SidebarComposerSheet: View {
 
     /// The note itself — the sentence and the font, declared once.
     ///
-    /// **`noteHeight` measures this exact value and `body` draws it.** They
-    /// used to spell it out separately: the same two strings joined the same
-    /// way, the same `.font`, and the wrap width as `width - 40` here against
-    /// `.padding(.horizontal, 20)` there. Three things that had to agree, in
-    /// two places, with nothing to make them.
-    ///
-    /// That is the defect below one level in. The height was a constant once,
-    /// and it went stale twice in an afternoon — the note wrapped differently,
-    /// then the font moved from `.caption` to `HelmText.rowDetail` — so it was
-    /// replaced by a measurement. But a measurement of a *second declaration*
-    /// can go stale the same way: change the font where it is drawn and the
-    /// sheet is sized for a note nobody sees.
+    /// **`noteHeight` measures this exact value and `body` draws it**, so the
+    /// strings, the font and the wrap width cannot disagree: a measurement of a
+    /// second declaration would size the sheet for a note nobody sees.
     private static var note: Text {
         Text(AppStr.sidebarComposerNote + " " + AppStr.moduleSwitchNote)
             .font(HelmText.rowDetail)
@@ -98,30 +78,19 @@ struct SidebarComposerSheet: View {
     /// sidebar never scrolls; a person who makes more sections than that gets a
     /// scroll bar rather than a sheet that keeps growing.
     ///
-    /// **The cap is read from the window, not written down again.** It was a
-    /// literal 660 beside `SettingsWindow`'s literal 700 and a comment saying
-    /// the two agreed — and they did not: the tenth module added a 40 pt row,
-    /// the shipped arrangement asked for 683, and the composer Helm ships with
-    /// came up scrolling. Anyone changing the window's height now moves this
-    /// with it.
+    /// **The cap is read from the window, not written down again**, so
+    /// changing the window's height moves this with it.
     ///
     /// **A resized window can still be shorter than the sheet, and this does
-    /// not know.** `contentMinSize` is 540 and the frame is autosaved, so on a
-    /// window somebody has made small the sheet hangs below the parent's bottom
-    /// edge — 220 pt at worst (760 against the 540 minimum), where it was
-    /// 160 at 700 and 120 before that. The fix is a cap that
-    /// follows the *presenting* window rather than the default size, which is a
-    /// larger change than a constant and is written down as its own piece of
-    /// work rather than half-done here.
+    /// not know.** `contentMinSize` is lower and the frame is autosaved, so on
+    /// a window somebody has made small the sheet hangs below the parent's
+    /// bottom edge. The fix is a cap that follows the presenting window, a
+    /// larger change kept as its own piece of work.
     ///
-    /// The floor is also the answer for a height that is not a number, which is
-    /// what this line gave as `min(max(360, table + chrome), 660)` —
-    /// `Swift.max(360, .nan)` is 360 — and the shared clamp hands the NaN back
-    /// instead. `.frame(height:)` is not where a window should find out it has
-    /// no size, and the floor is where this sheet opens whenever it does not
-    /// yet know its content: the seeded estimate is corrected upward a turn of
-    /// the run loop later. A height that is merely enormous keeps the cap,
-    /// which is what a cap is for.
+    /// The floor is also the answer for a height that is not a number:
+    /// `.frame(height:)` is not where a window should find out it has no size,
+    /// and the seeded estimate is corrected a turn of the run loop later. A
+    /// height that is merely enormous keeps the cap.
     static func windowHeight(table: CGFloat, chrome: CGFloat) -> CGFloat {
         (table + chrome).clamped(to: 360...SettingsWindow.defaultSize.height,
                                  whenNotANumber: 360)
@@ -135,10 +104,9 @@ struct SidebarComposerSheet: View {
     private func apply(_ next: SidebarLayout) {
         SidebarLayoutStore.write(next, to: AppSettings.store)
         // The list is built from `revision`, so this is the transaction every
-        // change to the arrangement has to travel in. Without it the list's
-        // measured height went from 476 to 536 in one frame — the variant
-        // measured dead, with `.animation(_, value:)`
-        // sitting on the frame and the row heights written raw underneath.
+        // change to the arrangement has to travel in, or the list's measured
+        // height jumps in one frame (an `.animation(_, value:)` on the frame
+        // does not reach row heights written raw underneath).
         withAnimation(HelmMotion.interface) { revision &+= 1 }
         // The sidebar cannot observe UserDefaults; this is the notification it
         // already listens for. The icon menu reads the store at each right click.
@@ -149,11 +117,8 @@ struct SidebarComposerSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(AppStr.sidebarSections)
-                    // 16, the scale's step above body, and the same one
-                    // `HelmPageHeader` sets a page's own title on — this is a
-                    // sheet's title and reads at the same rank. It was 15,
-                    // which is on no step and was invisible only because the
-                    // ratchet did not read the app shell.
+                    // The step `HelmPageHeader` sets a page's own title on: a
+                    // sheet's title reads at the same rank.
                     .font(HelmText.plateTitle)
                 Spacer()
                 Button(HelmWord.done) { dismiss() }
@@ -187,15 +152,12 @@ struct SidebarComposerSheet: View {
                     .frame(height: tableHeight)
                     // 20 like the header and the footer, less the 8 pt a plain
                     // `List` insets its own content by. Measured off a
-                    // screenshot at 2x rather than offscreen: a `List` is an
-                    // AppKit table and draws nothing without a window, so the
-                    // probe that would have measured it returned an empty
-                    // bitmap. Header at 20, cards at 28.5.
+                    // screenshot: a `List` is an AppKit table and draws
+                    // nothing offscreen without a window.
                     .padding(.horizontal, 12)
-                    // Not symmetric, so that what you see is. The list opens
+                    // Not symmetric, so that what you see is: the list opens
                     // with a section gap of 10 above its first heading and
-                    // closes with 5 under its last row, so equal padding here
-                    // produced 20 above and 15 below.
+                    // closes with 5 under its last row.
                     .padding(.top, 12)
                     .padding(.bottom, 17)
             }
@@ -219,10 +181,8 @@ struct SidebarComposerSheet: View {
             .padding(.vertical, 12)
         }
         .frame(width: Self.width, height: Self.windowHeight(table: tableHeight, chrome: chrome))
-        // The way out for a keyboard. «Done» holds Return and there is no second
-        // button to hang `.cancelAction` on — and there should not be one, since
-        // every edit here is applied as it is made, so leaving loses nothing and
-        // Escape means the same thing «Done» does.
+        // The way out for a keyboard. «Done» holds Return, and there is no
+        // Cancel: every edit is applied as it is made, so Escape means «Done».
         .onExitCommand { dismiss() }
         .alert(HelmWord.rename, isPresented: Binding(
             get: { renaming != nil },
@@ -256,8 +216,7 @@ struct SidebarComposerRow: View {
     }
 
     /// Counted from the arrangement rather than from the registry: a section
-    /// somebody emptied is still a section they made, and the row saying «4»
-    /// when the sheet shows four is the point of having a summary at all.
+    /// somebody emptied is still a section they made.
     private var summary: String {
         _ = revision
         let layout = SidebarLayoutStore.current()

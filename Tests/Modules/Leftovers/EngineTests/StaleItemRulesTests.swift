@@ -71,8 +71,8 @@ final class StaleItemRulesTests: XCTestCase {
     // MARK: - Vendor safety (learned from a dry run on a real machine)
 
     /// Adobe and Microsoft ship settings under ids that match no app bundle:
-    /// com.adobe.Photoshop, com.microsoft.office. Judging each id on its own
-    /// offered to delete the settings of installed software.
+    /// com.adobe.Photoshop, com.microsoft.office. Judging each id on its own would
+    /// offer to delete the settings of installed software.
     func testItemsAreKeptWhenTheVendorHasAnyInstalledApp() {
         let installed: Set<String> = ["com.adobe.Photoshop.2026", "com.microsoft.Word"]
         XCTAssertFalse(StaleItemRules.isRemovable(

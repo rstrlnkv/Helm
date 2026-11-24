@@ -5,48 +5,30 @@ import Foundation
 /// globbed alike, because a check applied to some of them and not the others is
 /// how the same data arrives ticked by a different route.
 ///
-/// `GlobMatch` answers a question about text; this answers the question the
-/// scan actually has. A glob is `"<id>*"` or `"*<id>*"`, and a bundle id is a
-/// prefix of its own vendor's next product — so `com.acme.tool*` reaches
-/// `com.acme.toolPro`'s cache, container, group container and LaunchAgent as
-/// readily as it reaches `com.acme.tool.helper`'s. `scanOrphansSync` puts every
-/// entry it finds past `installedBundleIDs()` before offering it; `scanSync`
-/// put its glob matches past nothing, and a glob hit is never `matchedByName`,
-/// so `UninstallPlan.defaultSelection` arrives with it **already ticked** — the
-/// hazard (ARCHITECTURE.md § The gates) is about.
+/// `GlobMatch` answers a question about text; this answers the scan's. A
+/// bundle id is a prefix of its vendor's next product, so `com.acme.tool*`
+/// reaches `com.acme.toolPro`'s files as readily as `com.acme.tool.helper`'s,
+/// and a glob hit is never `matchedByName`, so it arrives ticked
+/// (Architecture/TheGates.md § The gates).
 ///
 /// Four rules, because each alone lets a real case through:
 ///
-/// - **A dot, or nothing.** A bundle id is a dotted path, so the id inside a
-///   longer name is the same id only when the name breaks at a `.` on both
-///   sides of it. That is the whole difference between `com.acme.tool.helper`
-///   and `com.acme.toolPro`.
-/// - **Not another installed app.** `com.acme.tool.staging` is `com.acme.tool`
-///   followed by a dot, so the first rule waves it through — and it is a
-///   product somebody has installed and may be running. Anything naming an
-///   installed id other than this one belongs to that one.
-/// - **Not an app the listing cannot see.** The rule above is answered from
-///   `installedBundleIDs()`, which is `contentsOfDirectory` over four folders
-///   matching `*.app` at the top level: `/Applications/Adobe Acrobat DC/Adobe
-///   Acrobat.app` is not in it, nor is any helper nested inside another bundle.
-///   So the vendor's *other* product is invisible to the rule written to
-///   protect it, and its container, caches, scripts and LaunchAgent are claimed
-///   as this app's leftovers — pre-ticked, because a glob hit is never
-///   `matchedByName`. `OrphanDetector` was given `isKnownToSystem` for exactly
-///   this gap, its comment recording that nested apps "were being offered for
-///   deletion while their apps were installed and running"; the same witness
-///   answers here. A set cannot be enumerated out of LaunchServices, so the
-///   question is asked the other way round: the ids this name *could* be —
-///   this id extended past a dot — are put to it one at a time.
-/// - **The id is this app's to begin with.** The three rules above compare a
-///   name against the id and take the id itself on trust; it is read from the
-///   app's own `Info.plist`, where an app may write anybody's. That is why the
-///   exact candidates need this type at all — `Containers/<id>` and the rest
-///   match no pattern and went through no check, so an app declaring a
-///   neighbour's id was handed the neighbour's container, ticked. Two installed
-///   bundles declaring one id is the evidence, and the honest case (a Setapp
-///   build beside a direct download) wants the same answer: the data belongs to
-///   something that is staying.
+/// - **A dot, or nothing.** The id inside a longer name is the same id only
+///   when the name breaks at a `.` on both sides of it: `com.acme.tool.helper`
+///   but not `com.acme.toolPro`.
+/// - **Not another installed app.** `com.acme.tool.staging` passes the first
+///   rule and is a product somebody may be running. Anything naming a longer
+///   installed id belongs to that one.
+/// - **Not an app the listing cannot see.** `installedBundleIDs()` reads `.app`
+///   bundles two levels down and never inside a bundle, so a vendor's nested or
+///   deeper product is invisible to the rule above. LaunchServices answers for
+///   it, as in `OrphanDetector`; it cannot list a set, so the ids this name
+///   could be (this id extended past a dot) are put to it one at a time.
+/// - **The id is this app's to begin with.** The id is read from the app's own
+///   `Info.plist`, where an app may write anybody's, and the exact candidates
+///   (`Containers/<id>`) match no pattern. Two installed bundles declaring one
+///   id is the evidence; an honest second copy wants the same answer, since its
+///   data is still in use.
 ///
 /// Every refusal fails toward leaving files behind, which is the survivable
 /// direction: an unclaimed leftover costs disk space, and a wrongly claimed one
@@ -67,9 +49,8 @@ struct LeftoverOwnership {
     }
 
     /// Whether the id names something other than the app being removed as well.
-    /// Reported rather than inferred from an empty result: a scan that claims
-    /// nothing because the id is shared and a scan that finds nothing are the
-    /// same screen and different facts.
+    /// Reported, because a scan that claims nothing for a shared id and one that
+    /// finds nothing look the same on screen.
     var idIsContested: Bool { installedPaths.count > 1 }
 
     func claims(name: String) -> Bool {
@@ -85,10 +66,8 @@ struct LeftoverOwnership {
         guard !installedBundleIDs.contains(where: { other in
             other != id && other.count > id.count && Self.contains(stem, token: other)
         }) else { return false }
-        // The listing's blind spot, asked of LaunchServices instead. Only the
-        // extensions of this id are worth a lookup: an app installed one folder
-        // down still has an id of its own, and that id is what a name longer
-        // than this one carries.
+        // The listing's blind spot, asked of LaunchServices. Only the extensions
+        // of this id are worth a lookup: that is what a longer name carries.
         return !Self.longerIDs(in: stem, extending: id).contains(where: knownToSystem)
     }
 
@@ -118,9 +97,8 @@ struct LeftoverOwnership {
     /// The bundle ids a name longer than `id` could itself be: `id` grown
     /// rightwards to each following dot, from every bounded occurrence of it.
     /// `group.com.acme.tool.staging.helper` yields `com.acme.tool.staging` and
-    /// `com.acme.tool.staging.helper` — the two things somebody could have
-    /// installed. The prefixes a group container carries (`group.`, a team id)
-    /// are nobody's bundle id, so no lookup is spent on them.
+    /// `com.acme.tool.staging.helper`. A group container's prefixes (`group.`, a
+    /// team id) are nobody's bundle id, so no lookup is spent on them.
     private static func longerIDs(in stem: String, extending id: String) -> [String] {
         var out: [String] = []
         for occurrence in boundedOccurrences(of: id, in: stem)

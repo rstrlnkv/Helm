@@ -8,8 +8,7 @@ struct DiskResultView: View {
     @ObservedObject var dvm: DiskViewModel
     @Binding var hovered: String?
     /// The row the keyboard is on. A `List` with no selection has no focusable
-    /// rows at all: arrow keys did nothing, and the only way into a folder was
-    /// a double-click.
+    /// rows, so the arrow keys would do nothing.
     @State private var selection: String?
 
     var body: some View {
@@ -27,9 +26,7 @@ struct DiskResultView: View {
         HStack(spacing: 0) {
             // The ring is never replaced: clicking a wedge widens it until
             // it is the whole circle and only then drills, and coming back
-            // runs the same transform backwards. A cross-fade between two
-            // rings said "something changed"; this says "you are inside
-            // this one".
+            // runs the same transform backwards, so it says "you are inside this one".
             ZStack {
                 RingView(segments: dvm.segments,
                          focusName: dvm.focus.map(dvm.displayName(for:)) ?? "",
@@ -63,8 +60,7 @@ struct DiskResultView: View {
     // MARK: - List
 
     @ViewBuilder private var childList: some View {
-        // A folder with nothing in it drew nothing at all: no ring, no rows,
-        // no sentence. An empty screen is a question the app should answer.
+        // An empty folder gets a sentence, not a blank screen.
         if dvm.focus?.children.isEmpty ?? true {
             HelmEmptyState(message: DkStr.emptyFolder)
         } else {
@@ -73,14 +69,10 @@ struct DiskResultView: View {
     }
 
     /// Which rows the basket will take, asked **once for the list** and asked of
-    /// the view model, which is where that rule lives.
-    ///
-    /// It is several syscalls a path — `standardizingPath`, a `fileExists` walk
-    /// up the parent chain, `resolvingSymlinksInPath` — and it was asked twice
-    /// over: once per row for that row's own caption, and n more times for «are
-    /// they all system items», on every body evaluation, which on this page means
-    /// every hover frame. The n² inside the `ForEach` was fixed by hoisting the
-    /// second question; this answers both from one pass.
+    /// the view model, which is where that rule lives. It costs several syscalls
+    /// a path (`standardizingPath`, a `fileExists` walk up the parent chain,
+    /// `resolvingSymlinksInPath`) and the body runs on every hover frame, so one
+    /// pass answers each row's caption and «are they all system items».
     ///
     /// Keyed by `id` and not by `path`: the folded bucket's path is the path a
     /// real file named `…` would have, and the two are one key.
@@ -110,10 +102,8 @@ struct DiskResultView: View {
             }
         }
         .listStyle(.inset)
-        // Return goes in, ⌘↑ comes back out — the pair macOS uses in Finder,
-        // and the keyboard equivalent of the double-click and the ring's
-        // centre. The buttons are hidden because the bar already carries Back
-        // and the list has no room for two more controls; a zero-size button
+        // Return goes in, ⌘↑ comes back out, as in Finder. The buttons are
+        // hidden because the bar already carries Back; a zero-size button
         // still owns its shortcut.
         .overlay {
             VStack(spacing: 0) {
@@ -177,25 +167,19 @@ private struct BreadcrumbBar: View {
             .accessibilityLabel(HelmWord.back)
 
             // `fixedSize` on the group, not on each crumb: a `frame(maxWidth:)`
-            // is a range, and in an HStack with room to spare every crumb took
-            // its whole maximum — 140 pt for a name eight characters long. The
-            // bar came out as four names evenly spread across the window with
-            // gaps between them, which reads as a layout fault rather than as
-            // a path. Asking the group for its ideal width makes each maximum
-            // behave as the ceiling it was meant to be.
+            // is a range, and in an HStack with room to spare every crumb takes
+            // its whole maximum. Asking the group for its ideal width makes each
+            // maximum a ceiling.
             HStack(spacing: HelmSpace.s4) { crumbs }
                 .fixedSize()
 
             Spacer(minLength: HelmSpace.s5)
 
-            // **Either walk**, not only the volume's. Drilling past the depth the
-            // scan reached starts a real walk of that folder, and this pair was
-            // behind `live` alone — so the click looked dead, the ring changed
-            // under the person when it landed, and there was nothing to press to
-            // stop it. The file count belongs to the volume walk: a folder
-            // measurement asks for no updates (`measureAndDrill` passes no sink), so
-            // nothing of it reaches `tick`, which the view model clears when a scan
-            // ends or is stopped, so there is no count left over to draw here.
+            // **Either walk**, not only the volume's: drilling past the depth the
+            // scan reached starts a real walk of that folder, which needs the
+            // spinner and a Stop. The file count belongs to the volume walk: a
+            // folder measurement passes no sink (`measureAndDrill`), so nothing
+            // of it reaches `tick`.
             if dvm.walking {
                 HStack(spacing: HelmSpace.s3) {
                     ProgressView().controlSize(.small)
@@ -208,11 +192,9 @@ private struct BreadcrumbBar: View {
                         .controlSize(.small)
                 }
             } else {
-                // Between the path and the controls: it is what fills the gap on
-                // a wide window. Which of the three sentences this is — and
-                // whether the width has anything to say about it — is
-                // `DiskLayout.statement`, because two of the three are warnings
-                // and a warning is not a thing to drop when the window is small.
+                // Between the path and the controls, filling the gap on a wide
+                // window. Which sentence, and whether the width drops it, is
+                // `DiskLayout.statement`: two of the three are warnings.
                 scanStatement
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
             }
@@ -235,10 +217,8 @@ private struct BreadcrumbBar: View {
             HStack(spacing: HelmSpace.s4) {
                 Button(HelmWord.scanAgain) { Task { await dvm.rescan() } }
                     .disabled(dvm.walking || dvm.busy)
-                // The way out. "Scan again" measures the same place forever, so
-                // a scan of the wrong thing — or of a folder that was only ever
-                // meant to be looked at once — had no exit at all: the module
-                // reopened on it at every launch.
+                // The way out: "Scan again" measures the same place, and the
+                // module reopens on the last scan at every launch.
                 Button(DkStr.chooseAnother) { dvm.newScan() }
                     .disabled(dvm.busy)
             }
@@ -250,25 +230,22 @@ private struct BreadcrumbBar: View {
     /// What the ring is showing: a stopped walk, a memory of a measurement, or a
     /// fresh one.
     ///
-    /// The choice is `DiskLayout.statement`, and exhaustively — no `default`, so a
-    /// fourth sentence is a build error here rather than a line that silently
-    /// never draws.
+    /// The choice is `DiskLayout.statement`, exhaustively with no `default`, so a
+    /// fourth sentence is a build error here rather than a line that never draws.
     @ViewBuilder private var scanStatement: some View {
         switch layout.statement(stopped: dvm.stopped, restored: dvm.restored,
                                 hasResult: dvm.result != nil) {
         case .stopped:
             if let result = dvm.result {
                 Text(DkStr.stopped)
-                    // The hint carries the count and the consequence, and it rode
-                    // on a `Text` that was not drawn below 800 pt of pane — so the
-                    // screen reader lost it exactly where the sighted reader did.
+                    // The count and the consequence, here because the `Text` that
+                    // carries them is not drawn below 800 pt of pane.
                     .help(DkStr.stoppedHint(result.filesScanned))
                     .accessibilityHint(DkStr.stoppedHint(result.filesScanned))
             }
         case .measured:
-            // A restored tree is a memory, not a measurement: say when — and
-            // say nothing at all for a stamp with no age to word, rather than
-            // «Измерено » with the sentence stopping where the age should be.
+            // A restored tree is a memory, not a measurement: say when, and say
+            // nothing for a stamp with no age to word.
             if let savedAt = dvm.completedAt, let age = HelmDates.age(savedAt) {
                 Text(DkStr.measured(age))
             }
@@ -327,8 +304,7 @@ private struct BreadcrumbBar: View {
                 Text(dvm.displayName(for: entry))
                     .lineLimit(1).truncationMode(.middle)
                     // A ceiling, not a reservation: `frame(maxWidth:)` alone
-                    // took the full 140 pt and centred a short name inside it,
-                    // so "iMazing" sat in the middle of a gap.
+                    // would centre a short name in the full 140 pt.
                     .fixedSize(horizontal: true, vertical: false)
                     .frame(maxWidth: 120, alignment: .leading)
             }
@@ -346,33 +322,20 @@ private struct BreadcrumbBar: View {
 
 // MARK: - The one way into the basket
 
-/// The `+` on a row, and the same `+` on a Recommendations row.
-///
-/// One control drawn in two places, and it was written out twice — same glyph
-/// pair, same tint, same style, same `DkStr.basketAction` in three of the four
-/// modifiers. What that costs is not the six lines: the two copies are the two
-/// doors into the basket, so anything true of the control has to be remembered
-/// at both, and `.disabled` while a removal runs was remembered at neither.
+/// The `+` on a row, and the same `+` on a Recommendations row: one control for
+/// the two doors into the basket, so what is true of it holds at both.
 ///
 /// **Dim, because the model refuses.** Architecture/Removal.md § One removal at a time:
 /// the basket is what the reply in flight is about, so `DiskViewModel.toggleBasket`
-/// declines while `busy` — and a button that is live over a refusal is a press
-/// that does nothing, which is worse than the discard it replaced.
+/// declines while `busy`, and a live button over a refusal is a press that does nothing.
 ///
-/// **And `.disabled` on its own leaves this one drawn exactly as it was.**
-/// SwiftUI dims a control through the foreground style it would otherwise
-/// choose, and this label chooses its own — measured, two mounts of the same
-/// rows read 25 471 668 ink apiece with `.disabled(removing)` in place and
-/// nothing else changed. So the tint answers to the same flag the press does,
-/// one line below it, at the 0.4 AppKit gives a disabled template image. The
-/// name and the trait keep their own tight chain under the button — and the
-/// button toggles, so the name has to: it read "Add" in both states, which on a
-/// marked row is the opposite of what pressing it does.
+/// **`.disabled` alone leaves this one drawn as it was**: SwiftUI dims a control
+/// through the foreground style it would choose, and this label chooses its own.
+/// So the tint answers to the same flag the press does, at the 0.4 AppKit gives
+/// a disabled template image. The button toggles, so its name toggles too.
 private struct BasketButton: View {
-    /// The row this button belongs to, as the row draws it. Read aloud once per
-    /// row down a list of two hundred, and without it every one of them was
-    /// «Mark for removal» — the name of the *action*, with no object, which is
-    /// the defect `HelmBasket.mark` was written to fix.
+    /// The row this button belongs to, as the row draws it, so each button is
+    /// read aloud with its object (`HelmBasket.mark`).
     let name: String
     let basketed: Bool
     let removing: Bool
@@ -402,9 +365,8 @@ private struct BasketButton: View {
 /// the item's share of the focused folder — the list reads as a bar chart.
 private struct ChildRow: View {
     @Environment(\.helmAccessibility) private var accessibility
-    /// True when every visible row would carry the same caption — at a volume
-    /// root, all ten of them. Homebrew already wrote this lesson down: "46 of 47
-    /// rows were 'formula', and a label with one value is an ornament."
+    /// True when every visible row would carry the same caption, as at a volume
+    /// root: a label with one value is an ornament.
     var everyRowIsSystem = false
     /// Whether the basket will take this row — answered by the list, in one pass
     /// over its children, rather than by the row asking the filesystem from
@@ -421,11 +383,10 @@ private struct ChildRow: View {
     let onToggleBasket: () -> Void
     let onDrill: () -> Void
 
-    /// What the row draws, and therefore what its button is named after — the
-    /// flag rather than the name for a folded bucket, since a person's own file
-    /// called "…" was once labelled "Other items" and given the bucket's size.
-    /// One spelling: a second copy is how the two would come to name different
-    /// things on one row.
+    /// What the row draws, and therefore what its button is named after: the
+    /// flag rather than the name for a folded bucket, so a person's own file
+    /// called "…" is not taken for it. One spelling, so the two cannot name
+    /// different things on one row.
     private var drawnName: String { child.isFolded ? DkStr.otherItems : title }
 
     private var isHovered: Bool { hovered == child.path }
@@ -442,14 +403,12 @@ private struct ChildRow: View {
                 // The colour key of the row; the ring's tooltip draws a 7 pt one.
                 .frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
-                // The flag, not the name: a person's own file called "…" was
-                // labelled "Other items" and given the bucket's size.
+                // The flag, not the name: a person's own file may be called "…".
                 Text(drawnName)
                     .lineLimit(1).truncationMode(.middle)
                 if child.noAccess {
-                    // The token, not `.orange`: the system colour is tuned for
-                    // a dark background and measures 2.31:1 on a light window,
-                    // which is ten-point body text nobody can read.
+                    // The token, not `.orange`: the system colour is tuned for a
+                    // dark background and is unreadable as small text on a light one.
                     Text(DkStr.noAccess).font(HelmText.smallPrint).foregroundStyle(HelmSignal.warning)
                 } else if !removable, !everyRowIsSystem {
                     Text(DkStr.systemItem).font(HelmText.smallPrint).foregroundStyle(HelmText.faint)
@@ -461,11 +420,8 @@ private struct ChildRow: View {
                 .helmFigure()
                 .foregroundStyle(HelmText.quiet)
             // What the double-click does, as a control: in for a folder, Finder
-            // for a file. It was a double-click and an accessibility action —
-            // mouse-only and VoiceOver-only at once, with nothing for Full
-            // Keyboard Access to land on and nothing on screen saying the row
-            // led anywhere; a folder and a file differed by the colour of an
-            // 8 pt dot. A Button is all three inputs and a visible affordance.
+            // for a file. A Button serves the mouse, VoiceOver and Full Keyboard
+            // Access, and shows that the row leads somewhere.
             //
             // Nothing for the folded bucket: "…" stands for the children that
             // were dropped and has no path of its own to open or show.
@@ -514,15 +470,9 @@ private struct ChildRow: View {
         )
         .contentShape(Rectangle())
         .onHover { inside in hovered = inside ? child.path : nil }
-        // The primary gesture on the primary surface did nothing at all on a
-        // file — no drill, no feedback, only a grey dot to have noticed
-        // beforehand. A file's equivalent of "open" is Finder.
-        //
-        // A shortcut for the mouse now, and only that: the row's own Button does
-        // the same thing, so does Return on the selected row, so does the menu
-        // below. It used to be the only way in, with an accessibility action
-        // under it that reached VoiceOver and left the keyboard exactly as
-        // stuck.
+        // A file's equivalent of "open" is Finder. A shortcut for the mouse
+        // only: the row's own Button, Return on the selected row and the menu
+        // below do the same.
         .onTapGesture(count: 2) { child.isDirectory ? onDrill() : reveal() }
         .contextMenu {
             if child.isDirectory {
@@ -591,9 +541,8 @@ private struct AdviceList: View {
         .contextMenu {
             Button(HelmA11y.showInFinder) { reveal(item) }
         }
-        // A right-click is a mouse. Without this the popover offered no way at
-        // all to look at what it is asking you to delete — the same drill
-        // `ChildRow` already runs for the same reason.
+        // A right-click is a mouse: the popover's way to look at what it asks
+        // you to delete, the same drill `ChildRow` runs.
         .accessibilityActions {
             Button(HelmA11y.showInFinder) { reveal(item) }
         }

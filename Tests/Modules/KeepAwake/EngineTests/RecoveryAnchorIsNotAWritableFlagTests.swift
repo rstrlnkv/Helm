@@ -2,25 +2,21 @@ import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
-/// The launch-time recovery hung on a value any process running as this user can
-/// erase.
+/// The launch-time recovery does not hang on a value any process running as
+/// this user can erase.
 ///
-/// `recoverAtLaunch()` opened on `store.bool(clamshellGuard)`, and that flag
-/// lives in `~/Library/Preferences/…helm.plist`, writable by anything running as
-/// the person. Clear it — a tidy-up script, a defaults write, a restored backup,
-/// a hand edit — and Helm never looks again: system sleep stays off machine-wide,
-/// every screen says Keep Awake is idle, and the Mac does not sleep until
-/// somebody works out what `pmset -g` is saying. It is the one setting in this
-/// module that steers privileged work with nobody watching, and the seal of (ARCHITECTURE.md § Sealed settings)
-/// cannot be used on it (`clamshellEnabled`'s own doc comment has the reason: an
-/// ad-hoc signed bundle meets a keychain dialog at every install).
+/// `clamshellGuard` lives in `~/Library/Preferences/…helm.plist`, writable by
+/// anything running as the person. Cleared (a tidy-up script, a defaults write,
+/// a restored backup), it alone would leave system sleep off machine-wide with
+/// every screen saying Keep Awake is idle. The seal cannot be used on it, for
+/// the reason `clamshellEnabled`'s doc comment gives.
+/// Architecture/StoredSettings.md § Sealed settings.
 ///
-/// So the recovery gains a second anchor that is **not** user-writable:
-/// `/etc/sudoers.d/helm-keepawake` is installed 0440 root:wheel, and clearing it
-/// needs root. Measured from this account: the existence check answers from uid
-/// 501 without any grant, while removing the file asks for a password. Either
-/// anchor is enough to go and read `pmset -g`; the report is still what decides
-/// whether anything is put back.
+/// So the recovery has a second anchor that is not user-writable:
+/// `/etc/sudoers.d/helm-keepawake` is installed 0440 root:wheel. The existence
+/// check needs no grant; removing the file needs root. Either anchor is enough
+/// to go and read `pmset -g`; the report is still what decides whether anything
+/// is put back.
 final class RecoveryAnchorIsNotAWritableFlagTests: XCTestCase {
     private var backing: InMemoryKeyValueStore!
     private var store: NamespacedStore!
@@ -111,9 +107,8 @@ final class RecoveryAnchorIsNotAWritableFlagTests: XCTestCase {
     // always shells out
 
     /// A Mac where Helm has never touched sleep: no note, no rule. Nothing is
-    /// asked of `pmset` at all — the reason the flag short-circuited the read in
-    /// the first place, and `||` keeps it, because the second half of the guard
-    /// is only reached when one of the two anchors holds.
+    /// asked of `pmset` at all: the read is reached only when one of the two
+    /// anchors holds.
     @MainActor
     func testAnOrdinaryLaunchReadsNothingAndRestoresNothing() async {
         await launch()

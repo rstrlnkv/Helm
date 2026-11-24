@@ -27,7 +27,7 @@ final class TheGridSettingsTakeAnyNumberTheStoreHoldsTests: XCTestCase {
     func testAShowNamesThatIsNoBoolReadsTheDefault() {
         XCTAssertTrue(LaunchpadGridSettings.standard.showNames, "the default is names on")
         // Not 0 or 1: a plist number that is 0 or 1 is read as a bool by the store itself (`as? Bool` on an `NSNumber`), for every bool setting alike.
-        for value in hostile.filter { ($0 as? Int) != 0 } + ["false", "no", [false] as [Bool], 2] as [Any] {
+        for value in hostile.filter({ ($0 as? Int) != 0 }) + ["false", "no", [false] as [Bool], 2] as [Any] {
             let store = NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore())
             store.set(value, for: LaunchpadGridSettings.Key.showNames)
             XCTAssertTrue(LaunchpadGridSettings.read(from: store).showNames, "\(value)")

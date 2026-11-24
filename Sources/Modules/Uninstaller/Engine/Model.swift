@@ -27,17 +27,14 @@ public struct ScanResult: Equatable, Sendable {
 /// An app sitting in the Trash and what it left behind — one group in the window
 /// that offers to clean up after it.
 ///
-/// `HelmApp` cannot import this target: the host depends on the UI targets only
-/// (Package.swift, at the HelmApp target). That is why the whole sweep is one
-/// call on the module's model rather than the host listing the Trash itself and
-/// asking about each bundle it finds.
+/// `HelmApp` depends on the UI targets only, so the whole sweep is one call on
+/// the module's model rather than the host listing the Trash itself.
 public struct TrashedAppLeftovers: Equatable, Sendable {
     public let bundleID: String
     /// What the person will recognise, from the bundle's own `Info.plist`.
     public let name: String
-    /// Where it sits in the Trash. The window reads its icon from here — and it is
-    /// deliberately not among the things offered for deletion: the app is already
-    /// where the person put it.
+    /// Where it sits in the Trash. The window reads its icon from here; it is not
+    /// offered for deletion, since the app is already where the person put it.
     public let appPath: String
     public let leftovers: [Leftover]
 
@@ -46,18 +43,11 @@ public struct TrashedAppLeftovers: Equatable, Sendable {
 
 /// Why one path could not be moved, so the UI can say something actionable.
 ///
-/// **Not `HelmTrash.Refusal` with two extra letters.** It carries a third thing
-/// that one deliberately does not: what macOS said, verbatim. The shared loop
-/// classifies the error and writes the sentence to the log, because for Disk,
-/// Duplicates and Leftovers the classification is the whole of what a person can
-/// act on. This module's failure sheet draws both — the reason in Helm's words
-/// and macOS's own underneath it as the evidence behind it — and one screen with
-/// a use for a field is not a reason to put it on the type the other four share.
+/// Not `HelmTrash.Refusal`: it also carries what macOS said, verbatim, which
+/// this module's failure sheet draws under the reason. The other modules act on
+/// the classification alone, so the field stays off the shared type.
 ///
-/// The reason is the enum rather than a string that happens to be its raw value.
-/// Leftovers held one of those in a field called `message` and nothing in the
-/// type said what it was; three screens here compared it against
-/// `.rawValue` by hand.
+/// The reason is the enum, not a string holding its raw value.
 public struct TrashFailureInfo: Equatable, Sendable, Identifiable {
     public var id: String { path }
     public let path: String
@@ -76,23 +66,17 @@ public struct UninstallResult: Equatable, Sendable {
 
     /// The application bundles in the batch that were still running when it came
     /// to move them, with no quit allowed or still up after the quit that was.
-    /// Non-empty means
-    /// **nothing moved**: a leftover in the batch carries no link back to the app
-    /// it belongs to, so there is no such thing as "the rest of it" — see
-    /// `UninstallPlan.verdict`.
+    /// Non-empty means nothing moved: a leftover carries no link back to its app,
+    /// so there is no "the rest of it" (`UninstallPlan.verdict`).
     ///
-    /// Its own field rather than a `TrashFailureInfo`: nothing was attempted and
-    /// macOS said nothing, so there is no failure to classify, and the screen's
-    /// answer to it is not a report but the offer it already has — quit the app,
-    /// or allow the quit.
+    /// Its own field rather than a `TrashFailureInfo`: nothing was attempted, so
+    /// there is no failure to classify, and the screen's answer is the offer it
+    /// already has, to quit the app or allow the quit.
     public let stillRunning: [String]
 
-    /// The refused paths, which the two screens read one each: this one decides
-    /// which apps a removal answered for, and `failures` is what the report
-    /// lists. It was a stored field beside `failures`, appended to on the same
-    /// two lines, and nothing but that adjacency kept them in step — a `failed`
-    /// missing a path its `failures` recorded would file an app macOS refused as
-    /// the person's own "no", which takes it off every screen Helm has.
+    /// The refused paths, derived from `failures` so the two cannot disagree: a
+    /// path missing here would file an app macOS refused as the person's own
+    /// "no", which takes it off every screen.
     public var failed: [String] { failures.map(\.path) }
 
     init(trashed: [String], freedBytes: Int, failures: [TrashFailureInfo] = [],

@@ -8,28 +8,23 @@ import HelmAppStrings
 /// Discovered the hard way: without Full Disk Access an uninstall silently
 /// leaves app containers on disk.
 @MainActor enum PermissionAudit {
-    /// Holds the **identity** of the build that last ran this audit and could
-    /// read its signature — not a bare flag, and no longer its marketing
-    /// version.
+    /// Holds the **identity** (the cdhash) of the build that last ran this
+    /// audit and could read its signature.
     ///
-    /// **The key string is historical and must not be renamed.** A fresh key
-    /// reads as an empty last-seen value, `PermissionAuditPlan.shouldSpeak` is
-    /// silent on a first run by design, and the run that needs this audit most
-    /// is the first one after an update — so a rename would switch the audit off
-    /// on exactly the launch it exists for, and nothing would report it. What
-    /// changes is the value's shape, from `0.11.1-dev.5` to a cdhash: those
-    /// compare unequal once, on the first launch of the first build that reads
-    /// it, and that launch really is a different binary, so speaking then is
-    /// correct rather than a glitch. `ThePermissionAuditAsksTheSignatureTests`
-    /// holds the spelling and the fact that it is not on
-    /// `ObsoleteDefaults.retired`, which really deletes.
+    /// **The key string must not be renamed, though it says «version».** A
+    /// fresh key reads as an empty last-seen value,
+    /// `PermissionAuditPlan.shouldSpeak` is silent on a first run by design,
+    /// and the run that needs this audit most is the first one after an
+    /// update, so a rename would switch the audit off on exactly that launch.
+    /// `ThePermissionAuditAsksTheSignatureTests` holds the spelling and the
+    /// fact that it is not on `ObsoleteDefaults.retired`, which really deletes.
     static let identityKey = "permissionAuditVersion"
 
     static func run() {
         Task {
             // This `Task` inherits the main actor from the enclosing type, so
-            // the four blocking reads happened on the thread that draws, at
-            // launch. `currentAccessibility` stays as it is: `AXIsProcessTrusted`
+            // the Full Disk Access probe's blocking reads are awaited off it.
+            // `currentAccessibility` stays as it is: `AXIsProcessTrusted`
             // answers from a cache and touches no file.
             let fullDisk = await PermissionCheck.fullDiskAccess()
             let accessibility = PermissionCheck.currentAccessibility()
@@ -94,8 +89,7 @@ import HelmAppStrings
     private static func present(_ missing: [PermissionNeed]) {
         let alert = NSAlert()
         // Named for the situation, not for one permission: the sheet is shown
-        // for whichever ones lapsed, and titling it after Full Disk Access read
-        // as nonsense when the missing one was Accessibility.
+        // for whichever ones lapsed.
         alert.messageText = AppStr.permissionsChanged
         alert.informativeText = missing.map(AppStr.permissionReason).joined(separator: "\n\n")
         for need in missing { alert.addButton(withTitle: AppStr.openPane(need)) }

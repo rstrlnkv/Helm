@@ -5,13 +5,10 @@ import HelmTestSupport
 
 /// The one number the Disk module exists to produce: how much a removal freed.
 ///
-/// The scan and the removal measure the same folder with two different pieces
-/// of code. `TreeBuilder` dedupes by file id — "a hard link's target is one
-/// allocation however many names it has" — and the walk behind `HelmTrash`
-/// counts names. So the ring can say a folder holds 400 KB and the banner
-/// underneath can say removing it freed 800 KB, of the same folder, in the same
-/// session, and only one of those is a thing a disk can do.
-/// Past defect: fixed in commit 6dec5f2f.
+/// The scan and the removal measure the same folder with different code:
+/// `TreeBuilder` counts a hard-linked file once, by file id, and the walk behind
+/// `HelmTrash` counts names. The banner must not report more freed than the
+/// ring showed the folder holding.
 final class DiskTrashArithmeticTests: XCTestCase {
 
     private var root: URL!
@@ -48,16 +45,13 @@ final class DiskTrashArithmeticTests: XCTestCase {
 }
 
 /// The engine's own gate: `DiskEngine.trash` partitions through `UserFileScope`
-/// before `HelmTrash.remove`, and the only other test that calls it hands it a
-/// path inside the scope, so the partition could be dropped (every path passed
-/// as allowed) and nothing would notice.
+/// before `HelmTrash.remove`.
 ///
-/// **The path is a real file the gate refuses**: `/usr/bin/true` exists, so an
-/// engine without the gate would reach the move with it (a missing path reaches
-/// the move as well: `.missing` is how the real move's error is read,
-/// `TrashFailure.reason`, and a fake that throws nothing would report it
-/// removed). The move is a recording fake, so a run with the gate removed reads
-/// `attempted` and never touches the real Trash.
+/// The path is a real file the gate refuses (`/usr/bin/true`), so an engine
+/// without the gate would reach the move with it; a missing path would reach
+/// the move too, and a fake that throws nothing would report it removed. The
+/// move is a recording fake, so a run with the gate removed never touches the
+/// real Trash.
 final class DiskTrashGateTests: XCTestCase {
 
     func testAPathTheGateRefusesIsRefusedByTheEngineAndNotAttempted() async {

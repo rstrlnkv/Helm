@@ -24,19 +24,10 @@ enum HelmGlyphCatalogue {
                 "folder", "doc", "tray", "archivebox",
                 "calendar", "clock", "checklist", "briefcase",
             ]),
-            // Not "System": in Russian, Spanish and Portuguese the four
-            // "System …" tags of other screens are adjectives («Системный»,
-            // "Del sistema"), and this word would need a noun.
-            //
-            // The name is kept and the two symbols that were not hardware are
-            // the ones that went: a gear and a wrench were the only members a
-            // reader would have had to excuse. They are also Helm's own chrome
-            // — `gearshape` marks the Settings page in the sidebar, in its
-            // header and in the panel's footer, `wrench.and.screwdriver` the
-            // panel's edit button — so a tab wearing one read as a control of
-            // the app rather than as somebody's tab. A keyboard and a display
-            // in their place, which keeps every category at two full rows of
-            // the four-wide grid.
+            // Not "System": in Russian, Spanish and Portuguese that word would
+            // be an adjective. No gear or wrench: they mark Helm's own controls
+            // (Settings, the panel's edit button), so a tab wearing one would
+            // read as a control of the app.
             .init(id: "hardware", title: L(.hardware), symbols: [
                 "keyboard", "display", "cpu", "memorychip",
                 "internaldrive", "externaldrive", "gauge.with.dots.needle.33percent", "battery.100",
@@ -105,12 +96,9 @@ public struct HelmGlyphPicker: View {
                     .buttonStyle(.plain)
                     // The category and the place in it, not the symbol's name.
                     //
-                    // The name was the only label the grid offered, so VoiceOver
-                    // read «gauge dot with dot dots dot needle dot 33 percent»
-                    // — an identifier for the drawing, in a picker whose whole
-                    // argument is that you choose these by looking rather than
-                    // by reading names. Neither part needs its own string: the
-                    // category is already translated and the rest is a number.
+                    // The symbol's name is an identifier for the drawing,
+                    // useless in a picker whose point is choosing by looking.
+                    // The category is translated already and the rest is a number.
                     .accessibilityLabel("\(group?.title ?? "") \(index + 1)")
                     .accessibilityAddTraits(symbol == selected ? [.isSelected] : [])
                 }

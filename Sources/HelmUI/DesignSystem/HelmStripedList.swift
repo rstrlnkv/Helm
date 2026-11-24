@@ -4,37 +4,24 @@ import SwiftUI
 /// The one striped list in the house — an inset `List` with the system's own
 /// alternating row fill turned on.
 ///
-/// The colour is the system's, not the design system's: `#F4F5F5` in the light
-/// appearance, white at 4.7% in the dark one, measured on macOS 27.2. There is
-/// no token for it because there is nothing to choose — `NSTableView` paints
-/// the second colour itself, and a token here would name a value this house
-/// does not set.
+/// The colour is the system's, not the design system's: `NSTableView` paints
+/// the second colour itself, so there is nothing for a token to name.
 ///
-/// **Only on the `List` itself, never on a page or a container above it.**
-/// Apple's own wording for the modifier is "lists and tables in this view" —
-/// it reaches the whole subtree it is attached to, not one list picked out of
-/// several. Putting it on a page's outer stack would stripe every `List`
-/// mounted under that page, which is the one way Disk, Duplicates or
-/// Autopilot could end up striped by accident; the lists that take it are
-/// `command grep -rn '\.helmStripedList(rowPitch' Sources`.
+/// **Only on the `List` itself, never on a container above it**: the modifier
+/// reaches every list and table in the subtree, so on a page's outer stack it
+/// would stripe every `List` under that page. `command grep -rn
+/// '\.helmStripedList(rowPitch' Sources` lists the lists that take it.
 ///
-/// **Separators are each list's own job, not this modifier's.** There is no
-/// proven way for a modifier at the `List` level to hide the separator on
-/// every row under it; each striped list in this house hides its own with
-/// `.listRowSeparator(.hidden)` on the row or the `ForEach` that produces it,
-/// the way `OrphansView` already did before this modifier existed.
+/// **Separators are each list's own job**: no modifier at the `List` level is
+/// proven to hide every row's separator, so each list hides its own with
+/// `.listRowSeparator(.hidden)` on the row or its `ForEach`.
 ///
-/// **Why not `.listRowBackground`.** A background painted row by row cannot
-/// tell which row is even and which is odd once a `Section` — with its own
-/// header row — sits above it; `HomebrewPackageList` carries two sections in
-/// one `List`; alternation there is `NSTableView`'s own
-/// count of the rows it draws, not a colour this code could compute row by
-/// row and get right.
+/// **Not `.listRowBackground`**: a background painted row by row cannot tell
+/// even from odd once a `Section` header row sits above it (`HomebrewPackageList`
+/// has two sections), while `NSTableView` counts the rows it draws.
 ///
-/// `.inset` is the pairing Apple's own SDK asks for: the deprecation notice on
-/// `.inset(alternatesRowBackgrounds:)` reads "Use the `.inset` style with the
-/// `.alternatingRowBackgrounds()` view modifier." Both sides of that pair are
-/// available from macOS 14, well under this platform's floor of 26.0.
+/// `.inset` is the pairing Apple's SDK asks for in the deprecation notice on
+/// `.inset(alternatesRowBackgrounds:)`.
 ///
 /// **Below the last row, the stripe repeats at the table's own `rowHeight`, and
 /// each list declares that step itself.** AppKit's header for `rowHeight` says
@@ -48,13 +35,10 @@ import SwiftUI
 /// is drawn at the pitch.**
 ///
 /// `rowPitch` is the one step the list's rows are laid out at, taken from
-/// `HelmSpace`, and it is set once as `defaultMinListRowHeight`, which SwiftUI
-/// hands to the table as its `rowHeight` and applies as the minimum height of
-/// every row. The caller passes one step and its rows carry no minimum of
-/// their own beside it — a second literal on a row would let the stripe under
-/// the list and the rows above it drift apart the day one of them moves. Nothing is measured
-/// at run time: the number is declared, so there is no reading that can be
-/// stale and no second view to keep in step with the list.
+/// `HelmSpace`, set once as `defaultMinListRowHeight`, which SwiftUI hands to
+/// the table as its `rowHeight` and applies as every row's minimum. Rows carry
+/// no minimum of their own beside it, or the stripe under the list and the rows
+/// above it could drift apart. The number is declared, not measured.
 extension View {
     public func helmStripedList(rowPitch: CGFloat) -> some View {
         modifier(HelmStripedListModifier(rowPitch: rowPitch))

@@ -6,8 +6,7 @@ import Module_Screenshots_Engine
 /// What the person decided on the overlay.
 enum OverlayResult {
     /// An area on one display, in that display's own top-left points, with the
-    /// layers drawn over it and the way the person left. Every area arrives this
-    /// way — with no layers, as a plain crop.
+    /// layers drawn over it and the way the person left. An area with no layers is a plain crop.
     case edited(display: DisplayID, local: CGRect, layers: [Annotation], exit: EditorExit)
     /// A window, by id, and whether its shadow is in the picture: it is, unless the click was an option-click.
     case window(UInt32, shadow: Bool)
@@ -39,15 +38,9 @@ struct EditorTextTools {
 /// the selection is — mode, drag, space — cannot belong to one panel's view.
 /// Views report what happened to them and draw what this says.
 ///
-/// **Two phases, one panel.** Selecting is the drag; once an area is released the
-/// overlay stays and edits it: `edit` is non-nil, the crosshair is gone and the size
-/// plate stays over the area's top-left corner, with a loupe on the pixel while an area handle is held or the eyedropper is on, and the keys mean tools, undo and the exits. The picture under the
-/// layers is never touched, so every layer is a value that can be undone.
-///
-/// **Nothing is dimmed until there is a selection** (a drag that has moved, an edit, a remembered area), and a
-/// window pick is never dimmed: the window under the pointer is filled with the accent instead. The lines across
-/// the screen are drawn only while ⌥ is held. A shot that is taken ends in a flash and the overlay closes after it,
-/// unless Reduce Motion is on, when it closes at once (`close(after:)`).
+/// **Two phases, one panel.** Selecting is the drag; once an area is released `edit` is non-nil and the
+/// keys mean tools, undo and the exits (Architecture/ScreenshotsEditor.md § The editor and its layers).
+/// What is dimmed, lit and flashed while selecting is Architecture/Screenshots.md § The overlay.
 @MainActor final class CaptureOverlay {
     /// What the overlay opens in: the area crosshair, or the camera over windows.
     enum Mode { case area, window }
@@ -84,8 +77,7 @@ struct EditorTextTools {
     var isOpen: Bool { !panels.isEmpty }
     /// The area being edited, set once a selection is released; nil while selecting.
     var edit: (display: DisplayID, rect: CGRect, layers: AnnotationEditing, tool: AnnotationTool?)?
-    /// The eraser is on: a drag takes away the layers it meets (`AnnotationEditing.beginErase`) and `edit.tool` stays what it
-    /// was under it. A mode of this overlay and no `AnnotationTool`, so `EditorMemory` is never asked to keep it.
+    /// The eraser is on (Architecture/ScreenshotsEditor.md § The eraser and the ruler).
     var erasing = false
     /// The eyedropper is on (`EditorAction.eyedropper`): the loupe follows the pointer over the area, and the next click on the area picks the
     /// pixel of the frozen picture under it as the colour (`PixelLoupe`, read from the frame and never from a layer). A mode of this overlay like
@@ -94,8 +86,8 @@ struct EditorTextTools {
     var sampling = false
     /// The radius of the eraser's circle, in points of the display: what a drag meets and what the cursor draws.
     static let eraserRadius: CGFloat = 9
-    /// The ruler is on the picture, a switch of this overlay (`EditorAction.toggleRuler`) over whatever tool is chosen: not a layer, so
-    /// no undo step and no export sees it, and nothing of it is remembered. It lives while the overlay does.
+    /// The ruler is on the picture, a switch of this overlay that lives while the overlay does
+    /// (Architecture/ScreenshotsEditor.md § The eraser and the ruler).
     var ruler: Ruler?
     /// A press on the ruler's strip that is still down: the display, and whether the drag takes the strip along or turns it. A move keeps
     /// where the strip's centre was from the pointer; a turn keeps the angle the strip had and the direction the pointer pressed in.
@@ -107,9 +99,8 @@ struct EditorTextTools {
     /// An area handle under the pointer: which one, the area as the press took it and where the
     /// press landed. Not an edit of the layers, so no undo step: the area is not a layer.
     var reshaping: (display: DisplayID, handle: AreaHandle, base: CGRect, press: CGPoint)?
-    /// Crop is on: the area as it stood when the mode began, the base area. A mode of this overlay, like the eraser, and no `AnnotationTool`. The
-    /// area is reshaped live by its handles, as `reshaping` does, and Return takes what it has become, which is no undo step; Esc, Crop
-    /// asked again, a tool, the eraser and Select put this one back. Nothing of it is remembered.
+    /// Crop is on: the area as it stood when the mode began, the base area, which Esc gives back
+    /// (Architecture/ScreenshotsEditor.md § The area and Crop).
     var crop: CGRect?
     /// The pointer on the display it is over, in that display's top-left points.
     var pointer: (display: DisplayID, point: CGPoint)?
@@ -141,7 +132,7 @@ struct EditorTextTools {
     var coloursAreOpen: Bool { popover?.kind == .colours }
     /// The text being typed: the display whose field it is in and where the line starts, in that display's top-left
     /// points. The field itself is the view's (`OverlayView.textField`); this is the overlay's one record that an input
-    /// is open; the ways out of it go through `endTyping`, and `close` drops the record itself. Nil when none is.
+    /// is open (Architecture/ScreenshotsEditor.md § The blur and the text). Nil when none is.
     var typing: (display: DisplayID, at: CGPoint)?
     /// The emoji the Emoji tool places on the next click on the picture, picked in the grid; nil until one is. Nothing of it is remembered.
     var emoji: String?
@@ -209,8 +200,7 @@ struct EditorTextTools {
     }
 
     /// The panels and the observer, built and **not** ordered in: a test drives
-    /// the events by hand and must not put a window on the screen of whoever runs
-    /// it.
+    /// the events by hand and must not put a window on the screen of whoever runs it.
     func build() -> Bool {
         var screens: [DisplayID: NSScreen] = [:]
         for screen in NSScreen.screens {
@@ -287,8 +277,7 @@ struct EditorTextTools {
     /// Closes as `close` does, after the flash of a shot that was taken: the selection's or the window's shape
     /// goes white and fades for `HelmMotion.interfaceDuration`, and the panels leave when it has. Under Reduce
     /// Motion, with nothing to flash (a cancel, a whole display) or with no display to flash on, it is
-    /// `close()` at once. The picture is already taken from the freeze (the window's own comes from the system,
-    /// of that window alone), so nothing the overlay draws in the meantime is in it.
+    /// `close()` at once.
     func close(after result: OverlayResult) {
         guard isOpen, let shot = flashShapes(of: result), !shot.rects.isEmpty,
               HelmMotion.moves(reduceMotion: reducesMotion()) else { close(); return }
@@ -304,7 +293,7 @@ struct EditorTextTools {
     /// What `result` is a shot of, by display: an area's rectangle and a window's parts. Nil where there is no flash.
     private func flashShapes(of result: OverlayResult) -> (rects: [DisplayID: CGRect], window: Bool)? {
         switch result {
-        case .edited(let display, let local, _, let exit):
+        case .edited(let display, let local, _, _):
             return ([display: local], false)
         case .window(let id, _):
             guard let hovered, hovered.id == id else { return nil }

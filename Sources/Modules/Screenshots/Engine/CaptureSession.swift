@@ -109,11 +109,8 @@ private final class GroupPass: Sendable {
 /// call to the next, and the caller carries it, because its owner is the
 /// overlay and the overlay's lifetime is the capture's.
 ///
-/// **Nothing logs a capture, and one thing here is a phase in the activity trail:** the move of an edit's
-/// original to the Trash, which `HelmTrash.remove` opens as it does for every module. The log is for what was
-/// refused — no grant, a failed write, a folder that was refused, an original that was not replaced — and for the
-/// warnings of a picture delivered all the same, and a line per press would be noise in the file a person attaches
-/// to a bug report. Paths go through `Redact`. The reading of text, which this session hands to its port, is a phase of its own.
+/// **Nothing logs a capture that works:** a line per press would be noise in the file a person attaches to a bug
+/// report. What is logged and which acts are phases: Architecture/Screenshots.md § Writing a shot and replacing it.
 public final class CaptureSession: @unchecked Sendable {
     private let capture: ScreenCapturing
     private let writer: ShotWriting
@@ -195,8 +192,8 @@ public final class CaptureSession: @unchecked Sendable {
                 HelmLog.shared.warn(category, "edit refused: the shot's file is \(verdict) at \(Redact.path(shot.url.path))")
                 return nil
             }
-            // The bytes are read here: a picture made from the path can be read from the path again, and after this
-            // process's volatile regions were emptied a moved file encoded to nothing and drew blank.
+            // The bytes are read here: a picture made from the path may read the path again later, and a file moved
+            // by then encodes to nothing and draws blank.
             guard let bytes = try? Data(contentsOf: shot.url),
                   let source = CGImageSourceCreateWithData(bytes as CFData, nil),
                   let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
@@ -252,17 +249,14 @@ public final class CaptureSession: @unchecked Sendable {
 
     /// One window, **asked for again at the click**.
     ///
-    /// The list in the freeze is a reading and the click is an act seconds
-    /// later: the window may have closed, been replaced by another at the same
-    /// place, or been covered. So the window's own pixels are requested now. If
-    /// it has gone, what was on screen at the freeze is cut from the freeze,
-    /// which is what the person was looking at when they clicked. A protected
-    /// window is saved as it came.
+    /// The freeze's list is a reading (`Freeze`), so the window's own pixels are
+    /// requested now. If it has gone, what was on screen at the freeze is cut
+    /// from the freeze, which is what the person was looking at when they
+    /// clicked. A protected window is saved as it came.
     ///
     /// `shadow` is the click's: with it, the macOS default, the picture is the window and its
-    /// shadow; an option-click asks for the window alone. The cuts from the freeze have no shadow
-    /// of their own to leave out, so the flag does not reach them. The default is for callers that do not ask about
-    /// the shadow (the tests); the controller always passes the click's.
+    /// shadow; an option-click asks for the window alone. A cut from the freeze has no shadow
+    /// to leave out. The controller always passes the click's; the default is the tests'.
     public func window(_ id: UInt32, in freeze: Freeze, shadow: Bool = true) async -> WindowResult {
         // The menu bar and the Dock are cut from the freeze at their own rects: the
         // Dock's window is a display-sized sheet and the system's picture of it
@@ -301,11 +295,10 @@ public final class CaptureSession: @unchecked Sendable {
     }
 
     /// A selection cut like `crop`, with the editor's layers drawn over it **at the
-    /// pixels' own resolution**: the points of the layers are multiplied by the
-    /// scale of the display they were drawn on — that display's `FrozenDisplay.scale`
-    /// and no screen's — so a stroke is as thick in the file as on the screen, and
-    /// the cut's pixel offset is the one `crop` uses, so the layers land on the
-    /// same pixels the overlay showed them over. No layers: the crop itself.
+    /// pixels' own resolution**: the layers' points are multiplied by the
+    /// `FrozenDisplay.scale` of the display they were drawn on, and no screen's, so a
+    /// stroke is as thick in the file as on the screen, and the cut's offset is
+    /// `crop`'s, so the layers land on the pixels the overlay showed them over.
     public func annotated(_ freeze: Freeze, display: DisplayID, local rect: CGRect,
                           layers: [Annotation]) async -> CGImage? {
         guard let found = part(of: freeze, display: display, local: rect) else { return nil }
@@ -320,7 +313,7 @@ public final class CaptureSession: @unchecked Sendable {
     /// picture's own size**. The layers are in the points of the display the picture was shown on. **Each axis has
     /// the ratio of its own** (the picture's pixels over the rectangle's points on that axis): the rectangle is
     /// whole display pixels, so on a thin picture reduced to fit the two ratios differ by a good part, and one
-    /// number for both put a mark off by up to the whole file. The marks are moved into the picture's own
+    /// number for both would put a mark off by up to the whole file. The marks are moved into the picture's own
     /// proportions by those two ratios, so a mark lands where it was drawn within a display pixel on both axes
     /// and the whole area is exactly the picture's pixel size; a stroke is then as thick as `pixelsPerPoint`
     /// says, the larger ratio, which is the display's scale while the picture fits.
@@ -370,10 +363,9 @@ public final class CaptureSession: @unchecked Sendable {
     /// file is not found is left out and told, `.filesGone` with its place, next to the write of the others
     /// (`copied` is true); with every file gone nothing is written and `.filesGone` comes back alone.
     ///
-    /// **One pass at a time, and a displaced one stops at its next picture.** A press while an earlier pass is still
-    /// reading stops that pass (`GroupPass`) and waits behind it on a queue of its own, so two never run side by
-    /// side. The task's cancellation stops it the same way, which the queue's block would not see. A pass that was
-    /// stopped refuses nothing and writes nothing.
+    /// **One pass at a time, and a displaced one stops at its next picture** (`GroupPass`): a later press waits
+    /// behind it on a queue of its own. The task's cancellation stops it the same way, which the queue's block
+    /// would not see. A pass that was stopped refuses nothing and writes nothing.
     ///
     /// The pool is inside the loop: each picture decodes and encodes in its own, and a pool round the loop would
     /// keep every one of them until the last.
@@ -535,21 +527,19 @@ public final class CaptureSession: @unchecked Sendable {
     /// removed but through `HelmTrash`:** the original goes to the Trash, and the edit then takes the name that
     /// freed, by a move that fails on a name that is taken.
     ///
-    /// The gate is `UserFileScope`: the question it asks, whether this belongs to the person, is the question
-    /// about a screenshot in a folder of theirs. The stored reading is `original.reading`, taken by the writer
-    /// from the descriptor it wrote through. **It is asked again inside the move itself,** as the first thing
-    /// `HelmTrash.remove`'s `trashing` does, after that function's own weighing and its re-reading of the
-    /// ancestry: a file that was renamed, replaced, written into or turned into a link since is not moved. What
-    /// this narrows and does not close is what `HelmTrash.remove` says of itself: one resolution of the path lies
-    /// between that `lstat` and `trashItem`'s own.
+    /// The gate is `UserFileScope`: whether this belongs to the person is the question about a screenshot in a
+    /// folder of theirs. **`original.reading` is asked again inside the move itself,** as the first thing
+    /// `HelmTrash.remove`'s `trashing` does: a file that was renamed, replaced, written into or turned into a link
+    /// since is not moved. One resolution of the path still lies between that `lstat` and `trashItem`'s own, as
+    /// `HelmTrash.remove` says of itself.
     ///
     /// Every refusal is in `delivery.refusals`, with the reason's own case: the original is left where it is, and the edit
     /// beside it, except where `ReplaceRefusal` says otherwise.
     /// A name taken between the two steps is not one: the original is in the Trash and the edit keeps its own name,
     /// and the delivery says so by not being `replaced`, which claims the name. **The reading the shot carries on
-    /// is `edit.reading`, the descriptor's,** and is not taken again by `lstat` of the name after the claim (a
-    /// descriptor's reading is the object's, a name's is whoever stands there): another file may stand under the name between the two, and a reading of it would be the
-    /// next replacement's licence to trash a stranger. A rename changes neither inode, size nor time written.
+    /// is `edit.reading`, the descriptor's,** and never an `lstat` of the name after the claim: another file may
+    /// stand under the name by then, and its reading would license the next replacement to trash a stranger. A
+    /// rename changes neither inode, size nor time written.
     private func replace(_ original: WrittenShot, with edit: WrittenShot, in delivery: inout Delivery) async {
         // Asked right before the act: a delivery cancelled while the edit was written moves nothing.
         guard !Task.isCancelled else { return }
@@ -575,8 +565,6 @@ public final class CaptureSession: @unchecked Sendable {
                 HelmLog.shared.warn(category, "the original's name was taken before the edit could have it; the edit keeps its own")
                 return (nil, edit, false)
             }
-            // The reading of the object the module wrote, not of the name: another file may stand under the name by
-            // now, and the next edit's checks would then be answered by a stranger's reading.
             return (nil, WrittenShot(url: original.url, reading: edit.reading), true)
         }
         delivery.written[delivery.written.count - 1] = outcome.file
@@ -649,11 +637,9 @@ public final class CaptureSession: @unchecked Sendable {
         case cancelled
     }
 
-    /// The text of the selection, read from **the frame the file is cut from** — `FrozenDisplay.shot`, at the
-    /// pixels' own resolution, with none of the editor's layers on it — so a find and the blur that goes over it
-    /// land on the one picture. One reading at a time is the caller's to keep.
-    ///
-    /// The strings of a reading are somebody's words and are never logged here; a failure is logged as that.
+    /// The text of the selection, read from **the frame the file is cut from** (`FrozenDisplay.shot`, no layers),
+    /// so a find and the blur that goes over it land on the one picture. One reading at a time is the caller's to
+    /// keep. The strings are somebody's words and are never logged; a failure is.
     public func readText(_ freeze: Freeze, display: DisplayID, local rect: CGRect) async -> AreaReading {
         guard let found = part(of: freeze, display: display, local: rect) else {
             HelmLog.shared.warn(category, "the area to read was not on the frozen frame")
@@ -726,8 +712,7 @@ public final class CaptureSession: @unchecked Sendable {
 
     // MARK: - Encoding
 
-    /// What a JPEG is flattened onto: white. It is what macOS's own tool puts
-    /// under a window's shadow — the corner of `screencapture -l<id> -t jpg` was
-    /// read back as 255, 255, 255 — and a JPEG has no alpha to leave it in.
+    /// What a JPEG is flattened onto: white, what macOS's own tool puts under a
+    /// window's shadow in a JPEG, which has no alpha to leave it in.
     static let jpegGround = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
 }

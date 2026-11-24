@@ -4,33 +4,15 @@ import HelmRuntime
 @testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
-/// What Stop leaves on the screen.
+/// What Stop leaves on the screen when it lands on the volume picker.
 ///
-/// The ring is drawn from partial snapshots while the walk is still running, so
-/// everything the result screen offers is available mid-scan — including ticking
-/// folders into the basket. Stop then takes the ring away: `cancel()` moves the
-/// scan name on, drops `live` and puts the phase back to `.start`, which is the
-/// volume picker.
-///
-/// It does not touch the basket. Every other way out of a tree does —
-/// `newScan()` and `rescan()` both clear it, and `newScan()` clears it *after*
-/// calling `cancel()`, which is where the intent is legible — so the invariant
-/// the module keeps everywhere else is that the basket only ever holds entries
-/// from the tree currently on screen. Stop is the one door that breaks it, and
-/// `DiskSettingsPage` draws the basket bar outside the `switch dvm.phase`:
-///
-/// ```swift
-/// switch dvm.phase { … }
-/// if !dvm.basket.isEmpty || dvm.banner != nil { … basketBar }
-/// ```
-///
-/// So the screen is the volume picker with a basket bar under it, listing
-/// folders from a scan that is gone, above a Trash button — and nothing on that
-/// screen can show what those paths are part of.
+/// The basket holds only entries from the tree on screen, and
+/// `DiskSettingsPage` draws the basket bar outside the `switch dvm.phase`, so a
+/// basket or a removal report kept past the picker would name a tree that is
+/// gone. `StopKeepsWhatItMeasuredTests` holds a Stop mid-walk, which keeps both.
 ///
 /// The work answers immediately: these tests are about what the view model
-/// keeps across a transition, not about interleaving, which
-/// `DiskScanRaceTests` already covers with a parked work.
+/// keeps across a transition; `DiskScanRaceTests` covers interleaving.
 @MainActor
 final class StopLeavesNothingBehindTests: XCTestCase {
 
@@ -92,13 +74,9 @@ final class StopLeavesNothingBehindTests: XCTestCase {
                       + "on screen, above a Trash button")
     }
 
-    /// The same screen from the other side. Trash something mid-scan and the
-    /// bar stops being a basket and becomes a report — and the report is not
-    /// the basket, so emptying the basket does not take it away. `cancel()`
-    /// clears what it knows about and the bar's own condition is
-    /// `!basket.isEmpty || banner != nil`, so Stop drew the removal report over
-    /// the volume picker: a sentence about a tree that is no longer on screen,
-    /// with the failures of a scan nobody can look at any more.
+    /// The same screen from the other side: after a removal mid-scan the bar is
+    /// a report, not a basket, and Stop must clear the report and its failures
+    /// too, since the bar shows for `!basket.isEmpty || banner != nil`.
     func testStopDoesNotLeaveTheRemovalReportOverTheVolumePicker() async {
         let work = work()
         work.answerTrash(with: DiskRemoval(
@@ -119,9 +97,8 @@ final class StopLeavesNothingBehindTests: XCTestCase {
                        + "\(dvm.failures.count) failures")
     }
 
-    /// And the bar the assertion above names is the one the page draws — the
-    /// condition lives on the view model precisely so a test cannot pass
-    /// against a copy of it that has drifted.
+    /// The bar's condition lives on the view model, so the page and these tests
+    /// read the same one.
     func testTheBarIsShownForABasketAndForAReport() async {
         let work = work()
         work.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
@@ -134,23 +111,12 @@ final class StopLeavesNothingBehindTests: XCTestCase {
         XCTAssertTrue(dvm.showsRemovalBar, "and the report of what happened stays up")
     }
 
-    /// The arithmetic that state turns into.
+    /// A basket kept across Stop and a new volume would credit its freed bytes
+    /// to the free space of the volume now on screen, not the one they came off.
+    /// Asserted as that volume's own free space, unchanged.
     ///
-    /// Stop, pick a different volume, and the basket bar is still there. Empty
-    /// it and `emptyBasket` credits the freed bytes to `result.freeBytes` — the
-    /// free space of the volume now on screen, which is not the volume those
-    /// bytes came off. The ring's dim sector then reports a figure that belongs
-    /// to no disk.
-    ///
-    /// Asserted as "the volume's own free space, unchanged", not as a
-    /// difference: the free space shown for a volume is a fact about that
-    /// volume.
-    ///
-    /// Both halves of that had to be fixed, and this test only ever sees the
-    /// first: once Stop empties the basket there is nothing left to remove, so
-    /// `emptyBasket` returns before it computes anything and this passes
-    /// whatever the arithmetic says. `TrashIsNotFreedSpaceTests` pins the
-    /// arithmetic itself, on one volume, where the removal actually runs.
+    /// Since Stop empties the basket, `emptyBasket` returns here before any
+    /// arithmetic; `TrashIsNotFreedSpaceTests` holds the arithmetic itself.
     func testFreeingSpaceOnOneVolumeIsNotCreditedToAnother() async {
         let work = work()
         work.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
@@ -169,8 +135,7 @@ final class StopLeavesNothingBehindTests: XCTestCase {
 
     // MARK: - The doors that already close
 
-    /// `newScan()` clears the basket — after calling `cancel()`, which is where
-    /// the missing line above is legible.
+    /// `newScan()` clears the basket.
     func testStartingOverClearsTheBasket() async {
         let dvm = model(work())
         await scannedWithABasketedFolder(dvm)

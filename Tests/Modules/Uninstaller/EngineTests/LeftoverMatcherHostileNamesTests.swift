@@ -1,18 +1,11 @@
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// `LeftoverMatcher` builds every candidate by pasting a bundle id or a display
-/// name onto a shared `~/Library` folder, and the review screen arrives with
-/// what `UninstallPlan.defaultSelection` returns already ticked.
-/// So a candidate that resolves to the shared folder itself, or walks out of it,
-/// is one click away from the Trash. These pin the two invariants that keep that
-/// from happening: a candidate is always strictly *inside* its kind folder, and
-/// a glob is always anchored to something the app actually owns.
-///
-/// The names here are not invented: `CFBundleDisplayName` and `CFBundleName` are
-/// free-form plist strings. `WorkspaceAppLister.installedApps()` takes the first
-/// one that casts to `String` — an empty string casts fine — and only the bundle
-/// id is checked for emptiness.
+/// `LeftoverMatcher` pastes a bundle id or a display name onto a shared
+/// `~/Library` folder, and the review arrives with the id's candidates ticked.
+/// These pin two invariants: a candidate is strictly inside its kind folder,
+/// and a glob is anchored to something the app owns. The names come from
+/// free-form plist strings, so empty and hostile ones are real inputs.
 final class LeftoverMatcherHostileNamesTests: XCTestCase {
     private let lib = URL(fileURLWithPath: "/Users/x/Library")
 
@@ -20,11 +13,8 @@ final class LeftoverMatcherHostileNamesTests: XCTestCase {
         LeftoverMatcher.candidates(bundleID: id, appName: name, library: lib)
     }
 
-    /// Trap: `URL.appendingPathComponent("")` returns the parent unchanged —
-    /// "Application Support" + "" is "Application Support". An app shipping
-    /// `CFBundleDisplayName = ""` therefore claims the whole shared folder (and
-    /// the whole shared Logs folder) as its own leftover, `fs.exists` confirms
-    /// it, and the row arrives pre-selected with every other app's data in it.
+    /// `URL.appendingPathComponent("")` returns the parent unchanged, so an empty
+    /// display name would claim the whole shared folder as a leftover.
     func testEmptyAppNameNeverTargetsAWholeLibraryFolder() {
         let paths = candidates(id: "com.acme.tool", name: "").map(\.url.path)
         XCTAssertFalse(paths.contains("/Users/x/Library/Application Support"),
@@ -33,10 +23,9 @@ final class LeftoverMatcherHostileNamesTests: XCTestCase {
                        "an empty display name claimed the shared folder: \(paths)")
     }
 
-    /// The structural form of the same rule, so a new candidate line cannot
-    /// reintroduce it under another kind: every candidate lives at least two
-    /// components below `~/Library` — one for the kind folder, one for the app's
-    /// own entry inside it. Exactly one component below IS a shared folder.
+    /// The structural form, so a new candidate line cannot reintroduce it: every
+    /// candidate is at least two components below `~/Library`, the kind folder
+    /// and the app's own entry. One component below is a shared folder.
     func testEveryCandidateSitsAtLeastTwoLevelsBelowTheLibrary() {
         for (id, name) in [("com.acme.tool", ""), ("", "Tool"), ("", ""),
                            ("com.acme.tool", "Tool")] {
@@ -50,10 +39,8 @@ final class LeftoverMatcherHostileNamesTests: XCTestCase {
         }
     }
 
-    /// Trap: the same joining is done with no sanitising, so a name carrying a
-    /// path separator escapes the folder it was meant to scope. `FileManager`
-    /// resolves `..` before answering `fileExists`, so the escape is invisible
-    /// to the engine's existence filter and `trashItem` acts on the resolved path.
+    /// A name carrying a path separator or `..` would escape its folder, and
+    /// `FileManager` resolves it before both `fileExists` and `trashItem`.
     func testNoCandidateWalksOutOfTheLibrary() {
         for name in ["../../..", "..", "../Preferences"] {
             for c in candidates(id: "com.acme.tool", name: name) {
@@ -65,12 +52,8 @@ final class LeftoverMatcherHostileNamesTests: XCTestCase {
         }
     }
 
-    /// Trap: the sibling of `testPrefixGlobsStayScopedToTheId`, which only ever
-    /// asked the question with a well-formed id. Every glob is `"\(id)*"` or
-    /// `"*\(id)*"`; with an empty id those collapse to `*` and `**`, which
-    /// `GlobMatch` matches against every sibling in Caches, Containers,
-    /// Application Scripts, Group Containers — and `*.plist`, which is every
-    /// LaunchAgent and every ByHost preference on the machine.
+    /// With an empty id, `"\(id)*"` and `"*\(id)*"` collapse to `*` and `**`,
+    /// matching every sibling, and `*.plist` every LaunchAgent.
     func testEmptyBundleIdNeverProducesAMatchEverythingGlob() {
         let strangers = ["com.unrelated.app", "com.unrelated.app.plist", "Stranger"]
         for c in candidates(id: "", name: "Tool") where c.isGlob {
@@ -82,9 +65,8 @@ final class LeftoverMatcherHostileNamesTests: XCTestCase {
         }
     }
 
-    /// Positive control: the same assertions must hold — and be non-vacuous —
-    /// for a well-formed app, so a future guard that returns nothing at all
-    /// cannot make the tests above pass by emptiness.
+    /// Positive control: a well-formed app still gets scoped candidates, so a
+    /// guard that returns nothing cannot pass the tests above by emptiness.
     func testWellFormedInputStillProducesScopedCandidates() {
         let all = candidates(id: "com.acme.tool", name: "Tool")
         XCTAssertFalse(all.isEmpty)

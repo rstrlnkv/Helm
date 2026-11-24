@@ -13,7 +13,6 @@ import XCTest
 ///
 /// Every input is on disk in a scratch home, and each is asked of both.
 @MainActor
-/// Past defect: fixed in 4ce355a9.
 final class TheOfferAndTheChooserAgreeWhichFolderIsWatchedTests: XCTestCase {
 
     private var home: URL!

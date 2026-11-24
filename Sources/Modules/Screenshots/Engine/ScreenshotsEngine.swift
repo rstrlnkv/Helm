@@ -5,12 +5,9 @@ import HelmRuntime
 /// The screenshots module's engine: what lives outside Helm and the settings
 /// page needs to know, and the ports a capture is made from.
 ///
-/// **It does not capture.** A capture is a frame of tens of megabytes held for
-/// as long as the overlay is open, and a frame never crosses the port between a
-/// model and an engine. The capture runs in the UI target — `CaptureController` —
-/// from a `CaptureSession` built out of the same ports `session(store:naming:)`
-/// hands over; the engine's own stream carries the settings page's state and
-/// nothing else.
+/// **It does not capture:** a frame of tens of megabytes never crosses the port
+/// between a model and an engine, so `CaptureController` in the UI target runs
+/// the capture from the `CaptureSession` that `session(store:naming:)` hands over.
 public final class ScreenshotsEngine: ModuleEngine, @unchecked Sendable {
     /// This module's id, and the only place it is written down. It reaches disk
     /// in shapes nothing would flag if they disagreed — the `module.screenshots.*`

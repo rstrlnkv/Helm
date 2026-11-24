@@ -2,9 +2,7 @@ import Foundation
 
 /// Run blocking work somewhere it cannot starve the cooperative pool.
 ///
-/// Every scanning module wrote this bridge itself — five identical copies of
-/// the same eight lines. What they are all avoiding is the same hazard: Swift
-/// concurrency's pool has one thread per core, and a directory walk or a
+/// Swift concurrency's pool has one thread per core, and a directory walk or a
 /// `brew` invocation holds one of them for seconds. Enough of those at once and
 /// nothing else in the app gets to run, including the UI's own actor hops.
 ///

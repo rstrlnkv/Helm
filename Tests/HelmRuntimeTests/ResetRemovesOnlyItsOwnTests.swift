@@ -4,42 +4,27 @@ import HelmTestSupport
 
 /// The reset, exercised on a home directory it may destroy.
 ///
-/// `ResetPlanTests` asks the gate questions. This asks the *machinery*: hand
+/// `ResetPlanTests` asks the gate questions. This asks the machinery: hand
 /// `HelmTrash` what `ResetPlan` produces, against a real directory tree, and
-/// see what survives. It is the only part of "reset everything" with anything
-/// to get wrong — the other two steps are `removePersistentDomain` and a
-/// relaunch, both single system calls with no logic of their own.
-///
-/// Written because the button could not be driven on the development machine
-/// (the status item sits on a second display and the automation would not reach
-/// it), and "untested" is not a state this particular feature may ship in.
+/// see what survives. The other steps of a reset are `removePersistentDomain`
+/// and a relaunch, single system calls with no logic of their own.
 ///
 /// ## Why this one moves a single directory for real
 ///
-/// Everywhere else a test that trashes gives its files unownable names, so the
-/// cleanup can reconstruct `~/.Trash/<name>` and be sure the item is its own
-/// (`TrashScratch`). Here the name comes from `ResetPlan.removablePaths` and it is
-/// `Helm`. The UUID in the temporary home above it does not survive the move —
-/// only the moved item's own name does — so **four folders called `Helm` went
-/// into the real Trash on every run**, which is litter that also lies: somebody
-/// looking at their Trash saw Helm's data folder in it, again and again.
+/// Elsewhere a test that trashes gives its files unownable names, so the
+/// cleanup can find `~/.Trash/<name>` (`TrashScratch`). Here the name comes from
+/// `ResetPlan.removablePaths` and is `Helm`, and a second `Helm` would arrive
+/// under macOS's unpredictable collision spelling, which nothing can find
+/// without listing the Trash, and a test process may not.
 ///
-/// Worse, the plan names *two* directories both called `Helm`, so the second
-/// arrives as `Helm 20-48-09-452` — macOS's collision spelling, which nothing
-/// can predict and nothing can find without listing the Trash, and listing it
-/// needs Full Disk Access that a test process does not have (257).
+/// So exactly one directory is moved for real, and it is reclaimed by content:
+/// each run writes a UUID into its scan file, and the cleanup removes
+/// `~/.Trash/Helm` only when that exact UUID reads back. Neither the name nor
+/// "it was not there when I started" is enough: either would eventually delete
+/// a folder somebody had trashed themselves.
 ///
-/// So exactly one directory is moved for real, and it is reclaimed by
-/// **content**: each run writes a UUID into its scan file and the cleanup
-/// removes `~/.Trash/Helm` only when that exact UUID reads back out of it.
-/// Neither the name nor "it was not there when I started" is enough — either
-/// would eventually delete a folder somebody had trashed themselves, which is
-/// the one mistake a cleanup must not be able to make.
-///
-/// What that costs is coverage of the *second* path in the same batch, and
-/// `ResetPlanTests` pins the two directories and the gate's refusals; what
-/// `HelmTrash` does with a batch of two has its own tests, on files that can be
-/// cleaned up.
+/// What a batch of two does is covered by `HelmTrash`'s own tests, on files
+/// that can be cleaned up.
 final class ResetRemovesOnlyItsOwnTests: XCTestCase {
     private var home: String!
     /// Written into the scan file, and read back before anything is removed
@@ -110,9 +95,8 @@ final class ResetRemovesOnlyItsOwnTests: XCTestCase {
         XCTAssertTrue(result.refused.isEmpty)
         XCTAssertFalse(FileManager.default.fileExists(atPath: taken),
                        "\(taken) survived a reset")
-        // To the Trash, not past it: somebody who presses this by accident has
-        // to be able to get their Autopilot rules back, and `freedBytes` is
-        // only non-zero for a move that really happened.
+        // To the Trash, not past it, so an accidental press can be undone;
+        // `freedBytes` is non-zero only for a move that really happened.
         XCTAssertGreaterThan(result.freedBytes, 0,
                              "nothing was measured as freed, so nothing moved")
 

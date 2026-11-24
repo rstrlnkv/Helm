@@ -13,13 +13,12 @@ import HelmTestSupport
 /// that window. Helm holds Full Disk Access and the swapper may hold none, so
 /// what comes out is not something they could have taken themselves.
 ///
-/// **The race is not raced here.** Measured against the real runner it was won
-/// about eight times in a hundred, and a test that loses is a test that passes
-/// for the wrong reason. So the swap is hung on the runner's own reading of
-/// where the path leads: the gate's reading is answered truthfully — from the
-/// real `PathCanonical` — and the swap lands the instant afterwards, every run.
-/// Nothing else about the runner is faked, the files are real, and every
-/// assertion below is about what is on the disk when it is over.
+/// **The race is not raced here**: a test that loses it passes for the wrong
+/// reason. So the swap is hung on the runner's own reading of where the path
+/// leads: the gate's reading is answered truthfully, from the real
+/// `PathCanonical`, and the swap lands the instant afterwards, every run.
+/// Nothing else is faked, the files are real, and every assertion below is
+/// about what is on the disk when it is over.
 ///
 /// Each test asserts the swap *happened* before asserting nothing was carried
 /// out of the vault: an absence proves nothing when the subject never ran.
@@ -57,12 +56,9 @@ final class TheActTakesWhatTheGateApprovedTests: XCTestCase {
         try Data("decoy".utf8).write(to: subfolder.appendingPathComponent(leaf))
     }
 
-    /// The swapper, forced to win.
-    ///
-    /// Answers `watching`'s first reading from the real filesystem, then does the
-    /// swap — which puts it exactly where a lucky attacker lands, and puts it
-    /// there on every run. Later readings see the swapped disk, because they are
-    /// the same real call.
+    /// The swapper, forced to win: answers `watching`'s first reading from the
+    /// real filesystem, then swaps, which is where a lucky attacker lands.
+    /// Later readings see the swapped disk, because they are the same real call.
     private final class WinTheRace: @unchecked Sendable {
         private let lock = NSLock()
         private var done = false
@@ -117,7 +113,7 @@ final class TheActTakesWhatTheGateApprovedTests: XCTestCase {
 
     // MARK: - The source
 
-    /// The measured exploit: the gate approves `Downloads/d/x.pdf`, `d` becomes a
+    /// The exploit: the gate approves `Downloads/d/x.pdf`, `d` becomes a
     /// link to the vault, and the move carries the vault's file to a folder the
     /// swapper can read.
     func testAnAncestorSwappedAfterTheGateStopsTheMove() throws {
@@ -155,12 +151,11 @@ final class TheActTakesWhatTheGateApprovedTests: XCTestCase {
                         vault.appendingPathComponent(renamed).path))
     }
 
-    /// A tag is a write to whatever the path leads to when the write happens —
-    /// and this arm is the one that was already closed. It refuses any path
-    /// whose resolution differs from its spelling, asked where it acts rather
-    /// than at the gate, so the swap fails a stronger question than "did this
-    /// change". Kept as a test because the arm is one line from a metadata write
-    /// into a folder no rule may reach, and nothing else says so.
+    /// A tag is a write to whatever the path leads to when the write happens.
+    /// This arm refuses any path whose resolution differs from its spelling,
+    /// asked where it acts rather than at the gate, so the swap fails a stronger
+    /// question than "did this change"; the arm is one line from a metadata
+    /// write into a folder no rule may reach.
     func testAnAncestorSwappedAfterTheGateStopsTheTag() throws {
         let bait = subfolder.appendingPathComponent(leaf)
         let race = WinTheRace(after: bait.path, swap: swapping(subfolder, with: vault))

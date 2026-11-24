@@ -4,16 +4,10 @@ import Foundation
 /// as many names as one argv carries; `descriptions` makes a budget for each),
 /// and the count of what is left of it.
 ///
-/// `HomebrewEngine.describe` asks for a whole batch and, on a non-zero exit,
-/// halves it and asks again — right for the case it was written for, which is
-/// *one* name in fifty that brew can no longer resolve. Nothing bounded the
-/// other end: when brew refuses **every** call the bisection runs to a leaf per
-/// name and pays for every interior node on the way, `2n-1` launches, each a
-/// real subprocess taking one of the app's eight `HelmProcess` slots. A Cellar
-/// of 54 packages turned one page load into 107 `brew` runs the moment brew
-/// answered non-zero for a reason that was not about any one name — a tap that
-/// is gone, a Ruby error, a CLT that no longer matches, all of which refuse the
-/// whole batch with the same status as one bad name in it.
+/// `HomebrewEngine.describe` halves a batch on a non-zero exit, right for *one*
+/// name brew can no longer resolve. When brew refuses **every** call (a tap
+/// that is gone, a Ruby error) the bisection runs to a leaf per name, `2n-1`
+/// launches, each taking one of the app's `HelmProcess` slots. This bounds it.
 final class DescriptionBudget: @unchecked Sendable {
 
     /// **Two floors, and the larger wins, because each is a floor for a
@@ -25,10 +19,9 @@ final class DescriptionBudget: @unchecked Sendable {
     ///
     /// `2⌈log₂n⌉ + 1` is what isolating a single unresolvable name costs: two
     /// calls a level, the half that answers and the half that does not. For a
-    /// small batch that is *more* than `n + 1` — three names with one bad is
-    /// five calls — so a budget of `n + 1` alone would cut the descent off
-    /// half-way and drop descriptions brew was perfectly willing to give. That
-    /// is the case the split exists for; it has to fit at every size.
+    /// small batch that is *more* than `n + 1` (three names with one bad is
+    /// five calls), so `n + 1` alone would cut the descent off half-way, in
+    /// the very case the split exists for.
     private static func calls(for names: Int) -> Int {
         max(names + 1, 2 * levels(names) + 1)
     }

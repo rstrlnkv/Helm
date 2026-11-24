@@ -13,16 +13,13 @@ import HelmRuntime
 /// no screen — which is why what it does matters more here than anywhere else in
 /// the app.
 ///
-/// **Move aside, copy, and only then delete.** It used to `rm -rf` the installed
-/// bundle and copy the new one into the hole, reading no status: a `ditto` that
-/// refused for any reason — a full disk, a payload that will not read, a
-/// `/Applications` that stopped being writable in the second since it was asked
-/// — left the person with no Helm at all. The downloaded zip is deleted before
-/// the handover (`Installer.installZip`) and the unzipped payload lives in a
-/// directory the script removes, so there was nothing anywhere to go back to.
-/// Copying first is not the fix by itself: a `ditto` into a live bundle merges
-/// into it, which is how a half-new, half-old Helm is made, so nothing is copied
-/// until the installed bundle has been moved out of the way.
+/// **Move aside, copy, and only then delete.** A `ditto` can refuse for any
+/// reason (a full disk, a payload that will not read, a `/Applications` that
+/// stopped being writable), and the downloaded zip and the unzipped payload are
+/// both gone by then, so deleting first could leave the person with no Helm at
+/// all. And a `ditto` into a live bundle merges into it, making a half-new,
+/// half-old Helm, so nothing is copied until the installed bundle has been moved
+/// out of the way.
 ///
 /// **What it can report, and what it cannot.** Nothing it writes can reach a
 /// screen: the report belongs to whichever Helm launches next, which is the new
@@ -74,9 +71,8 @@ enum UpdateSwap {
     exit "$STATUS"
     """
 
-    /// The one declaration of the argument order. The script names `$1 … $6` and
-    /// this builds them; a caller that assembled its own array would be the
-    /// second spelling of an order only one side could change.
+    /// The one declaration of the argument order: the script names `$1 … $6`
+    /// and this builds them.
     ///
     /// The note's path is not a caller's choice — there is one — so it is read
     /// here rather than passed in and got wrong.
@@ -115,9 +111,8 @@ enum UpdateHandoff {
     /// the script has no screen.
     ///
     /// So the answer travels, and `Installer.launchSwapScript` refuses the
-    /// handover on a refusal — the one site of the eight where that is the right
-    /// direction, because what cannot be recorded here is the safety net under
-    /// the most destructive thing this app does.
+    /// handover on a refusal: what cannot be recorded here is the safety net
+    /// under the most destructive thing this app does.
     static func note(version: String) -> Bool {
         return PrivateFile.writeMakingTheFolder(Data(version.utf8), at: file)
     }

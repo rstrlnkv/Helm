@@ -12,9 +12,7 @@ import HelmRuntime
 /// place by `reconcileActiveSettings` and a fourth by `deactivate`, and the two
 /// failures they can have are not symmetrical: an assertion held past the end
 /// of a session is a Mac that never sleeps while every screen says the module
-/// is idle — which is the exact shape of the clamshell defect this module has
-/// already had once, and the reason `IOKitSleepAssertions` carries a `deinit`
-/// backstop.
+/// is idle, which is why `IOKitSleepAssertions` carries a `deinit` backstop.
 ///
 /// A walk rather than one path: the interesting states are the orderings nobody
 /// draws — a module switched off mid-session, a display arriving while a timer
@@ -34,8 +32,8 @@ final class TheAssertionNeverOutlivesTheSessionTests: XCTestCase {
 
     private let render = "com.example.render"
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         settings = KeepAwakeSettings(store: store)
         settings.setAppTriggers([AppTrigger(bundleID: render)])

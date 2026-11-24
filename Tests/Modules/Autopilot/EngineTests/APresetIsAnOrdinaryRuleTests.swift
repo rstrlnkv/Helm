@@ -60,15 +60,11 @@ final class APresetIsAnOrdinaryRuleTests: XCTestCase {
     /// **The rule that was shown is the rule that is stored.**
     ///
     /// `storable` drops a condition carrying a number nobody could have typed,
-    /// and `0` is one of them — "larger than 0 MB" and "older than 0 days" are
-    /// true of every file in the folder, so the repair for a corrupt number is
-    /// to drop the condition. A preset written with a `0` would therefore reach
-    /// storage as a *wider* rule than the one whose dry run somebody read: «old
-    /// installers to the Trash» would keep the `dmg`/`pkg` half and lose the
-    /// thirty days.
-    ///
-    /// Asserted over the conditions rather than over `enabled`, because two of
-    /// the five would still be switched on after losing one.
+    /// and `0` is one ("larger than 0 MB" is true of every file). A preset written
+    /// with a `0` would reach storage *wider* than the rule whose dry run somebody
+    /// read: «old installers to the Trash» would keep the `dmg`/`pkg` half and
+    /// lose the thirty days. Asserted over the conditions rather than `enabled`,
+    /// because two of the five would still be switched on after losing one.
     func testEveryPresetReachesStorageAsTheRuleThatWasShown() {
         for preset in RulePreset.all {
             let stored = WatchedFolder(id: "f", path: folder, rules: [rule(preset)])

@@ -22,23 +22,16 @@ import HelmAppStrings
 
     enum InstallState: Equatable {
         case idle, downloading, installing, failed
-        /// The download is not what the release published. A network error and
-        /// a file that does not match are the same red triangle to look at and
-        /// two different things to do about — and only one of them is a reason
-        /// not to press Retry.
+        /// The download is not what the release published. Unlike a network
+        /// error, it is a reason not to press Retry.
         case digestMismatch
     }
 
     /// What the card has to say beyond the three published facts above it.
     ///
-    /// **An enum because it was a state machine with no compiler between its
-    /// halves.** `lastMessage` was a bare `String?` with five values written and
-    /// three read: `"ahead"` and `"available"` were written here and named
-    /// nowhere else in `Sources/`, and `"manual-install"` was read by a branch
-    /// nothing could reach. The two dead ones are gone rather than kept — each
-    /// duplicated a fact the card already had, `aheadOfChannel` and `available`
-    /// itself — and the three that remain cannot now be misspelled on one side
-    /// of the pair.
+    /// An enum, so the writer and the reader cannot disagree on a spelling.
+    /// "Ahead" and "available" are not notes: `aheadOfChannel` and `available`
+    /// already carry them.
     enum Note: Equatable {
         case upToDate
         case checkFailed
@@ -93,9 +86,7 @@ import HelmAppStrings
     /// looked, and what it last said out loud.
     ///
     /// **Injected, because a test that drives the announcement writes one of
-    /// them.** `UserDefaults.standard` is the shared test domain that had
-    /// accumulated 3028 keys, and a default naming the app's own store makes
-    /// every forgetful construction a test that leaves something behind. Pass
+    /// them**, and `UserDefaults.standard` is shared by every test. Pass
     /// `AppSettings.store.over(InMemoryKeyValueStore())` from a test: the
     /// namespace stays the app's, the backing does not.
     private let store: NamespacedStore
@@ -107,9 +98,8 @@ import HelmAppStrings
     private let notices: AutomationNoticePort
 
     /// One task, replaced rather than accumulated: the permission prompt can
-    /// stand for minutes, and the only thing that can arrive behind it is the
-    /// next day's check — which macOS would answer with the same standing
-    /// decision anyway.
+    /// stand for minutes, and what arrives behind it is the next day's check,
+    /// which macOS answers with the same standing decision.
     private var noticeTask: Task<Void, Never>?
 
     /// The tag last said out loud, so the daily check does not say it again.
@@ -121,10 +111,8 @@ import HelmAppStrings
     /// page instead.
     ///
     /// **The offer goes with it.** The card asks about `available` before it
-    /// asks about the note, so leaving the release in place kept «Update ready»
-    /// and «Update & Relaunch» on screen while a browser opened by itself — the
-    /// exact reading the note was written to prevent. The offer is not on offer
-    /// any more: Helm has just declined to take it.
+    /// asks about the note, so a release left in place would keep «Update &
+    /// Relaunch» on screen while a browser opened by itself.
     func decline(_ note: Note) {
         installState = .idle
         self.note = note
@@ -151,9 +139,9 @@ import HelmAppStrings
         let stored = store.int(Self.lastCheckKey, default: 0)
         if let last = UpdateCheck.lastChecked(stored: stored, now: now),
            now.timeIntervalSince(last) <= 24 * 3600 { return }
-        // The stamp is written by `performCheck` once it has an answer. Written
-        // here it recorded the attempt, so a launch with no network still said
-        // "checked just now" — and a manual check never moved the date at all.
+        // The stamp is written by `performCheck` once it has an answer, so a
+        // launch with no network does not say "checked just now", and a manual
+        // check moves the date too.
         Task { await performCheck(manual: false) }
     }
 
@@ -169,15 +157,12 @@ import HelmAppStrings
 
     /// Look now, and go on looking.
     ///
-    /// **Launch was the only moment there was**, and this is a menu-bar app: it
-    /// is launched at login and then runs for weeks. A check that happens once
-    /// per launch, in a process that is not restarted, is a check that happens
-    /// once — and the banner behind it would have been dead for exactly the
-    /// people who never quit Helm.
+    /// A menu-bar app is launched at login and then runs for weeks, so a check
+    /// at launch alone would happen once.
     ///
-    /// The tick is hourly and the daily guard is left where it was, in
-    /// `checkOnLaunch`: an hourly *tick* and a daily *check* is one rule in one
-    /// place, where two intervals agreeing with each other would be two.
+    /// The tick is hourly and the daily guard stays in `checkOnLaunch`: an
+    /// hourly tick and a daily check is one rule in one place, where two
+    /// intervals agreeing with each other would be two.
     func startChecking() {
         checkOnLaunch()
         let tick = RepeatingTick(interval: Self.recheckEvery) { [weak self] in
@@ -205,11 +190,10 @@ import HelmAppStrings
     func downloadAndInstall() {
         // Retry after a failure must work: only an in-flight download/install blocks.
         guard let rel = available, installState != .downloading, installState != .installing else { return }
-        // `Installer.installZip` refuses this swap too, and must go on refusing
-        // — it is the guard that stands over the bundle actually downloaded.
-        // Asked here, it costs nothing and there is still somebody to tell: a
-        // dev build otherwise fetched the whole asset and hashed it before
-        // being told, at every press, and read the refusal as «install failed».
+        // `Installer.installZip` refuses this swap too, and must go on refusing:
+        // it is the guard over the bundle actually downloaded. Asked here, it
+        // costs nothing, spares a download and a hash, and gets its own words
+        // rather than «install failed».
         guard AppBuild.takesPublishedBuilds else {
             HelmLog.shared.warn("update", "this build is not \(AppBuild.releaseIdentifier) — manual install")
             decline(.cannotReplaceItself)
@@ -217,10 +201,8 @@ import HelmAppStrings
             return
         }
         guard let zip = rel.zipURL else {
-            // The other silent path, and the same repair: a release with no
-            // installable asset opened a browser and changed no state at all,
-            // so the card went on offering to install what it had just sent
-            // somebody else to fetch.
+            // A release with no installable asset: decline, so the card stops
+            // offering to install what the browser was just sent to fetch.
             HelmLog.shared.warn("update", "no installable asset for \(rel.version) — manual install")
             decline(.manualInstall)
             NSWorkspace.shared.open(rel.pageURL)
@@ -257,14 +239,12 @@ import HelmAppStrings
                     NSWorkspace.shared.open(rel.pageURL)
                     return
                 }
-                // Measured whichever way the comparison goes: a mismatch did the
-                // same hashing a match did, and the hash loop is the one place in
-                // the updater that reads a whole file. This is the pool defect's
-                // own scene — 1204 MB of growth hashing a 1200 MB file before the
-                // `autoreleasepool` went inside the `while` (ARCHITECTURE.md
-                // § Module pattern) — and until now it ran unattended with no label, so a
-                // silent update check could only ever appear in the trail as
-                // growth between two `idle` readings.
+                // Measured whichever way the comparison goes: a mismatch does the
+                // same hashing a match does, and the hash loop is the one place in
+                // the updater that reads a whole file, a bulk read with its
+                // `autoreleasepool` inside the loop
+                // (Architecture/ModulePattern.md § Bulk reads). Labelled, so the
+                // memory trail can name it.
                 // Off the main actor: hashing a whole file is a blocking read.
                 let digestMatches = await HelmActivity.phase("update.digest") { @Sendable in
                     await offTheCooperativePool { ReleaseDigest.matches(fileAt: tmp, expected: expected) }
@@ -352,8 +332,7 @@ import HelmAppStrings
                 HelmLog.shared.info("update", "ahead of \(channel.rawValue) (newest \(newest))")
                 available = nil
                 aheadOfChannel = newest
-                // No note: `aheadOfChannel` is the fact, and a second spelling
-                // of it was written here and read nowhere.
+                // No note: `aheadOfChannel` is the fact.
                 note = nil
             case .error:
                 HelmLog.shared.warn("update", "check failed (HTTP \(http.statusCode), \(channel.rawValue))")
@@ -372,9 +351,8 @@ import HelmAppStrings
                                     notes: r.notes)
                 // No note either: the offer itself is what the card draws.
                 note = nil
-                // …and the card is the whole of what the offer was, until now:
-                // one view, on the About page, inside a window a menu-bar app
-                // never opens by itself.
+                // The card sits on the About page, in a window a menu-bar app
+                // never opens by itself, so the offer is also announced.
                 tellSomebodyAboutIt(r.version, startedByHand: manual)
             }
         } catch {
@@ -390,10 +368,9 @@ import HelmAppStrings
     /// reaching it through `performCheck` would need GitHub.
     ///
     /// **The stamp is written when the banner was actually posted, and only
-    /// then.** A refusal from macOS is not an announcement, and recording one as
-    /// if it were means the person who grants Helm notifications tomorrow is
-    /// never told about the release that was waiting for them — the silence
-    /// would have spent itself against a permission dialog nobody answered.
+    /// then.** A refusal from macOS is not an announcement: the person who
+    /// grants Helm notifications tomorrow must still be told about the release
+    /// that was waiting for them.
     func tellSomebodyAboutIt(_ version: String, startedByHand: Bool) {
         let told = store.object(Self.lastAnnouncedKey) as? String
         guard let saying = UpdateNews.version(toAnnounce: version,
@@ -407,10 +384,8 @@ import HelmAppStrings
             switch await NoticeChannel.tell(port, words) {
             case .posted:
                 self.store.set(saying, for: Self.lastAnnouncedKey)
-                // English outright, like every other line in this file: the log
-                // is read by whoever is diagnosing a Mac, which is not always
-                // the person whose Mac it is. A version is not a name, so it is
-                // free of `Redact`.
+                // English, like every log line. A version is not a name, so it
+                // is free of `Redact`.
                 HelmLog.shared.info(Self.logArea, "told about \(saying)")
             case .notAllowed:
                 HelmLog.shared.info(Self.logArea,

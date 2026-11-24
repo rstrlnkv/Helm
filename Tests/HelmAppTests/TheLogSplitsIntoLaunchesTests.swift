@@ -372,7 +372,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
     // MARK: - Words
 
-    func testTheFooterSaysHowManyAndWhereTheTailBeginsInEveryLanguage() {
+    @MainActor func testTheFooterSaysHowManyAndWhereTheTailBeginsInEveryLanguage() {
         let lines = tail()
         let page = build(lines)
         AppLanguage.each { language in
@@ -385,7 +385,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         }
     }
 
-    func testOlderLinesAreClaimedOnlyOfAFullTailWithAFileBehindIt() {
+    @MainActor func testOlderLinesAreClaimedOnlyOfAFullTailWithAFileBehindIt() {
         XCTAssertFalse(LogView.olderLinesExist(entryCount: HelmLog.tailLimit - 1, storedLog: true))
         XCTAssertFalse(LogView.olderLinesExist(entryCount: HelmLog.tailLimit, storedLog: false))
         XCTAssertTrue(LogView.olderLinesExist(entryCount: HelmLog.tailLimit, storedLog: true))
@@ -396,7 +396,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         }
     }
 
-    func testAnEmptyTailHasNoCounts() {
+    @MainActor func testAnEmptyTailHasNoCounts() {
         XCTAssertEqual(LogView.footerCounts(build([]), entries: [], storedLog: true), "")
     }
 
@@ -451,9 +451,8 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
     // MARK: - A launch card keeps its identity and its words
     //
-    // What the repair of the launch cards has to hold that the findings' own tests
-    // do not say: the head of a rolling tail keeps one identity, a run that starts
-    // on an unanswered «logging enabled» is not a launch of the version above it,
+    // The head of a rolling tail keeps one identity, a run that starts on an
+    // unanswered «logging enabled» is not a launch of the version above it, and
     // a repeat across midnight names its day in its tooltip.
 
     private func networkLine(_ seconds: Double, _ level: LogLevel = .info, _ category: String = "vpn",
@@ -504,7 +503,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         XCTAssertEqual(LogSessions.split(lines).map(\.version), ["0.10.0"])
     }
 
-    func testTheTooltipNamesTheDayOnlyWhenTheRunCrossedIt() {
+    @MainActor func testTheTooltipNamesTheDayOnlyWhenTheRunCrossedIt() {
         let same = LogPresentation.Row(lines: [networkLine(0), networkLine(60)], heading: nil)
         let across = LogPresentation.Row(lines: [networkLine(35_000), networkLine(35_300)], heading: nil)
         XCTAssertFalse(utc.isDate(across.first.date, inSameDayAs: across.last.date))
@@ -523,19 +522,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
     // MARK: - The header search under every language
     //
-    // The Log page's search as it reads a card's header: the header rule in
-    // every language, a query typed the way a keyboard types it, a query in
-    // another case or with blanks around it, a query that names one card's
-    // header and another card's line; and the split, fed three «terminating»
-    // lines in a row and a run an older build opened with a bare «logging
-    // enabled».
-    //
-    // The rule under test (`LogSearch.matches(header:_:drawnTime:)`): a header
-    // finds its card only by what it says whole — the version, «Helm <version>»,
-    // or the day and minute as drawn.
-    //
-    // Each case holds a rule, and its assertion message says what a person would
-    // see if the rule broke.
+    // A header finds its card only by what it says whole: the version,
+    // «Helm <version>», or the day and minute as drawn
+    // (`LogSearch.matches(header:_:drawnTime:)`). Each assertion message says
+    // what a person would see if the rule broke.
 
     /// What a keyboard produces for a drawn string: every blank a plain space.
     /// Foundation's short time style puts a narrow no-break space (U+202F)
@@ -549,17 +539,11 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     // MARK: - The header rule in every language
 
     /// **The day and minute as a person types them find the card, in every
-    /// language.** The rule is «the day and minute as drawn, whole»; the tests
-    /// that hold it build the query from `HelmDates.dayAndMinute` itself, so
-    /// both sides read one declaration. A person reads the header and types it:
-    /// in English the drawn string is «9/21/26, 2:13 PM» with a narrow no-break
-    /// space before «PM», and the keyboard types an ordinary one — so the
-    /// comparison reads every blank as a plain space (`LogSearch.plainBlanks`).
-    /// The header is not selectable, so it cannot be copied instead.
-    ///
-    /// A card with no version is the case the time search exists for (it has
-    /// no version to search by), so the fixture's card is the run after
-    /// «terminating». The control: the drawn string itself finds the card.
+    /// language.** The query is built from `HelmDates.dayAndMinute` itself and
+    /// typed as a keyboard types it, so the comparison reads every blank as a
+    /// plain space (`LogSearch.plainBlanks`); the header is not selectable, so
+    /// it cannot be copied instead. The fixture's card has no version, the case
+    /// the time search exists for. The control: the drawn string finds it.
     func testTheDayAndMinuteAsAKeyboardTypesThemFindTheirCardInEveryLanguage() {
         let lines = [start(0, "0.11.1-dev.13"), networkLine(10),
                      networkLine(20, .info, "app", "terminating"),
@@ -644,10 +628,8 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
     /// **The head of the tail is found by the word it draws.** Its start line
     /// scrolled out of the tail, so its header says «Earlier launch» in the
-    /// page's language (backlog #27, `log-earlier-launch-search`); a query that
-    /// is a part of those words finds that card and no other.
-    ///
-    /// Past defect: backlog #27, no query found the head-of-tail card by its word.
+    /// page's language; a query that is a part of those words finds that card
+    /// and no other.
     func testTheEarlierLaunchCardIsFoundByItsWord() {
         let lines = [networkLine(0), networkLine(10), start(100, "0.11.1-dev.14"), networkLine(110)]
         let split = LogSessions.split(lines)
@@ -688,15 +670,13 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     }
 
     /// **A run an older build opened with a bare «logging enabled» is not
-    /// joined by a newer build's «logging enabled (version)».** Builds before
-    /// the version was written spelled the on edge bare; a build that writes
-    /// «logging enabled (0.12.0)» is newer than any build that wrote a bare
-    /// one, and a version change is a relaunch. So a versioned on edge
-    /// answering a «logging disabled» in a run a bare line opened is another
-    /// launch's — decidable from the file, unlike a bare on edge after a
-    /// versioned run, which is left whole (`LogSessions.opensNewRun`). This is
-    /// the shape of one file that straddles the update on a stable Mac that had
-    /// logging switched on by hand: the old build's run, then today's.
+    /// joined by a newer build's «logging enabled (version)».** A build that
+    /// writes the version is newer than any that wrote the bare line, and a
+    /// version change is a relaunch, so a versioned on edge answering a
+    /// «logging disabled» in a run a bare line opened is another launch's. A
+    /// bare on edge after a versioned run is left whole
+    /// (`LogSessions.opensNewRun`). The shape is one file that straddles an
+    /// update on a stable Mac with logging switched on by hand.
     func testARunABareLoggingEnabledOpenedIsNotJoinedByAVersionedOne() {
         let lines = [start(0, "0.10.0"), networkLine(10), networkLine(20, .info, "app", "terminating"),
                      networkLine(3_600, .info, "app", "logging enabled"),
@@ -717,14 +697,11 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     // MARK: - Another language's clock, an exact build, an older warning
 
     /// **The day and minute as another language draws them find no card.** The
-    /// header draws its time in the app's language, and the rule is «as
-    /// drawn»: under German «21.09.26, 19:13» is on the card and «9/21/26, 7:13 PM»
-    /// is not, so a query copied from a report written in another language
-    /// must draw no header-only card, while the page's own spelling finds it.
-    /// Both sides are spelled with the language named outright, and the page is
-    /// built the way `LogView` builds it — the language and calendar defaulted.
-    /// The subject is asserted first: at least one pair of languages spells the
-    /// same moment differently, or the negative half proves nothing.
+    /// header draws its time in the app's language and the rule is «as drawn»:
+    /// under German «21.09.26, 19:13» is on the card and «9/21/26, 7:13 PM» is
+    /// not. The page is built the way `LogView` builds it, language and calendar
+    /// defaulted. The subject is asserted first: at least one pair of languages
+    /// spells the same moment differently, or the negative half proves nothing.
     func testTheDayAndMinuteAsAnotherLanguageDrawsThemFindNoCard() {
         let lines = [start(0, "0.11.1-dev.13"), networkLine(10),
                      networkLine(20, .info, "app", "terminating"),
@@ -799,20 +776,13 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     }
 
     /// **A warning with no site that quotes a start line is drawn, not hidden in
-    /// a header.** Builds before `v0.7.2-dev.1` wrote a warning with no source
-    /// site (`git tag --contains f008e352`, the commit that added it), and a
-    /// crash that tears a warning cuts its site off: either way the entry has
-    /// no site, so the reading that tells a glued start from a quote cannot tell
-    /// them apart (it can for `warn` and `error` lines that carry one). Such an
-    /// entry is read as a launch, and its header draws a day, a minute and a
-    /// version, never the warning's words — so a start line that carries a
-    /// warning is the card's first row as well (`LogSession.startIsARow`). Held:
-    /// the card's badge counts no warning that no row on it shows, and under
-    /// «Warnings» every warning of the tail is on a row.
-    ///
-    /// Two shapes, both site-less: an older build's warning quoting a copied
-    /// start line, and a warning a crash tore, glued to the next launch's
-    /// start (read through `LogSeed`, as the page reads it).
+    /// a header.** Without a site (an older build's warning, or one a crash
+    /// tore) the reading cannot tell a glued start from a quote, so the entry is
+    /// read as a launch, and a header draws no warning's words: a start line
+    /// that carries a warning is the card's first row as well
+    /// (`LogSession.startIsARow`). Held: the badge counts no warning that no row
+    /// shows, and under «Warnings» every warning is on a row. Two shapes: a
+    /// warning quoting a copied start line, and a torn one read through `LogSeed`.
     func testAWarningWithNoSiteGluedToOrQuotingAStartLineIsStillDrawn() {
         let zone = TimeZone(identifier: "UTC")!
         let quoted = "2026-09-21 14:25:00.000 [info] [app] Helm 9.9.9 started"
@@ -855,20 +825,12 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
     // MARK: - Launches under inputs nobody fed
     //
-    // The launch cards of the Log page, at the edges of these inputs: a launch
-    // whose logging was switched on after it started, lines written after a
-    // launch said it was terminating, a repeat that runs across midnight, a line
-    // torn by a crash, a line nobody can read inside the start-up burst, two
-    // starts in one millisecond, a tail rolling over under an open fold, and the
-    // footer read beside the badges.
-    //
-    // Each case holds a rule the cards must keep, and its assertion message says
-    // what a person would see if the rule broke.
-    //
-    // The sequences are the owner's own log's shapes, redacted and re-timed:
-    // `helm.previous.log` line 961 is «[app] logging enabled» two minutes after
-    // «[app] terminating», with no start line between them, and the owner's two
-    // files hold 24 places where lines follow «terminating» before the next start.
+    // The launch cards at the edges of their inputs: logging switched on after
+    // launch, lines after «terminating», a repeat across midnight, a line torn
+    // by a crash, an unreadable line inside the start-up burst, two starts in
+    // one millisecond, a tail rolling under an open fold, the footer beside the
+    // badges. Each assertion message says what a person would see if the rule
+    // broke.
 
     /// The card a line is drawn in, by the line's id.
     private func card(holding entry: LogEntry, in page: LogPresentation) -> LogPresentation.Card? {
@@ -879,26 +841,18 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
     // MARK: - A launch is not a process
 
-    /// **A stable build with logging off at launch writes no start line.** The
-    /// person follows the page's own advice — turn it on before reporting a
-    /// problem — and `setEnabled(true)` writes «logging enabled» and nothing
-    /// that names the launch. Everything they then reproduce is filed under the
-    /// last launch that *did* log: another version, another day, and the copy
-    /// they paste into the report carries that launch's start line as its
-    /// header.
+    /// **A stable build with logging off at launch writes no start line.**
+    /// `setEnabled(true)` writes «logging enabled» and nothing that names the
+    /// launch, so without a rule everything reproduced after it is filed under
+    /// the last launch that did log: another version, another day, and «Copy
+    /// log» pastes that launch's start line as its header.
     ///
     /// A real `HelmLog`, seeded from a file holding yesterday's launch of an
-    /// older version — the shape of `helm.previous.log:926–961` on the owner's
-    /// Mac, where a 0.9.0 session's two hours sit under «Helm 0.9.0-dev.14».
-    ///
-    /// Twice: yesterday's launch said «terminating», and yesterday's launch
-    /// crashed and said nothing — two rules in the split, one shape each.
+    /// older version, twice: once ending in «terminating», once crashed with
+    /// nothing said. Two rules in the split, one shape each.
     func testALaunchWhoseLoggingWasSwitchedOnLaterIsNotFiledUnderAnotherVersion() throws {
         for ended in ["terminating", "crashed"] {
-            let folder = FileManager.default.temporaryDirectory
-                .appendingPathComponent("helm-T6-tester-\(UUID().uuidString)")
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            defer { try? FileManager.default.removeItem(at: folder) }
+            let folder = scratchDirectory("log-launches")
             let yesterday = Date().addingTimeInterval(-86_400)
             let file = folder.appendingPathComponent("helm.log")
             var earlier = [
@@ -946,14 +900,11 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     }
 
     /// **«Logging disabled» is not answered by another process's «logging
-    /// enabled».** The ordinary way a stable build comes to have logging off:
-    /// the person switches it off in a launch that was writing, which writes
-    /// «logging disabled» and nothing after it — «terminating» is not written
-    /// either, because the log is off by then. The next launch, maybe days
-    /// later, writes no start line; switching logging back on writes «logging
-    /// enabled», and the line directly above it in the file is the earlier
-    /// launch's «logging disabled». The rule that keeps an off-and-on inside one
-    /// launch together reads that pair as one launch too.
+    /// enabled».** Switching logging off writes «logging disabled» and nothing
+    /// after it, «terminating» included. The next launch writes no start line,
+    /// and switching logging back on writes «logging enabled» directly under
+    /// the earlier launch's «logging disabled». The rule that keeps an
+    /// off-and-on inside one launch together must not read that pair as one.
     ///
     /// Both launches are real `HelmLog`s; the earlier one's lines are moved a
     /// day back and handed to the later one as its file.
@@ -971,10 +922,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
                      category: $0.category, message: $0.message, site: $0.site)
         }
 
-        let folder = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-T6-tester-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: folder) }
+        let folder = scratchDirectory("log-launches")
         let file = folder.appendingPathComponent("helm.log")
         try (LogLine.lines(earlier) + "\n").write(to: file, atomically: true, encoding: .utf8)
 
@@ -997,14 +945,11 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
             """)
     }
 
-    /// **Lines after «terminating» are not the terminated launch's.** Two
-    /// builds no longer share a folder (`LogDestination.directory` reads the
-    /// bundle id), but files written before that still interleave, so the rule
-    /// stays: Helm and Helm Dev side by side once interleaved — and a
-    /// process that has said it is terminating writes nothing more. What
-    /// follows it before the next start line belongs to some other process.
-    /// The owner's log has 24 of these, e.g. `helm.log` at 2026-09-30
-    /// 16:25:50 «terminating» followed ten seconds later by a memory sample.
+    /// **Lines after «terminating» are not the terminated launch's.** A process
+    /// that has said it is terminating writes nothing more, so what follows
+    /// before the next start line is another process's. Each build writes its
+    /// own folder (`LogDestination.directory` reads the bundle id), but an
+    /// older file can interleave Helm and Helm Dev.
     func testLinesAfterALaunchSaidItWasTerminatingAreNotThatLaunchs() throws {
         let stranger = networkLine(700, .warn, "layout", "no accessibility grant — not watching", site: grant)
         let lines = [start(0, "0.11.1-dev.14"), networkLine(0.1, .info, "host", "enable vpn"),
@@ -1022,13 +967,11 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
             """)
     }
 
-    /// **A crash that tears the last line does not swallow the next launch.** A write
-    /// cut short has no newline, so the next launch's start line is appended
-    /// to the same line of the file; the seed reads that as one line — here
-    /// with a module name that is half a stamp — and no start line survives,
-    /// so — unless the glued pair is read as the launch it is — the launch after
-    /// the crash, the one somebody opened the page for, is drawn inside the card
-    /// of the launch that crashed.
+    /// **A crash that tears the last line does not swallow the next launch.** A
+    /// write cut short has no newline, so the next start line is appended to the
+    /// torn one and the seed reads both as one line (here with a module name
+    /// that is half a stamp). Unless the glued pair is read as the launch it is,
+    /// the launch after the crash is drawn inside the crashed launch's card.
     func testALineTornByACrashDoesNotSwallowTheNextLaunch() {
         let torn = "2026-09-21 14:13:20.000 [info] [app] Helm 0.11.1-dev.13 started\n"
             + "2026-09-21 14:13:20.100 [info] [host] enable vpn\n"
@@ -1049,12 +992,11 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
             """)
     }
 
-    /// **A tear can fall anywhere in the line, and on any line.** The repair
-    /// reads a start line glued to an `info` line torn inside its `[category]`;
-    /// a write cut short stops at whatever byte it reached, the message is most
-    /// of a line, and the line before a crash is as likely a warning as not.
-    /// Every cut point of an ordinary line and of a warning is tried, and the
-    /// launch after the crash must be a card of its own at each.
+    /// **A tear can fall anywhere in the line, and on any line.** A write cut
+    /// short stops at whatever byte it reached, and the line before a crash is
+    /// as likely a warning as not. Every cut point of an ordinary line and of a
+    /// warning is tried, and the launch after the crash must be a card of its
+    /// own at each.
     func testALaunchAfterALineTornAtAnyByteIsACardOfItsOwn() {
         let next = "2026-09-21 14:25:00.000 [info] [app] Helm 0.11.1-dev.14 started"
         let stamps = LogSeed.Stamps(timeZone: TimeZone(identifier: "UTC")!)
@@ -1088,12 +1030,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
     // MARK: - The fold
 
-    /// **An unreadable line inside the start-up burst is not folded away.** A line
-    /// this app did not write takes the date of the line above it, and its
-    /// level is `info`, so one written during start-up is inside the burst's
-    /// two seconds and folds under «Starting modules» — shut by default. The
-    /// burst already ends at a warning so the fold cannot hide one; the line a
-    /// crash left behind is the other thing it must not hide.
+    /// **An unreadable line inside the start-up burst is not folded away.** It
+    /// takes the date of the line above and the level `info`, so one written
+    /// during start-up would fold under «Starting modules», shut by default. The
+    /// burst ends at it, as it ends at a warning.
     func testAnUnreadableLineEndsTheBurstLikeAWarningDoes() throws {
         let stray = LogEntry(date: base.addingTimeInterval(0.2), level: .info, category: "",
                              message: "Helm-OLD-FORMAT half-written line without a stamp or level")
@@ -1114,7 +1054,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
     /// Open fold, then the tail rolls over: the fold stays open while the start
     /// line is in the tail, because the card is its start line's id.
-    func testARollingTailKeepsAnOpenFoldOpenUntilItsStartLineLeaves() {
+    @MainActor func testARollingTailKeepsAnOpenFoldOpenUntilItsStartLineLeaves() {
         let head = (0..<5).map { networkLine(Double($0) - 100, .info, "memory", "sample \($0)") }
         let launch = [start(0, "0.11.1-dev.14")]
             + (1...6).map { networkLine(Double($0) * 0.1, .info, "host", "enable \($0)") }
@@ -1143,13 +1083,11 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
     /// **The head card changes identity once, when its start line rolls out,
     /// and no two cards ever share one.** A window rolls one line at a time over
-    /// a launch that ends in «terminating», a run of somebody else's lines after
-    /// it, an unanswered «logging enabled» and a second launch. The card holding
-    /// any one line may be named by its launch's start line and then, once that
-    /// has rolled out and the card is the tail's head, by the one fixed identity
-    /// — two names over its whole life, never a new one per tick; and at every
-    /// step every card on the page has a name of its own, because two cards
-    /// under one identity are one view to `ForEach`.
+    /// a launch ending in «terminating», somebody else's lines, an unanswered
+    /// «logging enabled» and a second launch. A card is named by its start line
+    /// and then, as the tail's head, by the one fixed identity: two names over
+    /// its life, never a new one per tick. Two cards under one identity are one
+    /// view to `ForEach`.
     func testTheHeadCardChangesIdentityOnceAsTheTailRollsPastItsStart() {
         var all = [start(0, "0.11.0")]
         all += (1..<40).map { networkLine(Double($0), .info, "host", "line \($0)") }
@@ -1204,7 +1142,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
         let rows = build(lines).cards.first?.rows ?? []
 
-        // Which row carries it is the fix's to choose; that one does is not.
+        // Which row carries it is the code's to choose; that one does is not.
         // Presence, not the spelling: the heading is spelled in this Mac's zone
         // and decided here in UTC.
         XCTAssertEqual(rows.map(\.repeats), [1, 3, 1], "the fixture's fold changed")
@@ -1263,7 +1201,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// count is not the copy set, which carries each drawn card's start line:
     /// one launch with thirteen warnings would read «13 warnings» on its card
     /// and «14 of … lines» under it, and nothing on the page is the fourteenth.
-    func testUnderWarningsTheFooterCountsWhatTheBadgesCount() {
+    @MainActor func testUnderWarningsTheFooterCountsWhatTheBadgesCount() {
         var lines = [start(0, "0.11.1-dev.14"), networkLine(0.1, .info, "host", "enable vpn")]
         for index in 0..<12 {
             lines.append(networkLine(60 + Double(index), .warn, "layout",
@@ -1321,12 +1259,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
             """)
     }
 
-    /// **The time drawn on a card with no version is searchable.** A search
-    /// finds a card by what its header draws — the version, and the day and
-    /// minute — and not only on a card that has a version: a card with no start
-    /// line (the tail's head, the run after «terminating», the run after an
-    /// unanswered «logging enabled») draws the day and minute of its first line
-    /// too, and a search for exactly those words finds it.
+    /// **The time drawn on a card with no version is searchable.** A card with
+    /// no start line (the tail's head, the run after «terminating», the run
+    /// after an unanswered «logging enabled») draws the day and minute of its
+    /// first line, and a search for exactly those words finds it.
     func testSearchingForTheTimeOnACardWithNoVersionFindsThatCard() {
         let lines = [start(0, "0.11.1-dev.13"), networkLine(10),
                      networkLine(20, .info, "app", "terminating"),
@@ -1347,13 +1283,11 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         }
     }
 
-    /// **A part of a header is not a finding.** The header of a card is found
-    /// by what it says *whole* — the version, «Helm <version>», the day and
-    /// minute as drawn — and by nothing shorter: «Helm» is on every card, «PM»
-    /// on half of them and «0.11» on all, so a part of a header drew every
-    /// launch of the tail as a card with no line in it (measured on the owner's
-    /// log: «Helm» → 800 empty cards of 821). A card whose *lines* match is
-    /// drawn for its lines, whatever the word.
+    /// **A part of a header is not a finding.** A header is found by what it
+    /// says *whole* (the version, «Helm <version>», the day and minute as
+    /// drawn) and by nothing shorter: «Helm», «PM» and «0.11» are on most
+    /// cards, so a part would draw every launch as a card with no line in it.
+    /// A card whose *lines* match is drawn for its lines, whatever the word.
     func testAPartOfAHeaderDoesNotDrawAHeaderOnlyCardForEveryLaunch() {
         AppLanguage.only(.en) {
             let lines = [start(0, "0.11.1-dev.13"), networkLine(10),
@@ -1381,11 +1315,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     }
 
     /// **Two «terminating» lines in a row are one launch's end.** Two builds
-    /// that quit one after the other write «terminating» twice, 49 ms apart in
-    /// the owner's own log; the second line has no launch of its own, and a
-    /// card of one line headed «Earlier launch» sat between two real launches.
-    /// A «terminating» that follows a «terminating» stays with the launch it
-    /// ends; the first line after them still opens a run of its own.
+    /// that quit one after the other write it twice; the second line has no
+    /// launch of its own and would draw a one-line «Earlier launch» card between
+    /// two real launches. The first line after the pair still opens a run of
+    /// its own.
     func testASecondTerminatingLineStaysWithTheLaunchItEnds() {
         let lines = [start(0, "0.11.1-dev.14"), networkLine(0.1), networkLine(600, .info, "app", "terminating"),
                      networkLine(600.049, .info, "app", "terminating"),
@@ -1408,11 +1341,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// **The row after a repeat that ran across midnight names its own day.**
     /// The span row «21 Sep – 22 Sep» names the day it ended on; the row after
     /// it is judged against the span's *first* line (`LogPresentation.build`),
-    /// so it opens with the new day's heading as well. Held here because the
-    /// other leg of the midnight repair — the span — names the new day by
-    /// itself, and a comparison moved back to the span's last line passed every
-    /// other test in the tree. If a second naming of that day is not wanted,
-    /// this test is the one to change, deliberately.
+    /// so it opens with the new day's heading as well. The span names the new
+    /// day by itself, so no other test notices a comparison against the span's
+    /// last line. If a second naming of that day is not wanted, change this
+    /// test deliberately.
     func testTheRowAfterARepeatAcrossMidnightOpensWithItsOwnDay() {
         // +35 000 s is 23:56:40 UTC, +35 300 is 00:01:40, +35 400 is 00:03:20.
         let lines = [start(0, "0.11.1-dev.14"), networkLine(60),
@@ -1437,14 +1369,12 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     }
 
     /// **The on edge that names a version spells back through the file.** The
-    /// version is inside the message — «logging enabled (0.11.0)» — so the seed
-    /// must read that line back byte for byte, and the split must cut a seeded
-    /// file exactly where it cuts the live tail. Real
-    /// `HelmLog`s write both launches; versions with a bracket, a space and two
+    /// version is inside the message, «logging enabled (0.11.0)», so the seed
+    /// must read it back byte for byte and the split must cut a seeded file
+    /// where it cuts the live tail. Versions with a bracket, a space and two
     /// spaces before a bracket (the site's own opening) are tried. Stable
-    /// versions only: a `-dev` build logs from its start line on and its
-    /// switch is greyed, so it never writes this line under a «logging
-    /// disabled».
+    /// versions only: a `-dev` build logs from its start line and its switch is
+    /// greyed, so it never writes this line under a «logging disabled».
     func testLoggingEnabledWithAVersionReadsBackFromTheFileAsItWasWritten() throws {
         let zone = TimeZone(identifier: "UTC")!
         for version in ["0.11.0", "1.0 (beta)", "1.0 beta", "0.11.1+local", "1.0  (5)", "2.0)"] {
@@ -1477,16 +1407,13 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         }
     }
 
-    /// **A line that quotes a start line is not a launch.** The repair reads a
-    /// start line glued onto a torn one wherever the tear fell, which it
-    /// recognises as «<stamp> [info] [app] Helm … started» at the end of an
-    /// entry. A warning whose message merely ends with those words — a copied
-    /// log line, a file named like one — carries a source site, because
-    /// `HelmLog.warn` and `HelmLog.error` write one, and a glued start never
-    /// can: the start line is written without one and is the end of the glued
-    /// entry. (An `info` line has no site, so the same quote there cannot be
-    /// told from a tear by the entry alone; that case is not asserted.) Read
-    /// through the file, as a seed reads it.
+    /// **A line that quotes a start line is not a launch.** A glued start is
+    /// recognised as «<stamp> [info] [app] Helm … started» at the end of an
+    /// entry. A warning that merely ends with those words carries a source site
+    /// (`HelmLog.warn` and `.error` write one), and a glued start never can: the
+    /// start line is written without one. An `info` line has no site, so the
+    /// same quote there cannot be told from a tear; that case is not asserted.
+    /// Read through the file, as a seed reads it.
     func testALineThatQuotesAStartLineIsNotALaunch() {
         let zone = TimeZone(identifier: "UTC")!
         let quoted = "2026-09-21 14:25:00.000 [info] [app] Helm 9.9.9 started"
@@ -1510,12 +1437,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     }
 
     /// **Words that end like a start line without its stamp are not a start.**
-    /// The glued start is recognised by the start line's own 23-character
-    /// stamp in front of «[info] [app] Helm … started»; an `info` line — which
-    /// carries no site to tell it apart — whose message only ends with the
-    /// words, as a line about the log itself might, must stay a line of the
-    /// launch it was written in. Guarded because moving that stamp test out of
-    /// the reading passed every other test in the tree.
+    /// A glued start needs the start line's own 23-character stamp before
+    /// «[info] [app] Helm … started». An `info` line, which carries no site,
+    /// whose message only ends with the words stays a line of its launch. No
+    /// other test notices the stamp check gone.
     func testAMessageEndingInTheStartWordsWithoutAStampIsNotALaunch() {
         for message in ["copied: [info] [app] Helm 9.9.9 started",
                         "x 2026-09-21 14:25 [info] [app] Helm 9.9.9 started",
@@ -1531,13 +1456,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
     /// **A run that its own «logging enabled (version)» opened is that
     /// version's.** A stable build with logging off at launch writes no start
-    /// line; switched on, it writes «logging enabled (0.11.0)», which opens a
-    /// run of its own. Switched off again, it writes «logging disabled». The
-    /// next launch — an update, 0.12.0 — switches it back on, and its
-    /// «logging enabled (0.12.0)» sits under that «logging disabled». Compared
-    /// with the run's *start line*, which this run does not have, the named
-    /// version would find nothing and the two launches would share one card; so
-    /// the version the run itself named earlier is the one read.
+    /// line; switched on, it writes «logging enabled (0.11.0)», then «logging
+    /// disabled». The next launch, 0.12.0, writes «logging enabled (0.12.0)»
+    /// under it. The run has no start line, so the version its own on edge
+    /// named is the one compared, or the two launches would share one card.
     func testARunOpenedByItsOwnLoggingEnabledIsNotJoinedByTheNextVersion() throws {
         let first = HelmLog(seedFiles: [])
         first.start(version: "0.11.0", override: false, isDev: AppBuild.isDev)   // stable, saved «off»: no start line
@@ -1552,10 +1474,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
                        ["logging enabled (0.11.0)", "never connected", "logging disabled"],
                        "the first launch did not write the shape this test is about")
 
-        let folder = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-T6-tester-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: folder) }
+        let folder = scratchDirectory("log-launches")
         let file = folder.appendingPathComponent("helm.log")
         try (LogLine.lines(yesterday) + "\n").write(to: file, atomically: true, encoding: .utf8)
 

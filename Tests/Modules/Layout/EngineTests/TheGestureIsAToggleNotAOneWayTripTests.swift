@@ -6,33 +6,26 @@ import XCTest
 
 /// Tap, tap, tap: convert, put back, convert again.
 ///
-/// **Reported live, and the log had counted it exactly.** Type `d`, tap the
-/// bound key and get `в`; tap again and get `d` back; tap a third time and
-/// nothing happens — nor on the twelve taps after it. The log held fifteen
-/// «gesture: last word» lines against a single conversion.
-///
-/// `undoLast` puts the text back through `perform`, and `perform` calls
-/// `forgetTheWord()` on success — buffer, remembered word and undo record all
-/// gone. So after an undo the module held no handle at all on text it had
-/// typed itself a moment earlier, and every further tap reached `fix()`, found
-/// nothing, and returned in silence.
-///
-/// It knows what is in the field, because it put it there: the word it just
-/// restored, in the app it restored it in.
-///
-/// Guards a past defect: the gesture was a one-way trip and its keys carried the held option key (fix commit `fcc7cb28`).
+/// Type `d`, tap the bound key and get `в`; tap again and get `d` back; a third
+/// tap converts again. `perform` forgets the word on success, so after an undo
+/// the module keeps what it knows is in the field because it put it there: the
+/// word it just restored, in the app it restored it in.
 final class TheGestureIsAToggleNotAOneWayTripTests: XCTestCase {
 
     private var typing = FakeTyping()
     private var tap = FakeTap()
     private var context = FakeSecure()
-    private var sources = StuckSources()
+    private var sources = FakeSources(follows: false)
 
     private func engine() -> LayoutEngine {
         typing = FakeTyping(); tap = FakeTap()
-        context = FakeSecure(); sources = StuckSources()
+        context = FakeSecure(); sources = FakeSources(follows: false)
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
-                                  translation: ToggleTranslation(), spell: ToggleSpell(),
+                                  translation: FakeTranslation(otherwise: { word, _, _ in
+                                      let table: [Character: Character] = ["d": "в", "в": "d"]
+                                      let out = String(word.map { table[$0] ?? $0 })
+                                      return out == word ? nil : out }),
+                                  spell: FakeSpell(valid: ["в"]),
                                   secure: context, activation: FakeActivation())
         engine.activate()
         return engine
@@ -82,18 +75,4 @@ final class TheGestureIsAToggleNotAOneWayTripTests: XCTestCase {
         XCTAssertEqual(typing.performed.count, 2,
                        "the restored word was converted in an app it was never typed in")
     }
-}
-
-// MARK: - Ports
-
-private struct ToggleTranslation: TranslationPort {
-    func translate(_ word: String, from: String, to: String) -> String? {
-        let table: [Character: Character] = ["d": "в", "в": "d"]
-        let out = String(word.map { table[$0] ?? $0 })
-        return out == word ? nil : out
-    }
-}
-
-private struct ToggleSpell: SpellPort {
-    func isWord(_ word: String, sourceID: String) -> Bool? { word == "в" }
 }

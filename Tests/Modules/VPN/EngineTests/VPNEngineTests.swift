@@ -4,7 +4,6 @@
 import XCTest
 @testable import Module_VPN_Engine
 
-/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity» (the settle poll ended before the tunnel began to come up).
 final class VPNEngineTests: XCTestCase {
     func test_auto_connect_on_app_launch() {
         let runner = FakeRunner(list: "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
@@ -24,8 +23,7 @@ final class VPNEngineTests: XCTestCase {
         XCTAssertTrue(engine.autoConnected.contains("A"))
     }
 
-    /// M106: deactivation stops the app observation too, and activating again
-    /// arms it once.
+    /// Deactivation stops the app observation too, and activating again arms it once.
     func test_deactivate_stops_the_app_observation() {
         let apps = FakeApps.trustingA()
         let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: FakeRunner(), apps: apps,
@@ -43,7 +41,7 @@ final class VPNEngineTests: XCTestCase {
         XCTAssertNotNil(apps.onChange)
     }
 
-    /// M106: an engine released without `deactivate()` still stops the app observation.
+    /// An engine released without `deactivate()` still stops the app observation.
     func test_deinit_stops_the_app_observation() {
         let apps = FakeApps.trustingA()
         var engine: VPNEngine? = VPNEngine(settings: VPNSettings.inMemory(), runner: FakeRunner(), apps: apps,
@@ -79,10 +77,9 @@ final class VPNEngineTests: XCTestCase {
 
     // MARK: - Settle polling (the card stuck on the status the command replaced)
 
-    /// The exit condition, in place of the two `needsPoll` tests that stood here.
-    /// It asked «is anything transitioning», and `Disconnected` is not a
-    /// transition — so the first read after a connect ended the poll before the
-    /// tunnel had begun to come up. It asks whether the command has arrived now.
+    /// The exit condition: whether the command has arrived, not «is anything
+    /// transitioning» — `Disconnected` is not a transition, so the first read
+    /// after a connect would end the poll before the tunnel began to come up.
     func test_a_poll_is_not_over_while_the_command_it_follows_has_not_arrived() {
         let coming = [VPNConnection(id: "1", name: "A", status: .connecting, kind: nil)]
         XCTAssertFalse(VPNEngine.settled(coming, into: .connected, for: "A"))

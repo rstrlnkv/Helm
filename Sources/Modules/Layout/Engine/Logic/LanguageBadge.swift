@@ -23,8 +23,8 @@ public enum LanguageBadge {
 
     /// The country a layout belongs to, by the layout's own name first.
     ///
-    /// The language tag is not enough and never was: `ABC` names no region at
-    /// all, and `US` and `British` are both English. Apple's layout ids do say
+    /// The language tag is not enough: `ABC` names no region at all, and `US`
+    /// and `British` are both English. Apple's layout ids do say
     /// which is which, so they are the first answer and the language tag is the
     /// fallback — otherwise half the indicators would be flags and half
     /// letters, which looks like a mistake rather than a choice.
@@ -36,12 +36,9 @@ public enum LanguageBadge {
 
     /// The table, longest key first, and alphabetically within a length.
     ///
-    /// This scanned `byLayout` directly, and a `Dictionary` is walked in an
-    /// order that comes from a hash seeded per process — so a name two keys
-    /// both prefix resolved to whichever the seed happened to put first, and
-    /// the flag in the menu bar could change between launches with no code
-    /// change. `Duplicates.refine` documents the same defect and avoids it the
-    /// same way.
+    /// Not `byLayout` itself: a `Dictionary` is walked in an order seeded per
+    /// process, so a name two keys both prefix would resolve differently
+    /// between launches. `Duplicates.refine` avoids the same thing the same way.
     ///
     /// Longest first is also the right answer rather than merely a fixed one:
     /// `Canadian-CSA` is a more specific claim about a layout than `Canadian`,
@@ -50,13 +47,9 @@ public enum LanguageBadge {
         byLayout.sorted { ($0.key.count, $0.key) > ($1.key.count, $1.key) }
             .map { (key: $0.key, region: $0.value) }
 
-    /// The claim that used to sit here — "longest prefixes first is not needed,
-    /// every key is distinct at its start" — was not true when it was written:
-    /// `Canadian` and `Canadian-CSA` are both in the list below. Variants are
-    /// the point of the table, so more of them are coming.
-    ///
-    /// Private, and `ordered` is not: nothing may scan this one, which is how
-    /// the hash order got in.
+    /// Keys are not distinct at their start (`Canadian`, `Canadian-CSA`), so
+    /// the order matters. Private, and `ordered` is not: nothing may scan this
+    /// one in hash order.
     private static let byLayout: [String: String] = [
         "ABC": "US", "US": "US", "Australian": "AU", "Canadian": "CA",
         "British": "GB", "Irish": "IE",

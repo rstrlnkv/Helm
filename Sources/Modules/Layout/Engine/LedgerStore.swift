@@ -20,8 +20,7 @@ public final class LedgerStore: @unchecked Sendable {
     private var cached: ConversionLedger
 
     /// The directory is passed rather than found, so a test writes into its own
-    /// scratch and never into the owner's Application Support — the module has
-    /// form here: eleven engine tests once took a real keychain by default.
+    /// scratch and never into the owner's Application Support.
     /// A directory named is a directory written to. Nothing named, outside the
     /// app, means nothing on disk at all — see `persists`.
     public init(directory: URL? = nil) {
@@ -44,11 +43,9 @@ public final class LedgerStore: @unchecked Sendable {
     /// **Whether this ledger touches the disk at all.**
     ///
     /// The app persists; anything else counts in memory and leaves nothing
-    /// behind. Writing to a scratch folder instead was the obvious answer and
-    /// the wrong one twice over: keyed to the process, the whole suite shared
-    /// one file and a test asserting «one word counted» read five; keyed per
-    /// instance, one run left 91 directories in `$TMPDIR` — which is how this
-    /// repository once accumulated 7621 of them.
+    /// behind. A default scratch folder would fail either way: keyed to the
+    /// process, tests share one file and read each other's counts; keyed per
+    /// instance, every run leaves directories in `$TMPDIR`.
     ///
     /// A test that wants the disk names its own directory and clears it up,
     /// which is the only arrangement where «the count survived a relaunch» is

@@ -3,38 +3,27 @@ import HelmRuntime
 import XCTest
 @testable import Module_Layout_Engine
 
-/// **The tap dying is the moment every blind edit the engine is holding stops
-/// being checkable — and nothing lets go of them.**
+/// The tap dying is the moment every blind edit the engine is holding stops
+/// being checkable, so the engine lets go of them.
 ///
 /// `tapDied()` is the reverse channel `TheTapSaysWhenMacOSTakesItAwayTests`
-/// exists for, and it repairs exactly one thing: the flag the page draws.
-/// `tapped` goes false, the state is emitted, the module stops claiming to
-/// watch. What it does not do is what `deactivate()` does one screen down —
-/// `forgetTheWord()`, which drops the buffer, the remembered word and the undo
-/// record together.
+/// holds for the flag the page draws. These hold the other half: the buffer,
+/// the remembered word and the undo record.
 ///
 /// Those three are blind edits: a fixed count of backspaces sent at whatever
 /// the caret is in front of *now*, correct only while the caret has not moved.
 /// Every guard in this module that keeps them correct is fed by the tap. The
 /// remembered word is dropped by `.click`; the undo record is invalidated by
 /// every keystroke; the buffer is cleared at every boundary. With the tap gone
-/// none of those events will ever arrive again, so all three freeze at the value
-/// they had the instant the grant was withdrawn and are trusted **for the life
-/// of the process**.
+/// none of those events will ever arrive again, so all three would freeze at
+/// the value they had when the grant was withdrawn.
 ///
-/// And the second door is still open while that is true. The gesture is gone
-/// with the tap, but the global shortcut is not: `HotkeyManager` registers it
-/// through Carbon's `RegisterEventHotKey`, which needs no Accessibility grant at
-/// all, and it calls `fix()` on the engine. So the
-/// sequence is: macOS revokes the grant, the person carries on typing for ten
-/// minutes with Helm blind, presses the shortcut — and six backspaces measured
-/// against a word from ten minutes ago land in the middle of a paragraph.
-///
-/// The app check cannot save any of this: the person never left the app.
-///
-/// Either repair answers all three tests — `tapDied()` forgetting the word the
-/// way `deactivate()` does, or the three doors refusing while `tapped` is false.
-/// What is not a repair is the page going honest while the typing does not.
+/// The global shortcut outlives the tap: `HotkeyManager` registers it through
+/// Carbon's `RegisterEventHotKey`, which needs no Accessibility grant, and it
+/// calls `fix()`. So the person types on for ten minutes with Helm blind,
+/// presses the shortcut, and six backspaces measured against a word from ten
+/// minutes ago would land in the middle of a paragraph. The app check cannot
+/// help: the person never left the app.
 @MainActor
 final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
     private var typing = FakeTyping()
@@ -57,10 +46,8 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
     // MARK: - The word that most recently ended
 
     /// The module's own shortcut ends the word without converting it, and the
-    /// word is remembered so the gesture has something to work on. (⌘Tab and ⌘S
-    /// end it too, and no longer remember it: any chord but the bound one may
-    /// have changed the text in front of the caret.) Then macOS takes the tap
-    /// away.
+    /// word is remembered so the gesture has something to work on (any other
+    /// chord ends it without remembering). Then macOS takes the tap away.
     func testAWordRememberedWhenTheGrantWentIsNotTheGesturesToConvert() {
         let engine = engine()
         tap.type("ghbdtn")
@@ -99,9 +86,9 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
     // MARK: - The word still being typed
 
     /// The other half of `convertLastWord`, and the one with no app check of its
-    /// own: `buffer.wholeWord` is a word nothing has ended yet. A word half
-    /// typed when the tap dies stays half typed in the engine for ever, while
-    /// the person finishes it, deletes it, or leaves the field.
+    /// own: `buffer.wholeWord` is a word nothing has ended yet. Kept after the
+    /// tap dies, it would stay half typed in the engine while the person
+    /// finishes it, deletes it, or leaves the field.
     func testAWordHalfTypedWhenTheGrantWentIsNotTheGesturesToConvert() {
         let engine = engine()
         tap.type("ghbdtn")      // mid-word: nothing has ended it

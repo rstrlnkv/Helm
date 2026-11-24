@@ -26,17 +26,14 @@ enum OrphanDetector {
 
     /// True when `name` is a bundle-id-shaped entry whose app isn't installed.
     ///
-    /// `knownToSystem` asks LaunchServices, and it is not optional politeness:
-    /// a directory listing of /Applications misses everything one folder down
-    /// (Adobe Acrobat DC/, Microsoft Office/) and every helper nested inside
-    /// another bundle. Both were being offered for deletion while their apps
-    /// were installed and running.
+    /// `knownToSystem` asks LaunchServices, which sees what the listing misses:
+    /// helpers nested inside another bundle and apps deeper than two levels.
+    /// Without it their data is offered while they are installed and running.
     static func isOrphan(name: String, installedBundleIDs: Set<String>,
                          knownToSystem: (String) -> Bool = { _ in false }) -> Bool {
         guard looksLikeBundleID(name) else { return false }
-        // A leading dot survives the split — ".com.apple.finder.plist" still has
-        // three components — and then makes every `hasPrefix` test below miss,
-        // so Apple's own preferences came back as orphans.
+        // A leading dot survives the split (".com.apple.finder.plist") and would
+        // make every `hasPrefix` test below miss.
         guard !name.hasPrefix(".") else { return false }
         let id = bundleID(from: name)
         guard !skippedPrefixes.contains(where: { id.hasPrefix($0) }) else { return false }

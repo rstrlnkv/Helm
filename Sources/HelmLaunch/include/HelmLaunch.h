@@ -27,19 +27,14 @@ extern NSString *const HelmLaunchExceptionNameKey;
 /// **`NSTask` does not only return errors — on some paths it raises**, and an
 /// Objective-C exception goes straight past a Swift `catch`: there is nothing
 /// in a Swift frame for it to land on, so the runtime reaches `std::terminate`
-/// and the process aborts. `do { try process.run() } catch` therefore could not
-/// guard this class of refusal at all, however carefully it was written, and a
-/// build shipped that died with SIGABRT inside
-/// `-[NSConcreteTask launchWithDictionary:error:]`.
+/// and the process aborts (SIGABRT inside
+/// `-[NSConcreteTask launchWithDictionary:error:]`).
 ///
-/// Measured on macOS 27, and this is the shape of the fault: a NUL byte in an
-/// argument or in an environment value raises, and so do more than 4096
-/// arguments (`HelmProcess.maxArguments`), while a missing file, a bad
-/// working directory, `EMFILE`, `EAGAIN` and `E2BIG` all come back as an
-/// `NSError` the Swift call already handled. So the throwing paths are neither
-/// enumerable nor rare enough to check for one by one — the crash in the field
-/// came from a third one — and the fix has to be «catch whatever it raises»
-/// rather than «forbid what we know raises».
+/// A NUL byte in an argument or an environment value raises, and so do more
+/// than 4096 arguments (`HelmProcess.maxArguments`), while a missing file, a
+/// bad working directory, `EMFILE`, `EAGAIN` and `E2BIG` come back as an
+/// `NSError`. The raising paths are not enumerable, so this catches whatever
+/// it raises rather than forbidding what is known to raise.
 ///
 /// **The `@try` is here rather than around a block called from Swift.** A block
 /// would put a Swift frame between the raise and the handler, and an
@@ -69,12 +64,9 @@ BOOL HelmLaunchTask(NSTask *task, NSError * _Nullable * _Nullable error);
 /// `@try`.
 ///
 /// The `@try` is in Objective-C for the reason `HelmLaunchTask` gives: a raise
-/// from the accessor passes a Swift `catch`. For the return-type half of the
-/// shape test, for the methods that are not invoked, for the catch-all and for
-/// the answer coming from the examined method rather than a `get<Key>` variant
-/// it is tested by nothing in this tree, whatever stand-in objects
-/// one might run it against; the argument count likewise. Not measured
-/// against any system class's private accessor.
+/// from the accessor passes a Swift `catch`. Nothing in this tree tests the
+/// shape check (return type, argument count), the catch-all, or that the
+/// answer comes from the examined method rather than a `get<Key>` variant.
 NSNumber * _Nullable HelmReadNumber(NSObject *object, NSString *key);
 
 NS_ASSUME_NONNULL_END

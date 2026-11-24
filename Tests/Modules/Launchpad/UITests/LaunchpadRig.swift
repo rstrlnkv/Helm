@@ -23,7 +23,6 @@ final class RigCatalog: AppCatalogPort, @unchecked Sendable {
     }
 
     var observers: Int { handlers.withLock { $0.count } }
-    func fire() { for handler in handlers.withLock({ Array($0.values) }) { handler() } }
 
     private let asked = Locked<[CatalogReadReason]>([])
     /// What asked for each catalog read so far, in order.

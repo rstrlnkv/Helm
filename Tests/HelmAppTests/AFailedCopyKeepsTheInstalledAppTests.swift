@@ -7,14 +7,11 @@ import HelmTestSupport
 
 /// The one path in Helm that can destroy Helm.
 ///
-/// The swap script used to `rm -rf` the installed bundle and *then* copy the new
-/// one in, reading no status from the copy — with the downloaded zip already
-/// deleted, the unzipped payload inside a directory the script removes whatever
-/// happened, and the process that could have said something terminated before
-/// the script did any work. Any refusal of that one `ditto` — a full disk, a
-/// payload that will not read, a `/Applications` that stopped being writable
-/// between the check and the copy — left the person with no Helm at all, nothing
-/// on screen and nothing in the log.
+/// By the time the swap script runs, the downloaded zip is deleted, the payload
+/// sits in a directory the script removes whatever happens, and the app that
+/// could have said something has quit. A refused `ditto` (a full disk, a payload
+/// that will not read, a `/Applications` that stopped being writable) must
+/// leave the installed Helm in place.
 ///
 /// So the script is driven here, verbatim, against scratch directories: the real
 /// text, the real `mv`, the real `ditto`, the real `rm`. **Its one line that

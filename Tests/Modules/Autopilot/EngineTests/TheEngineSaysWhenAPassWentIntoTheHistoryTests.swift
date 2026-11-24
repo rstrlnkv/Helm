@@ -8,11 +8,10 @@ import HelmTestSupport
 ///
 /// An unattended sweep writes the history with nobody pressing anything; the model
 /// re-asks only because the engine says so, through the closure it was built with.
-/// What the signal must keep is what the old event kept: said after the history
-/// *landed* (a refused seal or an unwritable store is not a change anybody should
-/// re-read for) and never for a return, whose only writer is the person's own
-/// gesture and which reloads. Defect class kept: the model is told of a change
-/// that did not happen, told twice, or never told.
+/// It is said after the history *landed* (a refused seal or an unwritable store is
+/// not a change anybody should re-read for) and never for a return, whose only
+/// writer is the person's own gesture and which reloads. Guards: the model is told
+/// of a change that did not happen, told twice, or never told.
 ///
 /// Every absence has a control in the same class: the same engine built the same way
 /// says it for a sweep that acted, so a silent closure cannot pass for «said nothing».

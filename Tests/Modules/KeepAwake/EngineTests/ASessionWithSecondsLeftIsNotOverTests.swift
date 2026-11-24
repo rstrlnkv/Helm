@@ -3,20 +3,11 @@ import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
-/// The line the owner's log actually printed, and what it is worth reading as.
-///
-///     22:12:05.916 [keep-awake] restored a session: 0 min left
-///     22:12:05.923 [keep-awake] holding sleep: manual+timer, display too
-///
-/// Read as «a finished session was restored and took the assertion anyway»,
-/// which is what it looks like. It is not: the same log has
-/// `21:12:44 holding sleep: manual+timer`, so a sixty-minute session begun then
-/// had 39 seconds of it left at 22:12:05, and `restoreSession` prints
-/// `Int(left / 60)`. `SessionRestore.decide` refuses everything at or past the
-/// deadline — `endDate > now`, then `bounded > 0`, both strict — and the first
-/// case here is what says so rather than leaving it to be re-derived from a log.
-///
-/// Guards: bf6c973b (a restored session with seconds left read as over).
+/// «restored a session: 0 min left» followed by «holding sleep» in the log is a
+/// session with seconds left: `restoreSession` prints `Int(left / 60)`.
+/// `SessionRestore.decide` refuses everything at or past the deadline —
+/// `endDate > now`, then `bounded > 0`, both strict — and the first case here
+/// says so rather than leaving it to be re-derived from a log.
 final class ASessionWithSecondsLeftIsNotOverTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!

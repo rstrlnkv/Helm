@@ -1,14 +1,14 @@
 import HelmRuntime
 import HelmUI
+import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
-/// **The page header's three choices are settings again, and the launch purge no longer deletes them.**
+/// **The page header's three choices are settings, and the launch purge does not delete them.**
 ///
-/// `module.app.pageBarStyle`, `module.app.toolbarSwitcherStyle` and `module.app.alwaysCollapseSearch` were listed in `ObsoleteDefaults.retired`
-/// while the header row had no such choices; a key still listed is purged at the next launch, which is
-/// indistinguishable from never having restored it. `ObsoleteDefaultsTests` scans only `Sources/HelmApp` for
-/// the literal, so this is where the spellings are put side by side.
+/// `module.app.pageBarStyle`, `module.app.toolbarSwitcherStyle` and `module.app.alwaysCollapseSearch` stay out of
+/// `ObsoleteDefaults.retired`: a key listed there is purged at the next launch. `ObsoleteDefaultsTests` scans only
+/// `Sources/HelmApp` for the literal, so this is where the spellings are put side by side.
 @MainActor
 final class TheHeaderChoicesAreSettingsAgainTests: XCTestCase {
 
@@ -26,7 +26,7 @@ final class TheHeaderChoicesAreSettingsAgainTests: XCTestCase {
         let store = InMemoryKeyValueStore()
         store.raw = ["module.app.pageBarStyle": "windowTitle", "module.app.toolbarSwitcherStyle": "icons",
                      "module.app.alwaysCollapseSearch": true]
-        AppSettings.migrateAndPurge(in: store)
+        ObsoleteDefaults.purge(from: store)
         let app = AppSettings.store.over(store)
         XCTAssertEqual(AppSettings.pageBarStyle(in: app), .windowTitle)
         XCTAssertEqual(AppSettings.tabLabels(in: app), .icons)
@@ -41,18 +41,18 @@ final class TheHeaderChoicesAreSettingsAgainTests: XCTestCase {
     func testAWriteEqualToTheStoredValueIsRefused() {
         let store = InMemoryKeyValueStore()
         let app = AppSettings.store.over(store)
-        var posted = 0
+        let posted = LockedCount()
         let token = NotificationCenter.default.addObserver(forName: .helmHeaderChoicesChanged, object: nil,
-                                                           queue: nil) { _ in posted += 1 }
+                                                           queue: nil) { _ in posted.bump() }
         defer { NotificationCenter.default.removeObserver(token) }
         AppSettings.setPageBarStyle(.moduleName, in: app)
         AppSettings.setTabLabels(.text, in: app)
         AppSettings.setAlwaysCollapseSearch(false, in: app)
-        XCTAssertEqual(posted, 0, "writing the value already read posted a change")
+        XCTAssertEqual(posted.value, 0, "writing the value already read posted a change")
         AppSettings.setPageBarStyle(.windowTitle, in: app)
         AppSettings.setTabLabels(.iconsAndText, in: app)
         AppSettings.setAlwaysCollapseSearch(true, in: app)
-        XCTAssertEqual(posted, 3)
+        XCTAssertEqual(posted.value, 3)
         XCTAssertTrue(AppSettings.headerChoices.collapseSearch == AppSettings.alwaysCollapseSearch)
         XCTAssertEqual(AppSettings.pageBarStyle(in: app), .windowTitle)
     }

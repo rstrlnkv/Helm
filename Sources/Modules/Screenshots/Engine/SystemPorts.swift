@@ -44,11 +44,10 @@ final class SCKCapture: ScreenCapturing, @unchecked Sendable {
 
     /// Once per installation, and recorded before the call: `CGWindow.h` says a
     /// previously denied process is not re-prompted, so asking on every refused
-    /// press would be a call that does nothing. The request is also how a process
-    /// that macOS has never heard of is put in front of the person, which is the
-    /// reason to make it at all — that part is the header's intent and was not
-    /// observed here. It returns at once and its dialog is the system's, so the
-    /// answer is read on the next press.
+    /// press would be a call that does nothing. The request is how a process macOS
+    /// has never heard of is put in front of the person (the header's intent). It
+    /// returns at once and its dialog is the system's, so the answer is read on the
+    /// next press.
     func requestAccess() {
         guard !store.bool(ScreenshotsSettings.Key.screenRecordingAsked, default: false) else { return }
         store.set(true, for: ScreenshotsSettings.Key.screenRecordingAsked)
@@ -71,15 +70,12 @@ final class SCKCapture: ScreenCapturing, @unchecked Sendable {
         // All displays at once — the freeze is on the critical path of the
         // overlay appearing, and two displays taken in turn cost twice as long.
         // With the pointer asked for, the second frame is taken in the same task,
-        // beside the first and not after it — and only of the display the pointer
-        // is on: the others show no pointer, so theirs would be the same picture
-        // again at a cost per display (measured: about 65 ms more over three
-        // displays when every one took it).
+        // beside the first, and only of the display the pointer is on: the others
+        // show no pointer, so theirs would be the same picture again at a cost.
         let pointer = cursor ? CGEvent(source: nil)?.location : nil
         // The window list is taken first, so the Dock's Accessibility read — main
         // thread, cold on the first press after launch — runs beside the captures and
-        // not after them. The list now precedes the pictures by their capture time
-        // and no longer follows them.
+        // not after them; the list precedes the pictures by their capture time.
         let entries = Self.rawWindows()
         let ports = dockBounds
         async let dock = MainActor.run { Self.dockPlacement(entries: entries, ports: ports) }
@@ -158,13 +154,10 @@ final class SCKCapture: ScreenCapturing, @unchecked Sendable {
         guard let window = content.windows.first(where: { $0.windowID == id }) else { return .gone }
         let filter = SCContentFilter(desktopIndependentWindow: window)
         // **No size is given, and it is `SCScreenshotConfiguration` and not the
-        // stream's.** Measured on a 993×747 pt window at 2×: a stream
-        // configuration with no size answers a fixed 1920×1080 with the window
-        // scaled to fit; one sized to `contentRect` keeps the shadow inside that
-        // size by shrinking the window to 1870×1407 px; this one answers
-        // 2078×1586 with the window at exactly 1986×1494, the shadow around it
-        // untouched — the picture macOS's own tool makes of the same window. That is with the shadow; the size
-        // with `ignoreShadows` has not been measured.
+        // stream's.** A stream configuration with no size answers a fixed
+        // 1920×1080 with the window scaled to fit, and one sized to `contentRect`
+        // shrinks the window to keep the shadow inside; this one answers the window
+        // at its own pixels with the shadow round it, as macOS's own tool does.
         let configuration = SCScreenshotConfiguration()
         configuration.ignoreShadows = !shadow
         configuration.showsCursor = cursor
@@ -244,9 +237,8 @@ final class SCKCapture: ScreenCapturing, @unchecked Sendable {
 /// exact bounds, any other gets `.notTrusted` and the strip. `pid` is the Dock's
 /// process, from the window list.
 ///
-/// **Bounded:** the messaging timeout belongs to the element it is set on (measured on
-/// a stopped process: the application element failed after 0.105 s, a child with no
-/// timeout of its own after 1.505 s), so it is set on every element read, and the
+/// **Bounded:** the messaging timeout belongs to the element it is set on (a child
+/// does not take its application's), so it is set on every element read, and the
 /// whole read gives up at `budget` between calls and at the first call that does not
 /// answer. A stalled Dock costs at most one call's timeout past the budget, and the
 /// reading is `.timedOut`.
@@ -301,12 +293,10 @@ struct SystemDockBounds: Sendable {
 /// same shape with the opposite ending: it renames over whatever is there, which
 /// is how a screenshot replaces one taken in the same second.
 ///
-/// A volume that does not do RENAME_EXCL may answer `ENOTSUP` (`renamex_np(2)`:
-/// «flags has a value that is not supported by the file system») or `EINVAL`
-/// («flags has an invalid value»), and on either a hard
-/// link — which fails on an existing name just as atomically — takes its place.
-/// No such volume was tried here, so that branch is written from the manual and
-/// not exercised.
+/// A volume that does not do RENAME_EXCL may answer `ENOTSUP` or `EINVAL`
+/// (`renamex_np(2)`), and on either a hard link — which fails on an existing
+/// name just as atomically — takes its place. That branch is written from the
+/// manual and no test reaches it.
 ///
 /// Files get the process's ordinary umask, as macOS's own screenshots do; they
 /// are not `PrivateFile`, because the person is about to drag them into a chat.
@@ -412,11 +402,9 @@ struct SystemShotTrash: ShotTrashing {
 /// A screenshot is often of something that was not meant to outlive the moment
 /// — a password manager's window, a bank page — and a manager that records every
 /// copy would keep it in a history, on disk, for weeks. The convention is
-/// nspasteboard.org's: a type the pasteboard carries beside the data, whose
-/// content is ignored. `ConcealedType` is the one that says "do not record";
-/// `TransientType` says the item is short-lived and is added because a manager
-/// may honour one of the two and not the other. Neither stops anything from
-/// pasting the picture. Whether a given manager honours them was not measured.
+/// nspasteboard.org's: `ConcealedType` says "do not record", `TransientType` that
+/// the item is short-lived, and both are added because a manager may honour one
+/// and not the other. Neither stops a paste, and neither binds a manager.
 ///
 /// The board is injectable by name so a test reads the types off a pasteboard of its own
 /// and never the person's.
@@ -469,37 +457,25 @@ struct SystemShotPasteboard: ShotPasteboard {
 
 /// Vision's text request for the lines of a picture, and `NSDataDetector` over each line for what is in it.
 ///
-/// **Which of two ways, and why — measured** (a benchmark rendered one picture of
-/// known text in a light and a dark theme at 1×, 2× and as a 5K frame, read it each way and printed the time,
-/// what each found and what it missed). The other way is `RecognizeDocumentsRequest` with its own data detector.
-/// On the window pictures (1× and 2×) the detector over the plain request found every place the documents request
-/// found and one more, a phone number spelled the Japanese way, and the two took about the same time; on the 5K
-/// pictures the two found about the same places, the plain request one more on the dark one. The detector over
-/// the plain request is taken, because it found no fewer places on any of the six pictures. What the measure also showed, and the engine does not hide: a 5K frame read whole read
-/// the small light-theme text far worse than the same text in a smaller picture did, with either request; and
-/// postal addresses were found on the smaller pictures (English and Russian were the languages tried) and not on
-/// that one, so they are not on the list (`PrivateKind`). The first read of a process loads the system's models
-/// and takes longer than the next.
+/// **Why not `RecognizeDocumentsRequest` with its own data detector:** over pictures of known text in a light and
+/// a dark theme, at 1×, 2× and as a 5K frame, the detector over the plain request found no fewer places on any
+/// picture, in about the same time. With either request a 5K frame read whole reads small light-theme text far
+/// worse than a smaller picture of it, and postal addresses are not found there, so they are not on the list
+/// (`PrivateKind`). The first read of a process loads the system's models and takes longer than the next.
 ///
-/// **`minimumTextHeightFraction` is left at the request's default.** The measure read each picture a third way
-/// with it set to 0 (the default is a fraction of the picture's height, a likely reason for the poor read of 5K light).
-/// On the Mac where it was tried, 0 found none of the 16 known places on the 5K light picture where the default
-/// found 3, 12 against 14 on the 5K dark one, and 15 against 16 on the 2× dark window; it was the same on the
-/// other three window pictures. So it is no remedy, and the setting that read more was the default.
+/// **`minimumTextHeightFraction` is left at the request's default:** set to 0 it found fewer places, not more,
+/// on the 5K pictures, and no more on the window ones.
 ///
-/// What it finds of the kinds `PrivateKind` names is kept and the rest (dates, addresses, anything else the
-/// detector knows) is not looked for, so the engine never holds a match it will not act on. **A card number is not
-/// the detector's to find** — it knows none — and is found by Helm's rule (`CardNumbers`) in each line. A match is
-/// boxed by Vision at its own range in its own line, or at the whole line when Vision cannot box it: a box too
-/// wide hides more, and never less. **A find that wraps is blurred only on its first line:** the detector and the
-/// card rule see one line at a time, so the rest of a link, an e-mail address or a number that continues on the
-/// next line is not found and is not blurred. A match of a kind not on the list, and one whose range cannot be put
-/// back into its line, is dropped here, and nothing says so.
+/// Only the kinds `PrivateKind` names are looked for, so the engine never holds a match it will not act on. **A
+/// card number is not the detector's to find** — it knows none — and is found by Helm's rule (`CardNumbers`) in
+/// each line. A match is boxed by Vision at its own range in its own line, or at the whole line when Vision cannot
+/// box it: a box too wide hides more, and never less. The detector and the card rule see one line at a time, so the
+/// rest of a find that wraps is not blurred. A match whose range cannot be put back into its line is dropped
+/// here, and nothing says so.
 ///
-/// The phase `screenshots.recognize` wraps the request's `perform` and not the parsing; what is read out of its
-/// answer is done after it, off the cooperative pool on one thread, because each line's candidate, detector run and
-/// boxes are asked for one by one. The registry keeps one entry per label: two readings alive at once (a closed
-/// editor's reading still working when the next is asked) are one entry, and the first of them to end takes it away.
+/// The parsing of the answer runs off the cooperative pool on one thread, because each line's candidate, detector
+/// run and boxes are asked for one by one; the phase around the request is
+/// Architecture/ScreenshotsEditor.md § Reading the text of the area.
 /// The order is the request's, which is a reading order: in a picture of two columns the left one comes first. Nothing the picture says is logged: only that the request threw, and what kind of error.
 struct VisionTextReader: ScreenTextReading {
     func read(_ image: CGImage) async -> TextReading {
@@ -591,9 +567,7 @@ public struct SystemCapturePreferences: CapturePreferences {
 
 /// macOS's own capture sound, read from its bundle at run time and not copied.
 ///
-/// `Screen Capture.aif` under CoreAudio's system sounds is the file; `Grab.aif`
-/// and `Shutter.aif` beside it are the same inode on the Mac this was written on.
-/// Which of the three macOS's own capture plays was not verified. A file that is
+/// `Screen Capture.aif` under CoreAudio's system sounds is the file. A file that is
 /// not there is an absence and not a refusal — a future macOS may move it — so
 /// the shutter is silent and nothing is logged.
 ///

@@ -21,22 +21,17 @@ import HelmUI
 /// one clause about what used to happen instead. What it never says is how the
 /// defect worked: threads, logs, caches, memory and the names of internal
 /// parts belong in CHANGELOG.md and in the commit, which is where somebody
-/// looking for them will look. The rewrite that established this rule cut the
-/// longest entries by roughly half, and deleted the ones that admitted in so
-/// many words that they were not for the reader — an entry opening "a few
-/// things you are unlikely to notice" is a note to the author.
+/// looking for them will look. An entry opening "a few things you are unlikely
+/// to notice" is a note to the author, not to the reader.
 public enum ChangeKind {
     case new, upd, fix
 
     /// NEW / UPD / FIX, the same three letters in every language.
     ///
-    /// They were words — "Улучшено", "Correctif", "Melhoria" — and a word is a
-    /// different length in each of eight languages and in each of three kinds.
-    /// The badges sit in a column down the left of the list, so the widest one
-    /// set the indent for every entry and the column came out ragged: Russian
-    /// "Улучшено" ran half again as wide as "Испр." beside it. Three letters,
-    /// uppercase, untranslated — the same convention as BETA and DEV, and the
-    /// same width whatever the reader's language.
+    /// A word is a different length in each of eight languages and each of
+    /// three kinds, and the badges sit in a column down the left of the list,
+    /// where the widest would set a ragged indent. Three letters, uppercase,
+    /// untranslated: the convention of BETA and DEV, one width in every language.
     public var label: String {
         switch self {
         case .new: return "NEW"

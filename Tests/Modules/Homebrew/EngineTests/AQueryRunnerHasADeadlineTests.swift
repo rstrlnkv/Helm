@@ -3,14 +3,12 @@ import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// Every fast Homebrew query blocks on `ShellProcessRunner.run` until the tool
-/// closes its output. A brew that hangs — another brew's lock, a network stall,
-/// an installer waiting for input nobody can give — used to park that thread for
-/// the life of the process: the page's spinner never stopped and the module was
-/// dead until the app restarted. The runner bounds the wait now.
+/// closes its output. A brew that hangs (another brew's lock, a network stall,
+/// an installer waiting for input) must not park that thread for the life of
+/// the process, with the page's spinner never stopping.
 ///
 /// The subject must really hang: a fake that answers synchronously makes a test
 /// of a deadline vacuous. `/bin/sleep` writes nothing and stays for 30 s.
-/// Kept: guards the defect fixed in 882fe986 fix(homebrew): the batch — a hang has a deadline, a press has an answer, a phase has a name.
 final class AQueryRunnerHasADeadlineTests: XCTestCase {
 
     func testAHungQueryComesBackAsATimeoutNotNever() {
@@ -23,16 +21,11 @@ final class AQueryRunnerHasADeadlineTests: XCTestCase {
                           "the runner waited past its own deadline")
     }
 
-    /// **`runData` is a second body, and it was the untested one.** The port
-    /// carries two independent implementations — `run` for the three text
-    /// queries and `runData` for `outdated`, which takes the bytes straight to
-    /// `JSONDecoder` — so a deadline proven on one says nothing about the
-    /// other. `outdated` is also the query with the most reason to hang: it is
-    /// the one measured going to the network, at 7.4 s cold.
-    ///
-    /// The same never-finishing subject, for the same reason: `/bin/sleep`
-    /// writes nothing and stays. It dies on the TERM the deadline sends, so
-    /// nothing is left running behind this test.
+    /// **`runData` is a second body.** `run` serves the three text queries and
+    /// `runData` serves `outdated`, which takes the bytes straight to
+    /// `JSONDecoder`, so a deadline proven on one says nothing about the other.
+    /// `outdated` is also the query that goes to the network. `/bin/sleep` dies
+    /// on the TERM the deadline sends, so nothing is left running.
     func testTheBytesQueryHasTheSameDeadline() {
         let runner = ShellProcessRunner(queryTimeout: 0.3)
         let started = Date()
@@ -44,9 +37,8 @@ final class AQueryRunnerHasADeadlineTests: XCTestCase {
                           "the bytes query waited past the runner's deadline")
     }
 
-    /// `brew doctor` goes through `runCapturingDiagnostics`, which is `HelmProcess`'s
-    /// merged read now, and must keep the deadline: a hung doctor is a timeout
-    /// with no output, never a wait.
+    /// `brew doctor` goes through `runCapturingDiagnostics`, which keeps the
+    /// deadline too: a hung doctor is a timeout with no output, never a wait.
     func testTheDiagnosticsQueryHasTheSameDeadline() {
         let runner = ShellProcessRunner(queryTimeout: 0.3)
         let started = Date()
@@ -58,10 +50,9 @@ final class AQueryRunnerHasADeadlineTests: XCTestCase {
                           "the diagnostics query waited past the runner's deadline")
     }
 
-    /// The default is not a test value: it has to clear the slowest real query
-    /// with room. The owner's log has warm queries at 0.3–0.6 s and a cold
-    /// `brew outdated` (which goes to the network) at 7.4 s; the default must
-    /// stand well above that and still end a hang within a minute.
+    /// The default is not a test value: it clears the slowest real query, a
+    /// cold `brew outdated` that goes to the network (7.4 s), tenfold, and
+    /// still ends a hang within a few minutes.
     func testTheDefaultDeadlineClearsTheSlowestMeasuredQueryTenfold() {
         XCTAssertGreaterThanOrEqual(ShellProcessRunner.defaultQueryTimeout, 74,
                                     "cold brew outdated was measured at 7.4 s; the deadline must clear it tenfold")

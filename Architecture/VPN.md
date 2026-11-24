@@ -49,8 +49,7 @@ is `VPNStartAnswer`, four states and no text, so no name rides in it: started, n
 service (the network set was read and held no such name), unreadable (it could not be read, so
 the name is neither found nor missing: a refusal, logged as one, never «renamed»), and the
 system's refusal with its `SCError`. The options it hands over are `VPNStartOptions`, the keys
-and the branches of `scutil`'s own `nc_start` (read from its machine code with `otool -arch
-arm64e -tV /usr/sbin/scutil | grep -B160 _SCNetworkConnectionStart`, not from the header): a PPP
+and the branches of `scutil`'s own `nc_start` (read from its machine code, not from the header): a PPP
 service gets the PPP login, and with L2TP under it also the IPSec secret; Cisco IPSec gets the
 XAuth login and the secret; a plugin VPN (`VPN` interface type) gets its `AuthName` and
 `AuthPassword` and no secret. `ASecretNeverReachesAnArgumentListTests` and
@@ -75,7 +74,7 @@ The connections are a card grid whose column count is arithmetic and whose cap
 needs an order: `VPNGridLayout` (its column rule and `cardCeiling`) and
 `VPNConnectionOrder` say why.
 
-The defaults key `module.vpn.lastUsedName`, which earlier builds could write, is read by nothing and stays where it is, neither migrated nor deleted.
+The defaults key `module.vpn.lastUsedName` is read by nothing and stays where it is, neither migrated nor deleted.
 
 ## How VPN's model reaches its engine
 
@@ -94,7 +93,7 @@ the model reaches the engine): the latest state first, the subscriber registered
 one hold of `EngineNews`'s lock that replays it (`EngineNews.stream`), one task in the model. The stream adds
 no dedup of its own, so the forced re-emission of a refused measurement (`emitState(force:)`,
 which moves no field of the payload and is the only answer that run gives) reaches the
-model's stream (`TheVPNStreamReplaysTheLatestStateTests`), and the model clears its spinner on it.
+model's stream, and the model clears its spinner on it.
 
 After the descriptor's `stop(_:)`, which the host calls before the engine's
 `deactivate()`, the model reaches none of them, draws no state the engine still
@@ -132,17 +131,13 @@ Nothing is connected, disconnected or typed to reach a state, and the module nev
 | `secret-locked` | a banner row naming the configuration whose secret nobody has pressed for | needs a configuration whose secret sits behind a prompt; the bench's `secret-locked` |
 | `orphaned` | a banner row counting the rules that point at a VPN no longer in System Settings | a rule written for a configuration since deleted; the bench's `orphaned` |
 | `no-vpns` | the empty state, "Open Network settings" | a Mac with no configuration; the bench's `no-vpns` |
-| `many` | six cards in two columns and "Show all (n)" | a Mac with more than six configurations; the bench's `many` |
-| `many-expanded` | every card, and "Show fewer" in place of "Show all (n)" | `--press "Show all (n)"` on a Mac with more than six configurations; not shot |
-| `traffic-unknown` | "Could not check where the traffic goes" in place of the verdict | needs a tunnel that is up with both routing readings missing: neither the dynamic store's primary interface nor the tool's `IsPrimaryInterface` answered; not shot |
-| `exit-country-unknown` | "The exit country is not known" where the country stood | needs a tunnel carrying the traffic whose exit has not answered; not shot |
-| `no-such-service` | a banner row: "…" is no longer in System Settings | a connect or a disconnect on a name macOS no longer has; not shot |
-| `notice-denied` | in the notices popover, "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." | needs the notification permission refused to Helm and one of the card's two questions set to Notification; not shot |
-| `spin-silent-warning` | in the notices popover, "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." | the ring switch off and "When a rule fires" set to Nothing on the same card; not shot |
+| `many`, `many-expanded` | six cards in two columns and "Show all (n)"; every card, and "Show fewer" in its place | a Mac with more than six configurations; the bench's `many`; `--press "Show all (n)"` (`many-expanded` not shot) |
+| `traffic-unknown` | "Could not check where the traffic goes" in place of the verdict | a tunnel that is up with both routing readings missing (neither the dynamic store's primary interface nor the tool's `IsPrimaryInterface` answered); not shot |
+| `exit-country-unknown`, `no-such-service` | "The exit country is not known" where the country stood; a banner row: "…" is no longer in System Settings | a tunnel carrying the traffic whose exit has not answered; a connect or a disconnect on a name macOS no longer has; not shot |
+| `notice-denied`, `spin-silent-warning` | in the notices popover, "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead."; "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." | the notification permission refused to Helm and one of the card's two questions set to Notification; the ring switch off and "When a rule fires" set to Nothing on the same card; not shot |
 | `rules popover` | the rules for one tunnel: each application, its timing pop-up and its menu, "Add app…" | `--press` on the card's left door (a popover is a window macOS orders in, so `shoot.sh` may not see it; `VPNConnectionCard.rulesPopover` is the view it presents); the bench's `rules` |
 | `notices popover` | the two questions, each with the picture of its mode and a pop-up, the ring switch and colours | `--press` on the card's right door |
-| `tile` | the 2×1 panel tile, one row and switch per connection | `--panel`, the VPN widget at 2×1; the bench's `tile` |
-| `compact` | the 1×1 widget: how many are up out of how many exist | `--panel`, the VPN widget at 1×1; the bench's `compact` |
+| `tile`, `compact` | the 2×1 panel tile, one row and switch per connection; the 1×1 widget: how many are up out of how many exist | `--panel`, the VPN widget at 2×1 and at 1×1; the bench's `tile` and `compact` |
 | `worst` | de, nine configurations, two tunnels up: the verdict on one line, the tunnel switcher and "Measure speed" on one row, four readings on one row, six cards in two columns and "Show all (9)". Long configuration names, `many` in ru, `many` at the narrowest pane: not rendered, the bench's names are seven letters at most and `bench.sh` passes no width; at 772 pt only `two-up` in en was shot | the bench's `many` with its language argument |
 
 **Motion.** The hero reveals by `HelmMotion.disclosure` over a clipped measured height. The grid's "Show all" mounts and unmounts its cards on `HelmMotion.interface`, there is no measured height there. The banners and the popovers change sharply: the banners are `Form` rows whose height the table sets, and a popover's frame is drawn by AppKit outside ours, so a reveal there would be clipped from the wrong side or not at all.

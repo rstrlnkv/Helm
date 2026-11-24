@@ -4,7 +4,6 @@ import Module_Homebrew_Engine
 
 struct HomebrewPackageList: View {
     @ObservedObject var hb: HomebrewViewModel
-    let singleColumn: Bool
 
     // **Two arms, two views.** A switch of segment is a cut (`HomebrewManager`'s
     // transaction line) because the installed list and the updates list are
@@ -20,14 +19,9 @@ struct HomebrewPackageList: View {
     }
 
     /// The sentence a package list's own section draws instead of its rows,
-    /// or nil when `screen` says to draw the rows themselves — apart from
-    /// `packageList`'s `body`: which reading says which sentence is a
-    /// decision. `notes` are the
-    /// three sentences each call site already carries (`installedList`'s
-    /// "No packages installed.", `updatesList`'s "Everything is up to date.",
-    /// and the two refusals beside them); `.noMatches` earns the one sentence
-    /// every tab shares, since a query hiding every row says the same thing
-    /// on both.
+    /// or nil when `screen` says to draw the rows themselves. `notes` are the
+    /// call site's own three sentences; `.noMatches` is the one every tab
+    /// shares.
     static func ownListNote(_ screen: ListScreen,
                             notes: (nothing: String, unanswerable: String, waiting: String))
         -> (text: String, busy: Bool)? {
@@ -40,12 +34,8 @@ struct HomebrewPackageList: View {
         }
     }
 
-    /// **Not selectable, because there is nothing to select.** A note is
-    /// the sentence standing in for rows there are none of, and a row that
-    /// highlights and then describes nothing in the inspector is a row that
-    /// looks broken. Shared by both package tabs' empty rows and by the
-    /// "Available to install" section's own three sentences — one builder,
-    /// so a note row cannot drift into three shapes across the page.
+    /// **Not selectable, because there is nothing to select.** One builder for
+    /// every note row on the page, the section's included.
     private func noteRow(_ text: String, busy: Bool = false) -> some View {
         HelmBusyLabel(text, busy: busy)
             .foregroundStyle(HelmText.quiet)
@@ -54,21 +44,12 @@ struct HomebrewPackageList: View {
             .selectionDisabled()
     }
 
-    /// The description line a row carries in the single-column layout — a
-    /// space while `hb.description` has nothing for it yet, so the row has its
-    /// second line from the start (`HomebrewPackageRow`'s `desc`); nil in the
-    /// two-column layout, which passes none.
-    private func rowDescription(name: String, isCask: Bool) -> String? {
-        singleColumn ? hb.description(name: name, isCask: isCask) ?? " " : nil
-    }
-
     /// **The "Available to install" section's own three sentences, and its
     /// rows.** Shared by both package tabs' `listOrEmpty`, the only place it is
     /// drawn: Health has no such section.
     ///
-    /// `marksUpdates` reserves the update mark's slot on Installed so a
-    /// hit's name lines up with the installed rows above it — `HomebrewPackageRow`'s own
-    /// reason for taking `false` rather than nil there.
+    /// `marksUpdates` reserves the update mark's slot on Installed so a hit's
+    /// name lines up with the installed rows above it.
     @ViewBuilder
     private func availableRows(_ section: AvailableSection, hits: [SearchHit], marksUpdates: Bool) -> some View {
         switch section {
@@ -77,9 +58,8 @@ struct HomebrewPackageList: View {
         case .unanswerable: noteRow(HbStr.couldNotSearch)
         case .found:
             ForEach(hits) { hit in
-                HomebrewPackageRow(name: hit.name, detail: nil, isCask: hit.isCask, singleColumn: singleColumn,
-                                  hasUpdate: marksUpdates ? false : nil,
-                                  desc: rowDescription(name: hit.name, isCask: hit.isCask))
+                HomebrewPackageRow(name: hit.name, detail: nil, isCask: hit.isCask,
+                                  hasUpdate: marksUpdates ? false : nil)
             }
         }
     }
@@ -93,9 +73,8 @@ struct HomebrewPackageList: View {
                     nothing: HbStr.noneInstalled, unanswerable: HbStr.couldNotList,
                     waiting: HbStr.packagesLoading,
                     marksUpdates: true, section: hb.section, hits: hb.shownHits) { pkg in
-            HomebrewPackageRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask, singleColumn: singleColumn,
-                               hasUpdate: hasUpdate(pkg.id),
-                               desc: rowDescription(name: pkg.name, isCask: pkg.isCask))
+            HomebrewPackageRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask,
+                               hasUpdate: hasUpdate(pkg.id))
         }
     }
 
@@ -116,21 +95,15 @@ struct HomebrewPackageList: View {
                         nothing: HbStr.upToDate, unanswerable: HbStr.couldNotCheckForUpdates,
                         waiting: HbStr.checkingForUpdates,
                         marksUpdates: false, section: hb.section, hits: hb.shownHits) { pkg in
-                // A pinned formula and a cask can both carry a badge here — the
-                // parser does not refuse a `pinned` flag on a cask entry, even
-                // though `brew pin` only ever sets one on a formula
-                // (`BrewOutdatedParser.swift`) — so both may be drawn without
-                // choosing between them.
-                HomebrewPackageRow(name: pkg.name, detail: pkg.versionStep, isCask: pkg.isCask,
-                                   singleColumn: singleColumn, pinned: pkg.pinned,
-                                   desc: rowDescription(name: pkg.name, isCask: pkg.isCask))
+                // The parser does not refuse `pinned` on a cask entry
+                // (`BrewOutdatedParser.swift`), so both badges may be drawn.
+                HomebrewPackageRow(name: pkg.name, detail: pkg.versionStep, isCask: pkg.isCask, pinned: pkg.pinned)
             }
         }
     }
 
     /// Whether an installed package has an update waiting, for the row's dot.
-    /// The same reading `InspectorState.of` takes for the same package, so the
-    /// row and the inspector cannot disagree about one fact.
+    /// The same reading `InspectorState.of` takes, so the two cannot disagree.
     private func hasUpdate(_ id: String) -> Bool {
         if case .available = PackageStanding.updates(for: id, outdated: hb.outdated,
                                                       loadedOutdated: hb.loadedOutdated) {
@@ -140,18 +113,16 @@ struct HomebrewPackageList: View {
     }
 
     /// `T.ID == String`: every list here is keyed by a `BrewKey` id, which is
-    /// also what `hb.selection` holds — no `String(describing:)` conversion
-    /// needed at the boundary.
+    /// also what `hb.selection` holds.
     ///
     /// **Four sentences for four states.** A refusal reads differently from a
     /// wait, or the pane spins over a question nothing will answer. `.noMatches`:
     /// rows exist and a query hides all of them, neither an empty answer nor a
     /// refusal.
     ///
-    /// `shown` is `items` with the query applied — the two are equal when
-    /// there is no query, which is what keeps every existing reading of the
-    /// three original states unchanged. `section`/`hits` are the "Available
-    /// to install" block that may sit under the rows; nil/`[]` draws nothing.
+    /// `shown` is `items` with the query applied, equal with no query.
+    /// `section`/`hits` are the "Available to install" block that may sit under
+    /// the rows; nil/`[]` draws nothing.
     private func listOrEmpty<T: Identifiable, Row: View>(
         _ items: [T], shown: [T], reading: ListReading,
         nothing: String, unanswerable: String, waiting: String,
@@ -159,40 +130,26 @@ struct HomebrewPackageList: View {
         section: AvailableSection?, hits: [SearchHit],
         @ViewBuilder row: @escaping (T) -> Row) -> some View
         where T.ID == String {
-        // **The section forces the list shape, even over a list that is
-        // itself completely empty.** A genuinely empty `installed` reads `.nothing`
-        // whatever the query says; the section has to draw inside the `List` for its
-        // waiting and refused sentences to be seen. A section is only ever non-nil once a needle has
-        // actually been asked about (`AvailableSection.of`), so this cannot
-        // force the list shape over an untyped field.
+        // **The section forces the list shape, even over an empty list:** it
+        // draws inside the `List`. It is non-nil only once a word has been
+        // asked about (`AvailableSection.of`).
         let screen = ListScreen.of(isEmpty: items.isEmpty, shownIsEmpty: shown.isEmpty,
                                    reading: reading)
         let listShape = ListScreen.forcesListShape(section: section, screen: screen)
-        // **One call to `packageList`, not two.** Once inside this `if` and
-        // once in its `else`, SwiftUI reads them as two
-        // different views at two different positions in the tree — moving
-        // between "no section" and "a section just appeared" tore the table
-        // down and rebuilt it, on every keystroke that flipped which branch
-        // was taken, which is exactly the identity (ARCHITECTURE.md § Design system) says
-        // SwiftUI never interpolates across. `screen` travels into the one call
-        // site instead, and `packageList` reads the sentence for its own
-        // reading out of it — the note this list draws for a waiting or
-        // refused query does not disappear the moment the section takes
-        // over the shape.
+        // **One call to `packageList`, not two:** two call sites are two views
+        // to SwiftUI, and a section appearing would rebuild the table on a
+        // keystroke (ARCHITECTURE.md § Design system). `screen` travels into
+        // the one call, which reads its own sentence out of it.
         return Group {
             if listShape {
                 packageList(shown, screen: screen, notes: (nothing, unanswerable, waiting),
                            marksUpdates: marksUpdates,
                            section: section, hits: hits, row: row)
             } else if screen == .waiting {
-                // `HelmBusyState()` is the bare spinner its own doc comment
-                // names as one of the three shapes it exists to end; the
-                // caller still has to say what is being waited on.
+                // Says what is being waited on, not a bare spinner.
                 HelmBusyState(waiting)
             } else if screen == .unanswerable {
-                // The same still drawing as `.nothing` and a different
-                // sentence: nothing is on its way, so nothing moves, and what
-                // separates the two is the only thing that can — the words.
+                // Still, like `.nothing`; only the words differ.
                 HelmEmptyState(message: unanswerable)
             } else {
                 HelmEmptyState(message: nothing)
@@ -202,27 +159,21 @@ struct HomebrewPackageList: View {
 
     /// The one `List` every package tab draws — its own rows or the sentence
     /// its own reading earns, and the "Available to install" section under
-    /// them when there is one. The only call site `listOrEmpty` has, for the
-    /// reason stated there: two would be two views to SwiftUI.
+    /// them when there is one.
     ///
     /// **`screen` decides the first section's row, not `shown.isEmpty`
-    /// alone.** A bare emptiness check read every non-row state — still
-    /// waiting on `brew`, a refused query, an honestly empty answer — as the
-    /// same «Nothing in this list matches.», which is the module's own
-    /// "refused list is not an empty one" rule broken a second time, this
-    /// time by the section rather than by a missing reading.
+    /// alone:** waiting, refused and empty are not «Nothing in this list
+    /// matches.».
     private func packageList<T: Identifiable, Row: View>(
         _ shown: [T], screen: ListScreen, notes: (nothing: String, unanswerable: String, waiting: String),
         marksUpdates: Bool,
         section: AvailableSection?, hits: [SearchHit],
         @ViewBuilder row: @escaping (T) -> Row) -> some View
         where T.ID == String {
-        // A `List` with no selection has no focusable rows, and selecting is
-        // how the inspector is reached. No
-        // `.onTapGesture`, no `.listRowBackground`: macOS draws the system
-        // selection itself.
+        // Selecting is how the inspector is reached. No `.onTapGesture`, no
+        // `.listRowBackground`: macOS draws the system selection itself.
         List(selection: Binding(get: { hb.selected }, set: { hb.select($0) })) {
-            Section(header: HomebrewColumnHeader(marksUpdates: marksUpdates, singleColumn: singleColumn)) {
+            Section(header: HomebrewColumnHeader(marksUpdates: marksUpdates)) {
                 if let note = Self.ownListNote(screen, notes: notes) {
                     noteRow(note.text, busy: note.busy)
                 } else {
@@ -235,17 +186,10 @@ struct HomebrewPackageList: View {
                 }
             }
         }
-        // **Striped, and no inset of its own.** These two lists are rows of
-        // one shape and a great many of them, which is what a stripe is for: it
-        // keeps the eye on a row while it crosses from a name to a version at
-        // the far edge, and it puts the page with the other striped lists —
-        // Uninstaller, Orphans and Leftovers stop at
-        // `helmStripedList(rowPitch:)`; Disk, Autopilot and Duplicates stay
-        // plain. The Health tab is not one of them: its rows are
-        // paragraphs, one to three of them, with nothing to cross
-        // (`HomebrewHealthPage`). No `.padding(.horizontal, HelmSpace.s5)`
-        // here: it would put this page's rows 12 pt further in than the rows
-        // of every other list in the app.
+        // **Striped, and no inset of its own.** Many rows of one shape: the
+        // stripe keeps the eye on a row from the name to the version at the
+        // far edge. A horizontal padding here would set these rows further in
+        // than every other list in the app.
         .helmStripedList(rowPitch: HelmSpace.s8)
     }
 }

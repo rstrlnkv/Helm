@@ -2,26 +2,85 @@ import Foundation
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-// The uninstaller engine's doubles, in one place because they are the target's
-// and not any one test file's.
+// The uninstaller engine's doubles, in one place because they are the target's.
 //
-// **They are not variants of one fake.** Four things can stand in for
-// `TrashPort` and each is a different subject: one that never removes anything,
-// one that records what it was asked to remove and can be told to refuse a
+// They are not variants of one fake. The four `TrashPort` doubles are four
+// subjects: one that never removes anything, one that records and can refuse a
 // named path, one that really moves files, and one that refuses everything so
-// the *reason* can be argued about. Collapsing them would make a fake simpler
-// than the port it stands for, and a state the real port can be in would stop
-// being writable down.
+// the reason can be argued about. Collapsed, a state the real port can be in
+// could not be written down.
 
-struct FakeFS: FileSystemPort {
-    let existing: [String: Int]
-    /// Directory listings for the orphan scan, keyed by parent path.
-    var listings: [String: [String]] = [:]
-    func exists(_ url: URL) -> Bool { existing[url.path] != nil }
-    func size(_ url: URL) -> Int { existing[url.path] ?? 0 }
-    func glob(_ pattern: URL) -> [URL] { [] }
+/// The one `FileSystemPort` fake: a Mac with none of the files a test asks about
+/// (`FakeFS()`: nothing exists, nothing weighs anything, no glob and no listing finds
+/// a thing), or the files the test names, each reading counted.
+///
+/// - `existing`: path → size, what exists.
+/// - `listings`: directory listings for the orphan scan, keyed by parent path.
+/// - `everyPathExistsAt`: every path exists at that many bytes, and nothing is listed.
+/// - `globbing`: a glob resolves against the siblings in `existing` and a folder lists
+///   its children from it, the way the system port does; a fake that answers `[]` for
+///   a glob cannot see a defect in which names one reaches.
+/// - `onDisk`: what is not scripted here is the real disk's answer.
+/// - `slowSizes`: a path whose walk takes that long, as on a Mac that is busy.
+/// - `reads`: every question put to it, so "no read" is a number.
+final class FakeFS: FileSystemPort, @unchecked Sendable {
+    var existing: [String: Int]
+    var listings: [String: [String]]
+    var everyPathExistsAt: Int?
+    var globbing: Bool
+    var onDisk: Bool
+    var slowSizes: [String: TimeInterval]
+    private let lock = NSLock()
+    private var asked = 0
+    var reads: Int { lock.withLock { asked } }
+
+    init(existing: [String: Int] = [:], listings: [String: [String]] = [:],
+         everyPathExistsAt: Int? = nil, globbing: Bool = false, onDisk: Bool = false,
+         slowSizes: [String: TimeInterval] = [:]) {
+        self.existing = existing
+        self.listings = listings
+        self.everyPathExistsAt = everyPathExistsAt
+        self.globbing = globbing
+        self.onDisk = onDisk
+        self.slowSizes = slowSizes
+    }
+
+    private func count() { lock.withLock { asked += 1 } }
+
+    func exists(_ url: URL) -> Bool {
+        count()
+        if everyPathExistsAt != nil { return true }
+        if onDisk { return FMFileSystem().exists(url) }
+        return existing[url.path] != nil
+    }
+    func size(_ url: URL) -> Int {
+        count()
+        if let delay = slowSizes[url.path] { Thread.sleep(forTimeInterval: delay); return 1 }
+        if let size = everyPathExistsAt { return size }
+        if onDisk { return FMFileSystem().size(url) }
+        return existing[url.path] ?? 0
+    }
+    func glob(_ pattern: URL) -> [URL] {
+        count()
+        if onDisk { return FMFileSystem().glob(pattern) }
+        guard globbing else { return [] }
+        let dir = pattern.deletingLastPathComponent().path
+        let name = pattern.lastPathComponent
+        return existing.keys
+            .filter { ($0 as NSString).deletingLastPathComponent == dir }
+            .filter { GlobMatch.matches(($0 as NSString).lastPathComponent, pattern: name) }
+            .sorted()
+            .map { URL(fileURLWithPath: $0) }
+    }
     func children(of url: URL) -> [URL] {
-        (listings[url.path] ?? []).map { url.appendingPathComponent($0) }
+        count()
+        if let names = listings[url.path] { return names.map { url.appendingPathComponent($0) } }
+        if onDisk { return FMFileSystem().children(of: url) }
+        guard globbing else { return [] }
+        return existing.keys
+            .filter { ($0 as NSString).deletingLastPathComponent == url.path }
+            .sorted()
+            .map { URL(fileURLWithPath: $0) }
     }
 }
 struct FakeApps: AppLister {
@@ -40,10 +99,8 @@ struct FakeApps: AppLister {
         return opened[path]
     }
     /// Optional, the way the port is: `nil` is a Trash this process was not allowed
-    /// to read, which is a different fact from an empty one and has its own tests in
-    /// `TheOfferSwitchSaysWhatItIsDoingTests`. A non-optional here would satisfy
-    /// nothing and hand every test the protocol's default of `[]` — with no error
-    /// anywhere.
+    /// to read (`TheOfferSwitchSaysWhatItIsDoingTests`). A non-optional would not
+    /// satisfy the requirement and would silently hand every test the default `[]`.
     var trashed: [TrashedApp]? = []
     func trashedApps() -> [TrashedApp]? { trashed }
     /// A real Mac's two answers, which differ. `ids` is what `contentsOfDirectory`
@@ -53,45 +110,6 @@ struct FakeApps: AppLister {
         FakeApps(known: ids.union(nested), apps: ids.map {
             InstalledApp(name: $0, bundleID: $0, path: "/Applications/\($0).app")
         })
-    }
-}
-/// A Mac with none of the files a test asks about: nothing exists, nothing weighs
-/// anything, no glob and no listing finds a thing.
-struct NoFiles: FileSystemPort {
-    func exists(_ url: URL) -> Bool { false }
-    func size(_ url: URL) -> Int { 0 }
-    func glob(_ pattern: URL) -> [URL] { [] }
-    func children(of url: URL) -> [URL] { [] }
-}
-/// The opposite: every path exists, at `size` bytes, and nothing is listed.
-struct EveryPathExists: FileSystemPort {
-    var size = 0
-    func exists(_ url: URL) -> Bool { true }
-    func size(_ url: URL) -> Int { size }
-    func glob(_ pattern: URL) -> [URL] { [] }
-    func children(of url: URL) -> [URL] { [] }
-}
-/// Resolves a glob against its siblings and lists a folder's children the way the
-/// system port does, over the paths in `entries` (path → size). A fake that
-/// answers `[]` for a glob cannot see a defect in which names one reaches.
-struct GlobbingFS: FileSystemPort {
-    let entries: [String: Int]
-    func exists(_ url: URL) -> Bool { entries[url.path] != nil }
-    func size(_ url: URL) -> Int { entries[url.path] ?? 0 }
-    func glob(_ pattern: URL) -> [URL] {
-        let dir = pattern.deletingLastPathComponent().path
-        let name = pattern.lastPathComponent
-        return entries.keys
-            .filter { ($0 as NSString).deletingLastPathComponent == dir }
-            .filter { GlobMatch.matches(($0 as NSString).lastPathComponent, pattern: name) }
-            .sorted()
-            .map { URL(fileURLWithPath: $0) }
-    }
-    func children(of url: URL) -> [URL] {
-        entries.keys
-            .filter { ($0 as NSString).deletingLastPathComponent == url.path }
-            .sorted()
-            .map { URL(fileURLWithPath: $0) }
     }
 }
 final class FakeTrash: TrashPort, @unchecked Sendable {
@@ -117,18 +135,9 @@ struct RefusesEverything: TrashPort {
         TrashOutcome(succeeded: false, errorCode: 513, message: "denied")
     }
 }
-/// A running app that can actually stop running — and start again.
-///
-/// `running` was a `let`, so quitting changed nothing the port could report and
-/// "the app is gone now" was unrepresentable — which is why nothing could test
-/// a wait for it, and why the wait was a fixed 800 ms sleep in the view model.
-///
-/// It could then go down and never up, which left the other direction
-/// unrepresentable in exactly the same way: the person reviews an app that is
-/// closed, launches it again while reading, and presses Move to Trash. That is
-/// the state `waitUntilGone` exists for, and no test of it could have been
-/// written. `launch` is the port's own missing half — an application starting is
-/// something `NSWorkspace` reports and this fake could not be told.
+/// A running app that can actually stop running, and start again: the person
+/// can relaunch an app while reading the review, and `waitUntilGone` and the
+/// second asking exist for both directions.
 final class FakeRunning: RunningAppsPort, @unchecked Sendable {
     private let lock = NSLock()
     private var running: Set<String>
@@ -136,24 +145,17 @@ final class FakeRunning: RunningAppsPort, @unchecked Sendable {
     private let stubborn: Set<String>
     /// Quitting the key brings the value back up.
     ///
-    /// `launch` alone can only say "the app is up again" at a moment the test
-    /// picks by hand, which is no moment at all once the subject is *inside* a
-    /// batch — the engine quits every application in turn and waits for each,
-    /// and what a test needs is a relaunch landing in that window. This is the
-    /// ordinary way one arrives: a helper or a login item that restarts its own
-    /// app when it is killed, `open -a` from a script, the person double
-    /// clicking. Deterministic where a `sleep` racing a five-second deadline
-    /// is not.
+    /// A relaunch landing inside a batch's quit loop, as a login item or helper
+    /// restarting its app does. Deterministic where a `sleep` racing the deadline
+    /// is not; `launch` alone cannot reach inside the batch.
     private let relaunching: [String: String]
     /// Records (bundleID, force) so tests can assert how an app was quit.
     private(set) var quits: [(String, Bool)] = []
 
     /// How long an app takes to actually go after being asked.
     ///
-    /// Zero would make every test of a *wait* vacuous: the app would be gone
-    /// before `waitUntilGone` was even called, so the assertion would hold with
-    /// the wait deleted. A real app takes a moment, and that moment is the
-    /// whole subject.
+    /// Not zero: the app would be gone before `waitUntilGone` was called, and a
+    /// test of the wait would pass with the wait deleted.
     private let quitAfter: TimeInterval
 
     init(running: [String], stubborn: [String] = [], quitAfter: TimeInterval = 0,
@@ -169,9 +171,8 @@ final class FakeRunning: RunningAppsPort, @unchecked Sendable {
         return running.contains(bundleID)
     }
 
-    /// The app is up again — started by the person, or by a login item, or by
-    /// whatever else starts applications while somebody reads a review screen.
-    /// Nothing asked Helm's permission, which is the whole point of it.
+    /// The app is up again, started by the person or a login item while somebody
+    /// reads a review screen, without asking Helm.
     func launch(_ bundleID: String) {
         lock.lock(); running.insert(bundleID); lock.unlock()
     }
@@ -195,20 +196,12 @@ final class FakeRunning: RunningAppsPort, @unchecked Sendable {
 
 // MARK: - Tests
 
-/// **Nothing here removes anything.** The engine takes a `TrashPort` whether or
-/// not the test is about removal, and most of these are about which apps are
-/// offered — the removal has its own tests, behind `RemovableScope`.
+/// Nothing here removes anything. The engine takes a `TrashPort` whether or
+/// not the test is about removal; a test that wants a refusal or a record wants
+/// `FakeTrash(failing:)`, `MovingTrash` or `RefusesEverything`.
 ///
-/// A test that wants a refusal, or wants to know what was asked for, wants
-/// `FakeTrash(failing:)`, `MovingTrash` or `RefusesEverything` instead.
-///
-/// **The claim is enforced rather than measured once.** It used to say that
-/// making this refuse everything with 513 changed no result in this target —
-/// which was true, was measured by hand on one afternoon, and had nothing to
-/// keep it true. `XCTFail` is that same measurement with a runner behind it: a
-/// test that starts reaching `trashItem` says so on the run that starts it,
-/// instead of quietly taking a `.success` it was never entitled to. The return
-/// is unreachable by the time it is read.
+/// Enforced by `XCTFail`: a test that starts reaching `trashItem` says so,
+/// instead of taking a `.success` it was never entitled to.
 struct NoTrash: TrashPort {
     func trashItem(_ url: URL) -> TrashOutcome {
         XCTFail("no test here trashes — this test wants a trash double of its own")
@@ -218,18 +211,12 @@ struct NoTrash: TrashPort {
 
 /// **Nothing here is running**, and nothing is asked to quit.
 ///
-/// Not `FakeRunning(running: [])`, which is the same answer for a different
-/// reason: that one is a machine whose apps can start, stop and refuse to stop,
-/// asked at a moment when none of them is up. This is a test that never asks.
+/// Not `FakeRunning(running: [])`, a machine whose apps can start and stop,
+/// asked when none is up. This is a test that never asks for a quit.
 ///
-/// The two halves are deliberately different shapes. `isRunning` answers
-/// `false` because that is a real answer to a real question — nothing here is
-/// up, and tests do ask. `quit` is not an answer at all: it used to record
-/// nothing under the same hand-measurement as `NoTrash`, and now it fails,
-/// because a quit nobody counts and a quit nobody expected are the same
-/// silence. A test that wants an app which is up and can go down after being
-/// asked wants `FakeRunning` — with a `quitAfter`, or a wait for it is over
-/// before it is reached.
+/// `isRunning` answers `false`, a real answer. `quit` fails, as `NoTrash` does:
+/// a quit nobody expected must not pass silently. A test that wants an app to
+/// go down wants `FakeRunning` with a `quitAfter`.
 struct NoRunning: RunningAppsPort {
     func isRunning(bundleID: String) -> Bool { false }
     func quit(bundleID: String, force: Bool) {

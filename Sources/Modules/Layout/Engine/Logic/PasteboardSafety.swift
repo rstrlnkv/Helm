@@ -8,14 +8,10 @@ import Foundation
 /// destroyed by the round trip: an image becomes nothing, RTF becomes plain
 /// text, a file promise becomes nothing.
 ///
-/// That was recorded as a known defect, contained by the fact that every
-/// shortcut reaching this path shipped unbound. When the module was reduced to
-/// one gesture with a default key, the containment went and the defect stayed —
-/// so the containment is here now instead, in a rule rather than in an absence.
-///
-/// Helm declining to convert a selection is a correct outcome that the person
-/// can see and act on. Helm silently eating the screenshot they were about to
-/// paste is not.
+/// The gesture has a default key, so this path is reachable by default, and
+/// the rule here is what contains it. Helm declining to convert a selection is
+/// a correct outcome that the person can see and act on. Helm silently eating
+/// the screenshot they were about to paste is not.
 enum PasteboardSafety {
 
     /// The types a save-and-restore actually round-trips.

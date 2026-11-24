@@ -39,12 +39,9 @@ import Module_Layout_Engine
         carryTheOldNameSettingOver()
     }
 
-    /// «Show Input Source Name» used to be a key of its own, flipped from the
-    /// status item's menu; it is `BadgeStyle.sourceName` now.
-    ///
-    /// Deleting the key without this would take somebody's choice away in silence.
-    /// Written once and erased in the same breath, so it cannot fight a style the
-    /// person picks afterwards.
+    /// The older «Show Input Source Name» key becomes `BadgeStyle.sourceName`,
+    /// so a stored choice is not taken away in silence. Written once and erased
+    /// in the same breath, so it cannot fight a style the person picks afterwards.
     private func carryTheOldNameSettingOver() {
         guard store.bool(LayoutKey.indicatorShowsName, default: false) else { return }
         // `set(nil, for:)` is this store’s delete — there is no `remove`.
@@ -163,8 +160,8 @@ import Module_Layout_Engine
     // MARK: - Menu
 
     /// The sections macOS's own input menu draws, in its order: layouts wearing
-    /// their badges, the emoji palette door, the keyboard settings door. No Keyboard Viewer item: macOS 27 ships no such input source or bundle, and a door
-    /// that opens nothing is worse than none.
+    /// their badges, the emoji palette door, the keyboard settings door. No
+    /// Keyboard Viewer item: macOS 27 ships no such input source or bundle.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let current = InputSourceInfo.current()
@@ -189,7 +186,6 @@ import Module_Layout_Engine
         // press of another app's Edit-menu item matched by title out of
         // `InputManager.loctable`, and the settings page says the indicator works
         // without that permission. Every Mac still opens the palette with Globe+E.
-        // No Keyboard Viewer item: macOS 27 ships no such input source or bundle.
         if isTrusted() {
             menu.addItem(.separator())
             let emoji = actionItem(LyStr.showEmojiPanel(), #selector(openEmojiPalette))

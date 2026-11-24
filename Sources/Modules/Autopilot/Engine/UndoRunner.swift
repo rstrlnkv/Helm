@@ -40,8 +40,8 @@ struct UndoRunner: Sendable {
     func undo(_ record: ActionRecord, key: Data?) -> UndoOutcome {
         guard record.undoneAt == nil else { return .refused(.alreadyUndone) }
         // Everything a return needs the record to have said. A refusal, a
-        // failure and every record written before this build land here: they
-        // moved nothing, so there is nothing to identify and nowhere to go.
+        // failure and a record without identity fields land here: there is
+        // nothing to identify and nowhere to go.
         guard let ruleID = record.ruleID, let device = record.device, let inode = record.inode,
               !record.destination.isEmpty, !record.path.isEmpty
         else { return .refused(.noIdentity) }
@@ -79,8 +79,7 @@ struct UndoRunner: Sendable {
         guard files.directoryExists(origin) else { return .refused(.originGone) }
 
         // Taken before the collision loop, which is the window this pair
-        // narrows — the same shape `RuleRunner.move` uses, and for the same
-        // measured reason.
+        // narrows, as in `RuleRunner.move`.
         let approvedSource = files.ancestry(of: record.destination)
         let approvedOrigin = files.ancestry(of: record.path)
 

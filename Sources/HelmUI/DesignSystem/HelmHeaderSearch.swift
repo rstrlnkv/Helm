@@ -1,24 +1,19 @@
 import SwiftUI
 
 /// **The page's search in the header row: a 36 pt capsule holding an unbezeled `NSSearchField`, 283 wide, or, under
-/// Always Collapse Search, a 36 pt magnifier while it rests.**
+/// Always Collapse Search, a 36 pt magnifier while it rests**
+/// (Architecture/ThePageHeader.md § The row's choices and its menu).
 ///
-/// The capsule is the surface: `HelmSurface.barPlate` under `.flat`, the system's interactive glass in its own
-/// container under `.liquidGlass`. `SettingsWindow.minSize` is measured with the open width, on the Log page, in
-/// each of the eight languages. Return is the only thing that submits.
-/// `sendsWholeSearchString` makes the keystrokes reach the page through the binding alone, and
-/// `sendsActionOnEndEditing` off keeps ending the edit (focus moving elsewhere) from firing the action
-/// as well; `recentsAutosaveName` nil keeps no history of what was typed.
+/// Return is the only thing that submits: `sendsWholeSearchString` makes the keystrokes reach the page through the
+/// binding alone, `sendsActionOnEndEditing` off keeps focus moving elsewhere from firing the action, and
+/// `recentsAutosaveName` nil keeps no history of what was typed. `SettingsWindow.minSize` is measured with the open
+/// width.
 ///
-/// **Resting (`rests`).** The field stays mounted, so the binding and what walks the view for it keep working; when
-/// it rests it is invisible, out of hit-testing and out of accessibility, and the slot is `HelmHeaderActions.side`
-/// wide with a magnifier button on the same capsule, which VoiceOver names as the field is named. A press on it,
-/// or ⌘F (which opens and focuses the field on every page with a search, whatever the setting), opens the slot to
-/// `width` and focuses the field. It closes again when the editing ends with the field
-/// empty (Escape in an empty field, a click elsewhere, focus moving away); a query keeps it open. Only the slot's
-/// width moves, by `HelmMotion.interface`, which Reduce Motion cuts.
+/// While it rests the field stays mounted, so the binding keeps working, but it is invisible, out of hit-testing
+/// and out of accessibility; the magnifier carries the field's name. Only the slot's width moves, by
+/// `HelmMotion.interface`, which Reduce Motion cuts.
 struct HelmHeaderSearch: View {
-    /// The Kit's Search Field (Figma 8:102), the owner's size. The Log page's French prompt, «Rechercher dans le journal», measured with 8 pt to spare in the old 200, so it reads uncut in this width; no other prompt was measured.
+    /// The Kit's Search Field (Figma 8:102), the owner's size. The Log page's French prompt reads uncut in it; no other prompt was measured.
     nonisolated static let width: CGFloat = 283
 
     /// **The one rest predicate.** The search rests as a magnifier only while the setting is on, nobody has opened it

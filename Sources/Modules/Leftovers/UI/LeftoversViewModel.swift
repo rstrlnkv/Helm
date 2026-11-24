@@ -29,15 +29,14 @@ extension LeftoversEngine: LeftoversWork {}
     /// than listed here.
     ///
     /// **Counted where the scan lands, not on every pass over `body`.** The page
-    /// asks `nothingToShow` four times a pass and the scan is hundreds of rows on
-    /// an ordinary Mac — the question belongs to the list, and the list changes in
-    /// one place. `hiddenByKindCount` next to it answers the same shape of
-    /// question with a short-circuit; this one has none to take, because any scan
-    /// can hold unjudged rows.
+    /// asks `nothingToShow` four times a pass over hundreds of rows, and the list
+    /// changes in one place. `hiddenByKindCount` answers the same shape of
+    /// question with a short-circuit; this one has none, because any scan can
+    /// hold unjudged rows.
     ///
     /// **Over the whole scan, not over the list.** None of them is `.orphaned`,
-    /// so the default filter is precisely what hides them: counted over
-    /// `visibleItems` it would answer zero in the state it exists to report.
+    /// so the default filter hides them: counted over `visibleItems` it would
+    /// answer zero in the state it exists to report.
     @Published private(set) var uncheckedCount = 0
     /// A removal is running. The page dims what would start a second one — see
     /// `trash`, where the cost of the second is a wrong report about the first.
@@ -70,19 +69,18 @@ extension LeftoversEngine: LeftoversWork {}
 
     /// What the page draws instead of the list, or nil when there is a list.
     ///
-    /// Asked of `visibleItems`, which is what the `List` is built from — the page
-    /// asked `items.isEmpty`, and on any ordinary Mac those differ: the scan finds
-    /// hundreds of settings files in use and no leftovers at all.
-    /// `LeftoversEmpty.reason` holds the rule and says why there are four answers.
+    /// Asked of `visibleItems`, which is what the `List` is built from, not of
+    /// `items`: on any ordinary Mac the scan finds hundreds of settings files in
+    /// use and no leftovers at all. `LeftoversEmpty.reason` holds the rule and
+    /// says why there are four answers.
     var nothingToShow: LeftoversEmpty.Reason? {
         LeftoversEmpty.reason(scanned: scanned, visible: visibleItems.count,
                               hiddenByKind: hiddenByKindCount, unchecked: uncheckedCount)
     }
 
     /// How many rows the kind filter is holding back — answered without walking
-    /// the scan at all until somebody has hidden a kind, which is every session by
-    /// default. The page asks this on each pass over `body`, over a list that is
-    /// hundreds of items long on an ordinary Mac.
+    /// the scan until somebody has hidden a kind. The page asks this on each pass
+    /// over `body`, over a list of hundreds of items.
     private var hiddenByKindCount: Int {
         guard !hiddenKinds.isEmpty else { return 0 }
         return matchingStatus.count { hiddenKinds.contains($0.kind) }
@@ -97,15 +95,13 @@ extension LeftoversEngine: LeftoversWork {}
         showAll ? items : items.filter { $0.status == .orphaned }
     }
 
-    /// Counted over what the list actually shows. Counting the whole scan
-    /// while the list is filtered made "Выбрать все" tick rows nobody could
-    /// see — and then delete them.
+    /// Counted over what the list actually shows: counted over the whole scan
+    /// while filtered, "Select all" would tick rows nobody can see.
     var leftoverCount: Int { visibleItems.filter(\.removable).count }
 
-    /// What the bar at the bottom is about, both halves of it. It used to pair
-    /// the number of removable rows found with the size of the selection, so
-    /// "1 item · 0 B" stood under a visible row saying 4 KB. A count and a size
-    /// joined by a middle dot read as one measurement, and were two.
+    /// What the bar at the bottom is about, both halves of it: the selection's
+    /// count and its size. A count of rows found beside the selection's size,
+    /// joined by a middle dot, would read as one measurement.
     var selectedCount: Int { selectedItems.count }
     var selectedBytes: Int { selectedItems.reduce(0) { $0 + $1.sizeBytes } }
 
@@ -122,11 +118,10 @@ extension LeftoversEngine: LeftoversWork {}
 
     /// A hidden row must not stay ticked from before it was hidden.
     ///
-    /// **No `busy` guard here, and that is the point of the comment.** `trash`
-    /// holds `busy` across the rescan it makes afterwards, and that rescan is what
-    /// drops the ticks on rows the removal took — a guard here would be inert
-    /// where it looked most careful, and would leave a batch's own rows ticked
-    /// under the report saying they are gone.
+    /// **No `busy` guard here.** `trash` holds `busy` across the rescan it makes
+    /// afterwards, and that rescan drops the ticks on rows the removal took — a
+    /// guard here would leave a batch's own rows ticked under the report saying
+    /// they are gone.
     func dropHiddenSelections() {
         selected.formIntersection(selectablePaths)
     }
@@ -134,12 +129,9 @@ extension LeftoversEngine: LeftoversWork {}
     /// The three gestures that change the selection: the bar's two buttons and a
     /// row's checkbox.
     ///
-    /// **On the model, because the dimming cannot be the whole guard.** The page
-    /// wrote `selected` directly, so «the model refuses this while a removal runs;
-    /// the page has to say so» — this page's own comment about the switch — had
-    /// only its second half here: `.disabled(lvm.busy)` was one redraw away from
-    /// being everything that stood between a press and the selection changing
-    /// under a report about to arrive.
+    /// **On the model, because the dimming cannot be the whole guard.**
+    /// `.disabled(lvm.busy)` on the page is one redraw away from letting a press
+    /// change the selection under a report about to arrive.
     func tickAll() {
         guard !busy else { return }
         selected = selectablePaths
@@ -159,25 +151,19 @@ extension LeftoversEngine: LeftoversWork {}
     ///
     /// **The Scan button is not the only caller.** `setDisabled` rescans so the row
     /// shows what launchd actually did, and `trash` rescans after a removal — so
-    /// two quick toggles are two scans over the same `items`, and without this the
-    /// list went to whichever the machine answered *last* rather than to the last
-    /// thing the person asked for. `LatestRequest` carries why it is a counter and
-    /// not a latch.
+    /// two quick toggles are two scans over the same `items`, and the list must
+    /// go to the last thing the person asked for, not to whichever the machine
+    /// answered last. `LatestRequest` says why it is a counter and not a latch.
     private var scans = LatestRequest()
 
-    /// The Scan button, and the sixth control on this page that can start work in
-    /// the middle of a removal.
-    ///
-    /// It was gated on `scanning` alone, which is nothing at all while a removal
-    /// runs — and what a scan costs there is what `setDisabled` costs, in that
-    /// method's own words: the fresh `items` land on top of the list the removal is
-    /// about to report on.
+    /// The Scan button, one of the controls on this page that can start work in
+    /// the middle of a removal: the fresh `items` would land on top of the list the
+    /// removal is about to report on.
     ///
     /// **The guard is on the press, not on the reading.** `trash` holds `busy`
     /// across the rescan it makes for itself, so `guard !busy` inside `reload`
-    /// would refuse that one too and leave the list showing rows that are already
-    /// in the Trash — the inert half of a fix that looks most careful where it does
-    /// the most harm, which is the trap `dropHiddenSelections` records.
+    /// would refuse that one too and leave the list showing rows already in the
+    /// Trash — the trap `dropHiddenSelections` records.
     func scan() async {
         guard !busy, !stopped else { return }
         await reload()
@@ -196,9 +182,8 @@ extension LeftoversEngine: LeftoversWork {}
         items = found
         uncheckedCount = found.count { !$0.status.judged }
         // Nothing is ticked by default: these files are load-bearing, so the
-        // user chooses each one. But a rescan is not a fresh start — switching
-        // one row off rescans, and clearing the set threw away every other tick
-        // the user had made, with no warning and no way back.
+        // user chooses each one. But a rescan is not a fresh start: switching one
+        // row off rescans, and clearing the set would throw away every other tick.
         if scanned { dropHiddenSelections() } else { selected = [] }
         scanned = true
     }
@@ -206,11 +191,9 @@ extension LeftoversEngine: LeftoversWork {}
     /// Switches a login item off through launchd, then rescans so the row
     /// shows what actually happened rather than what we hoped.
     ///
-    /// **Not while a removal is running.** This was one of three controls that
-    /// stayed live for the length of a `trash` request, and the least harmless of
-    /// them: it rescans, so the fresh `items` land on top of the list the removal
-    /// is about to report on. The page dims the button as well — both, or neither
-    /// is reliable (Architecture/Removal.md § One removal at a time).
+    /// **Not while a removal is running**: it rescans, so the fresh `items` would
+    /// land on top of the list the removal is about to report on. The page dims
+    /// the button as well (Architecture/Removal.md § One removal at a time).
     func setDisabled(_ disabled: Bool, item: StaleItem) async {
         guard !busy, !stopped else { return }
         await work.setDisabled(LeftoversToggle(label: item.identifier, path: item.path,
@@ -224,33 +207,28 @@ extension LeftoversEngine: LeftoversWork {}
     }
 
     func removeSelected() async {
-        // `visibleItems`, not `items`. A tick made while the list showed
-        // everything survived a switch back to the filtered view: the row
-        // disappeared, `selected` kept its path, the count and the size on
-        // screen were computed over what was visible — and this then trashed it
-        // anyway. Deleting something the person cannot see, and did not see
-        // counted, is the one thing this module must not do.
+        // `visibleItems`, not `items`: a tick made while the list showed
+        // everything survives a switch back to the filtered view, and the count
+        // and size on screen are computed over what is visible. Deleting something
+        // the person cannot see, and did not see counted, is the one thing this
+        // module must not do.
         await trash(selectedItems.map(\.path))
     }
 
     /// The one way anything leaves: ask the engine, then report what it says and
     /// rescan so the list shows what happened rather than what was hoped.
     ///
-    /// Both callers had these four lines written out, which is four chances for
-    /// the row's outcome and the bar's outcome to come to mean different things
-    /// — and the banner is the only place a refusal is ever named.
+    /// One function for both callers, so the row's outcome and the bar's
+    /// cannot come to mean different things — and the banner is the only place
+    /// a refusal is ever named.
     private func trash(_ paths: [String]) async {
         guard !paths.isEmpty else { return }
-        // **One removal at a time.** The buttons dim only on an empty selection,
-        // and the selection is not emptied until the rescan that follows this
-        // has come back — so between the press and that moment the button is
-        // live and the paths are still ticked. A second press does not delete
-        // anything twice; the files are already in the Trash. It comes back
-        // with a refusal *per file*, because a path that is no longer there is
-        // a refusal with a reason, and the three lines below then overwrite the
-        // report of the removal that worked. The person is told nothing moved
-        // and shown a list of everything that did — in the one place this
-        // module ever names a refusal.
+        // **One removal at a time.** The selection is not emptied until the rescan
+        // that follows has come back, so between the press and that moment the
+        // button is live and the paths are still ticked. A second press would come
+        // back with a refusal *per file* — a path no longer there is a refusal with
+        // a reason — and overwrite the report of the removal that worked: told
+        // nothing moved, shown a list of everything that did.
         guard !busy, !stopped else { return }
         busy = true
         defer { busy = false }

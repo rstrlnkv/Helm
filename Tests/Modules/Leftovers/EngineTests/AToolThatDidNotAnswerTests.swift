@@ -4,22 +4,17 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// **A tool that failed reads as «nothing is loaded», and empty is the unsafe
-/// direction.**
+/// **A tool that failed does not read as «nothing is loaded», because empty is
+/// the unsafe direction.**
 ///
-/// `ActiveExtensions.installedExtensions()` and `.disabledLabels()` ran
-/// `systemextensionsctl` and `launchctl` and kept only the output, dropping the exit
-/// status — so a tool that could not run answered `[]`, and `[]` is a claim about
-/// this Mac. What that claim decides: a launch agent whose label is a live system
-/// extension is `inUse` *because* it appears in that list, and with the list empty it
-/// becomes a leftover, ticked by «Select all» and trashed with the batch. The
-/// disabled list decides the «Disabled» badge — this module's whole reassurance that
-/// a login item will not run.
-///
-/// The family (ARCHITECTURE.md § Ports and logic) names: a local reading standing in for a live external fact,
-/// with no channel from the port that knows. Two facts, «nothing is loaded» and
-/// «nobody answered», and nothing could tell them apart — including a test, which is
-/// why `LeftoversFakeLoaded` now holds `nil` as well.
+/// `systemextensionsctl` and `launchctl` are read with their exit status. An
+/// empty list is a claim about this Mac: a launch agent whose label is a live
+/// system extension is `inUse` *because* it appears in the list, and with the
+/// list empty it would become a leftover, ticked by «Select all» and trashed.
+/// The disabled list decides the «Disabled» badge — the module's whole
+/// reassurance that a login item will not run. «Nothing is loaded» and «nobody
+/// answered» are two facts (Architecture/ModulePattern.md § Ports and logic), and
+/// `LeftoversFakeLoaded` holds `nil` as well as `[]`.
 final class AToolThatDidNotAnswerTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
@@ -39,7 +34,7 @@ final class AToolThatDidNotAnswerTests: XCTestCase {
         SystemExtensionInfo(identifier: label, version: "1", enabled: true)
     }
 
-    /// **The finding.** The tool did not answer, and the row is a leftover.
+    /// **The guard.** The tool did not answer, and the row is not a leftover.
     func testNothingIsPromotedToALeftoverWhenTheExtensionListDidNotAnswer() throws {
         let item = try agent(when: LeftoversFakeLoaded(installed: nil))
 

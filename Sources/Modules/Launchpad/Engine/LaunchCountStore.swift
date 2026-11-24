@@ -22,8 +22,6 @@ final class LaunchCountStore: @unchecked Sendable {
 
     init(directory: URL) { file = LaunchpadFile(directory: directory, name: "launch-counts.json") }
 
-    var fileURL: URL { file.url }
-
     func load() -> CountsRead { lock.withLock { read() } }
 
     /// One more launch of `id`. False when it was not kept (logged here).

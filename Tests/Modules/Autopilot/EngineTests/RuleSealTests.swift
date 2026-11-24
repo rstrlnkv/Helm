@@ -66,8 +66,7 @@ final class RuleSealTests: XCTestCase {
 
     // MARK: - Tampering
 
-    /// The reviewer's attack, reduced: the rules are rewritten in the plist and
-    /// the MAC beside them is left as it was.
+    /// Rules rewritten in the plist, with the MAC beside them left as it was.
     func testRulesEditedAfterSealingAreRefused() {
         let mac = RuleSeal.mac(for: payload(), seq: 0, key: material)
 
@@ -164,11 +163,10 @@ final class RuleSealTests: XCTestCase {
         XCTAssertEqual(judge(now, mac: mac, key: established(), seq: 7, highWater: 7), .sealed)
     }
 
-    /// **The upgrade, again.** Every Mac that has run Autopilot has a sealed
-    /// rule set with no number beside it and no mark to compare against, and a
-    /// build that refused those would be a build that throws away the rules of
-    /// everyone who installs it. A message with no number is the payload alone,
-    /// byte for byte what the old build signed.
+    /// **The upgrade.** A rule set sealed with no number beside it and no mark to
+    /// compare against still runs; refusing it would throw away the rules of
+    /// everyone who installs over such a seal. A message with no number is the
+    /// payload alone, byte for byte.
     func testARuleSetSealedBeforeThereWereNumbersIsStillRun() {
         let rules = payload()
         let old = SettingSeal.mac(for: rules, key: material)

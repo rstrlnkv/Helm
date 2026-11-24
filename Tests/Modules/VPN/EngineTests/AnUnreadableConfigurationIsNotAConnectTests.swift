@@ -9,15 +9,10 @@ import HelmRuntime
 /// **A `scutil --nc show` that failed or timed out is not «this configuration
 /// keeps no secret».**
 ///
-/// `KeychainCredentials.credentials` answered `.notNeeded` for both, so a connect
-/// that needed the secret went to `--nc start` without it; `--nc start` answers
-/// nothing either way, so a rule connect then recorded and announced «connected»
-/// with no tunnel behind it. Owner decision 2026-11-11 (defects page row
-/// `vpn-show-unreadable`): a separate `VPNCredentialRead.unreadable` that neither
-/// starts nor announces the connect.
-///
-/// An unattended rule announcing a tunnel that is not there is work done while
-/// nobody watches, so this class is kept.
+/// It is `VPNCredentialRead.unreadable`, which neither starts nor announces the
+/// connect. `--nc start` answers nothing either way, so a connect that went on
+/// without the secret would record and announce «connected» with no tunnel
+/// behind it: an unattended rule doing work nobody watches.
 final class AnUnreadableConfigurationIsNotAConnectTests: XCTestCase {
 
     private let header = "Available network connection services:"
@@ -30,17 +25,16 @@ final class AnUnreadableConfigurationIsNotAConnectTests: XCTestCase {
 
     // MARK: - The port: KeychainCredentials
 
-    private final class ShowRunner: VPNRunnerPort, @unchecked Sendable {
-        let answer: HelmProcess.Result
-        init(_ answer: HelmProcess.Result) { self.answer = answer }
-        func run(_ args: [String]) -> HelmProcess.Result { answer }
-        func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result { answer }
-        func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer { .started }
+    private func runner(answering answer: HelmProcess.Result) -> FakeRunner {
+        let runner = FakeRunner()
+        runner.exitStatus = answer.status
+        runner.reply = answer.output
+        return runner
     }
 
     private func read(_ answer: HelmProcess.Result) -> VPNCredentialRead {
         // `purge: {}`: no test may run the real keychain purge.
-        KeychainCredentials(purge: {}, runner: ShowRunner(answer),
+        KeychainCredentials(purge: {}, runner: runner(answering: answer),
                             keychainDeadline: KeychainCredentials.systemKeychainDeadline)
             .credentials(for: "Office", promptingAllowed: false)
     }

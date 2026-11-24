@@ -1,12 +1,9 @@
 import HelmRuntime
 import XCTest
 
-/// **Telling a reply from a superseded one, in the one place the rule is written
-/// down.** Two view models had counted this out by hand — Duplicates, and then
-/// Leftovers after two quick toggles were found handing `items` to the last
-/// *completion* rather than the last request.
-///
-/// Guards: 4c8bbed9 (two quick toggles handed items to the last completion, not the last request).
+/// Telling a reply from a superseded one, in the one place the rule is
+/// written: after two quick requests, the last request's reply wins, not the
+/// last completion.
 final class LatestRequestTests: XCTestCase {
 
     func testTheTokenJustTakenIsTheLatest() {

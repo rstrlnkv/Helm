@@ -6,24 +6,19 @@ import HelmUI
 /// **Running an assertion in a language, and putting the app back afterwards.**
 ///
 /// The suite runs in whatever language this Mac is set to, so a bare assertion
-/// about a string checks one of eight — and this machine's is Russian, which is how
-/// a mutation planted in an English value once passed a whole suite (ARCHITECTURE.md § Shared test plumbing). The answer is a loop over
-/// `AppLanguage.allCases` with `override` set and restored, and it was hand-written
-/// in every file that needed it: three identical private copies in the VPN pages
-/// alone, each with its own `let previous` and its own `defer`.
+/// about a string checks one of eight, and a defect in an English value passes
+/// on a Mac set to Russian (Architecture/TestsAndMeasurement.md § Shared test plumbing).
 ///
-/// The `defer` is the part worth having in one place. A body that throws or
-/// fails an assertion mid-loop leaves the whole process in the last language it
-/// was set to otherwise, and the next test file to read a string is then reading
-/// a language nobody chose — a failure that reports itself as somebody else's
-/// broken assertion three files away.
+/// The `defer` is the part worth having in one place: a body that throws or
+/// fails mid-loop would otherwise leave the process in a language nobody chose,
+/// and the failure would report itself as somebody else's assertion three files
+/// away.
 ///
-/// **The rule a new test follows**, not a description of every test already here:
-/// an assertion about what a visible string says takes its language from `each` or
-/// `only`. `AppLanguage.current` is read only where the subject is that a call with
-/// no language answers in the app's language, or inside a body that has already set
-/// `override`. Older tests do otherwise, many setting `override` by hand, and moving
-/// them here is welcome, not required.
+/// The rule a new test follows: an assertion about what a visible string says
+/// takes its language from `each` or `only`. `AppLanguage.current` is read only
+/// where the subject is that a call with no language answers in the app's
+/// language, or inside a body that has already set `override`. Older tests that
+/// set `override` by hand may move here.
 public extension AppLanguage {
 
     /// The body, once per language, with `override` set to it.
@@ -49,18 +44,9 @@ public extension AppLanguage {
 /// The asynchronous half of `only`, for a claim about one language whose body
 /// has to mount and settle a page.
 ///
-/// A separate entry point rather than an `async` version of `each`: the reason
-/// `only` exists — a claim that is about *that* language rather than about all
-/// of them — is unchanged, and so is the `defer`. A body that fails or throws
-/// mid-way would otherwise leave the whole process in a language nobody chose,
-/// which is the failure that reports itself three files away.
-///
-/// **It runs on the caller's own actor**, which is what `isolated (any Actor)?
-/// = #isolation` buys. Every body that needs this mounts a view, so it is
-/// `@MainActor`, and a helper that took a `@Sendable` or `sending` closure
-/// would be asking to hop off the actor the page has to be laid out on —
-/// neither compiles, and the second only stopped compiling after the first was
-/// tried.
+/// It runs on the caller's own actor (`isolated (any Actor)? = #isolation`):
+/// every body that needs this mounts a view on the main actor, and a
+/// `@Sendable` or `sending` closure would ask to hop off it; neither compiles.
 public extension AppLanguage {
     static func only(_ language: AppLanguage,
                      isolation: isolated (any Actor)? = #isolation,

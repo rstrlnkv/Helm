@@ -1,5 +1,4 @@
 import XCTest
-import HelmTestSupport
 @testable import HelmRuntime
 
 /// What the journal does when the world does not cooperate: the app quits
@@ -18,12 +17,10 @@ final class ScanJournalInterruptedTests: ScanJournalRig {
     /// third and `previous.json` is left on disk with no `current.json` beside
     /// it.
     ///
-    /// `change` then reads the missing current as `?? []`, which is exactly the
-    /// nil-versus-empty confusion `ScanReport`'s own doc forbids one layer up:
-    /// "a scan whose root was refused … must not come back as 'we looked and it
-    /// was clean'". Here the whole previous list is reported as **gone** — a
-    /// page drawing that says the person freed every byte the last scan found,
-    /// on the strength of a file that was never written.
+    /// A missing current is not an empty scan (the nil-versus-empty rule
+    /// `ScanReport` states): read as `[]`, the whole previous list would be
+    /// reported as gone, every byte "freed" on the strength of a file that was
+    /// never written.
     func testAnInterruptedRotationDoesNotReportTheWholeListAsFreed() {
         let found = [item("/a", 10), item("/b", 20)]
         journal.record(entry(30, 1, at: 0), items: found, module: "disk")
@@ -59,11 +56,8 @@ final class ScanJournalInterruptedTests: ScanJournalRig {
     /// entries stamped in the future. The clock is corrected; the next scan
     /// runs; its entry is the oldest of thirty-one and `prefix(30)` drops it.
     ///
-    /// The two halves of `record` then disagree about whether that scan
-    /// happened: `current.json` was rotated and written — the page will draw a
-    /// delta from it — while the row explaining where the delta came from is
-    /// not there. `record` must not silently discard the one thing it was
-    /// called to store.
+    /// `record` must not discard the one thing it was called to store, or
+    /// `current.json` draws a delta whose row is not there.
     func testTheEntryJustRecordedIsNeverTheOneDropped() {
         for i in 0..<ScanJournal.limit {
             journal.record(entry(i, 1, at: 86_400 + TimeInterval(i) * 60), items: [],
@@ -78,15 +72,9 @@ final class ScanJournalInterruptedTests: ScanJournalRig {
                       "the scan that just ran is missing from its own journal")
     }
 
-    /// `Array.sort` is documented as **not guaranteed stable**, and `record`
-    /// sorts by `at` alone. Thirty entries sharing a timestamp — a restored
-    /// journal, a clock pinned by a bad NTP answer, a fixture — leave the cap
-    /// with no defined answer about which of the thirty-one to drop, and the
-    /// one it drops is the newest.
-    ///
-    /// Ties are not exotic here: `ScanEntry.at` is the only ordering key the
-    /// type has, so any two scans that agree on it are indistinguishable to
-    /// this code however far apart they really ran.
+    /// `Array.sort` is not guaranteed stable, and `ScanEntry.at` is the only
+    /// ordering key. Entries sharing a timestamp (a restored journal, a clock
+    /// pinned by a bad NTP answer) must not lose the newest to the cap.
     func testAnEntryIsNotDroppedForTyingOnItsTimestamp() {
         for i in 0..<ScanJournal.limit {
             journal.record(entry(i, 1, at: 0), items: [], module: "disk")

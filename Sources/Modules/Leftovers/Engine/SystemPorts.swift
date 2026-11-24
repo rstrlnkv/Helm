@@ -9,17 +9,12 @@ public struct FileSystemLeftovers: LeftoversFilePort {
     }
 
     /// **Not `resolvingSymlinksInPath()`, which is `realpath` and gives up on a
-    /// link whose target is not there.** It fails with `ENOENT` for one, and
-    /// Foundation hands back the spelling it was given — so the one caller of this
-    /// port, `LeftoversScanner.isItsOwnPlace`, asked «did resolving this change
-    /// it» about a planted link and was told no. The planting is done in that
-    /// order on purpose: the link goes down while its target does not exist, the
-    /// scan reads `ENOENT` from `opendir` as an empty folder, and the source
-    /// produces no row of any kind; the target is created afterwards.
-    ///
-    /// `PathCanonical.followingEveryLink` answers the question this port's
-    /// documentation states — the whole path, every link followed — for a target
-    /// that is not there as well as for one that is.
+    /// link whose target is not there**: it fails with `ENOENT` and Foundation hands
+    /// back the spelling it was given, so `LeftoversScanner.isItsOwnPlace` would be
+    /// told a planted link changes nothing. A link planted before its target exists
+    /// makes the scan read `ENOENT` as an empty folder with no row of any kind.
+    /// `PathCanonical.followingEveryLink` follows every link in the whole path, for
+    /// a target that is not there as well as for one that is.
     public func resolvingSymlinks(_ url: URL) -> URL {
         URL(fileURLWithPath: PathCanonical.followingEveryLink(url.path))
     }
@@ -31,8 +26,11 @@ public struct FileSystemLeftovers: LeftoversFilePort {
     public func exists(_ path: String) -> Bool? { DirectoryListing.exists(atPath: path) }
 
     public func size(_ url: URL) -> Int { FileWeight.allocated(of: url) }
+    /// Follows a link at the file itself: a LaunchAgent a dotfile manager keeps is a link, and a plist read as
+    /// nothing would name a rival claimant of the same label by its file name, so the two-claimants rule would
+    /// not see it. The target is bounded as any outside file is: no pipe, regular file, `PropertyListFile.byteCeiling`.
     public func readPlist(_ url: URL) -> PlistData? {
-        guard let dict = NSDictionary(contentsOf: url) as? [String: Any] else { return nil }
+        guard let dict = PropertyListFile.dictionary(atPath: url.path, followingLink: true) else { return nil }
         return PlistData(dict)
     }
 }
@@ -42,65 +40,31 @@ public struct FileSystemLeftovers: LeftoversFilePort {
 /// **Not `RunningApps`, and not the Uninstaller's `WorkspaceAppLister`,
 /// although all three are about applications.** `RunningApps` answers who is
 /// *running* and is a main-thread-only AppKit read behind a snapshot;
-/// `WorkspaceAppLister` answers the same question this does but over a
-/// different set of directories, and backs it with a LaunchServices lookup.
-/// Four questions, four answers, and the reason they are not one type is that
-/// the answers differ.
+/// `WorkspaceAppLister` answers the same question this does, over the same
+/// directories (`PropertyListFile.installedBundleIDs`), and backs it with a
+/// LaunchServices lookup.
 ///
-/// **What this one does not have is that LaunchServices backstop.** The depth-2
-/// walk below covers the case its own comment names — a vendor folder like
-/// `/Applications/Adobe Photoshop 2026/` — but not the other case
-/// `OrphanDetector.isOrphan` records: a helper nested inside another
-/// application's bundle, under `Contents/`, which is in no applications
-/// directory at any depth. Uninstaller pays for that lookup because it once
-/// offered such bundles for deletion while their apps were installed and
-/// running. This module trashes on the same kind of judgement.
-/// An empty `CFBundleIdentifier` is inserted and harmless here, unlike Uninstaller's filter.
+/// **What this one does not have is that LaunchServices backstop.** The
+/// shared walk covers a vendor folder like `/Applications/Adobe Photoshop 2026/`,
+/// but not a helper nested inside another application's bundle, under
+/// `Contents/`, which is in no applications directory at any depth
+/// (`OrphanDetector.isOrphan`). Uninstaller pays for that lookup because it
+/// offers bundles for deletion; this module trashes on the same kind of
+/// judgement.
 public struct WorkspaceInstalledApps: InstalledAppsPort {
-    private let searchDirs: [URL]
+    private let home: String
 
     public init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
-        searchDirs = [
-            URL(fileURLWithPath: "/Applications"),
-            URL(fileURLWithPath: "/Applications/Utilities"),
-            URL(fileURLWithPath: "/System/Applications"),
-            home.appendingPathComponent("Applications"),
-        ]
+        self.home = home.path
     }
 
     public func installedBundleIDs() -> Set<String> {
-        var ids: Set<String> = []
-        for dir in searchDirs { collect(dir, depth: 0, into: &ids) }
-        return ids
-    }
-
-    /// Vendors nest their apps (/Applications/Adobe Photoshop 2026/…app), and
-    /// missing those bundles made their settings look ownerless.
-    private func collect(_ dir: URL, depth: Int, into ids: inout Set<String>) {
-        guard depth <= 2 else { return }
-        let items = (try? FileManager.default.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
-        for item in items {
-            // One `Info.plist` per application, over four directories two levels
-            // deep — a bulk read of file contents, so the pool goes inside the
-            // iteration (ARCHITECTURE.md § Module pattern).
-            autoreleasepool {
-                if item.pathExtension == "app" {
-                    let info = item.appendingPathComponent("Contents/Info.plist")
-                    if let id = NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String {
-                        ids.insert(id)
-                    }
-                } else if (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
-                    collect(item, depth: depth + 1, into: &ids)
-                }
-            }
-        }
+        PropertyListFile.installedBundleIDs(home: home)
     }
 }
 
 /// What macOS has loaded, and the one switch that changes it. Reading goes
-/// through the shared tested parser — this file used to carry its own ad-hoc
-/// line splitter.
+/// through the shared tested parser.
 ///
 /// One type for both protocols because both are `launchctl` and
 /// `systemextensionsctl` on this machine; the split is about what a *caller*
@@ -112,8 +76,8 @@ public struct ActiveExtensions: LoadedItemsPort, LoginItemSwitchPort {
     }
 
     /// `nil` for a `launchctl` that did not answer, which is not an empty disabled
-    /// list: the exit status is the only thing that tells them apart, and dropping
-    /// it made a tool that failed say «nobody has switched anything off».
+    /// list: the exit status is the only thing that tells them apart, and without
+    /// it a tool that failed says «nobody has switched anything off».
     public func disabledLabels() -> Set<String>? {
         disabledLabels(timeout: nil)
     }
@@ -128,7 +92,7 @@ public struct ActiveExtensions: LoadedItemsPort, LoginItemSwitchPort {
     /// **How long one `launchctl` call may take: ten seconds.** `willDisable()` calls
     /// the port on the main thread through a synchronous contract
     /// (`HelmContract/ModuleEngine.swift`), and the reset's order leaves no room to
-    /// hop off it, so this deadline is what bounds main. Owner decision Q9a.
+    /// hop off it, so this deadline is what bounds main.
     static let launchctlDeadline: TimeInterval = 10
 
     public func setDisabled(_ disabled: Bool, label: String) -> SwitchAnswer {

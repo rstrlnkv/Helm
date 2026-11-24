@@ -3,27 +3,19 @@ import XCTest
 import HelmAppStrings
 import HelmUI
 
-/// (ARCHITECTURE.md § What shipped) orders one `CHANGELOG.md` section and the same entries in
-/// `Sources/HelmAppStrings/ChangelogData.swift` for every release, and records that the two have drifted about which versions exist before. Nothing in `Tests/` held
-/// them to that: `CHANGELOG.md` is named in two guards over the standing
-/// documents, and neither reads a version out of it.
+/// Every release has one `CHANGELOG.md` section and the same entry in
+/// `Sources/HelmAppStrings/ChangelogData.swift` (Architecture/Release.md § What shipped):
+/// the two name the same releases, with the same dates, in the same order.
 ///
 /// **What this does not compare:** the text of an entry. The file is the
 /// canonical English record and the in-app list is written for the person who
-/// updated, and `ChangelogData.swift`'s own doc comment says they are meant to
-/// say different things about one release. What must never differ is which
-/// releases exist and when each shipped — that is the drift that actually
-/// happened. This also does not read `Info.plist`: the tree's version trails
-/// the changelog by a `-dev.N` in the ordinary course of work, between a version
-/// bump and its entry, and pinning that gap would be red for no defect.
+/// updated, so they say different things about one release
+/// (`ChangelogData.swift`). This also does not read `Info.plist`: the tree's
+/// version trails the changelog by a `-dev.N` between a version bump and its
+/// entry, and pinning that gap would be red for no defect.
 ///
-/// **No `AppLanguage.each` here.** The house rules order a visible-string assertion
-/// parameterized across the eight languages, because a bare read of `L()`
-/// answers in whichever language a run happens to be in. A version number and a
-/// date are literals in both `CHANGELOG.md` and `ChangelogEntry` — `L()` never
-/// touches them — so there is nothing here for a language to change.
-///
-/// Past defect: commit 06dedd9f, «Hold the changelog and the app's list to the same releases».
+/// **No `AppLanguage.each` for versions and dates:** they are literals on both
+/// sides, and `L()` never touches them.
 final class TheChangelogAndTheAppsListAgreeTests: XCTestCase {
 
     /// One release, named the same way on both sides of the comparison.
@@ -71,9 +63,8 @@ final class TheChangelogAndTheAppsListAgreeTests: XCTestCase {
     /// person actually sees, and a second parser reading `ChangelogData.swift`
     /// as text would be a second thing this file has to keep right.
     ///
-    /// `@MainActor` follows `ListsAgreeWithTheTreeTests.swift:38`: the type is
-    /// not isolated itself, but every call site here runs from a `@MainActor`
-    /// test method.
+    /// `@MainActor`: the type is not isolated itself, but every call site here
+    /// runs from a `@MainActor` test method.
     @MainActor
     private func drawn() -> [Release] {
         Changelog.entries.map { Release(version: $0.version, date: $0.date) }
@@ -98,11 +89,9 @@ final class TheChangelogAndTheAppsListAgreeTests: XCTestCase {
             XCTFail("ChangelogData.swift names \(version) and CHANGELOG.md does not")
         }
 
-        // Not `uniqueKeysWithValues:` — a version ChangelogData.swift repeats is
-        // exactly the drift `testNeitherSideNamesOneReleaseTwice` exists to
-        // report, and that initializer traps the whole process on the input it
-        // is meant to guard. Keep the first date for a repeated version; which
-        // one is kept is moot once the other test has already failed on it.
+        // Not `uniqueKeysWithValues:`, which traps on a repeated version, the
+        // drift `testNeitherSideNamesOneReleaseTwice` reports. The first date
+        // is kept.
         let drawnByVersion = Dictionary(drawn.map { ($0.version, $0.date) },
                                          uniquingKeysWith: { first, _ in first })
         for release in recorded {

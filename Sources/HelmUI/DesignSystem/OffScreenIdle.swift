@@ -7,34 +7,19 @@ import AppKit
 /// Unmounts a subtree while the window holding it is off screen.
 ///
 /// A mounted SwiftUI tree pays for every published change whether or not
-/// anybody can see it — and it pays twice. The render itself is the small
-/// half. The large half is kept: measured with `malloc_history` on the VPN
-/// settings page, each view-model publish re-ran `ChildEnvironment.updateValue`
-/// inside SwiftUI's attribute graph, whose environment write is
-/// `PropertyList.prependValue` — a fresh `PropertyList.Element` chained in
-/// front of the ones before it, none of which can be freed while the tree
-/// lives. ~3–6 KB per event, sustained over six benchmark laps with no decay,
-/// hidden window and visible window alike,
-/// and the installed build's heap showed the same signature at rest: 3 766
-/// live ObservationTracking dictionaries and a ~3 MB/hour ratchet.
-///
-/// Detaching the hosting view from its window was measured doing **nothing** —
-/// the graph lives in the `NSHostingView`, not the window, and a detached page
-/// kept the same ~2.5–6 KB per event. What stops the meter is unmounting the
-/// subtree, which is what this does: while the window is not on screen the
-/// content is out of the hierarchy entirely, and on the next
-/// `didChangeOcclusionState` it is built afresh from the view model's current
-/// state — the view model keeps its subscription throughout, so nothing is
-/// missed, and the menu-bar surfaces that read it (`statusChanges`, banners)
+/// anybody can see it, and most of the cost is kept: each environment write
+/// chains a new element into SwiftUI's attribute graph that cannot be freed
+/// while the tree lives, so a page that publishes steadily grows the heap
+/// steadily. Detaching the hosting view from its window does not stop it, since
+/// the graph lives in the `NSHostingView`. Unmounting the subtree does: while
+/// the window is off screen the content is out of the hierarchy, and it is
+/// rebuilt from the view model's current state when the window returns. The
+/// view model keeps its subscription, so the menu-bar surfaces that read it
 /// keep hearing.
 ///
-/// A view with **no window at all** counts as seen: the offscreen render
-/// harnesses drive bare hosting views
-/// and windows that are never ordered in, and a measurement of a page that
-/// declined to draw would be a measurement of nothing. A harness whose window
-/// exists but never shows opts in through `helmTreatsWindowAsSeen` — an
-/// explicit declaration that the window is a measuring bench, made where the
-/// bench is built.
+/// A view with no window at all counts as seen, so offscreen render harnesses
+/// still draw. A harness whose window exists but never shows declares itself
+/// with `helmMeasuringBench()`.
 private struct OffScreenIdle: ViewModifier {
     @Environment(\.helmTreatsWindowAsSeen) private var bench
     /// Starts `true` and is corrected by the reader: a subtree mounted into a
@@ -78,11 +63,10 @@ extension EnvironmentValues {
 
 extension View {
     /// The declaration every render harness makes, in one spelling: this
-    /// subtree sits on a measuring bench whose window never orders in, and it
-    /// must draw anyway. Also what keeps `ImageRenderer` benches working — a
-    /// benched subtree mounts no window reader, and `ImageRenderer` renders
-    /// any subtree holding an `NSViewRepresentable` as transparent.
-    /// Never called in the app; the harnesses are its callers.
+    /// subtree sits on a bench whose window never orders in, and it must draw
+    /// anyway. It mounts no window reader, which also keeps `ImageRenderer`
+    /// benches working: `ImageRenderer` renders any subtree holding an
+    /// `NSViewRepresentable` as transparent. Never called in the app.
     func helmMeasuringBench() -> some View {
         environment(\.helmTreatsWindowAsSeen, true)
     }
@@ -117,31 +101,17 @@ struct WindowSeenReader: NSViewRepresentable {
             if let observer { NotificationCenter.default.removeObserver(observer) }
             observer = nil
             if let window {
-                // Occlusion covers ordering: `orderOut` drops `.visible` and
-                // `orderFront` restores it, and both post this notification.
-                // That is the app, traced there. A plain `swift test` process
-                // is not the window server's client: it is sent this
-                // notification zero times and its windows report
-                // `occlusionState` `.visible` throughout, ordered out or not.
-                // So do not "correct" the two lines above from a test run.
+                // Occlusion covers ordering: `orderOut` and `orderFront` both
+                // post this notification in the app. A plain `swift test`
+                // process is not the window server's client: it gets none and
+                // its windows report `.visible` throughout, so do not "correct"
+                // this from a test run.
                 observer = NotificationCenter.default.addObserver(
                     forName: NSWindow.didChangeOcclusionStateNotification,
                     object: window, queue: .main
-                    // Delivering on the main queue is what makes the
-                    // assumption true. It is this tree's ordinary spelling but
-                    // not its only one, so do not read it as a house rule that
-                    // holds everywhere — count both sides before saying so:
-                    //
-                    //   command grep -rn 'queue: [.]main' --include='*.swift' Sources
-                    //   command grep -rn 'queue: [n]il'   --include='*.swift' Sources
-                    //
-                    // (the brackets keep these two comment lines out of their
-                    // own counts). The `nil` side is a live site, not a
-                    // leftover: `L10n.swift`'s language cache takes no queue
-                    // because it only drops a cached value under a lock. The
-                    // assumption here is about *this* line only — `report()`
-                    // still hops before it reads anything, for its own reason
-                    // below.
+                    // Delivering on the main queue is what makes
+                    // `assumeIsolated` true here. `report()` still hops, for
+                    // its own reason below.
                 ) { [weak self] _ in MainActor.assumeIsolated { self?.report() } }
             }
             report()
@@ -150,29 +120,17 @@ struct WindowSeenReader: NSViewRepresentable {
         func report() {
             // Out of the current layout/update transaction: this fires from
             // AppKit mid-update, and a state write there is a SwiftUI error.
-            // The window is read inside the hop, not before it — a stale report
-            // queued while the window was mid-construction must not overwrite a
-            // value that has since become current. Same *shape* as
-            // `RunningApps.refreshOnMain` (Sources/HelmRuntime/RunningApps.swift),
-            // which also reads AppKit inside the block — but for its own,
-            // different reason: there the hop is what reaches the main thread
-            // at all, and reading the live list off it is a crash rather than
-            // stale data. Here the caller is already on main, the hop exists
-            // only to leave the transaction, and reading inside it buys
-            // currency and nothing else.
-            // This makes `report()` a poll on delivery rather than an event: it
-            // tells `onChange` the window's level right now, never the edge that
-            // caused this call, but nothing downstream wants the edge —
-            // `updateNSView` above compares levels, not edges.
+            // The window is read inside the hop, so a report queued while the
+            // window was being built cannot overwrite a newer value. That makes
+            // this a poll of the window's level, not an edge, which is all
+            // `updateNSView` compares (Architecture/ModulePattern.md § A value crossing to the main thread).
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
-                // `isVisible`, not occlusion: a window fully covered by another
-                // app is still "on screen" here on purpose — unmounting it would
-                // throw away scroll positions and mid-edit fields every time the
-                // person glances at another window. What this idles is a window
-                // that is ordered out: the closed Settings window, a panel that
-                // was dismissed. No window at all is a bare harness view, which
-                // draws.
+                // `isVisible`, not occlusion: a window covered by another app
+                // stays mounted, so a glance elsewhere does not throw away
+                // scroll positions and half-edited fields. What idles is a
+                // window ordered out. No window at all is a bare harness view,
+                // which draws.
                 self.onChange?(self.window.map(\.isVisible) ?? true)
             }
         }

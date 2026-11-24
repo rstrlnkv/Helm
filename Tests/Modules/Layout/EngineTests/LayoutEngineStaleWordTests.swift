@@ -4,21 +4,6 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-/// The two halves of the secure check are separate on purpose, and the gap
-/// between them is where this suite lives. `isSecureInput` is the cheap syscall
-/// asked on every key; it only knows about *system-wide* secure input.
-/// `isSecure` is the accessibility round trip that also recognises a password
-/// field by its role — an Electron login form, a web field the browser did not
-/// escalate for. A password typed into one of those reaches the buffer.
-private final class StaleContext: SecureContextPort, @unchecked Sendable {
-    var bundle = "com.apple.Notes"
-    var systemWideSecure = false
-    var passwordField = false
-    func isSecureInput() -> Bool { systemWideSecure }
-    func isSecure() -> Bool { systemWideSecure || passwordField }
-    func frontmostBundleID() -> String { bundle }
-}
-
 /// The third place a word lives.
 ///
 /// `buffer` is the word being typed and `undo` is the conversion that can still
@@ -27,32 +12,27 @@ private final class StaleContext: SecureContextPort, @unchecked Sendable {
 /// chord, and therefore ends the word before Carbon delivers it — has something
 /// to work on.
 ///
-/// It is state accumulated from the event stream, and the question the module's
-/// own architecture note asks of such state is: which event clears it, and what
-/// happens the one time that event never comes. `perform(_:)` clears it and
-/// `.click` clears it. Nothing else does — not the expansion that replaced the
-/// word in the field, not the selection edit that moved the caret, not the
-/// secure field that refused it, and not the app going away.
+/// It is state accumulated from the event stream, so each case asks which
+/// event clears it: a correction that replaced the word, a selection edit that
+/// moved the caret, a secure field that refused it, the app going away.
 ///
-/// Every case below ends in the same harm: the gesture sends a fixed number of
-/// backspaces at whatever has the keyboard now, counted from a word that is no
-/// longer there.
+/// Each guards the same harm: the gesture sending a fixed number of backspaces
+/// at whatever has the keyboard now, counted from a word that is no longer
+/// there.
 final class LayoutEngineStaleWordTests: XCTestCase {
     private var typing = FakeTyping()
-    private var context = StaleContext()
+    private var context = FakeSecure()
     private var tap = FakeTap()
-    private var sources = StuckSources()
+    private var sources = FakeSources(follows: false)
     private var selection = FakeSelection()
 
     /// A store with that binding in it, because these suites use a chord as the
     /// boundary that remembers.
-    /// **Every setting this suite varies goes in the store, not only in the
-    /// initialiser.** `activate()` calls `reloadSettings()`, which overwrites
-    /// the initialiser's values with the store's — so once a store exists,
-    /// passing `fixCapitals: true` to the init and nothing to the store leaves
-    /// the flag off. That is the engine reading its own settings at launch,
-    /// which is deliberate (ARCHITECTURE.md § Module pattern); the test has
-    /// to speak to it the way the page does.
+    /// Every setting this suite varies goes in the store, not only in the
+    /// initialiser: `activate()` calls `reloadSettings()`, which overwrites the
+    /// initialiser's values with the store's. The test speaks to the engine the
+    /// way the page does.
+    /// Architecture/ModulePattern.md § The stream and the store.
     private static func boundStore(fixCapitals: Bool = false) -> NamespacedStore {
         let store = layoutStore(bound: true)
         store.set(fixCapitals, for: LayoutKey.fixCapitals)
@@ -60,10 +40,10 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     }
 
     private func engine(                        fixCapitals: Bool = false) -> LayoutEngine {
-        typing = FakeTyping(); context = StaleContext()
-        tap = FakeTap(); sources = StuckSources(); selection = FakeSelection()
+        typing = FakeTyping(); context = FakeSecure()
+        tap = FakeTap(); sources = FakeSources(follows: false); selection = FakeSelection()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
-                                  translation: SameLengthTranslation(), spell: CyrillicSpell(latin: ["Hello"]),
+                                  translation: FakeTranslation(sameLength: true), spell: FakeSpell(valid: ["Hello"], cyrillic: true),
                                   secure: context, activation: FakeActivation(), selection: selection,
  fixCapitals: fixCapitals,
                                   settings: Self.boundStore(fixCapitals: fixCapitals))
@@ -76,11 +56,6 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     /// A held capital was corrected, so the field holds `Hello` and the engine
     /// still remembers `HEllo`. Two edits to one word is the thing this order
     /// of operations exists to prevent.
-    ///
-    /// It had a twin over abbreviations — `brb` → `be right back`, where four
-    /// backspaces landed in the middle of the sentence that replaced it. That
-    /// feature is gone; the rule it shared with this one is not, and this is
-    /// now the only test holding it.
     func testACorrectedCapitalIsNotStillThereToConvert() {
         let engine = engine(fixCapitals: true)
         tap.type("HEllo")
@@ -94,13 +69,13 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     }
 
     /// A selection was converted, which typed into the field and moved the
-    /// caret. `convertSelection` cleared the buffer and the undo record for exactly
-    /// that reason and left the third standing.
+    /// caret. `convertSelection` clears the buffer and the undo record for that
+    /// reason, and the remembered word with them.
     func testConvertingASelectionLeavesNoWordBehind() async throws {
         let engine = engine()
         tap.type("vjq")
-        // A chord, not an arrow: a caret move now forgets the word on its own,
-        // and the subject here is what the selection edit leaves behind.
+        // A chord, not an arrow: a caret move forgets the word on its own, and
+        // the subject here is what the selection edit leaves behind.
         tap.send(.chord(layoutShortcut))          // ends the word without converting; it is remembered
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
 
@@ -123,10 +98,9 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     /// runs on every key cannot see an application's own password field, so
     /// every character reaches the buffer and the word is remembered when the
     /// space ends it. Only then does `convert` make the expensive call, see the
-    /// password field and refuse. It clears the buffer and leaves the word.
-    ///
-    /// Then the person tabs into an ordinary field and taps the key they
-    /// bound: Helm types a conversion of their password into it.
+    /// password field and refuse. If the word stayed, the person tabbing into an
+    /// ordinary field and tapping the key would get their password converted
+    /// into it.
     func testAWordRefusedByAPasswordFieldIsNotRemembered() {
         let engine = engine()
         context.passwordField = true
@@ -168,10 +142,9 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     /// `.chord`, which ends the word and remembers it. No event
     /// tells the engine the app changed.
     ///
-    /// `UndoRecord` already carries the bundle id and refuses to fire anywhere
-    /// else, on exactly this reasoning: a blind edit is only correct in the app
-    /// it was measured in. The remembered word is the same kind of blind edit
-    /// and carried no app at all.
+    /// `UndoRecord` carries the bundle id and refuses to fire anywhere else: a
+    /// blind edit is only correct in the app it was measured in. The remembered
+    /// word is the same kind of blind edit.
     func testAWordLeftBehindInAnotherAppIsNotTheGesturesToConvert() {
         let engine = engine()
         tap.type("ghbdtn")
@@ -185,19 +158,13 @@ final class LayoutEngineStaleWordTests: XCTestCase {
                       + "switched to")
     }
 
-    /// **A chord that is not the bound shortcut takes the word with it.**
+    /// A chord that is not the bound shortcut takes the word with it.
     ///
-    /// Measured before the repair, driving a field the plan is applied to: type
-    /// `ghbdtn`, press ⌘V so the app pastes a link, tap the key —
-    /// `ghbdtnhttps://helm.app` became `ghbdtnhttps://heпривет`. Six backspaces
-    /// counted against a word that was six characters upstream of where the
-    /// caret had ended up, and the mislayout left standing.
-    ///
-    /// The forgiveness `.chord` carried existed for one chord — the recorded
-    /// hotkey, whose keys the head-inserted tap sees before Carbon dispatches
-    /// the action — and every chord was spending it. ⌘V pastes and ⌥V types
-    /// `√`; both change the text in front of the caret, and the remembered word
-    /// is a blind edit measured against the text that was there before.
+    /// Type `ghbdtn`, ⌘V a link, tap the key: without this,
+    /// `ghbdtnhttps://helm.app` becomes `ghbdtnhttps://heпривет`. The
+    /// forgiveness `.chord` carries is for one chord, the recorded hotkey, whose
+    /// keys the head-inserted tap sees before Carbon dispatches the action. ⌘V
+    /// pastes and ⌥V types `√`; both change the text in front of the caret.
     func testAChordThatIsNotTheShortcutIsNotAWordTheGestureMayConvert() {
         let engine = engine()
         tap.type("ghbdtn")
@@ -231,9 +198,8 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     /// A token longer than the buffer is reported as *nothing*, on purpose: the
     /// buffer holds a prefix of it and a plan built from a prefix deletes fewer
     /// characters than were typed. But "nothing finished" is not "nothing
-    /// happened" — the engine only overwrites the remembered word when a word
-    /// finishes, so the refusal leaves the previous one in place. The gesture
-    /// then converts a word from before a seventy-character token, with the
+    /// happened": the previous remembered word must not survive it, or the
+    /// gesture converts a word from before a seventy-character token with the
     /// caret seventy characters further on.
     func testATokenTooLongToHoldDoesNotLeaveTheWordBeforeItStanding() {
         let engine = engine()
@@ -256,8 +222,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
 
     /// The selection path edits text the module did not watch being typed, in
     /// an app it did not choose. The two refusals that make that acceptable are
-    /// the same two the word path applies, and neither had a test at the engine
-    /// level.
+    /// the same two the word path applies, held here at the engine level.
     func testASelectionIsNotConvertedInABlockedApp() async throws {
         let engine = engine()
         context.bundle = "com.apple.Terminal"
@@ -287,10 +252,9 @@ final class LayoutEngineStaleWordTests: XCTestCase {
 
     // MARK: - A module that is off
 
-    /// `deactivate` clears the buffer, the undo record and the remembered word
-    /// on purpose, and the existing suite pins that the word path types nothing
-    /// afterwards. The selection path is the same promise and had no guard at
-    /// all: `convertSelection` did not ask whether the module is running.
+    /// `deactivate` clears the buffer, the undo record and the remembered word,
+    /// and the word path types nothing afterwards. The selection path makes the
+    /// same promise: `convertSelection` asks whether the module is running.
     func testATurnedOffModuleDoesNotConvertASelection() async throws {
         let engine = engine()
         selection.text = "ghbdtn"

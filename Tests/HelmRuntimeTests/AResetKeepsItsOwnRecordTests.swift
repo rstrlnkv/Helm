@@ -6,10 +6,10 @@ import XCTest
 
 /// **The reset's own line survives the relaunch.**
 ///
-/// Past defect: the reset trashes the log folder, the latch of the one-time
-/// pre-redaction purge goes with it, and the next launch purged the fresh log
-/// holding the reset's `removed N, refused M`. `ResetPlan.relatchTheLogPurge`
-/// writes the latch again; the order is guarded in `AResetAsksBeforeItDeletesTests`.
+/// The reset trashes the log folder, and with it the latch of the one-time
+/// pre-redaction purge, so the next launch would purge the fresh log holding
+/// the reset's `removed N, refused M`. `ResetPlan.relatchTheLogPurge` writes
+/// the latch again; the order is guarded in `AResetAsksBeforeItDeletesTests`.
 final class AResetKeepsItsOwnRecordTests: XCTestCase {
 
     override func tearDown() {

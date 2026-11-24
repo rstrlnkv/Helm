@@ -4,128 +4,29 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
-/// **The selection path read from one app and wrote into whichever app was in
-/// front when the write happened, and nothing held those two to being the
-/// same.**
+/// The selection is written only into the app it was read from.
 ///
-/// The word path was taught this lesson twice. `RememberedWord` carries the
-/// bundle id the word was typed in and `UndoRecord` carries the one the
-/// conversion happened in, both for the same stated reason: a blind edit is
-/// only correct in the app it was measured in. The selection is the same kind
-/// of edit against a stranger's text — `convertSelection`'s own comment calls
-/// it «text Helm has never seen, in
-/// an app it did not choose» — and it carried no app at all before `readIn`.
+/// `RememberedWord` and `UndoRecord` carry a bundle id for the same reason: a
+/// blind edit is only correct in the app it was measured in. The selection is
+/// the same kind of edit against a stranger's text, so it is pinned with
+/// `readIn`.
 ///
-/// **The gap was not theoretical.** Both routes read the selection and then act
-/// on the result:
-///
-/// - `convertSelection` was handed an app and a text, ran the app past
-///   `AppScope`, and wrote to whichever app was in front at the write. The scope
-///   verdict is as old as the read that preceded it.
-/// - `fix()` read the selection on `DispatchQueue.global`, precisely because
-///   that read can block, and then hopped back to `DispatchQueue.main`. The text
-///   crossed a queue boundary; the app it came from did not cross with it.
-///
-/// Between the read and the write the frontmost app can change, and the tap
-/// cannot see it happen: a `.click` or a `.chord` would end a word, and neither
-/// is involved in a Space swipe, an app calling `activate()`, an alert coming
-/// forward, or a call joining. What landed was a paragraph converted out of one
-/// application typed into a different one — and, in the first case below, into
-/// a terminal that `AppScope` blocks by default, because the rule was applied to
-/// an app that was no longer there.
-///
-/// The repair is the one the word path already has: pin the app the selection
-/// was read from and refuse to write anywhere else.
+/// Both routes read the selection and then act on it: `convertSelection` runs
+/// the app past `AppScope` and writes, and `fix()` reads on
+/// `DispatchQueue.global`, because that read can block, then hops back to main.
+/// Between the read and the write the frontmost app can change unseen by the
+/// tap (a Space swipe, an app calling `activate()`, an alert, a call joining).
 @MainActor
 final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
 
-    /// The two halves of the secure check stay separate, as they are on the
-    /// real port: `isSecureInput` is the cheap system-wide syscall, `isSecure`
-    /// also recognises a password field by its accessibility role. Folding them
-    /// into one flag makes «the field that took focus is a password field» a
-    /// state no test in the file could write down.
-    private final class DriftContext: SecureContextPort, @unchecked Sendable {
-        private let lock = NSLock()
-        private var storedBundle = "com.apple.Notes"
-        private var storedMainReads = 0
-        /// Written from the read's own thread and read from the one that types,
-        /// which is the whole point of the suite — so it is locked rather than
-        /// merely `@unchecked`.
-        var bundle: String {
-            get { lock.lock(); defer { lock.unlock() }; return storedBundle }
-            set { lock.lock(); storedBundle = newValue; lock.unlock() }
-        }
-        /// How many times the engine has asked who is in front **from the main
-        /// queue**.
-        ///
-        /// The thread is the whole point of the marker. `convertSelection` asks this
-        /// question and calls `replaceSelection` inside one main-queue block, and
-        /// a `@MainActor` test polling with `Task.yield()` is itself a main-queue
-        /// item — so it cannot observe the count move until that block has run to
-        /// its end. Once this is above zero, the write has either happened or
-        /// never will, and there is no window left for it to happen in.
-        ///
-        /// A repair that refuses on the background queue before the hop would
-        /// never move this, and `waitUntil` says «never reached» rather than
-        /// passing quietly. That is the right failure: it means the wait needs a
-        /// new marker, not that the absence below was proved.
-        var mainReads: Int { lock.lock(); defer { lock.unlock() }; return storedMainReads }
-        var systemWideSecure = false
-        var passwordField = false
-        func isSecureInput() -> Bool { systemWideSecure }
-        func isSecure() -> Bool { systemWideSecure || passwordField }
-        func frontmostBundleID() -> String {
-            let onMain = Thread.isMainThread
-            lock.lock()
-            if onMain { storedMainReads += 1 }
-            let front = storedBundle
-            lock.unlock()
-            return front
-        }
-    }
-
-    private final class DriftSelection: SelectionPort, @unchecked Sendable {
-        private let lock = NSLock()
-        private var storedText: String?
-        private var storedReplaced: [String] = []
-        private var storedReads = 0
-        /// Run *inside* the read, which is where the real port spends its time:
-        /// an accessibility round trip. Whatever the person does to their Mac in that window
-        /// happens here.
-        var whileReading: (@Sendable () -> Void)?
-
-        var text: String? {
-            get { lock.lock(); defer { lock.unlock() }; return storedText }
-            set { lock.lock(); storedText = newValue; lock.unlock() }
-        }
-        var replaced: [String] { lock.lock(); defer { lock.unlock() }; return storedReplaced }
-        var reads: Int { lock.lock(); defer { lock.unlock() }; return storedReads }
-
-        private func read() -> String? {
-            lock.lock(); storedReads += 1; let text = storedText; lock.unlock()
-            whileReading?()
-            return text
-        }
-        func selectedTextWithoutClipboard() -> String? { read() }
-        func replaceSelection(with text: String) -> Bool {
-            lock.lock(); storedReplaced.append(text); lock.unlock()
-            return true
-        }
-    }
-
-    private struct DriftTranslation: TranslationPort {
-        func translate(_ word: String, from: String, to: String) -> String? {
-            from == "en" ? ["ghbdtn": "привет"][word] : nil
-        }
-    }
-
-    private var context = DriftContext()
-    private var selection = DriftSelection()
+    private var context = FakeSecure()
+    private var selection = FakeSelection()
 
     private func engine() -> LayoutEngine {
-        context = DriftContext(); selection = DriftSelection()
+        context = FakeSecure(); selection = FakeSelection()
         let engine = LayoutEngine(tap: FakeTap(), typing: FakeTyping(),
-                                  sources: StuckSources(), translation: DriftTranslation(),
+                                  sources: FakeSources(follows: false), translation: FakeTranslation(otherwise: { word, from, _ in
+                                      from == "en" ? ["ghbdtn": "привет"][word] : nil }),
                                   spell: FakeSpell(valid: ["привет"]), secure: context, activation: FakeActivation(), selection: selection)
         engine.activate()
         return engine
@@ -141,10 +42,8 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
 
     // MARK: - The scope verdict is older than the write
 
-    /// `convertSelection` asked `AppScope` about Notes, took the selection it was
-    /// given, and replaced text in a terminal — the app class the module
-    /// blocks by default, on the stated ground that `ghbdtn` there is as likely
-    /// to be a filename as a mistake.
+    /// `AppScope` is asked about Notes; the write must not then land in a
+    /// terminal, the app class the module blocks by default.
     func testAScopeVerdictIsNotSpentOnAnAppThatArrivedAfterIt() async throws {
         let engine = engine()
         selection.text = "ghbdtn"
@@ -178,11 +77,10 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
 
     // MARK: - The text is older than the app it lands in
 
-    /// The gesture's own hop. `fix()` reads the selection off the main queue
-    /// because that read blocks, then comes back to main to act — and the text
-    /// it carried across was written into whoever held the keyboard on arrival.
-    /// Mail is not blocked, so no scope rule saves this one: it was a paragraph
-    /// from Notes typed over whatever was selected in Mail.
+    /// The gesture's own hop: `fix()` reads the selection off the main queue
+    /// because that read blocks, then comes back to main to act. Mail is not
+    /// blocked, so no scope rule can stop a paragraph from Notes being typed
+    /// over Mail's selection; only the pin can.
     func testTheTextTheGestureReadIsNotWrittenIntoADifferentApp() async {
         let engine = engine()
         selection.text = "ghbdtn"

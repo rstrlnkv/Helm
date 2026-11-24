@@ -2,23 +2,15 @@ import HelmTestSupport
 import XCTest
 @testable import HelmRuntime
 
-/// The page called Log showed this process's tail and nothing else.
+/// The Log page shows the file, not only this process's tail: the event
+/// somebody came for is almost never in the current session.
 ///
-/// Measured on the owner's own file on 2026-08-14: 5 306 lines over 107 sessions,
-/// the last `started` line at 5 222 — so a page opened then drew 45 lines, 0.85 %
-/// of the log, under a footer reading «45 of 45 lines». The event somebody came
-/// for is almost never in the 45.
-///
-/// The tail is seeded from the file now, and **the seed is the one place a log
-/// line is parsed back apart** — `write` still keeps the parts and hands them
-/// over, which is the rule this seed is the stated exception to. Everything below
-/// is about that parse: that it is the exact inverse of `LogLine.line`, that a
-/// line it cannot read is kept rather than guessed at, and that a file which is
-/// missing, empty, huge, half-written or refused are five different answers.
-///
-/// Past defect: a read cut inside a multi-byte character («—», «⏎») or a last
-/// line torn inside one made the whole file undecodable, and the page showed
-/// nothing (log-12, fixed with this class's two cut-character tests).
+/// The tail is seeded from the file, and the seed is the one place a log line
+/// is parsed back apart (Architecture/DiagnosticsLog.md § The log pane). These
+/// guard that parse: it is the exact inverse of `LogLine.line`, a line it
+/// cannot read is kept rather than guessed at, a cut multi-byte character does
+/// not lose the file, and a file which is missing, empty, huge, half-written or
+/// refused are five different answers.
 final class ThePageShowsTheLogAndNotTheSessionTests: XCTestCase {
 
     /// Fixed, so a machine in another zone reads these lines the same way. The
@@ -278,14 +270,11 @@ final class ThePageShowsTheLogAndNotTheSessionTests: XCTestCase {
 
     // MARK: - The log itself
 
-    /// **The page's own first read is what does it**, and nothing else calls the
-    /// seed: a log that stopped reading the file at `recentEntries()` would draw
-    /// its 45 lines again with every test here still green.
+    /// The page's own first read does the seeding: a log that stopped reading
+    /// the file at `recentEntries()` would pass every parse test above.
     ///
-    /// The log is built with a file of its own because a test process resolves
-    /// `seedSources` to nothing on purpose (below), and `shared` may have been
-    /// read by an earlier test in this bundle — a first read happens once per
-    /// object, so it takes an object of one's own to watch it happen at all.
+    /// A log of its own, because a test process resolves `seedSources` to
+    /// nothing (below), and `shared` may already have had its first read.
     func testTheFirstReadShowsWhatWasInTheFileBeforeThisProcessStarted() throws {
         let folder = scratchDirectory("log-seed-live")
         let url = folder.appendingPathComponent("helm.log")
@@ -306,18 +295,12 @@ final class ThePageShowsTheLogAndNotTheSessionTests: XCTestCase {
                       "the page is still this process's tail: \(entries.map(\.message))")
     }
 
-    /// And it is a *first* read, not every read. The page asks once a second
-    /// while it is open and the seed reads a quarter of a megabyte and parses a
-    /// thousand lines on the main thread — 49–78 ms of `DateFormatter` alone
-    /// without the minute cache — so a tick that read the file again would spend
-    /// a good part of every second on lines it already has.
+    /// A first read, not every read: the page asks once a second, and the seed
+    /// parses a thousand lines on the main thread.
     ///
-    /// Watched through the emptied tail, because that is where a second read
-    /// shows: «Clear» empties it, and a page that seeded itself again on the
-    /// next tick would put the log straight back on screen. A first read cannot
-    /// be told from a second by its result — the merge keeps this session's own
-    /// lines either way — so a test that only reads twice passes with the once
-    /// deleted.
+    /// Watched through the emptied tail, because the merge makes a second read's
+    /// result look like a first's: after «Clear», a page that seeded again would
+    /// put the log straight back.
     func testAClearedPageIsNotFilledFromTheFileAgain() throws {
         let folder = scratchDirectory("log-seed-once")
         let url = folder.appendingPathComponent("helm.log")
@@ -333,11 +316,9 @@ final class ThePageShowsTheLogAndNotTheSessionTests: XCTestCase {
                        + "back up from the log it was just cleared of")
     }
 
-    /// **A test process reads no log file**, and the seed says so where the
-    /// destination rule is written rather than by a check somewhere in the log.
-    /// The test folder is one folder shared by every run, so seeding it would
-    /// put the whole history of the suite into the tail of any test that reads
-    /// one — measured at 46 copies of a line a KeepAwake test wanted once.
+    /// A test process reads no log file, decided where the destination rule is
+    /// written. The test folder is shared by every run, so seeding from it would
+    /// put the suite's whole history into any test's tail.
     func testATestProcessSeedsFromNothingAndAShippingOneFromBothHalves() {
         let files = [URL(fileURLWithPath: "/tmp/helm.previous.log"),
                      URL(fileURLWithPath: "/tmp/helm.log")]
@@ -349,8 +330,8 @@ final class ThePageShowsTheLogAndNotTheSessionTests: XCTestCase {
                        + "carries the shared test log")
     }
 
-    /// Everything the file line carries reaches the tail — the fifth part was
-    /// the one it did not have.
+    /// Everything the file line carries reaches the tail, the source site
+    /// included.
     func testTheTailKeepsTheSourceSiteTheFileLineCarries() {
         addTeardownBlock {
             HelmLog.shared.setEnabled(false)

@@ -7,12 +7,10 @@ import HelmTestSupport
 /// The watcher's window between planning a file and running the plan.
 ///
 /// FSEvents on a folder swapped for a link into `~/Library` reports the target's
-/// files. The watcher used to ask whether the file exists before it asked
-/// whether a rule may reach it, so a file that vanished in that window came
-/// back `.missing` — a record carrying the file's name and path, and a log line
-/// with the leaf in clear, for a file the gate would have refused unseen. The
-/// gate comes first now: a protected path is refused as out of scope whether or
-/// not the file is still there, and that refusal names nothing.
+/// files. The gate is asked before the file's existence, so a protected path is
+/// refused as out of scope whether or not the file is still there, and that
+/// refusal names nothing. The other order returns `.missing`, with the file's
+/// name and path in the record and the log.
 final class AFileThatVanishesBehindAProtectedLinkIsNamedNowhereTests: XCTestCase {
 
     private var home: URL!
@@ -49,8 +47,8 @@ final class AFileThatVanishesBehindAProtectedLinkIsNamedNowhereTests: XCTestCase
         XCTAssertEqual(record?.path, "", "a record carried a protected path")
     }
 
-    /// Control: an ordinary file that vanished is still `.missing`, so the
-    /// reorder did not turn every absence into a scope refusal.
+    /// Control: an ordinary file that vanished is still `.missing`, so the gate
+    /// does not turn every absence into a scope refusal.
     func testAnOrdinaryFileThatIsGoneIsStillMissing() {
         let path = home.appendingPathComponent("Downloads/gone.pdf").path
         XCTAssertEqual(RuleRunner(home: home.path).run(plan(for: "gone.pdf"), at: path, key: nil),

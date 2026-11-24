@@ -21,12 +21,10 @@ public struct SealKey: Equatable, Sendable {
 
 /// Whether a stored setting is the one Helm saved, or one something else wrote.
 ///
-/// **Written for Autopilot's rules and now shared**, because the second thing
-/// needing it arrived within a fortnight: the folder a background scan starts
-/// from and the switch that says which scans may run. Both are plain values in
-/// `com.helm.app.plist` that any process running as this user can rewrite, and
-/// both steer work nobody is watching. The reasoning below is Autopilot's and
-/// carries over unchanged; only the noun does not.
+/// Shared by Autopilot's rules and the scan settings (the folder a background
+/// scan starts from, the switch that says which scans may run): plain values
+/// any process running as this user can rewrite, steering work nobody is
+/// watching. Architecture/StoredSettings.md § Sealed settings.
 ///
 /// Autopilot's rules live in `~/Library/Preferences/com.helm.app.plist`, which
 /// is plain data owned by the user: any unsandboxed process running as them can
@@ -76,9 +74,8 @@ public enum SettingSeal {
         }
         guard let code = bytes(ofHex: mac) else { return .broken }
         // Constant-time, by CryptoKit rather than by `==` on two strings. The
-        // timing here is not a realistic channel — the comparison happens once
-        // an hour behind a filesystem read — but a hand-rolled comparison is
-        // the kind of detail that gets copied somewhere it does matter.
+        // timing is not a realistic channel here, but a hand-rolled comparison
+        // gets copied somewhere it does matter.
         let valid = HMAC<SHA256>.isValidAuthenticationCode(code,
                                                            authenticating: payload,
                                                            using: SymmetricKey(data: key.material))

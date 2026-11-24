@@ -7,15 +7,12 @@ import Module_Duplicates_Engine
 /// removal it sends has to say.
 ///
 /// What a removal frees is arithmetic over clone families, and a family is held
-/// by any copy of it that is not going — `DuplicateGroup.reclaimable`, the fold
-/// the bar above the press is built from, counts it that way and says so. The
+/// by any copy of it that is not going (`DuplicateGroup.reclaimable`). The
 /// engine cannot arrive at the same figure on its own: an extra the person left
-/// unticked is named in no plan, and `HelmTrash.remove`'s own doc records why it
-/// cannot be recovered from the disk — there is no reverse lookup from a clone
-/// family to its members. `TheBatchIsToldWhatStaysTests` holds the engine's half
-/// on real clones; this holds the page's, which is that the fact is sent at all.
-///
-/// Guards a past defect: 69505181 fix(duplicates): the batch is read against itself, and four other ways the page lied.
+/// unticked is named in no plan, and there is no reverse lookup from a clone
+/// family to its members (`HelmTrash.remove`). `TheBatchIsToldWhatStaysTests`
+/// holds the engine's half on real clones; this holds the page's, which is that
+/// the fact is sent at all.
 @MainActor
 final class ThePageNamesEveryCopyItKeepsTests: XCTestCase {
 
@@ -39,7 +36,7 @@ final class ThePageNamesEveryCopyItKeepsTests: XCTestCase {
         XCTAssertEqual(work.removals.last?.map(\.remove), [marked],
                        "precondition: one copy was asked for")
         let said = try XCTUnwrap(work.staying.last, "no removal reached the work at all")
-        XCTAssertEqual(Set(said ?? []), [survivor, unticked], """
+        XCTAssertEqual(Set(said), [survivor, unticked], """
             the removal named its survivor and nothing else, so the extra left unticked — which \
             is holding its family's blocks exactly as the survivor is — was invisible to the \
             arithmetic behind the banner
@@ -61,7 +58,7 @@ final class ThePageNamesEveryCopyItKeepsTests: XCTestCase {
         await dvm.emptyBasket()
 
         let said = try XCTUnwrap(work.staying.last, "no removal reached the work at all")
-        XCTAssertEqual(Set(said ?? []), [survivor, unticked, elsewhere,
+        XCTAssertEqual(Set(said), [survivor, unticked, elsewhere,
                                          "\(home)/Documents/note 2.txt"],
                        "a group nothing was ticked in still holds whatever its copies hold")
     }

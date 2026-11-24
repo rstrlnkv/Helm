@@ -1,48 +1,31 @@
 import Foundation
 import XCTest
 
-/// **A construction that forgets a port is an integration test nobody meant to
-/// write.**
+/// A construction that forgets a port is an integration test nobody meant to
+/// write.
 ///
-/// An engine's `init` gives every port a default, because the app builds one with
-/// no arguments — and every one of those defaults is the real thing: the Mac's own
-/// keychain, its `~/Library`, its `launchctl`. A test that leaves a
-/// label off therefore asks the owner's machine a question and reports the answer
-/// as a fact about a fixture. Autopilot is the case that makes this concrete:
-/// eleven engine tests took the keychain default and rolled the owner's real rules
-/// back, and the installed build then refused every rule as an older set put back
-/// (ARCHITECTURE.md § Fakes).
+/// An engine's `init` defaults every port to the real thing (the Mac's own
+/// keychain, its `~/Library`, its `launchctl`), because the app builds one with
+/// no arguments. A test that leaves a label off asks the owner's machine and
+/// reports the answer as a fact about a fixture; a keychain default can roll
+/// the owner's real rules back (Architecture/TestsAndMeasurement.md § Fakes).
 ///
-/// Read off the source rather than from a list beside a list: every
-/// `<Engine>(` under a module's tests is a subject, so a construction added
-/// later cannot quietly take a default. `SwiftSource.code` blanks comments and
-/// string insides first, which is what lets a guard mention the very shape it
-/// forbids — including this documentation — without reporting itself.
+/// Read off the source: every `<Engine>(` under a module's tests is a subject,
+/// so a construction added later cannot quietly take a default.
+/// `SwiftSource.code` blanks comments and string insides first, so a guard can
+/// mention the shape it forbids without reporting itself.
 ///
-/// **The floor is not decoration.** The first version of the scan this was
-/// lifted from matched nothing and reported every file clean; a scan that can
-/// match zero and pass is not a scan. So the count of constructions found is a
-/// parameter with no default: a caller has to say how many it expects to see.
+/// The floor has no default, because a scan that can match zero and pass is
+/// not a scan: a caller says how many constructions it expects.
 ///
-/// **The subject is named rather than derived, and that is the only difference
-/// from the guard next door.** `ATestNamesTheKeychainPortsItBuildsOverTests`
-/// asks the same question of the whole tree at once and needs no list, because a
-/// keychain port announces itself: it walks `Sources/` for every `init` whose
-/// default reaches a declaration containing «Keychain», two hops deep. Nothing
-/// spells a port that walks somebody's `~/Library` or shells out to `launchctl`,
-/// so the subject here is a name and a floor. When something does spell them,
-/// this should derive its subjects the same way and stop taking a list. The walk
-/// underneath is one — `misses(of:under:)`, which both call.
+/// The subject is named, not derived as in
+/// `ATestNamesTheKeychainPortsItBuildsOverTests`: a keychain port announces
+/// itself by name, and nothing spells a port that walks `~/Library` or shells
+/// out to `launchctl`. Both read the same walk, `misses(of:under:)`.
 ///
-/// Leftovers, VPN, Autopilot (`home`), Disk (`capacity`) and Screenshots
-/// (`preferences`) are wired to `check(…)` today, and the guard next door holds
-/// Autopilot's and Duplicates' keychain ports through `misses`. KeepAwake,
-/// Homebrew, Layout and Uninstaller have no guard of this kind because their
-/// defaults reach nothing on this Mac: `EngineNews()`, `InMemoryOpMarker()`,
-/// `nil`, an in-memory `NamespacedStore`, and a `LedgerStore()` that does not
-/// persist outside the app (`LedgerStore.swift:27-31`). Their keychain defaults
-/// stay with `ATestNamesTheKeychainPortsItBuildsOverTests`. Wiring another module
-/// is a `check(…)` call and a fake at each site it names.
+/// A module whose defaults reach nothing on this Mac (an in-memory store, a
+/// marker, `nil`) needs no `check(…)`; wiring another module is a `check(…)`
+/// call and a fake at each site it names.
 public enum PortsAtConstruction {
 
     /// Fails when any construction of `engine` under `directory` leaves one of
@@ -93,23 +76,16 @@ public enum PortsAtConstruction {
     /// one of that type's labels unnamed — **and how many constructions were
     /// seen at all**, which is the half that goes quiet.
     ///
-    /// Two guards read this. `check(…)` above asks about one named engine and a
-    /// module's own tests; `ATestNamesTheKeychainPortsItBuildsOverTests` asks
-    /// about every type in the tree whose default reaches the keychain, over the
-    /// whole of `Tests/`, and applies its own list of exceptions to what comes
-    /// back. The walk was written twice before it was written here, and the
-    /// second copy was a hand-rolled bracket balancer that matched nothing on
-    /// its first run.
+    /// Two guards read this: `check(…)` above, for one named engine over a
+    /// module's own tests, and `ATestNamesTheKeychainPortsItBuildsOverTests`,
+    /// for every keychain-defaulted type over all of `Tests/`.
     public static func misses(of subjects: [String: [String]], under directory: String)
     throws -> (misses: [Miss], constructions: Int) {
         var found: [Miss] = []
         var constructions = 0
 
-        // The shared reading rather than a walk of its own. XCTest builds an
-        // instance per test case, and the keychain guard next door calls this
-        // from two of them — which was two walks, two loads and two parses of
-        // the whole of `Tests/` for an answer the tree cannot have changed in
-        // between.
+        // The shared, memoised reading: XCTest builds an instance per test
+        // case, and the tree cannot change in between.
         for file in try SwiftSource.code(under: directory) {
             for (type, required) in subjects {
                 for call in SwiftSource.callSites(of: type, in: file.text) {

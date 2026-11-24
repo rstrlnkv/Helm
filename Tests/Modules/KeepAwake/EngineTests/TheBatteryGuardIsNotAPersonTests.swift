@@ -7,13 +7,11 @@ import HelmRuntime
 ///
 /// The guard is a floor the machine keeps, and it fires with nobody at the Mac
 /// — that is the whole reason it exists, since `defaultDurationMinutes` ships
-/// as «indefinitely» and nothing else ever ends an unattended session. It once
-/// ended one through `stopSession()`, the person's own Stop button, which sets
-/// `suppressed` («an automatic condition is true and is being ignored»), and
-/// that lifts only when the *trigger* drops and comes back, so the charger
-/// going in did nothing. It now vetoes while the charge is low: the veto is
-/// recomputed on every power event, lifts by itself, and is published as
-/// `batteryStopped`, which is what the screens draw the reason from.
+/// as «indefinitely» and nothing else ever ends an unattended session. It
+/// vetoes while the charge is low rather than pressing the person's Stop
+/// (which sets `suppressed`, lifted only when the trigger drops and comes
+/// back): the veto is recomputed on every power event, lifts by itself when
+/// the charger goes in, and is published as `batteryStopped`.
 final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
 
     private var store: NamespacedStore!
@@ -85,9 +83,8 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
     /// button for a rule nobody paused.
     func testTheChargerGoingInClearsTheSuppression() {
         theGuardStopsTheRule()
-        // The guard no longer suppresses at all — it vetoes while the charge is
-        // low and the veto lifts by itself. The precondition here used to assert
-        // the defect; what the test is about survives it.
+        // The guard does not suppress at all: it vetoes while the charge is low
+        // and the veto lifts by itself.
         XCTAssertFalse(engine.suppressed,
                        "a flat battery is not a person saying stop, and `suppressed` is "
                        + "the flag that means one did")
@@ -137,13 +134,9 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
 
     /// «Resume» on a Mac that is still at 5 %.
     ///
-    /// This used to be a loop: the guard ended the session through the verb a
-    /// person uses, «Resume» handed the Mac back, and thirty seconds later the
-    /// same fuse burned down to the same decision — with a banner saying what
-    /// it had said before the button was pressed. The veto has no fuse: while
-    /// the charge is under the floor nothing holds the Mac, so pressing Resume
-    /// changes nothing and says nothing new, which is the honest answer to a
-    /// button that cannot do what it offers.
+    /// The veto has no fuse that burns down every thirty seconds: while the
+    /// charge is under the floor nothing holds the Mac, so pressing Resume
+    /// changes nothing and says nothing new.
     ///
     /// The log line is the account of an unattended stop, so its count is
     /// asserted — an absence would pass here for free otherwise.
@@ -187,19 +180,14 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
 
     // MARK: - A guard that stops nothing still says it stopped something
 
-    /// `recompute` runs from the power observer, and the power observer
-    /// fires on every change IOKit reports — each percentage step on a
-    /// draining battery, each charging-state change. Nothing in it asks
-    /// whether a session is running, so below the floor it writes
-    /// «battery guard stopped the session at 5%» over and over for a session
-    /// that does not exist, and calls `stopSession()` on a Mac that is not
-    /// being held awake.
+    /// `recompute` runs from the power observer, which fires on every change
+    /// IOKit reports: each percentage step on a draining battery, each
+    /// charging-state change. Below the floor with no session, nothing may be
+    /// logged as stopped.
     ///
-    /// The line is not decoration: it is the *only* account this module gives
-    /// of an unattended session ending, and a trail that says it every few
-    /// seconds when nothing happened is a trail nobody can read the real one
-    /// out of. The house rule about the log being a product surface is the
-    /// same rule.
+    /// The line is the only account this module gives of an unattended session
+    /// ending, and a trail that says it every few seconds when nothing happened
+    /// is a trail nobody can read the real one out of.
     func testAGuardWithNoSessionToStopSaysNothing() {
         tailTheLog()
 

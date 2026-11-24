@@ -1,23 +1,17 @@
-/// **The raw value is the name in the published state**, so the engine and its page name
-/// the same thing. It used to have none, and the spelling was written out three
-/// times over: a `wireName` extension in the engine, a `switch` over string
-/// literals in `KAStr` turning it back into a word, and two inline
-/// `["externalDisplay", "power", "app"]` arrays in the views. A case renamed in
-/// one of them is an error in none — the state simply arrives and matches
-/// nothing, which on this page reads as a Mac that is awake for no reason.
+/// **The raw value is the name in the published state**, so the engine and its
+/// page name the same thing, and a renamed case is a build error rather than a
+/// state that matches nothing.
 ///
 /// Not the log's vocabulary: `ConditionLabel` spells `.externalDisplay` as
 /// `display`, and deliberately — a log line is read by a person scanning for
-/// the shape of a session. Two vocabularies are fine while each has one owner;
-/// three spellings of one of them was the defect.
+/// the shape of a session. Two vocabularies are fine while each has one owner.
 public enum ActiveCondition: String, Hashable, Sendable, CaseIterable {
     case manual, timer, externalDisplay, power, app
 
     /// The ones the machine decides rather than the person: a display arriving,
     /// the charger going in, an app the rules name. Both screens ask this —
     /// the panel tile to say a session is being held for you, the settings page
-    /// to count them — and both spelled the three out inline, so «which of
-    /// these are automatic» was answered in two places and owned by neither.
+    /// to count them.
     public static let automatic: Set<ActiveCondition> = [.externalDisplay, .power, .app]
 }
 

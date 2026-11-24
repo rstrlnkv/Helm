@@ -5,14 +5,12 @@ import XCTest
 import HelmContract
 @testable import Module_VPN_Engine
 
-/// The whole point of the indicator is the distinction between Helm's own work
-/// and the person's: a ring that spins for a button they just pressed tells
-/// them nothing they did not already know. These tests assert on the recorded
-/// value itself — name, kind and the moment — rather than on "something
-/// happened", because the failure this guards against is a recording that fires
-/// for everything.
+/// The indicator exists to tell Helm's own work from the person's: a ring
+/// that spins for a button they just pressed tells them nothing. These tests
+/// assert on the recorded value itself — name, kind and moment — because the
+/// failure guarded is a recording that fires for everything.
 ///
-/// Guards: Helm's own connects, drops and teardowns are recorded and the person's presses are not (no fix commit; teardown recorded without `auto` is red, the `_cameUp` filter of the teardown removed is green).
+/// Guards: Helm's own connects, drops and teardowns are recorded and the person's presses are not.
 final class VPNAutomationRecordingTests: XCTestCase {
 
     private let clock = TestClock()
@@ -57,11 +55,9 @@ final class VPNAutomationRecordingTests: XCTestCase {
 
     // MARK: - Work that changed nothing
 
-    /// The case measured on a real machine: the rule's app was already running,
-    /// so `activate()` replayed `appLaunched` at every launch of Helm, and the
-    /// tunnel it asks for was already up. `scutil --nc start` is a no-op there —
-    /// the ring spun and named a VPN nobody had touched, every single launch.
-    /// An indicator that fires for that indicates nothing.
+    /// The rule's app is already running, so `activate()` replays `appLaunched`
+    /// at every launch of Helm, and the tunnel is already up: `scutil --nc start`
+    /// is a no-op, and an indicator that fires for it indicates nothing.
     func test_a_rule_asking_for_a_tunnel_already_up_records_nothing() {
         let runner = FakeRunner(list: scutilListRow("Connected"))
         let engine = makeEngine(runner, apps: alreadyRunning(), settings: ruleForA())
@@ -130,8 +126,8 @@ final class VPNAutomationRecordingTests: XCTestCase {
         // written", not "nothing was ever written".
         engine.connect("A", auto: true)
         // Up when the press arrives: a teardown of a tunnel already down records
-        // nothing whoever asked, so holding the fake at Disconnected let the
-        // `auto` check go and the test stay green.
+        // nothing whoever asked, so a Disconnected fake would let the `auto`
+        // check go unnoticed.
         runner.listOutput = scutilListRow("Connected")
         engine.refresh()
         engine.clearLastAutomationForTesting()
@@ -165,10 +161,9 @@ final class VPNAutomationRecordingTests: XCTestCase {
     /// somebody stopped it in System Settings — leaves `_autoConnected` on the
     /// refresh path. That is a firing: what Helm arranged is no longer true.
     ///
-    /// **`.dropped`, and it used to be `.disconnected`** — the same case a quit
-    /// rule produces. The two shared a kind, so they shared a set of words and
-    /// one volume: somebody who wanted their rules to fire in silence was also
-    /// asking not to be told when the tunnel fell over underneath them.
+    /// **`.dropped`, not `.disconnected`**, the kind a quit rule produces: the
+    /// two take different words and volumes, so somebody who wants their rules
+    /// silent can still be told when the tunnel falls over underneath them.
     func test_a_tunnel_helm_raised_that_drops_on_its_own_is_recorded_as_dropped() {
         let runner = FakeRunner(list: scutilListRow("Disconnected"))
         let engine = makeEngine(runner)
@@ -211,10 +206,9 @@ final class VPNAutomationRecordingTests: XCTestCase {
     }
 
     /// The mirror of the launch case: a teardown that changes nothing is not
-    /// news either. The rule quits, Helm asks for a stop, and the tunnel was
-    /// already down — `scutil --nc stop` is a no-op and there is nothing to
-    /// announce. Without this the ring spins for a disconnection that had
-    /// already happened, which is the same lie as announcing one that never did.
+    /// news. The rule quits, Helm asks for a stop, and the tunnel was already
+    /// down — `scutil --nc stop` is a no-op, and announcing it would name a
+    /// disconnection that had already happened.
     func test_a_teardown_of_a_tunnel_that_was_already_down_is_not_recorded() {
         let runner = FakeRunner(list: scutilListRow("Disconnected"))
         let settings = VPNSettings.inMemory()
@@ -251,9 +245,8 @@ final class VPNAutomationRecordingTests: XCTestCase {
         apps.bundleIDs = ["com.a"]
         apps.fire()
         // The tunnel Helm just asked for comes up. This is the only state a
-        // teardown can actually begin from — `appTerminated` takes down nothing
-        // Helm did not raise this session — and holding the fake at
-        // Disconnected here arranged a world the code cannot reach.
+        // teardown can begin from — `appTerminated` takes down nothing Helm did
+        // not raise this session.
         runner.listOutput = scutilListRow("Connected")
         engine.refresh()
         engine.clearLastAutomationForTesting()

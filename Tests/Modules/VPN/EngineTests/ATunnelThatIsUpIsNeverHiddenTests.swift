@@ -4,18 +4,15 @@
 import XCTest
 @testable import Module_VPN_Engine
 
-/// What is up comes first, because from now on the page hides the tail.
+/// What is up comes first, because the page hides the tail.
 ///
-/// The grid draws six cards and puts the rest behind «Show all». In the order
-/// `scutil --nc list` hands back — which is the order the configurations were
-/// made in, and nothing else — the connected tunnel can be the ninth, so the
-/// one card the page exists to show would be the one a person cannot see. A cap
-/// without an order is that defect; this is the order.
+/// The grid draws six cards and puts the rest behind «Show all», and
+/// `scutil --nc list` answers in the order the configurations were made, so the
+/// connected tunnel could be the ninth: the one card the page exists to show,
+/// hidden. A cap needs an order.
 ///
 /// `isUp`, not `isConnected`: a handshake in flight is something happening on
 /// this Mac, and the card that can cancel it belongs on screen while it runs.
-///
-/// Past defect: commit 1eadc939, «feat(vpn): one card per configuration, with two doors».
 final class ATunnelThatIsUpIsNeverHiddenTests: XCTestCase {
 
     private func conn(_ name: String, _ status: VPNStatus) -> VPNConnection {

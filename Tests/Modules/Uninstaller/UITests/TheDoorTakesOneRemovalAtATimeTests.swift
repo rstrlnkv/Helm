@@ -5,11 +5,10 @@ import XCTest
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-/// **A removal through the door marks the list stale, and a refused one does not.**
+/// A removal through the door marks the list stale, and a refused one does not.
 ///
-/// The busy guard itself is held in both directions by `ADoorRemovalMeetsTheRestOfThePageTests`
-/// (the door beside the page's batch and the batch beside the door), where the held fake has one gate
-/// per caller; a door-beside-door test on one shared gate hung instead of failing with the guard gone.
+/// The busy guard is held in both directions by `ADoorRemovalMeetsTheRestOfThePageTests`, whose held
+/// fake has one gate per caller; a door-beside-door test on one shared gate would hang, not fail.
 @MainActor
 final class TheDoorTakesOneRemovalAtATimeTests: XCTestCase {
 

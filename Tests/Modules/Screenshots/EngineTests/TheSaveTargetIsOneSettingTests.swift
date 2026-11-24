@@ -4,11 +4,8 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Screenshots_Engine
 
-/// **One setting decides where a capture goes.** "After a full-screen capture"
-/// (file, clipboard, both) and "Save to" (Desktop, Documents, Clipboard, Other)
-/// were two settings deciding one thing, and a page that drew both would have
-/// let them disagree. The first is gone; this fails while the old key still steers a capture, and while a capture
-/// follows anything but the target.
+/// **One setting decides where a capture goes**, the target ("Save to": Desktop, Documents, Clipboard, Other).
+/// This fails while any other key steers a capture, and while a capture follows anything but the target.
 final class TheSaveTargetIsOneSettingTests: XCTestCase {
 
     func testTheKeyTheOldSettingWroteDecidesNothing() {

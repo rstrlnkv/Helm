@@ -7,26 +7,20 @@ import XCTest
 
 /// **Which interface a tunnel is on is asked of `scutil`, by name.**
 ///
-/// It used to be asked of the dynamic store, by service id — and for anything that
-/// is not a classic PPP/IPSec service those are two different identifier spaces.
-/// Measured on the machine the build was installed on: `scutil --nc list` names the
-/// configuration `02196763-…`, while the routing entry for the tunnel it raised is
-/// `State:/Network/Service/B8689BB0-…/IPv4`. So the lookup answered nil for every
-/// NetworkExtension tunnel, `tunnelFacts()` answered nil with it, and the strip was
-/// absent on every Mac — with the suite green, because `FakeInterfaces` was keyed
-/// by service id and could therefore be planted with a pair the real store cannot
-/// produce (ARCHITECTURE.md § Fakes).
-///
-/// Past defect: commit a5bb9e0d, «fix(vpn): the tunnel's interface is asked of scutil, by name».
+/// The dynamic store is keyed by service id, and for anything that is not a
+/// classic PPP/IPSec service `scutil --nc list` names the *configuration*,
+/// another identifier space: a lookup there answers nil for every
+/// NetworkExtension tunnel, and the strip would be absent on every Mac. A fake
+/// keyed by service id could be planted with a pair the real store cannot
+/// produce (Architecture/TestsAndMeasurement.md § Fakes).
 final class TheInterfaceComesFromTheToolTests: XCTestCase {
 
-    /// `scutil --nc status "incy"` on this machine, 2026-08-18, against a live
-    /// NetworkExtension tunnel. Addresses replaced, structure and indentation
-    /// kept exactly — **including the seven `InterfaceName : en0` decoys** the
-    /// excluded routes carry before the tunnel's own line. A parser that takes
-    /// the first match answers `en0`, and the verdict then reads «traffic is not
-    /// going through the tunnel» on a Mac where it is: a false alarm in the one
-    /// sentence this feature exists to get right.
+    /// `scutil --nc status "incy"` against a live NetworkExtension tunnel.
+    /// Addresses replaced, structure and indentation kept exactly — **including
+    /// the seven `InterfaceName : en0` decoys** the excluded routes carry before
+    /// the tunnel's own line. A parser that takes the first match answers `en0`,
+    /// and the verdict would read «traffic is not going through the tunnel» on a
+    /// Mac where it is.
     private static let connected = """
     Connected
     Extended Status <dictionary> {
@@ -150,10 +144,8 @@ final class TheInterfaceComesFromTheToolTests: XCTestCase {
 
     // MARK: - The engine, driven by what the tool really printed
 
-    /// **The whole defect, end to end.** A connected NetworkExtension tunnel,
-    /// the tool answering exactly what it answers on this machine, and a strip
-    /// that has to appear. With the old join — the dynamic store asked for the
-    /// `--nc list` id — `facts` is nil here, as it was on every Mac.
+    /// **End to end.** A connected NetworkExtension tunnel, the tool answering
+    /// exactly what it answers on a real Mac, and a strip that has to appear.
     func test_a_connected_tunnel_puts_its_interface_on_the_wire() async {
         let runner = FakeRunner()
         runner.listOutput = "* (Connected) 02196763-19A0-40A0-B369-D9EA68F7F65D "
@@ -179,8 +171,7 @@ final class TheInterfaceComesFromTheToolTests: XCTestCase {
     }
 
     /// And it is asked once per tunnel, not once per emission: `scutil` is a
-    /// subprocess this repository measures at 16 ms, and the poll behind one
-    /// connect re-reads the list 26 times.
+    /// subprocess, and the poll behind one connect re-reads the list many times.
     func test_the_tool_is_asked_for_the_interface_once_per_tunnel() async {
         let runner = FakeRunner()
         runner.listOutput = "* (Connected) 02196763-19A0-40A0-B369-D9EA68F7F65D "

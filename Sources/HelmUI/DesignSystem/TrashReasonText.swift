@@ -3,20 +3,16 @@ import HelmRuntime
 
 /// Why a path refused to move, in a sentence.
 ///
-/// These lived inside the Uninstaller, which is the module that had them
-/// first — so Disk and Duplicates, which refuse for exactly the same reasons,
-/// said nothing but a number. A reason phrased two ways in two modules is two
-/// things to the person reading it, so there is one table.
+/// One table for every module that removes, because a reason phrased two ways
+/// in two modules is two things to the person reading it.
 public enum TrashReasonText {
     /// The verb of the caller's own refresh control, where a sentence ends by
     /// naming one.
     ///
-    /// «Scan again to see where it is now» was said on four screens, and one of
-    /// them has no such button: Duplicates' control says «Search again». A
-    /// record that names a control is checked against the app's real string, so
-    /// the caller says which word its page carries — and each variant is a full
-    /// key with its own eight translations, because a verb interpolated into
-    /// eight grammars would be right in one of them.
+    /// A sentence that names a control must name the one on the screen:
+    /// Duplicates' says «Search again», the others «Scan again». Each variant
+    /// is a full key with its own eight translations, because a verb
+    /// interpolated into eight grammars would be right in one of them.
     public enum Refresh {
         case scan, search
     }
@@ -34,12 +30,10 @@ public enum TrashReasonText {
         case TrashFailure.Reason.missing.rawValue:
             return gone(refresh)
         case TrashFailure.Reason.unreadable.rawValue:
-            // Not `changedSinceScan`'s sentence: that one says «it is not where
-            // Helm found it» about a file that may be exactly there. Only the
-            // duplicate verification raises this — it reads both sides of the
-            // pair, and one failure on either lands here — so the sentence may
-            // name the copy that stays. No refresh verb: the step is the
-            // access, not the list.
+            // Not `changedSinceScan`'s sentence, which says the file is not
+            // where Helm found it. Only the duplicate verification raises this,
+            // reading both sides of a pair, so the sentence may name the copy
+            // that stays. No refresh verb: the step is the access, not the list.
             return L(.unreadable)
         case TrashFailure.Reason.readOnlyVolume.rawValue:
             return L(.readOnlyVolume)
@@ -58,15 +52,10 @@ public enum TrashReasonText {
     /// chose this file on the strength of a scan, and the scan is what stopped
     /// being true.
     ///
-    /// **Module-neutral, because the refusal is.** `HelmTrash` raises this for
-    /// every module — an ancestor of the path changed since the gate — and the
-    /// sentence said "it is no longer a duplicate", which is Duplicates' claim
-    /// and was untrue even there: nothing re-checks duplication. Drawn over a
-    /// launch agent it was simply false.
-    ///
-    /// The closing verb is the caller's: three pages draw a «Scan again»
-    /// button, Duplicates' says «Search again», and the sentence has to name
-    /// the control that is actually on the screen.
+    /// Module-neutral, because the refusal is: `HelmTrash` raises it for every
+    /// module when an ancestor of the path changed since the gate, and nothing
+    /// re-checks what made the file a candidate. The closing verb is the
+    /// caller's (`Refresh`).
     private static func changed(_ refresh: Refresh) -> String {
         switch refresh {
         case .scan:
@@ -76,11 +65,9 @@ public enum TrashReasonText {
         }
     }
 
-    /// Not the neighbouring sentence, and the difference is the whole point:
-    /// `changedSinceScan` is a file that is somewhere else, this is a file that
-    /// is nowhere. It names the list rather than the file, because the list is
-    /// what was wrong — the person picked this from a measurement that has
-    /// since stopped being true.
+    /// Not the neighbouring sentence: `changedSinceScan` is a file that is
+    /// somewhere else, this is a file that is nowhere. It names the list rather
+    /// than the file, because the list is what stopped being true.
     private static func gone(_ refresh: Refresh) -> String {
         switch refresh {
         case .scan:

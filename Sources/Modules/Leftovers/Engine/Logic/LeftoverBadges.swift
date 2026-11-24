@@ -14,13 +14,11 @@ public enum RowBadge: Hashable, Sendable {
 
 /// What a row wears beside its name.
 ///
-/// **Disabled is a qualifier and it was standing in for the status.** The page
-/// wrote `if item.disabled { … } else { statusBadge(…) }`, so the one mark that
-/// says why a row is in this list disappeared for exactly the rows somebody had
-/// already switched off — and `runAtLoad` was appended regardless, in the same
-/// orange the leftover pill wears. launchd's disabled list overrides the plist's
-/// `RunAtLoad`, so a switched-off job drew «Disabled» and «At login» side by side:
-/// two badges asserting opposite things about the next login.
+/// **Disabled is a qualifier, not a stand-in for the status**: the mark that
+/// says why a row is in this list stays on rows somebody has switched off.
+/// launchd's disabled list overrides the plist's `RunAtLoad`, so «Disabled»
+/// and «At login» side by side would assert opposite things about the next
+/// login.
 ///
 /// So the status is always first, and the slot after it holds one qualifier:
 /// «Disabled» if the job is switched off, «At login» otherwise. Never both — the

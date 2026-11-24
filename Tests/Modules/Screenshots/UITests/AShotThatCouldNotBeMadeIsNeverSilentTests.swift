@@ -35,11 +35,11 @@ final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
         tailTheLog()
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         for controller in controllers { controller.cancel() }
         controllers = []
         clock.finish()
-        super.tearDown()
+        try await super.tearDown()
     }
 
     private func scene() throws -> Scene {
@@ -50,8 +50,8 @@ final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = scratchDirectory("silent-shot")
         let session = CaptureSession(capture: FakeScreen(outcome: .frozen(Freeze(displays: frames.map { .image($0) }, windows: []))),
-                                     writer: disk, trash: NoTrash(), pasteboard: board, preferences: NoPreferences(),
-                                     shutter: NoShutter(), textReader: NoTextReader(),
+                                     writer: disk, trash: AsideTrash.refusing(), pasteboard: board, preferences: NoPreferences(),
+                                     shutter: CountingShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let toast = ShotToastRig.toast(clock)
@@ -93,7 +93,7 @@ final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
                        file: file, line: line)
     }
 
-    // MARK: M068: an edit that makes no picture
+    // MARK: An edit that makes no picture
 
     func testAnEditOnADisplayThePictureIsNotOnIsSaidInTheLogAndOnTheToast() async throws {
         let s = try scene()

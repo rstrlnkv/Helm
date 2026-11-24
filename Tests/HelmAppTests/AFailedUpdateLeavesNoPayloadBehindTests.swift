@@ -3,10 +3,10 @@ import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
-/// **Past defect: a refused update left its unzipped payload in the temporary directory, and
-/// two of the check's failure paths said nothing.** `installZip` unzips into `HelmUpdate-*`, and a
-/// throw before the swap script (a version that is not the one expected) left the whole bundle
-/// there; a failed check or a non-HTTP answer left no line in the log.
+/// **A refused update leaves no unzipped payload in the temporary directory, and every failure
+/// path of the check logs a line.** `installZip` unzips into `HelmUpdate-*`, and a throw before the
+/// swap script (a version that is not the one expected) would leave the whole bundle there; a
+/// failed check or a non-HTTP answer must still leave a line in the log.
 @MainActor
 final class AFailedUpdateLeavesNoPayloadBehindTests: XCTestCase {
 

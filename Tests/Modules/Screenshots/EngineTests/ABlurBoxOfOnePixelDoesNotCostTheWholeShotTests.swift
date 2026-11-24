@@ -4,9 +4,8 @@ import XCTest
 @testable import Module_Screenshots_Engine
 
 /// **A blur box that clips to one pixel costs the person nothing but itself.** A box dragged to a sliver, or pushed
-/// past the edge of the display until one pixel of it is left, has no block to average; `draw` returned nil for the whole
-/// export and the shot was lost with every other mark in it. The box is drawn as what it can be (or skipped), and the
-/// picture and the other layers come out.
+/// past the edge of the display until one pixel of it is left, has no block to average, and must not cost the whole
+/// export. The box is drawn as what it can be (or skipped), and the picture and the other layers come out.
 ///
 /// Total failure of the subject prints: a nil for a picture the person drew a rectangle on, or a file in which the
 /// rectangle is not there.

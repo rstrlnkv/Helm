@@ -39,16 +39,9 @@ public enum LeftoverActions {
         item.identifier.hasPrefix("com.apple.") || item.status == .protectedItem
     }
 
-    /// **One argument, and it is the item.**
-    ///
-    /// This took `writable:` beside the item that already carries it, and every
-    /// caller in the app passed `item.writable` because there is nothing else to
-    /// pass. What the parameter bought was the ability to disagree: a test could
-    /// — and did — hand over an item whose own `writable` was true and ask what
-    /// the actions are when it is false, so the assertion described a shape a
-    /// scan cannot produce. `LaunchctlDisabled.canToggle` was deleted for the
-    /// same family of reason, one argument the other way round: it took a
-    /// `status` and never read it.
+    /// **One argument, and it is the item.** A second parameter carrying what the
+    /// item already carries (`writable:`) would buy only the ability to disagree,
+    /// and a test could describe a shape a scan cannot produce.
     static func available(for item: StaleItem) -> Set<LeftoverAction> {
         // **A source row is a folder the scan did not read, not a file it found.**
         // Nothing below is true of one: there is no file to move, no label to
@@ -65,16 +58,13 @@ public enum LeftoverActions {
         // predicate `LeftoversEngine` guards on before it acts, so the page and the
         // engine cannot disagree about a row — and it is where «a file may claim
         // another job's label» is refused. The first half is `.unreadable`: the
-        // identifier is then the file's own name, which is right for a job that
-        // omits `Label` and an invention for one whose contents never came — and
-        // disabling an invented label writes an entry the next scan reads back as
-        // «Disabled».
+        // identifier is then the file's own name, an invention for a job whose
+        // contents never came, and disabling an invented label writes an entry the
+        // next scan reads back as «Disabled».
         // **And a label two files claim is one switch, not two.** Both copies of
-        // `com.vendor.updater` pass `mayBeSwitched` — each sits in a LaunchAgents
-        // folder and each is named after its label — so the page drew «Turn off»
-        // twice for one `launchctl disable`, on rows badged «Leftover» and «In
-        // use». `LaunchClaims` says why neither may carry it, and the row names
-        // the other file instead.
+        // `com.vendor.updater` pass `mayBeSwitched`, so «Turn off» would be drawn
+        // twice for one `launchctl disable`. `LaunchClaims` says why neither may
+        // carry it, and the row names the other file instead.
         if item.kind == .launchAgent, item.status != .unreadable,
            item.labelAlsoClaimedBy == nil,
            LaunchLabel.mayBeSwitched(label: item.identifier, path: item.path) {
@@ -86,16 +76,12 @@ public enum LeftoverActions {
 
     /// Why this row has no delete button — or nil, when it has one.
     ///
-    /// **Because «Needs an administrator to delete» was drawn where no
-    /// administrator can help.** The row's menu said it for everything without
-    /// `.delete`, and `available` withholds that from `com.apple.*` and from
-    /// `.protectedItem` too: files the rule will not release at any password. The
-    /// one line the page offers instead of a button was sending people to find
-    /// one.
+    /// **Not «Needs an administrator to delete» where no administrator can
+    /// help**: `available` withholds `.delete` from `com.apple.*` and from
+    /// `.protectedItem` too, files the rule will not release at any password.
     ///
     /// Asked of `available` rather than restating its conditions, so the two
-    /// cannot come to disagree about which rows have a button — the disagreement
-    /// `StaleItem.removable` records paying for once already.
+    /// cannot disagree about which rows have a button.
     public static func whyDeleteIsWithheld(from item: StaleItem) -> NoDelete? {
         // **A source row has no answer here, because it is not a file.** Neither
         // sentence is true of a folder the scan did not read: no administrator can
@@ -123,11 +109,8 @@ public enum LeftoverActions {
     /// asks this one rule for both the ellipsis and the dialog, so it cannot dim
     /// one on one rule and word the other from another.
     ///
-    /// The shape `whyDeleteIsWithheld` already uses, and here for the same
-    /// reason: there was one question, «It is loaded now, and the app that
-    /// installed it may put it back», and it was asked of every row that is not a
-    /// leftover. A job whose plist could not be read is one of those now, and
-    /// «loaded now» is a claim about contents Helm never got to see.
+    /// The shape `whyDeleteIsWithheld` uses: «loaded now» is a claim about
+    /// contents, and false of a job whose plist Helm never got to read.
     ///
     /// Exhaustive over the status: a further one must be a build error here rather
     /// than inherit whichever sentence sits nearest.

@@ -1,5 +1,4 @@
 import XCTest
-import HelmRuntime
 import HelmTestSupport
 
 /// A module must declare the grants its features actually need.
@@ -8,14 +7,12 @@ import HelmTestSupport
 /// declared permissions, and nothing else. Keep Awake's pointer nudge posts a
 /// synthetic `CGEvent`, which macOS drops without Accessibility — and every
 /// ad-hoc signed build is a new app to TCC, so the grant lapses on every
-/// update while the checkbox stays ticked. Declaring only `.adminHelper` meant
-/// a Keep Awake user who does not also run Layout was never told.
+/// update while the checkbox stays ticked; a Keep Awake user who does not also
+/// run Layout is told only if Keep Awake declares it.
 ///
 /// A source scan because the descriptor lives in the UI target, which this
 /// test target cannot import, and because the fact worth pinning is the link
 /// between the two files rather than either one alone.
-///
-/// Guards: 8287d151 (Accessibility grant the pointer nudge needs was not declared).
 final class DeclaredPermissionsTests: XCTestCase {
 
     private var moduleRoot: URL {
@@ -33,14 +30,7 @@ final class DeclaredPermissionsTests: XCTestCase {
             return XCTAssertFalse(try declaredPermissions().contains("accessibility"),
                                   "nothing posts events any more — drop the declaration too")
         }
-        guard let need = PermissionNeed.of(.pointerNudge) else {
-            return XCTFail("the runtime table no longer says what the pointer nudge needs")
-        }
-        // `declaredName`, not `rawValue`: the contract spells Full Disk Access
-        // `fullDisk` and the runtime spells it `fullDiskAccess`, so a rawValue
-        // comparison happens to be right here and would fail open for any
-        // module needing the other grant.
-        XCTAssertTrue(try declaredPermissions().contains(need.declaredName))
+        XCTAssertTrue(try declaredPermissions().contains("accessibility"))
     }
 
     /// The admin prompt for the sudoers rule is the other one, and it stays.

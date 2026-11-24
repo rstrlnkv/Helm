@@ -7,9 +7,8 @@ extension View {
     /// them last.
     ///
     /// Both the settings page and the panel tile draw these two, and the store is
-    /// not observable: with both open, changing one there left the other showing
-    /// what it had read when it opened. Each screen answered that with the same
-    /// eight lines — and its own spelling of both keys and both defaults.
+    /// not observable: with both open, a change on one would leave the other
+    /// showing what it read when it opened. One copy, one spelling of the keys.
     /// - Parameter batteryFloor: the panel's copy of the guard's threshold —
     ///   it appears in a sentence («Stopped at 30% or less») that can be on screen
     ///   while somebody changes the number on the settings page. Optional,

@@ -1,12 +1,7 @@
 import AppKit
 
-/// The rendered view tree, walked once instead of eleven times.
-///
-/// Every UI check in this suite that measures something reaches for the same
-/// four lines — a nested `func walk`, a `var found`, a predicate, and
-/// `view.subviews.forEach(walk)` — and there were eleven of them across five
-/// targets before this existed. That is the shape `scratchDirectory` and
-/// `RepoSource` were each in before they moved here.
+/// The rendered view tree, walked by one shared walk rather than a nested
+/// `func walk` in every UI check.
 ///
 /// Two readings are built on the one walk, `everyView`: by AppKit **type**, and by the
 /// **name** of a class the SDK does not export — `_FocusRingView` and `_NSGraphicsView`
@@ -17,16 +12,14 @@ public extension NSView {
 
     /// This view and everything under it, outermost first.
     ///
-    /// Includes `self`, which every hand-written walk here did — each began
-    /// `walk(host)` with the predicate applied to the host.
+    /// Includes `self`, so a predicate applies to the host too.
     var everyView: [NSView] {
         [self] + subviews.flatMap(\.everyView)
     }
 
     /// The name AppKit gave this view's class.
     ///
-    /// Spelled `"\(type(of: view))"` at seven call sites, and it is not
-    /// decoration: the views SwiftUI produces on macOS are private classes with
+    /// The views SwiftUI produces on macOS are private classes with
     /// no symbol to match against, so `_FocusRingView`, `_NSGraphicsView` and
     /// `_NSCoreHostingView<AppKit…>` are matched as text or not at all.
     var appKitClassName: String { "\(type(of: self))" }
@@ -41,8 +34,7 @@ public extension NSView {
     /// Exact rather than a prefix, because the two spellings mean different
     /// things: `_FocusRingView` is one class, and `_NSCoreHostingView<AppKit…>`
     /// is a generic whose full name a caller matches with `hasPrefix` on
-    /// `appKitClassName` itself. A helper that chose one for everybody would have
-    /// made the other read wrong at a glance.
+    /// `appKitClassName` itself.
     func everyView(named name: String) -> [NSView] {
         everyView.filter { $0.appKitClassName == name }
     }

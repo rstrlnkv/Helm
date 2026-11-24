@@ -5,18 +5,13 @@ import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
 
-/// **A local unprivileged process could take somebody's VPN down, quietly.**
+/// **A rule is bound to a code signature, not to a bundle identifier.**
 ///
-/// `RunningApps` reports bundle identifiers with no signature check, and a rule
-/// fired on the identifier alone: `appTerminated` disconnects when the last mapped
-/// id goes. So anybody could build a bundle carrying a matching
-/// `CFBundleIdentifier`, launch it, quit it — and the tunnel went down. Worse, the
-/// teardown was booked as a rule doing as it was asked, which cleared the books
-/// that would have let the *later* real absence be reported as a drop.
-///
-/// A rule is bound to a signature now. The verdict is a value with a reason rather
-/// than a `Bool`, because the log needs to say which of the four refusals
-/// happened.
+/// `RunningApps` reports bundle identifiers with no signature check, so any
+/// local unprivileged process could launch and quit a bundle carrying a matching
+/// `CFBundleIdentifier` and take the tunnel down, booked as a rule doing as it
+/// was asked. The verdict is a value with a reason rather than a `Bool`, because
+/// the log says which of the four refusals happened.
 final class ARuleIsBoundToAnIdentityTests: XCTestCase {
 
     private let real = CodeIdentity(signingID: "com.example.app", teamID: "ABCDE12345")
@@ -53,20 +48,16 @@ final class ARuleIsBoundToAnIdentityTests: XCTestCase {
 
     // MARK: - The migration
 
-    /// **Rules stored before this shipped carry no identity, and they refuse.**
-    ///
-    /// The alternative — verify by name until re-picked — leaves the whole
-    /// vulnerability standing on every installation that already has rules, for
-    /// ever, since nothing would ever make somebody re-pick. Refusing is the safe
-    /// direction, and it is not silent in the log; choosing the app again records
-    /// the identity without disturbing the rest of the rule.
+    /// **A rule with no recorded identity refuses.** Trusting the name until the
+    /// app is picked again would leave the hole open for ever, since nothing makes
+    /// anybody pick again. The refusal is logged, and choosing the app again
+    /// records the identity without disturbing the rest of the rule.
     func testARuleFromBeforeIdentitiesExistedDoesNotFire() {
         XCTAssertEqual(VPNRuleTrust.judge(rule: rule(nil), running: real), .noIdentityRecorded)
     }
 
-    /// A rule the person made for a bundle nobody signed. It is kept — they asked
-    /// for it — and it does not fire, because an unsigned bundle's identity is
-    /// something any other unsigned bundle can produce.
+    /// A rule for a bundle nobody signed is kept but does not fire: any other
+    /// unsigned bundle can produce the same identity.
     func testARuleForAnUnsignedAppSaysSoRatherThanPretending() {
         let unsigned = CodeIdentity(signingID: nil, teamID: nil)
         XCTAssertEqual(VPNRuleTrust.judge(rule: rule(unsigned), running: unsigned),
@@ -82,9 +73,8 @@ final class ARuleIsBoundToAnIdentityTests: XCTestCase {
 
     // MARK: - What is on disk
 
-    /// A stored rule from before the field existed still decodes. `JSONDecoder`
-    /// gives up on the whole document rather than one field, so a throw here would
-    /// cost the person every rule they have.
+    /// A stored rule without the field still decodes: `JSONDecoder` gives up on
+    /// the whole document, so a throw would cost every rule.
     func testRulesWrittenBeforeTheFieldExistedStillDecode() {
         let old = #"{"com.example.app":{"vpnName":"Office","connectOnLaunch":true,"disconnectOnQuit":true}}"#
         let decoded = VPNRules.decode(old)
@@ -92,7 +82,7 @@ final class ARuleIsBoundToAnIdentityTests: XCTestCase {
         XCTAssertNil(decoded["com.example.app"]?.identity)
     }
 
-    /// And the legacy `[bundleID: vpnName]` map, which is older still.
+    /// And the legacy `[bundleID: vpnName]` map.
     func testTheOldestFormatStillDecodesToo() {
         let ancient = #"{"com.example.app":"Office"}"#
         XCTAssertEqual(VPNRules.decode(ancient)["com.example.app"]?.vpnName, "Office")
@@ -112,11 +102,9 @@ final class ARuleIsBoundToAnIdentityTests: XCTestCase {
         XCTAssertEqual(updated["com.example.app"]?.vpnName, "Office")
     }
 
-    /// **The repair path for a rule that predates identities.** Picking an app
-    /// that already has a rule used to be ignored outright — `where rules[id] ==
-    /// nil` — so "choose the app again" was advice nothing in the page could
-    /// carry out. It records the identity and leaves every choice the person made
-    /// exactly as it was.
+    /// **The repair path for a rule with no identity.** Picking an app that
+    /// already has a rule records the identity and leaves every choice the person
+    /// made exactly as it was.
     func testPickingAnAppThatAlreadyHasARuleRecordsTheIdentityAndChangesNothingElse() {
         let existing = VPNAppRule(vpnName: "Field", connectOnLaunch: false,
                                   disconnectOnQuit: true, identity: nil)

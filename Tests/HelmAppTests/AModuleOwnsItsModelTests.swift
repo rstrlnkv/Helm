@@ -1,4 +1,5 @@
 import HelmContract
+import HelmTestSupport
 import HelmRuntime
 import HelmUI
 import SwiftUI
@@ -31,23 +32,13 @@ final class AModuleOwnsItsModelTests: XCTestCase {
         var calls: [String] = []
     }
 
-    private final class FakeEngine: ModuleEngine {
-        let journal: Journal
-        let standsIn: Bool
-        init(journal: Journal, standsIn: Bool = false) {
-            self.journal = journal
-            self.standsIn = standsIn
-        }
-        func activate() {}
-        func willDisable() { journal.calls.append("willDisable") }
-        func deactivate() { journal.calls.append("deactivate") }
-    }
-
     /// The module's own model type.
     private final class OwnModel {}
 
     private class Base {
         let journal = Journal()
+        /// The journal reads what leaves the module, not what starts it.
+        var journaled: (String) -> Void { { [journal] in if $0 != "activate" { journal.calls.append($0) } } }
     }
 
     private final class Converted: Base, StandInDescriptor {
@@ -66,7 +57,7 @@ final class AModuleOwnsItsModelTests: XCTestCase {
             makeModuleCalls += 1
             let model = OwnModel()
             built = model
-            let engine = FakeEngine(journal: journal, standsIn: standsIn)
+            let engine = FakeEngine(standsIn: standsIn, record: journaled)
             builtEngine = engine
             return ModuleParts(engine: engine, model: model)
         }
@@ -88,18 +79,18 @@ final class AModuleOwnsItsModelTests: XCTestCase {
     private final class Second: Base, StandInDescriptor {
         static let id = ModuleID(AModuleOwnsItsModelTests.secondID)
         func makeModule(store: NamespacedStore) -> ModuleParts<OwnModel> {
-            ModuleParts(engine: FakeEngine(journal: journal), model: OwnModel())
+            ModuleParts(engine: FakeEngine(record: journaled), model: OwnModel())
         }
         func backgroundScan(_ parts: ModuleParts<OwnModel>) async -> ScanReport? { nil }
     }
 
     /// The host's store is `UserDefaults.standard`: the keys written are taken back out.
-    override func tearDown() {
+    override func tearDown() async throws {
         ModuleHost.shared.shutdown()
         for id in Self.allIDs {
             UserDefaults.standard.removeObject(forKey: "module.\(id).enabled")
         }
-        super.tearDown()
+        try await super.tearDown()
     }
 
     private func enabledKey(_ id: String) -> Any? {
@@ -139,10 +130,9 @@ final class AModuleOwnsItsModelTests: XCTestCase {
     }
 
     /// Quitting asks no question because there is nobody to answer it:
-    /// `willDisable()` is for the person's switch and for a reset. Keep Awake
-    /// shipped an `osascript` administrator password dialog raised from the
-    /// quit path, for a `/etc/sudoers.d` rule it was trying to take back out, and
-    /// the rule then had to be left behind on every route.
+    /// `willDisable()` is for the person's switch and for a reset. An
+    /// administrator password dialog on the quit path is a dialog on the way
+    /// out (Architecture/KeepAwake.md § The closed lid).
     func testQuittingStopsTheModelBeforeTheEngineToo() throws {
         let d = Converted()
         let host = ModuleHost.shared

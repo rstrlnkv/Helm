@@ -7,12 +7,10 @@ import HelmRuntime
 /// Whether a per-app rule may act on the instance that is actually running.
 ///
 /// **A bundle identifier is a claim, not an identity.** `RunningApps` reports
-/// `CFBundleIdentifier`, which is a string in a plist any file can carry, and the
-/// rules acted on it alone: a bundle anybody can build, carrying a mapped
-/// identifier, raised a tunnel by launching and took it down by quitting. The
-/// teardown was then booked as `.disconnected` — a rule doing as it was asked —
-/// which also cleared the books that let the *later* real absence be reported as a
-/// drop, so the person was not told either time.
+/// `CFBundleIdentifier`, which is a string in a plist any file can carry. Acted
+/// on alone, a bundle anybody can build could raise a tunnel by launching and
+/// take it down by quitting, booked as a rule doing as asked, so the person
+/// would not be told.
 ///
 /// The check happens at **launch** and the quit is refused by consequence:
 /// `VPNAutoConnectCore` only undoes launches it recorded, and at quit time there
@@ -22,8 +20,7 @@ import HelmRuntime
 /// the safe direction and not a way to move somebody's traffic.
 ///
 /// A verdict rather than a `Bool`: the log line has to say which refusal this
-/// was, and «the rule did nothing» with no reason is the failure
-/// (Architecture/VPN.md) was written about.
+/// was (Architecture/VPN.md).
 public enum VPNRuleTrust {
 
     /// Exhaustive, and switched over without a `default` wherever it is read: a
@@ -32,7 +29,7 @@ public enum VPNRuleTrust {
     public enum Verdict: String, Equatable, Sendable {
         /// The running instance is signed as the app the person picked.
         case act
-        /// The rule predates identities. It refuses; choosing the app again in the
+        /// The rule carries no identity. It refuses; choosing the app again in the
         /// rules popover records the identity and disturbs nothing else about the
         /// rule.
         case noIdentityRecorded

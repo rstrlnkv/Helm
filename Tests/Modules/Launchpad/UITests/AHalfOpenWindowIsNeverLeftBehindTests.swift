@@ -143,7 +143,7 @@ final class AHalfOpenWindowIsNeverLeftBehindTests: XCTestCase {
         XCTAssertEqual(built()[0].closes, 1)
     }
 
-    /// Owner: under Reduce Motion a gesture that completes below 1 (released past the midpoint or flicked) acts at once, once.
+    /// Under Reduce Motion a gesture that completes below 1 (released past the midpoint or flicked) acts at once, once.
     func testWithReducedMotionAReleaseThatCompletesBelowOneActsAtOnce() {
         let (rig, built) = rig("half-reduced-release", reduced: true)
         rig.model.pinched(.began(.pinch, progress: 0.1))

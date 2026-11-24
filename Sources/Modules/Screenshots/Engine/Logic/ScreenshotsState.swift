@@ -38,7 +38,7 @@ public struct ScreenshotsLocations: Sendable {
 
     /// A temporary home of this process's own under a test runner, so a suite
     /// run never lands in the person's Desktop or Documents — the rule
-    /// `TestProcess` exists for, which `StoresOfTheirsAskIfThisIsATestTests`
+    /// `TestProcess` exists for, which `TheRulesTheCompilerCannotHoldTests`
     /// holds for every site that resolves one of their folders. In the app,
     /// `FileManager`'s own lookup.
     ///

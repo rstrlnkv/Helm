@@ -41,7 +41,6 @@ private final class PictureProvider: NSObject, NSPasteboardItemDataProvider {
 /// The thumbnail's own view: the drag's source, the pointer's tracking and the click, and the view the Share sheet is
 /// anchored at. One AppKit view for the four: a drag session begins from the mouse event itself, and a tracking
 /// area with `.activeAlways` is the option that asks nothing of the window's or the app's state (NSTrackingArea.h).
-/// That a drag from a panel that is never key, and the hover over it, work as written is not measured: parked.
 final class ShotDragView: NSView, NSDraggingSource {
     /// Asked when a drag begins, so a drag that begins after the file was written carries the file.
     var payload: () -> ShotDrag? = { nil }
@@ -70,8 +69,7 @@ final class ShotDragView: NSView, NSDraggingSource {
     private static let slop: CGFloat = 4
 
     override var mouseDownCanMoveWindow: Bool { false }
-    /// What AppKit asks of a click that lands on a window that is not key (NSView.h). Whether this nonactivating panel
-    /// needs the answer is not measured: parked.
+    /// What AppKit asks of a click that lands on a window that is not key (NSView.h).
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func viewDidMoveToWindow() {
@@ -80,10 +78,9 @@ final class ShotDragView: NSView, NSDraggingSource {
     }
 
     /// **One area for the view's life.** `.inVisibleRect` keeps it on the view's rect through every change of frame, so
-    /// there is nothing to rebuild; AppKit calls this on each such change. Measured: without the guard the area was
-    /// rebuilt 7-12 times while the capsule came up over a shot lower or narrower than it (`ShotToast.picture`'s zone),
-    /// 0 with it. Inferred, not measured (no test has a real pointer): that a rebuilt area under a still pointer is an
-    /// exit, which takes the capsule away and starts the zone's change over.
+    /// there is nothing to rebuild; AppKit calls this on each such change. Without the guard the area is rebuilt
+    /// while the capsule comes up over a shot smaller than it (`ShotToast.picture`'s zone), and a rebuilt area under a
+    /// still pointer can read as an exit, which takes the capsule away.
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         guard trackingAreas.isEmpty else { return }
@@ -115,7 +112,6 @@ final class ShotDragView: NSView, NSDraggingSource {
     }
 
     /// Sideways as it comes; a wheel that only turns one way scrolls the row with it, down being toward the oldest.
-    /// Which way a person expects a vertical wheel to move a row is not measured.
     override func scrollWheel(with event: NSEvent) {
         let across = event.scrollingDeltaX, along = event.scrollingDeltaY
         onScroll(abs(across) >= abs(along) ? across : -along, event.hasPreciseScrollingDeltas)

@@ -3,12 +3,9 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Autopilot_Engine
 
-/// Where the plan meets the disk.
-///
-/// Everything above this is arithmetic; this is the part that moves somebody's
-/// files. So the tests are about what must not happen as much as what must:
-/// a collision that overwrites, a destination outside the user's own files, a
-/// second run that acts on the same file again.
+/// Where the plan meets the disk. The tests guard what must not happen as much
+/// as what must: a collision that overwrites, a destination outside the user's
+/// own files, a second run that acts on the same file again.
 final class RuleRunnerTests: XCTestCase {
 
     private var home: URL!
@@ -118,11 +115,9 @@ final class RuleRunnerTests: XCTestCase {
     // MARK: - Trash
 
     /// Deletion goes through the same gate as every other module's, inside the
-    /// engine, not in the view model that built the plan.
-    ///
-    /// **This trashes for real**, so the leaf carries a UUID nobody else could
-    /// own and the teardown takes it back out — and the outcome now names where
-    /// the Trash put it, which is what the undo fetches back.
+    /// engine, and the outcome names where the Trash put the file, which is what
+    /// the undo fetches back. **This trashes for real**: the leaf carries a UUID
+    /// nobody else could own and the teardown takes it back out.
     func testTrashGoesThroughTheUserFileGate() throws {
         let leaf = unownableLeaf("a.pdf")
         reclaimFromTrash(leaf)
@@ -144,11 +139,10 @@ final class RuleRunnerTests: XCTestCase {
         XCTAssertEqual(outcome, .refused(.outOfScope))
     }
 
-    /// The act, not the record: a file that exists outside `WatchScope` is
-    /// handed to the runner with a move and a rename whose destinations are
-    /// fine, and it has to stay exactly where it was. Deleting the scope check
-    /// at the top of `RuleRunner.run` leaves the refusal row's reason to the
-    /// other tests; this one is red on the disk.
+    /// The act, not the record: a file outside `WatchScope`, handed to the
+    /// runner with a move and a rename whose destinations are fine, stays exactly
+    /// where it was. Without the scope check at the top of `RuleRunner.run` this
+    /// goes red on the disk.
     func testAFileOutsideTheWatchScopeIsNotMovedOrRenamed() throws {
         let elsewhere = scratchDirectory("elsewhere")
         let file = try write("a.pdf", in: elsewhere)
@@ -168,13 +162,10 @@ final class RuleRunnerTests: XCTestCase {
 
     // MARK: - Running twice
 
-    /// The same rule over the same file a second time does nothing.
-    ///
-    /// This used to say it was `RuleStamp` seen from the outside, and it is not
-    /// any more: the second run is a move into the folder the file is already
-    /// in, which `RuleRunner.move` now refuses on its own. Deleting the stamp
-    /// guard leaves this green. What the stamp is still the only answer to is
-    /// tagging and renaming, and those are covered in `AutopilotSweepTests`.
+    /// The same rule over the same file a second time does nothing. The second
+    /// run is a move into the folder the file is already in, which
+    /// `RuleRunner.move` refuses without the stamp; for tagging and renaming the
+    /// stamp is the only answer, covered in `AutopilotSweepTests`.
     func testARuleDoesNotActOnTheSameFileTwice() throws {
         let file = try write("a.pdf", in: root)
         let destination = root.appendingPathComponent("Sorted")
@@ -196,21 +187,15 @@ final class RuleRunnerTests: XCTestCase {
 
     // MARK: - Idempotence, with the stamp taken away
     //
-    // `RuleRunner.note` tolerates a stamp that will not stick, and says why: a
-    // volume without extended attributes would otherwise be a volume where no rule
-    // works. The sentence it leans on is that the action re-runs *idempotently* on
-    // an unchanged file. Two actions did not, and neither needed a contrived
-    // filesystem to reach — any volume that will not keep the attribute, or whose
-    // AppleDouble `._name` sidecar something drops, and `WatchScope` deliberately
-    // admits `/Volumes`. (exFAT, which this used to name, keeps it —
-    // ARCHITECTURE.md § Autopilot.)
+    // `RuleRunner.note` tolerates a stamp that will not stick, which holds only
+    // while every action re-runs idempotently on an unchanged file; which
+    // volumes drop the stamp is Architecture/Autopilot.md § Autopilot.
     //
     // So every test in this section runs a rule id that was never stamped, against a file
-    // already sitting where that rule wants it. The stamp is not disabled; it is
-    // simply not consulted, which is the state an unstampable volume is in on
-    // every sweep. What must come back is `.alreadyDone`, and the folder must be
-    // the same afterwards — a listing, not a count, because the failure these
-    // describe is a file that still exists under a name nobody chose.
+    // already sitting where that rule wants it: the state an unstampable volume
+    // is in on every sweep. What must come back is `.alreadyDone`, and the folder
+    // must be the same afterwards — a listing, not a count, because the failure
+    // is a file that still exists under a name nobody chose.
 
     private func unstampedPlan(_ url: URL, _ action: RuleAction, kind: FileKind = .document) -> RulePlan {
         let now = Date(timeIntervalSince1970: 1_784_116_800)
@@ -223,13 +208,10 @@ final class RuleRunnerTests: XCTestCase {
 
     // MARK: - Never stamped: sorting
 
-    /// The one that buries somebody's file.
-    ///
-    /// `sortIntoSubfolder` computes its bucket from the folder the file is in
-    /// right now, so a file already in `Images/` is offered `Images/Images/`.
-    /// With the stamp doing its job that is never asked; without it the file
-    /// goes one level deeper every hour, unattended, and writes a `moved` row
-    /// into the history each time.
+    /// A file already in `Images/` is not offered `Images/Images/`. The bucket
+    /// comes from the folder the file is in, so without this an unstamped file
+    /// goes one level deeper every hour, unattended, with a `moved` row in the
+    /// history each time.
     func testAFileAlreadyInItsBucketIsNotSortedIntoAnotherOne() throws {
         let file = try write("Images/a.jpg", in: root)
 
@@ -251,9 +233,8 @@ final class RuleRunnerTests: XCTestCase {
         XCTAssertEqual(tree(under: root), ["2026-07", "2026-07/a.pdf"])
     }
 
-    /// And the case the rule is actually for still works: a file that is *not*
-    /// in its bucket is put in it. Without this the fix above could be "never
-    /// sort anything" and the tests would not notice.
+    /// A file that is *not* in its bucket is still put in it, so the guard
+    /// above cannot be "never sort anything".
     func testAFileThatIsNotInItsBucketIsStillSorted() throws {
         let file = try write("a.jpg", in: root)
 
@@ -277,13 +258,10 @@ final class RuleRunnerTests: XCTestCase {
 
     // MARK: - Never stamped: moving
 
-    /// A rule whose destination is the folder its files are already in.
-    ///
-    /// "Every image goes to ~/Downloads", pointed at ~/Downloads — one wrong
-    /// choice in the panel, and reachable without malice. `free()` then finds
-    /// the file's own name taken, by the file itself, and numbers the arrival:
-    /// `photo.jpg` becomes `photo 2.jpg`, and `photo 2 2.jpg` the sweep after
-    /// that. `rename` has guarded this since it was written; `move` never did.
+    /// A rule whose destination is the folder its files are already in — one
+    /// wrong choice in the panel — leaves them alone. Otherwise `free()` finds
+    /// the file's own name taken by the file itself and numbers it: `photo.jpg`
+    /// becomes `photo 2.jpg`, then `photo 2 2.jpg` the sweep after.
     func testMovingAFileIntoTheFolderItIsAlreadyInDoesNothing() throws {
         let file = try write("photo.jpg", in: root)
 
@@ -318,15 +296,10 @@ final class RuleRunnerTests: XCTestCase {
     }
 }
 
-/// Renaming, where the name the runner *reports* and the name it *produced* can
-/// come apart.
-///
-/// `free(_:)` decides the name that actually gets used — `b.pdf` becomes
-/// `b 2.pdf` when `b.pdf` is taken — but `run` reports, and stamps, the name the
-/// pattern produced. Nothing else in the module notices, because the collision
-/// case is the only one where the two differ. Every test here is that pair
-/// agreeing, and the two failures a disagreement causes: a mark on a file
-/// nobody touched, and no mark on the file that moved.
+/// Renaming with a collision, the one case where the name the pattern produced
+/// and the name `free(_:)` used (`b 2.pdf` when `b.pdf` is taken) differ. The
+/// runner reports and stamps the name used; a disagreement marks a file nobody
+/// touched and leaves the one that moved unmarked.
 final class RuleRunnerRenameTests: XCTestCase {
 
     private var root: URL!
@@ -335,9 +308,7 @@ final class RuleRunnerRenameTests: XCTestCase {
     private let stamp = RuleStamp(key: TestRuleKey.material)
 
     override func setUpWithError() throws {
-        // Inside a temporary directory the runner is told to treat as home:
-        // `WatchScope` refuses anything outside one, and a test that wanted an
-        // exemption from that gate would be testing a different program.
+        // `WatchScope` refuses anything outside a home, so the runner gets one.
         home = scratchDirectory("home")
         root = home
             .appendingPathComponent("helm-rename-\(UUID().uuidString)")
@@ -360,9 +331,8 @@ final class RuleRunnerRenameTests: XCTestCase {
 
     // MARK: - The name reported and the name on disk
 
-    /// The root of the other two. `.renamed(to:)` is the only thing the sweep,
-    /// the log and the stamp are told about a rename, so a name that is not on
-    /// disk is a lie every one of them then acts on.
+    /// `.renamed(to:)` is all the sweep, the log and the stamp are told about a
+    /// rename, so the name it gives is the one on disk.
     func testTheNameAReportedRenameGivesIsTheNameOnDisk() throws {
         try write("b.pdf", in: root, bytes: 99)
         let file = try write("a.pdf", in: root)
@@ -376,10 +346,9 @@ final class RuleRunnerRenameTests: XCTestCase {
                        "the reported name points at the file that was already there, not the one that moved")
     }
 
-    /// The collateral damage. The stamp lands on `b.pdf` — a file this rule
-    /// never acted on and, because it now carries the mark, never will.
-    /// Switching a rule off and on again does not clear it; it is an xattr on
-    /// somebody's file.
+    /// A colliding rename stamps the file it renamed, not the one it collided
+    /// with: a mark on a bystander keeps this rule off it for good, and switching
+    /// the rule off and on does not clear an xattr on somebody's file.
     func testACollidingRenameDoesNotStampTheFileItCollidedWith() throws {
         let bystander = try write("b.pdf", in: root, bytes: 99)
         let file = try write("a.pdf", in: root)
@@ -392,13 +361,9 @@ final class RuleRunnerRenameTests: XCTestCase {
                       "the file that was actually renamed carries no mark, so the rule will rename it again")
     }
 
-    /// A pattern that resolves to the name the file already has.
-    ///
-    /// `{name}` is a legitimate thing to write — `{name} {date}` minus the date,
-    /// or a pattern being edited. `free(_:)` sees the target is taken without
-    /// noticing that the file taking it *is the file being renamed*, so `a.pdf`
-    /// becomes `a 2.pdf`, and nothing is stamped because the path the stamp goes
-    /// to no longer exists. Next hour: `a 2 2.pdf`.
+    /// A pattern that resolves to the file's own name (`{name}`, or a pattern
+    /// being edited) changes nothing. Otherwise `free(_:)` sees the target taken
+    /// by the file being renamed, and `a.pdf` becomes `a 2.pdf`, then `a 2 2.pdf`.
     func testRenamingAFileToTheNameItAlreadyHasChangesNothing() throws {
         let file = try write("a.pdf", in: root)
 
@@ -406,9 +371,8 @@ final class RuleRunnerRenameTests: XCTestCase {
         XCTAssertEqual(try listing(), ["a.pdf"],
                        "a rename to the file's own name produced a numbered copy of the name")
 
-        // Whatever shape the fix takes — a no-op, or a refusal — running again
-        // must not add a file either. That is the part a sweep every hour turns
-        // into a folder nobody can use.
+        // Running again must not add a file either: a sweep every hour would
+        // turn that into a folder nobody can use.
         let remaining = try XCTUnwrap(listing().first)
         _ = rename(root.appendingPathComponent(remaining), pattern: "{name}", id: "r2")
         XCTAssertEqual(try listing(), ["a.pdf"])
@@ -431,16 +395,14 @@ final class RuleRunnerRenameTests: XCTestCase {
                        "a rename that failed must not be recorded as having happened")
     }
 
-    /// Guarantee 5 as a property rather than as a handful of examples: whatever
-    /// a pattern is, the answer is either nothing at all or one path component
-    /// that keeps the file's own extension. The corpus is the awkward input
-    /// list — empty, whitespace, separators, a leading dot, a tab, a newline,
-    /// Cyrillic, an emoji, and something far too long.
+    /// Whatever a pattern is, the answer is nothing at all or one path component
+    /// that keeps the file's own extension, over the awkward inputs: empty,
+    /// whitespace, separators, a leading dot, a tab, a newline, Cyrillic, an
+    /// emoji, and something far too long.
     ///
-    /// Note what this does *not* claim: a tab and a newline survive, because
-    /// `RenamePattern` only refuses `/`, `:` and a leading dot. Both are legal
-    /// on APFS. They are here so that a future filter is a deliberate change to
-    /// this list rather than a surprise.
+    /// A tab and a newline survive: `RenamePattern` refuses only `/`, `:` and a
+    /// leading dot, and both are legal on APFS. They are listed so that a filter
+    /// is a deliberate change to this list.
     func testWhateverAPatternProducesIsOneComponentWithTheFilesOwnExtension() {
         let now = Date(timeIntervalSince1970: 1_784_116_800)
         let facts = FileFacts(name: "a.pdf", kind: .document, bytes: 1,
@@ -465,17 +427,10 @@ final class RuleRunnerRenameTests: XCTestCase {
     }
 }
 
-/// The sibling of `testRenamingAFileToTheNameItAlreadyHasChangesNothing`.
-///
-/// That case is guarded by `target.path != url.path` — a string comparison. A
-/// Mac's own volume is case-insensitive: `report.pdf` and `REPORT.pdf` are two
-/// spellings the filesystem treats as one name, and the string comparison
-/// cannot see it. So a rule that only changes capitalisation walks past the
-/// guard, `free(_:)` then finds the "collision" (which is the file itself), and
-/// numbers it.
-///
-/// Normalising names is one of the two or three things anybody writes a rename
-/// rule for.
+/// A rename that only changes capitalisation is not numbered. A Mac's own
+/// volume folds case, so `report.pdf` and `REPORT.pdf` are one name there; a
+/// string comparison of the paths cannot see that, and `free(_:)` would number
+/// the file against itself.
 final class RuleRunnerCaseRenameTests: XCTestCase {
 
     private var root: URL!

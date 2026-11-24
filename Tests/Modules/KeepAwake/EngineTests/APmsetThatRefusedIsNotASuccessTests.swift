@@ -9,18 +9,11 @@ import HelmRuntime
 /// system-wide setting, above every IOKit assertion, still in force after Helm
 /// quits. It is installed through a NOPASSWD sudoers rule, and `sudo -n` fails
 /// the moment that rule is gone: removed by an admin, by a migration, by
-/// somebody tidying `/etc/sudoers.d`. This machine has a leftover
-/// `vorssaint-clamshell` from Helm's predecessor sitting there right now, which
-/// is what those files do — they outlive the app that wrote them.
+/// somebody tidying `/etc/sudoers.d`.
 ///
-/// Both ends used to discard the result. The engage side then claimed a lid was
-/// safe to close; the disengage side cleared the flag that brings the next
-/// launch back to look, so a Mac that could not sleep would never be found —
-/// and the log line said «closed-lid sleep restored» either way.
-///
-/// None of this was testable before: `FakeClamshell.setDisableSleep` returned
-/// `true` unconditionally, so «pmset refused» was a state no test could write
-/// down. The fake takes a flag now, which is the fix that had to come first.
+/// Both ends read the result: the engage side must not claim a lid is safe to
+/// close, and the disengage side must not clear the flag that brings the next
+/// launch back to look, or a Mac that cannot sleep is never found.
 final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
     private var backing: InMemoryKeyValueStore!
     private var store: NamespacedStore!
@@ -46,7 +39,7 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
     @MainActor
     func testTheOrdinaryPathStillDisablesAndRestores() async {
         engine.startSession(minutes: 0)
-        // The grant is asked for on the lid's own queue now, so the answer to a
+        // The grant is asked for on the lid's own queue, so the answer to a
         // gesture arrives a hop after the gesture — `waitForTheLid`.
         await waitUntil("the lid disabled sleep") { engine.clamshellActive }
         XCTAssertTrue(engine.clamshellActive, "precondition: it engaged")
@@ -119,23 +112,13 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
                       "a launch that finds the guard set and sleep disabled has to put it back")
     }
 
-    /// **The same refusal, on the other of the two paths that clear the flag.**
+    /// The same refusal, on the other of the two paths that clear the flag.
     ///
-    /// `disengage()` was taught to keep the flag when `pmset` refuses — that is
-    /// the test four above, and it is the expensive case: sleep is off
-    /// machine-wide and the note is the only thing that brings anybody back to
-    /// look. `recoverAtLaunch()` does the identical pair of steps and was left
-    /// as it was: `_ = clamshell.setDisableSleep(false)`, result discarded, and
-    /// then the flag cleared whatever happened.
-    ///
-    /// So the sequence this whole file is about — Helm crashed with sleep off,
-    /// and the sudoers rule has since been taken out by an admin, a migration or
-    /// somebody tidying `/etc/sudoers.d`, which is exactly what this machine's
-    /// leftover `vorssaint-clamshell` line is — ends with the restore refused,
-    /// the note erased, and **no launch ever looking again**. The Mac does not
-    /// sleep again, and every screen says Keep Awake is idle: `active` is false
-    /// on the path that never succeeded, so even the settings row that now says
-    /// «Sleep is off right now» says nothing.
+    /// `recoverAtLaunch()` does the same pair of steps as `disengage()`. Helm
+    /// crashed with sleep off and the sudoers rule has since gone: if the
+    /// refused restore erased the note, no launch would ever look again, and
+    /// with `active` false every screen would say Keep Awake is idle over a Mac
+    /// that never sleeps.
     ///
     /// Asserted as the flag rather than as a `pmset` call count, for the reason
     /// its sibling gives: the flag is the whole mechanism by which a failure
@@ -162,16 +145,15 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
                       + "a word about it")
     }
 
-    /// **The refusal reaches the screen from the coordinator, not from the habits
-    /// of its callers.**
+    /// The refusal reaches the screen from the coordinator, not from the habits
+    /// of its callers.
     ///
-    /// `ClamshellCoordinator` is told `stateChanged` rather than asking, because
-    /// its answers change while a password prompt is up — and `reallyEngage`'s
-    /// refusal branch calls it while `restoreSleep`'s did not. Every caller of
-    /// `restoreSleep` happens to emit on the same turn today (`recompute`,
-    /// `releaseForBattery`, `reconcileActiveSettings`, `activate`, `deactivate`),
-    /// so this is a test of the contract and not of anything visible: asserted
-    /// here, one call away, because at engine level it cannot fail.
+    /// `ClamshellCoordinator` tells `stateChanged` rather than being asked,
+    /// because its answers change while a password prompt is up. Every caller of
+    /// `restoreSleep` happens to emit on the same turn (`recompute`,
+    /// `releaseForBattery`, `reconcileActiveSettings`, `activate`,
+    /// `deactivate`), so this is a test of the contract, asserted one call away
+    /// because at engine level it cannot fail.
     @MainActor
     func testARefusedRestoreAnnouncesItselfRatherThanTrustingTheCaller() async {
         let lid = ClamshellCoordinator(clamshell: clamshell, store: store,
@@ -183,8 +165,8 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
         lid.engage(mayPrompt: false)
         await waitUntil("the lid engaged") { lid.active }
         XCTAssertTrue(lid.active, "precondition: sleep is off, so there is something to restore")
-        // Engaging announces its own answer as well now, and for the same reason
-        // the refusal below must: `sudo -n` is asked on the lid's own queue, so
+        // Engaging announces its own answer as well, for the same reason the
+        // refusal below must: `sudo -n` is asked on the lid's own queue, so
         // the answer arrives after the caller that would have emitted for it has
         // returned. Counted from here rather than from zero.
         let afterEngaging = announcements

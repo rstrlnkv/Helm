@@ -14,7 +14,7 @@ final class APressAfterBrewVanishedNamesItsOperationTests: XCTestCase {
 
     private func refusal(_ press: (HomebrewEngine) -> Void) async -> (OpState?, Int) {
         let news = EngineNews<HomebrewNews>()
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let engine = HomebrewEngine(locator: NoBrew(), runner: runner, privileged: NoPrivileges(),
                                     user: "tester", news: news)
         press(engine)

@@ -5,8 +5,7 @@
 A check is judged by what its total failure would print. If that looks the same as
 success it is not a check yet; the defect is put back and the check watched going red,
 because a check never seen to fail is not a guard. A test that measures asserts
-something: one that logs a figure for a person to read cannot fail, and a real regression
-sits in it until somebody reads the number by hand. A test looking for a missing word
+something: one that only logs a figure cannot fail. A test looking for a missing word
 asserts first that the subject happened at all, since it passes when nothing was logged,
 which is the default in a test process because the log is off outside a dev build.
 
@@ -18,7 +17,7 @@ The proof follows the class of the defect, and only some classes keep theirs in 
 |---|---|---|
 | data deleted, moved, overwritten or half-written; a secret or a name reaching a log, argv or a file; a privilege raised or a scope widened; work done while nobody watches | a test | yes |
 | a crash on what a file, the system or another process hands Helm | a test | yes |
-| an import across a boundary; a path or `§` pointer to nothing | the build's import check (ARCHITECTURE.md § The boundaries) and the checks of the tree | yes |
+| an import across a boundary; a path or section pointer to nothing | the build's import check (ARCHITECTURE.md § The boundaries) and `EveryPointerArrivesTests` | yes |
 | the suite itself touching this Mac: its Keychain, defaults, Trash or a person's files | a test | yes |
 | a language missing from a catalog, so the screen shows an identifier where English would have | a test | yes |
 | a catalog spelling a language the way the system's own lists do not: another language's quotation marks, an ordinary space where French has an unbreakable one, «ё» where the house writes «е» (`Changelog.xcstrings`, shipped text, is excepted from the last) | a test | yes |
@@ -27,14 +26,9 @@ The proof follows the class of the defect, and only some classes keep theirs in 
 | logic that costs no data | the repro or a command printing the value, before and after | no |
 
 A proof that is not kept is the same command run before the fix and after it, the before
-already red, and its files stay outside the tree. A test outside the kept classes is
-optional, and its class decides it: `Tests/optional-tests.txt` names such classes one per
-line, `Scripts/test.sh` passes each to `--skip` on every run without a `--filter`, and
-`HELM_FULL_SUITE=1` runs the full suite before a release. A name on the list that no test
-class declares fails the run, because a stale name skips nothing and says so nowhere. A
-defect found and not fixed goes to the defect log — the owner's private record
-`~/.helm-work/defects-private.md`, never a new public issue, the repository's open issues
-being its older entries — and not into the tree as a skipped test: a skip reads as a pass
+already red, and its files stay outside the tree. A test outside the kept classes is not
+written, or is deleted: a class that never runs guards nothing, and `Scripts/test.sh`
+skips none. A defect found and not fixed goes to the defect log, the owner's private backlog outside the tree, never a new public issue, and not into the tree as a skipped test: a skip reads as a pass
 in a failures-only summary, and a reproduction nobody runs goes stale.
 
 ## Removal takes its traces
@@ -42,9 +36,7 @@ in a failures-only summary, and a reproduction nobody runs goes stale.
 When code leaves the tree, its tests and its lines on these pages leave
 in the same commit; the project's rules and knowledge notes, which live outside the tree,
 lose their lines in the same change. A test of removed code no longer builds, and a
-backticked Swift file name, a path with an extension `DocumentsNameTheTreeTests` knows
-(slashed, or bare with a `:line`), a directory in the map or a `§` pointer left behind
-fails the checks of the tree, and a class left on `Tests/optional-tests.txt` fails the run;
+backticked path or section pointer left behind fails `EveryPointerArrivesTests`;
 any other name, a bare type or a name in a doc comment, fails nothing, so the commit that
 removes a name first runs
 `command grep -rn '<name>' ARCHITECTURE.md Architecture README.md Sources Tests Scripts`
@@ -57,34 +49,29 @@ path followed by «in the tag `archive/<module>`», read with `git show archive/
 ## Readings and mutants
 
 A volume-group walk is asserted on tree structure and never on sizes: which side of a
-duplicate path wins is a race, so a size assertion passes by luck, and it did once. A
+duplicate path wins is a race, so a size assertion passes by luck. A
 result found while more than one suite run was up is re-run alone at least three times
 before it is believed, because the build lock serialises building and not running, and
 two runs share the scratch directories, the Trash and Application Support. Any reading is
 taken more than once: a count taken while the suite was still building is not the
 count of the finished one. A render names its appearance, because this machine
-switches by the sun and an unnamed reading is a reading of the hour; a suite has gone red
-between two runs with nothing committed between them.
+switches by the sun and an unnamed reading is a reading of the hour.
 
 A mutated file is restored from a copy and never with `git checkout` on its path, which
-restores to HEAD and discards every uncommitted edit in the file, and has destroyed work that
-way. Committing before mutating is better
+restores to HEAD and discards every uncommitted edit in the file. Committing before mutating is better
 still, and the mutant is read back out of the file before its outcome is believed,
-because a "0 failures" result has more than once been a substitution that never
-applied. The copy a mutant is restored from is kept inside the chain's own folder and not
+because a "0 failures" result can be a substitution that never applied. The copy a mutant is restored from is kept inside the chain's own folder and not
 under a temp path, which a cleanup can empty before the restore. A guard inside a locked block is
-never mutated into a second lock: it deadlocks the run and shows nothing.
+never mutated into a second lock: it deadlocks the run.
 
 ## Fakes
 
 A fake has every state the real port has and no state it does not, stands for one side of
 a boundary only, and finishes the prompt it stands for. A simpler fake makes a failure
-unrepresentable rather than untested; a freer one proves a branch unreachable in
-production; an encoder and decoder that disagree are green against a fake that encodes its
-own reply; a fake that never completes leaves the engine mid-prompt for ever behind an
-in-flight guard. The fake port is named at every construction, because a defaulted port
-is the machine's own keychain, and eleven forgetful constructions rolled a real rule set
-back. The one exception is `fakeEngine(...)` in
+unrepresentable; a freer one proves a branch unreachable in production; an encoder and decoder
+that disagree are green against a fake that encodes its own reply; a fake that never completes
+leaves the engine mid-prompt behind an in-flight guard. The fake port is named at every construction, because a defaulted port
+is the machine's own keychain. The one exception is `fakeEngine(...)` in
 `Tests/Modules/KeepAwake/EngineTests/Fakes.swift`, whose every port defaults to a fake
 from that file and never to a production port, so a call names only the fakes it
 configures or asserts on, and always `store:`; a factory whose default is a production
@@ -102,29 +89,14 @@ otherwise swept before it is made readable again.
 `Tests/Support/EachLanguage.swift` runs an assertion about a visible string across the
 eight languages; its doc comment says why, and states the rule a new test follows for the
 language it asks in.
-`Tests/Support/LogCapture.swift` is the log for one test: `tailTheLog()` enables it, clears the
-tail and registers the clearing and disabling as a teardown block, so call it where the old
-code enabled the log, and `loggedLines(_:)` reads one category back; `TailTheLogPutsTheLogBackTests` runs a probe case and checks the log is off and the tail empty after it, that `loggedLines(_:)` keeps only the asked category, and that a stale line is gone once the log is switched on.
-`Tests/Support/Yielding.swift` holds the waits, and they are one loop: `waitUntilWithin(_:_:)`
-reads the condition every few milliseconds until a wall-clock deadline and then fails
-naming what never happened. `waitUntil(_:within:)` is that call for a `@MainActor` case,
-and `waitUntilReached(_:within:)` for an engine test whose case is not, so it carries no
-isolation of its own. A cooperative yield is never a wait, and a new test calls these
-rather than write a local `eventually` or `until`. Four local waits stay, each for its own
-reason: the sync `eventually` in `StoppingTheInstallAndItsAdminDialogTests` (two) and in
-`TheInstallerWrapperKeepsItsWordTests`, a wait on a process whose end the test does not
-control, as the doc comment on the first says; and the `until` in
-`Tests/Modules/Uninstaller/UITests/TheSortedListUnderOddInputsTests.swift`, a wait on the clock for work
-on another task.
-`grace()` is the wait before asserting an
-absence, paired with a control that proves the same path still speaks.
+`Tests/Support/LogCapture.swift` is the log for one test (`tailTheLog()` and `loggedLines(_:)`; its doc comment holds the order).
+`Tests/Support/Yielding.swift` holds the waits, one loop (`waitUntilWithin(_:_:)`) with a wrapper each for a `@MainActor` case and for one that is not; its doc comments say why a deadline and not a count of yields. A new test calls them rather than write a local `eventually` or `until`, and no test keeps one. `grace()` is the wait before asserting an absence, paired with a control that proves the same path still speaks.
 
 ## Harnesses
 
 A harness is pointed at a temporary folder, and what it saved under
 the build's own folder (`~/Library/Application Support/Helm/`, Helm Dev: `Helm Dev/`) is deleted and the app's own state checked before
-the work is called done: real code writes, and the app has twice been handed back with
-somebody's test tree in it and no way out. Whether a thing predates the session is asked
+the work is called done, because real code writes. Whether a thing predates the session is asked
 before anything under `/Applications` is removed, and what a harness launches is proved
 able to replace what it kills before it kills anything. Accessibility is granted to the
 process at the top of the launch chain rather than to the test runner, because the system
@@ -150,20 +122,16 @@ runs. A page that cannot be opened is refused and logged, never replaced by anot
 The region is the window's bounds read before and after the capture, both printed:
 an autosaved window origin can land on another display under `.accessory`, so no place
 is assumed. `screencapture -R` takes the region, not `-l` by window number, which
-mis-renders a window whose material is active. Another application often takes the front,
-so each press and the capture print whether anything sits above the window, and shoot
+mis-renders a window whose material is active. Each press and the capture print whether anything sits above the window, and shoot
 says "front: no" in words rather than fighting for the front. An `mkdir` lock
-(`helm-shoot.lock` in the user's temp directory, its owner's pid in a file inside) stops two
-shoots on one screen: the second refuses at once with exit 73 naming the owner pid, and
-never waits. A locked screen is refused with 75. `defaults export` of Helm Dev's domain
-is taken before and after, the run reports whether it changed, and Helm Dev is ended by
-SIGTERM sent to the checked pid only; only after that pid is seen to have ended (a Helm Dev
-still running would overwrite it) is a changed domain deleted and the copy imported, since
-`defaults import` alone merges and a key added during the run would survive; a third export
-is compared with the copy, both as xml1 text, and the run prints "defaults restored: identical" or "DIFFERENT". The shot's pixel
+(`helm-shoot.lock` in the user's temp directory) stops two shoots on one screen: the second
+refuses at once with exit 73 naming the owner pid, and never waits. A locked screen is refused with 75. `defaults export` of Helm Dev's domain
+is taken before and after and the run reports whether it changed. Helm Dev is ended by
+SIGTERM sent to the checked pid only; once that pid has ended (a running Helm Dev would overwrite it)
+a changed domain is deleted and the copy imported, since `defaults import` alone merges; a third export
+is compared with the copy as xml1 text, and the run prints "defaults restored: identical" or "DIFFERENT". The shot's pixel
 size is compared with the window's bounds times the display's scale (`HelmReadout scale`)
-and a disagreement is printed, because `-R` is given a rect and nothing here proves that
-every display arrangement honours it.
+and a disagreement is printed.
 
 `HelmReadout` is an executable target declared in no product (SwiftPM synthesises one for
 it, and `HelmApp` does not depend on it, so `--product HelmApp` never builds it) and with no
@@ -175,23 +143,9 @@ Its subcommands: `point`, `bands`, `contrast`, `diff` over two captures of one s
 `press <pid> <name> [<role>] [--nth <n>]`, `scroll <pid> <fraction>`, `statusitem <pid> <host-pid>`, and `session`, which says whether the screen is
 locked and which grants this chain has.
 
-Two controls may share a name when the page offers one action twice (a toolbar button and an empty state's):
-`press` refuses them and lists them numbered in the tree order `ax` prints; `--nth <n>` (1-based), after
-`--press "<name>"` in `shoot.sh` and last in `HelmReadout press`, picks one.
+Two controls may share a name when the page offers one action twice: `press` refuses them and lists them numbered in the tree order `ax` prints, and `--nth <n>` (1-based) picks one.
 
-A state that is not on screen at launch is reached by `--press` (above), `--arg`, `--scroll` or
-`--panel`; `--name` only names the file. `--arg <key> <value>` is
-a launch argument after `-HelmOpenPage`, answered from the argument domain, so it overrides
-a default for the run and writes none (`--arg module.app.appearance dark`). `--arg reduceTransparency 1` turns Reduce Transparency on for the run: the crew changes no Mac setting, and the system's materials follow it (measured on the window ground and the header tabs). `--scroll <fraction>`
-(0 to 1) writes the page's vertical scroll bar value (`HelmReadout scroll`), because a window
-taller than the screen loses its lower part in a shot and a SwiftUI row offers no
-scroll-to-visible; a page-down action answers -25204 on a SwiftUI scroll area. The value is
-absolute, so a rerun gives the same frame, and the tool prints how far the first row moved.
-`--panel` presses the status item and shoots the panel window (layer 101) instead of the page:
-on macOS 27 status items live in `MenuBarAgent`'s tree, so `HelmReadout statusitem` finds the
-button by Helm Dev's own pid (the label "Helm" is the button's description; its title is the countdown text while one is shown, so the match reads both), which leaves the release Helm's button alone; the panel
-frame shows other modules' live tiles, so it is proof and not a file for the tree. `--name <stem>`
-makes the file `<page>-<stem>.png`, so one page can be shot in many states into one folder.
+A state not on screen at launch is reached by `--press`, `--arg`, `--scroll` or `--panel`; `--name` only names the file; the header of `Scripts/shoot.sh` holds each flag's form. `--arg` is answered from the argument domain, so it overrides a default for the run and writes none (`--arg module.app.appearance dark`). `--arg reduceTransparency 1` turns Reduce Transparency on for the run: the crew changes no Mac setting, and the system's materials follow it. `--scroll <fraction>` writes the page's vertical scroll bar value, because a window taller than the screen loses its lower part in a shot and a SwiftUI row offers no scroll-to-visible; a page-down action answers -25204 on a SwiftUI scroll area. The value is absolute, so a rerun gives the same frame. `--panel` shoots the panel window (layer 101) instead of the page: on macOS 27 status items live in `MenuBarAgent`'s tree, so `HelmReadout statusitem` finds the button by Helm Dev's own pid, which leaves the release Helm's button alone; the panel frame shows other modules' live tiles, so it is proof and not a file for the tree.
 
 ## Snapshot rules
 
@@ -201,11 +155,11 @@ A still proves the look only if it was taken so that a one-point defect shows.
 - Beside it, the system's own analogue at the same size, taken by the same
   `screencapture -R` of the window `HelmReadout window <pid>` names: a number about
   Helm's ground means something only against the ground the system draws on the same
-  screen (measured once: Helm's flat dark sidebar read 40 where System Settings' read 38).
+  screen.
 - Light and dark by pressing Helm's own switch, never the system's: the system's
   switch is a setting of somebody's Mac, which no crew member changes.
 - Active and inactive (`--inactive`): a window's material and its controls draw
-  differently when it is not key (measured: a light ground read 211 active and 240 inactive).
+  differently when it is not key.
   The Finder window that `--inactive` opens is closed by its window id (`HelmReadout close`).
 - Before and after the change, the same page and state: a difference between two shots
   of different states is not the change's.
@@ -218,10 +172,10 @@ A still proves the look only if it was taken so that a one-point defect shows.
 
 Motion is recorded with a screen recording and the recorder is never wrapped in a timeout:
 the file is written when the recording stops and the signal kills it first, which reads
-exactly like a permissions refusal. Stills arrive slowly and are for
-settled states, and a still is taken by `Scripts/shoot.sh` (§ Two screen instruments) of
+exactly like a permissions refusal. A still is for
+settled states and is taken by `Scripts/shoot.sh` (§ Two screen instruments) of
 the window's region rather than by display index, because that index is not the screen
-order and a full-screen capture photographs whatever else is open on somebody's machine. A pixel probe timestamps its sampling loop, because reading
+order and a full-screen capture photographs whatever else is open. A pixel probe timestamps its sampling loop, because reading
 pixels costs enough per frame that a run of samples nominally "20 ms" apart
 covers far more time than that; it
 anchors on something that moves with what is measured, since a fixed rectangle over a
@@ -234,9 +188,8 @@ fitting size, which answers with the ideal size and reads every ramp as a step.
 
 ## Why the commands are run
 
-The commands a session runs each have a reason that is not obvious from the command. A
-filtered run is far shorter than the suite, which is what makes running a guard before the
-suite cheap enough to actually do. `plutil -lint` refuses a catalog, so
+A filtered run is far shorter than the suite, which makes running a guard before the
+suite cheap. `plutil -lint` refuses a catalog, so
 `python3 -m json.tool` is what follows a hand edit, and the four string guards are run by name before committing, two of them (`NoOrphanTranslationsTests`, `OneEntryPerKeyTests`) because the run before a commit skips them. The visual
 harness is env-gated and belongs in the working tree only while it is being used, so
 `command grep -rn HELM_DEBUG Sources/` is empty before a commit.
@@ -249,11 +202,10 @@ while its assign-only findings are usually a property held to keep an object ali
 token whose clearing is the cancellation, or a field a synthesized conformance reads.
 
 A cleanup is measured before it is believed: `du -sh "$TMPDIR"` first, then what under it
-is not `helm-*`, because the same folder holds other programs' files. `--scratch-path` is
+is not `helm-*`, since other programs keep files there. `--scratch-path` is
 passed only when another suite run may be up, and one path is reused for the session,
-since a fresh directory per invocation is a full build directory.
+since each fresh directory is a full build directory.
 
 The helper directories change faster than prose about them: `ls
 Sources/HelmRuntime`, `ls Sources/HelmUI/DesignSystem` and `ls Tests/Support` are read
-before a helper is written, because prose listing them falls behind the directories, and
-a helper written beside one that already exists is the duplicate this reading is for.
+before a helper is written, because a helper written beside one that already exists is a duplicate.

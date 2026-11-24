@@ -24,14 +24,11 @@ public struct TypingBuffer {
         /// dispatches the action, so a chord cannot be treated as proof the
         /// caret moved without the shortcut killing its own precondition.
         ///
-        /// **The keycode is here because that reason covers exactly one chord
-        /// and the case stood for all of them.** ⌘V inserts text at the caret
-        /// and ⌥V types `√`, and both were kept as «not proof the caret moved»
-        /// — so the word before them stayed remembered while the field changed
-        /// underneath it. Measured: type `ghbdtn`, ⌘V a link, tap the key, and
-        /// `ghbdtnhttps://helm.app` became `ghbdtnhttps://heпривет`. With the
-        /// code, the engine can compare a chord against the shortcut actually
-        /// bound and forgive that one alone.
+        /// The keycode is here because that reason covers exactly one chord:
+        /// ⌘V inserts text at the caret and ⌥V types `√`, so a remembered word
+        /// before them no longer sits in front of the caret. With the code, the
+        /// engine compares a chord against the shortcut actually bound and
+        /// forgives that one alone.
         case chord(UInt16)
         case click
 
@@ -39,11 +36,10 @@ public struct TypingBuffer {
         ///
         /// The module keeps two things that may only be spent at a caret that
         /// has not moved: the record of what to undo and the word that most
-        /// recently ended. Both are blind edits of a fixed length, both are
-        /// measured against text that was in front of the caret when they were
-        /// taken, and both used to answer this question for themselves — which
-        /// is how `.navigation` came to invalidate one and be stored across the
-        /// other. A chord is the single exception and it is spelled out above:
+        /// recently ended. Both are blind edits of a fixed length, measured
+        /// against text that was in front of the caret when they were taken, so
+        /// both ask this one question. A chord is the single exception, spelled
+        /// out above:
         /// the gesture's own keys reach the tap before Carbon dispatches the
         /// action, so a chord treated as a caret move has the gesture destroy
         /// its own input.
@@ -74,14 +70,12 @@ public struct TypingBuffer {
 
     /// The word being typed, and only when the buffer holds all of it.
     ///
-    /// `finish()` already refuses to report a completion it could not hold in
-    /// full, because a plan built from a prefix deletes fewer characters than
-    /// were typed and leaves the head of the word standing with a translation
-    /// after it. The gesture is the second door into the same arithmetic and it
-    /// went through `word`, which hands over the 64-character prefix without
-    /// saying it is one — so a 70-letter token was converted 64 characters
-    /// deep. Nothing is the right answer here: the module cannot fix a word it
-    /// never saw the start of.
+    /// `finish()` refuses to report a completion it could not hold in full,
+    /// because a plan built from a prefix deletes fewer characters than were
+    /// typed and leaves the head of the word standing. The gesture is the second
+    /// door into the same arithmetic, so it reads this and not `word`, which
+    /// hands over the prefix without saying it is one. The module cannot fix a
+    /// word it never saw the start of.
     public var wholeWord: String? {
         guard !overflowed, !characters.isEmpty else { return nil }
         return String(characters)

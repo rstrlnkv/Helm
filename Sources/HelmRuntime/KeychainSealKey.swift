@@ -15,13 +15,10 @@ public protocol SealKeyPort: Sendable {
     ///
     /// Nil is a **third answer**, not a refusal: «cannot say yet». A caller that
     /// folded it into "no key" would report a stored setting as forged because a
-    /// keychain was slow, which is the shape (ARCHITECTURE.md § Module pattern)
-    /// is about.
+    /// keychain was slow (Architecture/ModulePattern.md § Ports and logic).
     ///
-    /// The default is nil because it is the truth for a port that keeps
-    /// nothing, and `KeychainSealKey` is exactly that port: every answer it
-    /// gives costs `SecItemCopyMatching`, and on an ad-hoc build that is a modal
-    /// dialog. Only something that already holds material can answer otherwise.
+    /// The default is nil, the truth for a port that keeps nothing, like
+    /// `KeychainSealKey`, whose every answer is a `SecItemCopyMatching`.
     func keyIfWarm() -> SealKey?
 }
 
@@ -45,7 +42,7 @@ public extension SealKeyPort {
 /// every one of those installations as "somebody rewrote your rules".
 public final class KeychainSealKey: SealKeyPort {
     private let service: String
-    private let account: String
+    let account: String
     /// The log category, so a failure names the feature that lost its key
     /// rather than the mechanism.
     private let category: String
@@ -63,14 +60,10 @@ public final class KeychainSealKey: SealKeyPort {
     public func key() -> SealKey? {
         // **A test run never reaches the login keychain through this port,
         // named or not.** `ATestNamesTheKeychainPortsItBuildsOverTests` holds
-        // every construction a test spells, and `ModuleHost.bootstrap` is one no
-        // test spells: it builds engines through their descriptors, on their
-        // production ports. Measured 2026-09-17, the day this Mac's builds
-        // gained a stable signing identity: the item's access list no longer
-        // matched the test runner, the read waited on a dialog nobody had
-        // asked for, and the engine it held outlived `shutdown`. Unavailable is
-        // the answer a keychain that will not answer gives, and every reader
-        // already treats it as the safe direction.
+        // every construction a test spells; `ModuleHost.bootstrap` builds
+        // engines on their production ports, and there the read would wait on
+        // a dialog nobody asked for. Unavailable is the safe direction every
+        // reader already takes.
         guard !TestProcess.isRunning else { return nil }
         switch read() {
         case let .found(material):

@@ -9,24 +9,15 @@ import HelmRuntime
 /// `scutil`'s complaint is written into the log verbatim, and it usually contains
 /// the name of the configuration it is complaining about.
 ///
-/// The log carries no names — that is the standing rule, and every line this
-/// module writes runs the name through `Redact.vpn` for it: a VPN name announces
-/// an employer or a provider, and the diagnostic file is the thing a person
-/// attaches to a bug report. The refusal line was
-/// `"\(verb) \(Redact.vpn(name)) refused: \(text)"`, which redacts the name Helm
-/// knows and then prints the tool's sentence with that same name inside it.
+/// The log carries no names: a VPN name announces an employer or a provider,
+/// and the diagnostic file is what a person attaches to a bug report.
+/// `VPNCommandReply.of(_:name:)` sanitises the text where the value is made, so
+/// `.refused` only ever holds something already redacted, and no call site can
+/// forget.
 ///
-/// The fix is at the point the value is made rather than at the point it is
-/// printed: `VPNCommandReply.of(_:name:)` sanitises the text, so `.refused` can
-/// only ever hold something already redacted. A rule enforced by the type is a
-/// rule the next call site cannot forget — and there is a second one waiting, the
-/// published state, since the reply's text is what any future «what did the tool say» screen
-/// would read.
-///
-/// What is *not* redacted, deliberately: `_lastFailure.name`. The screen is
-/// allowed to name what the person configured — they typed it into System
-/// Settings — and the page draws «macOS refused to connect «Office VPN»» from it.
-/// The split is the whole point: the file leaves the machine, the window does not.
+/// `_lastFailure.name` is *not* redacted: the page names what the person
+/// configured («macOS refused to connect «Office VPN»»). The file leaves the
+/// machine, the window does not.
 final class ARefusalMustNotCarryTheNameTests: XCTestCase {
 
     private let service = "Contoso Field Office"
@@ -74,17 +65,14 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
 
     // MARK: - The controls
 
-    /// Classification happens before any of this, which matters for the one name
-    /// that could change it: a configuration called «No» would otherwise have the
-    /// tool's own «No service» rewritten into something this enum cannot read.
+    /// Classification comes before redaction, or a configuration called «No»
+    /// would have the tool's own «No service» rewritten into something unreadable.
     func testAConfigurationCalledNoStillReportsAMissingService() {
         XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: "No service"), name: "No"), .noSuchService)
     }
 
-    /// An empty name is not a pattern to search for. Replacing every empty
-    /// substring is either a no-op or a disaster, depending on the
-    /// implementation, and the engine can be asked to connect `""` by a rule
-    /// pointing at a configuration that has been renamed away.
+    /// An empty name is not a pattern to search for, and a rule pointing at a
+    /// configuration renamed away can ask the engine to connect `""`.
     func testAnEmptyNameLeavesTheTextAlone() {
         XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: "cannot start: busy"), name: ""),
                        .refused("cannot start: busy"))
@@ -119,8 +107,7 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
                       "…and the reason the tool gave is not")
     }
 
-    /// The other half of the split, and it is the half a redaction fix is likely
-    /// to break: the screen still gets the real name.
+    /// The other half of the split: the screen still gets the real name.
     func testTheScreenStillKnowsWhichConfigurationItWas() {
         let runner = FakeRunner()
         runner.reply = "cannot start \(service): resource busy"

@@ -48,13 +48,11 @@ items stay until the cache itself replaces them; the real Helm's `com.helm.vpn` 
 
 That the reset's ask reaches every live engine, and tears nothing down and writes no enabled flag, is
 driven for real: `AModuleOwnsItsModelTests.testHandingBackSystemStateAsksEveryLiveEngineAndTearsNothingDown` enables two
-fakes and calls `ModuleHost.handBackSystemState()`. `AResetGoesThroughTheEnginesTests` still reads the source for the
-rest, because running `ResetEverything.run()` would move this Mac's own folders.
+fakes and calls `ModuleHost.handBackSystemState()`. `AResetGoesThroughTheEnginesTests` drives `run(standInIsLive:perform:)` with a recorder for the
+rest, because running `ResetEverything.run()` itself would move this Mac's own folders.
 
-The steps are `ResetPlan.Step` — `handBackWhatIsOutsideHelm`, `giveBackTheLoginItem`,
-`stopEveryModule`, `trashHelmsOwnFolders`, `relatchTheLogPurge`, `forgetPreferences`, `relaunch` — and `ResetPlan.order` is that
-order as a value; the doc comments on the first two steps say why they sit where they do,
-and `Sources/HelmApp/ResetEverything.swift` carries them out. `stopEveryModule` calls `ModuleHost.shutdown()` (stop the model, deactivate, detach the menu-bar item) before the trash and the forget, so a close-time write such as the Screenshots bar's place lands before the domain is forgotten; the quit's `shutdown()` then finds nothing live. `ResetPlan.removablePaths` names the
+The steps are `ResetPlan.Step` and `ResetPlan.order` is their order as a value; the doc comments on the first two steps say why they sit where they do,
+and `Sources/HelmApp/ResetEverything.swift` carries them out. `stopEveryModule` calls `ModuleHost.shutdown()` before the trash and the forget, so a close-time write such as the Screenshots bar's place lands before the domain is forgotten; the quit's `shutdown()` then finds nothing live. `ResetPlan.removablePaths` names the
 two folders of the running build (`AppBuild.dataFolder`): its Application Support directory
 (`HelmSupport.path`) and its logs folder (`LogDestination.relativePath`) — `Helm` for the release,
 `Helm Dev` for Helm Dev, whose reset never names the real Helm's folders. `relatchTheLogPurge` writes `.redaction-reset` in the logs folder again after the trash took it, so the next launch's one-time purge does not delete the log holding the reset's own line. `ResetEverything.run` does nothing, and logs why, while an engine says

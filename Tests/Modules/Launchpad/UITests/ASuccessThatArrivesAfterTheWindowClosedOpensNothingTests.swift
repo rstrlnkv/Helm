@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import Module_Launchpad_Engine
 @testable import Module_Launchpad_UI
@@ -44,7 +45,7 @@ import XCTest
         await fake.waitForAsks(2)
         XCTAssertEqual(gate.phase, .asking, "the control: the second prompt is up")
         fake.releaseFirst(.success)
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await grace()
         XCTAssertEqual(gate.phase, .asking, "the first prompt's answer is not the second's")
         XCTAssertEqual(ran, 0)
         gate.lock()

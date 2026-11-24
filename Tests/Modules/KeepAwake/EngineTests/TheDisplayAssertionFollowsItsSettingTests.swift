@@ -6,26 +6,15 @@ import HelmRuntime
 /// Turning "keep the display on" off during a session puts the display
 /// assertion down.
 ///
-/// `reconcileActiveSettings` carries the promise in prose — "so toggling
-/// keepDisplayOn / clamshell / jiggle takes effect now (not only on the next
-/// session)" — and nothing held it. The failure has no error and no crash: the
-/// display simply never sleeps, on a Mac whose owner has just told it to.
+/// `reconcileActiveSettings` promises that toggling keepDisplayOn, clamshell or
+/// jiggle takes effect now, not only on the next session. The failure has no
+/// error and no crash: the display simply never sleeps, on a Mac whose owner
+/// has just told it to. `FakeAssertions` holds one assertion per kind, as
+/// `IOKitSleepAssertions` does, so that state is representable.
 ///
-/// **The fake could not have seen it either.** `FakeAssertions` was one `held`
-/// flag and a record of the last `display:` argument, while
-/// `IOKitSleepAssertions` holds an IOKit assertion per kind. A display
-/// assertion outliving the setting that asked for it was unrepresentable in the
-/// fake, so no test in this module could fail on it, and the one test that
-/// touched `display` asked only whether the argument had been passed.
-///
-/// The port used to make that easy to get wrong: `preventSleep(display: false)`
-/// created nothing and released nothing, so the call added and never subtracted
-/// and only `release()` could put the display assertion down. It matches its
-/// argument now. What is **not** machine-checked is that half — creating real
-/// IOKit assertions inside the suite is exactly the thing this module exists to
-/// avoid doing by accident.
-///
-/// Guards: 46331ef9 (display assertion did not follow its setting).
+/// `preventSleep(display: false)` releases a display assertion it holds. That
+/// half is not machine-checked: creating real IOKit assertions inside the suite
+/// is exactly what this module must not do by accident.
 final class TheDisplayAssertionFollowsItsSettingTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!

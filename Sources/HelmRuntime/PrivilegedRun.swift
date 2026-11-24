@@ -13,11 +13,8 @@ public enum PrivilegedOutcome: Equatable, Sendable {
 }
 
 /// The shared route to `do shell script … with administrator privileges`.
-///
-/// `AppleScript`'s own doc comment predicted this file: the escaping moved to
-/// `HelmRuntime` first «until there is a shared privileged runner to put them
-/// in». Homebrew's `OSAPrivilegedRunner` and KeepAwake's `PmsetClamshellPort`
-/// run through it.
+/// Homebrew's `OSAPrivilegedRunner` and KeepAwake's `PmsetClamshellPort` run
+/// through it. Architecture/RunningOtherPrograms.md § Running other programs.
 public enum PrivilegedRun {
 
     /// AppleScript's number for a cancelled dialog, in the shape `osascript`
@@ -35,9 +32,8 @@ public enum PrivilegedRun {
 
     /// Ask root to run `command`, through the system's own dialog.
     ///
-    /// Blocking — `osascript` sits there for as long as the dialog is up, which
-    /// can be minutes. Callers hop through `offTheCooperativePool` first, or a
-    /// pool thread is parked for the length of somebody's coffee break.
+    /// Blocking: `osascript` sits there for as long as the dialog is up, which
+    /// can be minutes. Callers hop through `offTheCooperativePool` first.
     public static func run(_ command: String) -> PrivilegedOutcome {
         let result = HelmProcess.run("/usr/bin/osascript", arguments(for: command))
         return outcome(status: result.status, output: result.output)
@@ -47,37 +43,15 @@ public enum PrivilegedRun {
     /// that costs nobody a password dialog.
     ///
     /// **`-s o` is what makes `.declined` reachable at all.** `osascript(1)`:
-    /// «e  Print script errors to stderr (default). / o  Print script errors to
-    /// stdout.» — and `HelmProcess.run` sends the child's stderr to
-    /// `FileHandle.nullDevice` deliberately, because a tool's diagnostics are
-    /// not its output. Here the diagnostic *is* the output: `-128` is the only
-    /// reliable sign of a cancelled dialog, since the wording beside it is in
-    /// whatever language the person runs their Mac in. Without this flag the
-    /// number is written to a stream nobody reads, `outcome` sees status 1 with
-    /// an empty string, and every cancel is reported as a failed write — a
-    /// three-way reading resting on something that is not there.
+    /// «o  Print script errors to stdout.» `HelmProcess.run` discards the
+    /// child's stderr, because a tool's diagnostics are not its output; here the
+    /// diagnostic *is* the output. Without the flag `outcome` sees status 1 with
+    /// an empty string, and every cancel reads as a failed write. An ordinary
+    /// script error takes the same route, so `outcome` tells them apart by
+    /// number.
     ///
-    /// That paragraph rested on the man page when it was written. It was run on
-    /// this machine on 2026-08-17, and the man page holds — three invocations,
-    /// each reported as exit status, stdout, stderr:
-    ///
-    /// - `osascript -e 'error number -128'` → 1, stdout **empty**, stderr
-    ///   `0:17: execution error: Отменено пользователем. (-128)`
-    /// - `osascript -s o -e 'error number -128'` → 1, stdout
-    ///   `0:17: execution error: Отменено пользователем. (-128)`, stderr empty
-    /// - `osascript -s o -e 'error number -1728'` → 1, stdout
-    ///   `0:18: execution error: Не удается получить «script». (-1728)`, stderr
-    ///   empty
-    ///
-    /// Row 1 is the defect the flag exists to close: the only sign of a cancel
-    /// went to the stream `HelmProcess` discards. Row 3 shows an ordinary script
-    /// error takes the same route, so `outcome` reads one stream for both and
-    /// tells them apart by number.
-    ///
-    /// And the message came back **in Russian** — not because the flag does
-    /// that, but because this Mac runs in Russian. That is the independent
-    /// proof that matching the number rather than the words was right: nothing
-    /// in the sentence beside `(-128)` is the same on the next person's Mac.
+    /// The number, never the words: the sentence beside `(-128)` is in whatever
+    /// language the person runs their Mac in.
     ///
     /// The escaping stays in `AppleScript`: one place in this app decides
     /// whether root runs a command or an attacker's continuation of it.

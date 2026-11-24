@@ -22,16 +22,13 @@ struct LeftoversScanner: Sendable {
 
     func scan() -> [StaleItem] {
         let installed = apps.installedBundleIDs()
-        // Read once. `activeExtensionIdentifiers()` and `installedExtensions()`
-        // each shelled out to systemextensionsctl and parsed the same list, so
-        // a scan launched the tool twice for one answer.
+        // Read once: both answers come from one `systemextensionsctl` list.
         let extensionList = extensions.installedExtensions()
         let activeExtensions = Set((extensionList ?? []).map(\.identifier))
         let disabled = extensions.disabledLabels()
-        // **A reading that did not happen may not promote anything.** Both of these
-        // used to answer `[]` for a tool that failed, and an empty list of loaded
-        // extensions is what turns a live one into a leftover. Said out loud, once,
-        // and by kind: the names are the person's software.
+        // **A reading that did not happen may not promote anything**: an empty
+        // list of loaded extensions is what turns a live one into a leftover. Said
+        // out loud, once, and by kind: the names are the person's software.
         if extensionList == nil {
             HelmLog.shared.warn(LeftoversEngine.moduleID,
                                 "systemextensionsctl did not answer: no launch item is offered "
@@ -56,10 +53,9 @@ struct LeftoversScanner: Sendable {
         // A label is not unique across the three launch directories — the same
         // `com.vendor.updater` sits in `~/Library/LaunchAgents` and
         // `/Library/LaunchAgents` on plenty of Macs — and Swift's sort is not
-        // stable, so two such rows could come back in either order. Pressing
-        // «Scan again» then reshuffled them for no reason a person could see,
-        // in a list where the row above a checkbox is the whole of what the tick
-        // means. The path is unique by construction: it is the item's `id`.
+        // stable, so «Scan again» could reshuffle them in a list where the row
+        // above a checkbox is the whole of what the tick means. The path is unique
+        // by construction: it is the item's `id`.
         return out.sorted {
             $0.identifier == $1.identifier ? $0.path < $1.path
                                            : $0.identifier < $1.identifier
@@ -80,9 +76,8 @@ struct LeftoversScanner: Sendable {
         return list.map { info in
             let host = StaleItemRules.hostIdentifier(of: info.identifier)
             // The separator, as in UninstallerEngine and `StaleItemRules.isOwned`:
-            // "com.acmecorp.vpn.ext" is not owned by an installed "com.acme",
-            // and an empty id in the installed set is a prefix of everything —
-            // it used to mark every extension on the machine as in use.
+            // "com.acmecorp.vpn.ext" is not owned by an installed "com.acme", and an
+            // empty id in the installed set is a prefix of everything.
             let hostPresent = installed.contains {
                 !$0.isEmpty && ($0 == host || info.identifier.hasPrefix($0 + "."))
             }
@@ -100,16 +95,12 @@ struct LeftoversScanner: Sendable {
     /// An upgrade waiting for a reboot leaves two of them for one bundle id — the
     /// new one `[activated enabled]` and the old one `[terminated waiting to
     /// uninstall on reboot]` — and `info.identifier` is the same string in both.
-    /// It used to be the whole of the row's `path`, which is `StaleItem.id`: two
-    /// rows with one identity, which SwiftUI's own documentation calls undefined in
-    /// the `ForEach` the page draws them with, and a tie `scan`'s sort cannot break
-    /// however it is written, in the one kind of row where the path was never a
-    /// path. The badges differ — one carries «At login» from `enabled` and the
-    /// other does not — so «Scan again» could swap the pair.
+    /// As the whole of `StaleItem.id` it would give two rows one identity, which
+    /// SwiftUI calls undefined in a `ForEach`, and a tie `scan`'s sort cannot break.
     ///
     /// The version is what tells one record from another; an ordinal follows where
     /// even that repeats, because «unique by construction» has to hold for every
-    /// list the tool can print and not only for the ones seen so far.
+    /// list the tool can print.
     private func recordSpelling(of info: SystemExtensionInfo,
                                 seen: inout [String: Int]) -> String {
         let spelling = "\(info.identifier) (\(info.version))"
@@ -127,9 +118,7 @@ struct LeftoversScanner: Sendable {
     private func launchItems(installed: Set<String>, activeExtensions: Set<String>,
                              loadedRead: Bool, disabled: Set<String>) -> [StaleItem] {
         // The two agent folders are `LaunchClaims`', not a second list typed here:
-        // they are the folders launchd loads a user's agents from, which is what
-        // makes two files able to claim one switch, and the engine reads the same
-        // two before it acts on one.
+        // the engine reads the same two before it acts on a switch.
         let sources: [(URL, StaleKind)] =
             LaunchClaims.agentFolders(home: home).map { ($0, StaleKind.launchAgent) }
             + [(URL(fileURLWithPath: "/Library/LaunchDaemons"), .launchDaemon)]
@@ -144,33 +133,28 @@ struct LeftoversScanner: Sendable {
                 .filter { $0.pathExtension == "plist" }
                 .map { url -> StaleItem in
                     // A plist read per job, and the read hands back autoreleased
-                    // Foundation objects — ARCHITECTURE.md § Module pattern. Inside the
-                    // iteration, never around it.
+                    // Foundation objects (Architecture/ModulePattern.md § Module pattern).
+                    // Inside the iteration, never around it.
                     autoreleasepool {
-                    // **The read is kept, not spent.** `readPlist` answers nil for
-                    // every reason a file resists being read, and `?? [:]` made all
-                    // of them «this job has no `Program`» — which the status rule
-                    // below reads as «points at nothing», which is a leftover. «I
-                    // read it and there is nothing in it» and «I could not read it»
-                    // are two facts, and `.unreadable` is the second of them.
+                    // **The read is kept, not spent.** `readPlist` answers nil for every
+                    // reason a file resists being read; as «this job has no `Program`» the
+                    // status rule below would read it as «points at nothing», a leftover. «I
+                    // read it and there is nothing in it» and «I could not read it» are two
+                    // facts, and `.unreadable` is the second of them.
                     let definition = files.readPlist(url)
                     let info = LaunchAgentReader.read(plist: definition?.raw ?? [:], path: url.path)
-                    // **Three answers, because the port has three.** A job that
-                    // names no program is `nil` here; one whose program could not
-                    // be looked for at all is `.some(nil)`, which used to fold into
-                    // «not there» → «points at nothing» → a leftover. `exists` says
-                    // why that is a permission error being read as a fact about
-                    // somebody's software.
+                    // **Three answers, because the port has three.** A job that names no
+                    // program is `nil` here; one whose program could not be looked for at all
+                    // is `.some(nil)`, which must not fold into «not there» → a leftover: that
+                    // would read a permission error as a fact about somebody's software.
                     let target = info.program.map(files.exists)
                     let targetAlive = target == .some(true)
                     let couldNotCheck = target == .some(nil)
                     let verdict = self.status(identifier: info.identifier, path: url.path,
                                               installed: installed,
                                               inUse: targetAlive || activeExtensions.contains(info.identifier))
-                    // Only the leftover verdict is withdrawn: whatever else the
-                    // rules found — an owner installed, a protected namespace — is
-                    // a fact about the *name*, which was read from the file's own
-                    // name when the contents would not come.
+                    // Only the leftover verdict is withdrawn (`withdrawingTheLeftover`): the
+                    // name was read from the file's own name when the contents would not come.
                     let status = self.withdrawingTheLeftover(
                         verdict,
                         unreadable: definition == nil,
@@ -197,10 +181,9 @@ struct LeftoversScanner: Sendable {
     /// is a fact about the group, and `LaunchClaims.rivals` is the same rule the
     /// engine asks of the disk before it acts on a switch.
     ///
-    /// Source rows are left out of the claims, and that is not a detail: two of
-    /// them are the two agent folders themselves, and a folder's name is not a
-    /// label — unfiltered they would claim each other and take the switch off every
-    /// row in the scan.
+    /// Source rows are left out of the claims: two of them are the agent folders
+    /// themselves, and a folder's name is not a label — they would claim each
+    /// other and take the switch off every row.
     private func namingRivalClaims(_ items: [StaleItem]) -> [StaleItem] {
         let claims = items
             .filter { $0.kind == .launchAgent && !$0.status.isSource }
@@ -219,13 +202,13 @@ struct LeftoversScanner: Sendable {
         let directory = home.appendingPathComponent("Library/Preferences")
         let source = opening(directory, .preference)
         if let unread = source.unread { return [unread] }
-        // 542 plists on the machine this was measured on, one answer between
-        // them: asked per item this was the most expensive step of the scan.
+        // Hundreds of plists, one answer between them: asked per item this
+        // would be the most expensive step of the scan.
         let writable = files.isWritableDirectory(directory)
         return source.entries
             .filter { $0.pathExtension == "plist" }
             .map { url in
-                // 542 of these here. The loop asks no resource values (size is
+                // Hundreds of these here. The loop asks no resource values (size is
                 // `FileWeight.allocated`); this is the pool `AScanKeepsWhatItFoundTests`
                 // measures, so it stays.
                 autoreleasepool {
@@ -234,9 +217,9 @@ struct LeftoversScanner: Sendable {
                                  kind: .preference, sizeBytes: files.size(url),
                                  status: status(identifier: identifier, path: url.path,
                                                 installed: installed, inUse: false),
-                                 // Asked, not assumed. The initialiser defaults
-                                 // this to true, which offered a plist in a
-                                 // folder Helm cannot write to "Select all".
+                                 // Asked, not assumed: the initialiser defaults this to
+                                 // true, which would offer a plist in a folder Helm
+                                 // cannot write to "Select all".
                                  writable: writable)
                 }
             }
@@ -299,27 +282,21 @@ struct LeftoversScanner: Sendable {
 
     /// Whether a directory this scan is compiled with is the directory it names.
     ///
-    /// **A name is not a place.** Eight directories are compiled into this scan,
-    /// four of them for folders a stock install does not have — so any process
-    /// running as the user can create one as a symbolic link and have the whole
-    /// enumeration happen wherever it points, under Helm's Full Disk Access, while
-    /// every row goes on spelling the folder that was compiled in. The removal gate
-    /// does not save it: `RemovableScope` resolves ancestors, which closes the way
-    /// out to `~/Documents` and permits anything under `~/Library` and anything
-    /// ending in `.app` anywhere, which is where a container is.
+    /// **A name is not a place.** Four of the eight directories compiled into this
+    /// scan do not exist on a stock install, so any process running as the user can
+    /// create one as a symbolic link and have the enumeration happen wherever it
+    /// points, under Helm's Full Disk Access; `RemovableScope` still permits
+    /// anything under `~/Library` and anything ending in `.app` anywhere.
     ///
     /// So a redirected source is not scanned at all, and the *whole* path is the
     /// question: a link at `~/Library` moves `~/Library/Preferences` without
-    /// `Preferences` ever being one. What that buys, beyond refusing the escape, is
-    /// that every surviving source is canonical in every component — so the item
-    /// paths built from it are where the files are, with no second resolution to
-    /// keep in step, and a leaf that is itself a link stays unresolved the way
-    /// `PathCanonical` requires.
+    /// `Preferences` ever being one. Every surviving source is then canonical in
+    /// every component, so the item paths built from it need no second resolution,
+    /// and a leaf that is itself a link stays unresolved, as `PathCanonical`
+    /// requires.
     ///
-    /// The refusal is logged by kind and by nothing else: the path is the thing
-    /// somebody planted, and this line carries no names. **And the log is not where
-    /// it ends** — `opening` turns the same refusal into a row, because a person
-    /// reading a green tick is not reading the log (`ItemStatus.sourceRedirected`).
+    /// The refusal is logged by kind only — the path is what somebody planted —
+    /// and `opening` turns it into a row (`ItemStatus.sourceRedirected`).
     private func isItsOwnPlace(_ directory: URL, _ kind: StaleKind) -> Bool {
         guard files.resolvingSymlinks(directory).path == directory.path else {
             HelmLog.shared.warn(LeftoversEngine.moduleID,
@@ -346,22 +323,10 @@ struct LeftoversScanner: Sendable {
         static func unread(_ row: StaleItem) -> Source { Source(entries: [], unread: row) }
     }
 
-    /// **A source nobody walked is not a clean Mac.**
-    ///
-    /// Two ways a source goes unread, and until this existed both left the scan one
-    /// folder short with nothing in `[StaleItem]` to say so: the rows were *missing*
-    /// rather than unjudged, `LeftoversViewModel.uncheckedCount` was zero, and
-    /// `LeftoversEmpty.reason` answered `.nothingFound` — «No leftovers found» under
-    /// a green check, over a folder that was never opened. On an ordinary Mac the
-    /// default filter shows leftovers only and an honest scan finds none, so one
-    /// source of the eight is enough to turn this module's strongest claim about
-    /// somebody's Mac into a lie, and `nothingFound` gets no Scan button to answer
-    /// it with.
-    ///
-    /// The module already refuses that tick over rows it could not judge
-    /// (`LeftoversEmpty.notEverythingChecked`); a folder it could not open is the
-    /// same fact one step earlier, and the only one that leaves no row behind to be
-    /// counted.
+    /// **A source nobody walked is not a clean Mac.** Without a row an unread
+    /// source leaves nothing in `[StaleItem]` to say so, and the page would draw
+    /// «No leftovers found» over a folder never opened
+    /// (`LeftoversEmpty.notEverythingChecked` is the same fact one step later).
     private func opening(_ directory: URL, _ kind: StaleKind) -> Source {
         guard isItsOwnPlace(directory, kind) else {
             return .unread(unreadRow(directory, kind, .sourceRedirected,

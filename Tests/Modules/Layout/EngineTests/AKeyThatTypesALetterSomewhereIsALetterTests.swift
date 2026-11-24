@@ -3,18 +3,12 @@ import XCTest
 
 /// The other half of «a key is only punctuation in the layout you are holding».
 ///
-/// `96afdc45` taught the translation that `,` types `б` and `[` types `х`, so a
-/// word carrying one of those letters converts correctly. But the tap still
-/// asks what the key types **in the layout being held** — latin, where they are
-/// marks — and punctuation *confirms* a word. So `cgfcb,j` is still cut at the
-/// comma: `cgfcb` is confirmed and converted, and `j` starts a new word.
-///
-/// The question the tap has to ask instead is whether the key types a letter in
-/// **any** installed layout. That is a fact about the keyboard rather than about
+/// The translation reads `,` as `б` and `[` as `х` (`KeyRemap`). The tap must
+/// not ask what the key types in the layout being held — latin, where they are
+/// marks that confirm a word, cutting `cgfcb,j` at the comma — but whether it
+/// types a letter in any installed layout. That is a fact about the keyboard rather than about
 /// Russian, so a Greek, Armenian or Hebrew layout gets the same answer for the
 /// same reason.
-///
-/// Guards a past defect: the tap cutting a word at a key that is a letter elsewhere (fix commit `a1e8d857`).
 final class AKeyThatTypesALetterSomewhereIsALetterTests: XCTestCase {
 
     /// Toy tables in the shape `UCTranslation` builds: keycode → what it types.
@@ -25,7 +19,7 @@ final class AKeyThatTypesALetterSomewhereIsALetterTests: XCTestCase {
         XCTAssertTrue(LetterKeys(tables: [latin, cyrillic]).contains(1))
     }
 
-    /// The four keys the defect is about.
+    /// The four keys that are letters in Russian.
     func testAKeyThatIsAMarkHereAndALetterElsewhereIsALetter() {
         let keys = LetterKeys(tables: [latin, cyrillic])
         for code in [UInt16(28), 29, 19, 8] {
@@ -33,7 +27,7 @@ final class AKeyThatTypesALetterSomewhereIsALetterTests: XCTestCase {
         }
     }
 
-    /// **With only latin layouts installed, nothing changes.** A Mac with US and
+    /// With only latin layouts installed, nothing changes. A Mac with US and
     /// British keyboards must keep confirming a word at a comma, or this fix
     /// would take punctuation-triggered conversion away from everybody who does
     /// not need it.
@@ -50,7 +44,7 @@ final class AKeyThatTypesALetterSomewhereIsALetterTests: XCTestCase {
         XCTAssertFalse(LetterKeys(tables: [latin, cyrillic]).contains(99))
     }
 
-    /// **Space is never a letter**, whatever a layout does with that keycode: it
+    /// Space is never a letter, whatever a layout does with that keycode: it
     /// is the word boundary this whole path is built on, and a boundary that
     /// could become part of a word would swallow the sentence.
     func testSpaceIsNeverALetter() {
@@ -58,8 +52,8 @@ final class AKeyThatTypesALetterSomewhereIsALetterTests: XCTestCase {
         XCTAssertFalse(LetterKeys(tables: [latin, odd]).contains(49))
     }
 
-    /// Nothing installed is not «everything is a letter»: with no tables the
-    /// tap must behave exactly as it does today.
+    /// Nothing installed is not «everything is a letter»: with no tables no key
+    /// is.
     func testNoTablesMeansNoLetters() {
         XCTAssertFalse(LetterKeys(tables: []).contains(28))
         XCTAssertFalse(LetterKeys(tables: []).contains(1))

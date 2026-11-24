@@ -10,34 +10,21 @@ import XCTest
 /// **A `scutil` read that never answers must not park `VPNWorkQueue` for the
 /// life of the process.**
 ///
-/// The defect this class was written for: `scutil --nc list` and `--nc status`
-/// were run through `ScutilRunner.run`, which is `HelmProcess.run` without a
-/// `timeout:`, and `refreshNow` / `readInterfaces` blocked on it on the module's
-/// one serial queue. A wedged `scutil` (an `NEVPNManager` daemon that does not
-/// reply is the usual cause) then stopped every later refresh, connect, stop and
-/// poll behind it, and the page kept drawing the last state with no line in the
-/// log saying why.
+/// `refreshNow` and `readInterfaces` run on the module's one serial queue, and a
+/// wedged `scutil` (an `NEVPNManager` daemon that does not reply, usually) would
+/// stop every later refresh, connect, stop and poll behind it. The queries
+/// (`--nc list`, `--nc status`, `--nc show`) go through
+/// `VPNRunnerPort.read(_:timeout:)` with `vpnReadDeadline`, so a read that runs
+/// out of time comes back as `HelmProcess.timedOutStatus`, the last answer is
+/// kept, and a log line names the timeout. The commands (`--nc start` / `stop`)
+/// go through the unbounded `run`.
 ///
-/// What it guards now: the queries (`--nc list`, `--nc status`, `--nc show`) go
-/// through `VPNRunnerPort.read(_:timeout:)`, which the engine calls with
-/// `vpnReadDeadline` and `ScutilRunner.read` passes on as `timeout:`, so a read
-/// that runs out of time comes back as `HelmProcess.timedOutStatus`, the last
-/// answer is kept, and a log line names the timeout. Only the commands
-/// (`--nc start` / `stop`) still go through the unbounded `run`.
-///
-/// **The seam.** The runner is a port (`VPNRunnerPort`), so «a tool that never
-/// answers» can be written down; the deadline itself lives in the production
-/// `ScutilRunner`, whose path is a literal and which a test may not take
-/// (`NoTestTakesAProductionPortTests`). So what is asserted here is the
-/// engine's side of the contract, from both ends: a call that never returns
-/// must not park the module (the engine, not only the runner, bounds it), and a
-/// call that comes back `timedOutStatus` must be told apart from silence.
-///
-/// The fake finishes its prompt: every hang is released in `tearDown`, and every
-/// wait in a test is an expectation with its own bound, so a regression costs
-/// seconds and never the suite.
-///
-/// Past defect: commit ed737900, «fix: scutil reads have a deadline and read the exit status» and backlog rows M104/M278.
+/// **The seam.** The deadline itself lives in the production `ScutilRunner`,
+/// which a test may not take (`NoTestTakesAProductionPortTests`), so this class
+/// asserts the engine's side from both ends: a call that never returns must not
+/// park the module, and a call that comes back `timedOutStatus` must be told
+/// apart from silence. Every hang is released in `tearDown` and every wait has
+/// its own bound, so a regression costs seconds and never the suite.
 final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
 
     private static let header = "Available network connection services in the current set (*=enabled):"
@@ -52,52 +39,11 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
     /// deadline a `scutil` read could sensibly carry, far below the suite.
     private let bound: TimeInterval = 3
 
-    private enum Step { case answer(HelmProcess.Result), hang }
-
-    /// A tool scripted per command, that can be made to never answer.
-    private final class Runner: VPNRunnerPort, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _issued: [[String]] = []
-        private let release = DispatchSemaphore(value: 0)
-        var handler: (@Sendable (_ args: [String], _ nth: Int) -> Step)?
-
-        var issued: [[String]] { lock.lock(); defer { lock.unlock() }; return _issued }
-        func count(of args: [String]) -> Int { issued.filter { $0 == args }.count }
-
-        /// A command: unbounded, so a scripted hang really parks the caller.
-        func run(_ args: [String]) -> HelmProcess.Result { answer(args, bounded: false) }
-
-        /// A query: bounded, like `ScutilRunner.read`. A scripted hang comes back
-        /// at once with what the real runner answers once its deadline has
-        /// passed — `timedOutStatus` and no output — so the engine is tested on
-        /// what it does with that answer, and a test never waits out a clock.
-        func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result {
-            answer(args, bounded: true)
-        }
-
-        private func answer(_ args: [String], bounded: Bool) -> HelmProcess.Result {
-            lock.lock()
-            let nth = _issued.filter { $0 == args }.count
-            _issued.append(args)
-            lock.unlock()
-            switch handler?(args, nth) ?? .answer(.init(status: 0, output: "")) {
-            case .answer(let result): return result
-            case .hang:
-                if bounded { return .init(status: HelmProcess.timedOutStatus, output: "") }
-                _ = release.wait(timeout: .now() + 120)
-                return .init(status: -1, output: "")
-            }
-        }
-        func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer { .started }
-        /// Lets every parked call go, so no thread outlives its test.
-        func releaseAll() { for _ in 0..<16 { release.signal() } }
-    }
-
-    private var runner: Runner!
+    private var runner: FakeRunner!
 
     override func setUp() {
         super.setUp()
-        runner = Runner()
+        runner = FakeRunner()
         tailTheLog()
     }
 
@@ -238,10 +184,9 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
                             keychainDeadline: KeychainCredentials.systemKeychainDeadline)
     }
 
-    /// The answer is `.unreadable` (defects page row `vpn-show-unreadable`,
-    /// owner decision 2026-11-11): «this read timed out» is not «this
+    /// The answer is `.unreadable`: «this read timed out» is not «this
     /// configuration keeps no secret», and a connect must not go on as if it
-    /// were. The log line names the timeout either way.
+    /// were. The log line names the timeout.
     func testAShowThatNeverAnswersReturnsWithinTheBoundAndSaysSo() {
         runner.handler = { _, _ in .hang }
         let credentials = Unsafe(credentialsOnThis())
@@ -275,10 +220,9 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
     }
 
     /// The System-keychain read has a deadline of its own (`security` may sit
-    /// behind a dialog, so it is long in production; here one second against a
-    /// stub that sleeps five). The read answers `.behindAPrompt` — the secret
-    /// is not known — inside two seconds, names the timeout with no name, and a
-    /// following call on the same queue runs.
+    /// behind a dialog; here one second against a stub that sleeps five). It
+    /// answers `.behindAPrompt`, names the timeout with no name, and a following
+    /// call on the same queue runs.
     func testASystemKeychainReadThatNeverAnswersReturnsWithinItsDeadlineAndSaysSo() throws {
         let dir = scratchDirectory("slow-security")
         let tool = dir.appendingPathComponent("security")
@@ -314,8 +258,7 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
     // MARK: - 4. Exit status read with stdout
 
     /// A tool that printed a list and then exited non-zero is not a good
-    /// answer: the exit status is read together with the output. This case
-    /// stays in this optional class.
+    /// answer: the exit status is read together with the output.
     func testAListFromAToolThatExitedNonZeroIsNotAGoodAnswer() {
         runner.handler = { args, nth in
             guard args == ["--nc", "list"] else { return .answer(.init(status: 0, output: "")) }

@@ -6,15 +6,12 @@ import XCTest
 
 /// **The page withholding the switch is half a guard.**
 ///
-/// `LeftoverActions.available` no longer offers «Turn off» where two files register
-/// one label (`OneLabelIsOneSwitchTests`), and that is a rule about what is *drawn*.
-/// The act is the engine's: a request carrying a label and a path is whatever built
-/// it, and (`ARCHITECTURE.md § Removal`) is the standing answer to «the view
-/// model already decided». `LaunchLabel.mayBeSwitched` passes both copies of
-/// `com.vendor.updater` — each sits in a LaunchAgents folder and each is named
-/// after its label — so without this the engine would send `launchctl disable
-/// gui/<uid>/com.vendor.updater` for either row, which is the same act on the same
-/// job the scan calls «In use».
+/// `LeftoverActions.available` does not offer «Turn off» where two files
+/// register one label (`OneLabelIsOneSwitchTests`), and that is a rule about
+/// what is *drawn*. The act is the engine's: a request is whatever built it
+/// (Architecture/Removal.md § Removal). `LaunchLabel.mayBeSwitched` passes both
+/// copies of `com.vendor.updater`, so without this the engine would send
+/// `launchctl disable gui/<uid>/com.vendor.updater` for either row.
 ///
 /// The engine asks `LaunchClaims` of the **disk at the press**, not of the list on
 /// screen: a scan is as old as the moment it ran, and this is the reading that
@@ -27,11 +24,8 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
     /// The person's own copy of an agent, and root's alongside it when `shared`.
     ///
     /// **Every port is named at every construction**, so what the engine reads is
-    /// this fixture and never this Mac's own `/Library/LaunchAgents` — the default
-    /// argument is the real filesystem, and a forgetful construction would make the
-    /// answer a fact about whoever runs the suite (ARCHITECTURE.md § Fakes). The promise was
-    /// written here before anything held it, and `apps:` and `loaded:` were
-    /// defaulting the whole time; `EveryEngineNamesItsPortsTests` holds it now.
+    /// this fixture and never this Mac's own `/Library/LaunchAgents`
+    /// (Architecture/TestsAndMeasurement.md § Fakes; `EveryEngineNamesItsPortsTests`).
     private func files(shared: Bool) -> LeftoversFakeFiles {
         var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/LaunchAgents"] = ["\(label).plist"]
@@ -47,7 +41,7 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
         await engine.setDisabled(toggle)
     }
 
-    /// **The finding, at the port that acts.** Two files, one label, no switch.
+    /// **The guard, at the port that acts.** Two files, one label, no switch.
     func testTheEngineWillNotDisableALabelTwoFilesRegister() async throws {
         let recorder = LeftoversFakeSwitcher()
         let engine = LeftoversEngine(home: home, files: files(shared: true),

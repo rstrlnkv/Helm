@@ -4,12 +4,10 @@ import HelmTestSupport
 
 /// One removal reads its survivor once, not once per copy.
 ///
-/// `Batch.verify` hashes both sides of a pair that can still be
-/// identical, so a group of N copies read the copy that *stays* N−1 times — tens of seconds of
-/// re-hashing one unchanging file on a real video group. `Batch` memoises the
-/// survivor's reading for the life of one removal and nothing longer; the copy
-/// being removed is read from disk on every call, never memoised, which is the
-/// guarantee the module advertises.
+/// `Batch.verify` hashes both sides of a pair that can still be identical, so
+/// without the memo a group of N copies reads the copy that *stays* N−1 times.
+/// `Batch` memoises the survivor's reading for the life of one removal and
+/// nothing longer; the copy being removed is read from disk on every call.
 ///
 /// The counter is the assertion: these tests inject the hash and count which
 /// paths it was asked about, so "read once" is a fact about calls rather than a

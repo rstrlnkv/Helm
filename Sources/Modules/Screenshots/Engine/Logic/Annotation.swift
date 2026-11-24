@@ -11,14 +11,12 @@ import HelmRuntime
 public enum AnnotationTool: String, CaseIterable, Sendable, Equatable {
     /// Thick, tapered, filled: a tail that starts at a point and widens into the head.
     case arrow
-    /// An outline.
     case rectangle
     /// An outline of the box the drag spans.
     case ellipse
     /// A straight stroke from the press to the pointer.
     case line
-    /// A freehand stroke through the drag's points, smoothed: round cap and join, drawn as it is.
-    /// The clean line: one even width (1.5, 3 or 6 pt by the step), nothing added to the path.
+    /// A freehand stroke through the drag's points, smoothed, in one even width with nothing added to the path.
     case pen
     /// A freehand stroke through the drag's points, smoothed, like the pen's, with the grain of graphite (`PencilGrain`).
     case pencil
@@ -140,7 +138,6 @@ public struct AnnotationStyle: Sendable, Equatable {
 
     public static let standard = AnnotationStyle()
 
-    /// The ink a tool is drawn in under this style.
     public func ink(for tool: AnnotationTool) -> AnnotationInk {
         color ?? (tool == .highlighter ? .yellow : .red)
     }
@@ -195,7 +192,6 @@ public struct Annotation: Sendable, Equatable {
             && (tool == .spotlight || style.thickness == other.style.thickness) && isFilled == other.isFilled && text == other.text
     }
 
-    /// The same object in another style.
     func restyled(_ style: AnnotationStyle) -> Annotation {
         Annotation(tool: tool, start: start, end: end, points: points, style: style, text: text, id: id)
     }
@@ -322,7 +318,6 @@ public struct Annotation: Sendable, Equatable {
     /// The colour a filled shape is painted in; for a stroked one see `stroke`.
     public var fillColor: CGColor { inked(style.opacity) }
 
-    /// The tool's ink at `alpha`.
     private func inked(_ alpha: Double) -> CGColor {
         let ink = style.ink(for: tool).cgColor
         return ink.copy(alpha: CGFloat(alpha)) ?? ink
@@ -352,7 +347,7 @@ public struct Annotation: Sendable, Equatable {
     /// Where the pointer wants the far corner or end to be once ⇧ is read: a square or
     /// a circle for the box tools (the longer side wins, each axis keeps its sign) and
     /// the nearest multiple of 45° for the straight ones, length kept. The pen and the pencil
-    /// ignores it, and the magnifier is always the circle's square, ⇧ or not. The caller passes the **live** flag of the event in hand. With `bounds`
+    /// ignore it, and the magnifier is always the circle's square, ⇧ or not. The caller passes the **live** flag of the event in hand. With `bounds`
     /// a box with no travel on an axis grows to the side that has more room there.
     static func constrained(_ tool: AnnotationTool, from start: CGPoint, to end: CGPoint,
                                    shift: Bool, within bounds: CGRect? = nil) -> CGPoint {

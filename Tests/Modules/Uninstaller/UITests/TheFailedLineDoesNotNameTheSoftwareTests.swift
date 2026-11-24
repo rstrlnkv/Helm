@@ -3,15 +3,12 @@ import XCTest
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-/// **The view model's «failed to trash» line is the second place an app's name
-/// reached the log.** `Redact.path` strips the home prefix and nothing else; the
-/// leaf of these paths is an app's name or a bundle id.
+/// The view model's «failed to trash» line names no app: the leaf of these
+/// paths is an app's name or a bundle id.
 ///
-/// **And fed a leftover rather than a bundle.** The common leftover is a folder
-/// named by a bundle id with no extension of its own —
-/// `~/Library/Containers/com.acme.SecretTool` — and the redaction reads the id's
-/// last dot as the extension, so the part of the id that names the product stays in
-/// the line. The line is asserted written before its content is judged.
+/// Fed a leftover too: `Containers/com.acme.SecretTool` has no extension, and
+/// the id's last dot must not keep the product's name in the line. The line is
+/// asserted written before its content is judged.
 @MainActor
 final class TheFailedLineDoesNotNameTheSoftwareTests: XCTestCase {
 

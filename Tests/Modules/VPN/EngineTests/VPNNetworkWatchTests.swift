@@ -4,15 +4,12 @@
 import XCTest
 @testable import Module_VPN_Engine
 
-/// The module exists to answer one question — is a tunnel up — and it asked the
-/// system once per launch. Connect or disconnect from the macOS menu bar or
-/// from System Settings, or let the tunnel drop, and Helm's dot stayed as it
-/// was until relaunch: a cache with no expiry standing in for the answer.
-///
-/// So the engine watches the system's own network state and re-reads on it.
-/// These tests assert on the *structure* — that something is watching, that it
-/// stops, and that a change reaches `scutil` — rather than on a settled value,
-/// which a poll already schedules and could satisfy by luck.
+/// A tunnel connected or disconnected from the macOS menu bar or from System
+/// Settings, or dropped, never comes back through Helm, so the engine watches
+/// the system's own network state and re-reads on it. These tests assert on
+/// the *structure* — that something is watching, that it stops, and that a
+/// change reaches `scutil` — rather than on a settled value, which a poll
+/// already schedules and could satisfy by luck.
 final class VPNNetworkWatchTests: XCTestCase {
     func testActivateStartsWatchingTheNetwork() {
         let network = FakeNetwork()
@@ -42,9 +39,9 @@ final class VPNNetworkWatchTests: XCTestCase {
                        "a tunnel raised or dropped outside Helm left the dot as it was")
     }
 
-    /// ARCHITECTURE.md § "An observer outlives the thing it points at": the
-    /// host calls `deactivate()` and then drops the engine, so anything still
-    /// pointing at it is pointing at freed memory.
+    /// The host calls `deactivate()` and then drops the engine, so anything
+    /// still pointing at it points at freed memory
+    /// (Architecture/StateAndLifetime.md § An observer outlives the thing it points at).
     func testDeactivateStopsWatching() {
         let network = FakeNetwork()
         let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: FakeRunner(),

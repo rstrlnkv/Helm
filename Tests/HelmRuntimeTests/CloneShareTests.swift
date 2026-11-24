@@ -3,15 +3,10 @@ import XCTest
 
 /// What deleting a copy actually gives back.
 ///
-/// On APFS a clone shares its blocks with the file it was made from — and
-/// Finder's own Duplicate command makes clones, so this is the ordinary case,
-/// not an exotic one. Measured on this machine: a 20 MB file cloned with
-/// `cp -c` cost **0 bytes** of free space, while a real copy cost 20 MB, and
-/// `stat` reported the same allocated size for both. So the size of a file is
-/// not what removing it returns, and a duplicates screen that adds those sizes
-/// up is promising space the disk will not give back.
-///
-/// Guards: 134128dd (a clone's size was counted as space that comes back).
+/// On APFS a clone shares its blocks with the file it was made from, and
+/// Finder's Duplicate command makes clones. A clone costs no free space while
+/// `stat` reports the same allocated size as a real copy, so a file's size is
+/// not what removing it returns.
 final class CloneShareTests: XCTestCase {
 
     func testAnOrdinaryCopyGivesBackItsWholeSize() {
@@ -20,8 +15,8 @@ final class CloneShareTests: XCTestCase {
             20_000_000)
     }
 
-    /// The case that made the old figure wrong. The copy shares every block
-    /// with the one being kept, so the disk gains nothing.
+    /// The copy shares every block with the one being kept, so the disk gains
+    /// nothing.
     func testACloneOfTheKeptFileGivesBackNothing() {
         XCTAssertEqual(
             CloneShare.reclaimable(removing: [(id: 1, bytes: 20_000_000)], keeping: [1]),

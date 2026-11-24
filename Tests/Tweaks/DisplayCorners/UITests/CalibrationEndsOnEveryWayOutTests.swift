@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import Tweak_DisplayCorners_Engine
 @testable import Tweak_DisplayCorners_UI
 
@@ -172,16 +173,14 @@ final class CalibrationEndsOnEveryWayOutTests: XCTestCase {
         rig.engine.builtIn = true
         rig.engine.say()
         // The control: before the stop the same word is adopted.
-        let deadline = ContinuousClock.now + .seconds(5)
-        while !rig.model.state.builtIn, ContinuousClock.now < deadline { try? await Task.sleep(for: .milliseconds(5)) }
-        XCTAssertTrue(rig.model.state.builtIn, "the subject did not happen: the model never adopted the engine's word")
+        await waitUntil("the model adopted the engine's word") { rig.model.state.builtIn }
         let ended = expectation(description: "the engine's stream is no longer read")
         rig.engine.onStreamEnd = { ended.fulfill() }
         rig.model.stop()
         await fulfillment(of: [ended], timeout: 5)
         rig.engine.builtIn = false
         rig.engine.say()
-        try? await Task.sleep(for: .milliseconds(50))
+        await grace()
         XCTAssertTrue(rig.model.state.builtIn, "a stopped model still reads the engine")
     }
 

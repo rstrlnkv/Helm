@@ -4,14 +4,13 @@ import HelmTestSupport
 
 /// A package — an `.app`, an `.rtfd`, a `.photoslibrary` — is a directory that
 /// the system asks everyone to treat as one thing. `FolderReader` honours that
-/// (`isDirectory` is deliberately false for one, so a rule cannot reach inside)
-/// and then reports its size from `.fileSizeKey`, which a directory does not
-/// have. The fact that comes out says: not a directory, zero bytes.
+/// (`isDirectory` is deliberately false for one, so a rule cannot reach inside),
+/// and `.fileSizeKey`, which a directory does not have, would call it zero bytes.
 ///
-/// `RuleMatcher` already refuses to compare the size of a folder, and says why:
+/// `RuleMatcher` refuses to compare the size of a folder, and says why:
 /// "a rule aimed at small files that quietly also took the folders they were
 /// sorted into". A package is not a folder by that flag, so it walks straight
-/// past the guard wearing a size nobody read.
+/// past the guard and must carry a size somebody read.
 ///
 /// The rules run unattended, on a timer, on `~/Downloads` — where a Mac user
 /// keeps the applications they have just downloaded.

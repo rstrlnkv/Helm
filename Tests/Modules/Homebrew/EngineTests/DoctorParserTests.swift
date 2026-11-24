@@ -3,24 +3,14 @@ import XCTest
 
 /// `DoctorParser.parse` against `brew doctor`'s real answer.
 ///
-/// The fixture below is captured verbatim — not tidied, not reduced to two
-/// invented duplicates — from:
-///
-///     $ /opt/homebrew/bin/brew doctor > /tmp/doctor.out 2> /tmp/doctor.err
-///     exit=1
-///        1 /tmp/doctor.out
-///     1194 /tmp/doctor.err
-///
-/// on this machine, Homebrew 7.0.1, 2026-09-15. It holds a tap's `postflight`
-/// deprecation warning three times, brew's own aside to the reader sitting
-/// *between* the second and third repeat rather than only at the end, and
-/// «Some installed formulae are deprecated or disabled» naming `periphery` on
-/// its own indented line.
-/// Kept: the only test of the doctor parser's block collapsing, titles and bodies (the captured 1194-byte fixture); the doctor classes that stay in the default run assert findings and fixes, not these.
+/// The fixture is captured verbatim from `brew doctor`'s standard error on a
+/// real Mac (exit 1, 1194 bytes). It holds a tap's `postflight` deprecation
+/// warning three times, brew's own aside to the reader *between* the second and
+/// third repeat, and «Some installed formulae are deprecated or disabled»
+/// naming `periphery` on its own indented line.
 final class DoctorParserTests: XCTestCase {
 
-    /// Byte-for-byte what `/tmp/doctor.err` held. Reused across cases so a
-    /// slip while retyping the fixture cannot make two tests disagree about
+    /// Byte-for-byte what brew printed, shared so no two cases disagree about
     /// what "real output" is.
     private static let capturedOutput = """
         Warning: Calling `postflight` is deprecated! Use `postflight_steps` instead.
@@ -45,13 +35,9 @@ final class DoctorParserTests: XCTestCase {
 
         """
 
-    /// The real repetition collapses to one issue: three identical
-    /// `postflight` blocks (indices 0, 1 and the very last block in the
-    /// fixture) must read back as a single entry, not three, and the
-    /// disclaimer paragraph sitting between the second and third repeat must
-    /// not have leaked into any of their bodies — if it had, the second copy
-    /// would carry different text from the first and dedup would fail to
-    /// collapse them, so this single equality assertion is what catches that.
+    /// Three identical `postflight` blocks read back as one entry. The aside
+    /// between the second and third repeat must stay out of their bodies, or the
+    /// copies differ and do not collapse; this one equality catches both.
     func testTwoDistinctIssuesWithTheRepeatedBlockCollapsed() {
         let postflightBody = """
             Please report this issue to the sozercan/homebrew-repo tap (not Homebrew/* repositories), or even better, submit a PR to fix it:
@@ -76,11 +62,8 @@ final class DoctorParserTests: XCTestCase {
         XCTAssertEqual(DoctorParser.parse(Self.capturedOutput), expected)
     }
 
-    /// A body line naming a path is kept exactly as brew printed it —
-    /// including its leading two spaces — because this module does not
-    /// re-spell somebody's paths. Failing this while the count-and-equality
-    /// test above still passes would mean the assertion above stopped being
-    /// specific enough on its own; this pins the one line that matters most.
+    /// A body line naming a path is kept exactly as brew printed it, leading
+    /// spaces included: this module does not re-spell somebody's paths.
     func testAPathInABodyLineSurvivesVerbatim() {
         let issues = DoctorParser.parse(Self.capturedOutput)
         XCTAssertEqual(
@@ -88,10 +71,8 @@ final class DoctorParserTests: XCTestCase {
             "  /opt/homebrew/Library/Taps/sozercan/homebrew-repo/Casks/kaset.rb:18")
     }
 
-    /// `Error:` and `Warning:` map to distinct severities. Homebrew 7.0.1
-    /// produced no `Error:` line on this machine, so this half of the fixture
-    /// is a small, isolated string rather than a real capture — unlike the
-    /// repetition above, nothing here depends on this being brew's own text.
+    /// `Error:` and `Warning:` map to distinct severities. The `Error:` input is
+    /// a small composed string; the real capture has none.
     func testErrorIsDangerAndWarningIsCaution() {
         let text = "Error: Your Command Line Tools are outdated.\nRun `xcode-select --install`.\n"
         let issues = DoctorParser.parse(text)
@@ -104,10 +85,8 @@ final class DoctorParserTests: XCTestCase {
         XCTAssertEqual(DoctorParser.parse(warningText)?.first?.severity, .caution)
     }
 
-    /// Real output naming no `Warning:`/`Error:` line at all — brew's own
-    /// aside to the reader, lifted verbatim from the middle of the captured
-    /// fixture above — reads as "doctor ran and found nothing": an empty
-    /// array, not nil.
+    /// Real output with no `Warning:`/`Error:` line (brew's aside, lifted from
+    /// the fixture) reads as "doctor ran and found nothing": an empty array.
     func testOutputWithNoWarningOrErrorLineIsAnEmptyArray() {
         let prose = """
             Please note that these warnings are just used to help the Homebrew maintainers
@@ -118,25 +97,21 @@ final class DoctorParserTests: XCTestCase {
         XCTAssertEqual(DoctorParser.parse(prose), [])
     }
 
-    /// Empty input is nil — the tool said nothing, which is not the same
-    /// claim as "the tool ran and the machine is clean". This is the case the
-    /// stderr measurement exists to guard: get it wrong and a refused or
-    /// never-run query reads as a healthy machine.
+    /// Empty input is nil: the tool said nothing, which is not "the tool ran and
+    /// the machine is clean". Read wrong, a refused or never-run query reads as a
+    /// healthy machine.
     func testEmptyInputIsNil() {
         XCTAssertNil(DoctorParser.parse(""))
     }
 
     // MARK: - A block is kept whole
 
-    /// brew's own text for these three, assembled from `Finding#to_s`
-    /// (`text`, a newline, the remediation stripped) and the sources that
-    /// name them in Homebrew 7.0.7 on this machine — `diagnostic.rb`
-    /// (`check_for_stray_dylibs`, `check_for_unlinked_but_not_keg_only`,
-    /// `check_user_path_1`) and `cmd/doctor.rb` for the aside and the
-    /// support-tier message. Each of them has a blank line followed by an
-    /// unindented line *inside* the one finding, which is what the old
-    /// boundary took for the end of it. The file names and package names are
-    /// invented; the sentences are brew's.
+    /// brew's own text for these three, assembled from `Finding#to_s` and the
+    /// sources that name them (`diagnostic.rb`: `check_for_stray_dylibs`,
+    /// `check_for_unlinked_but_not_keg_only`, `check_user_path_1`; `cmd/doctor.rb`
+    /// for the aside and the support-tier message). Each has a blank line and
+    /// then an unindented line *inside* the one finding. The file and package
+    /// names are invented; the sentences are brew's.
     private static let dylibs = """
         Warning: Unbrewed dylibs were found in /usr/local/lib.
         If you didn't put them there on purpose they could cause problems when
@@ -167,9 +142,8 @@ final class DoctorParserTests: XCTestCase {
           python3
         """
 
-    /// The dylibs warning reaches the person with its list: the file names
-    /// are the thing a person would delete, and they sit after the blank line
-    /// that the old boundary treated as the end of the body.
+    /// The dylibs warning reaches the person with its list: the file names a
+    /// person would delete sit after a blank line inside the body.
     func testTheListAfterABlankLineIsPartOfTheBody() {
         let issues = DoctorParser.parse(Self.dylibs + "\n")
         XCTAssertEqual(issues?.count, 1)
@@ -211,13 +185,11 @@ final class DoctorParserTests: XCTestCase {
         XCTAssertEqual(issues?[2].body.components(separatedBy: "\n").last, "  node")
     }
 
-    /// brew's aside to the reader is a frame around the findings and stays
-    /// out of every body, wherever it lands. **The input here is composed and
-    /// not observed**: `cmd/doctor.rb` prints the aside once, before its first
-    /// warning, so between two blocks is a place brew does not put it. The
-    /// scan stops at a frame line and does not depend on that, and this holds
-    /// it to that — after a long block whose body runs on past blank lines,
-    /// the aside is not the body's last paragraph.
+    /// brew's aside to the reader is a frame around the findings and stays out
+    /// of every body, wherever it lands. **The input is composed**: brew prints
+    /// the aside once, before its first warning. The scan stops at a frame line
+    /// whatever its place, so after a long block whose body runs on past blank
+    /// lines the aside is not the body's last paragraph.
     func testTheAsideAfterALongBlockIsNotItsBody() {
         let aside = """
             Please note that these warnings are just used to help the Homebrew maintainers
@@ -254,23 +226,16 @@ final class DoctorParserTests: XCTestCase {
     /// **brew hard-wraps its findings, and the first physical line is not always a
     /// whole sentence.** `DoctorParser` starts the title with the rest of the
     /// `Warning:` line and joins the unindented lines after it until the sentence
-    /// ends (`.`, `!`, `?` or `:`); everything after is the body. For most checks
-    /// that first line is a sentence; for some it is where brew's heredoc happened
-    /// to break — and the Health tab draws a closed finding as its title alone, so
-    /// a title taken from the first physical line alone would be half a sentence
-    /// that a person reads without a click, with the other half at the top of the
-    /// body. These cases hold that join.
+    /// ends (`.`, `!`, `?` or `:`); everything after is the body. The Health tab
+    /// draws a closed finding as its title alone, so a title cut at the first
+    /// physical line would be half a sentence.
     ///
-    /// Captured on this Mac, Homebrew 7.0.7, 2026-09-29 (`diagnostic.rb`'s sbin
-    /// check, whose heredoc breaks after «installed»):
+    /// Captured from `brew doctor` (`diagnostic.rb`'s sbin check, whose heredoc
+    /// breaks after «installed»):
     ///
     ///     $ env PATH=/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin HOMEBREW_NO_AUTO_UPDATE=1 \
     ///           /opt/homebrew/bin/brew doctor > out 2>&1; echo "EXIT=$?"
     ///     EXIT=1
-    ///
-    /// The same shape stands in brew's source for at least two more titles
-    /// (`Some frameworks can be picked up by CMake's build system and will likely`,
-    /// `A '.pydistutils.cfg' file was found in $HOME, which may cause Python`).
     ///
     /// The check is structural rather than a spelling of the fix: a title ends
     /// where brew's sentence ends, and no word of the block is lost between the
@@ -335,37 +300,28 @@ final class DoctorParserTests: XCTestCase {
     // MARK: - A title does not run into what follows it
 
     /// **A title joined across wrapped lines must stop where brew's sentence stops,
-    /// including when brew's first line carries no full stop at all.** `DoctorParser`
-    /// joins unindented lines onto the title until one ends with `.`, `!`, `?` or
-    /// `:`. That is right for brew's own hard-wrapped heredocs, and wrong for the
-    /// two shapes below, where what follows the first line is not the rest of its
-    /// sentence.
+    /// including when brew's first line carries no full stop at all.** Two shapes
+    /// where what follows the first line is not the rest of its sentence:
     ///
-    /// 1. brew's crash report. Any exception raised inside a check lands in
-    ///    `brew.rb`'s last rescue: `onoe e` prints `Error: <message>` — a Ruby
-    ///    message, which has no full stop — then the cleaned backtrace, one frame
-    ///    per line at the left margin, then a closing notice. Captured on this Mac,
-    ///    Homebrew 7.0.7, 2026-09-29, read-only (`public_send` of a helper that
-    ///    takes an argument is the cheapest way to make a check raise without
-    ///    touching anything):
+    /// 1. brew's crash report. An exception inside a check lands in `brew.rb`'s
+    ///    last rescue: `Error: <message>` (a Ruby message, no full stop), the
+    ///    backtrace one frame per line at the left margin, then a closing notice.
+    ///    Captured read-only (`public_send` of a helper that takes an argument
+    ///    makes a check raise without touching anything):
     ///
     ///        $ env HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_COLOR=1 \
     ///              /opt/homebrew/bin/brew doctor user_tilde > out 2>&1; echo "EXIT=$?"
     ///        EXIT=1                                  (571 bytes)
     ///
-    ///    The exit is non-zero and a block is read, so the engine hands this on as
-    ///    a finding rather than nil — which is right. A join that knew only about
-    ///    terminal punctuation would make the title the message, every backtrace
-    ///    frame and the notice, in one line; the join stops at a source location
-    ///    (`DoctorParser.isBacktraceFrame`), so the frames and the notice are the
-    ///    body's.
+    ///    The engine hands this on as a finding, rightly. The join stops at a
+    ///    source location (`DoctorParser.isBacktraceFrame`), so the frames and the
+    ///    notice are the body's.
     ///
     /// 2. A first sentence that ends mid-line. `check_for_pydistutils_cfg_in_home`
-    ///    (`diagnostic.rb`) wraps as «…which may cause Python» / «builds to fail.
-    ///    See:», and a join that took the whole line would take «See:» along. The
-    ///    title ends inside that line, at «fail.», and «See:» opens the body above
-    ///    the links it introduces. Composed from brew's source, not captured:
-    ///    producing it would mean creating a file in the home folder.
+    ///    wraps as «…which may cause Python» / «builds to fail. See:». The title
+    ///    ends at «fail.», and «See:» opens the body above the links it
+    ///    introduces. Composed from brew's source: producing it would mean
+    ///    creating a file in the home folder.
     private static let crashed = """
         Error: wrong number of arguments (given 0, expected 1)
         /opt/homebrew/Library/Homebrew/diagnostic.rb:92:in 'Homebrew::Diagnostic::Checks#user_tilde'
@@ -387,15 +343,14 @@ final class DoctorParserTests: XCTestCase {
 
         """
 
-    /// The capture is the one described above, byte for byte in length, so a
-    /// later edit to the literal cannot quietly turn it into a different case.
+    /// The capture is the one described above, byte for byte in length, so an
+    /// edit to the literal cannot quietly turn it into a different case.
     func testTheCrashFixtureIsTheCapture() {
         XCTAssertEqual(Self.crashed.utf8.count, 571)
     }
 
     /// Structural: no line of the block that is a source location may be part
-    /// of the title. Before the title was joined this held for free; a join
-    /// that knows only about terminal punctuation takes the whole backtrace.
+    /// of the title.
     func testABacktraceIsNotPartOfTheTitle() throws {
         let issues = try XCTUnwrap(DoctorParser.parse(Self.crashed))
         let crash = try XCTUnwrap(issues.first)
@@ -408,12 +363,9 @@ final class DoctorParserTests: XCTestCase {
         }
     }
 
-    /// Structural: a joined title is one sentence — it does not carry a second
-    /// one that begins after a full stop in the middle of a wrapped line —
-    /// and the cut moves words rather than losing them: what the title gives
-    /// up opens the body, so title and body together are still every word of
-    /// the block. A cut that dropped the rest of the line (`See:`, the word
-    /// that introduces the links) passed the first half alone.
+    /// Structural: a joined title is one sentence, and the cut moves words
+    /// rather than losing them: what the title gives up opens the body, so title
+    /// and body together are still every word of the block.
     func testAJoinedTitleHoldsOneSentence() throws {
         let issues = try XCTUnwrap(DoctorParser.parse(Self.pydistutils))
         let issue = try XCTUnwrap(issues.first)

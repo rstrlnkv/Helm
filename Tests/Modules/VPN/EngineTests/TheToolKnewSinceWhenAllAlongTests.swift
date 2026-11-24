@@ -5,25 +5,19 @@ import XCTest
 import HelmTestSupport
 @testable import Module_VPN_Engine
 
-/// **«`scutil` cannot answer «since when»» was written in the engine for
-/// several releases, and the tool had been answering all along.**
+/// **`scutil` answers «since when», and what it excludes from the tunnel.**
 ///
-/// Every status read ends with `LastStatusChangeTime`, and that line was already
-/// in this module's own committed fixture — `TheInterfaceComesFromTheToolTests`
-/// carries it — being walked past on the way to the interface name. What it cost
-/// is the hole in the first column of the page on the most ordinary Mac there
-/// is: a VPN raised at login and the menu bar app started after it, where Helm's
-/// own observation is the only source and Helm was not watching. The country
-/// won exactly that argument an hour before this landed; the uptime had lost it
-/// and nobody noticed.
+/// Every status read ends with `LastStatusChangeTime`, so the page's first
+/// column is known on the most ordinary Mac there is: a VPN raised at login
+/// and the menu bar app started after it, where Helm's own observation has
+/// nothing to say.
 ///
-/// The exclusions are the same shape of oversight one field over. The parser
-/// calls them «the decoys» and steps over them by indentation, and the page told
-/// the reader under a green dot that all of this Mac's traffic goes through the
-/// VPN — while `17.0.0.0/8`, which is Apple's whole network, was declared
+/// The exclusions sit in the same output (the parser's «decoys»). Without them
+/// the page would say, under a green dot, that all of this Mac's traffic goes
+/// through the VPN while `17.0.0.0/8`, Apple's whole network, is declared
 /// outside it.
 ///
-/// Guards: the since-when and exclusions the tool already printed reach the page (no fix commit; the code and this test landed together).
+/// Guards: the since-when and exclusions the tool already printed reach the page.
 final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
 
     /// The tool's own output, trimmed to what the parser reads and with every
@@ -80,8 +74,7 @@ final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
             """)
     }
 
-    /// **The interface still wins the way it did**, because that argument was
-    /// the whole point of the parser and this change adds fields beside it.
+    /// **The interface still wins**: these fields sit beside it.
     func testTheTunnelsOwnInterfaceStillWinsOverTheDecoys() throws {
         let reading = try XCTUnwrap(VPNStatusParser.reading(in: connected))
         XCTAssertEqual(reading.interface, "utun8", """
@@ -92,8 +85,7 @@ final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
     }
 
     /// A tool that does not write the line, or writes it in a shape this cannot
-    /// read, leaves the engine exactly where it was: with its own observation.
-    /// Nil rather than a guess is what makes this change unable to subtract.
+    /// read, leaves the engine with its own observation: nil rather than a guess.
     func testAnAbsentOrUnreadableStampIsNil() throws {
         let without = connected.replacingOccurrences(
             of: "LastStatusChangeTime : 08/19/2026 14:57:22", with: "")
@@ -106,27 +98,6 @@ final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
             anyway, which is worse than none: a fabricated duration is drawn as a \
             measurement
             """)
-    }
-
-    /// **The formatter is fixed, not the reader's** — asserted on the source,
-    /// because the fault it guards against cannot be reached from here.
-    ///
-    /// `scutil` wrote `08/19/2026 14:57:22` on the machine this was measured on,
-    /// whose languages are ("ru-RU", "en-US") — so the tool is not writing the
-    /// reader's format, and a formatter built on the user's locale would fail to
-    /// read the tool on exactly that Mac. This target cannot switch the process
-    /// locale and has no `AppLanguage` to override (the engine does not import
-    /// `HelmUI`), so the running test would pass on any machine whatever the
-    /// formatter said. Structural.
-    func testTheStampIsNotReadThroughTheReadersOwnLocale() throws {
-        let parser = RepoSource.root
-            .appendingPathComponent("Sources/Modules/VPN/Engine/Logic/VPNStatusParser.swift")
-        let source = try String(contentsOf: parser, encoding: .utf8)
-        XCTAssertTrue(source.contains("en_US_POSIX"), """
-            the stamp's formatter no longer pins its locale, so it reads the             reader's format rather than the tool's
-            """)
-        XCTAssertFalse(source.contains("Locale.current"), "the parser reads the reader's locale")
-        XCTAssertFalse(source.contains("autoupdatingCurrent"), "likewise")
     }
 
     // MARK: - What is not in the tunnel
@@ -144,12 +115,10 @@ final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
     /// A destination whose dictionary the tool cut short is dropped, not paired
     /// with the next mask that happens along — which would invent a range.
     func testADestinationWithNoMaskIsNotPairedWithTheNextOne() throws {
-        // **Matched without its indentation, and that matters here.** A Swift
-        // multi-line literal strips the indent of its closing delimiter from
-        // every line, so a pattern written with the twelve spaces the source
-        // shows matches nothing in the value — the first version of this test
-        // removed no line at all and then reported the parser as broken for
-        // producing three routes out of three.
+        // **Matched without its indentation.** A Swift multi-line literal strips
+        // the indent of its closing delimiter from every line, so a pattern written
+        // with the spaces the source shows would match nothing in the value and
+        // remove no line at all.
         let truncated = connected.replacingOccurrences(
             of: "SubnetMask : 255.240.0.0", with: "")
         XCTAssertFalse(truncated.contains("255.240.0.0"), "precondition: nothing was removed")

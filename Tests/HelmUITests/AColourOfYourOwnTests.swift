@@ -7,11 +7,8 @@ import HelmTestSupport
 /// A colour the person chose themselves has to survive the round trip to the
 /// plist and back, and it has to be told apart from the eight that have names.
 ///
-/// The palette is names — `"orange"` — and everything that draws the menu-bar
-/// icon takes one optional token and always has. A free choice cannot be a
-/// name, so it is the value, and both live in one string. `#` is what separates
-/// them: no palette case begins with one, so no hand edit can produce a string
-/// that is ambiguous.
+/// A free choice cannot be a name, so it is stored as the value, `#` first: no
+/// palette case begins with one, so no hand edit can produce an ambiguous string.
 final class AColourOfYourOwnTests: XCTestCase {
 
     func testAColourSurvivesTheRoundTrip() throws {
@@ -26,20 +23,13 @@ final class AColourOfYourOwnTests: XCTestCase {
 
     /// **The conversion happens on the way in.**
     ///
-    /// `NSColorPanel` hands back whatever space the person picked in, and this
-    /// Mac's panel opens in Display P3. Three bytes of P3 stored and read back
-    /// as sRGB is a visibly different colour on the next launch — saturated
-    /// green moves by a fifth of the channel.
-    ///
-    /// Written first against `deviceRGB` and that was a check that could not
-    /// fail: deviceRGB is close enough to sRGB that the difference hid under
-    /// the tolerance, and removing the conversion broke nothing.
+    /// `NSColorPanel` hands back whatever space the person picked in, often
+    /// Display P3, and P3 bytes read back as sRGB are a visibly different colour
+    /// on the next launch. Checked against sRGB, not `deviceRGB`, which is close
+    /// enough to hide the difference under the tolerance.
     func testAColourFromAnotherSpaceIsStoredAsSRGB() throws {
-        // Inside both gamuts, and measured: this one moves 0.32 in total
-        // between P3 and sRGB. A *primary* does not — P3 green clamps at the
-        // edge of sRGB and comes back with the same numbers, so the first
-        // version of this test compared a colour with itself and its own
-        // control said so.
+        // Inside both gamuts, and moved by the conversion. A primary is not:
+        // P3 green clamps at the edge of sRGB and comes back unchanged.
         let p3 = NSColor(displayP3Red: 0.9, green: 0.2, blue: 0.2, alpha: 1)
         let token = PaletteTint.token(for: Color(nsColor: p3))
         let back = try XCTUnwrap(PaletteTint.custom(token)?.usingColorSpace(.sRGB))
@@ -61,9 +51,7 @@ final class AColourOfYourOwnTests: XCTestCase {
         }
     }
 
-    /// The retired names still resolve. They are somebody's stored setting on a
-    /// Mac that has already run Helm, and a case that stops existing reads back
-    /// as white with no explanation.
+    /// The retired names still resolve: they are somebody's stored setting.
     func testTheRetiredNamesStillResolve() {
         for name in ["mint", "cyan", "pink"] {
             let palette = PaletteColor(rawValue: name)

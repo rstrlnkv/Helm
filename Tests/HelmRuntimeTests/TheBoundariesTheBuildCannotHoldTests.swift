@@ -2,19 +2,18 @@ import HelmTestSupport
 import XCTest
 
 /// Engines carry no UI, and the host imports no engine — read from the import
-/// lines, because the build holds neither (ARCHITECTURE.md § The boundaries).
+/// lines, because the build holds neither (Architecture/ModulePattern.md § The boundaries).
 ///
-/// **Why the build cannot.** Probed on Swift 6.4, 26.10.2026: SwiftUI is a
-/// system module rather than a target, so
-/// `--explicit-target-dependency-import-check error` has no declaration to
-/// hold an engine's `import SwiftUI` against; and the check passes an import
-/// of a target reached through a declared one, which is how `HelmApp`,
-/// declaring every module's UI target, could import every engine.
+/// Why the build cannot: SwiftUI is a system module rather than a target, so
+/// `--explicit-target-dependency-import-check error` has nothing to hold an
+/// engine's `import SwiftUI` against; and the check passes an import of a
+/// target reached through a declared one, so `HelmApp`, declaring every
+/// module's UI target, could import every engine.
 ///
-/// **What the build does hold, it holds on three lines.** `Scripts/test.sh`'s
-/// `swift test` and each of `Scripts/package-app.sh`'s two `swift build` lines
-/// (one per product) carry that flag, and `testTheBuildLinesCarryTheImportCheck` reads the line that runs,
-/// not the comment or the echo that names the flag.
+/// What the build does hold, it holds on three lines: `Scripts/test.sh`'s
+/// `swift test` and `Scripts/package-app.sh`'s two `swift build` lines carry
+/// the flag, and `testTheBuildLinesCarryTheImportCheck` reads the line that
+/// runs, not a comment or an echo that names the flag.
 ///
 /// **What counts as an import.** The reader runs over `SwiftSource.code`, so
 /// comments and the insides of string literals are already blank. Counted:
@@ -375,10 +374,9 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
                       "the trust reading moved; re-read this check")
         XCTAssertFalse(body.contains("HelmLog"), "the Dock bounds port logs")
         XCTAssertFalse(body.contains("print("), "the Dock bounds port prints")
-        // The one reading that is logged is logged where the port's answer is placed:
-        // under the module's own category, as a fixed sentence that can name nothing.
-        // This proves the callback the real path passes is a log.
-        // Literals kept here: the subject is the sentence itself.
+        // The one logged reading is logged where the answer is placed, under the
+        // module's category, as a fixed sentence. Literals kept: the sentence is
+        // the subject.
         let kept = SwiftSource.uncommented(try RepoSource.text(of: path))
         guard let placing = kept.range(of: "func dockPlacement(") else {
             return XCTFail("dockPlacement is not in \(path); re-read this check")

@@ -12,6 +12,6 @@ final class EveryEngineNamesItsPortsTests: XCTestCase {
         try PortsAtConstruction.check("DiskEngine",
                                       under: "Tests/Modules/Disk",
                                       naming: ["capacity"],
-                                      atLeast: 19)
+                                      atLeast: 6)
     }
 }

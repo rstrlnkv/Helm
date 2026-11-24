@@ -7,14 +7,12 @@ import Foundation
 /// do about it.
 ///
 /// A rule fires as often as its app launches, and an automatic connect may not
-/// open the System keychain (`VPNCredentialsPort`), so a Mac whose credential
-/// cache is empty produced a `--nc start` that could not work at every launch —
-/// three inside an hour in the report this was written for, each announcing a
-/// connection nobody had. Nothing anywhere remembered «this configuration has no
-/// usable secret», which is what this book is.
+/// open the System keychain (`VPNCredentialsPort`). Without this book, a Mac
+/// whose credential cache is empty would try a `--nc start` that cannot work
+/// at every launch, each announcing a connection nobody had.
 ///
 /// **It is a latch with two reverse channels, not a flag**, because the fact it
-/// holds can stop being true without Helm doing anything (ARCHITECTURE.md § Ports and logic): a person pressing Connect fills the cache, and
+/// holds can stop being true without Helm doing anything (Architecture/ModulePattern.md § Ports and logic): a person pressing Connect fills the cache, and
 /// the tunnel may come up regardless — somebody raised it in System Settings, or
 /// `scutil` never needed Helm's secret for it. `step` is the first channel and
 /// `reconcile` the second; without them this would be a warning nobody could clear.
@@ -27,13 +25,11 @@ struct VPNSecretBook: Sendable {
     init() {}
 
     /// Sorted, so a payload saying the same thing is the same bytes and the page
-    /// draws in one order. The only way to ask what is in here — a `holds(_:)`
-    /// beside it had no caller but a test.
+    /// draws in one order.
     var names: [String] { locked.sorted() }
 
     /// What a connect does about the secret, and the book's own record of it in
-    /// one step — the read and the decision are the same fact, and separating
-    /// them left the caller holding «was this news» to combine by hand.
+    /// one step — the read and the decision are the same fact.
     enum Step: Equatable {
         /// Read: these go to the system in process, never on a command line.
         case supply(VPNCredentials)

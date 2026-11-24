@@ -1,34 +1,21 @@
 import Foundation
 
-/// Moving paths to the Trash, in one place, with the reason kept.
-///
-/// Several modules wrote this loop: take the allowed paths, ask `FileManager` to
-/// trash each one, total the bytes freed, and collect what refused. Byte for
-/// byte the same in Disk and Duplicates, near enough in Autopilot and
-/// Leftovers — and only one of them did anything with `TrashFailure`.
-/// The others put the path on a `failed` list and dropped the error, so
-/// the person who had just been refused by Full Disk Access was told a number
-/// and nothing else. Which reason it was is the only part of that sentence
-/// worth reading.
+/// Moving paths to the Trash, in one place, with the reason kept: a refusal
+/// reported as a bare count tells the person nothing they can act on.
+/// Architecture/Removal.md § Removal.
 ///
 /// The scope gate stays outside: what a module is allowed to touch is the
 /// module's own question (`RemovableScope`, `UserFileScope`, `WatchScope`),
 /// and this type takes paths that have already passed it.
 ///
-/// Every batch removal in the app comes through here — `grep -rn
-/// 'HelmTrash.remove(' Sources` says which, and a number written down in this
-/// paragraph would not. Some pass `trashing`: the move itself, which the
-/// uninstaller takes as a port so its tests can run without a filesystem. The seam was declined once, on the grounds that it
-/// changed this for every caller to serve one; what the copy it left in place
-/// then cost was three rules stated in the comments below and missing there — a
-/// child taken with its parent reported as neither moved nor refused, a hard
-/// link's bytes counted once per name, and a batch whose order decided its own
-/// answer.
+/// Every batch removal in the app comes through here (`grep -rn
+/// 'HelmTrash.remove(' Sources`). Some pass `trashing`, the move itself, which
+/// the uninstaller takes as a port so its tests can run without a filesystem;
+/// a second copy of the loop would miss the rules below.
 ///
-/// `removeOne` is the other entry: one file at a time inside a rule the caller
-/// has already decided, with no batch for the rules above to be about. It
-/// answers with where the file landed, and shares the batch's classification of
-/// a refusal; its recheck is the stricter one, see `removeOne`.
+/// `removeOne` is the other entry: one file inside a rule the caller has
+/// already decided. It answers with where the file landed, shares the batch's
+/// classification of a refusal, and rechecks more strictly.
 public enum HelmTrash {
 
     /// What happened to one path.
@@ -106,10 +93,9 @@ public enum HelmTrash {
         }
     }
 
-    /// What `lstat` says stands at a path. Three answers, because two of them
-    /// were one nil: nothing there (`ENOENT`, or a parent that is no folder) and
-    /// «could not read» (`EACCES` and the rest) are different facts, and only the
-    /// first may go on to the move.
+    /// What `lstat` says stands at a path. Nothing there (`ENOENT`, or a parent
+    /// that is no folder) and «could not read» (`EACCES` and the rest) are
+    /// different facts, and only the first may go on to the move.
     private enum Look: Equatable {
         case nothing
         case item(PathCanonical.FileIdentity)
@@ -183,41 +169,32 @@ public enum HelmTrash {
     /// which changes the reason from "macOS said no" to something the person
     /// can act on. Modules that cannot be handed an app bundle leave it alone.
     ///
-    /// `trashing` is the move, and the only reason it is a parameter: a module
-    /// that reaches the filesystem through a port has to be able to hand that
-    /// port over here rather than keep a second copy of this loop. It **leaves the
-    /// item gone**: a return with the same item still standing is refused
-    /// (`moveChecked`), as is a path unreadable before the move. It throws the way
-    /// `FileManager` does, because what this does with a failure is read its
-    /// `NSError` code — a port that reports an outcome instead wraps it back up.
+    /// `trashing` is the move, a parameter so a module that reaches the
+    /// filesystem through a port can hand that port over rather than keep a
+    /// second copy of this loop. It **leaves the item gone**: a return with the
+    /// same item still standing is refused (`moveChecked`), as is a path
+    /// unreadable before the move. It throws the way `FileManager` does, because
+    /// a failure is read by its `NSError` code.
     ///
     /// `ancestry` names the directory each path's parent chain resolves to. It is
     /// read once as the batch begins and again immediately before each move; a
     /// path whose answer changed is refused with `changedSinceScan`, because a
-    /// symlinked ancestor was swapped between the two — the gate approved one
-    /// subtree and the Trash would take another. This **narrows, it does not
-    /// close**: the reference is taken here, not at the gate, so a swap that
-    /// landed before the batch began is not caught, and after the recheck one
-    /// stat chain still separates the check from `trashItem`'s own resolve. What
-    /// it does take away is the wide part — the `FileWeight` walk below, whose
-    /// duration an attacker sets by handing over a large batch. A full close
-    /// needs an `O_DIRECTORY | O_NOFOLLOW` parent with a relative unlink, which
-    /// `trashItem` cannot express.
-    /// `leaf` says what the last component of these paths is, and it decides what
-    /// the three lines below may print. It is a fact only the module knows — for
-    /// Disk and Duplicates the leaf is the person's own document, for Leftovers and
-    /// the uninstaller it is a bundle id — and the loop that writes the lines is
-    /// shared, so it has to be told. Left at `.fileName`, every line reads exactly
-    /// as it did.
+    /// symlinked ancestor was swapped between the two. This **narrows, it does
+    /// not close**: a swap before the batch began is not caught, and one stat
+    /// chain still separates the recheck from `trashItem`'s own resolve. It takes
+    /// away the wide part, the `FileWeight` walk, whose duration an attacker sets
+    /// with a large batch. A full close needs an `O_DIRECTORY | O_NOFOLLOW`
+    /// parent with a relative unlink, which `trashItem` cannot express.
     ///
-    /// `sharedWith` names the files that **stay** — the ones this batch is being
-    /// removed *around*. Their clone families are seeded into the ledger below, so
-    /// a copy whose blocks a survivor goes on holding is reported as the nothing
-    /// it frees. The ledger cannot work this out for itself: there is no reverse
-    /// lookup from a family to its members, so a family whose survivor is outside
-    /// the batch was charged in full. Every caller but Duplicates leaves it empty and
-    /// behaves exactly as it did; Duplicates is the module where the survivor is
-    /// by construction never in the batch, so for it that was every family.
+    /// `leaf` says what the last component of these paths is, and so what the
+    /// log lines may print: the person's own document for Disk and Duplicates, a
+    /// bundle id for Leftovers and the uninstaller. Only the module knows.
+    ///
+    /// `sharedWith` names the files that **stay**. Their clone families are
+    /// seeded into the ledger, so a copy whose blocks a survivor goes on holding
+    /// is reported as freeing nothing; the ledger has no reverse lookup from a
+    /// family to its members to work that out. Duplicates passes it, since its
+    /// survivor is never in the batch.
     public static func remove(allowed: [String],
                               outOfScope: [String] = [],
                               sharedWith: [String] = [],
@@ -229,9 +206,8 @@ public enum HelmTrash {
                               },
                               trashing: (URL) throws -> Void = HelmTrash.moveToTrash)
         -> Result {
-        // One phase for every deleting module, named per module: only Disk
-        // wrapped its call, and Disk was not the outlier, it was the one that got
-        // audited. Scope form, so the interval closes on every way out.
+        // One phase for every deleting module, named per module, so a new one
+        // cannot forget it. Scope form, so the interval closes on every way out.
         let phase = "\(module).trash"
         return HelmActivity.phase(phase) {
             // Taken before the phase ends, not after: `HelmLog.memory` names what
@@ -255,29 +231,16 @@ public enum HelmTrash {
             // all, however many of its members this batch takes.
             var counted = FileWeight.Ledger(sharedWith: sharedWith)
 
-            // One outcome per path, whatever the caller handed over. `removed` and
-            // `failed` are read as one description of one batch, and the same file
-            // appeared in both when a path arrived twice: the first turn trashed
-            // it, the second met `NSFileNoSuchFileError` and the "went with its
-            // parent" branch does not fire for a path that *is* itself. Every
-            // caller writes `Array(Set(paths))` today; nothing in this signature
-            // said they had to.
+            // One outcome per path, whatever the caller handed over: a path
+            // arriving twice would otherwise be both removed and failed.
             //
-            // A trailing slash names the same folder and is a different string, so
-            // it is stripped before either the dedupe or the ancestry test — that
-            // test is a raw prefix comparison, and `…/folder/` never prefixes
-            // `…/folder/inside.bin` with the separator this expects. **All of
-            // them**: a path joined onto a root that already ended in one carries
-            // two, and stripping a single separator left `p` and `p//` as two
-            // entries in one batch — the first moved, the second met "no such
-            // file", and the branch below forgave it as a child of the first,
-            // because `p//` really does begin with `p/`. One folder, two removals,
-            // and `removed.count` is what the banner counts.
+            // Trailing separators, all of them, are stripped before the dedupe
+            // and the ancestry test: that test is a raw prefix comparison, and
+            // `p` and `p//` would be one folder counted as two removals.
             //
             // Shortest first, so a folder is taken before anything inside it and
             // the child can tell "the batch took my parent" from "it was never
-            // there". `DiskEngine` hands over a `Set`, whose order is a hash seed —
-            // the same basket gave two different answers on two runs.
+            // there", and a `Set` handed over gives the same answer every run.
             var seenPaths: Set<String> = []
             let ordered = allowed
                 .map(PathCanonical.withoutTrailingSeparators)
@@ -292,15 +255,10 @@ public enum HelmTrash {
             for (index, path) in ordered.enumerated() {
                 let url = URL(fileURLWithPath: path)
                 // Weighed against a slate of this path's own, folded into the
-                // batch's ledger only where the path really goes.
-                //
-                // Weighing *writes* — that is how an allocation wearing several
-                // names is charged once — and it happens before the recheck below,
-                // which cannot move: being the last thing before the move is the
-                // whole of its value. So a path that is then refused had already
-                // spent the ledger, and the next name for the same allocation was
-                // weighed as something already counted and added 0 — a batch
-                // reporting that it freed nothing about a file it really did trash.
+                // batch's ledger only where the path really goes. Weighing
+                // writes, and it happens before the recheck, which must stay
+                // last before the move; a refused path must not spend the
+                // ledger for the next name of the same allocation.
                 var slate = counted
                 // Read before the move: afterwards the URL points at nothing.
                 let size = FileWeight.reclaimed(of: url, charging: &slate)
@@ -308,13 +266,10 @@ public enum HelmTrash {
                 // swapped symlink lands on a *different existing* directory object, so
                 // a redirected subtree stops here rather than in someone's Documents.
                 //
-                // Only when the parent still exists: a `nil` here is the parent gone,
-                // which is the went-with-its-parent case one folder up in this same
-                // batch (the `NSFileNoSuchFileError` branch below owns that), never a
-                // redirection — trashing a path whose parent has vanished moves
-                // nothing. A parent that appeared where the reference saw none, or moved
-                // to another object, is the change that matters, and both differ from
-                // the reference.
+                // Only when the parent still exists: a `nil` here is the parent
+                // gone, which the `NSFileNoSuchFileError` branch below owns, never
+                // a redirection. A parent that appeared where the reference saw
+                // none, or moved to another object, differs from the reference.
                 if let now = ancestry(path), now != approvedAncestry[index] {
                     refused.append(Refusal(path: path, reason: .changedSinceScan))
                     HelmLog.shared.warn(module,
@@ -332,39 +287,27 @@ public enum HelmTrash {
                     where error.code == NSFileNoSuchFileError
                        && !FileManager.default.fileExists(atPath: path)
                        && removed.contains(where: { path.hasPrefix($0 + "/") }) {
-                    // It went with its parent, earlier in this same batch: basket a
-                    // folder from one screen and a file inside it from another and
-                    // the child's turn comes after the folder has moved. Reporting
-                    // "macOS refused" would send somebody looking for a file that is
-                    // in the Trash, and the count would say one when two went.
-                    //
-                    // Only when this batch is what took it. A path that was already
-                    // gone before any of this started is still a refusal with a
-                    // reason — the person is looking at a stale list and should be
-                    // told so.
+                    // It went with its parent, earlier in this same batch.
+                    // "macOS refused" would send somebody looking for a file that
+                    // is in the Trash. Only when this batch took it: a path gone
+                    // before the batch began is a refusal, a stale list the
+                    // person should be told about.
                     removed.append(path)
                 } catch {
                     let refusal = refusal(of: error, path: path,
                                           hasSystemExtension: hasSystemExtension(path))
                     let reason = refusal.reason
                     refused.append(refusal)
-                    // Composed here rather than through `HelmLog.failure`, which is the
-                    // same line at the same level, because **the system's half of it
-                    // names the file too**: `trashItem` refusing answers «The file
-                    // “com.acme.tool.plist” doesn’t exist» and repeats the path under
-                    // `NSFilePathErrorKey`, so redacting Helm's own half would leave a
-                    // module whose leaf is a bundle id naming it twice more.
+                    // Composed here rather than through `HelmLog.failure`, because
+                    // the system's half names the file too («The file
+                    // “com.acme.tool.plist” doesn’t exist», and `NSFilePathErrorKey`).
                     //
-                    // And for a module whose leaf names software, **not the system's
-                    // sentence at all**: macOS quotes a bundle by its *display name*
-                    // («“Hidden Title” couldn’t be moved…»), which is not the file's
-                    // name, so no replacement could find it. The domain, the code and
-                    // Helm's own classification quote no name, so the line carries
-                    // those and the system's sentence stays out of the log. The
-                    // sentence reaches a screen only through a caller's own record of
-                    // it: the Uninstaller keeps it per path (`saidByPath`) and shows
-                    // it; the Leftovers module keeps none (`Refusal` carries the
-                    // reason alone), so there it is shown nowhere.
+                    // Where the leaf names software, the system's sentence stays out
+                    // of the log entirely: macOS quotes a bundle by its display
+                    // name, which no replacement of the file name could find. The
+                    // domain, the code and Helm's classification name nothing. A
+                    // caller that shows the sentence keeps its own record of it
+                    // (the Uninstaller's `saidByPath`).
                     let said = leaf == .softwareName
                         ? "\((error as NSError).domain) \((error as NSError).code), \(reason.rawValue)"
                         : HelmFailure.describe(error)

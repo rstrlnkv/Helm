@@ -6,11 +6,9 @@ import HelmUI
 /// breaks the invariant.
 @MainActor
 enum PanelLayoutStore {
-    /// **Not `panelLayout`.** That key is in `ObsoleteDefaults.retired` — a
-    /// grid the app had once and rolled back — so it is deleted at every launch
-    /// and a layout stored under it would live exactly until the next start.
-    /// The name also carried a different format, and a value left on somebody's
-    /// disk would decode as nothing at all.
+    /// **Not `panelLayout`.** That key is in `ObsoleteDefaults.retired`, so it
+    /// is deleted at every launch, and a value left under it holds another
+    /// format that would decode as nothing.
     static let key = "panelWidgets"
 
     /// Always reconciled, never trusted: the bytes were written by a build that
@@ -33,9 +31,7 @@ enum PanelLayoutStore {
     /// Written on every change, not on «Done».
     ///
     /// The editor has a Done, but the panel can close without it being pressed:
-    /// a click outside, Escape, the icon's own click. A layout that only saved
-    /// on a button somebody never pressed would be a panel that forgets what you
-    /// just did every time you look away from it.
+    /// a click outside, Escape, the icon's own click.
     static func write(_ layout: PanelLayout, to store: NamespacedStore) {
         guard let data = try? JSONEncoder().encode(layout) else { return }
         store.set(data, for: key)

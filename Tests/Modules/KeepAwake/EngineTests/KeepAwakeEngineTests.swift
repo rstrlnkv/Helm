@@ -104,7 +104,7 @@ final class KeepAwakeEngineTests: KeepAwakeEngineRig {
         clamshell.sudoersInstalled = true
 
         engine.startSession(minutes: 0)
-        // The grant is asked for off the drawing thread now, so the engage lands
+        // The grant is asked for off the drawing thread, so the engage lands
         // a hop later — see `waitForTheLid`.
         await waitUntil("the lid disabled sleep") { engine.clamshellActive }
         XCTAssertEqual(clamshell.disableSleepCalls, [true])
@@ -144,11 +144,10 @@ final class KeepAwakeEngineTests: KeepAwakeEngineRig {
     func test_clamshell_recovery_on_activate() async {
         store.set(true, for: "clamshellGuard")
         clamshell.pmset = "SleepDisabled 1"
-        // The grant, because the recovery *is* `sudo -n pmset disablesleep 0`:
-        // without a passwordless rule the real port's call fails, and the fixture
-        // only worked while `FakeClamshell.setDisableSleep` answered yes without
-        // one. A launch that finds this state and no grant keeps the note instead
-        // — `APmsetThatRefusedIsNotASuccessTests` is where that half lives.
+        // The grant, because the recovery is `sudo -n pmset disablesleep 0`:
+        // without a passwordless rule the call fails. A launch that finds this
+        // state and no grant keeps the note instead —
+        // `APmsetThatRefusedIsNotASuccessTests` is where that half lives.
         clamshell.sudoersInstalled = true
 
         engine.activate()
@@ -180,9 +179,9 @@ final class KeepAwakeEngineTests: KeepAwakeEngineRig {
         XCTAssertFalse(engine.isActive)
     }
 
-    /// Past defect: every recompute said its payload, equal to the last or not.
-    /// Two identical recomputes after a start are one emit; the stop behind them
-    /// is the second, and ends what is counted.
+    /// A recompute that changes nothing says nothing. Two identical recomputes
+    /// after a start are one emit; the stop behind them is the second, and ends
+    /// what is counted.
     func test_a_recompute_that_changes_nothing_says_nothing() async {
         let stream = engine.stream()
         engine.startSession(minutes: 0)
@@ -198,14 +197,13 @@ final class KeepAwakeEngineTests: KeepAwakeEngineRig {
     }
 }
 
-/// Guards: bbbb2e84 (toggleSession had no test; every other caller ignores the default duration, mutant green).
+/// `toggleSession` starts the default duration, which no other caller reads.
 final class KeepAwakeToggleTests: KeepAwakeEngineRig {
 
     // MARK: - The one entrance the hotkey and the panel switch both use
 
-    /// `toggleSession` had no test at all, and it is what the model's
-    /// `toggle()` calls — the global hotkey, and the switch at the top of the
-    /// panel tile. Everything under it was covered and the door itself was not.
+    /// `toggleSession` is what the model's `toggle()` calls — the global hotkey,
+    /// and the switch at the top of the panel tile.
     func test_toggle_starts_a_session_at_the_default_duration() {
         store.set(25, for: "defaultDurationMinutes")
 
@@ -240,10 +238,9 @@ final class KeepAwakeToggleTests: KeepAwakeEngineRig {
 /// Turning the module off has to take its observers with it.
 ///
 /// `IOPSPowerInfo` hands IOKit an unretained pointer to itself and adds a run
-/// loop source that nothing ever removed. `ModuleHost.disable` drops the
-/// engine, the engine owns the port, the port deallocates — and the main run
-/// loop still holds the source, so the next power event dereferences freed
-/// memory. Unplug the charger after switching Keep Awake off.
+/// loop source. `ModuleHost.disable` drops the engine, the engine owns the
+/// port, the port deallocates; a source left on the main run loop would make
+/// the next power event dereference freed memory.
 ///
 /// The crash itself is not unit-testable; what is testable is the one thing
 /// that prevents it, which is that the engine asks the port to stop.
@@ -289,15 +286,13 @@ final class PowerObserverTeardownTests: XCTestCase {
 
 /// An observer started twice is not two observers.
 ///
-/// `ScreenParamsObserver` kept no token and removed nothing, so every enable of
-/// the module left another `didChangeScreenParameters` block registered for the
-/// life of the process. `WorkspaceAppPort`, twenty lines below it in the same
-/// file, holds its tokens and says why — "switching the module off and on
-/// stacked another pair each time" — and the port protocol's comment claimed
-/// `NotificationCenter` observers needed no such thing.
+/// A port that keeps no token would leave another `didChangeScreenParameters`
+/// block registered for the life of the process on every enable of the module;
+/// `ScreenParamsObserver` holds its token as `WorkspaceAppPort` does.
 final class DisplayObserverStackingTests: XCTestCase {
 
-    func testStartingTwiceLeavesOneObserver() {
+    @MainActor
+    func testStartingTwiceLeavesOneObserver() async {
         let observer = ScreenParamsObserver()
         let calls = LockedCount()
         observer.startObserving { calls.bump() }
@@ -306,7 +301,7 @@ final class DisplayObserverStackingTests: XCTestCase {
         NotificationCenter.default.post(
             name: NSApplication.didChangeScreenParametersNotification, object: nil)
         // The block runs on the main queue; drain it.
-        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        await drainMainQueue()
 
         XCTAssertEqual(calls.value, 1, "each enable of the module left another observer behind")
     }

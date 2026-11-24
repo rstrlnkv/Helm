@@ -1,7 +1,7 @@
 import XCTest
 @testable import Module_KeepAwake_Engine
 
-/// Guards: aff8a787 (extendedMinutes trapped on a stored deadline off the ceiling).
+/// The timer's decisions, and `extendedMinutes` on a stored deadline past the ceiling.
 final class TimerPolicyTests: XCTestCase {
     /// (auto condition, suppressed, timer ends automation, expected, why). The two
     /// rows with a running rule's app and nothing suppressed are each other's control.
@@ -34,10 +34,9 @@ final class TimerPolicyTests: XCTestCase {
     }
 
     /// The countdown is drawn from an `endDate` the engine restored from the
-    /// store, so this arithmetic sits on a `Double` that came off disk. It was
-    /// `Int(ceil(remaining / 60)) + 15` in the tile, and `Int(_:)` of a `Double`
-    /// past `Int.max` **traps**: the app terminating when somebody presses the
-    /// button on a countdown they can see.
+    /// store, so this arithmetic sits on a `Double` that came off disk, and
+    /// `Int(_:)` of a `Double` past `Int.max` traps: the app would terminate
+    /// when somebody presses the button on a countdown they can see.
     ///
     /// A remaining time no session could have is not a session to extend, so
     /// the button asks for its own fifteen minutes — the answer that keeps the

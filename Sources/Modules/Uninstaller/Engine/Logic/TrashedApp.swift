@@ -2,11 +2,9 @@ import Foundation
 
 /// An application bundle found sitting in the Trash.
 ///
-/// The Uninstaller could only ever clean up after an app removed *through Helm*.
-/// Dragging one from `/Applications` to the Trash — which is how almost everyone
-/// uninstalls on a Mac — left its support files, caches and preferences behind with
-/// nothing to say so. The bundle in the Trash is intact, so its own `Info.plist`
-/// answers the only question that matters for finding those files: which bundle id.
+/// Dragging an app to the Trash is how most people uninstall on a Mac, and it
+/// leaves the app's files behind. The bundle in the Trash is intact, so its own
+/// `Info.plist` names the bundle id those files are found by.
 public struct TrashedApp: Equatable, Sendable {
     let bundleID: String
     /// What the person will recognise, which is not always what the file is called.
@@ -16,11 +14,10 @@ public struct TrashedApp: Equatable, Sendable {
 
 /// Reading that bundle, minus the I/O.
 ///
-/// The plist read stays with the caller so this is a pure decision: the fallback
-/// chain for the name, and the refusals. Both matter more than they look. The id
-/// decides which leftovers get claimed, and a wrong or empty one claims files
-/// belonging to nobody; the name is the heading the window puts above a list of
-/// things it is offering to delete, and an empty heading is worse than a filename.
+/// The plist read stays with the caller, so this is a pure decision: the
+/// fallback chain for the name, and the refusals. The id decides which
+/// leftovers are claimed, and the name heads a list offered for deletion, where
+/// an empty heading is worse than a filename.
 enum TrashedAppIdentity {
 
     /// nil when there is nothing worth offering — no bundle id, or a bundle whose
@@ -53,11 +50,9 @@ enum TrashedAppIdentity {
 
 /// Which trashed apps to offer to clean up after, and which no to keep.
 ///
-/// The offer is unprompted — a window appears because the person dragged an app to
-/// the Trash — so declining has to stick. A window that returns at the next launch
-/// for an app they already said no to is the difference between a helpful app and
-/// one people switch off. And it has to stop sticking when the app leaves the
-/// Trash, or one decline means never being asked about that app again.
+/// The offer is unprompted, so declining has to stick across launches, and stop
+/// sticking when the app leaves the Trash, or one decline would mean never being
+/// asked about that app again.
 enum TrashOfferMemory {
 
     /// In the order found, which the caller sets to the order the apps arrived —
@@ -66,9 +61,8 @@ enum TrashOfferMemory {
         found.filter { !dismissed.contains($0.bundleID) }
     }
 
-    /// The record, swept: an id whose app is no longer in the Trash is forgotten,
-    /// because the decision was about a state that no longer exists. Restored or
-    /// finally deleted, either way a later removal is a new question.
+    /// The record, swept: an id whose app is no longer in the Trash (restored or
+    /// deleted) is forgotten, and a later removal is a new question.
     ///
     /// Only forgets. Finding an app does not decline it.
     static func stillDismissed(_ dismissed: Set<String>,

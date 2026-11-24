@@ -5,13 +5,11 @@ import XCTest
 @testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-/// **A removal through the door meets the page's own work: a list read in flight, and a batch from the review.**
+/// A removal through the door meets the page's own work: a list read in flight, and a batch from the review.
 ///
-/// The door marks the apps list stale (`listAnswered = false`) so the page reads it again when it next
-/// appears. A read that was already out when the removal ended answers afterwards, with the list as it
-/// was before, and `reloadApps` takes that for the current one and sets `listAnswered` again: the removed app stays
-/// on the page and nothing reads again. The review's batch (`removeSelection`) and the door share one
-/// `busy` in both directions.
+/// A read already out when the door's removal ends answers with the old list, and must not mark the list
+/// current, or the removed app stays on the page. The review's batch (`removeSelection`) and the door
+/// share one `busy` in both directions.
 @MainActor
 final class ADoorRemovalMeetsTheRestOfThePageTests: XCTestCase {
 

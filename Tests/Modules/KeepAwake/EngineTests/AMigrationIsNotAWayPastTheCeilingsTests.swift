@@ -6,16 +6,10 @@ import HelmRuntime
 /// reader it goes to.
 ///
 /// `AppTriggerRules.readable` refuses a value over `maxRules`, over
-/// `maxBundleIDLength` or over `maxEncodedBytes` — deliberately refuses rather
-/// than truncates, because a page drawing rules that hold nothing is the one
-/// outcome nobody can see. `migrating(from:)` read the *older* key, mapped every
-/// bundle id it found and answered with all of them: 50 001 rules and ids a
-/// million characters long, on `recompute`'s path, which runs from three
-/// observers.
-///
-/// And reaching it takes no cunning — an absent or empty `autoAppRules` is
-/// exactly what an older file looks like, so the whole ceiling was one missing
-/// key away from not existing.
+/// `maxBundleIDLength` or over `maxEncodedBytes`, rather than truncating.
+/// `migrating(from:)` reads the older key on the same `recompute` path, and an
+/// absent or empty `autoAppRules` is exactly what an older file looks like, so
+/// without its own ceilings one missing key would bypass them all.
 final class AMigrationIsNotAWayPastTheCeilingsTests: XCTestCase {
 
     private func store() -> NamespacedStore {
@@ -53,8 +47,8 @@ final class AMigrationIsNotAWayPastTheCeilingsTests: XCTestCase {
         XCTAssertEqual(AppTriggerRules.migrating(from: exactly)?.count, AppTriggerRules.maxRules)
     }
 
-    /// **The third ceiling is not checked on this path, and that is arithmetic
-    /// rather than an opinion.** `maxEncodedBytes` exists to refuse a value before
+    /// The third ceiling is not checked on this path, and that is arithmetic
+    /// rather than an opinion. `maxEncodedBytes` exists to refuse a value before
     /// `JSONDecoder` has paid for it, and there is nothing to decode here — the
     /// plist reader has already parsed the array. What makes its absence safe is
     /// that the two ceilings which *are* checked bound the encoded size to about

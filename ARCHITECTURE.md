@@ -1,26 +1,10 @@
 # Helm — architecture
 
-Helm is a menu-bar utility suite for macOS: one accessory application that hosts
-its independent modules: the directories of `Sources/Modules`, and Tweaks, one more registered in `Sources/HelmApp`. A module is a
-headless engine and a settings page with its model, which calls the engine's methods. Around them stand four foundation targets — `Sources/HelmContract`
-for what crosses the engine/host boundary,
-`Sources/HelmRuntime` for plumbing without UI, `Sources/HelmUI` for the design
-system and the strings, and `Sources/HelmLaunch` for the one thing Swift cannot
-express — plus `Sources/HelmApp`, the executable that owns the window, the panel
-and the status item, with its words in `Sources/HelmAppStrings`. The whole shape is declared in `Package.swift`, and the
-boundaries in these pages are held by the build where it can hold them, and the import lines it cannot check by
-`TheBoundariesTheBuildCannotHoldTests`.
+Helm is a menu-bar utility suite for macOS: one accessory application that hosts its independent modules (the directories of `Sources/Modules`) and Tweaks, one more registered in `Sources/HelmApp`. A module is a headless engine and a settings page with its model, which calls the engine's methods. Around them stand four foundation targets: `Sources/HelmContract` for what crosses the engine/host boundary, `Sources/HelmRuntime` for plumbing without UI, `Sources/HelmUI` for the design system and the strings, and `Sources/HelmLaunch` for the one thing Swift cannot express. `Sources/HelmApp` is the executable that owns the window, the panel and the status item, with its words in `Sources/HelmAppStrings`. `Package.swift` declares the whole shape; the build holds the boundaries where it can, and `TheBoundariesTheBuildCannotHoldTests` holds the import lines it cannot.
 
 ## How these pages are kept
 
-A page holds one subject and the hub links it; a part of that subject is a heading on the
-page, and a part pointed at as a subject of its own is a page. A page's H1 is its link text
-here and its file name is that H1 in UpperCamelCase. Every heading is unique across the hub
-and the pages, and a page's line below names every heading under its H1. Whatever names a
-heading — a page, the hub, `README.md`, a doc comment — writes it the way
-`ARCHITECTURE.md § Localization`, say, is written; "see X", a quoted heading, "above" and
-"this document" are not addresses. A reason tied to one file lives in that file's doc
-comment, not on a page.
+A page per subject, linked from the hub with one purpose line; a page's H1 is its link text and its file name is that H1 in UpperCamelCase. Every heading is unique across the hub and the pages, and is addressed as `ARCHITECTURE.md § Localization`, say (a bare `§ Localization`, inside these pages); "see X" and "above" are not addresses. A reason tied to one file lives in that file's doc comment, not on a page.
 
 ## Where things are
 
@@ -46,72 +30,60 @@ comment, not on a page.
 ## The map
 
 Six hubs follow, each a list of pages, and two tables after them that cross the modules.
-A page lists its own headings on the line below its link.
 
 ### The shell
 
-- [The menu-bar panel](Architecture/TheMenuBarPanel.md) — the window, chrome and card of the panel, and the pure grid and drag rules beneath them.
-- [The status item](Architecture/TheStatusItem.md) — the rule that picks what the menu-bar item shows: a countdown, a spin, a tint or a title.
-- [The Settings window](Architecture/TheSettingsWindow.md) — the card shell, the sidebar on the ground of the look and the hosting controllers the window is built from.
-- [The page header](Architecture/ThePageHeader.md) — the header row in the card that carries a page's name and controls § What a page declares, § The row's geometry, § Flat tabs, § Glass tabs, § How the page reaches the toolbar, § Actions, § Search, § The header band's Dark numbers, § Where the row is drawn, and where it is not, § The header strip, § The row's choices and its menu.
-- [The sidebar is an arrangement](Architecture/TheSidebarIsAnArrangement.md) — the sidebar as a stored value in which every module appears exactly once, shared with the status item's menu.
-- [A window a module needs and the host owns](Architecture/AWindowAModuleNeedsAndTheHostOwns.md) — the base class for a host-owned window: activation policy, the closed flag and release on close.
-- [Revealing a path](Architecture/RevealingAPath.md) — how a path is shown in Finder without launching or mounting a bundle.
+- [The menu-bar panel](Architecture/TheMenuBarPanel.md) — the window, chrome and card of the panel, the pure grid and drag rules beneath them, and the rule that picks what the status item shows.
+- [The Settings window](Architecture/TheSettingsWindow.md) — the card shell, the sidebar as a stored arrangement, the hosting controllers, the base class of a host-owned window and how a path is revealed in Finder.
+- [The page header](Architecture/ThePageHeader.md) — the header row in the card that carries a page's name and controls.
 
 ### The shared layers
 
-- [Targets](Architecture/Targets.md) — the package's targets, what each one holds and which may see which, as the manifest declares them.
-- [What is deliberately not here](Architecture/WhatIsDeliberatelyNotHere.md) — what Helm omits on purpose — an external dependency, a sandbox and privileged helper, a transport between host and modules, back-deployment — and why.
-- [Localization](Architecture/Localization.md) — each catalog and its keys (`HelmRuntime`'s counted nouns stay in Swift), the shared words, the lookup and its memo, the guards that watch them, and the helpers that keep the language the app's own; § Catalogs and the words kept in Swift, § The lookup and its memo, § Arguments and numbers, § Words two parts draw, § The changelog's key and a missing language, § The guards, § One English text means one thing, § Formatters and the app's language, § Terminology from the system's own tables, § Russian values, § The French pass.
-- [Design system](Architecture/DesignSystem.md) — what `Sources/HelmUI/DesignSystem/` holds and the rules for its tokens, surfaces, ladders, type, ink, motion and the showcase; § Tokens, § Surfaces, § Ladders, § Type, § Ink and contrast, § Own look over system behaviour, § What a page may use, § Motion, § The visual language, § Widths, § The showcase, § Apple's rules in three grades.
-- [Stored settings](Architecture/StoredSettings.md) — a stored value nobody else may write, and a number that came from a file; § Sealed settings, § A number that came from a file.
-- [State and lifetime](Architecture/StateAndLifetime.md) — what outlives a page or a thing it points at, and a value read back whole; § State that outlives a page and ends with its module, § An observer outlives the thing it points at, § A value read back whole.
-- [Diagnostics log](Architecture/DiagnosticsLog.md) — the log file and its policy, the activity registry, the memory trail and the log pane; § The activity registry, § The memory trail, § The log pane.
+- [Targets](Architecture/Targets.md) — the package's targets, what each holds and which may see which, and what Helm deliberately leaves out.
+- [Localization](Architecture/Localization.md) — the catalogs and their keys, the shared words, the lookup, the guards, and the helpers that keep the language the app's own.
+- [Design system](Architecture/DesignSystem.md) — what `Sources/HelmUI/DesignSystem/` holds and the rules for its tokens, surfaces, ladders, type, ink, motion and the showcase.
+- [Stored settings](Architecture/StoredSettings.md) — a stored value nobody else may write, and a number that came from a file.
+- [State and lifetime](Architecture/StateAndLifetime.md) — what outlives a page or a thing it points at, and a value read back whole.
+- [Diagnostics log](Architecture/DiagnosticsLog.md) — the log file and its policy, the activity registry, the memory trail and the log pane.
 
 ### Gates and removal
 
-- [The gates](Architecture/TheGates.md) — the four types that answer where a path may be reached, and how a walk asks them.
-- [Removal](Architecture/Removal.md) — the one batch every removal goes through and the refusals it reports; § One removal at a time.
-- [Permissions](Architecture/Permissions.md) — how Full Disk Access is probed.
+- [The gates](Architecture/TheGates.md) — the four types that answer where a path may be reached, how a walk asks them, and how Full Disk Access is probed.
+- [Removal](Architecture/Removal.md) — the one batch every removal goes through and the refusals it reports.
 - [Background scans](Architecture/BackgroundScans.md) — the modules that can measure unattended and how the list and the capability are tied together.
 - [Giving everything back](Architecture/GivingEverythingBack.md) — what a reset hands back outside Helm's own folders, what it cannot, and the order of its steps.
 
 ### Running things
 
-- [Running other programs](Architecture/RunningOtherPrograms.md) — launching a tool, bounding how many are out, reading what it prints, and running one as root.
-- [Running applications](Architecture/RunningApplications.md) — why the running and frontmost applications are read on the main thread only, and the snapshot every other thread gets.
+- [Running other programs](Architecture/RunningOtherPrograms.md) — launching a tool, bounding how many are out, reading what it prints, running one as root, and why running applications are read on the main thread only.
 
 ### The modules
 
-- [Module pattern](Architecture/ModulePattern.md) — how a module is built from two source directories and the test directories it keeps, and what holds its parts apart; § The boundaries, § Ports and logic, § The stream and the store, § Bulk reads, § A value crossing to the main thread.
+- [Module pattern](Architecture/ModulePattern.md) — how a module is built from two source directories and the test directories it keeps, and what holds its parts apart.
 
-A tweak is a second, smaller kind of part: `Sources/Tweaks/<Name>/Engine` and `UI`, declared by a `Tweak` row in
-`Package.swift`, with no menu-bar presence, hotkey, scan or panel widget. The same three holds keep it apart from every
-module and every other tweak (Architecture/ModulePattern.md § The boundaries), and `ls Sources/Tweaks` lists them.
-Every tweak lives under the one entry, Tweaks, which is a module: its descriptor and engine are in `Sources/HelmApp`, and
-the entry has no page of its own here, because it holds nothing a module's page would. A tweak that holds reasons of its own has one:
+A tweak is a second, smaller kind of part: `Sources/Tweaks/<Tweak>/Engine` and `UI`, declared by a `Tweak` row in `Package.swift`, with no menu-bar presence, hotkey, scan or panel widget. The same three holds keep it apart from every module and every other tweak (Architecture/ModulePattern.md § The boundaries), and `ls Sources/Tweaks` lists them. Every tweak lives under the one entry, Tweaks, a module whose descriptor and engine are in `Sources/HelmApp` and which has no page of its own; a tweak that holds reasons of its own has one:
 
-- [Display Corners](Architecture/DisplayCorners.md) — the masks over a display's corners and the pointer held off them; § The masks and the capture, § The pointer guard, § The suppression interval, § The sampling rate and away, § Calibration is temporary, § What is stored.
+- [Display Corners](Architecture/DisplayCorners.md) — the masks over a display's corners and the pointer held off them.
 
 One page per directory of `Sources/Modules`, in the order `ls Sources/Modules` prints.
 
-- [Autopilot](Architecture/Autopilot.md) — the refusals that bound acting on files unasked, starting with sealed rules; its model calls the engine directly (Architecture/Autopilot.md § How Autopilot's model reaches its engine, § The states of the Autopilot page).
-- [Disk](Architecture/Disk.md) — reading where the space went on an APFS volume group without leaving the largest folder out; its model calls the engine directly (Architecture/Disk.md § How Disk's model reaches its engine, § The states of the Disk page).
-- [Duplicates](Architecture/Duplicates.md) — the keep policies that decide which of several identical files is the extra one; its model calls the engine directly (Architecture/Duplicates.md § How Duplicates' model reaches its engine, § Keys, phases, guards and files, § The states of the Duplicates page).
-- [Homebrew](Architecture/Homebrew.md) — how another program's package manager is run, with read-only queries and other runs governed differently; § The one setting, § The model, § Operations, § Installing Homebrew, § Install counts, § Searching for a package, § The Health tab, § The states of the Homebrew page.
-- [KeepAwake](Architecture/KeepAwake.md) — holding sleep off through pure logic units orchestrated by one engine; § How the model reaches the engine, § The closed lid, § Vetoes and the notice, § Rules read from the machine, § State a person asked for outlives the process, § Its states.
-- [Launchpad](Architecture/Launchpad.md) — the app launcher: apps kept by bundle id, a layout reconciled in memory against what is installed (a default arrangement when the person has none) and written only on an edit, a launch that opens only what a fresh read finds, a full-screen window that measures nothing and whose grid Automatic sets from the screen (seven by five, scaled) or the person sets by hand, an optional trackpad pinch from a private framework behind one port; § The catalog and the layout, § The default arrangement, § How Launchpad's model reaches its engine, § The window, § The icons, § Show in Finder, Copy Path and the new dot, § The grid settings, § The grid scales to the screen, § A cut name scrolls on hover, § Lifting a tile, § Edit mode, § The category view, § The Hidden block, § The Dock icon, § The trackpad pinch, § The Launchpad settings page.
-- [Layout](Architecture/Layout.md) — shown to the user as "Keyboard" (`LyStr.moduleName`); the four limits on a module that reads every keystroke and types into other applications; its model calls the engine directly (Architecture/Layout.md § How Layout's model reaches its engine, § Keys, waits, guards and files, § The states of the Layout page).
-- [Leftovers](Architecture/Leftovers.md) — what it will offer to remove: login items and plug-in files whose owner is gone; § How Leftovers' model reaches its engine, § Reads, predicates, guards and files, § The states of the Leftovers page.
-- [Screenshots](Architecture/Screenshots.md) — freezing the displays, picking an area, a window, the Dock or the menu bar, and the inline editor over the frozen picture, which has a page of its own (Architecture/ScreenshotsEditor.md); § The overlay, § The capture panel, § Writing a shot and replacing it, § The settings page, § The after-shot window, § How Screenshots' model reaches its engine, § The states of the Screenshots page and its windows.
-- [Screenshots editor](Architecture/ScreenshotsEditor.md) — the inline editor over the frozen picture: its layers, the marks that are no stroke, the palette, the eraser and the ruler, the pop-overs, the area and Crop, reading text and leaving; § The editor and its layers, § Marks that are no stroke, § The blur and the text, § The step and the spotlight, § The magnifier and the emoji, § The palette, § The eraser and the ruler, § The pop-overs, § The area and Crop, § Reading the text of the area, § Leaving the editor.
-- [Uninstaller](Architecture/Uninstaller.md) — deciding whether a path belongs to the application being removed; its model calls the engine directly (Architecture/Uninstaller.md § How the Uninstaller's model reaches its engine, § Keys, gates, guards and files, § The states of the Uninstaller page, § The door for another module's removal of one app).
-- [VPN](Architecture/VPN.md) — raising and dropping tunnels from rules, and the books it keeps, keyed by configuration id or, where `scutil` takes a name, by name; its model calls the engine directly (Architecture/VPN.md § How VPN's model reaches its engine), and every state of its page has a row in Architecture/VPN.md § The states of the VPN page.
+- [Autopilot](Architecture/Autopilot.md) — the refusals that bound acting on files unasked, starting with sealed rules.
+- [Disk](Architecture/Disk.md) — reading where the space went on an APFS volume group without leaving the largest folder out.
+- [Duplicates](Architecture/Duplicates.md) — the keep policies that decide which of several identical files is the extra one.
+- [Homebrew](Architecture/Homebrew.md) — how another program's package manager is run, with read-only queries and other runs governed differently.
+- [KeepAwake](Architecture/KeepAwake.md) — holding sleep off through pure logic units orchestrated by one engine.
+- [Launchpad](Architecture/Launchpad.md) — the app launcher: its layout, window, grid, edit mode and optional trackpad pinch.
+- [Layout](Architecture/Layout.md) — shown to the user as "Keyboard" (`LyStr.moduleName`); the four limits on a module that reads every keystroke and types into other applications.
+- [Leftovers](Architecture/Leftovers.md) — what it will offer to remove: login items and plug-in files whose owner is gone.
+- [Screenshots](Architecture/Screenshots.md) — freezing the displays and picking an area, a window, the Dock or the menu bar.
+- [Screenshots editor](Architecture/ScreenshotsEditor.md) — the inline editor over the frozen picture: its layers, marks, palette, pop-overs and leaving.
+- [Uninstaller](Architecture/Uninstaller.md) — deciding whether a path belongs to the application being removed.
+- [VPN](Architecture/VPN.md) — raising and dropping tunnels from rules, and the books it keeps.
 
 ### Tests and release
 
-- [Release](Architecture/Release.md) — where the version lives, how a build is numbered, signed and shipped, the updater and the disk image window; § Channels and publishing, § Signing and grants, § The updater, § What shipped, § The disk image window.
-- [Tests and measurement](Architecture/TestsAndMeasurement.md) — what makes a check a check, what proves which defect, what a removal takes with it, and how measuring tests are written; § What makes a check, § What proves what, § Removal takes its traces, § Readings and mutants, § Fakes, § Shared test plumbing, § Harnesses, § Two screen instruments, § Snapshot rules, § Measuring motion, § Why the commands are run.
+- [Release](Architecture/Release.md) — where the version lives, how a build is numbered, signed and shipped, the updater and the disk image window.
+- [Tests and measurement](Architecture/TestsAndMeasurement.md) — what makes a check a check, what proves which defect, what a removal takes with it, and how measuring tests are written.
 
 ### Who stores what
 
@@ -152,16 +124,6 @@ Architecture/RunningOtherPrograms.md.
 
 ## What else to read
 
-Two documents stand beside `ARCHITECTURE.md` in the root of the tree:
+`README.md` (what Helm is, the module table, how it is installed and built) and `CHANGELOG.md` (one section per release, the canonical English record) stand beside this file in the root of the tree. `NOTICE.md` names the third-party artwork Helm ships and its terms; `Sources/Modules/Layout/UI/Flags/` is the material it covers.
 
-- `README.md` — what Helm is, the module table, how it is installed and built.
-- `CHANGELOG.md` — one section per release, the canonical English record.
-
-One addition is declared:
-
-- `NOTICE.md` — the third-party artwork Helm ships and the terms it carries.
-  `Sources/Modules/Layout/UI/Flags/` is the material it covers.
-
-Helm keeps no specs or plans in the tree. A worktree sits inside the tree, under its
-own folder, so anything outside the tree is reached by its full path — one level up from a
-worktree is not where a sibling checkout is, and nothing links a worktree for you.
+Helm keeps no specs or plans in the tree. A worktree sits inside the tree, under its own folder, so anything outside the tree is reached by its full path: one level up from a worktree is not where a sibling checkout is, and nothing links a worktree for you.

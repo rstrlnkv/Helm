@@ -10,10 +10,9 @@ enum UninstallStep: Equatable, Sendable { case pick, review }
 /// What the model asks of the engine. A port, so the model's tests hold the
 /// engine's place without a Mac's applications in reach.
 ///
-/// Every answer is the return value, so there is nothing to subscribe to and no
-/// reply that can be lost. The one thing the engine says unasked, "look at the
-/// Trash again", does not come through here: the descriptor hands the model
-/// a stream of it (`UninstallerViewModel.listenForTrash`).
+/// Every answer is the return value, so no reply can be lost. The one thing
+/// the engine says unasked, "look at the Trash again", comes as a stream
+/// (`UninstallerViewModel.listenForTrash`).
 protocol UninstallerWork: AnyObject, Sendable {
     func listApps() async -> [InstalledApp]
     func appSizes(_ list: [InstalledApp]) async -> [String: Int]
@@ -46,11 +45,9 @@ extension UninstallerEngine: UninstallerWork {}
     private let arrivals: AsyncStream<Void>
     private var listening: Task<Void, Never>?
     private var onTrashArrival: (@MainActor () -> Void)?
-    /// The Trash offer on screen, if one is: it takes an arrival into the list it
-    /// shows, and the host's handler (which would open a second window) is not
-    /// called. Weak: the window owns the offer, and registering it here must not
-    /// keep it alive. It is registered **before** its first read, so an arrival
-    /// between the read and the registration is not lost.
+    /// The Trash offer on screen, if one is: it takes an arrival into its list
+    /// instead of the host opening a second window. Weak: the window owns it.
+    /// Registered before its first read, so no arrival in between is lost.
     weak var openOffer: TrashedLeftoversModel?
     /// Set by `stop()`. The host stops the model before the engine's
     /// `deactivate()`, and a page still on screen — or a task already queued —
@@ -63,13 +60,9 @@ extension UninstallerEngine: UninstallerWork {}
 
     /// The installed apps, and their sizes once those have been measured.
     ///
-    /// These live here rather than in the page's `@State` because the page does
-    /// not survive a sidebar click: leaving the module tears down the subtree,
-    /// and coming back builds a fresh one whose `@State` is empty, so `.task`
-    /// re-ran `listApps()` and `appSizes()` from nothing. Measuring 39 bundles
-    /// took four seconds, nine on a cold cache — paid on every visit, for a
-    /// list that had not changed. Caching the view model alone would not have
-    /// helped while the list it produced lived on the page.
+    /// Here rather than in the page's `@State`, which a sidebar click tears
+    /// down: measuring every bundle takes seconds and would be paid on every
+    /// visit.
     @Published private(set) var apps: [InstalledApp] = []
     /// Which sizes have been measured, by path. **Absent means "not measured"**,
     /// which a zero cannot say: the list arrives unsized and a bundle that could
@@ -108,21 +101,17 @@ extension UninstallerEngine: UninstallerWork {}
     /// and no reason to say «0 apps».
     ///
     /// One flag for the body (`AppsEmpty.reason(answered:apps:shown:)`) and the
-    /// footer (`AppsEmpty.status(answered:loading:apps:)`) alike: two sources of
-    /// "has anybody answered" would drift into a page whose count says
-    /// «Counting apps…» over a body claiming the Mac holds no applications.
+    /// footer (`AppsEmpty.status(answered:loading:apps:)`), so the footer cannot
+    /// say «Counting apps…» over a body claiming the Mac holds no applications.
     private(set) var listAnswered = false
     /// Counts removals through the door, so a list read that began before one does not mark the list current after it.
     private var doorRemovals = 0
 
     // MARK: - Where the person is, and what they chose
 
-    /// The rest of the flow lives here for the same reason the list does, and
-    /// the cost of it being on the page was steeper: ticking apps and clicking
-    /// Disk in the sidebar came back to a count of 0; doing it on the review
-    /// screen threw away a leftovers scan of every ticked app; doing it on the
-    /// failure report threw away the only record of what macOS refused and why,
-    /// which nothing in the app can produce a second time.
+    /// The flow lives here for the same reason the list does: a sidebar click
+    /// must not lose the ticks, a review's scans, or the failure report, the
+    /// only record of what macOS refused and why.
     @Published private(set) var step: UninstallStep = .pick
     /// Bundle paths ticked on the picker: two copies of one app share an id and
     /// are two rows, so a tick belongs to the copy on disk.
@@ -135,9 +124,7 @@ extension UninstallerEngine: UninstallerWork {}
     @Published private(set) var busy = false
     @Published private(set) var resultBanner: String?
 
-    /// What the Trash-offer switch is doing, from the engine — the switch's own
-    /// position and, when it is on, whether either of the two things it depends on
-    /// has refused. See `TrashWatch`.
+    /// What the Trash-offer switch is doing, from the engine (`TrashWatch`).
     @Published private(set) var trashWatch: TrashWatch = .off
 
     init(work: any UninstallerWork, trashArrivals: AsyncStream<Void>) {
@@ -147,11 +134,8 @@ extension UninstallerEngine: UninstallerWork {}
 
     /// Closes the model: the host calls it before the engine's `deactivate()`.
     /// Whatever is pressed after reaches no work, and a list, its readings or a
-    /// review still in flight is not shown; a removal, an orphan scan or a Trash
-    /// sweep already handed to the engine still lands. The arrival subscription
-    /// and the open offer let go.
-    /// Saving a chosen sort order is not refused — it is the person's setting,
-    /// not work.
+    /// review still in flight is not shown; work already handed to the engine
+    /// still lands. Saving a sort order is not refused: it is a setting, not work.
     public func stop() {
         closed = true
         listening?.cancel()
@@ -251,10 +235,9 @@ extension UninstallerEngine: UninstallerWork {}
 
     func isChecked(_ app: InstalledApp) -> Bool { checked.contains(app.path) }
 
-    /// A `com.apple.` app is refused rather than merely undrawn. The row leaves
+    /// A `com.apple.` app is refused rather than merely undrawn: the row leaves
     /// the checkbox out (`SystemApp.isSystem`), and this is the same rule at the
-    /// only place that can put a path into the set — a tick macOS will refuse
-    /// costs the person a scan, a click and a failure report to find that out.
+    /// only place that can put a path into the set.
     func setChecked(_ app: InstalledApp, _ on: Bool) {
         guard !SystemApp.isSystem(bundleID: app.bundleID) else { return }
         if on { checked.insert(app.path) } else { checked.remove(app.path) }
@@ -272,20 +255,17 @@ extension UninstallerEngine: UninstallerWork {}
         if on { selectedLeftovers.insert(path) } else { selectedLeftovers.remove(path) }
     }
 
-    /// What the review would move, or `nil` while any app in it has not been
-    /// measured — a sum with one term missing is a smaller number nobody
-    /// measured. Read from `measuredSizes`, which keeps arriving after the review
-    /// opened; `groups` is a snapshot and carries no size of its own.
+    /// What the review would move, or `nil` while any app in it is unmeasured:
+    /// a sum missing a term is a number nobody measured. Read from
+    /// `measuredSizes`, which keeps arriving after the review opened.
     var reviewBytes: Int? {
         guard !groups.isEmpty,
               groups.allSatisfy({ measuredSizes[$0.app.path] != nil }) else { return nil }
         return UninstallPlan.totalBytes(groups, appBytes: measuredSizes, selectedLeftovers: selectedLeftovers)
     }
 
-    /// Leaving the review ends the round, so the report of the last press goes
-    /// with it — the pick screen's own footer draws `resultBanner`, and a
-    /// sentence about a batch that was refused for a running app has nothing to
-    /// say there.
+    /// Leaving the review ends the round, so the last press's report goes with
+    /// it: the pick screen's footer draws `resultBanner` too.
     func backToPick() {
         step = .pick
         forceQuit = false
@@ -314,9 +294,8 @@ extension UninstallerEngine: UninstallerWork {}
 
     /// One review group per app, from a scan each.
     ///
-    /// Concurrently: the scans are independent, each already hops to a background
-    /// queue, and awaiting them in a row stacked every delay. Order comes from the
-    /// list handed in, not from whichever finishes first.
+    /// Concurrently, since the scans are independent; order comes from the list
+    /// handed in, not from whichever finishes first.
     private func scanned(_ chosen: [InstalledApp]) async -> [UninstallGroup] {
         let work = self.work
         var done: [(Int, ScanResult)] = []
@@ -336,20 +315,15 @@ extension UninstallerEngine: UninstallerWork {}
 
     // MARK: - Removing
 
-    /// **Which apps are still up is the engine's question now, asked at the point
-    /// of removal.** This used to quit them here, from `group.running` — a flag
-    /// read when the review was built, so an app the person had since quit left
-    /// the button dead and an app started since then was never asked to quit at
-    /// all, and had its bundle moved out from under it.
+    /// Which apps are still up is the engine's question, asked at the point of
+    /// removal, not `group.running`, read when the review was built.
     func removeSelection() async {
-        // The model refuses a second run itself rather than trusting the page
-        // to have dimmed the button: `.disabled(model.busy)` is a redraw away,
-        // and the row menu reaches this by another road.
+        // Refused here, not trusted to the dimmed button: `.disabled` is a
+        // redraw away, and the row menu reaches this by another road.
         guard !closed else { return }
         guard !busy else { return }
         let paths = UninstallPlan.paths(groups, selectedLeftovers: selectedLeftovers)
-        // An empty batch would come back as "moved 0 items, 0 bytes" — a success
-        // sentence about a removal nobody asked for.
+        // An empty batch would report "moved 0 items" for nothing asked.
         guard !paths.isEmpty else { return }
         busy = true
         defer { busy = false }
@@ -359,10 +333,8 @@ extension UninstallerEngine: UninstallerWork {}
         // the review stays as it is.
         guard let result = await trashPaths(paths, quittingRunningApps: forceQuit) else { return }
 
-        // Nothing moved: an app in the batch was up, with no quit allowed or
-        // still up after the quit. The review stays, its `running` flags are replaced by what
-        // the engine has just read, and the offer the person needs — quit it, or,
-        // where no quit was allowed, tick the force quit — is the one already on this screen.
+        // Nothing moved: an app in the batch was up. The review stays with the
+        // engine's fresh `running` flags, and the offer to quit is already on it.
         guard result.stillRunning.isEmpty else {
             let up = Set(result.stillRunning)
             groups = groups.map {
@@ -381,11 +353,8 @@ extension UninstallerEngine: UninstallerWork {}
                                 "failed to trash: "
                                 + result.failed.map { Redact.path($0, leaf: .softwareName) }.joined(separator: ", "))
             resultBanner = UnStr.movedWithFailures(moved, result.failed.count)
-            // Leftovers that stayed put are the whole point of the module, so
-            // they get a screen of their own rather than a line to overlook.
-            //
-            // No fallback: `failed` is `failures.map(\.path)`, so every failed
-            // path already has its reason.
+            // Leftovers that stayed put get a screen of their own. Every failed
+            // path has its reason: `failed` is `failures.map(\.path)`.
             failures = result.failures
         } else {
             resultBanner = HelmBasket.movedToTrash(moved)
@@ -408,22 +377,17 @@ extension UninstallerEngine: UninstallerWork {}
         return await work.scanOrphans()
     }
 
-    /// Whether Helm offers to clean up after an app the person drags to the
-    /// Trash — **and whether it is in a position to.** Read from the engine rather
-    /// than from a store this page could reach on its own: the engine is what acts
-    /// on it, and one reader means the switch and the behaviour cannot disagree.
-    ///
-    /// It lives here rather than in two `@State`s, which is where it was: the page
-    /// kept one for its permission note and the Leftovers tab another for the
-    /// switch, and the fact is the module's.
+    /// Whether Helm offers to clean up after an app dragged to the Trash, and
+    /// whether it can. Read from the engine, which acts on it, so the switch and
+    /// the behaviour cannot disagree; held here, since the page's note and the
+    /// Leftovers tab's switch read one fact.
     func refreshTrashWatch() async {
         guard !closed else { return }
         trashWatch = work.trashWatch
     }
 
-    /// The press answers the switch at once — a `Toggle` would snap back under the
-    /// pointer otherwise — and the engine's own reading of what it is now doing
-    /// follows immediately.
+    /// The press answers the switch at once, or a `Toggle` snaps back under the
+    /// pointer; the engine's own reading follows.
     func setWatchingTrash(_ on: Bool) async {
         guard !closed else { return }
         trashWatch = on ? .on : .off
@@ -436,9 +400,8 @@ extension UninstallerEngine: UninstallerWork {}
     /// module has been stopped: nothing moved.
     ///
     /// `quittingRunningApps` is the person's answer to «Force quit and remove
-    /// anyway», and it travels with the batch because the engine is what asks
-    /// whether the app is *still* up. The alternative was what this module did:
-    /// quit here, from a flag the scan read minutes ago.
+    /// anyway», and travels with the batch because the engine asks whether the
+    /// app is still up.
     func trashPaths(_ paths: [String],
                            quittingRunningApps mayQuit: Bool = false) async -> UninstallResult? {
         guard !closed else { return nil }

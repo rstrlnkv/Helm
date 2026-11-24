@@ -10,8 +10,6 @@ import XCTest
 /// value it read. A save between that read and that write leaves the new value
 /// beside a MAC sealed over the old one, and the next background scan refuses
 /// the folder the person just chose. Shaped like `AutopilotSealRaceTests`.
-///
-/// **Past defect:** two writers over one value-and-MAC pair, with no order.
 final class DuplicatesSealRaceTests: XCTestCase {
 
     private let rounds = 5_000
@@ -28,10 +26,11 @@ final class DuplicatesSealRaceTests: XCTestCase {
         DuplicatesSettings.setFolder("/A", in: store, guardedBy: settings)
         let finished = DispatchSemaphore(value: 0)
         let rounds = self.rounds
+        let shared = Shared(store)
         Thread {
             for i in 0..<rounds {
                 DuplicatesSettings.setFolder(i.isMultiple(of: 2) ? "/B" : "/A",
-                                             in: store, guardedBy: settings)
+                                             in: shared.value, guardedBy: settings)
             }
             finished.signal()
         }.start()
@@ -51,14 +50,16 @@ final class DuplicatesSealRaceTests: XCTestCase {
         let (store, settings) = fresh(firstUse: true)
         let reference = SettingGuard(keys: SealKeyProbe(firstUse: false))
         var torn = 0
+        let folder = self.folder
+        let shared = Shared(store)
         for _ in 0..<rounds {
             store.set("/A", for: folder)
             store.set(nil, for: SettingGuard.macKey(for: folder))
             DispatchQueue.concurrentPerform(iterations: 2) { n in
                 if n == 0 {
-                    _ = DuplicatesSettings.stored(folder, in: store, guardedBy: settings)
+                    _ = DuplicatesSettings.stored(folder, in: shared.value, guardedBy: settings)
                 } else {
-                    DuplicatesSettings.setFolder("/B", in: store, guardedBy: settings)
+                    DuplicatesSettings.setFolder("/B", in: shared.value, guardedBy: settings)
                 }
             }
             let value = store.string(folder, default: "")

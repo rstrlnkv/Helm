@@ -127,21 +127,14 @@ enum ScStr {
 
     // MARK: - The palette, its menu and pop-overs
 
-    /// The tools, in the words of macOS's own Preview markup menu; the ellipse is
-    /// «Oval» there, and «Highlight» was its marker. «Pen» and «Marker» are the ones the system's PencilKit says:
-    /// keys `Pen` and `Marker` of `PencilKit.framework`'s `Localizable.loctable` (Pen: Stift, Bolígrafo, Stylo, ペン, Caneta, Перо, 笔;
-    /// Marker: Marker, Marcador, Marqueur, マーカー, Marcador, Маркер, 马克笔); no table of Preview, Markup or AnnotationKit has the word.
-    /// «Text» is the word of Preview's toolbar: key `TB_text` of `Preview.app`'s `Localizable.loctable` (Text, Text, Texto, Texte, テキスト,
-    /// Texto, Текст, 文本), the same in `AnnotationKit.framework`'s `AKToolbarViewController.loctable` under `Text`.
-    /// «Spotlight» is the stage light's word in `PhotosFormats.framework`'s `scenetaxonomy.loctable`, key `spotlight` (Spotlight, Spotlight,
-    /// Foco, Projecteur, スポットライト, Holofote, Прожектор, 聚光灯), the same in `IMCore.framework`'s `IMCoreLocalizable.loctable`.
-    /// «Steps» has no such word for numbered marks: the system tables say it of footsteps (`Intents.framework`'s `Localizable.loctable`, key
-    /// `com.apple.intents.WorkoutNameIdentifier.Steps`: Schritte, Pasos, Pas, ステップ, Passos, Шаги, 步数), so the German, Spanish,
-    /// Japanese, Portuguese and Russian are that table's word and the French (Étapes) and the Chinese (步骤) are Helm's own.
-    /// «Magnifier» is the lens Preview's markup calls «Loupe» in English: `AnnotationKit.framework`'s `AnnotationStrings.loctable`, key
-    /// `LOUPE_ANNOTATION_NAME` (Lupe, Lupa, Loupe, ルーペ, Lupa, Лупа, 放大镜; its pt_BR and pt_PT agree). «Emoji» is the first word of
-    /// AppKit's «Emoji & Symbols» (key `Emoji & Symbols` of `InputManager.loctable`: Emoji, Emojis, Emoji, 絵文字, Emoji, Эмодзи, 表情) in German,
-    /// French, Japanese, Portuguese and Russian; the Spanish (Emoji) and the Chinese (表情符号) are Helm's own.
+    /// The tools, in the words of macOS's own Preview markup menu; the ellipse is «Oval» there. «Pen» and «Marker» are
+    /// keys `Pen` and `Marker` of `PencilKit.framework`'s `Localizable.loctable`; no table of Preview, Markup or
+    /// AnnotationKit has the words. «Text» is key `TB_text` of `Preview.app`'s `Localizable.loctable`. «Spotlight» is key
+    /// `spotlight` of `PhotosFormats.framework`'s `scenetaxonomy.loctable`. «Steps» is the footsteps word of
+    /// `Intents.framework`'s `Localizable.loctable` (`com.apple.intents.WorkoutNameIdentifier.Steps`), as no table names
+    /// numbered marks; the French and the Chinese are Helm's own. «Magnifier» is the lens Preview's markup calls «Loupe»:
+    /// key `LOUPE_ANNOTATION_NAME` of `AnnotationKit.framework`'s `AnnotationStrings.loctable`. «Emoji» is the first word
+    /// of AppKit's «Emoji & Symbols» (`InputManager.loctable`); the Spanish and the Chinese are Helm's own.
     static func tool(_ tool: AnnotationTool) -> String {
         switch tool {
         case .arrow: L(.toolArrow)
@@ -160,12 +153,11 @@ enum ScStr {
         }
     }
 
-    /// The eraser's name, which is no tool's: the word of `PaperKit.framework`'s `Localizable.loctable`, key `Eraser` (Eraser, Radiergummi,
-    /// Borrador, Gomme, 消しゴム, Borracha, Ластик, 橡皮擦); `PencilKit.framework`'s table has «Object Eraser» and «Pixel Eraser» and no bare `Eraser`.
+    /// The eraser's name, which is no tool's: key `Eraser` of `PaperKit.framework`'s `Localizable.loctable`;
+    /// `PencilKit.framework`'s table has «Object Eraser» and «Pixel Eraser» and no bare `Eraser`.
     static var eraser: String { L(.eraser) }
 
-    /// The ruler's name: key `Ruler` of `PencilKit.framework`'s `Localizable.loctable` (Ruler, Lineal, Regla, Règle, 定規, Régua, Линейка, 标尺); `PaperKit.framework`'s table
-    /// has no such key. The Portuguese is the table's `pt_BR`, which `pt_PT` repeats.
+    /// The ruler's name: key `Ruler` of `PencilKit.framework`'s `Localizable.loctable`; the Portuguese is its `pt_BR`, which `pt_PT` repeats.
     static var ruler: String { L(.ruler) }
 
     /// The colours: the six Helm's palette already names, and «Black» is named in AppKit's colour panel table (`NSColorPanelExtras.loctable`), and both it and «White» in the system colour list (`Apple.clr/Apple.loctable`); in Japanese both are the system colour list's words (ブラック, ホワイト).
@@ -183,23 +175,19 @@ enum ScStr {
     }
 
     /// The pop-over's two rows, in macOS's own words: «Thickness» is key `Thickness` of Preview's `Localizable.loctable`
-    /// (Stärke, Grosor, Épaisseur, 太さ, Espessura, Толщина, 粗细) and «Opacity» key `Opacity` of `PaperKit.framework`'s
-    /// `Localizable.loctable` and of AppKit's `NSColorPanelExtras.loctable` (Deckkraft, Opacidad, Opacité, 不透明度,
-    /// Opacidade, Непрозрачность, 不透明度); Chinese is the tables' `zh_CN`, and their `pt_BR` and `pt_PT` agree.
+    /// and «Opacity» key `Opacity` of `PaperKit.framework`'s `Localizable.loctable` and of AppKit's
+    /// `NSColorPanelExtras.loctable`; Chinese is the tables' `zh_CN`.
     static var thicknessLabel: String { L(.thicknessLabel) }
     static var opacityLabel: String { L(.opacityLabel) }
     /// The ⋯ menu's item that opens the pop-over. No table has the phrase: it is the two words above joined by the
     /// language's «and», with the ellipsis of an item that opens something.
     static var thicknessAndOpacity: String { L(.thicknessAndOpacity) }
 
-    /// The colour wheel's name. No table has the phrase («All Colors» is in none of AppKit's colour loctables, nor
-    /// PaperKit's): it is «all» before the word the colour panel uses, `Colors` of `NSColorPanelExtras.loctable` (Farben,
-    /// Colores, Couleurs, カラー, Цвета, 颜色, Cores), so Japanese keeps the panel's カラー and Chinese its 颜色.
+    /// The colour wheel's name. No table has the phrase: it is «all» before the word the colour panel uses, `Colors` of
+    /// `NSColorPanelExtras.loctable`, so Japanese keeps the panel's カラー and Chinese its 颜色.
     static var allColours: String { L(.allColours) }
 
-    /// The eyedropper's name. Helm's own words: measured, no table macOS displays carries it; the word occurs only in accessibility
-    /// tables (the symbol's name in `AccessibilitySharedSupport`'s symbol-names table, and `DesktopServicesUI`'s `Localizable` table under
-    /// an accessibility key).
+    /// The eyedropper's name. Helm's own words: no table macOS displays carries it, only accessibility tables.
     static var eyedropper: String { L(.eyedropper) }
 
     /// The name of a thickness step, which the pop-over says beside its slider (the frame's «Средняя»).
@@ -219,7 +207,7 @@ enum ScStr {
     static var shapes: String { L(.shapes) }
     static var select: String { L(.select) }
     /// The ⋯ menu's Crop, a mode of the editor and no tool: Preview's inspector toolbar item, key `PVInspectorCrop` of its
-    /// `Localizable.loctable` (Обрезка, Zuschneiden, Recortar, Recadrer, 切り取り, Recortar, 裁剪), the noun as Select is.
+    /// `Localizable.loctable`, the noun as Select is.
     static var crop: String { L(.crop) }
     /// Preview's «Undo» and «Redo».
     static var undo: String { L(.undo) }
@@ -228,8 +216,8 @@ enum ScStr {
     static var save: String { L(.save) }
     /// The editor's checkmark: what Return does.
     static var done: String { HelmWord.done }
-    /// Copy Text: the word of `VisionKitCore.framework`'s `Localizable.loctable`, key `VK_COPY_TEXT_MENU_ITEM_TITLE`, which is Live Text's menu item
-    /// (Text kopieren, Copiar texto, Copier le texte, テキストをコピー, Copiar texto, Скопировать текст, 拷贝文本; its Portuguese is the `pt_PT` table's, since `pt_BR` capitalises it).
+    /// Copy Text: Live Text's menu item, key `VK_COPY_TEXT_MENU_ITEM_TITLE` of `VisionKitCore.framework`'s `Localizable.loctable`;
+    /// its Portuguese is the `pt_PT` table's, since `pt_BR` capitalises it.
     static var copyText: String { L(.copyText) }
     /// What it blurs is the four kinds in the hint: the name says less than the item does.
     static var blurPersonalText: String { L(.blurPersonalText) }
@@ -315,9 +303,8 @@ enum ScStr {
     }
 
     /// macOS's own file-name template, with its word already in it. The two `%@` are handed
-    /// back as they are: `ShotNames.base` fills them. The catalog's English is the pattern and the
-    /// seven translations are copied out of `screencaptureui`'s `Localizable.loctable` — the
-    /// template for the order of the parts and the word for the noun — at development time.
+    /// back as they are: `ShotNames.base` fills them. The translations are copied out of
+    /// `screencaptureui`'s `Localizable.loctable`, never read at run time.
     static var nameTemplate: String { L(.nameTemplate("%@", "%@")) }
 
     /// The word is Helm's language and the clock is the system's region, both

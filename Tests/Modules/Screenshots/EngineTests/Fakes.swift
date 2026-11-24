@@ -200,9 +200,24 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
     private var _written: [(url: URL, bytes: Int)] = []
     private var _readings: [String: ShotReading] = [:]
     private var _inode: UInt64 = 100
+    private var _shots: [WrittenShot] = []
+    private let _afterWrite = Locked<((URL) -> Void)?>(nil)
+    private let _afterClaim = Locked<((URL) -> Void)?>(nil)
     let moves: ShotMoves
+    /// A real folder behind the same journal (`FileShotWriter()`): nil keeps the names in memory. With a folder
+    /// behind it, the folder decides what is taken and what is refused (`taken` and `refuse` are not read) and only
+    /// then do `afterWrite` and `afterClaim` fire.
+    private let disk: ShotWriting?
 
-    init(moves: ShotMoves = ShotMoves()) { self.moves = moves }
+    init(moves: ShotMoves = ShotMoves(), disk: ShotWriting? = nil) { self.moves = moves; self.disk = disk }
+
+    /// Run with the url right after a successful write, before the session goes on: a moment for a test to change the disk in.
+    /// Fires only with `disk:` set.
+    var afterWrite: ((URL) -> Void)? { get { _afterWrite.value } set { _afterWrite.value = newValue } }
+    /// Run with the name right after a successful claim, before the session goes on. Fires only with `disk:` set.
+    var afterClaim: ((URL) -> Void)? { get { _afterClaim.value } set { _afterClaim.value = newValue } }
+    /// Every shot written, with the reading it was written with.
+    var shots: [WrittenShot] { lock.withLock { _shots } }
 
     /// The file left: its name is free and nothing is read at it. What a trash that succeeded does to the folder.
     func vanish(_ url: URL) {
@@ -212,10 +227,12 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
         }
     }
 
+    /// Names already in the folder. Read only without `disk:`.
     var taken: Set<String> {
         get { lock.withLock { _taken } }
         set { lock.withLock { _taken = newValue } }
     }
+    /// What the next writes are refused with. Read only without `disk:`.
     var refuse: WriteRefusal? {
         get { lock.withLock { _refuse } }
         set { lock.withLock { _refuse = newValue } }
@@ -223,7 +240,16 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
     var written: [(url: URL, bytes: Int)] { lock.withLock { _written } }
 
     func write(_ png: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
-        lock.withLock {
+        if let disk {
+            let outcome = disk.write(png, into: folder, base: base, pathExtension: pathExtension)
+            if case .written(let shot) = outcome {
+                lock.withLock { _written.append((shot.url, png.count)); _shots.append(shot) }
+                moves.note(.wrote(shot.url))
+                afterWrite?(shot.url)
+            }
+            return outcome
+        }
+        return lock.withLock {
             if let refusal = _refuse { return .refused(refusal) }
             for attempt in 0..<ShotNames.limit {
                 let name = ShotNames.candidate(base: base, pathExtension: pathExtension, attempt: attempt)
@@ -236,16 +262,26 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
                                           modifiedSeconds: 1_790_000_000, modifiedNanoseconds: Int64(_inode), isRegularFile: true)
                 _readings[url.path] = reading
                 moves.note(.wrote(url))
-                return .written(WrittenShot(url: url, reading: reading))
+                let shot = WrittenShot(url: url, reading: reading)
+                _shots.append(shot)
+                return .written(shot)
             }
             return .refused(.namesExhausted)
         }
     }
 
-    func reading(of url: URL) -> ShotReading? { lock.withLock { _readings[url.path] } }
+    func reading(of url: URL) -> ShotReading? {
+        if let disk { return disk.reading(of: url) }
+        return lock.withLock { _readings[url.path] }
+    }
 
     func claim(_ written: URL, as name: URL) -> Bool {
-        lock.withLock {
+        if let disk {
+            let claimed = disk.claim(written, as: name)
+            if claimed { moves.note(.claimed(written, as: name)); afterClaim?(name) }
+            return claimed
+        }
+        return lock.withLock {
             guard let reading = _readings[written.path],
                   _readings[name.path] == nil, !_taken.contains(name.lastPathComponent) else { return false }
             _readings[written.path] = nil
@@ -259,27 +295,37 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
 }
 
 /// The Trash in the two states the real one has: the file leaves, or the move throws what `FileManager` throws.
-/// Every path it was asked to move is recorded, a refused one too.
+/// Every path it was asked to move is recorded, a refused one too. The file leaves the in-memory `folder` of a
+/// `FakeWriter`, or is really moved into the `aside` folder (a Trash that is a folder); `moves` is the journal it
+/// notes into, the folder's own when none is given. `before` and `after` are a moment for a test to change the disk in.
 final class FakeTrash: ShotTrashing, @unchecked Sendable {
     private let lock = NSLock()
-    private let folder: FakeWriter
-    private var _failure: NSError?
+    private let folder: FakeWriter?
+    private let aside: URL?
+    private let moves: ShotMoves?
+    private let _failure = Locked<NSError?>(nil)
+    private let _before = Locked<((URL) -> Void)?>(nil)
+    private let _after = Locked<((URL) -> Void)?>(nil)
     private var _asked: [URL] = []
 
-    init(folder: FakeWriter) { self.folder = folder }
+    init(folder: FakeWriter? = nil, aside: URL? = nil, moves: ShotMoves? = nil) {
+        self.folder = folder; self.aside = aside; self.moves = moves
+    }
 
     /// The Cocoa error the next moves throw; nil and they succeed.
-    var failure: NSError? {
-        get { lock.withLock { _failure } }
-        set { lock.withLock { _failure = newValue } }
-    }
+    var failure: NSError? { get { _failure.value } set { _failure.value = newValue } }
+    var before: ((URL) -> Void)? { get { _before.value } set { _before.value = newValue } }
+    var after: ((URL) -> Void)? { get { _after.value } set { _after.value = newValue } }
     var asked: [URL] { lock.withLock { _asked } }
 
     func trash(_ url: URL) throws {
-        let failure = lock.withLock { _asked.append(url); return _failure }
+        lock.withLock { _asked.append(url) }
+        before?(url)
         if let failure { throw failure }
-        folder.vanish(url)
-        folder.moves.note(.trashed(url))
+        if let aside { try FileManager.default.moveItem(at: url, to: aside.appendingPathComponent(UUID().uuidString)) }
+        folder?.vanish(url)
+        (moves ?? folder?.moves)?.note(.trashed(url))
+        after?(url)
     }
 }
 
@@ -293,17 +339,22 @@ final class FakePasteboard: ShotPasteboard, @unchecked Sendable {
         set { lock.withLock { _accepts = newValue } }
     }
     var copies: [Data] { lock.withLock { _copies } }
+    /// Run after each single copy that was taken, before the call returns: a moment for a test to act in.
+    var afterCopy: ((Data) -> Void)? { get { _afterCopy.value } set { _afterCopy.value = newValue } }
+    private let _afterCopy = Locked<((Data) -> Void)?>(nil)
     /// Every list that was written, one entry a write: a group copied in one write is one entry here.
     private var _lists: [[Data]] = []
     var lists: [[Data]] { lock.withLock { _lists } }
     /// The text of each copy that was taken, in order.
     var texts: [String] { lock.withLock { _texts } }
     func copy(png: Data) -> PasteOutcome {
-        lock.withLock {
+        let outcome = lock.withLock { () -> PasteOutcome in
             guard _accepts else { return .refused }
             _copies.append(png)
             return .accepted
         }
+        if outcome == .accepted { afterCopy?(png) }
+        return outcome
     }
     func copy(pngs: [Data]) -> PasteOutcome {
         lock.withLock {
@@ -386,8 +437,11 @@ final class FakePreferences: CapturePreferences, @unchecked Sendable {
 /// Counts the shutters it was asked to play, and plays nothing.
 final class FakeShutter: ShutterPlaying, @unchecked Sendable {
     private let _plays = LockedCount()
+    private let onPlay: @Sendable () -> Void
+    /// `onPlay` runs at each play, after it is counted: what a test reads at the moment the shutter sounds.
+    init(onPlay: @escaping @Sendable () -> Void = {}) { self.onPlay = onPlay }
     var plays: Int { _plays.value }
-    func play() { _plays.bump() }
+    func play() { _plays.bump(); onPlay() }
 }
 
 /// Everything a capture needs, every port named at the construction — a

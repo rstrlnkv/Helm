@@ -106,7 +106,7 @@ final class AutopilotSealRaceTests: XCTestCase {
     /// A barrier on the engine's queue: `clearHistory` is `queue.sync` and the
     /// queue is serial, so the watch refresh the setter dispatched has finished.
     /// Without it the read this test holds might be that one.
-    private func settle(_ engine: AutopilotEngine) { engine.clearHistory() }
+    private func barrier(_ engine: AutopilotEngine) { engine.clearHistory() }
 
     /// Sets up an engine with one sealed, harmless rule set saved through Helm,
     /// and a read of it held mid-decision.
@@ -114,19 +114,17 @@ final class AutopilotSealRaceTests: XCTestCase {
         let helm = engine()
         helm.folders = [WatchedFolder(id: "kept", path: root.path, enabled: true,
                                       rules: [], depth: 1)]
-        settle(helm)
+        barrier(helm)
         backing.holdTheNextRead(of: payloadKey, for: window)
         return helm
     }
 
     // MARK: - The verdict
 
-    /// The defect. A read that began before the plist was edited finishes after
-    /// the read that saw the edit, and its verdict — "these are Helm's own
-    /// rules", true of the file it read and of nothing since — lands last.
-    ///
-    /// The status's `refusal` is what tells a person their rules were tampered with, so
-    /// the last write winning by accident is not a test problem.
+    /// A read that began before the plist was edited and finishes after the read
+    /// that saw the edit must not land its verdict last: "these are Helm's own
+    /// rules" is true of the file it read and of nothing since, and the status's
+    /// `refusal` is what tells a person their rules were tampered with.
     func testAReadThatBeganBeforeTheEditDoesNotGetTheLastWord() throws {
         let helm = try engineWithAHeldRead()
         let earlier = expectation(description: "the earlier read finished")

@@ -11,22 +11,17 @@ import HelmContract
 /// path is absolute, so no shell ever sees them and there is nothing to inject
 /// into — but `brew` parses them, and it reads a leading `-` as a flag wherever
 /// it finds one. `query` is typed by the user; `name` is a word parsed out of
-/// brew's own stdout. Verified against Homebrew 6.0.13: `brew search --formula
-/// -n` prints usage and never searches, while `brew search --formula -- -n`
-/// searches for `-n`.
+/// brew's own stdout. `brew search --formula -n` prints usage and never
+/// searches; `brew search --formula -- -n` searches for `-n`.
 ///
 /// **No gate of its own on a package reference.** The engine executes the name
 /// it is handed through the door, which is sound only while the model is the one
 /// caller, in-process.
 public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
-    /// This module's id, and the only place it is written down.
-    ///
-    /// It is the `module.homebrew.*` prefix of the settings saved for this
-    /// module (today only `module.homebrew.enabled`, which `ModuleHost` writes)
-    /// and the category its log lines file under.
-    /// `HomebrewDescriptor.id` is built from this rather than repeating it, so the
-    /// two spellings are one. **The string itself never changes** — it names
-    /// stored settings already on people's machines.
+    /// This module's id, and the only place it is written down: the
+    /// `module.homebrew.*` prefix of its settings and its log category;
+    /// `HomebrewDescriptor.id` is built from it. **The string never changes**:
+    /// it names stored settings already on people's machines.
     public static let moduleID = "homebrew"
 
     /// What `list`, `desc`, `uses`, `info` and `config` run with, and `doctor`
@@ -39,16 +34,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// disk into a download nobody asked for — and on a Mac with no network at
     /// all, into a failure to answer something brew already knew.
     ///
-    /// **This is about what a local read is allowed to do, not about speed.**
-    /// `brew list --versions --formula`, three runs each, was 0.35/0.23/0.24 s
-    /// without the variable against 0.26/0.23/0.23 s with it — indistinguishable
-    /// on a warm machine, because brew refreshes periodically rather than per
-    /// call, so those runs were not paying for a refresh either. A doc comment
-    /// here once carried a duration figure read off `helm.log`; the lines it
-    /// cited are `homebrew.outdated`, which is one of the two queries this constant
-    /// deliberately excludes — the figure belongs on the deadline comment in
-    /// `SystemPorts.swift` instead. No timing claim belongs here that has not
-    /// been measured on the queries this actually covers.
+    /// **This is about what a local read is allowed to do, not about speed**:
+    /// brew refreshes periodically rather than per call, so on a warm machine
+    /// the variable changes no timing.
     ///
     /// **Not `outdated`, and not `search`.** Those two are answers *about* the
     /// catalogue: refusing the refresh there would let «Updates: 0» stand over a
@@ -63,8 +51,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// stream when `HOMEBREW_COLOR` is set — in the environment or in a
     /// `brew.env` file it loads itself, which beats the environment — and a
     /// coloured line starts with an escape, so no finding is found. The variable
-    /// is measured to override the colour (byte-for-byte the plain output).
-    /// It is this query's alone: `list`, `search` and `desc` print the same bytes
+    /// overrides the colour. It is this query's alone: `list`, `search` and `desc` print the same bytes
     /// coloured or not, and `config` echoes the variables it sees, so it would
     /// put one of Helm's own into the text a person copies into a bug report.
     static let doctorEnvironment = queryEnvironment.merging(["HOMEBREW_NO_COLOR": "1"]) { _, new in new }
@@ -86,22 +73,15 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// probe passing, calls a `sudo` that has no terminal and no askpass to ask
     /// on: docs.brew.sh/Installation documents the variable as the way to turn
     /// its `sudo` calls off. The probe passes on any Mac with a `NOPASSWD` rule
-    /// in `/etc/sudoers.d` — Keep Awake writes one — which the round that
-    /// designed this measured; what the script does after that was not.
-    /// Everything the script needs root for, Helm did in the one dialog before it.
+    /// in `/etc/sudoers.d`, and Keep Awake writes one. Everything the script needs root for, Helm did in the one dialog before it.
     static let installerEnvironment = ["NONINTERACTIVE": "1", "HOMEBREW_NO_SUDO": "1"]
 
-    /// The label every way `installBrew` can end carries, and the marker
-    /// compares against nothing but itself. It is English because it is a log
-    /// line and a state's name, not a sentence: the page words this operation in
-    /// the person's language by comparing against this constant
+    /// The label every way `installBrew` can end carries. It is English because
+    /// it is a log line and a state's name, not a sentence: the page words this
+    /// operation in the person's language by comparing against this constant
     /// (`HbStr.operationName`, `HbStr.interruptedAtQuit`). Every other label is
-    /// shown as written where it is made — a phrase naming the brew run, without
-    /// the word `brew`: usually its arguments (`upgrade wget`, `uninstall
-    /// periphery`), and for the run that upgrades everything `upgrade all`,
-    /// which is not its arguments (`brew upgrade`, `upgradeAll`) — and is
-    /// English in every language: it is not a command line, and it is not
-    /// translated.
+    /// shown as written where it is made, a phrase naming the brew run without
+    /// the word `brew` (`upgrade wget`, `upgrade all`), untranslated.
     public static let installBrewLabel = "install Homebrew"
 
     /// Seconds between two looks at whether Apple's tools have arrived. The wait
@@ -127,16 +107,12 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     private let lock = NSLock()
     private var busy = false
-    /// Started by `activate()`, cancelled by `deactivate()` — the one piece of
-    /// unstructured work this engine starts on its own. Cancelling it there
-    /// (rather than leaving it to `deinit`) matters on its own account, because
-    /// a module switched off mid-fetch should not go on reaching the network on
-    /// its behalf. What the task may capture is spelled out at the capture
-    /// itself in `activate()`.
+    /// Started by `activate()`, cancelled by `deactivate()`, not left to
+    /// `deinit`: a module switched off mid-fetch must stop reaching the network.
+    /// What the task may capture is spelled out in `activate()`.
     private var popularityRefresh: Task<Void, Never>?
-    /// The running operation's process, for `stop` — and the retention that
-    /// keeps it addressable at all: the runner's local reference used to be
-    /// the only one.
+    /// The running operation's process, for `stop`, and the one reference that
+    /// keeps it addressable.
     private var current: RunningProcess?
     /// Whether the person asked for the end that is coming, so a signal death
     /// they requested is reported as `.stopped` and one they did not stays an
@@ -154,11 +130,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// launches a child for a module that is off (`beginBusy`). Under `lock`.
     private var off = false
     /// What each package was last measured to occupy, keyed `f:name@version`.
-    ///
-    /// Under the same `lock` as every other field here, read and written in
-    /// `size(name:isCask:version:)` and emptied in `concludeOp` — never held
-    /// across the walk itself, which happens outside the lock because it is the
-    /// part that takes time.
+    /// Under `lock`, emptied in `concludeOp`; the lock is never held across the
+    /// walk itself, the part that takes time.
     private var sizes: [String: Int] = [:]
     /// The wait for Apple's Command Line Tools, as its token: the tick that is
     /// armed, cancelled by releasing it. Under `lock`, and **whoever sets it to
@@ -200,40 +173,28 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func activate() {
-        // Where brew is, filed before anything else so a model built just before
-        // this can have its first frame right (`HomebrewNews.brew`). Seen on bench
-        // recordings over a fake; in the app the news reaches the model through
-        // the model's own task and that order is unproved. The locator and not
-        // `status()`: that one takes the quit marker.
+        // Where brew is, filed first (ARCHITECTURE.md § The model). The
+        // locator and not `status()`: that one takes the quit marker.
         news.say(.brew(path: locator.brewPath().flatMap { $0.isEmpty ? nil : $0 }),
                  slot: HomebrewSlot.brewFound.rawValue)
         // Not in `init`, because `init` runs for every module the host knows
         // about and `activate` only for the ones that are switched on: a module
         // the person has turned off never reaches the network for readings its
-        // search box will not draw. Activation itself runs at launch, so this
-        // does fire on an ordinary launch — the daily gate inside the store is
-        // what keeps that from being a fetch every time.
+        // search box will not draw. The store's daily gate keeps a launch from
+        // being a fetch every time.
         //
-        // **`[popularity]` and nothing else.** The capture list holds the port
-        // by value, so the task points at no part of this engine and `deinit`
-        // can cancel it. Add a `self` capture — even a weak one, which the body
-        // would then hold strongly for as long as it runs — and `deinit` can no
-        // longer run while the task is alive, so the cancel below it becomes
-        // unreachable (ARCHITECTURE.md § State that outlives a page and ends with its module).
+        // **`[popularity]` and nothing else.** The task points at no part of
+        // this engine, so `deinit` can cancel it. A `self` capture, even a weak
+        // one, keeps `deinit` from running while the task is alive
+        // (ARCHITECTURE.md § State that outlives a page and ends with its module).
         //
-        // **Started under the lock, not before it.** Creating the task outside
-        // and assigning it inside leaves a window in which the fetch is running
-        // and the field is still nil, so a `deactivate()` landing in it cancels
-        // nothing and the task goes on reaching the network for a module that
-        // has been switched off. Nothing suspends between these two lines —
-        // `Task { }` schedules and returns — and the body takes the *store's*
-        // lock, never this one, so holding this one across the creation cannot
-        // deadlock.
+        // **Started under the lock.** Created outside it, the fetch runs while
+        // the field is still nil, and a `deactivate()` landing there cancels
+        // nothing. `Task { }` does not suspend and the body takes the store's
+        // lock, never this one, so this cannot deadlock.
         lock.lock()
         off = false
-        // Cancel before assigning: two activations without a deactivation
-        // between them would otherwise orphan the first fetch with nothing left
-        // holding it to cancel.
+        // Cancel before assigning, or a second activation orphans the first fetch.
         let orphan = popularityRefresh
         popularityRefresh = Task { [popularity] in await popularity.refreshIfDue() }
         lock.unlock()
@@ -246,7 +207,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// The backstop for the routes that do not go through `deactivate()`.
-    /// ARCHITECTURE.md § "An observer outlives the thing it points at". The wait
+    /// ARCHITECTURE.md § An observer outlives the thing it points at. The wait
     /// token is dropped here and no event is sent: the block holds `self` weakly,
     /// so the engine is what the token was never keeping alive, and an engine
     /// that is going has nobody to tell.
@@ -264,21 +225,18 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// A module switched off shuts the gate (`off`) for **every** kind of
-    /// operation, so nothing starts after it, and ends the **install of
-    /// Homebrew** as stopped, wherever it is — **whether or not there is a wait
-    /// to take**. The flag is set under the lock for any busy install, and every
-    /// step that would ask Apple, raise the administrator dialog or launch
-    /// `install.sh` reads it first (`stoppedBeforeLaunch`), so a switch-off that
-    /// lands in the request, between a tick's verdict and the dialog, or in a
-    /// reading finds a check waiting for it. The wait, when there is one, is
-    /// released here, so no later tick can raise a password dialog from a module
-    /// that is off; a child that already runs is terminated, as Stop does.
+    /// operation and ends the **install of Homebrew** as stopped, wherever it
+    /// is, **whether or not there is a wait to take**. Every step that would ask
+    /// Apple, raise the administrator dialog or launch `install.sh` reads the
+    /// flag first (`stoppedBeforeLaunch`), so a switch-off landing between any
+    /// two of them finds a check waiting. The wait is released here, so no later
+    /// tick can raise a password dialog for a module that is off; a running
+    /// child is terminated, as Stop does.
     ///
-    /// **A package operation or a doctor fix is not terminated**: it finishes on
-    /// its own, `busy` stays true and the marker stays until its exit. The exit
-    /// reaches `concludeOp` because `runOp`'s `onExit` holds the engine strongly
-    /// — a weak hold lost it with the engine the host drops — so the marker is
-    /// cleared when the child is gone, and not before.
+    /// **A package operation or a doctor fix is not terminated**
+    /// (ARCHITECTURE.md § The model). Its exit reaches `concludeOp`
+    /// because `runOp`'s `onExit` holds the engine strongly; a weak hold would
+    /// lose it with the engine the host drops, and the marker would stay.
     private func endTheOperation() {
         lock.lock()
         off = true
@@ -304,8 +262,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         handle?.terminate()
     }
 
-    /// Taken under the lock like every other reading of the field, and
-    /// cancelled outside it.
+    /// Taken under the lock, cancelled outside it.
     private func cancelTheRefresh() {
         lock.lock()
         let task = popularityRefresh
@@ -318,10 +275,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     func status() -> BrewStatus {
         let path = locator.brewPath()
-        // Not while an operation runs: the marker belongs to the launch after
-        // this one, and the page refreshes its status freely.
-        // Any engine's, not only this one's: a child of the engine this one
-        // replaced may still be running, and its marker is not a report yet.
+        // Not while any engine's operation runs: its marker belongs to the
+        // launch after this one, and the page refreshes its status freely.
         let interrupted = gate.takeMarkerIfFree(marker)
         if let interrupted {
             // The label names a package; the log carries counts and outcomes.
@@ -332,14 +287,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         return BrewStatus(installed: path != nil, brewPath: path, interruptedOp: interrupted)
     }
 
-    /// Whether the runner's deadline passed — with the outcome named in the
-    /// log, because "brew is hung" shown as an empty list is a lie about the
-    /// machine (`ATimedOutQueryIsANamedRefusalTests`). The line says "keeping
-    /// the last answer" only for the queries whose caller keeps one — the
-    /// installed, outdated, configuration and descriptions readings: the model
-    /// keeps what it held, because `load` writes only the keys found. The others
-    /// (`info`, `doctor`, `search` and the dependents) say "no answer", because
-    /// nothing is kept and the log is triaged for what happened.
+    /// Whether the runner's deadline passed, with the outcome named in the
+    /// log: "brew is hung" shown as an empty list is a lie about the machine
+    /// (`ATimedOutQueryIsANamedRefusalTests`). "Keeping the last answer" only
+    /// for the queries whose caller keeps one (`outcome(of:)`); the others say
+    /// "no answer".
     private func timedOut(_ status: Int32, query: String) -> Bool {
         guard status == HelmProcess.timedOutStatus else { return false }
         HelmLog.shared.warn(Self.moduleID, "\(query) timed out — \(Self.outcome(of: query))")
@@ -355,10 +307,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// The tool's answer, or nil past the runner's deadline.
     ///
     /// **Only the deadline**, because for `search` a non-zero exit is an
-    /// answer: measured against Homebrew 6.0.18, `brew search --formula --
-    /// <no match>` exits 1 with empty stdout, which is how that subcommand
-    /// spells "nothing found". `describe` reads it the same way for its own
-    /// reason — a non-zero exit there is one name it cannot resolve, and the
+    /// answer: `brew search --formula -- <no match>` exits 1 with empty stdout.
+    /// For `describe` a non-zero exit is one name it cannot resolve, and the
     /// batch splits rather than gives up. Every other query wants `refused`.
     private func completed(_ result: (status: Int32, stdout: String),
                            query: String) -> String? {
@@ -369,18 +319,13 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// non-zero exit.
     ///
     /// The exit code is the only thing left that knows: the sentence explaining
-    /// a refusal goes to stderr and `HelmProcess` sends stderr to `nullDevice`.
-    /// So a broken tap, a Ruby error, another brew holding the lock — a state
-    /// this module reaches by itself, since a child brew survives the app —
-    /// arrived here as empty stdout and was parsed into an empty list, which the
-    /// page draws as a fact about the machine: "No packages installed." over a
-    /// full Cellar, «Updates: 0» over thirty held-back updates.
+    /// a refusal goes to stderr, which `HelmProcess` sends to `nullDevice`.
+    /// A broken tap, a Ruby error or another brew holding the lock (a child brew
+    /// survives the app) is empty stdout, which parsed as an empty list would
+    /// read "No packages installed." over a full Cellar.
     ///
-    /// Measured on this Mac before trusting the code (Homebrew 6.0.18, three
-    /// consecutive readings): `brew list --versions` and `brew outdated
-    /// --json=v2` both exit **0** whatever they find — including with five
-    /// packages outdated — so for these two a non-zero exit is never the
-    /// answer's shape.
+    /// `brew list --versions` and `brew outdated --json=v2` exit **0** whatever
+    /// they find, so for these two a non-zero exit is never the answer's shape.
     private func refused(_ status: Int32, query: String) -> Bool {
         if timedOut(status, query: query) { return true }
         guard status != 0 else { return false }
@@ -399,16 +344,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// whole installed set is bulk work, and an operation that is not named in
     /// the memory trail cannot be blamed by it.
     ///
-    /// This used to close with two things that are no longer true, and both
-    /// were reasons not to trust the reading. `MemoryReclaim.afterHeavyWork` was
-    /// measured returning 0 MB in nine probes and removed on 2026-07-31, so
-    /// there is no reclaim for a phase to be missing; and `HelmLog.memory` is
-    /// not silent below 8 MB for the first reading of a label, which it always
-    /// prints, though every later one still prints only on a change of 8 MB or
-    /// more (`FootprintTracker.report`; ARCHITECTURE.md § The memory trail).
-    ///
-    /// nil when brew did not answer in time — never an empty list, which reads
-    /// as a clean machine.
+    /// nil when there is no brew, or brew refused or did not answer in time:
+    /// never an empty list, which reads as a clean machine.
     func listInstalled() -> [BrewPackage]? {
         guard let brew = locator.brewPath() else {
             // nil, not an empty list: a person reads "no packages" as a clean
@@ -417,9 +354,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             return nil
         }
         let packages = HelmActivity.phase("homebrew.listInstalled") { () -> [BrewPackage]? in
-            // Both halves or neither: a refusal of the cask half alone kept the
-            // formulae and every installed app vanished from the page, which is
-            // worse than nothing because it looks complete.
+            // Both halves or neither: formulae without casks looks complete
+            // while every installed app is missing.
             guard let f = answered(runner.run(brew, ["list", "--versions", "--formula"],
                                               env: Self.queryEnvironment),
                                    query: "list formulae"),
@@ -439,8 +375,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     func outdated() -> [OutdatedPackage]? {
         guard let brew = locator.brewPath() else { return nil }
         let parsed = HelmActivity.phase("homebrew.outdated") { () -> [OutdatedPackage]? in
-            // `runData`, because the parser wants bytes: routing them through a
-            // String held a second copy of the whole payload for the parse.
+            // `runData`: the parser wants bytes, and a String would be a second
+            // copy of the whole payload.
             let result = runner.runData(brew, ["outdated", "--json=v2"],
                                            env: updateBeforeChecking.isOn ? [:] : Self.queryEnvironment)
             guard !refused(result.status, query: "outdated") else { return nil }
@@ -460,34 +396,24 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// One `brew desc` call per batch of names, a batch being no more than one
-    /// argv carries (`HelmProcess.maxArguments`): a list that fits is one call,
-    /// as before. A search that matched everything handed over 8742 formulae
-    /// (`brew search --formula -- яяйчнл | wc -l`, Homebrew 7.0.14, 2026-11-16),
-    /// and `NSTask` raises on that many arguments, which `describe` would read
-    /// as brew refusing the batch.
+    /// argv carries (`HelmProcess.maxArguments`). A search that matches
+    /// everything hands over thousands of formulae, and `NSTask` raises on that
+    /// many arguments, which `describe` would read as brew refusing the batch.
     ///
     /// The batches stop after the first one that showed a property of the tool
-    /// rather than of a name: one that timed out, or one refused wholesale (a
-    /// call past its allowance was refused). Each further batch would cost a full deadline or up to
-    /// `n + 1` launches to learn the same thing.
+    /// rather than of a name: one that timed out, or one refused wholesale. Each
+    /// further batch would cost a full deadline or up to `n + 1` launches to
+    /// learn the same thing.
     ///
     /// They stop too when `stillWanted` says no, asked before each batch after
     /// the first: a search typed over has nobody waiting for its descriptions,
     /// and the newer search queues behind this call. The batch in flight
     /// finishes; a launched `brew` is not interrupted.
     ///
-    /// Within a batch, the batch does not fail as a unit.
-    ///
-    /// `brew desc` validates every name before it prints anything, so one name
-    /// it can no longer resolve — installed from a tap since removed, renamed
-    /// upstream, still on disk and still reported by `brew list --versions` —
-    /// makes the whole call exit non-zero with **empty** stdout. The status was
-    /// thrown away, so every row on the page lost its description and nothing
-    /// said why.
-    ///
-    /// A failure splits the batch and asks again. A single bad name in fifty
-    /// costs about a dozen calls instead of fifty, and a good batch is still
-    /// exactly one call.
+    /// Within a batch, one name brew can no longer resolve (from a tap since
+    /// removed, renamed upstream) makes `brew desc` exit non-zero with **empty**
+    /// stdout. A failure splits the batch and asks again: a single bad name in
+    /// fifty costs about a dozen calls, and a good batch is still one call.
     func descriptions(names: [String], isCask: Bool,
                       stillWanted: () -> Bool = { true }) -> [String: String] {
         guard let brew = locator.brewPath(), !names.isEmpty else { return [:] }
@@ -506,11 +432,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                     break
                 }
                 let batch = Array(names[start..<min(start + perCall, names.count)])
-                // Bounded per batch: the split is a bisection, and a batch
-                // refused wholesale walks to a leaf per name
-                // (`DescriptionBudget`). One budget over all batches would be
-                // `n + 1` for `n` names while the optimistic calls alone are
-                // one per batch.
+                // Bounded per batch (`DescriptionBudget`): a batch refused
+                // wholesale bisects to a leaf per name.
                 let budget = DescriptionBudget(forBatchOf: batch.count)
                 found.merge(describe(batch, isCask: isCask, brew: brew, budget: budget)) { a, _ in a }
                 if budget.exhausted {
@@ -562,10 +485,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         guard let brew = locator.brewPath() else { return nil }
         let hits = HelmActivity.phase("homebrew.search") { () -> [SearchHit]? in
-            // One call per kind: brew no longer labels a flat result list, and
-            // the kind decides whether the install is `brew install` or `brew
-            // install --cask`. Ids are already namespaced f:/c:, so a name that
-            // exists as both stays two distinguishable rows.
+            // One call per kind: brew does not label a flat result list, and
+            // the kind decides `brew install` or `brew install --cask`. Ids are
+            // namespaced f:/c:, so a name that is both stays two rows.
             guard let formulae = completed(runner.run(brew, ["search", "--formula", "--", query], env: [:]),
                                            query: "search formulae"),
                   let casks = completed(runner.run(brew, ["search", "--cask", "--", query], env: [:]),
@@ -574,13 +496,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             return BrewSearchParser.parse(formulae, isCask: false)
                  + BrewSearchParser.parse(casks, isCask: true)
         }
-        // **After the ranking, not before it** — hence the `defer`. The reading
-        // below is this process's first call to `readings()` on most Macs, and
-        // that call is the 2.84 MiB parse `FilePopularityStore.stored`
-        // measures. Taken one line earlier, the figure was read *before* the
-        // largest allocation this search makes, so the search that paid for it
-        // looked free and the next one inherited the whole of it — which is
-        // the mis-attribution (ARCHITECTURE.md § The memory trail) arriving from the other side.
+        // **After the ranking**, hence the `defer`: the first `readings()` is
+        // the largest allocation a search makes (`FilePopularityStore.stored`),
+        // and read before it the next search would be blamed for it
+        // (ARCHITECTURE.md § The memory trail).
         defer { HelmLog.shared.memory("homebrew.search") }
         // Behind the guard: a search brew refused has nothing to rank, and
         // there is no reason for it to pay for a reading.
@@ -596,36 +515,26 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     /// Which installed packages still need `name`.
     ///
-    /// `brew uninstall` is an irreversible deletion, and until
-    /// now it was also the only one that would not say what it takes with it:
-    /// removing `openssl@3` on this Mac breaks eight installed formulae, and the
-    /// dialog asked the same mild question it asks for a leaf.
+    /// `brew uninstall` is an irreversible deletion, and the dialog says what
+    /// it takes with it: removing `openssl@3` can break several formulae.
     ///
     /// Casks are answered without running anything: `brew uses` takes a formula,
-    /// and handed a cask name it exits 0 with a warning on stderr that the
-    /// runner drops — a confident empty list bought for half a second.
+    /// and handed a cask name it exits 0 with a warning on stderr the runner
+    /// drops.
     ///
-    /// **An empty list is not the same sentence as "nothing needs it".** The
-    /// exit-0-with-empty-stdout above is not a cask's alone: an unresolvable
-    /// *formula* name answers identically — `brew uses --installed --
-    /// no-such-formula-xyzzy` on Homebrew 7.0.1 exits 0, prints nothing on
-    /// stdout and warns on stderr, which `HelmProcess` drops (measured
-    /// 2026-09-13). That class is reachable here: a formula installed from a tap
-    /// since removed no longer resolves, which is the case `descriptions`
-    /// already documents. So the empty branch means "brew named nobody", which
-    /// covers "brew could not look" — nothing downstream may turn it into a
+    /// **An empty list is not the same sentence as "nothing needs it".** An
+    /// unresolvable *formula* name (from a tap since removed) also exits 0 with
+    /// empty stdout. So the empty branch means "brew named nobody", which
+    /// covers "brew could not look"; nothing downstream may turn it into a
     /// reassurance.
     ///
-    /// nil when brew refused to answer, and when there is no brew to ask. The
-    /// dialog must not promise "nothing depends on this" on the strength of a
-    /// query that never ran, and a `brew` that is not on disk is the purest case
-    /// of one — `FSBrewLocator` re-reads at every call, so it can go while this
-    /// window is open.
+    /// nil when brew refused to answer, and when there is no brew to ask
+    /// (`FSBrewLocator` re-reads at every call, so it can go while the dialog is
+    /// open): the dialog must not promise "nothing depends on this" on a query
+    /// that never ran.
     ///
-    /// **No scoped phase, on purpose**, unlike the queries that hold a
-    /// `homebrew.*` phase: this is one `brew uses` over one name, and the
-    /// registry is phase-level and must not be told that a single sub-second tool
-    /// run is bulk work.
+    /// **No scoped phase, on purpose**: one `brew uses` over one name is not
+    /// bulk work.
     func dependents(name: String, isCask: Bool) -> [String]? {
         // Known rather than measured, which is why this one stays `[]`.
         guard !isCask else { return [] }
@@ -635,9 +544,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.warn(Self.moduleID, "brew is not installed — cannot ask what depends on a package")
             return nil
         }
-        // `--` for the reason every other value in this file has one: brew reads
-        // a leading `-` as a flag wherever it finds it, and this name was parsed
-        // out of brew's own stdout.
+        // `--`: see the type's doc comment.
         let result = runner.run(brew, ["uses", "--installed", "--", name],
                                 env: Self.queryEnvironment)
         guard let out = answered(result, query: "dependents") else { return nil }
@@ -650,9 +557,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// cached: the answer is about a Cellar and a catalogue that both change
     /// under the app.
     ///
-    /// `runData`, for the reason `outdated` uses it: the payload is JSON and
-    /// the parser wants bytes, so routing it through a `String` would hold a
-    /// second copy of the whole document for the parse.
+    /// `runData`, for the reason `outdated` uses it.
     ///
     /// nil when brew refused to answer, when there is no brew to ask, and
     /// when the document itself is not one `BrewInfoParser` recognises — a
@@ -663,22 +568,16 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.warn(Self.moduleID, "brew is not installed — cannot ask about a package")
             return nil
         }
-        // `--` for the reason every other value in this file has one: `name`
-        // was parsed out of brew's own stdout or typed by the person.
+        // `--`: see the type's doc comment.
         let result = runner.runData(brew,
                                     ["info", "--json=v2", isCask ? "--cask" : "--formula", "--", name],
                                     env: Self.queryEnvironment)
         guard !refused(result.status, query: "info") else { return nil }
         guard let parsed = BrewInfoParser.parse(result.stdout, isCask: isCask) else {
-            // **Not "keeping the last answer".** That is this file's wording for
-            // the queries whose caller does keep — `outdated` two hundred lines
-            // up says it truthfully, because a full Cellar drawn as "no
-            // packages" is the failure there. This one is the other kind:
-            // `HomebrewViewModel.refillInfo` clears `info` before every ask and
-            // assigns this nil over the cleared field, so nothing is kept and
-            // the second tier is simply absent. The dev channel is triaged off
-            // this log, and a line that names the wrong outcome sends the
-            // reading after a stale answer that does not exist.
+            // **Not "keeping the last answer"**: `HomebrewViewModel.refillInfo`
+            // clears `info` before every ask, so nothing is kept, and a line
+            // naming the wrong outcome sends triage after an answer that does
+            // not exist.
             HelmLog.shared.warn(Self.moduleID,
                                 "info: brew answered a shape this build cannot read "
                                 + "— nothing is drawn for this package")
@@ -690,26 +589,20 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// How much disk one installed package occupies — walked, because nothing
     /// tells us.
     ///
-    /// `brew info --json=v2` carries no size in either direction (measured
-    /// against Homebrew 7.0.1, 2026-09-15: `bottle.files.*.size` is null and
+    /// `brew info --json=v2` carries no size (`bottle.files.*.size` is null,
     /// `installed[]` has no size field), so the figure is a walk of the
-    /// package's own Cellar directory and nothing else — `PackageWeight`, off
-    /// the cooperative pool at `measure(_:version:)`, the door that calls this.
+    /// package's own Cellar directory: `PackageWeight`, off the cooperative
+    /// pool at `measure(_:version:)`, the door that calls this.
     ///
-    /// **Remembered per `name@version`, for this engine's life.** The walk is
-    /// the whole cost, and its answer cannot change while that version is the
-    /// one on disk. The version is in the key rather than beside it because
-    /// that is the fact which makes a kept figure honest: an upgrade replaces
-    /// the keg that was measured, and the ask that follows it carries the new
-    /// number, so the old entry is missed rather than trusted. Every entry is
-    /// dropped when any operation finishes as well (`forgetSizes`) — `brew
-    /// reinstall` and a `brew doctor` fix rewrite a keg without moving its
-    /// version string, and `upgrade all` moves packages this key knows nothing
-    /// about.
+    /// **Remembered per `name@version`, for this engine's life.** An upgrade
+    /// replaces the keg, and the next ask carries the new version, so the old
+    /// entry is missed rather than trusted. Every entry is dropped when any
+    /// operation finishes (`forgetSizes`): `brew reinstall` and a doctor fix
+    /// rewrite a keg without moving its version, and `upgrade all` moves
+    /// packages this key knows nothing about.
     ///
-    /// **nil is never remembered.** «Nothing was measured» is a live fact about
-    /// a directory — a refusal that may be lifted, a keg that may arrive — and
-    /// a remembered nil would keep the row absent for the life of the app.
+    /// **nil is never remembered**: a refusal may be lifted and a keg may
+    /// arrive, and a remembered nil would keep the row absent for good.
     func size(name: String, isCask: Bool, version: String) -> Int? {
         let key = BrewKey.of(name: name, isCask: isCask) + "@" + version
         lock.lock(); let remembered = sizes[key]; lock.unlock()
@@ -728,41 +621,26 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     /// What `brew doctor` found, parsed from its diagnostics stream.
     ///
-    /// **The exit status is not the gate here.** Measured on this Mac,
-    /// 2026-09-15, Homebrew 7.0.1: `brew doctor` exits 1 with two real issues
-    /// on the machine — it exits non-zero whenever it has something to say, so
-    /// `refused`/`answered` (which read a non-zero exit as brew declining to
-    /// answer) would report a clean machine exactly when the machine is not
-    /// clean. `completed` is the right helper for the same reason it is right
-    /// for `search`: only the deadline disqualifies the reading, and a
-    /// non-zero exit is itself part of the answer.
+    /// **The exit status is not the gate here.** `brew doctor` exits non-zero
+    /// whenever it has something to say, so `refused` would report a clean
+    /// machine exactly when it is not. `completed`, as for `search`: only the
+    /// deadline disqualifies the reading.
     ///
-    /// `runCapturingDiagnostics`, not `run` — `brew doctor` prints its whole
-    /// answer on standard error and nothing on standard output (see that
-    /// method's doc comment for the measurement), so `run` here would come
-    /// back with one empty byte and this would answer nil on every call.
+    /// `runCapturingDiagnostics`, not `run`: `brew doctor` prints its whole
+    /// answer on standard error, so `run` would answer nil on every call.
     ///
-    /// The gate that actually matters is `DoctorParser.parse`: nil for empty
-    /// input (the tool said nothing, which this module must not read as a
-    /// clean machine), an empty array for real output naming no issue — **and
-    /// only with exit 0.** `cmd/doctor.rb` exits 1 when a check returned a
-    /// finding, and also when it fails on its own account (`ofail` sets the
-    /// same status with no check having found anything). So exit 1 with no
-    /// finding parsed is either brew saying it found something that this build
-    /// could not read or brew refusing the question; that is nil (the page's
-    /// «Homebrew did not answer» reading), never a clean Mac.
+    /// The gate that matters is `DoctorParser.parse`: nil for empty input, an
+    /// empty array for real output naming no issue, **and that only with exit
+    /// 0.** `cmd/doctor.rb` exits 1 both on a finding and when it fails on its
+    /// own account (`ofail`), so exit 1 with no finding parsed is nil (the
+    /// page's «Homebrew did not answer»), never a clean Mac.
     ///
     /// **No fix is filled in here, and this query reads nothing but `brew
-    /// doctor`.** `DoctorFixCandidate.judging` is what turns a body into a
-    /// candidate, and it needs an installed list — a second reading, on plain
-    /// `run`. Taking it here would make this query call `run` as well as
-    /// `runCapturingDiagnostics`, and `ADoctorReadingIsNotGatedOnExitStatusTests`
-    /// watches that boundary for a reason worth keeping: `run` answers `(0, "")`
-    /// for `brew doctor`, so a query that slipped onto it would go on answering
-    /// nil for ever with nothing anywhere to say why. The candidate is built on
-    /// the page's side, where the installed list already is, and judged again by
-    /// `runDoctorFix` against a list read at the press — which is the judgement
-    /// that decides whether anything runs.
+    /// doctor`.** A candidate needs an installed list, a second reading on
+    /// plain `run`, and `ADoctorReadingIsNotGatedOnExitStatusTests` keeps this
+    /// query off `run`. The candidate is built on the page's side and judged
+    /// again by `runDoctorFix` against a list read at the press, which decides
+    /// whether anything runs.
     func doctor() -> [DoctorIssue]? {
         guard let brew = locator.brewPath() else {
             HelmLog.shared.warn(Self.moduleID, "brew is not installed — cannot run doctor")
@@ -783,15 +661,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// What `brew config` says about this Homebrew and this Mac — the version,
     /// the prefix, the checkout, the compiler, the Command Line Tools.
     ///
-    /// **`run`, and `answered`, and both for measured reasons.** `brew config`
-    /// is the opposite of `brew doctor` on every count that decides these two
-    /// choices — measured on this Mac, Homebrew 7.0.1, 2026-09-15: 555 bytes of
-    /// standard output, 0 of standard error, exit 0. So `run` is the right
-    /// runner (`runCapturingDiagnostics` would fold a tap's deprecation warning
-    /// into the document, and a warning's own colon parses as a configuration
-    /// key), and `answered` is the right gate (a non-zero exit is brew
-    /// declining rather than part of the answer, which is what made `completed`
-    /// right for `doctor`).
+    /// **`run` and `answered`**: `brew config` answers on standard output with
+    /// exit 0. `runCapturingDiagnostics` would fold a tap's deprecation warning
+    /// into the document, where its colon parses as a key; a non-zero exit is
+    /// brew declining, not part of the answer.
     ///
     /// nil when brew refused, when there is no brew to ask, and when the
     /// document holds no `key: value` line at all — `BrewConfigParser.parse`'s
@@ -805,9 +678,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         let result = runner.run(brew, ["config"], env: Self.queryEnvironment)
         guard let out = answered(result, query: "config") else { return nil }
         guard let lines = BrewConfigParser.parse(out) else {
-            // Named, for the reason `info`'s nil is named: a shape this build
-            // cannot read is not the same sentence as brew having nothing to
-            // say, and the dev channel is triaged off this log.
+            // Named, as `info`'s nil is: an unreadable shape is not brew
+            // having nothing to say.
             HelmLog.shared.warn(Self.moduleID,
                                 "config: brew printed nothing this build reads as `key: value` "
                                 + "— no configuration is drawn")
@@ -819,13 +691,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - Long operations
 
     /// One phase for all the long operations, opened and closed by the busy
-    /// gate itself. An operation ends in a callback, so no scope can hold its
-    /// phase — but a `begin` balanced by hand is what the scope rule exists to
-    /// remove, so the balance rides the one this module already keeps: the
-    /// gate, whose release `OneOperationAtATimeTests` guards on every path. An
-    /// unclosed phase here is a wedged module, which is a failure four tests
-    /// already catch. The verb is in the `[homebrew]` info line beside it; the
-    /// label carries no package name, because the trail is the log's.
+    /// gate (ARCHITECTURE.md § Operations). The balance rides the gate,
+    /// whose release `OneOperationAtATimeTests` guards on every path. The label
+    /// carries no package name.
     private static let operationPhase = "homebrew.operation"
 
     private func beginBusy(installingBrew: Bool = false) -> Bool {
@@ -865,10 +733,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// this one's clear), the gate opened, the state event sent. Returns
     /// whether the end was asked for, so the caller can word its log line.
     ///
-    /// `code` is nil when no child ever ran — a stop that landed before the
-    /// launch. There is no exit code for a process that was never started, and
-    /// inventing one would put a number on the page's failure that names
-    /// nothing.
+    /// `code` is nil when no child ever ran (a stop before the launch): an
+    /// invented exit code would name nothing on the page.
     ///
     /// `reason` names a failure the engine knows more about than an exit code;
     /// it is dropped for a success, and **a Stop the person pressed wins over
@@ -896,20 +762,14 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// wait's token and concludes the operation itself, below.
     ///
     /// **The press is recorded even when there is nothing to terminate yet.**
-    /// This used to `guard busy, let handle = current`, and `current` is set
-    /// after the child has been launched: everything before that point is a
-    /// window in which the page shows a live Stop button and the press falls
-    /// into a bare `return` — no state, no log, and `stopRequested` never set,
-    /// so nothing later could tell that the person had asked. The launch reads
-    /// the flag instead (`stoppedBeforeLaunch`).
+    /// `current` is set only after the launch, while the page already shows a
+    /// live Stop; the launch reads the flag (`stoppedBeforeLaunch`).
     func stop() {
         lock.lock()
         guard busy else { lock.unlock(); return }
         stopRequested = true
         let handle = current
-        // While the operation is waiting for Apple's tools there is no child
-        // and no exit coming: taking the token is what ends the wait, and the
-        // one who takes it ends the operation.
+        // Taking the wait's token ends the wait; its taker ends the operation.
         let wait = toolsWait
         toolsWait = nil
         lock.unlock()
@@ -921,15 +781,13 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// (`endTheOperation`) — arrived before this operation had a child, in which
     /// case the operation ends here and the launch must not happen.
     ///
-    /// For a package operation that window is a spawn, measured in
-    /// milliseconds. For `installBrew` there are several: the request for
-    /// Apple's tools, each reading of them, and above all **the administrator
-    /// password dialog**: `runAdmin` blocks this thread for as long as a person
-    /// takes to find their password, and the module used to go on to download
-    /// and run the Homebrew installer after a Stop pressed while it was up.
+    /// For a package operation that window is a spawn. For `installBrew` there
+    /// are several: the request for Apple's tools, each reading of them, and
+    /// above all **the administrator password dialog**, which blocks this
+    /// thread for as long as a person takes to find their password.
     ///
-    /// Nothing was launched, so no `onExit` is coming to conclude the operation
-    /// — it is concluded here, or the gate stays shut for the life of the app.
+    /// No `onExit` is coming, so the operation is concluded here, or the gate
+    /// stays shut for the life of the app.
     private func stoppedBeforeLaunch(label: String) -> Bool {
         guard wasStopped else { return false }
         HelmLog.shared.info(Self.moduleID, "stopped before the child was started")
@@ -946,11 +804,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     /// `verb` is what happened; `subject` is the package it happened to, kept
     /// apart from the label so the log can carry one and redact the other.
-    ///
-    /// Every operation this module runs comes through here, and until this was
-    /// written none of them left a trace: two package operations that changed
-    /// the machine — an install and an uninstall — produced 0 lines in
-    /// helm.log, which is the file the dev channel is triaged against.
+    /// Every operation that changes the machine comes through here and leaves
+    /// a line in the log.
     private func runOp(verb: String, subject: String? = nil,
                        label: String, launch: String, args: [String],
                        env: [String: String] = HomebrewEngine.operationEnvironment) {
@@ -1004,17 +859,14 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         current = handle
         let stopped = stopRequested
         lock.unlock()
-        // The other half of the window `stoppedBeforeLaunch` closes: a press
-        // that landed after that check and before this line found `current`
-        // still nil, so it terminated nothing. It has a child to reach now.
+        // The other half of `stoppedBeforeLaunch`'s window: a press after that
+        // check found `current` nil and terminated nothing.
         if stopped { handle.terminate() }
     }
 
     /// brew can vanish between `status()` and the press: Homebrew's own
-    /// uninstaller in a terminal, with Helm's window sitting open on the list
-    /// brew answered before it went. This used to be a bare `return` — no
-    /// `opState`, no log, a button that did nothing visibly forever. A refusal
-    /// is an outcome and it is named.
+    /// uninstaller in a terminal, with Helm's window open on the old list. A
+    /// refusal is an outcome and it is named, never a silent button.
     private func brewOrRefuse(verb: String, label: String) -> String? {
         if let brew = locator.brewPath() { return brew }
         HelmLog.shared.warn(Self.moduleID, "\(verb) refused: brew is no longer installed")
@@ -1058,37 +910,24 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// operation goes through.
     ///
     /// **The UI's judgement decides what to draw; this one decides what to
-    /// run.** `DoctorFixCandidate.judging(_:installed:)` runs on the page's
-    /// side against the installed list the page was holding when the issue was
-    /// drawn, and that reading is older than the press by however long somebody
-    /// spent reading the issue — a minute, a day with the window left open. In
-    /// between, a terminal uninstalls `periphery`, or Helm's own Installed tab
-    /// does, and the argv the page still carries names a package that is not on
-    /// this Mac any more. So the list is read **now**, one line before the act,
-    /// and `DoctorFix.judge` is asked again; nothing that arrives through the door
-    /// is trusted to have been judged already, including an argv no page ever
-    /// drew.
+    /// run.** The page judged against the list it held when the issue was
+    /// drawn, which may be a day old; the package may be gone since. So the
+    /// list is read **now**, one line before the act, and `DoctorFix.judge` is
+    /// asked again; nothing arriving through the door is trusted to have been
+    /// judged, including an argv no page ever drew.
     ///
-    /// A Cellar that could not be read is not a Cellar the name is in:
-    /// `listInstalled` answers nil for a refused or timed-out `brew list`, and
-    /// that refuses the run rather than falling through to an empty list, which
-    /// would refuse `uninstall` by luck and admit `cleanup` by mistake.
+    /// A Cellar that could not be read is not a Cellar the name is in: a nil
+    /// `listInstalled` refuses the run by reading, not by luck.
     ///
-    /// Every operand goes behind `--`, for the reason the type's own doc
-    /// comment gives: `brew` reads a leading `-` as a flag wherever it finds
-    /// one, and these operands are words parsed out of brew's own prose.
-    /// `["cleanup"]` has no operand and gets no `--`.
+    /// Every operand goes behind `--` (the type's doc comment).
     func runDoctorFix(_ argv: [String]) {
-        // The command itself, which is what the console's pill and the marker
-        // both show — "uninstall periphery", the same shape the other labels
-        // have. `brew` is not in it, which is the shape `DoctorFix` judges.
+        // The command without `brew`, the shape the other labels have and the
+        // one `DoctorFix` judges.
         let label = argv.joined(separator: " ")
         guard let brew = brewOrRefuse(verb: "doctor fix", label: label) else { return }
         guard let names = listInstalled()?.map(\.name),
               DoctorFix.judge(argv, installed: names).kind == .runnable else {
-            // Named, never silent — and the argv is redacted for the same
-            // reason every other package name in this log is: it is a
-            // description of somebody's machine.
+            // Named, never silent; the argv is redacted like every package name.
             HelmLog.shared.warn(Self.moduleID,
                                 "doctor fix refused: \(Redact.pkg(label)) is not runnable "
                                 + "against the Cellar as it is now")
@@ -1097,7 +936,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         }
         let operands = Array(argv.dropFirst())
         runOp(verb: "doctor fix", subject: operands.first, label: label, launch: brew,
-              args: operands.isEmpty ? argv : [argv[0], "--"] + operands)
+              args: [argv[0], "--"] + operands)
     }
 
     /// Install Homebrew itself, in three parts that only ever run in this order:
@@ -1106,15 +945,12 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// dialog), then Homebrew's own `install.sh` non-interactively.
     ///
     /// **Why the tools come first.** `install.sh` installs them itself only when
-    /// `sudo` can ask for a ticket on a terminal, and Helm runs it with neither,
-    /// so without this the script stops at its `git` check on a Mac that has
-    /// never had them. And the password is asked *after* the tools rather than
-    /// before: someone who cancels Apple's download has spent no password, and
-    /// someone who waited a quarter of an hour has not had `/opt/homebrew` made
-    /// for nothing.
+    /// `sudo` can ask on a terminal, and Helm runs it with neither. The password
+    /// is asked *after* the tools: someone who cancels Apple's download has
+    /// spent no password, and `/opt/homebrew` is not made for nothing.
     ///
-    /// Arrives through `perform(_:)`, on the concurrent global queue — the dialog blocks this thread
-    /// for as long as a person takes to find their password.
+    /// Arrives through `perform(_:)`, on the concurrent global queue: the
+    /// dialog blocks this thread.
     func installBrew() {
         // One label, read by every way this operation can end — including the
         // marker, which is compared against nothing but itself.
@@ -1135,8 +971,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // request: a Stop or a switch-off that landed in `xcode-select -p` or in
         // the hop to the main thread must not be answered with Apple's window.
         guard !stoppedBeforeLaunch(label: label) else { return }
-        // Apple's window may already be open — the person pressed Install
-        // Homebrew, closed Settings, came back, and pressed it again. A second
+        // Apple's window may already be open from an earlier press; a second
         // request would ask for a second window.
         if !tools.installerIsRunning() {
             guard !stoppedBeforeLaunch(label: label) else { return }
@@ -1190,13 +1025,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// One look at whether Apple's tools are here, on the ticker's queue.
     ///
     /// **The tools port is not called under `lock`**: `installerIsRunning` hops
-    /// to the main thread, and the main thread may be waiting for that lock. (The
-    /// ticker's `schedule` is called under it, below: it only queues the next
-    /// tick, and the token it returns is stored in the same hold.) And the
-    /// installer is read *before* `git`: read the other way round, Apple's
-    /// window could finish installing between the two looks and read as closed
-    /// with no tools — a failure named over a success. Read this way, "not
-    /// running" cannot precede a `git` that is not yet there.
+    /// to the main thread, which may be waiting for that lock. (`schedule` is
+    /// called under it: it only queues the next tick.) The installer is read
+    /// *before* `git`: the other way round, Apple's window could finish between
+    /// the two looks and read as closed with no tools, a failure over a success.
     private func tick(_ label: String, generation: Int) {
         let running = tools.installerIsRunning()
         let present = tools.isExecutable(CommandLineTools.git)
@@ -1229,9 +1061,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             toolsArrived(label)
         case .closedWithoutTools:
             // The tick looks only at the fixed `git`, to spend no process per
-            // tick; a verdict that names the tools missing is given on the
-            // reading the press uses — `xcode-select -p` too — or the page says
-            // «not installed» over a Mac the press itself would go on from.
+            // tick; "missing" is said only on the press's own reading
+            // (`xcode-select -p` too).
             if toolsPresent() {
                 toolsArrived(label)
             } else {
@@ -1250,27 +1081,20 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// tools port nor `runAdmin` is called under `lock` (`tick` says why for the
     /// tools; the dialog parks this thread for as long as a person takes).
     private func prepareAndRun(_ label: String) {
-        // A Stop that landed between the wait's end and here has nothing left to
-        // take, and the dialog is not a thing to raise after it.
+        // No dialog after a Stop that landed since the wait ended.
         guard !stoppedBeforeLaunch(label: label) else { return }
-        // The reading one line before the dialog, not the one that ended the
-        // wait: the person may have removed them since, and a password is not
-        // spent on a `mkdir` for an installer that will stop at its `git` check.
+        // Read again one line before the dialog: no password is spent on a
+        // `mkdir` for an installer that will stop at its `git` check.
         guard toolsPresent() else {
             failNoTools(label)
             return
         }
-        // The other read of the flag, after the reading and not before it: on a
-        // Mac whose tools are Xcode's that reading is a process with a deadline
-        // of ten seconds, and a Stop or a switch-off landing inside it is read
-        // by nothing else before the dialog.
+        // Read again after the reading: with Xcode's tools it is a process with
+        // a ten-second deadline, and a Stop inside it is read nowhere else.
         guard !stoppedBeforeLaunch(label: label) else { return }
-        // Absolute paths, because this string is resolved by a root shell that
-        // inherits our `PATH` — and Helm's environment comes from the launchd
-        // GUI session, which any process running as the user can rewrite
-        // (`launchctl setenv PATH …`). A bare `mkdir` is then whichever `mkdir`
-        // that process planted. Every other privileged string in the app
-        // already names its tools in full; see `SudoersRule.installCommand`.
+        // Absolute paths: a root shell resolves this with our `PATH`, which any
+        // process running as the user can rewrite (`launchctl setenv PATH …`).
+        // See `SudoersRule.installCommand`.
         let prep = "/bin/mkdir -p /opt/homebrew && /usr/sbin/chown -R '\(user)':admin /opt/homebrew"
         switch privileged.runAdmin(prep) {
         case .done:
@@ -1289,51 +1113,36 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // evaluates the empty string, exits 0, and the module reports a
         // successful install of nothing.
         //
-        // **`|| rc=$?`, not `; rc=$?`.** `set -e` ends the shell at the first
-        // command that fails, and an installer that exits non-zero is a command
-        // that failed: with `; rc=$?` the shell would end right there, and the
-        // two lines after the installer — the one that reads the note a Stop
-        // left, and `exit $rc` — would never run. (The downloaded script is
-        // removed either way, by the EXIT trap below.) `||` is what stops
-        // `set -e` firing, so those lines run and the installer's own code still
-        // reaches `concludeOp` unchanged. `rc=0` ahead of it because the
-        // variable is otherwise unset when the installer succeeds, and a bare
-        // `exit $rc` on an unset variable is `exit`, which answers with the
-        // status of whatever ran last.
+        // **`|| rc=$?`, not `; rc=$?`.** Under `set -e` a failing installer
+        // would end the shell before the Stop note is read and `exit $rc` runs;
+        // `||` keeps `set -e` from firing, so the installer's own code reaches
+        // `concludeOp`. `rc=0` first, because `exit` on an unset `rc` answers
+        // the status of whatever ran last.
         //
         // **Stop ends the installer and takes the script with it, at any moment
-        // of the wrapper's life.** Stop's handle is this `bash -c`, and it is
-        // launched with the reach `.wholeGroup`: one TERM to the wrapper's
-        // process group, so the download or the installer — and whatever the
-        // installer started — is signalled by the Swift side in the same act as
-        // the wrapper. The wrapper therefore starts nothing in the background
-        // and carries no job control: an earlier shape put the download and the
-        // installer behind `&` and read `$!` on the next command, and a TERM
-        // between the two found no child to address (curl or the installer
-        // outlived the Stop and the script stayed behind) — and `set -m` printed
-        // `[1]+ Done …` lines into the page's console.
+        // of the wrapper's life.** The wrapper is launched with `.wholeGroup`:
+        // one TERM reaches its whole process group, the download or the
+        // installer and whatever it started. So the wrapper starts nothing in
+        // the background and has no job control: a `&` child read through `$!`
+        // leaves a window where a TERM finds nothing to address, and `set -m`
+        // prints `[1]+ Done …` into the console.
         //
-        // What is left for the shell is the tail. A trap does not run until the
-        // foreground command has ended, and it ends by the same TERM, so `exit
-        // 143` runs a moment after; the `rm` sits in an EXIT trap set before the
-        // file exists, which also covers a download that fails under `set -e`.
-        // **`mktemp` runs with TERM ignored**, because it is the one command
-        // whose result is a name: a TERM that killed it after it made the file
-        // and before the assignment took would leave a file nobody can name.
-        // The Stop is not lost — the first trap only notes it, and the line
-        // after the swap reads the note.
+        // What is left for the shell is the tail. A trap runs once the
+        // foreground command has ended by the same TERM, so `exit 143` follows;
+        // the `rm` sits in an EXIT trap set before the file exists, which also
+        // covers a download that fails under `set -e`. **`mktemp` runs with TERM
+        // ignored**, because its result is a name: killed after making the file
+        // and before the assignment, it leaves a file nobody can name. The Stop
+        // is noted by the first trap and read on the line after.
         //
-        // **The cleanup ignores TERM.** The `rm` in the EXIT trap is a member of
-        // the group a Stop signals, and the Stop signals it again 0.1 s and 0.4 s
-        // later: a TERM that landed on the `rm` ended it and left the downloaded
-        // installer in the temporary folder. `trap "" TERM` inside the trap is
-        // inherited by the `rm` it starts.
+        // **The cleanup ignores TERM.** The `rm` is in the group a Stop signals,
+        // and a Stop signals more than once; `trap "" TERM` inside the trap is
+        // inherited by the `rm`, so the installer does not stay in the
+        // temporary folder.
         //
         // **A Stop that arrives after the installer has finished is not a Stop.**
-        // Once the download is done the trap only notes the press, and the
-        // wrapper ends with the installer's own status; the 143 is kept for a
-        // press that did stop something — the installer ended by it, or one that
-        // came before the installer started. An installer that answered 0 has
+        // The wrapper then ends with the installer's own status; 143 is kept
+        // for a press that did stop something. An installer that answered 0 has
         // installed Homebrew, and the page must say so.
         let installer = "set -e; script=; stopped=; "
                       + "trap 'trap \"\" TERM; /bin/rm -f \"$script\"' EXIT; "
@@ -1345,9 +1154,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                       + "rc=0; /bin/bash \"$script\" || rc=$?; "
                       + "[ \"$rc\" -eq 0 ] || [ -z \"$stopped\" ] || exit 143; "
                       + "exit $rc"
-        // The dialog above blocked this thread for as long as the person took
-        // to find their password, with a live Stop button on the page the whole
-        // time; `startChild` is where a press that landed during it is read.
+        // A Stop pressed while the dialog was up is read in `startChild`.
         startChild(label: label, launch: "/bin/bash", args: ["-c", installer],
                    env: Self.installerEnvironment, reach: .wholeGroup) { code in
             let stopped = self.concludeOp(code: code, label: label,
@@ -1363,13 +1170,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// were said.
     ///
     /// **Registered before this returns, in the one hold of the lock that replays
-    /// what was last said** (`EngineNews.stream`): reading the state and then
-    /// subscribing leaves a window an emit falls into, and subscribing before the
-    /// replay hands over an older state after a newer one. Synchronous and not
-    /// actor-isolated, so the model takes it in its own synchronous `init`, before
-    /// its first suspension; the subscriber is counted when this returns. Ending
-    /// the iteration removes the subscriber. Unbounded on purpose: a dropped `.done` is a page
-    /// that never leaves «running»; the console's bound is the model's.
+    /// what was last said** (`EngineNews.stream`), so no emit falls between the
+    /// replay and the subscription. Synchronous, so the model takes it in its
+    /// own `init`. Ending the iteration removes the subscriber. Unbounded on
+    /// purpose: a dropped `.done` is a page that never leaves «running»; the
+    /// console's bound is the model's.
     public func stream() -> AsyncStream<HomebrewNews> { news.stream() }
 
     public var subscriberCount: Int { news.subscriberCount }
@@ -1390,33 +1195,22 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         await offTheCooperativePool { self.descriptions(names: names, isCask: isCask, stillWanted: stillWanted) }
     }
     public func find(_ query: String) async -> [SearchHit]? { await offTheCooperativePool { self.search(query) } }
-    /// Which installed packages still need a given one — asked once, at the
-    /// moment the uninstall is put to the person, and never cached: the answer
-    /// is about a Cellar that changes under the app.
+    /// Which installed packages still need a given one. Never cached: the
+    /// Cellar changes under the app.
     public func readDependents(of package: PackageRef) async -> [String]? {
         await offTheCooperativePool { self.dependents(name: package.name, isCask: package.isCask) }
     }
-    /// What `brew info --json=v2` knows about one package — asked once, when
-    /// the person opens its detail, and never cached: the answer is about a
-    /// Cellar and a catalogue that both change under the app.
+    /// What `brew info --json=v2` knows about one package. Never cached.
     public func readInfo(about package: PackageRef) async -> PackageInfo? {
         await offTheCooperativePool { self.info(name: package.name, isCask: package.isCask) }
     }
     /// How much disk one installed package occupies, with the version the figure
     /// is remembered against.
     ///
-    /// `PackageRef` and a version, rather than `PackageRef` alone, because **the
-    /// answer is remembered against the version it was measured for**. The engine
-    /// keeps one figure per `name@version` for its own life; the version is the
-    /// half that makes a kept figure honest, since an upgrade replaces the keg the
-    /// walk measured. The page already holds it — it is `PackageInfo`'s
-    /// `installedVersion`, the very row this figure is drawn beside — so nothing
-    /// has to be read twice to name it. Never empty: a package with no installed
+    /// **The answer is remembered against the version it was measured for**
+    /// (`size(name:isCask:version:)`). The page passes `PackageInfo`'s
+    /// `installedVersion`; never empty, since a package with no installed
     /// version has no keg to walk.
-    ///
-    /// Off the pool for the plainest reason: this one *is* the filesystem work —
-    /// a walk of one package's Cellar directory, which parks whatever thread it
-    /// runs on for as long as that directory takes.
     public func measure(_ package: PackageRef, version: String) async -> Int? {
         await offTheCooperativePool {
             self.size(name: package.name, isCask: package.isCask, version: version)
@@ -1428,15 +1222,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// Every press, and returns at once; what happens arrives on `stream()`.
     ///
     /// **On the concurrent global queue, not the cooperative pool and not a
-    /// serial queue.** A press from the page runs on main, and `runOp` writes the
-    /// marker file and launches a child — so the hop is inside, and no caller can
-    /// forget it. `installBrew` blocks its thread on the administrator's
-    /// password dialog for as long as a person takes, and Stop has to overtake
-    /// it (`AStopBeforeTheChildExistsTests` in
-    /// `StoppingTheInstallAndItsAdminDialogTests.swift`): a serial queue would
-    /// park the Stop behind the dialog, and a pool thread parked there is one the rest of the
-    /// app's `async` work needs. `.userInitiated` is `offTheCooperativePool`'s
-    /// own default.
+    /// serial queue**, and the hop is inside so no caller can forget it
+    /// (ARCHITECTURE.md § The model). Stop must overtake the
+    /// password dialog (`AStopBeforeTheChildExistsTests`); a pool thread parked
+    /// there is one the app's `async` work needs.
     public func perform(_ act: HomebrewAct) {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             switch act {

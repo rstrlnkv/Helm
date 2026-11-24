@@ -13,60 +13,15 @@ import XCTest
 /// «nothing happened» — no undo recorded, no input source switched, nothing
 /// counted, a warning logged and the word dropped.
 ///
-/// The one implementation does not keep it. `SynthesisTyping.perform` posts
-/// `plan.backspaces` real Delete keystrokes first and only then builds the
-/// events for `plan.insert`; the `guard let down = CGEvent(...) else { return
-/// false }` inside that second loop is reached with the deletes already gone to
-/// the HID tap. `CGEvent(keyboardEventSource:virtualKey:keyDown:)` returns nil
-/// on its own — it is a failable allocation against a resource the app does not
-/// own — so the reachable outcome is: the word is deleted, nothing is typed in
-/// its place, `perform` answers `false`, and the module records the whole thing
-/// as «the app refused, nothing to see».
+/// `SynthesisTyping.perform` keeps it: every `CGEvent` for the plan is built
+/// before any is posted (`CGEvent(keyboardEventSource:virtualKey:keyDown:)` is
+/// a failable allocation), so `false` means the field is untouched.
 ///
-/// **The first test in this file is the one to satisfy first, and the order is
-/// not a preference.** Tests two, three and four are about the engine trusting
-/// `false` too little — it forgets a word the field still holds, and drops an
-/// undo the app never carried out. Each is repaired by *keeping* state across a
-/// refusal. Do that while `perform` can still half-apply and the kept state is
-/// a blind edit measured against text that is no longer there: the gesture then
-/// sends seven backspaces into the middle of somebody's sentence, which is
-/// strictly worse than the defect being fixed. Make the port all-or-nothing —
-/// build every `CGEvent` before posting any of them, as `SystemCommandKeys.press` in the same
-/// file already does — and only then let the engine believe `false`.
+/// The tests below hold the engine to believing that: it keeps a word the
+/// field still holds, and an undo the app never carried out. Kept state across
+/// a refusal is safe only because the port cannot half-apply; otherwise it
+/// would be a blind edit against text that is no longer there.
 final class APartialRetypeIsWorseThanNoneTests: XCTestCase {
-
-    // MARK: - The port
-
-    /// The shape the contract requires: nothing is posted until the whole plan
-    /// can be posted.
-    ///
-    /// Read off the source because the failure is unreachable from a test — it
-    /// needs `CGEvent(...)` to return nil, which is the system declining an
-    /// allocation — and because posting real Delete keystrokes to check would
-    /// type into whatever window is in front of the test runner. What is
-    /// checkable is the arrangement: a `return false` after the first `.post(`
-    /// is the half-applied plan, spelled out.
-    func testTheReplacementPostsNothingItCannotFinish() throws {
-        let path = "Sources/Modules/Layout/Engine/SystemPorts.swift"
-        let source = SwiftSource.code(try RepoSource.text(of: path))
-        let bodies = SwiftSource.bodiesNamed("perform", in: source)
-        XCTAssertEqual(bodies.count, 1,
-                       "\(path) no longer holds exactly one perform(_:) — this check has "
-                       + "lost its subject and is not guarding anything")
-        let body = try XCTUnwrap(bodies.first)
-        let firstPost = try XCTUnwrap(
-            body.range(of: ".post("),
-            "perform(_:) posts nothing at all — the subject of this check is gone")
-
-        let afterTheFirstPost = String(body[firstPost.upperBound...])
-        XCTAssertFalse(afterTheFirstPost.contains("return false"), """
-            perform(_:) can answer «refused» with keystrokes already posted. The \
-            deletes for plan.backspaces go to the HID tap in the first loop; the \
-            second loop builds the events for plan.insert and returns false if \
-            CGEvent hands back nil. The person watched a word disappear and \
-            nothing arrive, and every caller was told nothing happened.
-            """)
-    }
 
     // MARK: - The engine, once the port can be believed
 
@@ -75,13 +30,10 @@ final class APartialRetypeIsWorseThanNoneTests: XCTestCase {
     ///
     /// What a person does: types `ghbdtn `, sees it stay `ghbdtn ` because the
     /// app declined the synthesised events, and presses the gesture key to fix
-    /// it by hand. Nothing happens — not once, not ever, for that word. They
-    /// have to delete it and type it again.
+    /// it by hand. The word must still be there to fix.
     ///
-    /// `convert` refuses through `perform`, and `perform` calls
-    /// `forgetTheWord()` whether or not anything was typed. Forgetting is right
-    /// when the field changed under the module; it is not right when the module
-    /// is the one that failed to change it.
+    /// Forgetting is right when the field changed under the module; it is not
+    /// right when the module is the one that failed to change it.
     func testAWordTheAppRefusedIsStillTheGesturesToConvert() {
         let world = World()
         let engine = world.engine()
@@ -109,10 +61,9 @@ final class APartialRetypeIsWorseThanNoneTests: XCTestCase {
 
     /// A refused undo, and the row that says what happened.
     ///
-    /// `undoLast` sets `undo = nil` before it types, and `perform` clears
-    /// `lastEvent` on its way through — so a refusal loses both. The page then
-    /// shows no last conversion at all, over a field that is still holding the
-    /// conversion, and «Never this word» goes with it.
+    /// A refusal keeps both the undo and `lastEvent`, or the page shows no last
+    /// conversion over a field still holding it, and «Never this word» goes
+    /// with it.
     func testARefusedUndoLeavesTheChangeOnThePage() async {
         let world = World()
         let engine = world.engine()
@@ -177,13 +128,14 @@ final class APartialRetypeIsWorseThanNoneTests: XCTestCase {
 /// which is the only question these four tests have.
 private final class World {
     let field = Field()
-    let typing: FieldTyping
-    let tap: FieldTap
-    let sources = FieldSources()
+    let typing = FakeTyping()
+    let tap = FakeTap()
+    let sources = FakeSources(follows: false)
 
     init() {
-        typing = FieldTyping(field: field)
-        tap = FieldTap(field: field)
+        let field = field
+        typing.apply = { field.apply($0) }
+        tap.received = { field.receive($0) }
     }
 
     func engine() -> LayoutEngine {
@@ -191,7 +143,7 @@ private final class World {
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FieldContext(), activation: FakeActivation())
+            secure: FakeSecure(), activation: FakeActivation())
         engine.activate()
         return engine
     }
@@ -218,62 +170,3 @@ private final class Field: @unchecked Sendable {
     }
 }
 
-private final class FieldTyping: TypingPort, @unchecked Sendable {
-    private let field: Field
-    var performed: [SwitchPlan] = []
-    /// One flag, because this suite's subject is the *believed* contract: the
-    /// port either did the whole plan or none of it, and `false` means none.
-    /// The half-applied state the real port can reach is the first test's
-    /// subject and is deliberately not representable here — a fake that could
-    /// half-apply would make tests two to four assert something the engine has
-    /// no way to know.
-    var succeeds = true
-
-    init(field: Field) { self.field = field }
-
-    func perform(_ plan: SwitchPlan) -> Bool {
-        performed.append(plan)
-        guard succeeds else { return false }
-        field.apply(plan)
-        return true
-    }
-}
-
-/// The keystroke reaches the app and then the tap reports it, which is the
-/// order `SwitchPlan` is written for — the ending is «the space, the return, the
-/// full stop, when the app has already received it».
-private final class FieldTap: KeyTapPort, @unchecked Sendable {
-    private let field: Field
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-
-    init(field: Field) { self.field = field }
-
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        handler = onEvent
-        return true
-    }
-    func stop() { handler = nil }
-
-    func type(_ text: String) {
-        for character in text {
-            field.receive(character)
-            handler?(.character(character))
-        }
-    }
-    func space() { field.receive(" "); handler?(.space) }
-}
-
-private final class FieldContext: SecureContextPort, @unchecked Sendable {
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { "com.apple.Notes" }
-}
-
-private final class FieldSources: LayoutSourcePort, @unchecked Sendable {
-    var selected: [String] = []
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) { selected.append(sourceID) }
-}

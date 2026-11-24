@@ -38,21 +38,17 @@ enum LfStr {
     /// **What the grant buys here is judgement, not removal.**
     /// `PermissionCheck.reason` names Full Disk Access for `/Library/Containers/`
     /// and `/Library/Group Containers/` paths only, and none of the scanner's
-    /// eight sources can reach one — so no removal on this page can fail that
-    /// way, and the note promised a consequence this module cannot have. What a
-    /// refused read actually costs is a verdict: `exists` answers nil, the row is
-    /// `.undetermined`, and a short list of leftovers then looks exactly like a
-    /// Mac with none. Duplicates' own note says the same thing about folders.
+    /// sources reach one, so no removal on this page can fail that way. What a
+    /// refused read costs is a verdict: `exists` answers nil, the row is
+    /// `.undetermined`, and a short list of leftovers looks exactly like a Mac
+    /// with none.
     static var scanNeedsAccess: String {
         L(.scanNeedsFullDiskAccess)
     }
     /// **The button opens a pane; it manages nothing.** It calls
-    /// `PermissionCheck.openExtensionSettings()`, and the Uninstaller's own
-    /// button drives the identical call — so «Manage…» was a second label for one
-    /// act, and the vaguer of the two. The Russian aspect problem goes with it:
+    /// `PermissionCheck.openExtensionSettings()`, as the Uninstaller's button does,
+    /// so it carries the same label, `HelmUI`'s, because two modules draw it.
     /// «Открыть» is perfective, which is what a button that acts once should be.
-    ///
-    /// The label itself is `HelmUI`'s, because two modules draw it.
     static var openExtensions: String { HelmControlName.openExtensions }
     /// The switch on a row, both ways round. Functions rather than properties
     /// because `confirmDeleteInUse` names this control inside a sentence, and it
@@ -81,14 +77,11 @@ enum LfStr {
     /// without asking.
     ///
     /// **One argument, and it is the item**, for the reason
-    /// `LeftoverActions.available` records: a second parameter carrying the reason
-    /// beside the item it is about buys nothing except the ability to disagree
-    /// with it. The reason is a pure function of the item, so it is asked here.
+    /// `LeftoverActions.available` records: the reason is a pure function of the
+    /// item, so it is asked here and cannot disagree with it.
     ///
-    /// Exhaustive over `AskFirst` for the reason `kindName` records: the one
-    /// question this module had said «It is loaded now», and it was drawn for
-    /// every row that is not a leftover — including, once `.unreadable` existed, a
-    /// file whose contents Helm never got to see.
+    /// Exhaustive over `AskFirst` for the reason `kindName` records, so a file
+    /// Helm never got to see is not asked about as «loaded now».
     static func confirmDelete(_ item: StaleItem,
                               language: AppLanguage = AppLanguage.current) -> String? {
         switch LeftoverActions.askBeforeDeleting(item) {
@@ -121,9 +114,9 @@ enum LfStr {
     ///
     /// It **asks** that control for its word rather than spelling it again
     /// (`VPNStr.secretNeedsAPress` is the same construction), so renaming the
-    /// button carries the sentence with it in all eight instead of leaving it
-    /// behind — the defect of a sentence that spells a control's name a second time (ARCHITECTURE.md § One English text means one thing). `Quoted` puts it in each
-    /// language's own marks.
+    /// button carries the sentence with it in all eight languages
+    /// (Architecture/Localization.md § One English text means one thing). `Quoted`
+    /// puts it in each language's own marks.
     static func confirmDeleteInUse(_ name: String,
                                    language: AppLanguage = AppLanguage.current) -> String {
         let off = Quoted(disable(language: language), language: language)
@@ -133,9 +126,8 @@ enum LfStr {
     /// sentences, because the two states ask different things of them: one is a
     /// password somebody has, the other is nothing anybody can do.
     ///
-    /// Exhaustive over the reason for the same cause `kindName` records — a
-    /// `default` here is how one of the two sentences would come to be drawn for
-    /// both, which is the defect this pair exists to end.
+    /// Exhaustive over the reason for the cause `kindName` records: a `default`
+    /// is how one of the two sentences would come to be drawn for both.
     static func noDelete(_ reason: NoDelete) -> String {
         switch reason {
         case .needsAdministrator: return needsAdmin
@@ -148,9 +140,8 @@ enum LfStr {
     /// The message over the empty list, one per reason there is no list.
     ///
     /// Over the enum and exhaustive, for the reason `kindName` records: a
-    /// `default` here would draw a sentence about a clean Mac for a fourth state
-    /// nobody had looked at, which is how «No leftovers found» came to be shown
-    /// with rows in the model in the first place.
+    /// `default` would draw a sentence about a clean Mac for a state nobody had
+    /// looked at, «No leftovers found» over rows in the model.
     static func emptyMessage(_ nothing: LeftoversEmpty.Reason) -> String {
         switch nothing {
         case .notScanned: return notScannedYet
@@ -169,13 +160,12 @@ enum LfStr {
     /// strip it sits in holds controls and no prose, and its neighbour is
     /// «Found: N».
     ///
-    /// **Two sentences rather than one for both places.** The prose form measured
-    /// 194 pt in Russian against `foundLine`'s 108 in that bar; and on the empty
-    /// screen the reverse fails, where a bare label is a number with no claim
-    /// under it. Both are built from each language's own `statusUndetermined`
-    /// badge and `confirmDeleteUnchecked` question, so the count, the pill and the
-    /// delete question cannot drift apart. Neither names the verb: the Scan button
-    /// is the answer and it is on screen either way.
+    /// **Two sentences rather than one for both places.** The prose form is too
+    /// wide for the bar beside `foundLine`, and on the empty screen a bare label is
+    /// a number with no claim under it. Both are built from each language's own
+    /// `statusUndetermined` badge and `confirmDeleteUnchecked` question, so the
+    /// count, the pill and the delete question cannot drift apart. Neither names
+    /// the verb: the Scan button is the answer and it is on screen either way.
     static func uncheckedLine(_ n: Int, language: AppLanguage = AppLanguage.current) -> String {
         let items = Plural.items(n, language: language.rawValue)
         return L(.uncheckedLine(items), language: language)
@@ -185,30 +175,24 @@ enum LfStr {
         let items = Plural.items(n, language: language.rawValue)
         return L(.couldNotCheck(items), language: language)
     }
-    /// Asked before the batch, because this button is the one that acts on the
-    /// most load-bearing files in the app — launch agents and login items —
-    /// and it was the only multi-file removal in Helm that did not ask.
-    /// One question, and nothing after it. It used to promise "It will free
-    /// 4 KB" — of files that move to a folder on the same volume, where they
-    /// stay until the Trash is emptied. Disk's `confirmTrash` is the shape: the
-    /// size sits inside the question as what is going, not as what is gained.
+    /// Asked before the batch, because this button acts on the most
+    /// load-bearing files in the app — launch agents and login items. One question,
+    /// and no promise of space freed: the files move to a folder on the same
+    /// volume and stay until the Trash is emptied. Disk's `confirmTrash` is the
+    /// shape: the size sits inside the question as what is going, not as what is gained.
     static func confirmSelected(_ count: Int, _ size: String) -> String {
         HelmConfirm.trash(Plural.items(count, language: AppLanguage.current.rawValue), size)
     }
-    /// **A badge is a mark, not a predicate.** «Runs at login» measured 137 pt of
-    /// pill in German, and against the fourteen real launch-agent labels on this
-    /// Mac ten of the fourteen then truncated — seven of fourteen in Russian. What
+    /// **A badge is a mark, not a predicate.** A longer badge («Runs at login»)
+    /// would truncate most real launch-agent labels in German and Russian. What
     /// the row is for is its name; this is the qualifier beside it.
     static var runsAtLogin: String { L(.atLogin) }
     /// The one line under a row's name: where the file is, and what is wrong with
     /// it if anything is.
     ///
-    /// **One line, because the list had three heights.** The path and the missing
-    /// target were two rows of their own — 44 pt with a path, 59 pt with both, 32 pt
-    /// for a system extension — and two of those are the same row wearing a fact it
-    /// happens to carry. One line, and the row draws it as two `Text`s side by side:
-    /// which of the two gives way when the width runs out is the whole point, and a
-    /// single joined string can only ever surrender its own end.
+    /// **One line, so the list has one row height.** The row draws it as two
+    /// `Text`s side by side: which of the two gives way when the width runs out is
+    /// the whole point, and a single joined string can only surrender its own end.
     ///
     /// Nil for a system extension, and that is not an omission: the scan gives one
     /// its identifier as its path (`LeftoversScanner.systemExtensions`), so the
@@ -223,10 +207,9 @@ enum LfStr {
         /// line's *start*, the defect below one character earlier.
         let clause: String?
         /// The language-shaped mark between the halves (`・` for Japanese, as in
-        /// every other join in the app). It belongs to the
-        /// reason, not the path: left on the path it is the first thing the
-        /// truncation eats, and a middle dot with nothing after it is the same
-        /// defect one character shorter.
+        /// every other join in the app). It belongs to the reason, not the path: left
+        /// on the path it is the first thing the truncation eats, and a middle dot
+        /// with nothing after it is a defect.
         let separator: String
         /// What is wrong with it, separator and all — drawn whole beside the
         /// path: it is the strongest evidence a login item is dead. Computed,
@@ -249,14 +232,13 @@ enum LfStr {
     ///
     /// **One clause, and the order is what a person can do about it.** A leftover
     /// whose label another file registers carries two facts at once: that it points
-    /// at a missing file, which is why it is badged «Leftover» — a mark already on
-    /// screen — and that another file wears its name, which is why the row has no
-    /// «Turn off». The second explains a control that is *not* there, and a missing
-    /// control with no reason is what this sentence exists to prevent.
+    /// at a missing file, which the «Leftover» badge already says, and that another
+    /// file wears its name, which is why the row has no «Turn off». The second
+    /// explains a control that is *not* there, and a missing control with no reason
+    /// is what this sentence exists to prevent.
     ///
     /// Exhaustive over the status for the reason `kindName` records: a source row's
-    /// sentence is the only thing on its row, and a `default` is how one would come
-    /// to be drawn with the wrong one or with none.
+    /// sentence is the only thing on its row.
     private static func clause(for item: StaleItem, language: AppLanguage) -> String? {
         switch item.status {
         case .sourceRedirected: return item.leadsTo.map { sourceLeadsElsewhere($0, language: language) }
@@ -301,10 +283,9 @@ enum LfStr {
                               language: AppLanguage = AppLanguage.current) -> String {
         L(.missingTarget(path), language: language)
     }
-    /// The bar under the list, about the selection and nothing else. It used to
-    /// pair the number of rows found with the size of the selection, and a
-    /// middle dot made the two look like one measurement: "1 item · 0 B" over a
-    /// visible row saying 4 KB.
+    /// The bar under the list, about the selection and nothing else: a count of
+    /// rows found beside the selection's size, joined by a middle dot, would read
+    /// as one measurement.
     static func selectedLine(_ n: Int, _ size: String,
                              language: AppLanguage = AppLanguage.current) -> String {
         let items = Plural.items(n, language: language.rawValue)
@@ -317,27 +298,22 @@ enum LfStr {
         return L(.foundLine(items), language: language)
     }
     /// Where the files went, not what the disk gained: the Trash is a folder on
-    /// the same volume, so nothing is free until it is emptied. The same
-    /// sentence Disk settled on, in Finder's own words for the act (`AL13`) in
-    /// the past tense — one phrasing across the app, not a second one here.
+    /// the same volume, so nothing is free until it is emptied. The same sentence
+    /// Disk uses, in Finder's own words for the act in the past tense.
     ///
-    /// **The count as well as the size.** The person ticked a number of rows and
-    /// `LeftoversViewModel.removedCount` is in hand where this is built, so a
-    /// report that measured the batch without counting it was leaving out the
+    /// **The count as well as the size**: the person ticked a number of rows, and
+    /// a report that measured the batch without counting it would leave out the
     /// half they had chosen. Russian keeps the em dash with the word before it;
-    /// Japanese and Chinese use their own colon and their own dot, which is what
-    /// `selectedLine` two functions up already does.
+    /// Japanese and Chinese use their own colon and dot, as `selectedLine` does.
     static func movedToTrash(_ count: Int, _ size: String,
                              language: AppLanguage = AppLanguage.current) -> String {
         let items = Plural.items(count, language: language.rawValue)
         return L(.movedToTrash(items, size), language: language)
     }
-    /// **The kind, not its `rawValue`.** This took a `String` and ended in a
-    /// `default` that answered "Plug-ins" — so a sixth `StaleKind` would have
-    /// been drawn under the wrong heading, silently, and the `default` is
-    /// exactly the shape kept out of the engines for the same reason:
-    /// it makes an unhandled case look like an answer. Over the enum the switch
-    /// is exhaustive and a new case is a build error.
+    /// **The kind, not its `rawValue`.** A `String` with a `default` would draw a
+    /// new `StaleKind` under the wrong heading, silently: a `default` makes an
+    /// unhandled case look like an answer. Over the enum the switch is exhaustive
+    /// and a new case is a build error.
     static func kindName(_ kind: StaleKind) -> String {
         switch kind {
         case .launchAgent: return HelmWord.launchAgents

@@ -9,10 +9,8 @@ import Module_Screenshots_Engine
 /// blur σ 2 and 4) are two native `.shadow`s here.
 ///
 /// **σ to radius.** The source blur is an SVG `stdDeviation`; a SwiftUI `.shadow` takes the blur *radius*, which this
-/// takes to be twice σ, as a CSS `blur()` is — 4 and 8 pt. What was measured: the designer confirmed radius = 2σ in the
-/// light appearance by photograph; the dark one was compared only by the peak darkness
-/// of the shadow. The opacity is 6 % in light, as the source says; in dark it is 8 %, where the dark source files say
-/// 16 %: the 8 % was set from the designer's photograph.
+/// takes to be twice σ, as a CSS `blur()` is — 4 and 8 pt. The opacity is 6 % in light, as the source says; in dark it
+/// is 8 %, not the dark source files' 16 %, matched to the designer's photograph.
 ///
 /// The chosen object stands `lift` higher; the palette cuts what hangs below it. The lift is
 /// `HelmMotion.interface` unless `HelmMotion.moves` says the person asked for stillness, and then it is a cut. The

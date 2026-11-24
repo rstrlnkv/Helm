@@ -4,24 +4,16 @@ import Carbon.HIToolbox
 
 /// ⌥Delete takes out the word before the caret. The module has to know that.
 ///
-/// **It did not, and the cost was somebody else's text.** `CGKeyTap.deliver`
-/// asked «is a modifier held» before it looked at which key, so ⌘←, ⌥←, ⌘↑ and
-/// ⌥Delete all arrived as `.chord`. A chord is the one boundary that is *not*
-/// proof the caret moved — the head-inserted tap sees the recorded hotkey's own
-/// keys before Carbon dispatches the action, so `UndoRecord.soften()` forgave
-/// one and `movedTheCaret` is false, which meant the word it ended was **stored**.
-/// Now only the chord on the recorded hotkey's key is forgiven; any other
-/// chord invalidates the undo and drops the stored word.
+/// A modified caret key (⌘←, ⌥←, ⌘↑, ⌥Delete) is navigation, not a chord
+/// (`TapEvent`). As a chord it would spend `UndoRecord.soften()`'s forgiveness
+/// and store the word it ended.
 ///
 /// What a person does: types `ghbdtn `, watches it become `привет `, presses
-/// ⌥Delete to take that word back out, and taps the bound key. What they got:
-/// the undo record was still live, so seven backspaces and `ghbdtn ` went into
-/// whatever the caret was in front of — text the module had never looked at.
+/// ⌥Delete to take that word back out, and taps the bound key. A live undo
+/// would send seven backspaces and `ghbdtn ` into text the module never saw.
 ///
-/// The cost of the repair is named where it is paid: somebody who records ⌘←
-/// as their fix hotkey loses the forgiveness and their gesture stops firing.
-/// That is the safe direction. The other way round destroys text for everyone
-/// who deletes a word with ⌥Delete, which is most people.
+/// The cost is named where it is paid: somebody who records ⌘← as their fix
+/// hotkey loses the forgiveness. That is the safe direction.
 final class AModifiedDeleteIsNotAGestureTests: XCTestCase {
 
     func testAModifiedDeleteIsACaretMove() {
@@ -43,10 +35,8 @@ final class AModifiedDeleteIsNotAGestureTests: XCTestCase {
     ///
     /// This layer does not decide whether a chord may be forgiven — it cannot,
     /// because that is a comparison against the shortcut the person recorded,
-    /// which lives in the engine's settings. What it must do is hand the code
-    /// on, so that the comparison is possible at all: it used to throw the code
-    /// away the moment it saw a modifier, and ⌘V and ⌘Space became the same
-    /// event.
+    /// which lives in the engine's settings. It hands the code on, so the
+    /// comparison is possible at all and ⌘V and ⌘Space are not the same event.
     func testAnOrdinaryChordIsStillAChordAndKeepsItsKeycode() {
         for key in [kVK_ANSI_A, kVK_ANSI_V, kVK_ANSI_Z, kVK_Space, kVK_ANSI_S] {
             XCTAssertEqual(TapEvent.classify(keycode: key, modified: true),

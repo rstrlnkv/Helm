@@ -4,23 +4,20 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// **The row acts on the label the file claims, not on the label of the job that
-/// file defines.**
+/// **The row acts on the label of the job a file defines, not on whatever label
+/// the file claims.**
 ///
 /// `LaunchAgentReader.read` takes `Label` verbatim — rightly, it is reading a
-/// document — and that string is then both what the row offers «Turn off» for and
-/// what reaches `launchctl` as the service target. launchd's own convention is that
-/// a job's file is named after its label, and nothing checked it: a file called
-/// `zz-innocent.plist` whose `Label` is `com.securityvendor.agent` comes back
-/// orphaned, switchable and removable, and the press runs `launchctl disable` and
-/// `bootout` against the **real** job of that name.
+/// document — and that string is both what the row offers «Turn off» for and what
+/// reaches `launchctl` as the service target. launchd's convention is that a
+/// job's file is named after its label: a file called `zz-innocent.plist` whose
+/// `Label` is `com.securityvendor.agent` must not be switchable, or the press
+/// runs `launchctl disable` and `bootout` against the **real** job of that name.
 ///
 /// Deception rather than escalation — the attacker needs write access to a
 /// LaunchAgents folder either way — but Helm-shaped, and with no undo on screen.
-/// The offer and the engine are both fixed, because the offer is what a person sees
-/// and the engine is what acts: a view model is not allowed to be the last word on
-/// what happens to somebody's login items, the same rule `RemovableScope` states one
-/// verb over (ARCHITECTURE.md § Removal).
+/// The offer and the engine both refuse: a view model is not the last word on
+/// somebody's login items (Architecture/Removal.md § Removal).
 final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
     private let victim = "com.securityvendor.agent"
@@ -33,7 +30,7 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
         return try firstAgent(home: home, files: files)
     }
 
-    /// **The finding.** A file wearing somebody else's label is offered the switch.
+    /// **The guard.** A file wearing somebody else's label is not offered the switch.
     func testAnAgentWearingAnotherJobsLabelIsNotOfferedTheSwitch() throws {
         let item = try agent(file: "zz-innocent.plist", label: victim)
 
@@ -75,14 +72,10 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
 
     /// The agent this Mac is *not* asked about.
     ///
-    /// **Every port is named at every construction**, and that sentence is no
-    /// longer only a sentence: `EveryEngineNamesItsPortsTests` reads this file and
-    /// fails on a construction that leaves one out. It said `files:` alone while
-    /// `apps:` and `loaded:` went on defaulting to `WorkspaceInstalledApps` and
-    /// `ActiveExtensions` — the second of which shells out to `launchctl
-    /// print-disabled gui/$(getuid())`, so these three answers were partly facts
-    /// about whoever ran the suite (ARCHITECTURE.md § Fakes: a default argument naming a real
-    /// port makes every forgetful construction an integration test).
+    /// **Every port is named at every construction** (`EveryEngineNamesItsPortsTests`):
+    /// `ActiveExtensions` shells out to `launchctl print-disabled gui/$(getuid())`,
+    /// so a defaulted port would make these answers facts about whoever ran the
+    /// suite (Architecture/TestsAndMeasurement.md § Fakes).
     private var switchable: LeftoversFakeFiles {
         var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/LaunchAgents"] = ["com.vendor.updater.plist"]

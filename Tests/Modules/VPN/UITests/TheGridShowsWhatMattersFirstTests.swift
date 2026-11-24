@@ -8,16 +8,16 @@ import HelmRuntime
 
 /// The page draws six cards, and the connected tunnel is one of them.
 ///
-/// `VPNConnectionOrder` is tested on its own; what this holds is that the page
-/// applies it and the cap, in the one order they can be applied in. Capping before sorting is the same page with the defect back:
-/// nine configurations, the ninth up, six drawn — and the card the page exists
-/// for behind a button.
+/// `VPNConnectionOrder` is tested on its own; this holds that the page
+/// applies it and the cap in the one order they can be applied in. Capping
+/// before sorting would draw nine configurations, the ninth up, six drawn —
+/// and the card the page exists for behind a button.
 ///
-/// Guards: the page sorts before it caps, so the connected tunnel is never behind a button (no fix commit; the code and this test landed together).
+/// Guards: the page sorts before it caps, so the connected tunnel is never behind a button.
 @MainActor
 final class TheGridShowsWhatMattersFirstTests: XCTestCase {
 
-    private func page(_ connections: [VPNConnection]) -> VPNSettingsPage {
+    private func page(_ connections: [VPNConnection]) async -> VPNSettingsPage {
         let work = FakeVPNWork()
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
         let settings = VPNSettings(store: store)
@@ -25,9 +25,7 @@ final class TheGridShowsWhatMattersFirstTests: XCTestCase {
         let payload = VPNEngine.StatePayload(connections: connections, autoConnected: [],
                                              lastAutomation: nil)
         work.say(payload)
-        for _ in 0..<50 where vm.connections.count != connections.count {
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-        }
+        await waitUntil("the payload handled") { vm.connections.count == connections.count }
         return VPNSettingsPage(vm: vm, store: store)
     }
 
@@ -35,20 +33,22 @@ final class TheGridShowsWhatMattersFirstTests: XCTestCase {
         VPNConnection(id: name, name: name, status: status, kind: "IKEv2")
     }
 
-    func testTheNinthConnectionIsOnScreenWhenItIsTheOneThatIsUp() {
+    func testTheNinthConnectionIsOnScreenWhenItIsTheOneThatIsUp() async {
         let list = (1...9).map { conn("VPN \($0)", $0 == 9 ? .connected : .disconnected) }
-        let shown = page(list).shownConnections
+        let shown = await page(list).shownConnections
         XCTAssertEqual(shown.count, VPNGridLayout.collapsedLimit)
         XCTAssertEqual(shown.first?.name, "VPN 9")
     }
 
-    func testTheNinthConnectionIsOnScreenWhenItIsStillConnecting() {
+    func testTheNinthConnectionIsOnScreenWhenItIsStillConnecting() async {
         let list = (1...9).map { conn("VPN \($0)", $0 == 9 ? .connecting : .disconnected) }
-        XCTAssertEqual(page(list).shownConnections.first?.name, "VPN 9")
+        let shown = await page(list).shownConnections
+        XCTAssertEqual(shown.first?.name, "VPN 9")
     }
 
-    func testNothingIsHiddenWhenThereIsNothingToHide() {
+    func testNothingIsHiddenWhenThereIsNothingToHide() async {
         let list = (1...VPNGridLayout.collapsedLimit).map { conn("VPN \($0)", .disconnected) }
-        XCTAssertEqual(page(list).shownConnections.count, list.count)
+        let shown = await page(list).shownConnections
+        XCTAssertEqual(shown.count, list.count)
     }
 }

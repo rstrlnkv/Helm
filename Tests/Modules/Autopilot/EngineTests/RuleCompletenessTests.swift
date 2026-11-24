@@ -2,25 +2,17 @@ import Foundation
 import XCTest
 @testable import Module_Autopilot_Engine
 
-/// A rule that cannot be carried out must not be able to be switched on.
+/// A rule that cannot be carried out cannot be switched on.
 ///
-/// The editor already refuses the switch to a rule with no conditions, and says
-/// why: switching it on would be switching on a rule that cannot fire. An
-/// action that names nothing is the same sentence from the other side, and it
-/// was reachable by design rather than by accident — `ActionRow.Kind.blank`
-/// starts a move with an empty destination, because the destination only ever
-/// arrives through the panel.
+/// An action that names nothing is reachable by design: `ActionRow.Kind.blank`
+/// starts a move with an empty destination, which only ever arrives through
+/// the panel. Switched on, every matching file would return
+/// `.refused(.outOfScope)`, a log line and a history row on every sweep, for a
+/// rule the person believes is working.
 ///
-/// What that costs is not nothing happening. Every matching file returns
-/// `.refused(.outOfScope)` from the runner, which is a line in the log and a
-/// row in the thirty-day history, on every sweep, for a rule the person
-/// believes is working — while the dry run's destination column renders empty.
-///
-/// The repair is the module's existing one for a rule that arrived in a state
-/// nobody could have typed: it is neutered on the way through `storable`,
-/// rather than dropped, so the person still has their rule to finish. That
-/// covers a hand-edited plist as well as the editor, which is the point of
-/// putting it in the engine.
+/// Such a rule is switched off on the way through `storable`, not dropped, so
+/// the person still has their rule to finish. Being in the engine, that covers
+/// a hand-edited plist as well as the editor.
 final class RuleCompletenessTests: XCTestCase {
 
     private func rule(_ action: RuleAction, enabled: Bool = true) -> Rule {
@@ -54,13 +46,11 @@ final class RuleCompletenessTests: XCTestCase {
 
     // MARK: - Which conditions name everything they need
 
-    /// «Name begins with ‹nothing›» is true of every file in the folder, and
-    /// with the action set to Trash that is a working all-matcher three
-    /// gestures from the editor's blank state. A condition whose text names
-    /// nothing is half-written, whatever the comparison — `contains ""` happens
-    /// to match nothing under Foundation, but a popup selection away it matches
-    /// everything, and the switch must not care which side of that line the
-    /// person is currently on.
+    /// «Name begins with ‹nothing›» is true of every file in the folder: with
+    /// Trash beside it, an all-matcher three gestures from the editor's blank
+    /// state. A condition whose text names nothing is half-written whatever the
+    /// comparison: `contains ""` matches nothing under Foundation, but a popup
+    /// selection away it matches everything.
     func testAConditionWithNothingInItIsNotComplete() {
         XCTAssertFalse(RuleCondition.name(.beginsWith, "").isComplete)
         XCTAssertFalse(RuleCondition.name(.endsWith, "").isComplete)
@@ -173,10 +163,9 @@ final class RuleCompletenessTests: XCTestCase {
     }
 
     /// A rule that cannot run is never planned against a file, so the sweep has
-    /// nothing to refuse and the history has nothing to record. Asserted
-    /// through `RulePlan.decide` — the thing the sweep actually calls — rather
-    /// than through the switch, because the switch is only worth anything if it
-    /// reaches this.
+    /// nothing to refuse and the history nothing to record. Asserted through
+    /// `RulePlan.decide`, which the sweep calls, because the switch is worth
+    /// something only if it reaches this.
     func testNoPlanIsMadeForARuleThatCannotRun() {
         let file = FileFacts(name: "a.pdf", path: "/Users/x/Downloads/a.pdf",
                              kind: .document, bytes: 4,

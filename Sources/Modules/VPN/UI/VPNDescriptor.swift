@@ -36,11 +36,10 @@ import Module_VPN_Engine
 
     public func makeModule(store: NamespacedStore) -> ModuleParts<VPNViewModel> {
         let engine = productionEngine(store: store)
-        // The model's `SystemAutomationNotice` is its own; its init touches
-        // nothing. The engine beside it is built here and never activated:
-        // `VPNSystemPorts` builds `KeychainCredentials`, whose init purges the
-        // old credential cache only when `AppBuild.isBundledApp`, so a test that
-        // builds the module reaches neither the keychain nor a tunnel.
+        // The engine is built here and never activated: `VPNSystemPorts`
+        // builds `KeychainCredentials`, whose init purges the credential cache
+        // only when `AppBuild.isBundledApp`, so a test that builds the module
+        // reaches neither the keychain nor a tunnel.
         let model = VPNViewModel(work: engine, settings: VPNSettings(store: store),
                                  notices: SystemAutomationNotice(area: VPNEngine.moduleID))
         return ModuleParts(engine: engine, model: model)
@@ -53,10 +52,9 @@ import Module_VPN_Engine
     private func productionEngine(store: NamespacedStore) -> VPNEngine {
         self.store = store
         let ports = VPNSystemPorts()
-        // Every port named, none taken from a default: the app's own wiring is
-        // the one place a reader can see what this module talks to, and three of
-        // these reach the network or run a tool for twenty seconds
-        // (`NetworkQualitySpeed.typicalRun`).
+        // Every port named, none taken from a default, so the app's wiring
+        // shows what this module talks to; three reach the network or run a
+        // tool for twenty seconds (`NetworkQualitySpeed.typicalRun`).
         return VPNEngine(settings: VPNSettings(store: store),
                          runner: ports.runner, credentials: ports.credentials,
                          apps: ports.apps, network: ports.network,
@@ -68,7 +66,7 @@ import Module_VPN_Engine
         MenuBarContribution(panelTile: AnyView(VPNPanelTile(vm: model)))
     }
     /// Two sizes: 1×1 is how many are up out of how many exist, 2×1 is every
-    /// connection with its switch. There is no 2×N (the reason is at `case .tall`).
+    /// connection with its switch.
     public func panelWidget(_ size: PanelWidgetSize, _ model: VPNViewModel) -> AnyView? {
         switch size {
         case .compact: return AnyView(VPNCompactWidget(vm: model))
@@ -79,21 +77,16 @@ import Module_VPN_Engine
         }
     }
 
-    /// The badge in the page header: what a person wants from the top of this
-    /// page is whether anything is up at all. That is one word, and the window
-    /// has a place for it; the list underneath spells out the rest a row at a
-    /// time.
+    /// The badge in the page header: whether anything is up at all.
     public func activity(_ model: VPNViewModel) -> ModuleActivity? {
-        // `isConnected`, not `isUp`. `isUp` is «something is happening here»
-        // and includes `.connecting`, so a tunnel three seconds into coming up
-        // would put a green «Active» in the header beside a card that said
-        // «Connecting…».
+        // `isConnected`, not `isUp`, which includes `.connecting`: a green
+        // «Active» beside a card saying «Connecting…» would be wrong.
         model.connections.contains { $0.status.isConnected } ? .active : .idle
     }
 
     /// Without this the host reads `statusAppearance` only when something else
-    /// redraws the icon, and a rule firing by itself is precisely the case
-    /// where nothing else does.
+    /// redraws the icon, and a rule firing by itself is the case where nothing
+    /// else does.
     public func statusChanges(_ model: VPNViewModel) -> AnyPublisher<Void, Never>? {
         model.objectWillChange
             .map { _ in () }
@@ -102,33 +95,23 @@ import Module_VPN_Engine
 
     /// Only while a rule's firing is still news.
     ///
-    /// No tint, ever: this module has no presence in the menu bar between
-    /// firings, and giving it a permanent one — which is what a tint is, since
-    /// `StatusPlan.choose` falls back to the first module that tints — is a
-    /// larger change than saying that a rule fired. It would also settle
-    /// "whose icon is this" by module order, which `StatusItemController`
-    /// notes is latent today precisely because no second module tints.
-    ///
-    /// The spin's colour is `spinTintToken`, which `StatusPlan.choose` does not
-    /// read — so colouring the animation does not make this a tinting module.
+    /// No tint, ever: a tint is a permanent menu-bar presence, since
+    /// `StatusPlan.choose` falls back to the first module that tints, and it
+    /// would settle "whose icon is this" by module order. The spin's colour is
+    /// `spinTintToken`, which `StatusPlan.choose` does not read.
     public func statusAppearance(_ model: VPNViewModel) -> StatusAppearance {
         guard let firing = model.lastAutomation else { return .inactive }
-        // One reading of the clock, so the two windows cannot disagree about
-        // which moment they are answering for.
+        // One reading of the clock, so the two windows answer for one moment.
         let now = Date()
-        // The setting decides whether there is movement at all. Reduce Motion
-        // is a separate question, answered a level up in `StatusPlan.spins`:
-        // this is a preference, that is an instruction from the system.
-        // Every one of these three is asked *on the configuration that fired*,
-        // never module-wide: the settings live on the card.
+        // The setting decides whether there is movement at all; Reduce Motion
+        // is answered a level up in `StatusPlan.spins`. All three are asked
+        // *on the configuration that fired*: the settings live on the card.
         let spinning = model.automationSpin(on: firing.name)
             && VPNAutomation.spinPhase(firing, now: now) != nil
         let names = model.effectiveNotice(for: firing.kind, on: firing.name).showsMenuBarName
             && VPNAutomation.showsName(firing, now: now)
-        // Bounded here, because this is where the unbounded string is: the name
-        // comes out of a configuration somebody else wrote, and the host draws
-        // whatever a descriptor hands it. The rule is `StatusPlan`'s, next to the
-        // rest of what the host knows about its own menu bar.
+        // Bounded here, where the unbounded string is: the name comes from a
+        // configuration somebody else wrote (`StatusPlan.menuBarTitle`).
         return StatusAppearance(title: names ? StatusPlan.menuBarTitle(firing.name) : nil,
                                 spinUntil: spinning ? VPNAutomation.spinEnd(firing) : nil,
                                 spinTintToken: spinning

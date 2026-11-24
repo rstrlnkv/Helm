@@ -3,41 +3,21 @@ import Foundation
 /// Which copy of identical content stays, and in what order the rest follow.
 ///
 /// The module baskets every copy but the first in one click, so this is the
-/// decision the whole screen rests on. It used to be alphabetical — not a
-/// belief about anything, just the order the list happened to be sorted in for
-/// display — which meant `~/Desktop/photo.jpg` beat
-/// `~/Documents/Archive/2019/photo.jpg` and Helm offered to delete the filed
-/// original while keeping the clutter.
-///
-/// It then became the date added, which was a belief — «the original is the one
-/// that has been there longest» — held silently and wrong often enough to matter:
-/// a file downloaded and *then* filed keeps the download. `KeepPolicy` is that
-/// belief made a question the person answers, and this is where the answer is
-/// applied. The rungs and their order belong to the policy; what is left here is
-/// what each rung reads.
+/// decision the whole screen rests on. `KeepPolicy` is the belief about which
+/// copy is the original, made a question the person answers; this is where the
+/// answer is applied. The rungs and their order belong to the policy; what is
+/// left here is what each rung reads.
 ///
 /// **A rung that cannot tell hands on rather than deciding.** That holds only
-/// while a rung is silent about *every* pair of the copies it is comparing or
-/// about none: a rung silent about some of them is not an ordering, and the
-/// survivor then depends on the order the walk built the array in. An unknown
-/// date was exactly such a rung — it separates two known dates and says nothing
-/// where one is missing — so three copies, one of them dateless, closed a cycle
-/// and each of the six walk orders kept whichever copy it happened to be fed
-/// first (`TheSurvivorDoesNotDependOnWalkOrderTests`).
-///
-/// The missing date is therefore a rung of its own, above the date it is missing
-/// from: the copy nothing records the arrival of is the copy that stays, because
-/// what this module does with the rest is offer them for the Trash. Read the
-/// other way — silence as a loss — it handed the whole decision to a fact the
-/// filesystem happened to keep, skipping every rung below.
+/// while a rung is silent about *every* pair it compares or about none;
+/// `KeepPolicy.ladder` and `KeepReason.undated` say why the missing date is a
+/// rung of its own (`TheSurvivorDoesNotDependOnWalkOrderTests`).
 public enum SurvivingCopy {
 
     /// The group's copies, the survivor first.
     ///
     /// Returns the copies rather than their paths: the caller wants the whole of
-    /// each one — its size, its clone family, its date — and a list of paths
-    /// made it look them up again in a table built for the purpose, which is one
-    /// ordering of an array joined to another by a dictionary.
+    /// each one (its size, its clone family, its date), not a second lookup.
     public static func order<T: KeepCandidate>(_ files: [T], by rule: KeepRule) -> [T] {
         files.sorted { decide($0, over: $1, by: rule).keepsFirst }
     }

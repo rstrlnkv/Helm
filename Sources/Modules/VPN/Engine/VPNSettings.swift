@@ -8,9 +8,9 @@ public struct VPNSettings {
     public func setRulesJSON(_ json: String) { store.set(json, for: "vpnAppRules") }
 
     /// How loudly a *rule* firing is announced — an app launched, an app quit,
-    /// and Helm did what it was told. Nothing in the app writes it any more
-    /// (a card writes its book entry); an old install's stored value is honoured
-    /// here, for every configuration without an entry.
+    /// and Helm did what it was told. Nothing in the app writes it (a card writes
+    /// its book entry); a stored value is honoured for every configuration
+    /// without an entry.
     public var notice: VPNNotice {
         VPNNotice(rawValue: store.string(Self.automationNoticeKey, default: "")) ?? .menuBar
     }
@@ -27,11 +27,10 @@ public struct VPNSettings {
     /// that steers what the app says is the person's, and one computed from
     /// another cannot be set to less than it.
     ///
-    /// Defaulted to the same `.menuBar` the rules get. `.system` would be the
-    /// louder default and it would be a lie: macOS grants the banner permission
-    /// only when somebody asks for it, this module asks only when a person picks
-    /// that mode, and a page showing "Notification" selected for a mode that has
-    /// never been allowed says something the app will not do.
+    /// Defaulted to the same `.menuBar` the rules get. `.system` would be a lie:
+    /// macOS grants the banner permission only when asked, this module asks only
+    /// when a person picks that mode, and "Notification" selected for a mode never
+    /// allowed says something the app will not do.
     public var dropNotice: VPNNotice {
         VPNNotice(rawValue: store.string(Self.dropNoticeKey, default: "")) ?? .menuBar
     }
@@ -45,12 +44,9 @@ public struct VPNSettings {
 
     /// Whether the menu-bar ring turns when a rule fires.
     ///
-    /// Off by default, which reverses what the automation-feedback spec
-    /// decided: it argued the movement is feedback rather than a notification
-    /// and should always play. Sound, and overruled — movement in the menu bar
-    /// is a person's to switch off. The cost is exact and is stated under the
-    /// switch: with this off *and* the notice set to nothing, a rule fires with
-    /// no sign at all.
+    /// Off by default: movement in the menu bar is a person's to switch on. The
+    /// cost is stated under the switch: with this off *and* the notice set to
+    /// nothing, a rule fires with no sign at all.
     ///
     /// The switch is a card's, written to the book; this is the value a
     /// configuration without an entry inherits.
@@ -68,20 +64,18 @@ public struct VPNSettings {
     }
     /// **Two keys for three kinds.** `.dropped` is a third kind of news and not
     /// a third colour: the ring says which way the tunnel went, and there are
-    /// two ways. Deriving the key from `rawValue` would have opened a
-    /// `spinTint.dropped` nobody sets, so a tunnel that fell over would have
-    /// turned the ring in the default orange while the person's own colour for
-    /// a tunnel going down sat in the store unread.
+    /// two ways. A key derived from `rawValue` would open a `spinTint.dropped`
+    /// nobody sets, and a fallen tunnel would ignore the person's colour.
     static func spinTintKey(_ kind: VPNAutomation.Kind) -> String {
         "spinTint.\(kind.goingUp ? "connected" : "disconnected")"
     }
 
     /// What macOS last said about banners — a mirror, not the truth.
     ///
-    /// It is here rather than in memory because macOS is asked once and the
-    /// answer outlives the launch that got it: a flag that reset every morning
-    /// would demote `.system` to the menu-bar label for someone who granted the
-    /// permission months ago. The cost of mirroring is that the person can
+    /// Stored rather than in memory because macOS is asked once and the answer
+    /// outlives the launch that got it: a flag reset at every launch would demote
+    /// `.system` to the menu-bar label for someone who granted the permission
+    /// long ago. The cost of mirroring is that the person can
     /// revoke banners in System Settings and this will not hear about it, so it
     /// has to be refreshed: `VPNViewModel.refreshBannerAuthorization` reads macOS,
     /// prompting nobody, and writes it, from the settings page's `.task` and,
@@ -98,16 +92,15 @@ public struct VPNSettings {
     /// which for these is a configuration's `scutil` id rather than its name,
     /// where the rules are keyed by bundle id.
     ///
-    /// The global settings above (the two notices, the spin and its colours)
-    /// stay where they are: whatever the book has no entry for inherits them
-    /// (`VPNNoticeBook`). So an installed build that has never opened the new
-    /// popover behaves as it did, and there is no migration to run twice.
+    /// Whatever the book has no entry for inherits the global settings above
+    /// (the two notices, the spin and its colours; `VPNNoticeBook`), so there is
+    /// no migration to run.
     ///
     /// A card's notice choice, the ring switch and the colours write the book
-    /// alone: the module-wide `automationNotice` and `dropNotice`, which every
-    /// configuration without an entry inherits, are written by nothing in the
-    /// app — an old install's stored value is honoured, a new one reads `.menuBar`. A book entry with no value for a kind is the «none» that inherits;
-    /// an older payload has no book at all and decodes to an empty one.
+    /// alone: the module-wide `automationNotice` and `dropNotice` are written by
+    /// nothing in the app — a stored value is honoured, otherwise `.menuBar`. A
+    /// book entry with no value for a kind is the «none» that inherits; a payload
+    /// with no book decodes to an empty one.
     public var noticeBook: VPNNoticeBook {
         VPNNoticeBook.decode(store.string("noticeBook", default: "{}"))
     }
@@ -130,8 +123,7 @@ public struct VPNSettings {
     }
 
     /// And what colour it turns in. The module-wide value is the fallback, so a
-    /// configuration nobody has given a colour keeps the green and orange the
-    /// app shipped with.
+    /// configuration nobody has given a colour keeps the default green and orange.
     public func spinTint(for kind: VPNAutomation.Kind, connectionID: String?) -> String {
         guard let connectionID else { return spinTint(for: kind) }
         return noticeBook.tint(for: connectionID, kind: kind,

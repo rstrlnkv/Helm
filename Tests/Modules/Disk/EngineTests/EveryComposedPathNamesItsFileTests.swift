@@ -6,25 +6,18 @@ import XCTest
 
 /// A path the walk composed has to name the file the walk found.
 ///
-/// `DiskNode` holds the **name**, not the path — a full path per node cost
-/// ~345 MB on a large volume — so every path in this module is arithmetic
-/// performed after the fact: `ScanPath.child(of:name:)`, on the way down, in
-/// three separate descents (`DiskEntry`'s snapshot, `DiskAdvisor`'s sweep,
-/// `RingLayout`). Those strings are not decoration. One of them is what a click
-/// puts in the basket, what `UserFileScope` is asked to judge, and what
-/// `FileManager.trashItem` is finally handed — so a name the arithmetic does not
-/// survive is a row that deletes nothing, or worse, is a row whose path is not
-/// the file it is drawn over.
+/// `DiskNode` holds the name, not the path, so every path is composed after the
+/// fact with `ScanPath.child(of:name:)` in three descents (`DiskEntry`'s
+/// snapshot, `DiskAdvisor`'s sweep, `RingLayout`). That string is what a click
+/// puts in the basket, what `UserFileScope` judges and what
+/// `FileManager.trashItem` is handed, so a name the composition does not
+/// survive is a row whose path is not the file it is drawn over.
 ///
-/// `AdversarialInputTests` asks this of `TreeBuilder` with paths a test wrote
-/// down. This asks it of a **real walk over real files**: the names come back out
-/// of `getattrlistbulk` as bytes, through `String(cString:)`, and only then into
-/// the composition. Nothing in the suite went that way round.
+/// `AdversarialInputTests` asks this of `TreeBuilder` with written paths; this
+/// asks it of a real walk, where the names come out of `getattrlistbulk` as
+/// bytes through `String(cString:)`.
 ///
-/// The one path here that is not a file is the folded bucket, and that is
-/// deliberate: it is an aggregate the scan invents per directory wearing the
-/// name `…`, which `isFolded` exists to tell apart from a real file with that
-/// name. It is excluded by the flag, never by the name.
+/// The folded bucket is excluded by its flag, never by its name `…`.
 final class EveryComposedPathNamesItsFileTests: XCTestCase {
 
     /// Names a filesystem accepts and string handling does not.
@@ -114,22 +107,10 @@ final class EveryComposedPathNamesItsFileTests: XCTestCase {
                        "the gate refused paths of ordinary files: \(refused)")
     }
 
-    /// A file somebody really named `…`, which is the name the scan gives its own
-    /// folded bucket.
-    ///
-    /// `DiskNode.isFolded` was added because that collision cost the file three
-    /// things: it absorbed every small file beside it, it showed a size that was
-    /// not its own, and it **could not be selected, because `UserFileScope`
-    /// refuses a path ending in `/…`**. The flag fixed the first two — the
-    /// bucket is told apart by a flag now, which cannot be typed into a filename
-    /// — and the third is untouched: the gate still judges by the name, so the
-    /// row draws with its true size and the basket quietly declines it, with no
-    /// sentence anywhere saying why. The same path arriving as one of a cache's
-    /// contents comes back refused `outOfScope`, which is a reason about the
-    /// app's rules rather than about this file.
-    ///
-    /// The bucket needs no such name test any more: it is `isFolded`, and the
-    /// flag reaches the entry (`DiskEntry.isFolded`).
+    /// A file somebody really named `…`, the name the scan gives its folded
+    /// bucket, is the person's own file to the gate. The bucket is told apart
+    /// by `isFolded`, which cannot be typed into a filename, so the gate has no
+    /// reason to refuse a path ending in `/…`.
     func testAFileReallyNamedLikeTheFoldedBucketIsStillTheUsersOwnFile() throws {
         let root = try makeFixture()
         let tree = try XCTUnwrap(DiskScanner(foldThreshold: 0).scan(root: root.path))
@@ -185,7 +166,7 @@ final class EveryComposedPathNamesItsFileTests: XCTestCase {
     }
 
     /// A directory handed over with a trailing slash joins with one slash, not
-    /// two; the one test of that spelling once lived in a class of its own.
+    /// two.
     func testTrailingSlashIsNotDoubled() {
         XCTAssertEqual(ScanPath.child(of: "/Users/me/", name: "Downloads"),
                        "/Users/me/Downloads")

@@ -3,18 +3,17 @@ import XCTest
 import HelmContract
 @testable import Module_Homebrew_Engine
 
-/// A long operation used to have exactly one exit: the child's own EOF. A brew
-/// hung on the network, another brew's lock, or an installer waiting for input
-/// meant the busy gate never released — the module was dead until the app
-/// restarted, spinner running. Operations are not bounded by a clock (an
-/// install may honestly take an hour); they are stopped by hand.
+/// A brew hung on the network or on another brew's lock, or an installer
+/// waiting for input, never reaches its own EOF, and the busy gate would never
+/// release. Operations are not bounded by a clock (an install may honestly take
+/// an hour); they are stopped by hand.
 ///
 /// The runner must not answer on its own: a stream that exits synchronously
 /// would finish before there is anything to stop.
 final class ARunningOperationCanBeStoppedTests: XCTestCase {
 
     func testStopTerminatesTheChildAndNamesTheOutcome() async {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
@@ -41,7 +40,7 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
     /// An exit the person did not ask for keeps its own name: signal 15 from
     /// outside (a brew killed in a terminal) is a failure, not a stop.
     func testAnUnrequestedSignalDeathIsNotAStop() async {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
@@ -57,7 +56,7 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
 
     /// Stopping nothing is a no-op, not a crash and not a stray event.
     func testStopWithNothingRunningIsHarmless() async {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
@@ -72,7 +71,7 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
     /// A *later* stop must not reach back: the flag is cleared when the next
     /// operation starts, or one stop would rename every failure after it.
     func testTheStopFlagDoesNotOutliveItsOperation() async {
-        let runner = HangingRunner()
+        let runner = ScriptedRunner(streams: .hold)
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",

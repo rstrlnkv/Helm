@@ -3,24 +3,14 @@ import XCTest
 
 /// The rule behind the glob filter, on its own.
 ///
-/// `GlobMatch` answers "does this pattern match", which is a question about
-/// text. Whether the entry that matched is *this app's* is a different
-/// question, and the scan never asked it: `com.acme.tool*` matches
-/// `com.acme.toolPro` exactly as well as it matches `com.acme.tool.helper`,
-/// and only one of those two is the app being removed.
-///
-/// Two rules, and both are needed. A bundle id is a dotted path, so an id that
-/// appears inside a longer name is only the same id when a `.` (or the end of
-/// the name) follows it — that separates `com.acme.tool.helper` from
-/// `com.acme.toolPro`. And a name that passes *that* can still be a different
-/// app: `com.acme.tool.staging` is `com.acme.tool` plus a dot, and it is a
-/// product somebody has installed. So the installed set is consulted too, the
-/// way `scanOrphansSync` already consults it.
+/// `GlobMatch` answers a question about text; this guards whether the entry
+/// that matched is this app's. `com.acme.tool*` matches `com.acme.toolPro` as
+/// well as `com.acme.tool.helper`, and only one is the app being removed. The
+/// rules are in `LeftoverOwnership.swift`.
 final class LeftoverOwnershipTests: XCTestCase {
 
-    /// `known` is what LaunchServices answers — the apps a directory listing
-    /// cannot see. Empty here means "the listing is the whole truth", which is
-    /// what every case below the separator rule assumes.
+    /// `known` is what LaunchServices answers, the apps a directory listing
+    /// cannot see. Empty means "the listing is the whole truth".
     private func claims(_ name: String, id: String = "com.acme.tool",
                         installed: Set<String> = ["com.acme.tool"],
                         known: Set<String> = [],
@@ -95,9 +85,8 @@ final class LeftoverOwnershipTests: XCTestCase {
                               installed: ["com.acme.tool", "com.acme.tool.staging"]))
     }
 
-    /// The mirror of the above, and the reason the rule is "some *other*
-    /// installed id", not "any installed id": the app being removed is itself
-    /// installed right up until it is trashed.
+    /// The rule is "some other installed id": the app being removed is itself
+    /// installed until it is trashed.
     func testTheAppBeingRemovedDoesNotDisqualifyItsOwnFiles() {
         XCTAssertTrue(claims("com.acme.tool", installed: ["com.acme.tool"]))
         XCTAssertTrue(claims("com.acme.tool.helper", installed: ["com.acme.tool"]))
@@ -117,11 +106,9 @@ final class LeftoverOwnershipTests: XCTestCase {
 
     // MARK: - The apps the listing cannot see
 
-    /// `installedBundleIDs()` lists four folders and matches `*.app` at the top
-    /// level, so an app inside `/Applications/Adobe Acrobat DC/` — or nested in
-    /// another bundle — is absent from it while being installed and running.
-    /// LaunchServices is the only witness, and without it the rule above
-    /// refuses nothing.
+    /// An app nested in another bundle, or deeper than the listing's two levels,
+    /// is installed and absent from `installedBundleIDs()`; LaunchServices is the
+    /// only witness.
     func testAnAppTheListingCannotSeeIsStillNotThisAppsLeftover() {
         XCTAssertFalse(claims("com.acme.tool.staging",
                               installed: ["com.acme.tool"],
@@ -159,11 +146,8 @@ final class LeftoverOwnershipTests: XCTestCase {
         XCTAssertTrue(claims("com.acme.tool.helper", known: ["com.acme.tool"]))
     }
 
-    /// Which questions get asked, rather than how many refusals come back: a
-    /// LaunchServices lookup is worth asking only about a name that could be an
-    /// id of its own — this id extended past a dot. `group.` and the team
-    /// prefix are not part of anybody's bundle id, and this id itself is the
-    /// app being removed.
+    /// Which questions get asked: a LaunchServices lookup only about this id
+    /// extended past a dot, never about `group.`, a team prefix, or this id.
     func testItAsksOnlyAboutIdsThatExtendThisOne() {
         var asked: [String] = []
         _ = LeftoverOwnership(bundleID: "com.acme.tool",
@@ -176,16 +160,10 @@ final class LeftoverOwnershipTests: XCTestCase {
 
     // MARK: - Whose id is it
 
-    /// The two rules above compare a *name* against the id, and both take for
-    /// granted that the id belongs to the app being removed. It is read from
-    /// that app's own `Info.plist`, where any app may write anybody's — and
-    /// nothing downstream ever checks, so `Containers/<id>` and the rest of the
-    /// exact candidates are handed over whole, pre-ticked.
-    ///
-    /// Two installed bundles declaring one id is the evidence, and it is the
-    /// same evidence whether the second one is an impostor or an honest second
-    /// copy of the app (a Setapp build beside a direct download). Either way
-    /// the data belongs to something that stays installed.
+    /// The id is read from the app's own `Info.plist`, where any app may write
+    /// anybody's, and the exact candidates (`Containers/<id>`) arrive pre-ticked.
+    /// Two installed bundles declaring one id claim nothing, impostor or honest
+    /// second copy: the data belongs to something that stays installed.
     func testAnIdTwoInstalledBundlesDeclareClaimsNothing() {
         let both = ["/Applications/Tool.app", "/Applications/Sketchy.app"]
         XCTAssertFalse(claims("com.acme.tool", installedPaths: both))
@@ -200,9 +178,8 @@ final class LeftoverOwnershipTests: XCTestCase {
         XCTAssertTrue(claims("com.acme.tool", installedPaths: ["/Applications/Tool.app"]))
     }
 
-    /// One bundle named twice is one bundle: a lister that answers from two
-    /// sources — a directory listing and LaunchServices — reports the same path
-    /// twice, and counting that as a rival would silence the scan for every app.
+    /// One bundle named twice is one bundle: a lister answering from two sources
+    /// reports the same path twice, and a rival there would silence every scan.
     func testOneBundleReportedTwiceIsStillOneApp() {
         XCTAssertTrue(claims("com.acme.tool",
                              installedPaths: ["/Applications/Tool.app", "/Applications/Tool.app"]))
@@ -215,8 +192,7 @@ final class LeftoverOwnershipTests: XCTestCase {
     }
 
     /// A name that is not this app's at all is refused before anything is
-    /// asked: the separator rule is cheaper than a LaunchServices round trip,
-    /// and the scan makes one call per entry in five folders.
+    /// asked: the separator rule is cheaper than a LaunchServices round trip.
     func testANameThatIsNotThisAppsAsksNothing() {
         var asked: [String] = []
         _ = LeftoverOwnership(bundleID: "com.acme.tool",

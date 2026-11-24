@@ -7,12 +7,11 @@ import HelmTestSupport
 /// The mark, from the point of view of the file wearing it.
 ///
 /// `RuleStamp` is asked before anything happens, and a file it answers yes about
-/// is skipped in silence — no action, no history row, nothing in the log. The
-/// attribute it reads sits on somebody's file where any process running as the
-/// user may write, and what it used to hold was the rule's id, which the same
-/// process can read out of `com.helm.app.plist`. So a program that had just
-/// landed in `~/Downloads` could immunise itself against the rule written to
-/// catch it, and the only trace was the file still being there.
+/// is skipped in silence: no action, no history row, nothing in the log. The
+/// attribute sits on somebody's file where any process running as the user may
+/// write, and a rule's id is readable out of `com.helm.app.plist`. A mark that
+/// were only the id would let a program landed in `~/Downloads` immunise itself
+/// against the rule written to catch it.
 ///
 /// Every assertion here is a listing or a file's contents. "Acted on" counted by
 /// a `SweepReport` field would be satisfied by the rule never having matched.
@@ -68,8 +67,7 @@ final class AForgedStampDoesNotSkipAFileTests: XCTestCase {
             root.appendingPathComponent("Sorted/\(name)").path)
     }
 
-    /// The measurement, as it was made: a file carrying the rule's own id was
-    /// skipped and the ordinary file beside it was acted on.
+    /// A file carrying the rule's own id is acted on like the file beside it.
     func testAStampAnybodyCouldWriteDoesNotStopTheRule() throws {
         let malware = try write("malware.pdf", in: root)
         try write("ordinary.pdf", in: root)
@@ -115,11 +113,10 @@ final class AForgedStampDoesNotSkipAFileTests: XCTestCase {
                        "the rule took a second turn at a file it had already marked")
     }
 
-    /// A stamp written before this build holds a rule id rather than a mark, and
-    /// it is no longer honoured — the file gets one more turn from each rule that
-    /// had already had one, and is marked properly on the way through. That is
-    /// the direction this mechanism fails in by design: work redone, never work
-    /// done twice to the same file.
+    /// A stamp from an older build holds a rule id rather than a mark and is not
+    /// honoured: the file gets one more turn from each rule that had already had
+    /// one, and is marked properly on the way through. This mechanism fails by
+    /// design toward work redone, never work done twice to the same file.
     func testAStampFromAnOlderBuildIsRedoneRatherThanTrusted() throws {
         let file = try write("a.pdf", in: root)
         try plant(["rule-id-from-the-plist"], on: file)

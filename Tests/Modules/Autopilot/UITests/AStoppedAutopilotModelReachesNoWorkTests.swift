@@ -11,7 +11,7 @@ import HelmTestSupport
 /// its init reads the rule store, and with it the keychain key, at every launch of
 /// a person who never opened Autopilot; a model that still answers a press after
 /// stop acts on the person's files (a sweep, a return) for a module they switched
-/// off. Defect class kept: the model does work at construction, or after stop.
+/// off. Guards: the model does work at construction, or after stop.
 ///
 /// Every absence is paired with a control on the same fake: the fake counts the
 /// same call while the model lives, so «nothing was called» cannot be a harness
@@ -49,16 +49,12 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
         AutopilotDescriptor.historyChannel()
     }
 
-    private func settle() async {
-        await grace()
-    }
-
     /// Total failure of the subject prints `["readFolders", "readStatus", "readHistory"]`
     /// where `[]` is expected: the model read the engine at launch.
     func testBuildingTheModelAsksTheEngineNothing() async {
         let work = FakeAutopilotWork(folders: [folder])
         let rvm = model(on: work)
-        await settle()
+        await grace()
         XCTAssertEqual(work.calls, [],
                        "building the model reached the engine: every launch would read the rule store")
         XCTAssertTrue(rvm.folders.isEmpty, "the model held folders before any page was opened")
@@ -92,15 +88,17 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
         await rvm.runNow(held)
         await rvm.undo(one)
         await rvm.undoRun(pass)
-        await rvm.clearHistory()
-        await rvm.discardRefusedRules()
+        rvm.ask(.history)
+        await rvm.confirmDiscard()
+        rvm.ask(.rules)
+        await rvm.confirmDiscard()
         await waitUntil("the control presses reach the work") {
             ["save", "dryRun", "sweepNow", "putBack(record:)", "putBack(run:)",
              "dropHistory", "dropRefusedRules"].allSatisfy { work.calls.contains($0) }
         }
 
         rvm.stop()
-        await settle()
+        await grace()
         let calls = work.calls, banner = rvm.banner, preview = rvm.preview
         rvm.addFolder(at: home + "/Music")
         rvm.remove(rule(), from: held)
@@ -108,11 +106,11 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
         await rvm.runNow(held)
         await rvm.undo(one)
         await rvm.undoRun(pass)
-        await rvm.clearHistory()
-        await rvm.discardRefusedRules()
+        await rvm.confirmDiscard(.history)
+        await rvm.confirmDiscard(.rules)
         await rvm.loadHistory()
         await rvm.load()
-        await settle()
+        await grace()
         XCTAssertEqual(work.calls, calls, "a stopped model reached the engine: \(work.calls.dropFirst(calls.count))")
         XCTAssertEqual(rvm.banner, banner, "a stopped model drew a new banner")
         XCTAssertEqual(rvm.preview, preview, "a stopped model drew a new dry run")
@@ -131,11 +129,11 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
         await waitUntil("a ping while the model lives is read") { work.count("readHistory") > before }
 
         rvm.stop()
-        await settle()
+        await grace()
         let after = work.count("readHistory")
         work.holdsHistory([record("a"), record("b")])
         changed.yield()
-        await settle()
+        await grace()
         XCTAssertEqual(work.count("readHistory"), after, "a stopped model read the history on an announcement")
         XCTAssertEqual(rvm.history.count, 1, "a stopped model drew a history it had not been told to read")
     }

@@ -14,17 +14,13 @@ public struct WelcomeView: View {
     private let onClose: () -> Void
     @State private var flow: WelcomeFlow
     @State private var revealed = false
-    /// One switch, wearing two hats depending on the step: launch-at-login on
-    /// the intro, that module's enablement on a module step. Seeded in
-    /// `.onAppear` from whichever closure the current step calls for, the same
-    /// re-seed-per-step pattern `revealed` already uses below — `.id(step.id)`
-    /// re-runs `.onAppear` each time the step changes, so this never carries a
-    /// stale value from the step before it.
+    /// One switch, wearing two hats: launch-at-login on the intro, that
+    /// module's enablement on a module step. Re-seeded in `.onAppear`, which
+    /// `.id(step.id)` re-runs on each step, so it never carries a stale value.
     @State private var switchOn = false
-    /// Moves VoiceOver to the new step's content when the step changes. Without
-    /// it a tour walked from the keyboard leaves the reader on the Next button
-    /// while the words behind it change, and nothing says a new screen arrived.
-    /// First use of `AccessibilityFocusState` in the app.
+    /// Moves VoiceOver to the new step's content when the step changes, or a
+    /// reader walking the tour from the keyboard stays on Next while the words
+    /// behind it change unannounced.
     @AccessibilityFocusState private var focus: String?
 
     public init(steps: [WelcomeStep],
@@ -118,10 +114,8 @@ public struct WelcomeView: View {
                                 .background(Circle().fill(Color.primary.opacity(0.06)))
                                 .scaleEffect(revealed ? 1 : 0.4)
                                 .opacity(revealed ? 1 : 0)
-                                // Under Reduce Motion the icons still
-                                // arrive — the stagger and the scale
-                                // that would carry it do not, the
-                                // same trade the VPN spin makes.
+                                // Under Reduce Motion the icons still arrive;
+                                // only the stagger and the scale go.
                                 .animation(HelmMotion.reduceMotion ? nil
                                            : HelmMotion.emphasis.delay(Double(index) * 0.06),
                                            value: revealed)
@@ -158,13 +152,11 @@ public struct WelcomeView: View {
                     .onChange(of: switchOn) { _, on in actions.setModuleEnabled(moduleID, on) }
                 Text(WelcomeStr.switchHint)
                     .helmQuietDetail()
-                // **The one thing a step can do besides keeping its module.**
-                // A tour that only describes leaves everybody at the end of it
-                // with the descriptions and nothing set up; a module with
-                // something ready to hand over says so here, in its own words,
-                // and the button goes straight to it. Under the switch, and
-                // only while the module is on: taking somebody to a page for a
-                // module they have just switched off is a door to a dark room.
+                // A module with something ready to hand over says so here, in
+                // its own words, and the button goes straight to it, so the tour
+                // sets something up rather than only describing. Only while the
+                // module is on: a page for a module just switched off is a door
+                // to a dark room.
                 if let offer = step.offer, switchOn {
                     Button(offer) { actions.openModule(moduleID) }
                         .controlSize(.small)

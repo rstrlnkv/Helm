@@ -4,22 +4,19 @@
 import XCTest
 @testable import Module_VPN_Engine
 
-/// `VPNAutoConnectCore` documents itself as emitting connect/disconnect "on the
-/// 0↔1 transitions". `appLaunched` honours that — a launch already on record
-/// in `launched` returns at its guard, so a second launch of the same app is
-/// silent, and `wasEmpty`, captured before inserting, connects only on 0→1.
-/// `appTerminated`
-/// keeps it too: a quit with no launch on record in `launched` returns before
-/// it touches a set, so a 0→0 event fires nothing.
+/// `VPNAutoConnectCore` emits connect/disconnect on the 0↔1 transitions:
+/// `appLaunched` returns at its guard for a launch already on record in
+/// `launched`, and connects only on 0→1; `appTerminated` returns before it
+/// touches a set for a quit with no launch on record, so a 0→0 event fires
+/// nothing.
 ///
-/// That is not a theoretical event. `VPNEngine.appsChangedNow()` diffs
-/// `NSWorkspace.runningApplications` against a remembered set and sends the core
-/// every quit, whether or not a rule covers it at that moment — so a rule that
-/// reaches the core while its app is already running produces a quit with no
-/// matching launch, unless `activate()` replays a launch for that app first: the
-/// user adds a rule from the settings page for an app that is open.
+/// That event is real: `VPNEngine.appsChangedNow()` sends the core every quit,
+/// whether or not a rule covers it, so a rule that reaches the core while its
+/// app is already running — added from the settings page for an open app —
+/// produces a quit with no matching launch unless `activate()` replays a
+/// launch first.
 ///
-/// Guards: a rule added for an app that is already running does not disconnect on that app's quit without a matching launch (the review-pass commit 5f196564 fixed it among others).
+/// Guards: a rule added for an app that is already running does not disconnect on that app's quit without a matching launch.
 final class VPNAutoConnectDriftTests: XCTestCase {
 
     /// The 0→0 case, minimal. Helm never connected this VPN, so it must not

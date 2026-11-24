@@ -5,14 +5,12 @@ import XCTest
 @testable import HelmApp
 import HelmAppStrings
 
-/// The other half of the journal.
+/// The other half of the journal: what a daily scan turned up reaches the person.
 ///
-/// Three modules walk the volume once a day, `ScanJournal.change(module:)`
-/// computes what turned up since last time — and nothing in `Sources/` ever
-/// called it. The entire user-visible product of all that reading was a relative
-/// date on a settings page. This is the call that was missing, and the silences
-/// around it: the rule itself is `ScanNews`', held next door, and what is held
-/// here is that the coordinator asks it and posts what it says.
+/// `ScanJournal.change(module:)` computes what turned up since last time, and
+/// the rule for what to say is `ScanNews`', held next door. What is held here
+/// is that the coordinator asks it and posts what it says, and the silences
+/// around it.
 @MainActor
 final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
 
@@ -37,14 +35,6 @@ final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
 
     private func item(_ path: String, _ bytes: Int) -> ScanItem {
         ScanItem(path: path, bytes: bytes)
-    }
-
-    /// The banner is posted from a task of its own — the coordinator does not
-    /// wait for macOS — so a read taken straight afterwards would pass an
-    /// absence for free. `waitUntil` and `grace` are the harness's; the second
-    /// is always paired with a control that proves the same path still speaks.
-    private func waitForPosts(_ wanted: Int) async {
-        await waitUntil("\(wanted) banner(s)") { self.notices.posted.count >= wanted }
     }
 
     /// A module that has scanned once has nothing to compare against, and the
@@ -83,7 +73,7 @@ final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
         record([item("/a", 90_000_000_000), item("/new", 4_000_000_000)])
 
         coordinator.tellSomebodyWhatAppeared(in: "duplicates")
-        await waitForPosts(1)
+        await waitUntil("1 banner(s)") { notices.posted.count >= 1 }
 
         XCTAssertEqual(notices.posted.count, 1)
         let said = try XCTUnwrap(notices.posted.first)
@@ -107,7 +97,7 @@ final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
         record([item("/a", 90_000_000_000), item("/small", 4_000_000),
                 item("/big", 8_000_000_000)])
         coordinator.tellSomebodyWhatAppeared(in: "duplicates")
-        await waitForPosts(1)
+        await waitUntil("1 banner(s)") { notices.posted.count >= 1 }
         XCTAssertEqual(notices.posted.count, 1,
                        "the control: with something large the same path still speaks")
     }
@@ -125,7 +115,7 @@ final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
                        "one module's finding was announced under another's name")
 
         coordinator.tellSomebodyWhatAppeared(in: "disk")
-        await waitForPosts(1)
+        await waitUntil("1 banner(s)") { notices.posted.count >= 1 }
         XCTAssertEqual(notices.posted.first?.title,
                        ModuleRegistry.descriptor("disk")?.moduleMetadata.name)
     }
@@ -203,23 +193,23 @@ extension TheScanSaysWhatTurnedUpWhileYouWereAwayTests {
     func testTheScanIntervalIsClosedBeforeTheCompletionIsRecorded() async {
         build()
         let label = "scan.disk"
-        var walked = false
-        var openAfterTheWalk: [Bool] = []
+        let walked = Locked(false)
+        let openAfterTheWalk = Locked<[Bool]>([])
         let token = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification, object: nil, queue: nil) { _ in
-            guard walked else { return }
-            openAfterTheWalk.append(HelmActivity.running.contains { $0.label == label })
+            guard walked.value else { return }
+            openAfterTheWalk.withLock { $0.append(HelmActivity.running.contains { $0.label == label }) }
         }
         defer { NotificationCenter.default.removeObserver(token) }
 
         await coordinator.run("disk") {
-            walked = true
+            walked.value = true
             return ScanReport(bytes: 1, count: 1, items: [])
         }
 
-        XCTAssertFalse(openAfterTheWalk.isEmpty,
+        XCTAssertFalse(openAfterTheWalk.value.isEmpty,
                        "nothing was written after the walk, so the check below is vacuous")
-        XCTAssertFalse(openAfterTheWalk.contains(true),
+        XCTAssertFalse(openAfterTheWalk.value.contains(true),
                        "the interval was still open when the completion was recorded")
     }
 }

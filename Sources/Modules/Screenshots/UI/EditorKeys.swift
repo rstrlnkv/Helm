@@ -27,14 +27,11 @@ enum EditorExit: Equatable {
 /// some of these; the rest are the palette's and the ⋯ menu's.
 enum EditorAction: Equatable {
     case tool(AnnotationTool)
-    /// The eraser, a mode of the editor and no `AnnotationTool`: a drag takes away the layers it meets, and the chosen tool
-    /// stays chosen under it. The key again puts it down; choosing any tool, or Select, does too.
+    /// The eraser, a mode of the editor and no `AnnotationTool` (Architecture/ScreenshotsEditor.md § The eraser and the ruler).
     case erase
-    /// The ruler: a switch and no tool and no mode. It is put on the picture, in the middle of the area, or lowered; the tool chosen,
-    /// or the eraser, is as it was.
+    /// The ruler: a switch and no tool and no mode, put on the picture in the middle of the area, or lowered.
     case toggleRuler
-    /// The ⋯ menu's Crop, a mode and no tool, with no key: while it is on the area's handles are offered, the pending area is what
-    /// the screen shows, Return takes it and Esc, a tool, the eraser or Select gives the area back. Choosing it again is Esc's.
+    /// The ⋯ menu's Crop, a mode and no tool, with no key (Architecture/ScreenshotsEditor.md § The area and Crop).
     case crop
     /// The ⋯ menu's Select: no tool, so a drag selects. Choosing it twice is still no tool.
     case select

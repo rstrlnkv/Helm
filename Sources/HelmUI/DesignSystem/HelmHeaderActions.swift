@@ -17,8 +17,8 @@ struct HelmHeaderActions: View {
     nonisolated static let gap = HelmSpace.s4
     /// 36 pt — the Kit's control height (the row is this with 8 above and below, `CardHeader.height`), the tab strip's and the search's too.
     nonisolated static let side = CGFloat(36)
-    /// A disabled glyph's dimming, fit to what AppKit's own disabled toolbar glyph reads back on screen (a
-    /// measurement of the old toolbar's capsule, taken per appearance; the display moves it by a few hundredths).
+    /// A disabled glyph's dimming, fit to what AppKit's own disabled toolbar glyph reads back on screen, per
+    /// appearance.
     private static let disabledGlyphOpacityDark = 0.49
     private static let disabledGlyphOpacityLight = 0.60
 

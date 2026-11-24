@@ -81,11 +81,9 @@ final class DuplicateScannerTests: XCTestCase {
 extension DuplicateScannerTests {
     /// A file that cannot be read must leave the running, not join a group.
     ///
-    /// The trap the pinning test exists for: hashing broke out of its read
-    /// loop on failure and returned the digest of whatever it had — for a
-    /// first-slice failure, the digest of nothing, which is the same digest
-    /// for every unreadable file. Two same-size unreadable files grouped as
-    /// duplicates and the sheet offered to trash content nobody had read.
+    /// A hash that returned the digest of whatever it had read on a failure
+    /// would give every unreadable file the digest of nothing, and two
+    /// same-size unreadable files would be offered as duplicates.
     func testUnreadableFilesNeverGroupTogether() throws {
         let a = try writeCandidate("locked-a.bin", 4, in: root)
         let b = try writeCandidate("locked-b.bin", 5, in: root)   // same size, different content
@@ -108,16 +106,9 @@ extension DuplicateScannerTests {
 /// Which copy the module offers to keep, through the scanner the engine
 /// actually calls.
 ///
-/// There were two assembly lines: a pipeline the unit tests drove, and
-/// `DuplicateScanner.find`, which the engine drives. `SurvivingCopy`
-/// was wired into the first and not the second, so the page explained the
-/// date-added rule in its tooltip while the app went on keeping whichever path
-/// sorted first. The suite stayed green because the only test through the real
-/// scanner compared the paths as a `Set`, where order cannot be observed.
-///
-/// So these assert the *first* path, and they run through `find`.
-///
-/// Guards a past defect: 69128315 fix(duplicates): the survivor rule was wired into the pipeline nobody runs.
+/// A rule proved only on the pipeline the unit tests drive could be missing
+/// from `DuplicateScanner.find`, and paths compared as a `Set` cannot show
+/// order. So these assert the *first* path, and they run through `find`.
 final class SurvivorThroughTheScannerTests: XCTestCase {
 
     private var root: URL!

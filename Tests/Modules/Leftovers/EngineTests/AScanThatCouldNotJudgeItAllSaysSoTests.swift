@@ -2,20 +2,16 @@ import XCTest
 import Module_Leftovers_Engine
 
 /// **The all-clear is this module's strongest claim about somebody's Mac, and it
-/// was drawn over items nobody had judged.**
+/// is not drawn over items nobody judged.**
 ///
 /// A scan reaches `.undetermined` when a reading its verdict depends on did not
 /// happen — `systemextensionsctl` did not answer, or the program a job points at
 /// sits somewhere this process may not search — and `.unreadable` when the file
-/// itself would not open. Both of those already choose the safe direction and
-/// both already reach the log. Neither reached the screen: the rows are not
-/// `.orphaned`, so the default filter drops them, `visible` falls to zero and the
-/// page drew a green check over «No leftovers found».
+/// itself would not open. Neither row is `.orphaned`, so the default filter drops
+/// them and `visible` falls to zero; without a reason of its own the page would
+/// draw a green check over «No leftovers found».
 ///
-/// So there is a fourth reason for an empty list, and it carries its own count —
-/// the sentence about it cannot be built from a number fetched separately.
-///
-/// Past defect: fixed in `10b8c705`.
+/// So there is a fourth reason for an empty list, and it carries its own count.
 final class AScanThatCouldNotJudgeItAllSaysSoTests: XCTestCase {
 
     /// The three statuses that are a verdict, and the two that are the absence of
@@ -46,8 +42,7 @@ final class AScanThatCouldNotJudgeItAllSaysSoTests: XCTestCase {
     }
 
     /// And the count travels with the reason, because the sentence interpolates
-    /// it: a `Reason` that carried no number would have the page fetch one from
-    /// somewhere else, which is two answers to one question.
+    /// it: one question, one answer.
     func testTheCountTravelsWithTheReason() {
         XCTAssertNotEqual(LeftoversEmpty.reason(scanned: true, visible: 0,
                                                 hiddenByKind: 0, unchecked: 1),

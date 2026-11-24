@@ -6,13 +6,10 @@ import HelmUI
 
 /// What «Open Helm at login» is actually doing, as against what it says.
 ///
-/// **The switch had no channel back from the only thing that can refuse it.**
-/// `setEnabled` caught `register()`'s throw and discarded it under a comment
-/// about unsigned dev builds, and the page read the value once at construction
-/// — so a refused registration left the switch on with Helm not opening at
-/// login, and a person who removed Helm from System Settings while the window
-/// was open saw a switch that still said yes. The permission rows sitting two
-/// lines below it re-probe on every activation.
+/// **The switch needs a channel back from the only thing that can refuse it.**
+/// `register()` can throw, and a person can remove Helm in System Settings
+/// while the window is open, so the switch draws what macOS says and is
+/// re-probed on every activation, like the permission rows below it.
 ///
 /// One value rather than a `Bool` beside a `Bool`, for the reason `TrashWatch`
 /// gives: «asked for, and macOS refused» and «not asked for» are different
@@ -86,8 +83,7 @@ enum LoginItem {
                         unregister: { try SMAppService.mainApp.unregister() })
         } catch {
             // Registration can fail for an unsigned or relocated build. That is
-            // a fact about this Mac and it now reaches the screen, rather than
-            // being swallowed here and contradicted by a switch.
+            // a fact about this Mac, and it reaches the screen.
             HelmLog.shared.failure("login", on ? "could not register" : "could not unregister",
                                    error)
             return current(refused: true)

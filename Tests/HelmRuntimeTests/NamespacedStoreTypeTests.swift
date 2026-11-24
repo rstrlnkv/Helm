@@ -1,13 +1,9 @@
 import XCTest
 @testable import HelmRuntime
 
-/// The two accessors nothing exercised, and what happens when a key holds
-/// something the accessor cannot read.
-///
-/// `NamespacedStore` stores six shapes — Bool, Int, String, [String], Data and
-/// [String: Bool] — and the suite covered three. `boolTable` is "the shape
-/// three modules now keep" and `data` is where a whole rule set lives, so a
-/// wrong answer from either is a settings page that opens empty.
+/// The table and data accessors, and what happens when a key holds something
+/// the accessor cannot read. `data` is where a whole rule set lives, so a wrong
+/// answer is a settings page that opens empty.
 ///
 /// The point of the wrong-type cases is that they must degrade to the default,
 /// not to a crash and not to a lie.
@@ -38,9 +34,8 @@ final class NamespacedStoreTypeTests: XCTestCase {
         XCTAssertNil(store().data("never-written"))
     }
 
-    /// A key holding the wrong shape reads as the default. This is the
-    /// already-migrated case: a version stored a JSON string under a key that
-    /// now holds Data, or the reverse.
+    /// A key holding the wrong shape reads as the default: a JSON string under
+    /// a key that holds Data, or the reverse.
     func testWrongShapesFallBackToTheDefaultRatherThanThrowing() {
         let s = store()
         s.set("not data", for: "a")
@@ -80,10 +75,8 @@ final class NamespacedStoreTypeTests: XCTestCase {
                        "the prefix is literal, so a crafted key names a key that does not exist")
     }
 
-    /// The fourth member of the `doubleTable`/`intTable`/`boolTable` row.
-    /// Keyboard binds an
-    /// application to a layout, which is a `[String: String]`, and every other
-    /// table shape was already here.
+    /// The `[String: String]` table, beside `doubleTable`, `intTable` and
+    /// `boolTable`: an application bound to a layout.
     func testAStringTableComesBackAsItWentIn() {
         let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
         store.set(["com.apple.Terminal": "com.apple.keylayout.US"], for: "appLayouts")
@@ -91,8 +84,7 @@ final class NamespacedStoreTypeTests: XCTestCase {
                        ["com.apple.Terminal": "com.apple.keylayout.US"])
     }
 
-    /// Absent is empty, never nil — the same answer `boolTable` gives, so a
-    /// caller never writes the same `?? [:]` a third time.
+    /// Absent is empty, never nil, as with `boolTable`.
     func testAnAbsentStringTableIsEmpty() {
         let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
         XCTAssertEqual(store.stringTable("appLayouts"), [:])

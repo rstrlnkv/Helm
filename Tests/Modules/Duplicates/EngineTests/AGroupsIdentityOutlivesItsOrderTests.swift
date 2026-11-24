@@ -3,18 +3,14 @@ import XCTest
 
 /// A group's identity is its content, not the order its copies happen to be in.
 ///
-/// `id` was `copies.first?.path` — the survivor's path — which is a fact about
-/// the *order* of the array and not about the group. The order is about to stop
-/// being fixed: once the copy that stays is a setting, re-deciding it permutes
-/// `copies`, and `ForEach(dvm.groups)` would read a group whose survivor changed
-/// as a different group — a removal and an insertion where the person made one
-/// choice, with the page's animation following the wrong story.
+/// Re-deciding the copy that stays permutes `copies`, and an id taken from the
+/// order would make `ForEach(dvm.groups)` read a group whose survivor changed as
+/// a different group — a removal and an insertion where the person made one
+/// choice.
 ///
 /// So the identity is taken from the set of paths, sorted, and the assertions
 /// below are structural: they compare an id against another id of the same
 /// group, never against a value a fixture could satisfy by accident.
-///
-/// Guards a past defect: 245d09e6 feat(duplicates): a group's identity outlives its order, and a copy remembers when it arrived.
 final class AGroupsIdentityOutlivesItsOrderTests: XCTestCase {
 
     private func group(_ paths: [String]) -> DuplicateGroup {
@@ -25,8 +21,7 @@ final class AGroupsIdentityOutlivesItsOrderTests: XCTestCase {
                          "/Users/me/Desktop/b.bin",
                          "/Users/me/Downloads/c.bin"]
 
-    /// The one the future setting needs: whichever copy is put first, the group
-    /// SwiftUI sees is the same group.
+    /// Whichever copy is put first, the group SwiftUI sees is the same group.
     func testTheIdDoesNotMoveWhenTheSurvivingCopyDoes() {
         let asFound = group(three)
         let reordered = group([three[2], three[0], three[1]])
@@ -55,15 +50,13 @@ final class AGroupsIdentityOutlivesItsOrderTests: XCTestCase {
                           "two different sets of copies share an identity")
     }
 
-    /// A group of one copy and a group of none still answer, and answer apart:
-    /// `copies.first?.path ?? ""` gave every empty group the same id, which is
-    /// the identity collision `ForEach` is least able to survive.
+    /// A group of one copy and a group of none still answer, and answer apart.
     func testAnEmptyGroupIsNotEveryOtherEmptyGroupsTwin() {
         XCTAssertNotEqual(group([]).id, group([three[0]]).id)
     }
 
     /// The id is a derived value, so it must not be a place a path can be read
-    /// out of. Ids reach diagnostics — the log carries no names (ARCHITECTURE.md § Diagnostics log), and
+    /// out of. Ids reach diagnostics — the log carries no names (Architecture/DiagnosticsLog.md § Diagnostics log), and
     /// a joined list of paths would carry every one of them.
     func testTheIdDoesNotSpellThePathsItWasMadeFrom() {
         let id = group(three).id

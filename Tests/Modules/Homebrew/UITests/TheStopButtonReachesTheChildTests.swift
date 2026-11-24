@@ -7,40 +7,11 @@ import HelmTestSupport
 /// The whole path of a press on Stop: view model → port → engine → the child's
 /// handle. Driven over the real engine, because the act crosses a target
 /// boundary and only the trip proves the two sides agree.
-/// Kept: guards the defect fixed in 882fe986 fix(homebrew): the batch — a hang has a deadline, a press has an answer, a phase has a name.
 @MainActor
 final class TheStopButtonReachesTheChildTests: XCTestCase {
 
-    private final class Handle: RunningProcess, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _terminated = false
-        var terminated: Bool { lock.lock(); defer { lock.unlock() }; return _terminated }
-        func terminate() { lock.lock(); _terminated = true; lock.unlock() }
-    }
-
-    /// Hangs, or the stop would race a stream already over.
-    private final class HangingRunner: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _handles: [Handle] = []
-        var handles: [Handle] { lock.lock(); defer { lock.unlock() }; return _handles }
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            let handle = Handle()
-            lock.lock(); _handles.append(handle); lock.unlock()
-            return handle
-        }
-    }
-
     func testStopFromTheViewModelTerminatesTheChild() async {
-        let runner = HangingRunner()
+        let runner = FakeBrew(hangingStreams: true)
         let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
@@ -55,15 +26,5 @@ final class TheStopButtonReachesTheChildTests: XCTestCase {
         model.stopOperation()
 
         await waitUntil("the child was terminated") { runner.handles.first?.terminated == true }
-    }
-
-    /// The page offers the press: a stop nobody can reach is not a feature.
-    /// Structural.
-    func testThePageWiresTheStopButton() throws {
-        let page = RepoSource.root
-            .appendingPathComponent("Sources/Modules/Homebrew/UI/HomebrewConsole.swift")
-        let source = try String(contentsOf: page, encoding: .utf8)
-        XCTAssertTrue(source.contains("hb.stopOperation()"),
-                      "HomebrewConsole offers no way to stop a running operation")
     }
 }

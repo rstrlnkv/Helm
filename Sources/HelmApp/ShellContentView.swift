@@ -24,25 +24,23 @@ import HelmUI
 /// (`ShellWindowButtons`), above everything and hit by nothing.
 /// The card carries the fill and the shadow and never masks, so the shadow is
 /// not cut; the clip masks, so the pane's band does not run square to the
-/// window's corner. The sidebar and the pane are handed in. This view names no page and builds no toolbar: the window's, under Glass, carries the page tabs alone (`SettingsToolbar`).
+/// window's corner. The sidebar and the pane are handed in. This view names no
+/// page and builds no toolbar.
 ///
-/// **The clip holds the pane alone, and the pane starts where AppKit's strip ends:** this view adds nothing
-/// to the pane's top safe-area inset; the pane's and the sidebar's own hosting controllers take none from the
-/// title bar (`safeAreaRegions = []`, `SettingsWindow`), which the toolbar under Glass makes taller, so both start
-/// at the same y under both looks. It neither writes the
-/// window buttons' frames nor reads them; `ShellWindowButtons` does.
+/// **The pane starts where AppKit's strip ends:** this view adds nothing to the
+/// pane's top safe-area inset, and both hosting controllers take none from the
+/// title bar (`safeAreaRegions = []`, `SettingsWindow`), so the pane and the
+/// sidebar start at the same y under both looks. The window buttons' frames are
+/// `ShellWindowButtons`'s alone.
 ///
-/// **One reader on macOS 26.** `layout()` reads the corner, whoever asked for the layout:
-/// AppKit on a resize, `viewDidMoveToWindow`, `sidebarWidth`'s setter (every write), and
-/// `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
+/// **One reader on macOS 26.** `layout()` reads the corner, whoever asked for
+/// the layout; events only ask (`needsLayout = true`).
 ///
-/// **The fold is the width travelling.** `fold(to:animated:)` starts a travel and writes no frame: it keeps
-/// the fold it was asked for, asks for a layout and starts `foldLink`. The first call of the
-/// link with a finite timestamp only records it; each other one writes `sidebarWidth`, from the time since that
-/// first, or the target itself when the timestamp is not finite, is below the last or reaches the end, and does
-/// nothing else, every write asks for a layout, and `layout()` places the card and the pane from the
-/// width standing then. The rail's placement of the buttons is asked for
-/// from the turn of the flip and given up when the target width is written, which ends the travel and the link.
+/// **The fold is the width travelling.** `fold(to:animated:)` writes no frame:
+/// it starts `foldLink`, whose calls write `sidebarWidth` (`tick`), and every
+/// write asks for a layout, so `layout()` is the one writer of frames. The
+/// rail's placement of the buttons holds from the flip until the target width
+/// is written, which ends the travel and the link.
 ///
 /// **Not-a-number.** A sidebar width that is not a number is `ShellGeometry`'s
 /// business (`cardFrame` reads it as 0), and the sidebar's frame is cut from the
@@ -52,12 +50,8 @@ import HelmUI
 @MainActor
 final class ShellContentView: NSView {
 
-    /// The sidebar's width; the view does not clamp it (`ShellGeometry.railWidth` is
-    /// outside `ShellGeometry.sidebarRange`). Setting it asks for a layout, and writing the
+    /// The sidebar's width; the view does not clamp it. Setting it asks for a layout, and writing the
     /// width a fold is travelling to ends that fold's claim on the buttons (`foldTarget`).
-    ///
-    /// `layout()` places everything from the value standing. Every write other than the link's moves the width at
-    /// once and ends the travel only when it writes the target or comes through `fold(to:animated:)` as a cut.
     private var sidebarWidth: CGFloat = ShellGeometry.defaultSidebarWidth {
         didSet {
             if sidebarWidth == foldTarget { endTravel() }
@@ -88,9 +82,8 @@ final class ShellContentView: NSView {
 
     /// The width a fold in flight is travelling to, nil when none is. While it is set the buttons keep
     /// the rail's placement (`layout()`). It is cleared by the write of the target itself (`sidebarWidth`),
-    /// by a cut (`fold(to:animated:)`), and by the view's move to another window (`viewDidMoveToWindow`),
-    /// which finishes the fold; each of them ends the travel and stops the link.
-    /// If none of them came, the buttons would stay in the rail's placement at an expanded width.
+    /// by a cut (`fold(to:animated:)`), and by the view's move to another window (`viewDidMoveToWindow`);
+    /// if none came, the buttons would stay in the rail's placement at an expanded width.
     private var foldTarget: CGFloat? { travel?.fold.to }
 
     /// Whether `layout()` gives the window's buttons the rail's placement: a fold is travelling (`foldTarget`) or
@@ -159,10 +152,9 @@ final class ShellContentView: NSView {
         card.wantsLayer = true
         card.layer?.cornerCurve = .continuous
         card.layer?.masksToBounds = false
-        // NSView.shadow, not the layer's shadow properties: on 27.2, off screen, the
-        // layer's shadowOpacity read 0 after the fill was set again on an appearance
-        // change. 0.12, 6 and -1 are tuned by eye, not measured; they are on no ladder
-        // and a ladder is not where they are meant to go.
+        // NSView.shadow, not the layer's shadow properties: the layer's
+        // shadowOpacity reads 0 after the fill is set again on an appearance
+        // change. 0.12, 6 and -1 are tuned by eye and belong on no ladder.
         let shadow = NSShadow()
         shadow.shadowColor = NSColor.black.withAlphaComponent(0.12)
         shadow.shadowBlurRadius = 6
@@ -173,9 +165,8 @@ final class ShellContentView: NSView {
 
         clip.wantsLayer = true
         clip.layer?.cornerCurve = .continuous
-        // Said outright: on 27.2 AppKit turned masking on by itself once a radius
-        // above 0 was set on this layer, and a clip that masks only then is square
-        // until the first corner.
+        // Said outright: AppKit turns masking on by itself only once a radius
+        // above 0 is set, and until then the clip would be square.
         clip.layer?.masksToBounds = true
         card.addSubview(clip)
         clip.addSubview(pane)
@@ -247,12 +238,10 @@ final class ShellContentView: NSView {
 
     /// **Brings the sidebar to `width`: one travel of the width along `HelmMotion.interfaceCurve` for
     /// `HelmMotion.sidebarFoldDuration` when `animated`, the width standing is finite and differs from `width`, and
-    /// Reduce Motion is off; a cut otherwise, except a `width` that is not finite, which is refused (below).** Returns whether a travel was started. It writes no frame:
-    /// `layout()` places the card, the sidebar and the buttons from the width standing, so there
-    /// is one writer of frames. A cut is a plain write, ends a travel in flight and stops its link, so a call
-    /// of the link that is already on its way finds nothing to move. A `width` that is not finite (not-a-number or an infinity) is a caller's
-    /// defect and is refused whole (nothing written, false): the stored width never gets
-    /// here unclamped. The fold itself and the lights giving way to the capsule are not seen on a screen.
+    /// Reduce Motion is off; a cut otherwise.** Returns whether a travel was started. It writes no frame. A cut is
+    /// a plain write and ends a travel in flight, so a call of the link already on its way finds nothing to move.
+    /// A `width` that is not finite is a caller's defect and is refused whole (nothing written, false). The fold
+    /// itself and the lights giving way to the capsule are not seen on a screen.
     @discardableResult
     func fold(to width: CGFloat, animated: Bool) -> Bool {
         guard width.isFinite else { return false }
@@ -297,9 +286,9 @@ final class ShellContentView: NSView {
 
     /// **The Glass ground is the material AppKit gives a split view's sidebar.**
     /// `NSSplitViewItem(sidebarWithViewController:)` builds an `NSGlassEffectView`, style `.regular`,
-    /// `cornerRadius` 0, private `_variant` 18, in an opaque window (read on macOS 27.3); this is that
-    /// view. It matched Finder's sidebar in every key, appearance and look cell (tester, 2026-11-15).
-    /// A system without the `_variant` selector keeps the plain regular glass, and the log says so.
+    /// `cornerRadius` 0, private `_variant` 18, in an opaque window; this is that view, and it matches
+    /// Finder's sidebar in every key, appearance and look. A system without the `_variant` selector keeps
+    /// the plain regular glass, and the log says so.
     private static func makeGlassGround() -> NSGlassEffectView {
         let glass = NSGlassEffectView()
         glass.style = .regular

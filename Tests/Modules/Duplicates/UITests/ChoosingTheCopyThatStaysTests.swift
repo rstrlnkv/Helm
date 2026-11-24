@@ -9,9 +9,8 @@ import Module_Duplicates_Engine
 /// **It is a rearrangement, not a second kind of state.** The whole page rests
 /// on one invariant — the first copy of a group is the one that stays — and
 /// every count, every plan and the background scan's own report read it. A
-/// «chosen survivor» held beside the array would be a second answer to the
-/// question the array already answers, and the two would part company at the
-/// first removal.
+/// «chosen survivor» held beside the array would be a second answer, and the
+/// two would part company at the first removal.
 @MainActor
 final class ChoosingTheCopyThatStaysTests: XCTestCase {
 
@@ -122,11 +121,9 @@ final class ChoosingTheCopyThatStaysTests: XCTestCase {
         XCTAssertEqual(dvm.groups.first?.paths.first, filed)
     }
 
-    /// A search re-reads the folder and re-decides everything, which is what
-    /// pressing Search again asks for. The choice belonged to the list it is
-    /// replacing — and the same content found again has the same id, so a pin
-    /// held across a search would step over the new answer with nothing on
-    /// screen to say why.
+    /// A search re-reads the folder and re-decides everything. The choice
+    /// belonged to the list it replaces, and a pin held across a search would
+    /// step over the new answer with nothing on screen to say why.
     func testASearchForgetsTheChoicesItReplaces() async throws {
         let dvm = await searched([trio()])
         dvm.choose(.byDate)
@@ -145,9 +142,7 @@ final class ChoosingTheCopyThatStaysTests: XCTestCase {
     }
 
     /// «Mark every extra copy» reads the array, so a hand-chosen survivor is the
-    /// one copy it leaves alone. This is the button that acts on the whole page
-    /// at once, and it is where a second notion of «the survivor» would show up
-    /// as somebody's file in the Trash.
+    /// one copy it leaves alone.
     func testMarkingEveryExtraRespectsTheChoice() async throws {
         let dvm = await searched([trio()])
         dvm.keep(archived, in: try XCTUnwrap(dvm.groups.first))

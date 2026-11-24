@@ -4,17 +4,12 @@ import XCTest
 @testable import HelmApp
 import HelmAppStrings
 
-/// The other half of the update check.
+/// A release found while nobody is looking is announced, not only logged.
 ///
-/// **Past defect: a release found while nobody looked left only a log line** (866b17a0,
-/// the commit that added the announcement and this class).
-///
-/// `UpdateCheck` decides what a GitHub response means and eight suites hold it —
-/// and the answer went into a published property that exactly one view reads, on
-/// the About page, inside a settings window a menu-bar app does not open by
-/// itself. The daily check could find a release and the only trace of it was a
-/// line in the log. `UpdateNews` is the rule, held next door; what is held here
-/// is that the service asks it, posts what it says, and does not say it twice.
+/// Without it the check's answer reaches only the settings window, which a
+/// menu-bar app does not open by itself.
+/// `UpdateNews` is the rule, held next door; what is held here is that the
+/// service asks it, posts what it says, and does not say it twice.
 @MainActor
 final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
 
@@ -23,7 +18,7 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
 
     /// The store is a namespace of the app's own over an in-memory backing: the
     /// stamp this writes is a real setting, and `UserDefaults.standard` is the
-    /// shared test domain that had 3028 keys in it.
+    /// shared test domain.
     private var store: NamespacedStore!
 
     private func build(_ port: FakeAutomationNotice = FakeAutomationNotice(state: .authorized)) {
@@ -34,30 +29,19 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
                                 channelBacking: InMemoryKeyValueStore())
     }
 
-    /// The banner is posted from a task of its own — the check does not wait for
-    /// macOS — so a read taken straight afterwards would pass an absence for
-    /// free. Every `grace()` below is paired with a control that proves the same
-    /// path still speaks.
-    ///
-    /// **Posted is not finished, and counting one against the other is counting
-    /// a moving subject.** The stamp that makes the next check quiet is written
-    /// after `NoticeChannel.tell` returns, so between «the fake holds a banner»
-    /// and «the service has recorded it» there is a window a second call fits
-    /// through — which is exactly what made this file fail once in a full run
-    /// while passing alone. Waiting on the record rather than on the banner
-    /// closes it, and asserts the stronger fact besides.
-    private func waitForPosts(_ wanted: Int, recorded version: String) async {
-        await waitUntil("\(wanted) banner(s)") { self.notices.posted.count >= wanted }
-        await waitUntil("the announcement recorded") {
-            self.store.object(UpdateService.lastAnnouncedKey) as? String == version
-        }
-    }
+    // The banner is posted from a task of its own — the check does not wait for macOS — so a read taken
+    // straight afterwards would pass an absence for free; every `grace()` below is paired with a control that
+    // proves the same path still speaks. **Posted is not finished:** the stamp that makes the next check quiet is
+    // written after `NoticeChannel.tell` returns, so each wait below is on the record as well as on the banner,
+    // or a second call fits through the window between them.
 
     func testAReleaseFoundWithNobodyWatchingIsAnnounced() async throws {
         build()
 
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
-        await waitForPosts(1, recorded: "v0.12.0")
+        await waitUntil("1 banner(s) and the announcement recorded") {
+            notices.posted.count >= 1 && store.object(UpdateService.lastAnnouncedKey) as? String == "v0.12.0"
+        }
 
         let said = try XCTUnwrap(notices.posted.first)
         // The card's own words, not a second spelling of them.
@@ -73,7 +57,9 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         build()
 
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
-        await waitForPosts(1, recorded: "v0.12.0")
+        await waitUntil("1 banner(s) and the announcement recorded") {
+            notices.posted.count >= 1 && store.object(UpdateService.lastAnnouncedKey) as? String == "v0.12.0"
+        }
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
         await grace()
 
@@ -82,7 +68,9 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         // The control: silence above is a decision about that version, not a
         // channel that has stopped working.
         service.tellSomebodyAboutIt("v0.12.1", startedByHand: false)
-        await waitForPosts(2, recorded: "v0.12.1")
+        await waitUntil("2 banner(s) and the announcement recorded") {
+            notices.posted.count >= 2 && store.object(UpdateService.lastAnnouncedKey) as? String == "v0.12.1"
+        }
         XCTAssertEqual(notices.posted.count, 2)
     }
 
@@ -102,7 +90,9 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         // The control, and the second thing this holds: pressing the button did
         // not spend the announcement either.
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
-        await waitForPosts(1, recorded: "v0.12.0")
+        await waitUntil("1 banner(s) and the announcement recorded") {
+            notices.posted.count >= 1 && store.object(UpdateService.lastAnnouncedKey) as? String == "v0.12.0"
+        }
         XCTAssertEqual(notices.posted.count, 1)
     }
 
@@ -119,15 +109,16 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         // System Settings, the only way this ever changes.
         notices.state = .authorized
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
-        await waitForPosts(1, recorded: "v0.12.0")
+        await waitUntil("1 banner(s) and the announcement recorded") {
+            notices.posted.count >= 1 && store.object(UpdateService.lastAnnouncedKey) as? String == "v0.12.0"
+        }
 
         XCTAssertEqual(notices.posted.count, 1)
     }
 
-    /// **Launch was the only moment there was.** Helm is launched at login and
-    /// then runs for weeks, so a check that happens once per launch happens
-    /// once — and a banner behind it would be dead for exactly the people who
-    /// never quit.
+    /// **The check runs after launch too.** Helm is launched at login and runs
+    /// for weeks, so a check once per launch happens once, and a banner behind
+    /// it would be dead for the people who never quit.
     func testTheCheckGoesOnHappeningAfterLaunch() {
         let store = AppSettings.store.over(InMemoryKeyValueStore())
         // Stamped as checked a moment ago, so arming the tick asks GitHub

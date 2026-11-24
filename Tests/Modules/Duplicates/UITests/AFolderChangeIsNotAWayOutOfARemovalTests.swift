@@ -3,11 +3,11 @@ import XCTest
 import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
-/// «Choose another folder» during a removal ended in `search()`, which empties
-/// the basket and the report the removal's tick and Stop button are drawn in,
-/// and it stored the new folder with its seal while the request was still out.
-/// The button is dimmed and `use(folder:)` refuses, like «Search again»
-/// (`ASearchIsNotAWayOutOfARemovalTests`).
+/// «Choose another folder» during a removal changes nothing: it would end in
+/// `search()`, which empties the basket and the report the removal's tick and
+/// Stop button are drawn in, and store the new folder with its seal while the
+/// request is still out. The button is dimmed and `use(folder:)` refuses, like
+/// «Search again» (`ASearchIsNotAWayOutOfARemovalTests`).
 ///
 /// Parked, never answered on the spot: a removal that returns before the press
 /// is a window nothing can be inside.

@@ -3,24 +3,19 @@ import Foundation
 /// Where a path *leads*, which is the only thing a removal gate may judge.
 ///
 /// `URL.standardizedFileURL` and `NSString.standardizingPath` collapse `.` and
-/// `..` and stop there — they do not resolve symbolic links. `FileManager`'s
-/// `trashItem` does follow them. That gap let a path be approved as
-/// `~/Library/Caches/com.evil.app/taxes.pdf` and executed as
-/// `~/Documents/taxes.pdf`: any process running as the user can create one of
-/// the plug-in directories the leftovers scan enumerates — none of them exist
-/// on a stock install — as a link to somewhere protected, and wait.
+/// `..` and do not resolve symbolic links; `FileManager`'s `trashItem` follows
+/// them. Without resolving, a path approved as
+/// `~/Library/Caches/com.evil.app/taxes.pdf` can be executed as
+/// `~/Documents/taxes.pdf`: any process running as the user can create a
+/// directory the leftovers scan enumerates as a link to somewhere protected.
 ///
 /// The **leaf is deliberately not resolved.** Trashing a symlink removes the
 /// link and leaves its target alone, which is exactly what a person clearing a
 /// stale alias asks for. It is an *ancestor* that redirects that makes the
 /// spelling a lie, so only the parent chain is resolved.
 ///
-/// `RemovableScope` and `UserFileScope` both need it, so it is written once
-/// here. `WatchScope` canonicalises on its own and resolves the leaf too, as far
-/// as it exists.
-///
-/// The trailing separator below is the same subject one layer down — not where
-/// a path leads but which of several strings names the same place.
+/// `RemovableScope` and `UserFileScope` both need it. `WatchScope`
+/// canonicalises on its own (Architecture/TheGates.md § The gates).
 public enum PathCanonical {
 
     /// One folder, one spelling. `…/Ghost`, `…/Ghost/` and `…/Ghost//` are one
@@ -28,9 +23,7 @@ public enum PathCanonical {
     /// three times for one folder.
     ///
     /// **Every** separator: a path joined onto a root that already ended in one
-    /// carries two, and stripping a single one left `p` and `p//` different.
-    /// The root is the one path that is nothing but a separator, and it keeps
-    /// its own.
+    /// carries two. The root keeps its own.
     public static func withoutTrailingSeparators(_ path: String) -> String {
         var trimmed = path
         while trimmed.count > 1, trimmed.hasSuffix("/") { trimmed.removeLast() }
@@ -60,17 +53,16 @@ public enum PathCanonical {
 
     /// Who a file is, as opposed to what it is called.
     ///
-    /// Device and inode together name one object on one volume, and they
-    /// survive both a rename and a move within that volume — which is what
-    /// makes them the right answer to "is the thing at this path still the
-    /// thing I acted on". A move *across* volumes changes the inode, and the
-    /// two callers here fail in the same direction when it does: a mark stops
-    /// matching, and a return refuses rather than moving a stranger's file.
+    /// Device and inode together name one object on one volume, and survive a
+    /// rename and a move within that volume: the answer to "is the thing at
+    /// this path still the thing I acted on". A move *across* volumes changes
+    /// the inode, and callers fail safe: a mark stops matching, and a return
+    /// refuses rather than moving a stranger's file.
     ///
-    /// The device is `UInt64(bitPattern: st_dev)` and stays so. It is lossless;
-    /// it is deployed in `ActionRecord.device` (`ActionHistory.swift`) and in the
-    /// stamp MAC (`StampMark.of(rule:device:inode:key:)`); and converting it would
-    /// read every stamped file on a volume with a negative `st_dev` as unstamped.
+    /// The device is `UInt64(bitPattern: st_dev)` and stays so: it is lossless,
+    /// and it is stored in `ActionRecord.device` and in the stamp MAC
+    /// (`StampMark.of(rule:device:inode:key:)`), so converting it would read
+    /// every stamped file on a volume with a negative `st_dev` as unstamped.
     public struct FileIdentity: Equatable, Sendable {
         public let device: UInt64
         public let inode: UInt64
@@ -88,9 +80,8 @@ public enum PathCanonical {
     /// The identity of whatever is at `path`, or nothing when there is nothing.
     ///
     /// `lstat`, so a symlink answers with its own identity rather than its
-    /// target's — the same reading `RuleStamp` takes for the same reason: an
-    /// answer about the target would let a link stand in for the file it points
-    /// at.
+    /// target's, as in `RuleStamp`: otherwise a link could stand in for the
+    /// file it points at.
     public static func identity(of path: String) -> FileIdentity? {
         var info = stat()
         guard lstat(path, &info) == 0 else { return nil }
@@ -115,23 +106,19 @@ public enum PathCanonical {
 
     /// The directory a path names, with the leaf resolved too.
     ///
-    /// The other half of `resolvingAncestors`, and the difference is the whole
-    /// reason both exist. A gate over *removal* leaves the leaf alone, because
-    /// trashing a stale alias must remove the alias. A gate over *reading* has
-    /// no such case: you cannot walk a link, only what it points at — and
-    /// `FileManager.enumerator` handed a link to a directory yields nothing,
-    /// which is how a moved `~/Downloads` came back as an empty scan recorded as
-    /// «looked, and it was clean».
+    /// The other half of `resolvingAncestors`. A gate over *removal* leaves the
+    /// leaf alone, because trashing a stale alias must remove the alias. A gate
+    /// over *reading* has no such case: you cannot walk a link, only what it
+    /// points at, and `FileManager.enumerator` handed a link to a directory
+    /// yields nothing, an empty scan recorded as clean.
     ///
     /// Standardized **before** anything else: `URL(fileURLWithPath:)` resolves a
     /// relative path against the process's working directory, so canonicalizing
-    /// first answers a question nobody asked. `ScanRoot.resolve` records what the
-    /// `$HOME/link/.` spelling cost when the two steps were the other way round.
+    /// first answers a question nobody asked (`ScanRoot.resolve`).
     ///
-    /// Written twice before it moved here — the scan root gate and the duplicate
-    /// finder's transit tier, which compare a stored path and a system folder
-    /// against paths a walk produced, and are wrong in the same way if either
-    /// side is left unresolved.
+    /// Shared by the scan root gate and the duplicate finder's transit tier,
+    /// which compare a stored path against paths a walk produced and are wrong
+    /// if either side is left unresolved.
     public static func resolvingWholePath(_ path: String) -> String {
         let standardized = (path as NSString).standardizingPath
         return URL(fileURLWithPath: standardized)
@@ -142,12 +129,10 @@ public enum PathCanonical {
     /// link whose target is not there yet.
     ///
     /// **`realpath` cannot answer for a link that points at nothing.**
-    /// `resolvingSymlinksInPath()` is `realpath` underneath, it fails with
-    /// `ENOENT` on such a link, and Foundation's answer to a failure is the path
-    /// it was handed, unchanged — so `resolvingWholePath` above says «this is the
-    /// place it names» about a name that is a link to somewhere else. A source
-    /// planted as a link before its target is created is invisible to it, and
-    /// creating the target afterwards is the second half of the same act.
+    /// `resolvingSymlinksInPath()` fails with `ENOENT` on such a link and hands
+    /// back the path unchanged, so `resolvingWholePath` calls a dangling link
+    /// the place it names. A link planted before its target is created is
+    /// invisible to it.
     ///
     /// So the parent chain is resolved as `resolvingAncestors` does — the deepest
     /// ancestor that exists, with the missing tail put back — and the leaf is
@@ -181,15 +166,13 @@ public enum PathCanonical {
     /// invisible and a prefix test does not.
     ///
     /// Not `standardizingPath`, which does this rewrite **only for a path that
-    /// exists** — so it answers differently about a folder that has just been
-    /// removed, and it asks the disk to find out. This is a fact about the two
-    /// spellings, and it holds for a path that was never there.
+    /// exists**, and asks the disk to find out. This is a fact about the two
+    /// spellings, and holds for a path that was never there.
     ///
-    /// Internal rather than public: both callers are in this target. `ScanRoot`
-    /// folds it away on both sides of a comparison, because an enumerator can
-    /// hand back children spelled differently from the root it was given;
-    /// `UserFileScope` needs the pair, because the *list* it tests against holds
-    /// `/private/var/db` itself.
+    /// `ScanRoot` folds it away on both sides of a comparison, because an
+    /// enumerator can hand back children spelled differently from its root;
+    /// `UserFileScope` needs the pair, because its list holds `/private/var/db`
+    /// itself.
     static func withoutPrivate(_ path: String) -> String {
         path.hasPrefix("/private/") ? String(path.dropFirst("/private".count)) : path
     }
@@ -202,11 +185,9 @@ public enum PathCanonical {
     /// deepest ancestor that does exist and re-appending the missing tail.
     static func resolvingAncestors(_ path: String) -> String {
         // A relative path is handed back untouched. `URL(fileURLWithPath:)`
-        // resolves one against the process's working directory, so resolving
-        // first and validating afterwards silently promotes `""` and
-        // `relative/path` to absolute paths a gate then approves — which is
-        // exactly what happened the first time this was wired in. "Where does
-        // it lead" is not a question a relative path has an answer to.
+        // resolves one against the process's working directory, which would
+        // silently promote `""` and `relative/path` to absolute paths a gate
+        // then approves.
         guard path.hasPrefix("/") else { return path }
         let standardized = URL(fileURLWithPath: path).standardizedFileURL
         guard standardized.path != "/" else { return standardized.path }

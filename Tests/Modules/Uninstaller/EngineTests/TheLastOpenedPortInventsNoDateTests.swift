@@ -5,19 +5,13 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// **The real last-opened port on a bundle Spotlight has never indexed.**
+/// The real last-opened port on a bundle Spotlight has never indexed: the
+/// metadata API answers the file's modification date for it, which is no
+/// opening. The temporary folder is never indexed, so the case is reproducible
+/// without a disk image.
 ///
-/// The metadata API answers `kMDItemLastUsedDate` for such a bundle anyway,
-/// with the file's modification date made up on the spot — which on a volume
-/// Spotlight does not index read as «Opened N years ago» for every app, N the
-/// age of the install. A bundle under the temporary folder is one Spotlight
-/// never indexes, so the same synthesised answer is reproducible here without
-/// a disk image or `mdutil`.
-///
-/// Not behind `HELM_BENCH`: nothing here reads this Mac's own applications.
 /// The precondition asserts that the API really did make the date up, so the
-/// case cannot pass on a machine where the subject never happened.
-/// Past defect: fix commit 4ce355a9.
+/// case cannot pass where the subject never happened.
 final class TheLastOpenedPortInventsNoDateTests: XCTestCase {
 
     func testABundleSpotlightNeverIndexedHasNoOpeningInvented() throws {

@@ -1,20 +1,13 @@
 import XCTest
 @testable import Module_Disk_Engine
 
-/// The brother of the free-space sum `RingLayout.layout` now saturates: the
-/// «other» arc adds up every child too narrow to draw, and does it with
-/// `Int.saturatingAdding(_:)`, where it once used a plain `+=`.
+/// The «other» arc in `RingLayout.layout` adds up every child too narrow to
+/// draw with `Int.saturatingAdding(_:)`.
 ///
-/// A walk of a real disk cannot make the children of a folder outweigh an
-/// integer, but a tree does not only come from a walk — `restoreLastScan` decodes
-/// one from the saved file. `DiskEntry` bounds each figure there to
-/// `DiskEntry.byteCeiling`, and a bound on each figure is not one on their sum:
-/// narrow children together past `Int.max` would trap the process in the layout,
-/// and the saved file is read again on every opening of the page.
-///
-/// Without the saturating add this traps and takes the whole test process with it
-/// (`unexpected signal code 5`); that is how it reads red, and it was seen red
-/// that way before the add was repaired.
+/// A walk cannot make a folder's children outweigh an integer, but
+/// `restoreLastScan` also decodes a tree from the saved file, and `DiskEntry`'s
+/// bound on each figure is not a bound on their sum. Without the saturating add
+/// this traps and takes the whole test process with it; that is how it reads red.
 final class TheFoldedArcDoesNotTrapTests: XCTestCase {
 
     func testNarrowChildrenOutweighingAnIntegerDoNotTrapTheOtherArc() {

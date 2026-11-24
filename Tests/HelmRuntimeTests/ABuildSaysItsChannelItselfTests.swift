@@ -8,12 +8,10 @@ import XCTest
 /// whose version happens to carry a `-dev` suffix.**
 ///
 /// The versioning standard forbids the suffix, so a dev build carries a bare
-/// `0.11.2`. `AppBuild.isDev` used to read only the suffix and took such a
-/// build for a beta: the Beta badge in About, no language row, logging that can
-/// be switched off. The channel key is what the packaging script writes, and
-/// the version rule stays only for a bundle that has no key.
-///
-/// Past defect: a DEV build with version `0.11.2` read as not-dev.
+/// `0.11.2`, and read by its suffix it would pass for a beta: the Beta badge in
+/// About, no language row, logging that can be switched off. The channel key is
+/// what the packaging script writes; the version rule stays only for a bundle
+/// that has no key.
 final class ABuildSaysItsChannelItselfTests: XCTestCase {
 
     func testADevChannelIsDevWhateverTheVersionLooksLike() {
@@ -28,7 +26,7 @@ final class ABuildSaysItsChannelItselfTests: XCTestCase {
         XCTAssertFalse(AppBuild.isDev(channel: "STABLE", shortVersion: "0.11.1"))
     }
 
-    /// The key wins over the suffix: the opposite direction of the defect.
+    /// The key wins over the suffix in the other direction too.
     func testABetaChannelWithADevSuffixedVersionIsNotDev() {
         XCTAssertFalse(AppBuild.isDev(channel: "BETA", shortVersion: "0.11.1-dev.17"))
     }

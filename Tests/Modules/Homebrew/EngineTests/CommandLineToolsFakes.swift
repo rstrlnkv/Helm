@@ -5,17 +5,16 @@ import HelmTestSupport
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
-// Fakes for the wait on Apple's Command Line Tools, shared by the files that
-// drive it — `command grep -rlw WaitRig Tests` names them. They live beside the Homebrew engine tests and not in
-// `Tests/Support`, which sees only the runtime and the shared UI target — the
-// shape Keep Awake's own `Fakes.swift` has, for the same reason.
+// Fakes for the wait on Apple's Command Line Tools, shared by the files that drive it
+// (`command grep -rlw WaitRig Tests` names them). `Tests/Support` sees only the runtime and
+// the shared UI target, so they live here, as Keep Awake's own `Fakes.swift` does.
 
 /// Apple's tools, as the engine can ask about them.
 ///
 /// **Filing the request does not open the window**: on a real Mac Apple's
 /// installer appears later and on its own, so `requestInstall` leaves
-/// `installerRunning` as the test set it — a fake that started the installer
-/// itself would make "the window was never seen" unrepresentable.
+/// `installerRunning` as the test set it, and "the window was never seen"
+/// stays representable.
 final class FakeCommandLineTools: CommandLineToolsPort, @unchecked Sendable {
     private let lock = NSLock()
     private let journal: Locked<[String]>?
@@ -163,9 +162,8 @@ final class FakeWaitTicker: WaitTicker, @unchecked Sendable {
 }
 
 /// Answers the password dialog as the test says, records what root was asked
-/// for, and can hold the dialog on screen until the test answers it — the
-/// engine's thread blocks inside `runAdmin` exactly as it does behind
-/// `osascript`.
+/// for, and can hold the dialog on screen until the test answers it, blocking
+/// the engine's thread inside `runAdmin` as `osascript` does.
 final class ScriptedPrivileged: PrivilegedRunner, @unchecked Sendable {
     private let lock = NSLock()
     private let journal: Locked<[String]>?
@@ -203,14 +201,13 @@ final class ScriptedPrivileged: PrivilegedRunner, @unchecked Sendable {
 /// An engine wired to the three fakes for the three sides of its boundary —
 /// Apple's tools, time, root — plus a runner, each named at construction.
 final class WaitRig {
-    /// One ordered record that the tools fake and the privileges fake both write
-    /// into, so a test can say what came *directly before* the password dialog —
-    /// two records apart could only say each happened.
+    /// One ordered record the tools fake and the privileges fake both write
+    /// into, so a test can say what came *directly before* the password dialog.
     let journal = Locked<[String]>([])
     let tools: FakeCommandLineTools
     let ticker = FakeWaitTicker()
     let privileged: ScriptedPrivileged
-    let runner = HangingRunner()
+    let runner = ScriptedRunner(streams: .hold)
     let news = EngineNews<HomebrewNews>()
     let engine: HomebrewEngine
 
@@ -223,8 +220,7 @@ final class WaitRig {
     }
 
     /// The latest `opState` and `opLog` the news would replay to a page
-    /// opened now. A sentinel emitted before subscribing marks where the replay
-    /// ends, so the read is deterministic.
+    /// opened now.
     func replayed() async -> (state: OpState?, busy: Bool) {
         await replayedState(news)
     }

@@ -15,14 +15,12 @@ enum LaunchAgentReader {
     ///
     /// One spelling, read twice — here as the fallback, and by
     /// `LaunchLabel.mayBeSwitched` as the label this file would actually register
-    /// under. Written out twice it would be a rule the two could come to disagree
-    /// about, which is the whole subject of `LaunchLabel`.
+    /// under — so the two cannot disagree.
     ///
     /// Off the end, not everywhere: `deletingPathExtension` on
     /// "com.vendor.plistwatcher.plist" keeps the name, where replacing every
-    /// ".plist" made it "com.vendorwatcher" — an identifier that matches no
-    /// installed app (so the job looked orphaned) and that `launchctl disable`
-    /// would aim at something else entirely.
+    /// ".plist" would make it "com.vendorwatcher" — an identifier that matches no
+    /// installed app and that `launchctl disable` would aim at something else.
     static func labelFromFileName(_ path: String) -> String {
         ((path as NSString).lastPathComponent as NSString).deletingPathExtension
     }

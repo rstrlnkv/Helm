@@ -3,8 +3,8 @@ import AppKit
 /// **Where Copy Path writes.** A path is plain text; a hidden app's path is as private as its name, so a copy made from the Hidden card
 /// carries the two markers nspasteboard.org names beside the text, a type whose content is ignored: `ConcealedType` says "do not
 /// record", `TransientType` that the item is short-lived (a manager may honour one and not the other). Neither stops anything from pasting
-/// it. **Whether a given clipboard manager honours them was not measured**, and a copied path stays on the pasteboard after the card
-/// locks (a known limit). Precedent: `SystemShotPasteboard` in the Screenshots module.
+/// it, and a copied path stays on the pasteboard after the card locks (Architecture/Launchpad.md § Show in Finder, Copy Path and the new dot).
+/// Precedent: `SystemShotPasteboard` in the Screenshots module.
 ///
 /// The board is named so a test reads the types off a pasteboard of its own and never the person's.
 struct LaunchpadPasteboard {

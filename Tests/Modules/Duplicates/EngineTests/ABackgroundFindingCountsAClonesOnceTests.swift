@@ -9,13 +9,11 @@ import XCTest
 ///
 /// On APFS a clone shares its blocks with the file it was made from, so with one
 /// of them staying the others return nothing. The notification sums the items'
-/// bytes (`ScanChange.appearedBytes`), and every item carried its copy's own size,
-/// so three clones announced the two copies' full sizes where removing them
-/// gives back nothing.
+/// bytes (`ScanChange.appearedBytes`), so each item carries what removing its
+/// copy adds, not the copy's own size.
 ///
 /// **The fixture lives in the home directory**, as `StoredFolderMustBeHelmsOwnTests`
 /// explains: `ScanRoot` refuses a root outside it.
-/// Past defect: backlog row bgscan-clones.
 final class ABackgroundFindingCountsAClonesOnceTests: XCTestCase {
 
     private var fixture: URL!
@@ -73,8 +71,8 @@ final class ABackgroundFindingCountsAClonesOnceTests: XCTestCase {
         XCTAssertEqual(report.bytes, 2 * one)
     }
 
-    /// The journal stored full sizes before this. The same paths scanned again
-    /// at the corrected figure are not news.
+    /// A journal holding full sizes for the same paths, scanned again at the
+    /// clone-aware figure, is not news.
     func testAPreviousScanInTodaysFormIsNotAFindingAgainstTheCorrectedOne() async throws {
         let first = try write("a.bin")
         try clone(first, as: "b.bin")

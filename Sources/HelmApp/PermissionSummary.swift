@@ -4,9 +4,8 @@ import HelmRuntime
 
 /// What macOS is withholding, counted once.
 ///
-/// The settings page and the panel both need this and had it written out in
-/// one of them; the second copy would have been the first place the two could
-/// disagree about how many permissions are missing.
+/// The settings page and the panel both need this, and one copy cannot
+/// disagree with itself about how many permissions are missing.
 @MainActor
 enum PermissionSummary {
 
@@ -15,19 +14,8 @@ enum PermissionSummary {
         let declared = ModuleRegistry.all
             .filter { ModuleHost.shared.isEnabled($0) }
             .flatMap { $0.currentPermissions() }
-        let wanted = Set(declared.compactMap(need(for:)))
+        let wanted = Set(declared.compactMap(PermissionNeed.init))
         return PermissionNeed.allCases.filter(wanted.contains)
-    }
-
-    /// What macOS gate a declared permission stands behind; the admin helper
-    /// is a sudoers rule, not a privacy pane.
-    static func need(for permission: ModulePermission) -> PermissionNeed? {
-        switch permission {
-        case .fullDisk: return .fullDiskAccess
-        case .accessibility: return .accessibility
-        case .screenRecording: return .screenRecording
-        case .adminHelper: return nil
-        }
     }
 
     static func withheld(accessibility: PermissionState, fullDisk: PermissionState,
@@ -53,7 +41,7 @@ enum PermissionSummary {
     static func affected(by withheld: [PermissionNeed],
                          among declared: [[ModulePermission]]) -> Int {
         declared.filter { list in
-            list.contains { need(for: $0).map(withheld.contains) ?? false }
+            list.contains { PermissionNeed($0).map(withheld.contains) ?? false }
         }.count
     }
 }

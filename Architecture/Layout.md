@@ -29,13 +29,11 @@ cancels before the engine's `deactivate()` (`TheLayoutStreamReplaysTheLatestStat
 `ASwitchedOffModuleLetsItsSubscriberGoTests`). The model lives as long as the module is
 switched on, so the panel tile keeps counting with Settings closed.
 
-`emitState` says a state only when it differs from the last one said: the comparison, the record and the `say` sit under `emitLock`, apart from the tap's state lock (`testAReReadThatChangesNothingSaysNothing`). The order of two racing emissions has no deterministic test. `LanguageIndicator`'s `deinit` removes the distributed observers and the `FrontmostApp` watcher of an indicator dropped without `detach()` (`testADroppedIndicatorLetsGoOfBothObservers`, a scan of the source: building one puts a status item in the menu bar).
+`emitState` says a state only when it differs from the last one said: the comparison, the record and the `say` sit under `emitLock`, apart from the tap's state lock (`testAReReadThatChangesNothingSaysNothing`). The order of two racing emissions has no deterministic test. `LanguageIndicator`'s `deinit` removes the distributed observers and the `FrontmostApp` watcher of an indicator dropped without `detach()`.
 
 Words: `Sources/Modules/Layout/UI/Localizable.xcstrings`; shared words through `HelmWord` from the kit.
 
-Announcements are not on the stream. `LayoutAnnouncement` is an edge said once, at the
-moment it happens, over `AnnouncePort`; a replaying stream would say the last one again
-to every new subscriber.
+Announcements are not on the stream: `LayoutAnnouncement` is an edge said once, over `AnnouncePort`; a replaying stream would say the last one again to every new subscriber.
 
 `settingsChanged()` re-reads the store on the engine's own serial queue, not on main:
 `reloadSettings` ends in `emitState`, which asks the accessibility server whether the focused
@@ -86,14 +84,12 @@ Nothing is typed and no grant is changed to reach a state; the tour is left with
 | `hero-nothing-yet` | the sentence figure, its caption, five capsule buttons, "Today" chosen | the page as it opens, with `introSeen` set and `heroPeriod` unset in the dev domain, in Helm Dev with Accessibility, on a day the ledger holds no word put right (`figures.words > 0` is false for the chosen period) |
 | `hero-period-<p>` | another period chosen: `hero-counting` when the ledger has words in it, the sentence otherwise | `--arg module.layout.heroPeriod week` (`month`, `year`, `allTime`) |
 | `hero-counting` | a number figure over "words put right · <period> · ≈ <time> not spent typing again" | a period the dev ledger has words in: `--arg module.layout.heroPeriod <p>`; nothing is typed |
-| `hero-paused` | the caption "Paused — a password field is in front, and Helm never reads one." | needs secure input in front; not shot |
 | `denied` | "Not watching", the reason and Grant…; the two notes; the indicator section only | Helm Dev without Accessibility |
 | `tour-1`, `tour-2`, `tour-3` | the tour card's steps | `--press "<Show>"` (the button on the "How it works" row), then `--press "<Next>"` once and twice; or `--arg module.layout.introSeen '<false/>'` |
 | `indicator-<style>` | the indicator section open, the style picker and the preview (none for `sourceName`) | `--arg module.layout.indicator '<true/>' --arg module.layout.badgeStyle <plain\|filled\|outlined\|flagDrawn\|sourceName>` |
-| `last-change` | the "Last change" row, the pair, the note, Never this word | needs typing; not shot |
-| `no-dictionary` | the warning line under the behaviour | only on a Mac with a layout macOS has no dictionary for; not shot |
+| `hero-paused`, `last-change`, `no-dictionary` | the caption "Paused — a password field is in front, and Helm never reads one."; the "Last change" row, the pair, the note, Never this word; the warning line under the behaviour | secure input in front; typing; a Mac with a layout macOS has no dictionary for: none shot |
 | `lists` | the lists window: words (empty: the "no words" line), apps (the built-in refusals this Mac has, the add button), Done | `--press "<the Words row's name>"`, read from `HelmReadout ax` first; the lists window (520 × 452 on screen) may read `onscreen no`, and then `shoot.sh` shoots the settings window: take the lists window's id from `HelmReadout window <pid>` and capture it with `screencapture -x -o -l <id>` |
-| `worst` | de at the narrowest pane, 772 pt: the all-time number, its caption on one line, five capsules on one row, the card column as wide as at 892 pt, the correct-while-typing row's detail on two lines, the capitals row's on one; below the fold seen at 892 pt only: the hotkey row keeps its three controls. ru and fr at 772 pt, a number the dev ledger does not hold, a long language in `lists`: not rendered, one still was kept, and the ledger's words are what they are | `--arg module.app.interfaceLanguage de --arg module.app.sidebarWidth '<real>320</real>' --arg module.layout.heroPeriod allTime`, and `--arg module.layout.enabled '<true/>'` where Helm Dev has Layout off; the minimum window is the stored frame's |
+| `worst` | de, shot at 772 pt and 892 pt (older, narrower panes; the narrowest pane is 1003 pt now and was not re-measured): the all-time number, its caption on one line, five capsules on one row, the card column as wide as at 892 pt, the correct-while-typing row's detail on two lines, the capitals row's on one; below the fold seen at 892 pt only: the hotkey row keeps its three controls. ru and fr at 772 pt, a number the dev ledger does not hold, a long language in `lists`: not rendered, one still was kept, and the ledger's words are what they are | `--arg module.app.interfaceLanguage de --arg module.layout.heroPeriod allTime`, and `--arg module.layout.enabled '<true/>'` where Helm Dev has Layout off; the minimum window is the stored frame's |
 
 The menu-bar indicator has no page. Its states are `off` (no status item), one per badge style, its menu with and without the emoji item (Accessibility granted or not), and the badge corrected on menu open, with its once-per-run log line. Its change is an image swap in AppKit with no animation, so there is no motion to record; the menu cannot be opened by `HelmReadout`, so it is not shot.
 

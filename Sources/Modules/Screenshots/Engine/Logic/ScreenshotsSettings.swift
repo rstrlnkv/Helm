@@ -156,12 +156,12 @@ public struct ScreenshotsSettings: Equatable, Sendable {
         /// The swatch's name, which the Settings row writes: the colour a tool starts with until it has its own: the editor
         /// reads it only while `editorInk` is absent, the Settings row always. Never re-keyed.
         public static let editorColor = "editorColor"
-        /// The colour every tool had before each kept its own, `[red, green, blue]`, sRGB 0…1 (`AnnotationInk`): written no
-        /// more, read as the start of a tool with no entry in `editorInkByTool`; the Settings row's pick removes it (a pick in the editor never writes it).
+        /// One colour for every tool, `[red, green, blue]`, sRGB 0…1 (`AnnotationInk`): nothing writes it; it is read as the
+        /// start of a tool with no entry in `editorInkByTool`, and the Settings row's pick removes it.
         public static let editorInk = "editorInk"
         /// Tool raw value → `[red, green, blue]`, each tool's own colour (`EditorMemory`).
         static let editorInkByTool = "editorInkByTool"
-        /// Retired, not read: one step for every tool, before each tool had its own. Never reused.
+        /// Retired and not read; the name is never reused.
         static let editorThickness = "editorThickness"
         /// Tool raw value → step 0…2, and tool raw value → opacity, each tool's own (`EditorMemory`).
         static let editorThicknessByTool = "editorThicknessByTool"
@@ -178,8 +178,7 @@ public struct ScreenshotsSettings: Equatable, Sendable {
 /// switch of System Settings. Absent is the ordinary state and means on; a
 /// number that is zero means off; any other kind of value is not a decision and
 /// reads as on, because a sound that is silent for a garbled preference is
-/// harder to find than one that plays. Whether macOS's own capture honours the
-/// key on this Mac was not measured.
+/// harder to find than one that plays.
 enum ShutterRule {
     static func plays(setting: Bool, uiAudio: Any?) -> Bool {
         guard setting else { return false }

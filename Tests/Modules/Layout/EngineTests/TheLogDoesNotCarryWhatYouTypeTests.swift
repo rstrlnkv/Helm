@@ -5,22 +5,16 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
-/// This module reads every keystroke in every app, and nothing checked that
-/// none of them reach the log.
-///
-/// The engine says so twice in its own comments — "Counts and shapes, never the
-/// word itself", "the log carries no content" — and (ARCHITECTURE.md § Diagnostics log) states the rule
-/// for the whole app. Twenty-nine test files in this module, and not one of
-/// them touches `HelmLog`. The promise was kept by discipline at each of the
-/// eleven call sites and by nothing else.
+/// This module reads every keystroke in every app, and none of them may reach
+/// the log: counts and shapes, never the word itself
+/// (Architecture/DiagnosticsLog.md § Diagnostics log).
 ///
 /// The stake here is the highest in the app. A VPN name says where somebody
 /// works; this sees what they write — in a chat window, a search field, a form
 /// that is not secure-entry. `helm.log` has a "Copy log" button whose whole
-/// purpose is pasting it into a bug report, and the file already had to be
-/// deleted once, wholesale, when redaction arrived after it.
+/// purpose is pasting it into a bug report.
 ///
-/// **Each test proves its own subject exists.** A test that only looks for the
+/// Each test proves its own subject exists. A test that only looks for the
 /// absence of a word passes when nothing was logged at all — which is what a
 /// test process does by default, since `LogPolicy` keeps the log off for a
 /// build that is not `-dev`.

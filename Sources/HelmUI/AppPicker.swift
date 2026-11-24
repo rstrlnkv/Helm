@@ -17,17 +17,13 @@ public enum AppInfo {
         init(name: String, icon: NSImage) { self.name = name; self.icon = icon }
     }
 
-    /// LaunchServices for the path, `FileManager` for the display name and
-    /// `NSWorkspace` for the icon — three trips to the system, about 0.14 ms
-    /// together, and `HelmAppRuleRow` asks for them in its **initialiser**.
-    /// Keep Awake's and Layout's lists draw those rows, so every filter keystroke and
-    /// every scroll paid for the whole visible list again.
+    /// Three trips to the system (LaunchServices, `FileManager`, `NSWorkspace`),
+    /// and `HelmAppRuleRow` asks in its initialiser, so without a memo every
+    /// filter keystroke and scroll would pay for the visible list again.
     ///
-    /// Nothing invalidates it: an app renamed or moved while Helm is running
-    /// keeps the name and icon it had until the next launch. That is the answer
-    /// this app has always given — the path-keyed memo below
-    /// (`AppInfo.icon(forFile:)`) has never invalidated either — and the price of the
-    /// alternative is watching LaunchServices for a change nobody has reported noticing.
+    /// Nothing invalidates it: an app renamed or moved while Helm runs keeps its
+    /// old name and icon until the next launch, as with `AppInfo.icon(forFile:)`.
+    /// Watching LaunchServices is the price of the alternative.
     nonisolated(unsafe) private static let resolved = NSCache<NSString, Resolved>()
 
     public static func resolve(_ bundleID: String) -> (name: String, icon: NSImage) {
@@ -47,12 +43,9 @@ public enum AppInfo {
 
     /// Bundle ids in the order the names they draw would be read.
     ///
-    /// **A list stored by key and read by name.** Two settings pages held their
-    /// app rules in a `[String: Rule]` and drew `keys.sorted()`, which is
-    /// `com.apple.Safari` before `com.tinyapp.Zed` before `org.mozilla.firefox`
-    /// — Safari, Zed, Firefox on screen, an order with no rule in it. Here
-    /// rather than in either page for the reason every other shared drawing
-    /// decision is: the second copy is where they drift.
+    /// A list stored by key and read by name: sorting bundle ids puts Safari,
+    /// Zed, Firefox in an order with no rule in it. Shared, so two pages cannot
+    /// drift.
     ///
     /// `localizedStandardCompare` is the Finder's own comparison — case
     /// insensitive, and a run of digits read as a number, so «Ableton 9» comes

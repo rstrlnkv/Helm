@@ -12,11 +12,9 @@ import SwiftUI
 /// The look also picks the window's ground (`ShellContentView`): flat is the system's flat sidebar material,
 /// `liquidGlass` is `NSGlassEffectView`.
 ///
-/// The header row in the card reads the look from the environment, and the window sets it at the root of
-/// the detail pane from the stored value (`helmTracksBarAppearance`): under `flat` its tabs sit on a plate
-/// of `HelmSurface.barPlate` with the pick `HelmSurface.barPick` (`HelmHeaderTabs`) and its actions stand
-/// bare (`HelmHeaderActions`); under `liquidGlass` both are the system's glass, the tabs as the window's `NSToolbar`
-/// item (`SettingsToolbar`), which exists under this look only.
+/// The window sets the look at the root of the detail pane (`helmTracksBarAppearance`), and the header row reads
+/// it (Architecture/ThePageHeader.md § The page header): under `liquidGlass` the tabs are the window's `NSToolbar`
+/// item (`SettingsToolbar`), which carries items under this look only.
 ///
 /// **The key is its own, and it is not `appearance`.** That key, in the same
 /// namespace, already holds light, dark or the system's choice

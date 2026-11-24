@@ -4,22 +4,21 @@ import HelmRuntime
 
 /// The sweep that turns "an app is in the Trash" into "here is what it left".
 ///
-/// One engine call rather than several: the host reaches it only through the
-/// module's model (`UninstallerViewModel`), since `HelmApp` depends on no module's engine target (`Package.swift`, target `HelmApp`). The host triggers and draws; everything judged happens here.
+/// One engine call: the host reaches it only through the module's model, and
+/// everything judged happens here.
 final class TrashSweepTests: XCTestCase {
 
     private let home = URL(fileURLWithPath: "/Users/ann")
 
-    /// `watching: true` unless a test says otherwise, because the offer is off
-    /// until somebody turns it on and every test below is about what happens once
-    /// they have. The one that checks the switch itself passes `false`.
+    /// `watching: true` unless a test says otherwise: every test below is about
+    /// the offer once it is on.
     private func engine(_ lister: FakeApps,
                         store: NamespacedStore? = nil,
                         watching: Bool = true) -> UninstallerEngine {
         let store = store ?? NamespacedStore(namespace: "uninstaller",
                                              backing: InMemoryKeyValueStore())
         store.set(watching, for: "watchTrash")
-        return UninstallerEngine(home: home, apps: lister, fs: EveryPathExists(size: 4096),
+        return UninstallerEngine(home: home, apps: lister, fs: FakeFS(everyPathExistsAt: 4096),
                                  trash: NoTrash(), running: NoRunning(),
                                  store: store)
     }
@@ -58,10 +57,8 @@ final class TrashSweepTests: XCTestCase {
 
     // MARK: - The refusal that matters most
 
-    /// Two copies of one app share a bundle id. Dragging one to the Trash leaves the
-    /// other installed and its support files in use — offering to delete them then
-    /// is not cleaning up after an uninstall, it is breaking an app the person still
-    /// runs.
+    /// Two copies of one app share a bundle id: with one in the Trash and the
+    /// other installed, the support files are still in use.
     func testAnAppStillInstalledElsewhereIsNotOffered() async {
         let uninstaller = engine(FakeApps(apps: [installed("com.example.two", at: "/Applications/Two.app")],
                               trashed: [trashed("com.example.two", "Two")]))
@@ -81,12 +78,12 @@ final class TrashSweepTests: XCTestCase {
         XCTAssertEqual(groups.count, 1)
     }
 
-    /// An app that left nothing behind is not worth a window. Reported as empty
-    /// rather than as a group with no rows, which the host would have to special-case.
+    /// An app that left nothing behind is not a group: no window, and no empty
+    /// group for the host to special-case.
     func testAnAppWithNoLeftoversIsNotAGroup() async {
         let uninstaller = UninstallerEngine(home: home,
                                   apps: FakeApps(trashed: [trashed("com.example.clean", "Clean")]),
-                                  fs: NoFiles(), trash: NoTrash(), running: NoRunning())
+                                  fs: FakeFS(), trash: NoTrash(), running: NoRunning())
 
         let groups = await uninstaller.trashedAppLeftovers()
         XCTAssertTrue(groups.isEmpty)
@@ -112,7 +109,7 @@ final class TrashSweepTests: XCTestCase {
     }
 
     /// The record is in the store the host hands the module, so it outlives the
-    /// process — which is the whole point of remembering a no.
+    /// process.
     func testTheNoSurvivesANewEngineOverTheSameStore() async {
         let backing = InMemoryKeyValueStore()
         let store = { NamespacedStore(namespace: "uninstaller", backing: backing) }
@@ -162,8 +159,8 @@ final class TrashSweepTests: XCTestCase {
         func set(_ v: Any?, forKey k: String) { inner.set(v, forKey: k) }
     }
 
-    /// The sweep's prune and a cancel each read the dismissed set, change it and
-    /// write it back; run together, one wrote over the other's change.
+    /// The sweep's prune and a cancel each read, change and write the dismissed
+    /// set; run together, neither overwrites the other's change.
     func testACancelDuringTheSweepIsNotLostToItsPrune() {
         let backing = HoldingStore()
         let store = NamespacedStore(namespace: "uninstaller", backing: backing)
@@ -208,10 +205,8 @@ final class TrashSweepTests: XCTestCase {
 
     // MARK: - The switch
 
-    /// Off is the default, and off means the engine has nothing to say — not that
-    /// the host is expected to keep quiet about an answer it was given. A window
-    /// that opens unasked has to be something somebody asked for, and the module
-    /// is where that is decided, the same way it decides everything else here.
+    /// Off is the default, and off means the engine has nothing to say: the
+    /// module decides, not a host trusted to keep quiet.
     func testNothingIsOfferedWhileTheOfferIsOff() async {
         let lister = FakeApps(trashed: [trashed("com.a", "A")])
         let groups = await engine(lister, watching: false).trashedAppLeftovers()

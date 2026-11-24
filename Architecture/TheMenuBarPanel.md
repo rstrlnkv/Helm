@@ -19,8 +19,7 @@ The panel is drawn from the kit's tokens (`HelmSpace`, `HelmRadius`, `HelmSurfac
 - **The tiles** — each module's own.
 
 A tab's menu keeps its "Icon" item and the glyph picker it opens (`pickingGlyph` in `PanelBars.swift`, `HelmGlyphPicker`), by
-the owner's choice. The archive's acceptance of their removal is superseded; `pickingGlyph` reads as unused to a
-periphery scan and is not.
+the owner's choice; `pickingGlyph` reads as unused to a periphery scan and is not.
 
 Why the window is built as it is — no window shadow, a strip wider than the card by
 `helmPanelShadowMargin`, one size per opening, a plain `NSHostingView`, `makeKey()`
@@ -33,8 +32,18 @@ What the panel stores keeps its reasons on its own doc comments: the `init(from:
 decoders of `PanelLayout` and its nested types, its `dismissed` and `hidden` lists,
 and `PanelLayoutStore.key`.
 
-The bars carry no lifetime of their own;
-`Tests/HelmAppTests/PanelBarsCarryNoLifetimeTests.swift` is the guard. A `@State` in
+The bars carry no lifetime of their own. A `@State` in
 one of them would be a second owner of a lifetime the panel steers by, and its
 failure would look like a tile left hanging under the pointer rather than like
 anything thrown or logged.
+
+## The status item
+
+`Sources/HelmRuntime/StatusPlan.swift` is the pure rule and
+`Sources/HelmApp/StatusItemController.swift` the host that draws it.
+`StatusPlan.choose` reads every enabled module's appearance and returns the one
+counting down, else the one whose spin is still running, else the first that tints,
+else the first that carries a title; the reason for that order is on its doc
+comment, and those of the clamps in `StatusPlan.frame` and `StatusPlan.redrawKey`
+on theirs. Two `RepeatingTick`s redraw the icon, `timerTick` and `spinTick` in the
+controller, whose doc comments say when each is armed.

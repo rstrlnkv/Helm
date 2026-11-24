@@ -4,20 +4,16 @@ import HelmTestSupport
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
-/// Two ways the lid feature fails, and neither reached a window.
+/// Two ways the lid feature fails, and both reach a window.
 ///
-/// **macOS refused.** `reallyEngage` reads `setDisableSleep(true)`, and `sudo -n`
-/// fails whenever the NOPASSWD rule is not what Helm wrote. The engine logged it
-/// and set `active` false — and `active` false is also what «nobody asked» looks
-/// like, so the lid row went on explaining what an administrator password buys.
-/// A person who switched that option on was told, by omission, that their lid was
-/// safe to close.
+/// macOS refused. `reallyEngage` reads `setDisableSleep(true)`, and `sudo -n`
+/// fails whenever the NOPASSWD rule is not what Helm wrote. `active` false is
+/// also what «nobody asked» looks like, so the refusal is its own fact, or the
+/// lid row would tell a person, by omission, that their lid is safe to close.
 ///
-/// **The rule outlived the feature.** `removeSudoers`' `Bool` was discarded, so a
-/// declined administrator dialog left a permanent passwordless
-/// `pmset disablesleep` for this account with nothing on screen about it — and the
-/// one log line it did write accused something else of having written a rule Helm
-/// wrote itself.
+/// The rule outlived the feature. A declined administrator dialog leaves a
+/// permanent passwordless `pmset disablesleep` for this account, and the
+/// screen says so.
 @MainActor
 final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
 
@@ -26,8 +22,8 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
     private var clamshell: FakeClamshell!
     private var engine: KeepAwakeEngine!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         settings = KeepAwakeSettings(store: store)
         clamshell = FakeClamshell()
@@ -84,8 +80,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         XCTAssertFalse(engine.lidRefused)
     }
 
-    /// It has to reach the payload, or the fact exists only inside the engine — the
-    /// defect `StatePayload`'s own doc comment records.
+    /// It has to reach the payload, or the fact exists only inside the engine.
     func testTheRefusalReachesThePayload() async throws {
         clamshell.disableSleepSucceeds = false
         engine.startSession(minutes: 0)
@@ -98,12 +93,11 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
 
     // MARK: - The rule outlived the feature
 
-    /// A declined administrator dialog. The `Bool` said so and nobody read it.
+    /// A declined administrator dialog, read from the removal's `Bool`.
     ///
-    /// The dialog is reached only by a rule that cannot withdraw itself — one
-    /// from before that line existed, or one written by something else — because
-    /// every rule Helm writes now comes out for free. That is the state, not a
-    /// contrivance: it is every Mac upgrading into this build.
+    /// The dialog is reached only by a rule that cannot withdraw itself (one
+    /// without the withdrawal line, or one written by something else), because
+    /// every rule Helm writes comes out for free.
     func testADeclinedRemovalIsPublishedRatherThanDiscarded() async {
         clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
@@ -119,11 +113,10 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
                       "a passwordless pmset rule for a feature that is off, and no window says so")
     }
 
-    /// **And the log stops blaming a third party in the one case Helm wrote the
-    /// rule.** The old line fired on `canDisableSleepWithoutPassword()` alone, so
-    /// a declined dialog — our file, untouched, still granting — was reported as
-    /// «a rule survives that Helm did not write», which sends whoever reads the
-    /// log looking for a second file that does not exist.
+    /// And the log does not blame a third party when Helm wrote the rule: a
+    /// declined dialog leaves our own file granting, and «a rule survives that
+    /// Helm did not write» would send whoever reads the log looking for a
+    /// second file that does not exist.
     func testADeclinedRemovalIsNotReportedAsSomebodyElsesRule() async {
         tailTheLog()
         clamshell.withdrawalIsGranted = false
@@ -173,10 +166,9 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
 
     // MARK: - Who asks for the rule back
 
-    /// **The person's own switch, or «Reset all settings», and nothing else.** The grant's lifetime is the
-    /// feature; until now the only falling edge that took it out was the lid
-    /// option's, so somebody who switched all of Keep Awake off left the rule
-    /// behind for a module they had just turned off.
+    /// The person's own switch, or «Reset all settings», and nothing else. The
+    /// grant's lifetime is the feature, so switching all of Keep Awake off takes
+    /// the rule out as the lid option's falling edge does.
     func testSwitchingTheModuleOffAsksForTheGrantBack() async {
         clamshell.withdrawalIsGranted = false
         engine.willDisable()

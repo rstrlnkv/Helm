@@ -3,10 +3,9 @@ import XCTest
 import HelmTestSupport
 @testable import HelmRuntime
 
-/// **The software-name redaction and the refusal line it feeds, at the inputs
-/// the first pass did not feed in.** A leaf with two dots, an extension in
-/// capitals, and the line Helm composes in place of macOS's sentence for
-/// each code.
+/// The software-name redaction and the refusal line it feeds: a leaf with two
+/// dots, an extension in capitals, and the line Helm composes in place of
+/// macOS's sentence for each code.
 ///
 /// Every line-reading case asserts that its line was written before asserting
 /// what the line carries or lacks: the log is off in a test process, and an
@@ -17,12 +16,13 @@ final class RedactSoftwareLeavesNobodyFedTests: XCTestCase {
     /// answer for this one.
     private let module = "redact-leaves-\(UUID().uuidString.prefix(8))"
 
-    /// A parent nobody creates: the trashing closure throws before anything is
-    /// touched, and the ancestry read is stubbed, so the paths need not exist.
-    private let parent = NSTemporaryDirectory() + "helm-redact-leaves-\(UUID().uuidString)"
+    /// A parent nobody creates, inside a scratch directory: the trashing closure throws before
+    /// anything is touched, and the ancestry read is stubbed, so the paths need not exist.
+    private var parent = ""
 
     override func setUp() {
         super.setUp()
+        parent = scratchDirectory("redact-leaves").appendingPathComponent("parent").path
         tailTheLog()
     }
 
@@ -52,8 +52,8 @@ final class RedactSoftwareLeavesNobodyFedTests: XCTestCase {
     // MARK: - The leaf
 
     /// Two dots, neither of them a known type at the end: the whole leaf is the
-    /// name. `deletingPathExtension` read `Foo.app.zip` as a stem `Foo.app` and
-    /// an extension `zip`, which tags a different string.
+    /// name; `deletingPathExtension` would read `Foo.app.zip` as stem `Foo.app`
+    /// and tag a different string.
     func testALeafWhoseLastSuffixIsUnknownIsTaggedWhole() {
         let home = "/Users/x"
         XCTAssertEqual(Redact.path("/Users/x/Downloads/Foo.app.zip", leaf: .softwareName, home: home),

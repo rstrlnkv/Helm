@@ -3,32 +3,23 @@ import XCTest
 
 /// A query that reads the disk must not be allowed to change the machine.
 ///
-/// `brew list --versions` answers about what is already installed and `brew
-/// desc` describes the names it is given: nothing they report depends on the
-/// catalogue being fresh. Left to
-/// itself brew may refresh that catalogue first, so a person pressing Refresh on
-/// a list of installed packages can be made to wait on a download nobody asked
-/// for — and on a Mac with no network, be refused an answer brew already had.
+/// `brew list --versions` answers about what is installed and `brew desc`
+/// describes the names it is given; neither depends on a fresh catalogue. Left
+/// to itself brew may refresh the catalogue first, so Refresh on the installed
+/// list could wait on a download nobody asked for, or be refused offline.
 ///
-/// **The rule is what the query may reach, not what it costs.** Timed three runs
-/// each on this Mac, `brew list --versions --formula` was 0.35/0.23/0.24 s
-/// without the variable and 0.26/0.23/0.23 s with it: no difference worth the
-/// name, because brew refreshes periodically rather than per call. This comment
-/// used to claim a duration from `helm.log`; those lines are `homebrew.outdated`
-/// — the figure belongs on the deadline comment in `SystemPorts.swift` instead
-/// — and `outdated` is in the control case below precisely because it is *not*
-/// covered by this rule.
+/// **The rule is what the query may reach, not what it costs**: brew refreshes
+/// periodically rather than per call, so the variable makes no timing
+/// difference worth the name.
 ///
 /// `outdated` and `search` are deliberately **not** in this test. They are
 /// answers about the catalogue, and a stale catalogue makes «Updates: 0» a lie
 /// about the machine. The gate is "does this query need the catalogue", not
 /// "is this query slow".
-///
-/// Kept: guards the defect fixed in 11f8f602 Stop a purely local brew query from refreshing the catalogue.
 final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
 
     func testListAndDescribeRefuseTheAutoUpdate() {
-        let runner = EnvironmentRecorder()
+        let runner = ScriptedRunner()
         _ = brewEngine(runner).listInstalled()
         XCTAssertFalse(runner.calls.isEmpty, "the query never ran")
         for call in runner.calls {
@@ -38,16 +29,15 @@ final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
     }
 
     func testDescriptionsRefuseTheAutoUpdate() {
-        let runner = EnvironmentRecorder()
+        let runner = ScriptedRunner()
         _ = brewEngine(runner).descriptions(names: ["wget"], isCask: false)
         XCTAssertEqual(runner.calls.first?.env["HOMEBREW_NO_AUTO_UPDATE"], "1")
     }
 
-    /// The control. These two are about the catalogue, and a catalogue nobody
-    /// refreshes makes both of them answer confidently about a world that has
-    /// moved. Without this half, "set it everywhere" passes the test above.
+    /// The control: these two are about the catalogue, and without this half
+    /// "set it everywhere" passes the test above.
     func testOutdatedAndSearchStillRefreshTheCatalogue() {
-        let runner = EnvironmentRecorder()
+        let runner = ScriptedRunner()
         let e = brewEngine(runner)
         _ = e.outdated()
         _ = e.search("wget")
@@ -62,7 +52,7 @@ final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
     /// several lines of advice about shells that have nothing to do with the
     /// install a person is watching.
     func testAnOperationSilencesTheEnvironmentHints() {
-        let runner = EnvironmentRecorder()
+        let runner = ScriptedRunner()
         brewEngine(runner).install(name: "wget", isCask: false)
         XCTAssertEqual(runner.calls.first?.env["HOMEBREW_NO_ENV_HINTS"], "1")
     }

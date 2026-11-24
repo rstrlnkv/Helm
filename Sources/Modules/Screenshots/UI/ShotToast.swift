@@ -25,9 +25,7 @@ import Module_Screenshots_Engine
     }
     /// Makes the panel key when the row unfolds, and gives the keys back when it folds.
     ///
-    /// Giving back is ordering the panel out and in again: AppKit has no call that only resigns key. That a key
-    /// window that leaves the screen hands the keys to the next that can take them, and that the two orders in one
-    /// turn of the run loop are not seen as a blink, are not measured.
+    /// Giving back is ordering the panel out and in again: AppKit has no call that only resigns key.
     private func takeKey() { panel?.makeKey() }
     private func yieldKey() {
         guard let panel, panel.isKeyWindow else { return }
@@ -35,9 +33,7 @@ import Module_Screenshots_Engine
         panel.orderFrontRegardless()
     }
 
-    /// What keeps the lifetime from running: the pointer over the picture or the pile, the Share sheet open, the
-    /// editor open on a shot taken from a group. An unfolded row is not a hold: while it is unfolded the lifetime
-    /// is not counted at all.
+    /// What keeps the lifetime from running (Architecture/Screenshots.md § The after-shot window).
     enum Hold: Hashable { case pointer, sheet, editor }
     var holds: Set<Hold> = []
     /// Seconds of life left, counted only while nothing holds it and the row is folded.
@@ -282,9 +278,7 @@ import Module_Screenshots_Engine
 
     /// One step of the clock: true when the window's time is up. **The pointer's events are not trusted either way.** A
     /// pointer that is over the picture when the time runs out holds it, though no enter was sent; and a hold that only
-    /// the pointer keeps ends at the first step that finds the pointer elsewhere, though no exit was sent. Whether
-    /// AppKit sends an exit when the panel moves from under a still pointer or the view is removed is not measured;
-    /// `pointerIsOver` is asked instead of relying on it.
+    /// the pointer keeps ends at the first step that finds the pointer elsewhere, though no exit was sent.
     ///
     /// **An unfolded row spends no life.** Its steps count how long the pointer has been away instead, asked the
     /// same way, and fold it at `ShotShelf.foldDelay`. A refusal whose time is up over shots that are still on the
@@ -338,8 +332,7 @@ import Module_Screenshots_Engine
     private func show(lasting seconds: Double, _ change: () -> Void) {
         dismissal?.cancel()
         // The pointer stays held across a picture that follows a picture, the write's result over its working
-        // thumbnail above all: the view is the same one. Whether AppKit sends a new enter for a pointer that never
-        // left is not measured, and a hold dropped here would not come back.
+        // thumbnail above all: the view is the same one, and a hold dropped here would not come back.
         let wasShots = model.showsShots
         withAnimation(HelmMotion.interface) { change() }
         let stillOver = model.hovering && wasShots && model.showsShots

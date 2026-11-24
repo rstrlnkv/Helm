@@ -3,35 +3,16 @@ import XCTest
 
 /// Files a test may really move to the Trash, and the way to get them back out.
 ///
-/// **These tests trash for real.** `HelmTrash.remove` calls
-/// `FileManager.trashItem`, which is the whole point of the type — so a file a
-/// test hands it leaves the temporary directory and lands in `~/.Trash`, on the
-/// machine of whoever ran `swift test`. Deleting the temporary directory
-/// afterwards reclaims nothing: the file is no longer in it.
+/// These tests trash for real: `HelmTrash.remove` calls
+/// `FileManager.trashItem`, so a file lands in `~/.Trash` on the machine of
+/// whoever ran `swift test`. Deleting the source path afterwards reclaims
+/// nothing, because the move has already emptied it.
 ///
-/// Two of these test files already carried a teardown that looked like the
-/// cure and was not:
-///
-/// ```swift
-/// // Trashed, so put it back out of the Trash rather than leaving it there.
-/// addTeardownBlock { try? FileManager.default.removeItem(atPath: bundle) }
-/// ```
-///
-/// `bundle` is the *source* path, which the move has already emptied. The
-/// removal succeeds against nothing while the comment says the opposite, which
-/// is the shape that let this run for months.
-///
-/// **The name is all the cleanup has to go on.** `HelmTrash` calls
-/// `trashItem(at:resultingItemURL: nil)` and throws the destination away, and
-/// the Trash cannot be listed without Full Disk Access — a test process does
-/// not have it, and asking for the directory's contents fails with 257. So the
-/// cleanup reconstructs `~/.Trash/<name>`, which is only safe if `<name>` is
-/// one nobody else could own: the files here were called `one.txt`, `bundle`
-/// and `one.bin`, and a cleanup removing `~/.Trash/bundle` would be deleting
-/// somebody's own work. Every leaf carries a UUID for that reason, and the
-/// UUID has to be in the **leaf** — putting it in the parent directory, which
-/// is what these files did, tells the Trash nothing, because only the moved
-/// item's own name survives the move.
+/// The name is all the cleanup has to go on: `HelmTrash` throws the
+/// destination away, and a test process cannot list the Trash without Full
+/// Disk Access. So the cleanup reconstructs `~/.Trash/<name>`, safe only if
+/// `<name>` is one nobody else could own. The UUID goes in the leaf, because
+/// only the moved item's own name survives the move.
 public extension XCTestCase {
 
     /// `"one.bin"` → `"one-<uuid>.bin"`, keeping the extension so a test about

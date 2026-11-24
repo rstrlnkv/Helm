@@ -4,21 +4,15 @@ import Module_Homebrew_Engine
 
 /// The console keeps the last of what `brew` said, not all of it.
 ///
-/// Every `opLog` event appends a line and nothing ever trimmed the array. It is
-/// cleared in two places — pressing Clear, and starting the install of Homebrew — so on the
-/// ordinary path (upgrade, then upgrade again, then search) it only grew, for
-/// as long as the module is on.
+/// Every `opLog` event appends a line, and the console is cleared only by Clear
+/// and by starting the install of Homebrew, so on the ordinary path it would
+/// grow for as long as the module is on. The engine keeps stderr on purpose,
+/// and a `brew` command can print 64 KB of deprecation warnings; each line is
+/// also a view the page renders and follows.
 ///
-/// The engine keeps stderr on purpose, because a console should show what the
-/// tool says, and a `brew` command can pass 64 KB of
-/// deprecation warnings without trying. Each line also becomes a view — the
-/// page renders `ForEach` over the whole array and follows every new line — so
-/// the cost is paid twice.
-///
-/// 1000 is `LogTail`'s bound, and this is the same problem: a running record
-/// somebody reads the end of. Taking it from the front is what a terminal's
-/// scrollback does, and the alternative is a number nobody chose.
-/// Kept: guards the defect fixed in 04a21a36 fix(homebrew): the console keeps the last of what brew said, not all of it.
+/// 1000 is `LogTail`'s bound, for the same problem: a running record somebody
+/// reads the end of. Trimming from the front is what a terminal's scrollback
+/// does.
 @MainActor
 final class TheConsoleIsBoundedTests: XCTestCase {
 
@@ -29,22 +23,25 @@ final class TheConsoleIsBoundedTests: XCTestCase {
 
     /// Sends `count` lines and returns once the model has stopped taking them.
     ///
-    /// Draining until the count is **stable**, not until it reaches a number:
-    /// the first version waited for the expected figure, which on an unbounded
-    /// console stops exactly at the figure it was checking for and reports the
-    /// bound as working. A single yield per line is not enough either
-    /// — the model consumes on a task of its own, and that lost 30 lines of
-    /// 1500 and one of 20, which reads as a bound nearly right rather than as a
-    /// harness dropping events. So the count is read on the clock, a sleep
-    /// between reads, until it has held still for fifty of them.
+    /// Drained until the count is **stable**, not until it reaches a number: a
+    /// wait for the expected figure stops on an unbounded console exactly at
+    /// that figure. A yield per line is not enough either, since the model
+    /// consumes on a task of its own. So the count is read on the clock until
+    /// it has held still for fifty reads.
     private func log(_ count: Int, into work: FakeHomebrewWork,
-                     model: HomebrewViewModel) async {
+                     model: HomebrewViewModel,
+                     file: StaticString = #filePath, line: UInt = #line) async {
         for index in 0..<count {
             work.say(.line("line \(index)"))
         }
         var settled = 0
         var last = -1
+        let deadline = Date().addingTimeInterval(10)
         while settled < 50 {
+            if Date() > deadline {
+                XCTFail("the console count never held still for fifty reads (last \(last))", file: file, line: line)
+                return
+            }
             try? await Task.sleep(for: .milliseconds(2))
             if model.consoleLines.count == last { settled += 1 } else { settled = 0 }
             last = model.consoleLines.count

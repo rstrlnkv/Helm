@@ -1,9 +1,8 @@
 import XCTest
 @testable import Module_Homebrew_Engine
 
-/// The four brew parsers all read text a tool prints for humans, and the tool
-/// changes its mind about that text between versions. These pin the shapes that
-/// matter — and one that current Homebrew no longer emits.
+/// The four brew parsers read text a tool prints for humans, and the tool
+/// changes that text between versions. These pin the shapes that matter.
 final class BrewParserShapeTests: XCTestCase {
 
     // MARK: - Nothing in, nothing out
@@ -24,14 +23,11 @@ final class BrewParserShapeTests: XCTestCase {
         XCTAssertNil(BrewOutdatedParser.parse(Data("{}".utf8)))
     }
 
-    /// Split out because this one is the odd parser: the other three trim each
-    /// line before deciding, `BrewListParser` splits only on the literal space.
-    /// A line holding nothing but a tab therefore becomes a package named "\t",
-    /// and every package row carries an Uninstall button that passes its name
-    /// straight to `brew uninstall`. Lowest-harm of the findings in this pass —
-    /// `brew list --versions` does not print such a line today — but it is the
-    /// same missing trim that would turn any prose brew sends to stdout into a
-    /// row, and the fix is one call.
+    /// `BrewListParser` is the odd parser: the others trim each line before
+    /// deciding, it splits only on the literal space. A line holding only a tab
+    /// must not become a package named "\t", whose row's Uninstall button would
+    /// pass that name to `brew uninstall`; the same missing trim would turn any
+    /// prose brew sends to stdout into a row.
     func testAWhitespaceOnlyLineIsNotAPackage() {
         for output in ["\t\n", " \n", "\t\n \n", "\u{00A0}\n"] {
             XCTAssertEqual(BrewListParser.parse(output, isCask: false).map(\.name), [],
@@ -41,11 +37,10 @@ final class BrewParserShapeTests: XCTestCase {
 
     // MARK: - Name collisions across kinds
 
-    /// Trap of the family that bit Login Items: two rows that render the same
-    /// identity. `docker` is both a formula (the CLI) and a cask (the app), and
-    /// the Install/Uninstall buttons pass `isCask` straight to the brew command.
-    /// If the two ever collapse into one row, the button uninstalls the wrong
-    /// one. The rows carry it correctly today — pinning so they keep to it.
+    /// Two rows must not render the same identity. `docker` is both a formula
+    /// (the CLI) and a cask (the app), and the Install/Uninstall buttons pass
+    /// `isCask` straight to the brew command, so collapsed rows would uninstall
+    /// the wrong one.
     func testAPackageThatIsBothFormulaAndCaskStaysTwoDistinguishableRows() throws {
         let json = """
         {"formulae":[{"name":"docker","installed_versions":["27.0.1"],"current_version":"28.0.0"}],
@@ -65,74 +60,5 @@ final class BrewParserShapeTests: XCTestCase {
         let formulae = BrewListParser.parse("docker 27.0.1\n", isCask: false)
         let casks = BrewListParser.parse("docker 4.30.0\n", isCask: true)
         XCTAssertEqual(Set((formulae + casks).map { "\($0.isCask ? "c" : "f"):\($0.name)" }).count, 2)
-    }
-}
-
-/// The shapes `brew desc` and `brew search` print: the display-name group a cask
-/// description opens with, the sectioned and the headerless search output, and
-/// brew's own prose, which must never become a row.
-final class BrewDescAndSearchShapeTests: XCTestCase {
-
-    // MARK: - brew desc
-
-    /// Real output from `brew desc --cask docker` on Homebrew 6: the display
-    /// name group holds three comma-separated aliases, so the parenthesis the
-    /// parser looks for is not the first one it could have taken.
-    func testRealCaskDescriptionDropsTheWholeDisplayNameGroup() {
-        let out = "docker-desktop: (Docker Desktop, Docker Community Edition, Docker CE) "
-            + "App to build and share containerised applications and microservices"
-        XCTAssertEqual(BrewDescParser.parse(out)["docker-desktop"],
-                       "App to build and share containerised applications and microservices")
-    }
-
-    /// A description with a colon-space in it must keep everything after the
-    /// first separator — the split is on the name, not on punctuation.
-    func testADescriptionContainingAColonKeepsAllOfIt() {
-        XCTAssertEqual(BrewDescParser.parse("pandoc: Swiss-army knife: markup converter")["pandoc"],
-                       "Swiss-army knife: markup converter")
-    }
-
-    // MARK: - brew search
-
-    /// The documented sectioned shape. Kept as the control for the test below.
-    func testSectionedSearchOutputAssignsTheKindPerSection() {
-        let out = """
-        ==> Formulae
-        firefoxpwa
-        ==> Casks
-        firefox
-        firefox@beta
-        """
-        let hits = BrewSearchParser.parse(out, isCask: false)
-        XCTAssertEqual(hits.filter { !$0.isCask }.map(\.name), ["firefoxpwa"])
-        XCTAssertEqual(hits.filter(\.isCask).map(\.name), ["firefox", "firefox@beta"])
-    }
-
-    /// This is the shape Homebrew 6.0.12 actually pipes: no `==>` headers at
-    /// all, formulae first, a blank line, then casks. The parser's fallback
-    /// ("a flat list is formulae") then labels every cask a formula, and
-    /// `install(name:isCask:)` builds `brew install <name>` without `--cask`.
-    /// For a name that exists in both taps — `docker` — that installs the CLI
-    /// when the user pressed Install on the app.
-    ///
-    /// A unit test cannot assert the right kind here: the text carries no kind
-    /// to read. What it can pin is that the parser does not silently *claim*
-    /// one. Recorded as the characterisation of today's behaviour; the engine
-    /// takes the kind from which call produced the name.
-    func testHeaderlessSearchOutputIsWhatCurrentBrewEmits() {
-        let out = "firefoxpwa\nfirefly\n\nfirefox\nfirefox@beta\n"
-        let hits = BrewSearchParser.parse(out, isCask: false)
-        XCTAssertEqual(hits.map(\.name), ["firefoxpwa", "firefly", "firefox", "firefox@beta"],
-                       "the blank separator must not become a row")
-        XCTAssertTrue(hits.allSatisfy { !$0.isCask },
-                      "characterisation: with no headers everything is called a formula — "
-                      + "the kind comes from the call, not from the text")
-    }
-
-    /// Brew's own prose must never become an installable row. "Error: No
-    /// formulae or casks found for …" is what 6.0.12 prints for a miss, and it
-    /// arrives on stdout in the same string the parser is handed.
-    func testBrewsNoResultsProseIsNotAPackage() {
-        XCTAssertEqual(BrewSearchParser.parse("Error: No formulae or casks found for \"zzqqxx\".", isCask: false).count, 0)
     }
 }

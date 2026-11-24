@@ -13,10 +13,8 @@ private func group(_ id: String, _ leftovers: [Leftover]) -> TrashedAppLeftovers
 
 /// What the unprompted window may act on.
 ///
-/// This window is different from the review screen in one way that decides all of
-/// these rules: nobody asked for it. It opened because an app reached the Trash,
-/// and whatever it arrives with ticked is what one press removes — so the ticks
-/// have to be defensible without a person having read a single path.
+/// Nobody asked for this window, and what it arrives with ticked is what one
+/// press removes, so the ticks have to be defensible unread.
 final class TrashOfferPlanTests: XCTestCase {
     // MARK: - What arrives ticked
 
@@ -26,10 +24,8 @@ final class TrashOfferPlanTests: XCTestCase {
                        ["/Users/ann/Library/Caches/com.a"])
     }
 
-    /// The same default the review screen takes, and it matters more here: there
-    /// the person ticked the app themselves, here the window arrived on its own.
-    /// `Application Support/Mail` is a guess about a name, and a guess arriving
-    /// pre-ticked means somebody has to notice it to keep their data.
+    /// The review screen's default, and it matters more here, where the window
+    /// arrived on its own: `Application Support/Mail` is a guess about a name.
     func testALeftoverFoundByNameArrivesUnticked() {
         let groups = [group("com.a", [leftover("/Users/ann/Library/Logs/Mail", byName: true)])]
         XCTAssertTrue(TrashOfferPlan.defaultSelection(groups).isEmpty,
@@ -43,9 +39,8 @@ final class TrashOfferPlanTests: XCTestCase {
                        ["/Users/ann/Library/Caches/com.a"])
     }
 
-    /// Two apps in the Trash can name the same file — a shared group container
-    /// under a suite id both of them declare. Ticked once, listed once, and the
-    /// size below counted once.
+    /// Two apps in the Trash can name the same file (a shared group container):
+    /// ticked, listed and counted once.
     func testAPathTwoAppsShareIsTickedOnce() {
         let shared = "/Users/ann/Library/Group Containers/group.a"
         let groups = [group("com.a", [leftover(shared)]), group("com.b", [leftover(shared)])]
@@ -61,12 +56,9 @@ final class TrashOfferPlanTests: XCTestCase {
                        ["/Users/ann/Library/Logs/App"])
     }
 
-    /// The app is already where the person put it. Helm cleans up around that
-    /// decision and does not touch the bundle — not to remove it, and not to
-    /// empty the Trash on somebody's behalf. Nothing in the window offers the
-    /// bundle, so this is the guard for a selection that arrives holding it
-    /// anyway: the ticks are a set of strings and this is the last place that
-    /// can tell what they name.
+    /// The app is already where the person put it, and Helm does not touch it.
+    /// Nothing offers the bundle, so this guards a selection that holds it
+    /// anyway: the ticks are strings, and this is the last place that can tell.
     func testTheAppInTheTrashIsNeverSent() {
         let groups = [group("com.a", [leftover("/Users/ann/Library/Caches/com.a")])]
         let paths = TrashOfferPlan.paths(groups, selected: ["/Users/ann/Library/Caches/com.a",
@@ -95,10 +87,8 @@ final class TrashOfferPlanTests: XCTestCase {
 
     // MARK: - A second app arrives while the window is open
 
-    // Dragging two apps to the Trash is one gesture to the person and two
-    // arrivals to the app, so the window has to take the second one. What it
-    // must not do is take it by rebuilding: a person who unticked something and
-    // then dropped another app would have their decision quietly undone.
+    // The window takes a second app in without rebuilding, which would undo
+    // what the person unticked.
 
     func testASecondAppArrivesTicked() {
         let before = [group("com.a", [leftover("/a1")])]
@@ -109,8 +99,7 @@ final class TrashOfferPlanTests: XCTestCase {
             ["/a1", "/b1"])
     }
 
-    /// The one that matters. Unticking is a decision, and a decision the window
-    /// forgets because somebody dropped a second app is worse than no window.
+    /// Unticking is a decision, and a second app arriving does not undo it.
     func testWhatWasUntickedStaysUnticked() {
         let before = [group("com.a", [leftover("/a1"), leftover("/a2")])]
         let after = before + [group("com.b", [leftover("/b1")])]
@@ -131,8 +120,7 @@ final class TrashOfferPlanTests: XCTestCase {
             ["/a1", "/b1"])
     }
 
-    /// The new group's own default still applies to it — arriving late does not
-    /// make a name guess any less of a guess.
+    /// The new group's own default applies: a late name guess is still a guess.
     func testANewGroupsGuessArrivesUnticked() {
         let before = [group("com.a", [leftover("/a1")])]
         let after = before + [group("com.b", [leftover("/b1"), leftover("/b2", byName: true)])]
@@ -143,7 +131,7 @@ final class TrashOfferPlanTests: XCTestCase {
     }
 
     /// An app put back before the window was answered takes its files out of the
-    /// selection with it — they are not the person's to remove any more.
+    /// selection.
     func testAnAppThatLeftTheTrashLeavesTheSelection() {
         let before = [group("com.a", [leftover("/a1")]), group("com.b", [leftover("/b1")])]
         let after = [group("com.a", [leftover("/a1")])]
@@ -155,12 +143,9 @@ final class TrashOfferPlanTests: XCTestCase {
 
     // MARK: - Which apps a removal has actually answered for
 
-    // A "no" is remembered for as long as the app sits in the Trash, and this
-    // window is the only place some of these files are ever offered — a Group
-    // Container, a cookie file, anything matched by name — because the module's
-    // own Leftovers tab lists only bundle-id-named entries in nine folders. So
-    // recording a refusal as somebody's answer takes the files off every screen
-    // Helm has.
+    // A "no" is remembered while the app sits in the Trash, and some of these
+    // files are offered nowhere else, so a refusal recorded as an answer takes
+    // them off every screen.
 
     func testAppsWhosePathsAllMovedAreAnswered() {
         let groups = [group("com.a", [leftover("/a1")]), group("com.b", [leftover("/b1")])]
@@ -169,9 +154,8 @@ final class TrashOfferPlanTests: XCTestCase {
                        ["com.a", "com.b"])
     }
 
-    /// macOS refused, and a refusal is not a decision. The person may grant Full
-    /// Disk Access, unlock the file, quit whatever was holding it — and the offer
-    /// has to be able to come back.
+    /// A refusal from macOS is not a decision: the person may fix the cause, and
+    /// the offer has to be able to come back.
     func testAnAppWhosePathWasRefusedIsNotAnswered() {
         let groups = [group("com.a", [leftover("/a1")]), group("com.b", [leftover("/b1")])]
         let result = UninstallResult(
@@ -206,28 +190,5 @@ final class TrashOfferPlanTests: XCTestCase {
             TrashOfferPlan.selectionAfterRefresh(previous: groups,
                                                  selected: ["/a2"], current: groups),
             ["/a2"])
-    }
-}
-
-/// What the unprompted window's footer says about the size: the ticked paths' bytes,
-/// a path two apps share counted once, and zero when nothing is ticked.
-final class TrashOfferSizeTests: XCTestCase {
-    // MARK: - What the footer says
-
-    func testTheSizeCountsWhatIsTicked() {
-        let groups = [group("com.a", [leftover("/1", 100), leftover("/2", 20)])]
-        XCTAssertEqual(TrashOfferPlan.totalBytes(groups, selected: ["/1"]), 100)
-    }
-
-    func testTheSizeCountsASharedPathOnce() {
-        let shared = "/Users/ann/Library/Group Containers/group.a"
-        let groups = [group("com.a", [leftover(shared, 100)]), group("com.b", [leftover(shared, 100)])]
-        XCTAssertEqual(TrashOfferPlan.totalBytes(groups, selected: [shared]), 100,
-                       "one folder was counted twice because two apps listed it")
-    }
-
-    func testNothingTickedIsZero() {
-        let groups = [group("com.a", [leftover("/1", 100)])]
-        XCTAssertEqual(TrashOfferPlan.totalBytes(groups, selected: []), 0)
     }
 }

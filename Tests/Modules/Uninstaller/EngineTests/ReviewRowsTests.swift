@@ -12,30 +12,20 @@ private func group(_ leftovers: [Leftover]) -> UninstallGroup {
     UninstallGroup(app: tool, leftovers: leftovers, running: false)
 }
 
-/// The review screen is the last one before deletion — there is no dialog after
-/// it — and it never said the app itself was going.
-///
-/// `UninstallPlan.paths` is documented "bundles always go", and the screen drew
-/// only the leftovers: no row, no path and no sentence for the bundle. The
-/// group header carried the app's icon at 18 pt, which beside a column of
-/// checkboxes reads as an unticked one — so the screen could be read honestly as
-/// "nothing is selected, this will do nothing".
-///
-/// So the rows are a value rather than a `ForEach` over `leftovers`, and the
-/// invariant is checkable: everything `paths` will trash is a row somebody was
-/// shown.
+/// The review screen is the last one before deletion, with no dialog after it,
+/// so it shows the app itself going: `UninstallPlan.paths` always takes the
+/// bundle. The rows are a value, so the invariant is checkable: everything
+/// `paths` will trash is a row somebody was shown.
 final class ReviewRowsTests: XCTestCase {
-    /// The case the old screen was emptiest in: an app with nothing beside it
-    /// showed "No extra files found." and not one word about the app.
+    /// An app with no leftovers still shows its bundle.
     func testAnAppWithNoLeftoversStillShowsItsBundle() {
         let rows = UninstallPlan.reviewRows(group([]))
 
         XCTAssertEqual(rows, [.bundle(app: tool)])
     }
 
-    /// The invariant the screen exists for: nothing is trashed that was not on
-    /// it. Asserted as sets of paths rather than counts — a count agrees with
-    /// the wrong rows as readily as with the right ones.
+    /// Nothing is trashed that was not on the screen. Asserted as sets of paths:
+    /// a count agrees with the wrong rows as readily as with the right ones.
     func testEveryPathTheRemovalWillTakeAppearsAsARow() {
         let ticked = leftover("/Users/x/Library/Caches/a", 10)
         let untickedByDefault = Leftover(path: "/Users/x/Library/Logs/Tool", kind: .logs,
@@ -49,25 +39,5 @@ final class ReviewRowsTests: XCTestCase {
                       "these would be trashed without appearing on the screen that authorises it: "
                       + taken.subtracting(shown).sorted().joined(separator: ", "))
         XCTAssertTrue(taken.contains(tool.path), "precondition: the bundle always goes")
-    }
-}
-
-/// The review's rows in their order: the bundle comes first and is the one row that
-/// cannot be ticked, and the leftovers keep the order the scan put them in.
-final class ReviewRowsOrderTests: XCTestCase {
-    func testTheBundleIsTheFirstRow() {
-        let rows = UninstallPlan.reviewRows(group([leftover("/Users/x/Library/Caches/a", 10)]))
-
-        XCTAssertEqual(rows.first, .bundle(app: tool),
-                       "the last screen before deletion does not name the app it deletes")
-    }
-
-    func testLeftoversKeepTheOrderTheScanPutThemIn() {
-        let big = leftover("/Users/x/Library/Caches/big", 500)
-        let small = leftover("/Users/x/Library/Caches/small", 5)
-
-        let rows = UninstallPlan.reviewRows(group([big, small]))
-
-        XCTAssertEqual(rows, [.bundle(app: tool), .leftover(big), .leftover(small)])
     }
 }

@@ -7,8 +7,8 @@ import HelmUI
 ///
 /// **Decoration only.** Whether the overlay waits for it is the overlay's decision (`CaptureOverlay.close(after:)`
 /// closes on a timer of the same length and not on this animation's completion, which a layer that is not in a
-/// window never reports), and under Reduce Motion the overlay never calls `play`. The picture was taken from the
-/// freeze before this was drawn, and a window's live picture is of that window alone, so the flash is in neither.
+/// window never reports), and under Reduce Motion the overlay never calls `play`. The flash is in no picture
+/// (Architecture/Screenshots.md § The overlay).
 final class FlashLayer: CAShapeLayer {
     /// How white it is at its brightest.
     static let peak: Float = 0.55

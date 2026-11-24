@@ -3,27 +3,22 @@ import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
-/// Nothing bounded the rules value, and it is read on every recompute.
+/// The rules value is bounded, because it is read on every recompute.
 ///
 /// The rules live in one string in `~/Library/Preferences`, which any process
 /// running as this user can write, and `recompute()` runs from three observers —
-/// a display moving, the charger, an app launching or quitting. Measured on the
-/// value a plist can hold: a **4.7 MB** rules string decodes to **50 001** rules
-/// and costs about **57 ms every time**, and a single bundle id can be a million
-/// characters long. That is not a crash; it is a Mac that pauses for a twentieth
-/// of a second every time anything launches, for as long as the file says so.
+/// a display moving, the charger, an app launching or quitting. A multi-megabyte
+/// rules string decodes to tens of thousands of rules at tens of milliseconds a
+/// recompute: a Mac that pauses every time anything launches.
 ///
 /// A person cannot reach these numbers. The picker adds one app at a time from a
 /// file dialog, and the ids are bundle identifiers — 256 characters is already
 /// far past `com.microsoft.VSCode`.
 ///
-/// So `readable` refuses instead, and refusing routes into the same honest place
-/// a wrong plist type does: `KeepAwakeSettings.AppRulesReading.unreadable`, which
+/// So `readable` refuses, into the same place a wrong plist type goes: `KeepAwakeSettings.AppRulesReading.unreadable`, which
 /// is no rules and the banner that says so. Silently truncating to the first 200
 /// would be the one outcome nobody could see — a Mac held awake by rules the page
 /// does not draw, or rules the page draws that hold nothing.
-///
-/// Guards: d18692b8 (rules value unbounded, read on every recompute).
 final class AFileWithMoreRulesThanAnybodyChoseTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!

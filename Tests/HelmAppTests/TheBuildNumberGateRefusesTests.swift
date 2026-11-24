@@ -8,21 +8,17 @@ import HelmTestSupport
 /// against throwaway repositories, the way `AFailedCopyKeepsTheInstalledAppTests`
 /// drives the swap script.
 ///
-/// Most cases here are a history the gate must refuse *before* the compile: a
-/// tree that answers the two git questions from somewhere other than itself
-/// (a foreign `GIT_DIR`, an ancestor's `.git` reached by walking up, its own
-/// `core.worktree` pointed elsewhere), or a history that reads shorter than
-/// it is (shallow, grafted). The rest are controls that must build instead —
-/// a healthy layout reached through a worktree, a symlink, another case of
-/// its own spelling, or with a trace mechanism running alongside it — so a
-/// fix that refuses too eagerly is caught here as surely as one that refuses
-/// too little. A gate that wrongly let a bad case through would run a real
-/// `swift build -c release` and then `rm -rf` under `$TMPDIR/helm-package` —
-/// so the script is always given a stub `swift` that fails at once and a
-/// `TMPDIR` confined to scratch, and a red run here costs a second and
-/// touches nothing real.
-///
-/// Past defect: commit 6aa086ba, «Pin the build-number gate's git calls and refuse what they can miss».
+/// Most cases are a history the gate must refuse *before* the compile: a tree
+/// that answers the two git questions from somewhere other than itself (a
+/// foreign `GIT_DIR`, an ancestor's `.git`, its own `core.worktree` pointed
+/// elsewhere), or a history that reads shorter than it is (shallow, grafted).
+/// The rest are controls that must build: a healthy layout reached through a
+/// worktree, a symlink, another case of its spelling, or with a trace running,
+/// so a gate that refuses too eagerly is caught as surely as one that refuses
+/// too little. A gate that let a bad case through would run a real
+/// `swift build -c release` and `rm -rf` under `$TMPDIR/helm-package`, so the
+/// script always gets a stub `swift` that fails at once and a `TMPDIR` in
+/// scratch.
 final class TheBuildNumberGateRefusesTests: XCTestCase {
 
     private struct SetupFailure: Error, CustomStringConvertible {
@@ -35,16 +31,11 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
 
     // MARK: - Building the repositories the gate is asked to judge
 
-    /// A throwaway identity so `git commit` never falls back to reading
-    /// `~/.gitconfig`, which this suite does not control — and `GIT_AUTHOR_*`
-    /// / `GIT_COMMITTER_*` alone do not make that true: a real `~/.gitconfig`
-    /// on the machine running this suite can still name `core.hooksPath` or
-    /// set `commit.gpgsign = true`, and either turns `git commit` here into a
-    /// call to a real hook or a real signer (measured elsewhere: `commit`
-    /// exiting 128 for exactly this reason). `GIT_CONFIG_GLOBAL=/dev/null`
-    /// and `GIT_CONFIG_NOSYSTEM=1` are what actually close that off, by
-    /// pointing the global config at a file with nothing in it and refusing
-    /// the system one outright.
+    /// A throwaway identity, and no `~/.gitconfig`: a real one can name
+    /// `core.hooksPath` or set `commit.gpgsign = true`, turning `git commit`
+    /// here into a call to a real hook or signer, and `GIT_AUTHOR_*` alone does
+    /// not stop that. `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1`
+    /// do.
     private func git(_ args: [String], in dir: URL, env extra: [String: String] = [:]) throws -> String {
         var environment = [
             "PATH": "/usr/bin:/bin",
@@ -67,11 +58,11 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     /// filler changing each time so every commit is really new.
     private func repoWithCommits(_ count: Int, label: String) throws -> URL {
         let dir = scratchDirectory(label)
-        try git(["init", "-q"], in: dir)
+        _ = try git(["init", "-q"], in: dir)
         for i in 1...count {
             try write("f.txt", in: dir, bytes: 4, filler: UInt8(i % 256))
-            try git(["add", "f.txt"], in: dir)
-            try git(["commit", "-q", "-m", "c\(i)"], in: dir)
+            _ = try git(["add", "f.txt"], in: dir)
+            _ = try git(["commit", "-q", "-m", "c\(i)"], in: dir)
         }
         return dir
     }
@@ -100,10 +91,8 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
 
         let tmp = scratchDirectory("gate-tmpdir")
 
-        // GIT_CONFIG_GLOBAL/GIT_CONFIG_NOSYSTEM here for the same reason as
-        // in `git(_:in:env:)` above: the script under test makes five git
-        // calls of its own, and without these a real ~/.gitconfig on the
-        // machine running this suite can steer any of them.
+        // As in `git(_:in:env:)`: a real ~/.gitconfig could steer the
+        // script's own git calls.
         var environment = [
             "PATH": "\(stubBin.path):/usr/bin:/bin",
             "TMPDIR": tmp.path,
@@ -156,11 +145,8 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
 
     /// Flips the stored first-parent pointer of `commitHex` inside `repo`'s
     /// commit-graph cache to git's own "no parent" sentinel (`0x70000000`,
-    /// `gitformat-commit-graph`'s Commit Data chunk) — the same tamper
-    /// measured by hand against this gate (a true count of 10 read back as
-    /// 6, the same figure the script's own comment above `BUILD_NO` cites),
-    /// built here so the case can be red against the mutant and green after
-    /// without a binary fixture checked into the tree.
+    /// `gitformat-commit-graph`'s Commit Data chunk). Built here so the tree
+    /// holds no binary fixture.
     private func forgeCommitGraphDroppingParent(of commitHex: String, in repo: URL) throws {
         let path = repo.appendingPathComponent(".git/objects/info/commit-graph")
         try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: path.path)
@@ -212,10 +198,8 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
         try write("f.txt", in: repo)
         let result = try run(in: repo)
         assertRefused(result, because: "an unpacked archive has no .git anywhere above it")
-        // This case pins that the refusal quotes what git actually said
-        // rather than guessing a cause ("no .git anywhere above it either"
-        // used to be printed here whatever git's own reason was, including
-        // dubious ownership and a permission denial).
+        // The refusal quotes what git said rather than guessing a cause: git's
+        // reason may be dubious ownership or a permission denial.
         XCTAssertTrue(result.output.contains("git said:"),
                       "the refusal must quote git's own standard error: \(result.output)")
         XCTAssertFalse(result.output.contains("no .git anywhere above it either"),
@@ -225,33 +209,29 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     func testAShallowCloneRefuses() throws {
         let source = try repoWithCommits(10, label: "gate-shallow-source")
         let clone = scratchDirectory("gate-shallow-clone")
-        try git(["clone", "-q", "--depth", "3", "file://\(source.path)", clone.path], in: source)
+        _ = try git(["clone", "-q", "--depth", "3", "file://\(source.path)", clone.path], in: source)
         let result = try run(in: clone)
         assertRefused(result, because: "a shallow clone counts only the commits it fetched")
     }
 
-    /// `GIT_TRACE=1` writes to standard error, which the gate never reads —
-    /// this pins that the shallow refusal survives a trace running alongside
-    /// it. `GIT_TRACE=/dev/stdout` is no longer a separate, unverified case:
-    /// every `GIT_TRACE*` name is unset before the gate's first git call, so
-    /// it behaves exactly like `GIT_TRACE=1` here too, verified directly by
-    /// `testAHealthyRepositorySurvivesGitTraceToStandardOut` below rather
-    /// than only asserted by hand.
+    /// The shallow refusal survives a trace running alongside it. Every
+    /// `GIT_TRACE*` name is unset before the gate's first git call, so
+    /// `GIT_TRACE=/dev/stdout` behaves the same
+    /// (`testAHealthyRepositorySurvivesGitTraceToStandardOut`).
     func testAShallowCloneRefusesWithATraceRunning() throws {
         let source = try repoWithCommits(10, label: "gate-shallow-trace-source")
         let clone = scratchDirectory("gate-shallow-trace-clone")
-        try git(["clone", "-q", "--depth", "3", "file://\(source.path)", clone.path], in: source)
+        _ = try git(["clone", "-q", "--depth", "3", "file://\(source.path)", clone.path], in: source)
         let result = try run(in: clone, extraEnv: ["GIT_TRACE": "1"])
         assertRefused(result, because: "a shallow clone must refuse whether or not GIT_TRACE is set")
     }
 
     func testARepositoryWithNoCommitsRefuses() throws {
         let repo = scratchDirectory("gate-no-commits")
-        try git(["init", "-q"], in: repo)
+        _ = try git(["init", "-q"], in: repo)
         let result = try run(in: repo)
         assertRefused(result, because: "a fresh `git init` over sources has no HEAD to count")
-        // Same as testATreeWithNoGitHistoryAtAllRefuses above: no guessed
-        // cause survives in the message.
+        // No guessed cause in the message.
         XCTAssertTrue(result.output.contains("git said:"),
                       "the refusal must quote git's own standard error: \(result.output)")
         XCTAssertFalse(result.output.contains("no HEAD to count"),
@@ -275,14 +255,13 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
 
     func testAGraftedHistoryRefuses() throws {
         let repo = try repoWithCommits(10, label: "gate-graft")
-        try git(["replace", "--graft", "HEAD~5"], in: repo)
+        _ = try git(["replace", "--graft", "HEAD~5"], in: repo)
         let result = try run(in: repo)
         assertRefused(result, because: "a replacement ref can give a commit a shorter parent chain")
     }
 
     /// The older mechanism `--no-replace-objects` does not reach: `info/grafts`,
-    /// refused on the same finding as the replacement-ref case above —
-    /// present (the script's own words for this check).
+    /// refused, like a replacement ref, for being present.
     func testAnOldStyleGraftsFileRefuses() throws {
         let repo = try repoWithCommits(10, label: "gate-grafts-file")
         let ancestor = try git(["rev-parse", "HEAD~5"], in: repo)
@@ -295,12 +274,10 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     }
 
     /// A forged commit-graph shortens `rev-list --count HEAD`'s answer the
-    /// same way a graft does (measured: a true count of 10 read back as 6),
-    /// but it is neutralised at the count itself (`-c core.commitGraph=false`)
-    /// rather than refused outright, so the healthy outcome here is a build
-    /// announcing the true count — a refusal is accepted too, since nothing
-    /// requires the gate to prefer one over the other, but silently
-    /// undercounting is what this pins against.
+    /// way a graft does, but it is neutralised at the count itself
+    /// (`-c core.commitGraph=false`) rather than refused, so the expected
+    /// outcome is a build announcing the true count. A refusal is accepted
+    /// too; a silent undercount is not.
     func testAForgedCommitGraphDoesNotUndercount() throws {
         let repo = try repoWithCommits(10, label: "gate-forged-commit-graph")
         let trueCount = try git(["rev-list", "--count", "HEAD"], in: repo)
@@ -310,10 +287,8 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
         _ = try git(["commit-graph", "write", "--reachable"], in: repo)
         try forgeCommitGraphDroppingParent(of: ancestor, in: repo)
         let result = try run(in: repo)
-        // Never `result.status == 0`: the stub `swift` itself exits 17 on the
-        // path that reaches the compile, so a successful pass through the
-        // gate is a *nonzero* status here — the refusal line is what tells
-        // the two outcomes apart.
+        // Not `result.status`: the stub `swift` exits 17 on the path that
+        // reaches the compile, so only the refusal line tells the two apart.
         if lineCount("!! Build number:", in: result.output) == 0 {
             assertBuilt(result, trueCount: trueCount,
                        because: "a forged commit-graph must not undercount if the gate lets the build through")
@@ -325,10 +300,9 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     // MARK: - Cases: an ancestor's config, not its own .git, answering for a tree
 
     /// `core.worktree` in an ancestor's config can make `rev-parse
-    /// --show-toplevel` answer with a path that has no `.git` of its own at
-    /// all — the top-level comparison alone reads that as "this checkout's
-    /// own top level" (measured: an ancestor 30 commits deep, `inner/sub`
-    /// with no `.git`, `show-toplevel` from `inner/sub` answers `inner/sub`).
+    /// --show-toplevel` answer with a path that has no `.git` of its own, and
+    /// the top-level comparison alone reads that as this checkout's own top
+    /// level.
     func testAnAncestorsCoreWorktreeCannotStandInForOurOwnGit() throws {
         let ancestor = try repoWithCommits(30, label: "gate-worktree-config-ancestor")
         let inner = ancestor.appendingPathComponent("inner/sub")
@@ -339,14 +313,9 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
                       + "core.worktree makes rev-parse --show-toplevel answer inner/sub")
     }
 
-    /// An empty directory named `.git` is not a working repository on its
-    /// own, and plain discovery does not stop there either — it keeps
-    /// walking up and answers from the ancestor instead (measured against
-    /// the unpinned gate: EXIT=17, `==> Build number: 30`, the ancestor's
-    /// own count rather than a refusal); the `--git-dir` pin refuses
-    /// outright on exactly this case instead (the script's own comment
-    /// above `GIT_DIR_ARG` names an empty directory named `.git` among the
-    /// four layouts it tested).
+    /// An empty directory named `.git` is not a repository, and plain
+    /// discovery walks past it and answers with the ancestor's count; the
+    /// `--git-dir` pin refuses it (`GIT_DIR_ARG` in the script).
     func testAnAncestorsCoreWorktreeCannotStandInForOurOwnGitEvenWithAHollowDotGit() throws {
         let ancestor = try repoWithCommits(30, label: "gate-worktree-hollow-ancestor")
         let inner = ancestor.appendingPathComponent("inner/sub")
@@ -359,16 +328,12 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
                       + "core.worktree must not be allowed to answer for it")
     }
 
-    /// The repository's *own* `core.worktree`, not an ancestor's — the case
-    /// the two tests above do not reach: `inner/sub` here has a real `.git`
-    /// of its own, so the pin resolves it directly rather than walking up,
-    /// and it is that own config which sends `--show-toplevel` to a
-    /// different, existing directory. Caught only by the `-ef` comparison at
-    /// the bottom of the toplevel block — asserted here by that line's own
-    /// text ("is not the same directory as"), because a mutant that skips
-    /// the `-ef` check entirely (`if false; then` in place of the real
-    /// condition) still refuses both cases above at the earlier `--git-dir`
-    /// pin and would otherwise read as green against this file.
+    /// The repository's *own* `core.worktree`, not an ancestor's: the repo
+    /// has a real `.git`, so the pin resolves it directly, and its own config
+    /// sends `--show-toplevel` to another existing directory. Only the `-ef`
+    /// comparison catches it, so the assertion reads that line's own text: the
+    /// cases above refuse at the earlier `--git-dir` pin whether or not the
+    /// `-ef` check runs.
     func testOwnCoreWorktreePointingElsewhereRefusesAtTheEfComparison() throws {
         let repo = try repoWithCommits(3, label: "gate-ownwt-repo")
         let elsewhere = scratchDirectory("gate-ownwt-elsewhere")
@@ -382,20 +347,12 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
 
     // MARK: - Cases: GIT_DIR/GIT_WORK_TREE set but not caught by the -n test
 
-    /// The environment message names both variables and quotes "is set in
-    /// the environment" — a phrase no other refusal in the gate uses. The
-    /// two cases below differ once this guard is set aside: `GIT_WORK_TREE`
-    /// alone would still be refused further down, by the top-level compare
-    /// (the script's own comment above the guard: the `--git-dir` pin does
-    /// not stop it from steering `--show-toplevel`), so `assertRefused`
-    /// alone cannot tell this guard from that check and only the second
-    /// assertion below does — dropping the `GIT_WORK_TREE` half of the
-    /// guard's condition still leaves that run refused, by the wrong line.
-    /// An empty `GIT_DIR` is not caught further down at all: once
-    /// `--git-dir` is on the command line, git ignores `GIT_DIR` entirely,
-    /// empty or not (the same comment), so removing `${GIT_DIR+x}` for
-    /// `${GIT_DIR:-}` lets it build straight through, which `assertRefused`
-    /// alone already catches.
+    /// The environment guard's line says "is set in the environment", a
+    /// phrase no other refusal uses. Without the guard, `GIT_WORK_TREE` alone
+    /// is still refused further down by the top-level compare, so only this
+    /// line tells the guard from that check. An empty `GIT_DIR` is caught
+    /// nowhere else: with `--git-dir` on the command line git ignores
+    /// `GIT_DIR`, so `assertRefused` alone catches its loss.
     private func assertRefusedByTheEnvironmentGuard(_ result: ChildResult, because why: String,
                                                      file: StaticString = #filePath, line: UInt = #line) {
         assertRefused(result, because: why, file: file, line: line)
@@ -412,11 +369,9 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     }
 
     /// `GIT_DIR=` with nothing after the `=` is still set (`${GIT_DIR+x}`
-    /// reads it as set; `${GIT_DIR:-}` would not). Once `--git-dir` is on
-    /// the command line further down, git ignores `GIT_DIR` entirely,
-    /// empty or not, so nothing downstream catches this either — this guard
-    /// is the only refusal an empty `GIT_DIR` gets, and the `-n` test the
-    /// gate used to use read it as absent on top of that.
+    /// reads it as set; `${GIT_DIR:-}` and `-n` would not). Once `--git-dir`
+    /// is on the command line git ignores `GIT_DIR`, so this guard is the only
+    /// refusal an empty `GIT_DIR` gets.
     func testAnEmptyGitDirRefusesEvenThoughItIsSetToNothing() throws {
         let repo = try repoWithCommits(3, label: "gate-empty-gitdir")
         let result = try run(in: repo, extraEnv: ["GIT_DIR": ""])
@@ -425,15 +380,11 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
 
     // MARK: - Cases: a healthy layout must build, whatever else is true of the environment
 
-    /// `GIT_TRACE=/dev/stdout` writes straight into the descriptor a value
-    /// below is captured from, which used to turn a healthy repository into
-    /// a refusal for the wrong reason ("printed more than one line" for
-    /// `rev-parse --show-toplevel`, measured against the unfixed script).
-    /// Every `GIT_TRACE*` name is unset before the gate's first git call now,
-    /// so a healthy repository must build and announce its true count
-    /// exactly as it would with no trace running at all — this is asserted
-    /// unconditionally, not as one of two acceptable outcomes, because that
-    /// is the one thing the fix guarantees.
+    /// `GIT_TRACE=/dev/stdout` writes into the descriptor a value is captured
+    /// from, which would make `rev-parse --show-toplevel` print more than one
+    /// line. Every `GIT_TRACE*` name is unset before the gate's first git
+    /// call, so a healthy repository must build and announce its true count,
+    /// with no second acceptable outcome.
     func testAHealthyRepositorySurvivesGitTraceToStandardOut() throws {
         let repo = try repoWithCommits(4, label: "gate-trace-healthy")
         let trueCount = try git(["rev-list", "--count", "HEAD"], in: repo)
@@ -443,18 +394,13 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
                    because: "GIT_TRACE=/dev/stdout must not turn a healthy repository into a false refusal")
     }
 
-    /// The `run` helper's own `GIT_CONFIG_GLOBAL=/dev/null` (set so a real
-    /// `~/.gitconfig` cannot steer the gate's five git calls) also happens to
-    /// close the one route `export GIT_TRACE2=0 GIT_TRACE2_PERF=0
-    /// GIT_TRACE2_EVENT=0` exists for: a `trace2.normalTarget` set in a
-    /// config file rather than the environment. This case points
-    /// `GIT_CONFIG_GLOBAL` at a file of its own instead, carrying only
-    /// `[trace2] normalTarget = /dev/stdout` — no hooks, no signing, so the
-    /// hermetic intent of the base setup stays — and the healthy repository
-    /// underneath it must still build and announce its true count. Removing
-    /// the export line makes trace2's own multi-line preamble land ahead of
-    /// `rev-parse --show-toplevel`'s answer, which the toplevel block reads
-    /// as "printed more than one line" and refuses on (measured).
+    /// `run`'s `GIT_CONFIG_GLOBAL=/dev/null` would also close the route
+    /// `export GIT_TRACE2=0 GIT_TRACE2_PERF=0 GIT_TRACE2_EVENT=0` exists for: a
+    /// `trace2.normalTarget` set in a config file. So this case points
+    /// `GIT_CONFIG_GLOBAL` at a file carrying only `[trace2] normalTarget =
+    /// /dev/stdout`, and the healthy repository must still build and announce
+    /// its true count. Without the export, trace2's preamble lands ahead of
+    /// `rev-parse --show-toplevel`'s answer and the gate refuses.
     func testAHealthyRepositorySurvivesTrace2ConfiguredThroughGitConfigGlobal() throws {
         let repo = try repoWithCommits(4, label: "gate-trace2-config-healthy")
         let trueCount = try git(["rev-list", "--count", "HEAD"], in: repo)
@@ -471,12 +417,11 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     /// `trace2.normalTarget = /dev/stderr` this time, so the trace lines land
     /// on the same descriptor the gate quotes back in its own refusal
     /// (`git said: ...`). Without the export line, `rev-list --count HEAD`'s
-    /// standard error is trace2's own multi-line preamble followed by git's
-    /// `fatal:` line rather than the `fatal:` line alone (measured: the
-    /// quoted text then contains an `elapsed:` line trace2 alone prints).
+    /// standard error carries trace2's preamble (an `elapsed:` line only
+    /// trace2 prints) before git's `fatal:` line.
     func testANoCommitsRefusalWithTrace2ToStandardErrorCarriesNoTraceLine() throws {
         let repo = scratchDirectory("gate-trace2-config-nocommits")
-        try git(["init", "-q"], in: repo)
+        _ = try git(["init", "-q"], in: repo)
         let globalConfig = scratchDirectory("gate-trace2-config-nocommits-global").appendingPathComponent("gitconfig")
         try "[trace2]\n\tnormalTarget = /dev/stderr\n".write(to: globalConfig, atomically: true, encoding: .utf8)
         let result = try run(in: repo, extraEnv: ["GIT_CONFIG_GLOBAL": globalConfig.path])
@@ -517,34 +462,25 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
         assertBuilt(result, trueCount: trueCount, because: "a root reached through a symlink must build")
     }
 
-    /// A repository with `count` commits, at an exact leaf name under a fresh
-    /// scratch holder — unlike `repoWithCommits`, which folds a UUID into the
-    /// directory name itself, this leaves the leaf spelled exactly as asked so
-    /// a caller can hand back an alias of the same directory in another case
-    /// or normalisation.
+    /// A repository with `count` commits at an exact leaf name (where
+    /// `repoWithCommits` folds in a UUID), so a caller can reach it through
+    /// another case of the same name.
     private func repoWithCommits(_ count: Int, namedExactly name: String, under label: String) throws -> URL {
         let dir = scratchDirectory(label).appendingPathComponent(name)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try git(["init", "-q"], in: dir)
+        _ = try git(["init", "-q"], in: dir)
         for i in 1...count {
             try write("f.txt", in: dir, bytes: 4, filler: UInt8(i % 256))
-            try git(["add", "f.txt"], in: dir)
-            try git(["commit", "-q", "-m", "c\(i)"], in: dir)
+            _ = try git(["add", "f.txt"], in: dir)
+            _ = try git(["commit", "-q", "-m", "c\(i)"], in: dir)
         }
         return dir
     }
 
-    /// The regression this fix closes: the top-level comparison used to
-    /// resolve both sides with bash's own `pwd -P` and compare the two
-    /// strings, but bash's builtin does not consult the filesystem for a
-    /// directory's on-disk spelling the way `/bin/pwd -P` or git itself does
-    /// — it keeps whatever spelling the `cd` argument already had. On a
-    /// case-insensitive volume that makes the two differ for a checkout
-    /// entered through another case of its own name (measured on this
-    /// script, run through `/bin/bash` exactly as the real script is:
-    /// `RESOLVED_ROOT` came back spelled the way the invocation typed it, not
-    /// the way the directory is actually spelled on disk), and the gate
-    /// refused a healthy tree as "a work tree other than $REPO_ROOT itself".
+    /// Bash's builtin `pwd -P` keeps the spelling the `cd` argument had,
+    /// where git reads the on-disk spelling, so on a case-insensitive volume
+    /// a string comparison of the two refuses a healthy checkout entered
+    /// through another case of its name. The gate compares with `-ef`.
     func testAPathReachedThroughAnotherCaseOfItsOwnSpellingBuildsAndAnnouncesTheTrueCount() throws {
         let lower = try repoWithCommits(4, namedExactly: "case-repo", under: "gate-control-case")
         let trueCount = try git(["rev-list", "--count", "HEAD"], in: lower)
@@ -555,14 +491,9 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
                    because: "a healthy repository reached through another case of its own directory name must build")
     }
 
-    // An NFC/NFD control was tried here and dropped: `URL.appendingPathComponent`
-    // and `URL(fileURLWithPath:)` both normalise a path component to NFD before
-    // it ever reaches `FileManager` or `Process` (measured — an NFC and an NFD
-    // Swift string produce byte-identical `.path` output), so a test built on
-    // top of this suite's `URL`-typed helpers cannot construct the two distinct
-    // on-disk spellings it would need to tell apart, and would pass against the
-    // unfixed script for the wrong reason. Checked by hand instead, with raw
-    // shell paths that bypass `URL` entirely: the unfixed script refuses a
-    // healthy repository entered through an NFD spelling of its own NFC name,
-    // and `Scripts/package-app.sh`'s `-ef` comparison builds it.
+    // No NFC/NFD control: `URL` normalises a path component to NFD before it
+    // reaches `FileManager` or `Process`, so these helpers cannot build the
+    // two spellings and such a test would pass for the wrong reason. The `-ef`
+    // comparison builds a repository entered through an NFD spelling of its
+    // NFC name (checked with raw shell paths).
 }

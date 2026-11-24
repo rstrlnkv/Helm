@@ -80,8 +80,8 @@ struct HelmButtonStyle: ButtonStyle {
 }
 
 private extension EnvironmentValues {
-    @Entry public var helmCapsuleButtons = false
-    @Entry public var helmChosen = false
+    @Entry var helmCapsuleButtons = false
+    @Entry var helmChosen = false
 }
 
 extension View {

@@ -1,4 +1,5 @@
 import Foundation
+import HelmTestSupport
 @testable import Module_Launchpad_Engine
 
 /// Stands for the system's Touch ID / password prompt, one side of `LaunchpadAuthPort` and its four answers. `.immediate` answers
@@ -33,7 +34,7 @@ final class FakeAuthPort: LaunchpadAuthPort, @unchecked Sendable {
 
     /// Waits until the port has been asked `count` times: the gate's task starts after the press that made it.
     func waitForAsks(_ count: Int = 1) async {
-        for _ in 0..<2000 where evaluations < count { try? await Task.sleep(nanoseconds: 1_000_000) }
+        await waitUntilWithin("the port was asked \(count) time(s)", .seconds(5)) { evaluations >= count }
     }
 
     /// The answer of the oldest ask only.

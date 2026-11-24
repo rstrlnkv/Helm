@@ -7,9 +7,8 @@ import XCTest
 ///
 /// `TheCopyThatStaysIsNeverAlsoTakenTests` drives the whole engine over two real
 /// files and asks what the batch allowed. This asks the rule itself the two
-/// questions that test cannot: a plan whose own survivor is the file it removes
-/// — which no pair check can catch, since `Batch.verify` finds a
-/// file identical to itself — and whether the answer is the same twice, because
+/// questions that test cannot: a plan whose own survivor is the file it removes,
+/// and whether the answer is the same twice, because
 /// which copy of the content survives must not be decided by the order a
 /// dictionary happened to hash its keys in.
 final class KeptCopiesTests: XCTestCase {

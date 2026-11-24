@@ -9,14 +9,12 @@ import HelmTestSupport
 /// After `stop()` a press on the page reaches no work, and before `appear()` the
 /// model has read nothing.
 ///
-/// The host calls the descriptor's `stop(_:)` before the engine's `deactivate()`:
-/// on the person's switch and on quit. A page still on screen (or a task already
-/// queued) may press a control after that; a scan, a removal or a volume read
-/// sent to a deactivated engine is work nobody asked the module to do any more.
-/// Each press below is counted at the fake, and for every press but Stop and New
-/// scan the count before `stop()` is the control that proves the fake would have
-/// counted it; those two are pressed only after `stop()`, and a mutant of the
-/// `closed` check in `cancel()` is what shows the fake counts them.
+/// The host calls the descriptor's `stop(_:)` before the engine's
+/// `deactivate()` (Architecture/Disk.md § How Disk's model reaches its engine),
+/// and a page still on screen may press a control after that. Each press is
+/// counted at the fake; for every press but Stop and New scan the count before
+/// `stop()` is the control. Those two are pressed only after `stop()`, and a
+/// mutant of the `closed` check in `cancel()` shows the fake counts them.
 @MainActor
 final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
 
@@ -62,7 +60,7 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
     /// which answers nil, and the coordinator then logs «no answer» every tick.
     func testTheDescriptorPassesTheScanOn() async {
         let work = CountingWork()
-        let parts = ModuleParts(engine: NoEngine(), model: DiskViewModel(work: work, store: ScanStore(directory: scratchDirectory("disk-descriptor"))))
+        let parts = ModuleParts(engine: FakeEngine(), model: DiskViewModel(work: work, store: ScanStore(directory: scratchDirectory("disk-descriptor"))))
         let report = await DiskDescriptor().backgroundScan(parts)
         XCTAssertNotNil(report, "the descriptor fell to the default: «no answer» every tick")
         XCTAssertEqual(work.background, 1)
@@ -87,8 +85,6 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
         await grace()
         XCTAssertEqual(work.volumes, after, "a mount after stop() reached the volume read")
     }
-
-    private final class NoEngine: ModuleEngine { func activate() {}; func deactivate() {} }
 
     func testAPressAfterStopReachesNoWork() async {
         let work = CountingWork()
@@ -150,9 +146,9 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
         XCTAssertNil(released, "a stopped model is still held after its owner let go")
     }
 
-    /// `makeModule` builds the model when the module starts, before anybody has
-    /// opened Disk. The saved scan is an index of every file on the volume; reading it then would put that
-    /// read on every launch. It is read when the page or the tile first appears.
+    /// `makeModule` builds the model when the module starts; the saved scan, an
+    /// index of every file on the volume, is read only when the page or the tile
+    /// first appears, not on every launch.
     func testAPlantedScanIsNotReadUntilTheModelAppears() async throws {
         let directory = scratchDirectory("disk-not-appeared")
         let store = ScanStore(directory: directory)

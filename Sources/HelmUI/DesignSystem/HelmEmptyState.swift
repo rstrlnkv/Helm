@@ -2,32 +2,19 @@ import SwiftUI
 
 /// A page with nothing on it yet, or nothing left to show.
 ///
-/// There were ten of these and they were drawn eight different ways: spacing 10
-/// or 14, text wrapped at 360, 380, 420 or not at all, the button sometimes
-/// large and sometimes not, one of them a hand-rolled `VStack` with its own
-/// `Spacer`s. Nobody chose any of that — each was written next to the screen it
-/// belonged to, and every one of them was reasonable on its own. Together they
-/// made the app look assembled rather than built.
+/// One shape for every empty page, so the app reads as built rather than
+/// assembled. Two things wear it, and they are not the same thing:
 ///
-/// Two things wear this shape and they are not the same thing:
-///
-/// - **an invitation** — nothing here *yet*, and there is something to do about
+/// - **an invitation**: nothing here *yet*, and there is something to do about
 ///   it. It gets the symbol and the button.
-/// - **a statement** — nothing matched, nothing is left, nothing was found. It
+/// - **a statement**: nothing matched, nothing is left, nothing was found. It
 ///   is a sentence and nothing else; a button here would be an invitation to
 ///   repeat what just failed.
 ///
-/// The difference is which arguments are given, so a caller cannot accidentally
-/// make one look like the other.
-///
-/// **And the sentence is optional too**, which is the third case: a page whose
-/// explanation is already on screen, in a banner directly above. Keep Awake's app
-/// list draws one when its stored rules cannot be read — «add the apps again» is
-/// the banner's own last clause, and the invitation underneath was explaining
-/// what an app rule is and reporting that none was chosen, which the banner had
-/// just contradicted. So an invitation may be a plate and a verb. Every other
-/// call site says something, and should: `nil` here is for when the words are
-/// somewhere the reader is already looking.
+/// The difference is which arguments are given, so a caller cannot make one
+/// look like the other. The sentence is optional too, for a page whose
+/// explanation is already in a banner directly above (Keep Awake's app list
+/// when its stored rules cannot be read). Every other call site says something.
 public struct HelmEmptyState<Actions: View>: View {
     private let symbol: String?
     private let tint: Color
@@ -56,20 +43,14 @@ public struct HelmEmptyState<Actions: View>: View {
                 HelmIconPlate(symbol: symbol, tint: tint, size: Self.plate)
             }
             if let title {
-                // 16, not 17. `.title2` is 17 on macOS and this was typed as
-                // one; the scale steps 13 · 16 · 22, and an empty state's
-                // heading is the step above a section heading and well below a
-                // hero figure.
+                // 16, the scale's step above a section heading.
                 Text(title).font(HelmText.plateTitle)
             }
             if let message {
                 Text(message)
-                    // **Said, not inherited.** With no font of its own this took
-                    // whatever the slot it was mounted in provides, and one of
-                    // those slots is a `Form`'s section header — which is
-                    // semibold. So the same component drew its sentence in two
-                    // weights on one screen, 500 pt apart, on the VPN page.
-                    // A sentence is the scale's body step wherever it is.
+                    // Said, not inherited: in a `Form`'s section header the
+                    // slot is semibold. A sentence is the body step wherever
+                    // it is.
                     .font(HelmText.rowTitle)
                     .foregroundStyle(HelmText.quiet)
                     .multilineTextAlignment(.center)
@@ -86,8 +67,7 @@ public struct HelmEmptyState<Actions: View>: View {
                     .frame(maxWidth: Self.textWidth)
             }
             actions
-                // Set here rather than at each call site: two of the old ones
-                // were large and two were not, for no reason either could give.
+                // Set here rather than at each call site.
                 .controlSize(.large)
         }
     }
@@ -116,16 +96,9 @@ extension HelmEmptyState where Actions == EmptyView {
 
 /// Work in progress on an otherwise empty page.
 ///
-/// The same shapes problem, smaller: a bare spinner, a spinner with a caption,
-/// a spinner with a caption at a different size — and a spinner with a caption
-/// and a Stop button, which is the one that never came here at all. Work in
-/// Helm reads directories and runs other programs, so most of it can be
-/// stopped; a busy state that had nowhere to put the button left its author to
-/// centre a `VStack` between two `Spacer()`s instead, which is how the fourth
-/// shape happened and why the guard was blind to it.
-///
-/// The slot is `HelmEmptyState`'s slot, down to the `Actions == EmptyView`
-/// overload: waiting with nothing to do about it stays one argument long.
+/// The slot is `HelmEmptyState`'s, with room for a Stop button, since most of
+/// Helm's work reads directories or runs other programs and can be stopped.
+/// The `Actions == EmptyView` overload keeps a plain wait one argument long.
 public struct HelmBusyState<Actions: View>: View {
     private let message: String?
     private let actions: Actions

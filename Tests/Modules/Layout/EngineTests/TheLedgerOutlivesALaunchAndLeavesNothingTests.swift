@@ -5,14 +5,12 @@ import XCTest
 /// The second half of where the count lives: what it leaves behind. The first,
 /// that it outlives a launch, is `TheLedgerCountsAcrossALaunchTests` below.
 ///
-/// **It leaves nothing behind when nobody asked for a file.** Both wrong
-/// answers were tried on the way here: keyed to the process id, every test in
-/// the suite shared one ledger and a case asserting «one word counted» read
-/// five; keyed per instance, a single run left 91 directories in `$TMPDIR`,
-/// which is how this repository once accumulated 7621 of them.
+/// It leaves nothing behind when nobody asked for a file. Keyed to the process
+/// id, every test would share one ledger; keyed per instance, every run would
+/// leave directories in `$TMPDIR`.
 final class TheLedgerOutlivesALaunchAndLeavesNothingTests: XCTestCase {
 
-    /// **Nobody named a directory, so nothing is written.** Outside the app the
+    /// Nobody named a directory, so nothing is written. Outside the app the
     /// count is kept in memory and dies with the process — which is what makes
     /// a suite of these leave the disk exactly as it found it.
     func testWithNoDirectoryNamedNothingReachesTheDisk() {
@@ -49,8 +47,7 @@ final class TheLedgerOutlivesALaunchAndLeavesNothingTests: XCTestCase {
     }
 }
 
-/// **It outlives a launch** — that is the whole reason the file exists, and the
-/// defect `DailyCount` could not fix.
+/// It outlives a launch — that is the whole reason the file exists.
 final class TheLedgerCountsAcrossALaunchTests: XCTestCase {
 
     func testACountWrittenByOneStoreIsReadByTheNext() {

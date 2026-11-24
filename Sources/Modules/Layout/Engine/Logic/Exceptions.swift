@@ -22,15 +22,12 @@ public struct Exceptions: Equatable, Sendable {
     /// The stored list with one more word in it, or `nil` when it is already
     /// there.
     ///
-    /// **Three buttons say «Never this word»** — the settings page's field, the
-    /// lists window's field, and the panel tile's button beside the last
-    /// change — and each wrote the array in its own words. Two kept the word as
-    /// typed and sorted; the tile lowercased it and appended. So the same word
-    /// set aside from the panel arrived in a spelling nobody had typed, at the
-    /// bottom of a list that is otherwise alphabetical.
+    /// Three buttons say «Never this word» (the settings page's field, the
+    /// lists window's field, the panel tile's button), and all write through
+    /// this, so a word lands in one spelling and one sorted place.
     ///
-    /// Kept **as typed**, because that is what two of the three did and because
-    /// a person searching this list is searching for what they wrote. The
+    /// Kept as typed, because a person searching this list is searching for
+    /// what they wrote. The
     /// comparison is still case-insensitive: `contains` lowercases, so a list
     /// holding `Ghbdtn` beside `ghbdtn` would be two rows the module reads as
     /// one.

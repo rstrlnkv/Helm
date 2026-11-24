@@ -29,7 +29,7 @@ final class TheCopyOfTheTextLeavesOutWhatThePersonCoveredTests: XCTestCase {
     private var rigged: (overlay: CaptureOverlay, display: DisplayID, view: OverlayView)?
 
     override func setUp() { super.setUp(); AppLanguage.override = .en }
-    override func tearDown() { rigged?.overlay.close(); rigged = nil; AppLanguage.override = nil; super.tearDown() }
+    override func tearDown() async throws { rigged?.overlay.close(); rigged = nil; AppLanguage.override = nil; try await super.tearDown() }
 
     func testALineUnderTheBlurIsNotHandedToTheClipboardAndAClearOneIs() async throws {
         let area = CGRect(x: 100, y: 100, width: 400, height: 300)

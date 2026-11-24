@@ -2,14 +2,10 @@ import Foundation
 
 /// One size format for the whole app.
 ///
-/// Two defects made this necessary. The modules formatted sizes two different
-/// ways — one counting 1024 to the kilobyte, one counting 1000 — so the same
-/// file read as a different size depending on the screen. And
-/// `ByteCountFormatter` takes its unit words from whatever localizations the
-/// running process happens to carry, which for Helm is English: a Russian user
-/// saw "432,95 GB" where macOS itself writes "432,95 ГБ".
-///
-/// So the number is built here rather than delegated. Finder's conventions:
+/// One format, so a file reads as one size on every screen. Built here rather
+/// than delegated, because `ByteCountFormatter` takes its unit words from the
+/// localizations the running process carries, which for Helm is English: "GB"
+/// where macOS itself writes "ГБ". Finder's conventions:
 /// 1000 to the kilobyte, and precision that falls off with magnitude —
 /// "20 KB", "1,7 MB", "432,95 GB".
 public enum HelmBytes {
@@ -31,11 +27,8 @@ public enum HelmBytes {
         var value = Double(max(bytes, 0))
         var step = 0
         // The unit is chosen against the number that will be *shown*, not the
-        // one before rounding. 999 999 divides once to 999.999 KB — under the
-        // threshold — and then rounds to nought decimals and prints "1000 KB",
-        // where the Finder says "1 MB". The same window sits under every unit:
-        // 50 MB wide below GB, 5 GB wide below TB. "1000 KB" is the only
-        // four-digit mantissa this can emit, which is why it looks so wrong.
+        // one before rounding: 999 999 is 999.999 KB, under the threshold, and
+        // would print "1000 KB" where the Finder says "1 MB".
         while step < unitOrder.count - 1, rounded(value, to: precision(step)) >= 1000 {
             value /= 1000
             step += 1
@@ -64,9 +57,8 @@ public enum HelmBytes {
     /// language groups digits: 1 499 308 in Russian and French, 1.499.308 in
     /// German, 1,499,308 in English.
     ///
-    /// Counts were interpolated straight out of `Int`, so a scan of `/`
-    /// reported "1499308 files". Seven ungrouped digits are read by counting
-    /// them, which is the one thing a magnitude is not for.
+    /// Seven ungrouped digits are read by counting them, which is the one thing
+    /// a magnitude is not for.
     ///
     /// Separate from `decimal` rather than a flag on it: `decimal` writes the
     /// mantissa of a size, where a grouping separator would be a second decimal
@@ -83,10 +75,9 @@ public enum HelmBytes {
             .string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
     }
 
-    /// Built once per language-and-precision pair. Constructing a
-    /// `NumberFormatter` costs about fourteen microseconds, which was almost
-    /// all of what it cost to render a file size — and a list renders two
-    /// hundred of them on every frame the pointer moves over it.
+    /// Built once per language-and-precision pair: constructing a
+    /// `NumberFormatter` is most of what rendering a size costs, and a list
+    /// renders hundreds of them on every frame the pointer moves over it.
     private static let formatters = LockedMemo<String, NumberFormatter>()
 
     private static func formatter(language: String, decimals: Int,
@@ -108,11 +99,10 @@ public enum HelmBytes {
     /// Longest suffixes first so "bytes" is matched before "byte".
     ///
     /// Every spelling here is the one in Foundation's
-    /// `FileSizeFormatting.loctable` — the table `ByteCountFormatter` reads, and
-    /// therefore the one behind every size the Finder shows. Three of them were
-    /// invented instead of looked up: Russian spelled the byte out («байт»)
-    /// where the system abbreviates it, French capitalised the kilo (`Ko`) where
-    /// only mega and up are capitalised, and German pluralised `Byte`.
+    /// `FileSizeFormatting.loctable`, the table `ByteCountFormatter` reads and
+    /// so the one behind every size the Finder shows: Russian abbreviates the
+    /// byte (`Б`), French writes the kilo lower case (`ko`), German does not
+    /// pluralise `Byte`.
     private static let units: [String: [(String, String)]] = [
         "ru": [("bytes", "Б"), ("byte", "Б"), ("KB", "КБ"), ("MB", "МБ"),
                ("GB", "ГБ"), ("TB", "ТБ"), ("PB", "ПБ")],

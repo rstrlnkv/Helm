@@ -12,7 +12,7 @@ import HelmRuntime
 /// `fix()`'s hop back to main), and the tap, on the main run loop, hears the
 /// echo only after `perform` has returned. A flag set around `perform` would
 /// always be down by then, so there is none.
-private let helmEventMarker: Int64 = 0x48_45_4C_4D   // "HELM"
+let helmEventMarker: Int64 = 0x48_45_4C_4D   // "HELM"
 
 /// One source for every event this module posts, so the marker is set in one place.
 private func helmEventSource() -> CGEventSource? {
@@ -32,24 +32,19 @@ private func helmEventSource() -> CGEventSource? {
 /// would mean the tap keeps the object alive until the port is invalidated, and
 /// the only thing that invalidates the port is this object's own teardown: an
 /// unbreakable cycle, in which a module the user switched off goes on reading
-/// every keystroke for the life of the process. That is a worse defect than the
-/// one below, and a silent one.
+/// every keystroke for the life of the process.
 ///
 /// So the pointer stays unretained, and the object gets a `deinit` — which is
-/// reachable precisely *because* nothing retains `self` (ARCHITECTURE.md § State that outlives a page and ends with its module, on
-/// `deinit` not running while something holds the object is the same fact from
-/// the other side). Without it, `stop()` had exactly one caller and any path
-/// that dropped the engine another way — `bootstrap()` replacing it, the module
-/// being let go at quit — left an enabled tap on the main run loop resolving a
-/// freed pointer. Measured: 5 SIGSEGVs in 5 runs on that path, 0 in 8 with the
-/// `deinit`, in `swift_retain` under `eventTapMessageHandler`.
+/// reachable precisely *because* nothing retains `self` (Architecture/StateAndLifetime.md § State that outlives a page and ends with its module).
+/// Without it, any path that drops the engine other than `deactivate()` —
+/// `bootstrap()` replacing it, the module let go at quit — leaves an enabled
+/// tap on the main run loop resolving a freed pointer: a crash in
+/// `swift_retain` under `eventTapMessageHandler`.
 ///
-/// `CFMachPortInvalidate` is a separate repair and fixes a separate thing: the
-/// port caches the run loop source it creates and the source retains the port,
-/// so without it neither is ever freed. Measured at 219 mach port names left
-/// behind over 200 start/stop cycles against 21 with it. It does **not** fix
-/// the crash — stopping without it already stops delivery — and saying it does
-/// would close the investigation on the half that matters.
+/// `CFMachPortInvalidate` fixes a separate thing: the port caches the run loop
+/// source it creates and the source retains the port, so without it neither is
+/// ever freed. It does **not** prevent the crash — stopping without it already
+/// stops delivery.
 ///
 /// `CFRunLoop` is the one thread-safe CoreFoundation type, so removing the
 /// source from whatever thread `deinit` happens to run on is supported and
@@ -79,15 +74,12 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
 
     /// The live tap's mach port name, for the teardown test and nothing else.
     /// The test asserts about *this* name rather than counting the task's whole
-    /// namespace: the namespace moves with every XPC connection and thread the
-    /// rest of the suite — or the person's own typing through a live engine —
-    /// happens to create inside the measurement window, which made the count
-    /// flake at ~1 in 3 full runs while the taps were tearing down correctly.
+    /// namespace, which moves with every XPC connection and thread the rest of
+    /// the process creates inside the measurement window.
     var portName: mach_port_name_t? { lock.withLock { tap.map { CFMachPortGetPort($0) } } }
 
-    /// The backstop, and after this the only guaranteed teardown. `deactivate()`
-    /// is still the ordinary route; this covers every other way the port can be
-    /// let go, which is the set that had nothing at all.
+    /// The backstop. `deactivate()` is the ordinary route; this covers every
+    /// other way the port can be let go.
     deinit { stop() }
 
     /// `KeyTapPort.start`'s contract. The tap is **listen-only**: it reports keys
@@ -161,30 +153,23 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         CFMachPortInvalidate(tap)
     }
 
-    /// A modifier changed. Which physical key it was comes from the key code;
-    /// whether it went down or up comes from its own device-dependent bit,
+    /// Device-dependent flag bits for every modifier key, both sides, from
+    /// `TapKey`. Whether a modifier went down or up comes from its own bit,
     /// because `.maskCommand` cannot tell the two Command keys apart and would
     /// read a release as a press whenever the other one is held.
-    /// Device-dependent flag bits for every modifier key, both sides, from
-    /// `TapKey` — which is where the codes and the bits are defined.
     ///
     /// Every key is in it, not only the bindable one: a modifier on the other
-    /// side must still *spoil* a tap, and without it a left press arrived as a
-    /// release, was never entered into the chord set, and left-⇧ right-⌘ fired
-    /// the gesture mid-shortcut. This was a second copy of those nine
-    /// constants, and its comment had drifted into describing a table holding
-    /// only the left ones.
+    /// side must still *spoil* a tap, or left-⇧ right-⌘ fires the gesture
+    /// mid-shortcut.
     private static let modifierMasks = TapKey.masksByKeyCode
 
     /// macOS has taken the tap away. `TapDisabled` says what that means.
     ///
-    /// Silence here is why this exists: both types used to fall through the
-    /// keycode switch, produce no characters and return, so Layout stopped
-    /// converting words and nothing anywhere said so. A timeout needs no
-    /// permission change to happen — when a word is judged the callback asks the
-    /// accessibility server whether the field is secure, and one slow app in
-    /// front is enough to be judged too slow and switched off for the rest of
-    /// the session.
+    /// Both disabling event types type no characters, so without this Layout
+    /// would stop converting and say nothing. A timeout needs no permission
+    /// change: when a word is judged the callback asks the accessibility server
+    /// whether the field is secure, and one slow app in front is enough to get
+    /// the tap switched off for the rest of the session.
     private func theSystemDisabledUs() {
         lock.lock(); let tap = self.tap; let died = self.diedHandler; lock.unlock()
         guard let tap else { return }
@@ -245,11 +230,9 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         modifierHandler?(.otherInput)
         if event.type == .leftMouseDown { handler?(.click); return }
 
-        // A command or control chord is not text. Without this, ⌘S appended an
-        // "s" to the word and the next space converted the result — and the
-        // module's own shortcut broke itself, because a head-inserted tap sees
-        // the key before Carbon delivers the hotkey, so the letter was in the
-        // buffer by the time "convert the last word" ran.
+        // A command or control chord is not text: ⌘S would append an "s" to the
+        // word, and a head-inserted tap sees the module's own hotkey before
+        // Carbon delivers it, so its letter would be in the buffer by then.
         // Option and shift alone still type — ⌥Z is "Ω" — so they cannot be
         // dropped wholesale. But a *global shortcut* on one of them is
         // swallowed by Carbon and never reaches the field, while the tap has
@@ -258,16 +241,10 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         let flags = event.flags
         let modified = flags.contains(.maskCommand) || flags.contains(.maskControl)
             || flags.contains(.maskAlternate)
-        // The ordering that decides this is `TapEvent.classify`, pure and
-        // beside the buffer it feeds, because it used to live here — private,
-        // over a `CGEvent` — where no test could ask it anything. What it
-        // settles: a key held with ⌘, ⌥ or ⌃ is a chord unless it is one that
-        // moves the caret or deletes backwards, and ⌥Delete is one of those.
-        //
-        // The prose that used to stand here is at `TapEvent`, with the sentence
-        // this file kept getting wrong: ⌘Space arriving as a plain space
-        // confirmed a word, budgeted a backspace for a space that never reached
-        // the field, and ate the character to its left.
+        // The ordering is `TapEvent.classify`, pure so a test can ask it: a key
+        // held with ⌘, ⌥ or ⌃ is a chord unless it moves the caret or deletes
+        // backwards, ⌥Delete included. ⌘Space read as a plain space would
+        // confirm a word and budget a backspace for a space the field never got.
         let code = Int(event.getIntegerValueField(.keyboardEventKeycode))
         if let classified = TapEvent.classify(keycode: code, modified: modified) {
             handler?(classified)
@@ -283,13 +260,11 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         else { return }
         // **Not «is this a letter», but «is this key a letter anywhere».**
         // `,` types `б` in Russian, `;` types `ж`, `[` types `х` — and
-        // punctuation confirms a word, so on a latin layout `cgfcb,j` was cut
-        // at the comma: `cgfcb` confirmed and converted, `j` starting again.
-        // Measured over 24 ordinary Russian words: 6 cut mid-word.
+        // punctuation confirms a word, so on a latin layout `cgfcb,j` would be
+        // cut at the comma.
         //
-        // A Mac with only latin layouts installed answers false for every mark
-        // and keeps today's behaviour exactly — the comma goes on ending an
-        // English sentence's last word.
+        // A Mac with only latin layouts installed answers false for every mark,
+        // and the comma goes on ending an English sentence's last word.
         let letter = character.isLetter
             || UCTranslation.letterKeys(installed: TISLayoutSources().installed())
                 .contains(UInt16(code))
@@ -308,19 +283,12 @@ public struct SynthesisTyping: TypingPort {
 
     /// **Every event is built before any of them is posted.**
     ///
-    /// Posting the deletes before building the events that type the replacement
-    /// would make the `guard let … else { return false }` inside the
-    /// second loop reachable with the word already gone —
     /// `CGEvent(keyboardEventSource:virtualKey:keyDown:)` is a failable
-    /// allocation against a resource this app does not own, and it can answer
-    /// nil on its own. The outcome: the word deleted, nothing typed in its
-    /// place, `false` returned, and every caller reading that as «the app
-    /// refused, nothing happened». `TypingPort.perform`'s own contract says
-    /// «a partial retype is worse than none», and `LayoutEngine.convert` spends
-    /// that promise by name.
-    ///
-    /// Building first costs one array of at most a word's worth of events. It
-    /// is the shape `SystemCommandKeys.press` in this file already has, for the same reason.
+    /// allocation that can answer nil on its own. Posted before the replacement
+    /// is built, the deletes could leave the word gone, nothing typed, and
+    /// `false` read by every caller as «the app refused, nothing happened» —
+    /// the partial retype `TypingPort.perform` promises never to make.
+    /// `SystemCommandKeys.press` in this file builds first for the same reason.
     ///
     /// **It does not make the plan atomic against the app**, and cannot: the
     /// events go to the HID tap and whatever is in front may stop reading them
@@ -335,23 +303,27 @@ public struct SynthesisTyping: TypingPort {
     /// not be built.
     static func events(for plan: SwitchPlan) -> [CGEvent]? {
         guard let source = helmEventSource() else { return nil }
+        return events(for: plan) { CGEvent(keyboardEventSource: source, virtualKey: $0, keyDown: $1) }
+    }
+
+    /// The building and the clearing, with the event factory a parameter so a test
+    /// can hand it events that carry the live modifier state.
+    static func events(for plan: SwitchPlan,
+                       make: (CGKeyCode, Bool) -> CGEvent?) -> [CGEvent]? {
 
         var events: [CGEvent] = []
         events.reserveCapacity(plan.backspaces * 2 + plan.insert.count * 2)
 
         for _ in 0..<plan.backspaces {
-            guard let down = CGEvent(keyboardEventSource: source,
-                                     virtualKey: CGKeyCode(kVK_Delete), keyDown: true),
-                  let up = CGEvent(keyboardEventSource: source,
-                                   virtualKey: CGKeyCode(kVK_Delete), keyDown: false)
+            guard let down = make(CGKeyCode(kVK_Delete), true),
+                  let up = make(CGKeyCode(kVK_Delete), false)
             else { return nil }
             // **Cleared, not inherited — this is the one that eats words.**
             // `CGEventSource(stateID: .combinedSessionState)` carries the *live*
             // modifier state, and the gesture is a tap of a modifier: if the
             // person is still holding ⌥ when these go out, every one of them is
-            // ⌥Delete, which removes a whole word rather than a character. The
-            // conversion lands and a word beside it disappears — reported as
-            // «it converts the word and deletes one more». ⌘ would be worse: a
+            // ⌥Delete, which removes a whole word rather than a character, and
+            // a word beside the conversion disappears. ⌘ would be worse: a
             // synthesised ⌘-letter is a menu command in whatever is in front.
             //
             // `SystemCommandKeys.press` in this file sets `.maskCommand` on purpose, which is
@@ -364,8 +336,7 @@ public struct SynthesisTyping: TypingPort {
 
         for character in plan.insert {
             var utf16 = Array(String(character).utf16)
-            guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
-                  let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
+            guard let down = make(0, true), let up = make(0, false)
             else { return nil }
             down.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
             up.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
@@ -386,9 +357,7 @@ public struct SynthesisTyping: TypingPort {
 
 /// One place that reads the Text Input Sources list, because every other port
 /// here needs the same lookup — and so does the module's own menu-bar
-/// indicator, which is why this is public rather than internal. The indicator
-/// had grown its own copy of the list call, the layout filter and
-/// `string(_:_:)`, which is the drift this type exists to prevent.
+/// indicator, which is why this is public rather than internal.
 public enum InputSources {
     /// The language tags the source declares, most specific first; empty when it names none.
     public static func languages(of source: TISInputSource) -> [String] {
@@ -418,26 +387,20 @@ public enum InputSources {
 
     /// The layout the keyboard is on **now**.
     ///
-    /// **`TISCopyCurrentKeyboardInputSource` is not asked first any more.** It
-    /// answers out of per-process state that HIToolbox refreshes as the process
-    /// handles the system's notification, and in this app it was observed to
-    /// stop tracking: the person switched layout with their own shortcut, macOS
-    /// switched, and Helm went on reading the previous one until the app was
-    /// restarted. Both readers freeze together, which is why the menu-bar
-    /// badge sat on one value while conversions stopped — one stale answer, not
-    /// two broken features.
+    /// **Not `TISCopyCurrentKeyboardInputSource` first.** It answers out of
+    /// per-process state that HIToolbox refreshes as the process handles the
+    /// system's notification, and it can stop tracking: macOS switches layout
+    /// and the process reads the previous one until it restarts. The menu-bar
+    /// badge and the conversions share this reader, so both would freeze.
     ///
     /// A fresh `TISCreateInputSourceList` and the source that says it is
-    /// selected is a different path to the same fact, and it is the one that
-    /// cannot go stale: the list is built on the call. It costs a list walk,
-    /// measured at single-digit microseconds on this Mac, and it is asked once
-    /// per completed word rather than per keystroke.
+    /// selected cannot go stale: the list is built on the call. It costs a list
+    /// walk, asked once per completed word rather than per keystroke.
     ///
-    /// The old call stays as the fallback, because with an input method in
+    /// The cached call stays as the fallback, because with an input method in
     /// front — Japanese, Chinese — no *keyboard layout* need report itself
     /// selected, and an answer from the cache beats no answer at all. When the
-    /// two disagree the log says so once, which is what turns the next
-    /// occurrence of this bug into evidence rather than a restart.
+    /// two disagree the log says so once.
     public static func current() -> TISInputSource? {
         let cached = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
         guard let live = selected() else { return cached }
@@ -508,10 +471,7 @@ public struct UCTranslation: TranslationPort {
     public init() {}
 
     /// The tables are this type's business; what a string becomes is
-    /// `KeyRemap`'s, where a test can reach it without a keyboard. The loop
-    /// that used to be here refused the whole string at the first character the
-    /// table had no key for — and the tables hold letters only, so a selection
-    /// with a space in it was refused entire.
+    /// `KeyRemap`'s, where a test can reach it without a keyboard.
     public func translate(_ word: String, from: String, to: String) -> String? {
         guard let fromTable = Self.characterTable(from),
               let toTable = Self.characterTable(to) else { return nil }
@@ -526,11 +486,9 @@ public struct UCTranslation: TranslationPort {
     /// Which keys type a letter in some installed layout.
     ///
     /// Built over the same cached tables the translation uses, and cached in
-    /// turn: the tap asks this on every keystroke, and `installed()` alone is
-    /// 6.2 µs measured — small, but paid on the thread that must not be busy.
-    /// The keyboard type is in the key for the reason it is in the table's:
-    /// plugging in an ISO keyboard where an ANSI one was makes every answer
-    /// describe the wrong hardware.
+    /// turn: the tap asks this on every keystroke, on the thread that must not
+    /// be busy. The keyboard type is in the key for the reason it is in the
+    /// table's.
     static func letterKeys(installed: [String]) -> LetterKeys {
         let id = installed.sorted().joined(separator: ",") + "#\(LMGetKbdType())"
         return letterKeyCache.valueOrNothing(for: id) {
@@ -567,16 +525,11 @@ public struct UCTranslation: TranslationPort {
                                             &deadKeyState, 4, &length, &characters)
                 guard status == noErr, length > 0,
                       let character = String(utf16CodeUnits: characters, count: length).first,
-                      // Not `isLetter`, and that filter was the defect. A key
-                      // is only «punctuation» in the layout you happen to be
-                      // holding: `,` types `б` in Russian, `;` types `ж`, `[`
-                      // types `х`. Keeping letters only meant seven Cyrillic
-                      // letters had no key at all — measured over 24 ordinary
-                      // Russian words: 6 corrupted mid-word, 18 refused, 0
-                      // converted correctly. The same is true wherever a
-                      // layout puts letters on keys ANSI calls punctuation,
-                      // which is most non-latin layouts, so this is not a
-                      // Russian fix.
+                      // Not `isLetter`. A key is only «punctuation» in the
+                      // layout you happen to be holding: `,` types `б` in
+                      // Russian, `;` types `ж`, `[` types `х`. Letters only
+                      // would leave those letters with no key, in most
+                      // non-latin layouts.
                       //
                       // Whitespace stays out: a space is the same key in every
                       // layout, and admitting it would let a word boundary
@@ -647,13 +600,9 @@ public struct AXSecureContext: SecureContextPort {
         return (role as? String) == "AXSecureTextField"
     }
 
-    /// Through the snapshot, never straight to AppKit.
-    ///
-    /// This used to be `NSWorkspace.shared.frontmostApplication` on whatever
-    /// thread asked. That survived while every caller was the tap's own
-    /// main-thread callback, and stopped surviving the moment the gesture moved
-    /// to a background queue — `NSWorkspace` off the main thread does not go
-    /// stale, it takes the process down (ARCHITECTURE.md § Running applications).
+    /// Through the snapshot, never straight to AppKit: the gesture asks from a
+    /// background queue, and `NSWorkspace` off the main thread takes the process
+    /// down (Architecture/RunningOtherPrograms.md § Running applications).
     public func frontmostBundleID() -> String { FrontmostApp.shared.bundleID() }
 }
 
@@ -690,9 +639,7 @@ public struct AXSelection: SelectionPort {
         if focus.setSelectedText(text) { return true }
         // The paste route borrows the clipboard and can only give back a
         // string. Anything else on it — an image, RTF, a promised file — does
-        // not survive the round trip. That was contained by the shortcuts
-        // reaching this path being unbound; they are not any more, so the
-        // containment is a rule now: if the clipboard holds something Helm
+        // not survive the round trip, so if the clipboard holds something Helm
         // cannot put back, do not touch it.
         //
         // Declining is a correct outcome. The caller reports it, and the
@@ -714,14 +661,11 @@ public struct AXSelection: SelectionPort {
 
     /// Returns whether the app took the text, as far as this route can tell.
     ///
-    /// It used to return `true` always. In an app where ⌘V is not paste — a
-    /// terminal, a game, a modal that swallows it — Helm clobbered the
-    /// clipboard, restored it, played the success sound and reported a change
-    /// that never happened. There is no receipt for a synthesised keystroke, so
-    /// what is checked is the one thing that can be: whether the app read the
-    /// pasteboard at all. The selection moves when the app takes the paste — if
-    /// the tree still reports exactly what was selected
-    /// before, nothing replaced it.
+    /// In an app where ⌘V is not paste — a terminal, a game, a modal that
+    /// swallows it — an unconditional `true` reports a change that never
+    /// happened. There is no receipt for a synthesised keystroke, so what is
+    /// checked is whether the selection moved: if the tree still reports
+    /// exactly what was selected before, nothing replaced it.
     private func pasteSelection(_ text: String, replacing previous: String?) -> Bool {
         let saved = pasteboard.string()
         pasteboard.clear()
@@ -733,8 +677,7 @@ public struct AXSelection: SelectionPort {
         usleep(120_000)
         restore(saved)
         // Unreadable tree: no evidence either way, so do not claim failure on a
-        // paste that probably worked. Claiming success is the bug being fixed;
-        // claiming failure here would only trade it for the opposite one.
+        // paste that probably worked.
         guard let now = focus.selectedText() else { return true }
         return now != previous
     }
@@ -788,27 +731,17 @@ struct SystemCommandKeys: CommandKeyPort {
 
 /// Whatever has keyboard focus anywhere on the system.
 ///
-/// Written twice, and only one copy checked the type ID before bitcasting. The
-/// check matters and the comment beside it said why: a `CFTypeRef` that is an
-/// `AXUIElement` is one, a conditional cast of a CF type is what Swift 6 will
-/// not do, and a trapping cast on the keystroke path would take the app down
-/// mid-sentence. The selection path bitcast whatever it got. One reader now,
-/// with the check, which is a guard the selection path gains.
+/// The type ID is checked before the bitcast: a conditional cast of a CF type
+/// is what Swift 6 will not do, and a trapping cast on the keystroke path
+/// would take the app down mid-sentence.
 private func systemFocusedElement() -> AXUIElement? {
     let system = AXUIElementCreateSystemWide()
-    // **A second is the ceiling, not six.** This is the one AX read on the
-    // keystroke path: `AXSecureContext.isSecure` goes through it, `emitState`
-    // calls that, and `emitState` runs from the tap's own callback — on main,
-    // where macOS kills a callback that takes too long (`TapDisabled` exists
-    // because it does). The system-wide element's default messaging timeout is
-    // the global one, and a frozen app in front means Helm waits it out with
-    // the keyboard in its hands.
-    //
-    // The module already knew this call: `EmojiPalette` set exactly this
-    // timeout, with the comment «a hung app must not hang Helm's main thread
-    // with it» — on the one AX path that was *not* on the keystroke route. The
-    // hoisting of `isSecure` out of the lock was half this repair; this is the
-    // other half.
+    // **A second is the ceiling.** This is the one AX read on the keystroke
+    // path: `AXSecureContext.isSecure` goes through it, `emitState` calls that,
+    // and `emitState` runs from the tap's own callback — on main, where macOS
+    // kills a callback that takes too long (`TapDisabled`). The system-wide
+    // element's default messaging timeout is the global one, and a frozen app
+    // in front would have Helm wait it out with the keyboard in its hands.
     //
     // A refusal here is the safe direction: no focused element reads as «not a
     // secure field», and the cheap `IsSecureEventInputEnabled` check that runs
@@ -829,8 +762,7 @@ private func systemFocusedElement() -> AXUIElement? {
 ///
 /// The frontmost watch goes through `FrontmostApp` rather than an `NSWorkspace`
 /// observer of its own: that type is the app's single observer of the
-/// activation notice and exists because `NSWorkspace` is main-thread-only. A
-/// second one here would be the third in the app.
+/// activation notice and exists because `NSWorkspace` is main-thread-only.
 ///
 /// Tokens are dropped before new ones are taken, not overwritten:
 /// `FrontmostApp.shared` is a process-wide singleton whose watchers are never

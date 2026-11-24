@@ -4,17 +4,12 @@ import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
-/// **The dry run promised work another rule takes first.**
+/// The dry run is of the folder as it will be, not of one rule on its own.
 ///
-/// The editor asked the engine about a folder holding one rule — the one being
-/// written, on its own — while the folder it names holds a list that is read top
-/// to bottom, first match wins. Measured before this existed: «Invoices» offered
-/// two files and moved none of them, because «All PDFs» above it took all three.
-/// The page's own toolbar says the order decides, in the same window.
-///
-/// So the preview is of the folder as it will be, and every row says which rule
-/// takes it. `RulePlan.decide` was always honest — what was wrong was the folder
-/// the view model handed it.
+/// A folder's list is read top to bottom, first match wins, so a rule asked
+/// about alone offers files a rule above it takes first. The preview is of the
+/// whole folder with the draft in its place, and every row says which rule
+/// takes it.
 final class ADryRunIsOfTheFolderNotOfOneRuleTests: XCTestCase {
 
     private var home: URL!
@@ -96,9 +91,8 @@ final class ADryRunIsOfTheFolderNotOfOneRuleTests: XCTestCase {
 
     // MARK: - What the folder's rules really do to the files in it
 
-    /// The survey's measurement, end to end: «All PDFs» takes every PDF, so the
-    /// narrower rule below it gets nothing — and the dry run says so, naming the
-    /// rule that takes each file.
+    /// End to end: «All PDFs» takes every PDF, so the narrower rule below it
+    /// gets nothing, and the dry run names the rule that takes each file.
     func testAFileAnEarlierRuleTakesIsAttributedToThatRule() throws {
         try write("invoice-march.pdf", in: root, bytes: 10)
         try write("invoice-april.pdf", in: root, bytes: 10)

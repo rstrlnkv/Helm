@@ -15,10 +15,9 @@ public protocol KeyTapPort: AnyObject, Sendable {
     /// `died` is the tap saying it has stopped without being asked to.
     /// **A live tap is a fact about the system, not a flag the caller owns.**
     /// macOS revokes one when Accessibility is withdrawn mid-session, and the
-    /// port stands down; without this channel the engine went on believing the
-    /// tap it started was still there, refused to build another after the person
-    /// restored the grant, and published a state saying it was watching. It is a
-    /// parameter rather than an optional setter so that a port cannot be
+    /// port stands down; without this channel the engine would believe the tap
+    /// still there, refuse to build another after the grant came back, and say
+    /// it was watching. It is a parameter rather than an optional setter so that a port cannot be
     /// implemented — or faked — without an answer to «what happens when this
     /// stops on its own».
     func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
@@ -34,8 +33,11 @@ public protocol TypingPort: Sendable {
 }
 
 public protocol LayoutSourcePort: Sendable {
-    /// Input source ids of every installed keyboard layout.
+    /// Input source ids of every installed keyboard layout. Empty when the
+    /// system lists no source with a key table, input methods being left out.
     func installed() -> [String]
+    /// Nil when no keyboard layout says it is selected and macOS's cached
+    /// answer names none either.
     func current() -> String?
     func select(_ sourceID: String)
 }
@@ -101,15 +103,13 @@ public protocol SecureContextPort: Sendable {
 public protocol SelectionPort: Sendable {
     /// The selection as the accessibility tree reports it, and nothing else.
     ///
-    /// Nil when nothing is selected or the app will not say. Nil is not "empty
+    /// Nil when nothing is selected, or the app will not say. Nil is not "empty
     /// selection": one means do nothing, the other would mean replacing the
     /// caret's surroundings with something. There is no clipboard route for
-    /// reading: it costs up to 200 ms of polling and clobbers the clipboard on
-    /// the way, which is not affordable on the modifier tap, which fires
-    /// whenever the key is tapped and has to decide in that moment whether
-    /// there is a selection at all, and `fix()` serves the tap and the hotkey
-    /// alike. An app whose tree says nothing is simply treated as having no
-    /// selection, and the tap does what it always did to the last word.
+    /// reading: it polls and clobbers the clipboard, and the modifier tap has
+    /// to decide in the moment whether there is a selection at all. An app
+    /// whose tree says nothing is treated as having no selection, and the tap
+    /// fixes the last word instead.
     func selectedTextWithoutClipboard() -> String?
 
     /// Replaces the selection. False when the app refused, so the caller can
@@ -140,9 +140,7 @@ protocol CommandKeyPort: Sendable { func press(_ key: UInt16) }
 /// front (the person may have just granted Accessibility, or edited their
 /// layouts, in System Settings) and another application coming to the front
 /// (the layout bound to it).
-///
-/// One port for both, so the engine registers nothing process-wide itself and
-/// deactivation is one call.
+/// → Architecture/Layout.md § How Layout's model reaches its engine.
 public protocol AppActivationPort: AnyObject, Sendable {
     /// Starts both observations and replaces any earlier ones: called twice, one
     /// registration of each is left. Both handlers run on the main thread;

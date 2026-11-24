@@ -10,58 +10,40 @@ import HelmAppStrings
 /// `ShellContentView`. Each of the two hosts a SwiftUI view; a shared
 /// `SettingsModel` carries the selection between them.
 ///
-/// **The header row is the card's, and only the page tabs are a system toolbar item, under Glass.** The row is
-/// drawn at the top of the detail pane by `SettingsDetail` (`helmCardHeader`): the page's name and status on the
-/// left, what the page declared through `helmHeaderContent` on the right. Under `.liquidGlass` the tabs of that
-/// declaration are shown by the window's `NSToolbar` (`SettingsToolbar`) and the row keeps a placeholder for them;
-/// under `.flat` the window has no toolbar and the row draws the tabs. The title bar is transparent over it and
-/// the pane takes no safe area from it, so the row starts at the card's top edge.
+/// **The header row is the card's, and only the page tabs are a system toolbar item, under Glass**
+/// (Architecture/TheSettingsWindow.md, Architecture/ThePageHeader.md § How the page reaches the toolbar).
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private let model: SettingsModel
-    /// The page tabs' toolbar, worn under Liquid Glass only (`SettingsToolbar`).
+    /// The page tabs' toolbar, worn under both looks, with items under Liquid Glass only (`SettingsToolbar`).
     private let toolbar: SettingsToolbar
     /// One size for every page. Switching pages must never resize the window
     /// under the user's cursor; the size they pick is remembered instead.
     ///
-    /// Measured against the two pages that ask for the most. Homebrew's
-    /// densest row — name, kind badge, version, description and an action
-    /// button — fits from about 940. The Disk screen wants more: its bar needs
-    /// 800 pt of pane before the scan statement will show
-    /// (`DiskLayout.barWithStatement`), and at 940 the pane, the window less
-    /// `ShellGeometry.defaultSidebarWidth` and `ShellGeometry.inset`, is under it, so the
-    /// statement never appeared out of the box and nothing suggested widening
-    /// the window would reveal it. 1060 cleared it; the default is now `minSize` and a margin of 4, because the
-    /// Log page's header in German needs more than that (`minSize`).
+    /// The width is `minSize` and a margin of 4. It also clears the pages
+    /// that ask most of the pane: Homebrew's densest row, and Disk's bar, which
+    /// needs 800 pt of pane before the scan statement shows
+    /// (`DiskLayout.barWithStatement`); nothing would suggest widening the
+    /// window to reveal it.
     ///
     /// Not private: `SidebarComposerSheet` caps itself at this height, because
     /// a sheet is drawn inside this window and the window's own content is the
-    /// ceiling. Two literal heights in one target, with a comment claiming they
-    /// were the same number, is a comment.
+    /// ceiling. One number, not two literals that must agree.
     ///
-    /// The height is 760 by the owner's decision, up from 700: the eleventh
-    /// module (Screenshots, in Utilities) made the shipped composer measure 723,
-    /// which 700 could not hold. With Hosts archived (the tag `archive/hosts`)
-    /// there are ten, one 40 pt row fewer; the height was left at 760.
+    /// The height is the owner's decision: it holds the composer with every
+    /// module listed.
     nonisolated static let defaultSize = NSSize(width: 1211, height: 760)
     /// Below this the Log page's header row, the fullest one, no longer fits the card in German with its tabs
     /// labelled by glyph and word (`HeaderTabLabels.iconsAndText`, the widest of the three labellings).
     ///
     /// **1207 is that row in German at the default sidebar** (`ShellGeometry.defaultSidebarWidth`, 200, which
     /// nothing in the window changes): «Einstellungen», the tabs «Grundlagen | Protokoll | Über Helm» each with its
-    /// glyph, five actions and the search at `HelmHeaderSearch.width`, with the Kit's insets (plate 14 from the
-    /// left, controls 10 from the right). Read from `HelmReadout ax` frames on 2026-11-16, Helm Dev 0.11.2 build 2024,
-    /// on the Log page in each of the eight languages with `-module.app.toolbarSwitcherStyle iconsAndText`: the
-    /// name's frame plus the tab group's (the buttons' span plus the strip's 4 either side), whose sum is what
-    /// changes with the language: German 426, French 414, Spanish 387, Russian 382, Portuguese 373, English 333,
-    /// Japanese 299, Chinese 282. (Text only, as measured earlier the same day, was German 361 … Chinese 217; the
-    /// glyph and its 6 pt gap add 65 to the German row.) The rest is the same in all eight: 14 + 24 plate + 12 +
-    /// the name + 36 (`HeaderRowLayout.nameGap`: 12, 12, 12) + the tabs + 8 + 471 (five 36 pt actions, 8, the search's 283)
-    /// + 10, which is 575 + 426 = 1001 in German; the card is the window less 200 of sidebar and 4 of window inset,
-    /// so 1205, and 2 more for a frame rounded to whole points. (Text only, 1142, and the old row, with 20 of
-    /// gutter each side and a 200 pt search, 1096, were narrower; raised, never lowered, by the owner's decision.)
-    /// The search could not give way instead. A sidebar stored wider than the default
-    /// (`ShellGeometry.sidebarRange` goes to 320) is not held by this number.
+    /// glyph, five actions and the search at `HelmHeaderSearch.width`, read from `HelmReadout ax` frames with
+    /// `-module.app.toolbarSwitcherStyle iconsAndText`. The name and the tab group are what change with the
+    /// language, and German's are the widest of the eight (426). The rest is the same in all eight: 14 + 24 plate
+    /// + 12 + the name + 36 (`HeaderRowLayout.nameGap`: 12, 12, 12) + the tabs + 8 + 471 (five 36 pt actions, 8,
+    /// the search's 283) + 10, which is 575 + 426 = 1001; the card is the window less 200 of sidebar and 4 of
+    /// window inset, so 1205, and 2 more for a frame rounded to whole points. The search cannot give way instead.
     private static let minSize = NSSize(width: 1207, height: 540)
 
     /// The header row's band is the running system's decision (`HelmBandChoice.running`), handed to the pane.
@@ -88,7 +70,7 @@ import HelmAppStrings
         self.window = window
         super.init()
         window.delegate = self
-        toolbar.attach(to: window) { AppSettings.barAppearance }
+        toolbar.attach(to: window)
         // **The window's title is the page's name**, set here on the
         // `NSWindow` rather than through SwiftUI, so it is this class's to
         // set. The page says what it is called with `HelmPageTitleKey`; this is the
@@ -108,13 +90,9 @@ import HelmAppStrings
     }
 
     /// `selecting` opens the window on that module's page (used by panel utility rows).
-    /// `helm.settings` asks for the settings page itself rather than a module.
-    ///
-    /// Without it, «Показать» on the panel's permissions notice posted
-    /// `.helmOpenSettings` with no object, `show(selecting:)` left the
-    /// selection alone, and the window came forward on whatever page somebody
-    /// had been reading last — a button that says «Показать» and shows you the
-    /// Homebrew package list.
+    /// `helm.settings` asks for the settings page itself rather than a module:
+    /// the panel's permissions notice must land on General, not on whatever
+    /// page was read last.
     static let settingsPage = "helm.settings"
 
     func show(selecting moduleID: String? = nil) {
@@ -213,26 +191,15 @@ import HelmAppStrings
     /// this window rather than off any SwiftUI content** — not
     /// `\.controlActiveState`, which reads `.inactive` in two states where
     /// AppKit's platter stays lit: a nonactivating panel taking key while this
-    /// window stays main, and a sheet, where the private `_hasActiveAppearance`
-    /// this window answers for AppKit stays `true` (`isKeyWindow=false`,
-    /// `isMainWindow=true` in both).
-    ///
-    /// `isKeyWindow || isMainWindow` was read alongside `_hasActiveAppearance`
-    /// on every `STATE` line four real fixture runs logged, then a fifth set
-    /// that hands genuine activation between two processes to reach the same
-    /// states for real — S1 through S5, a nonactivating panel taking key, and
-    /// a sheet opened, cancelled, begun while the app was away, or ended
-    /// while it was away — and the two agreed on every line, sheet included.
+    /// window stays main, and a sheet (`isKeyWindow=false`, `isMainWindow=true`
+    /// in both). `isKeyWindow || isMainWindow` agrees with AppKit's private
+    /// `_hasActiveAppearance` in every such state, sheets included.
     ///
     /// **What this reading cannot see.** `isKeyWindow` and `isMainWindow`
-    /// answer only for a *real* window-server transition — a genuine
-    /// `activate()`, a real key/main window change — and a test process can
-    /// never produce one of its own: calling AppKit's private
-    /// `acquireKeyAppearance`/`resignKeyAppearance`/`acquireMainAppearance`/
-    /// `resignMainAppearance` moves `_hasActiveAppearance` and AppKit's own
-    /// glass but leaves `isKeyWindow`, `isMainWindow`, `NSApp.keyWindow` and
-    /// `NSApp.mainWindow` all unchanged and posts none of the four
-    /// notifications below.
+    /// answer only for a real window-server transition, which a test process
+    /// cannot produce on its own: AppKit's private `acquireKeyAppearance` and
+    /// its siblings move `_hasActiveAppearance` and AppKit's own glass but
+    /// leave both unchanged and post none of the four notifications below.
     func windowDidBecomeKey(_ notification: Notification) { updateWindowAppearsActive() }
     func windowDidResignKey(_ notification: Notification) { updateWindowAppearsActive() }
     func windowDidBecomeMain(_ notification: Notification) { updateWindowAppearsActive() }
@@ -274,17 +241,13 @@ enum SettingsSelection: Hashable {
     /// Bumped when the interface language changes.
     ///
     /// Every label in this window is a computed property that reads
-    /// `AppLanguage.current` at draw time, so the values are already right the
-    /// moment the override is set — what is wrong is that nothing asked for
-    /// them again. The first attempt bumped a `@State` inside the sidebar,
-    /// which redrew the sidebar and left every button in the pane beside it in
-    /// the old language: a `@State` reaches its own subtree and no further.
+    /// `AppLanguage.current` at draw time, so the values are right the moment
+    /// the override is set; what is missing is a reason to ask for them again.
     ///
-    /// It lives here because this is the one object both panes observe, and it
-    /// is spent on `.id()` rather than on a plain dependency — a re-evaluated
-    /// parent may hand a child the same inputs and SwiftUI will keep the view
-    /// it already built. A changed identity is the only thing that guarantees
-    /// the whole subtree is made again.
+    /// It lives here because this is the one object both panes observe (a
+    /// `@State` reaches its own subtree and no further), and it is spent on
+    /// `.id()` rather than on a plain dependency: a re-evaluated parent may
+    /// hand a child the same inputs and SwiftUI will keep the view it built.
     @Published private(set) var languageRevision = 0
     private var liveWatch: AnyCancellable?
 
@@ -300,11 +263,10 @@ enum SettingsSelection: Hashable {
         // A module switched off while the window is open leaves the selection
         // on a page no row leads to. The sink reads the store through
         // `enabledModuleIDs`, not `host.live`: `@Published` publishes in
-        // `willSet`, so `live` still holds the old set inside it. It closes
-        // the difference between the page and the bar after `live` moves, not
-        // after the stored flag is written: between the store write
-        // (`ModuleHost.setEnabled`) and `live[key] = nil` (`ModuleHost.disable`)
-        // the page already draws General while the bar still reads the raw selection.
+        // `willSet`, so `live` still holds the old set inside it. Between the
+        // store write (`ModuleHost.setEnabled`) and `live[key] = nil`
+        // (`ModuleHost.disable`) the page already draws General while the bar
+        // still reads the raw selection; this closes that gap.
         liveWatch = host.$live.sink { [weak self] _ in
             guard let self else { return }
             let settled = ShellSidebarRows.settled(self.selection, enabled: host.enabledModuleIDs)
@@ -319,9 +281,7 @@ enum SettingsSelection: Hashable {
         NotificationCenter.default.addObserver(
             forName: .helmModuleOrderChanged, object: nil, queue: .main) { [weak self] _ in
             // In a transaction: the sidebar behind the composer sheet is that
-            // sheet's live preview, and a raw bump made its rows appear,
-            // vanish and reorder in a single frame while the list in front of
-            // them animated. Two lists disagreeing about what just happened.
+            // sheet's live preview, and it must animate with the list in front.
             MainActor.assumeIsolated {
                 withAnimation(HelmMotion.interface) { self?.orderRevision += 1 }
             }
@@ -335,8 +295,8 @@ enum SettingsSelection: Hashable {
 /// hosted in it. A plain view controller; the window's size is the user's and
 /// the controller asks nothing of it.
 ///
-/// The controller assigns the window no toolbar itself: the header row is a view in the page's own hosting view,
-/// and only its tabs are handed to the window's toolbar under Glass (`SettingsToolbar`, through `tabs`).
+/// The controller assigns the window no toolbar itself: only the row's tabs are handed to the window's
+/// toolbar under Glass (`SettingsToolbar`, through `tabs`).
 @MainActor final class SettingsShellViewController: NSViewController {
     private let model: SettingsModel
     /// The window's own band decision, handed down rather than read again —
@@ -351,15 +311,10 @@ enum SettingsSelection: Hashable {
     /// Where the fold state is remembered (`AppSettings.sidebarCollapsed(in:)`).
     private let store = AppSettings.store
 
-    /// The width the sidebar has when expanded, read from the store once, when the window is built.
-    /// Nothing in the window changes it, so an unfold always ends here.
-    private let expandedWidth: CGFloat
-
     init(model: SettingsModel, band: HelmBandChoice, tabs: HelmTabsSink) {
         self.model = model
         self.band = band
         self.tabs = tabs
-        self.expandedWidth = AppSettings.sidebarWidth(in: store)
         super.init(nibName: nil, bundle: nil)
         fold.collapsed = AppSettings.sidebarCollapsed(in: store)
     }
@@ -388,7 +343,7 @@ enum SettingsSelection: Hashable {
     }
 
     private func width(collapsed: Bool) -> CGFloat {
-        collapsed ? ShellGeometry.railWidth : expandedWidth
+        collapsed ? ShellGeometry.railWidth : ShellGeometry.defaultSidebarWidth
     }
 
     private func makeShell() -> ShellContentView {
@@ -405,13 +360,12 @@ enum SettingsSelection: Hashable {
                 // Its own hosting controller, its own root: the pane's environment stops at the pane.
                 .helmRoot()
                 // The window survives closing (`isReleasedWhenClosed = false`),
-                // so without this both panes went on re-rendering — and keeping
-                // memory — for every engine event for as long as the app ran.
-                // `OffScreenIdle` in HelmUI has the measurements.
+                // so without this both panes would go on re-rendering, and
+                // keeping memory, for every engine event (`OffScreenIdle`).
                 .helmIdlesOffScreen())
         sidebar.sizingOptions = []
-        // The toolbar grows the title bar's safe area, and the sidebar would start lower under Glass: it takes none
-        // from the title bar and holds the Flat title bar's own band instead, the same under both looks.
+        // The toolbar grows the title bar's safe area, and the sidebar would start lower: it takes none
+        // from the title bar and holds the title bar's own band instead, the same under both looks.
         sidebar.safeAreaRegions = []
 
         let detail = NSHostingController(
@@ -567,22 +521,18 @@ private struct ModuleDetailView: View {
     let id: String
 
     var body: some View {
-        // The header lies **over** the page, and the page scrolls under it —
-        // which is where the strip's material and its scroll-edge rule come
-        // from. It was a sibling in a `VStack(spacing: 0)`, with nothing
-        // passing behind it to blur. `safeAreaInset` reserves the strip's own
-        // height, so no page here reserves it and none had to give anything up.
+        // The header lies over the page, and the page scrolls under it, which
+        // is where the strip's material and its scroll-edge rule come from.
+        // `safeAreaInset` reserves the strip's own height, so no page here
+        // reserves it.
         page
             // Leading, not centre. This alignment governs only content that
-            // does not fill the pane, and everything here fills it — a capped
-            // column centres itself, and every header here is the card's, which
-            // bleeds. A capped column and a non-bleeding header were measured
-            // unmoved at 610, 810 and 1400 pt, before the header went to the
-            // card. What it does govern is
-            // a row that wants *more* than the pane: centred, the overflow was
-            // split between the two edges, so a clipped toolbar hid its path
-            // under the sidebar and its buttons off the right. Pinned leading,
-            // an overflow spills one way and reads as one.
+            // does not fill the pane: a capped column centres itself, and every
+            // header here is the card's, which bleeds. What it does govern is a
+            // row that wants more than the pane: centred, the overflow is split
+            // between the two edges, hiding a clipped toolbar's path under the
+            // sidebar and its buttons off the right. Pinned leading, an
+            // overflow spills one way and reads as one.
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .helmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
                             tint: descriptor.moduleTint.colour,

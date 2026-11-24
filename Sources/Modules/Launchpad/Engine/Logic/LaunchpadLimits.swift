@@ -1,9 +1,11 @@
+import HelmRuntime
+
 /// **One set of ceilings for everything Launchpad reads from outside** — the layout file
-/// and the installed-apps walk — so a planted or runaway input is bounded the same way
-/// wherever it enters. A count above its ceiling is truncated, never a trap.
+/// and the installed-apps walk (bundle files are read at `PropertyListFile.byteCeiling`) — so a planted
+/// or runaway input is bounded the same way wherever it enters. A count above its ceiling is truncated, never a trap.
 enum LaunchpadLimits {
     /// A layout file larger than this is unreadable; checked before decoding.
-    static let maxFileBytes = 2 * 1024 * 1024
+    static let maxFileBytes = PropertyListFile.byteCeiling
     static let maxApps = 10_000
     static let maxItems = 5_000
     static let maxFolderApps = 1_000

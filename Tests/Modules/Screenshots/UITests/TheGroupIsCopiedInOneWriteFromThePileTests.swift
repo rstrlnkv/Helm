@@ -27,7 +27,7 @@ final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
         s.controller.cancel()
         await grace(0.3)
         XCTAssertEqual(s.board.lists.count, 0, "a group was written after the module went off")
-        XCTAssertEqual(s.board.singles, 0)
+        XCTAssertEqual(s.board.copies, 0)
         XCTAssertNil(s.toast.model.refusal)
         XCTAssertTrue(s.toast.model.shots.isEmpty)
         XCTAssertFalse(s.toast.model.shown)
@@ -64,13 +64,13 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
                 expected.append(width)
             }
             XCTAssertEqual(s.toast.model.shots.count, n)
-            let singles = s.board.singles
+            let singles = s.board.copies
             XCTAssertEqual(s.board.lists.count, 0)
             s.toast.model.copyAll()
             await waitUntil("\(n): the group was written") { s.board.lists.count >= 1 }
             await grace(0.1)
             XCTAssertEqual(s.board.lists.count, 1, "\(n) shots were \(s.board.lists.count) writes")
-            XCTAssertEqual(s.board.singles, singles, "\(n): a shot went by the single write")
+            XCTAssertEqual(s.board.copies, singles, "\(n): a shot went by the single write")
             XCTAssertEqual(try XCTUnwrap(s.board.lists.first).map(PileScene.width(of:)), expected, "\(n): not the list's order or not every shot")
             XCTAssertNil(s.toast.model.refusal, "\(n): a copy that was made was told as a refusal")
             XCTAssertEqual(s.toast.model.shots.count, n, "the copy changed the window")
@@ -116,7 +116,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
         await waitUntil("the person was told") { s.toast.model.refusal != nil }
         XCTAssertEqual(s.refusalBody, ScStr.refusal(.pasteboard))
         XCTAssertEqual(s.board.lists.count, 0)
-        XCTAssertEqual(s.board.singles, 0, "a refused group fell back to a write a shot")
+        XCTAssertEqual(s.board.copies, 0, "a refused group fell back to a write a shot")
         s.toast.close()
         XCTAssertNil(s.toast.model.refusal)
         s.board.accepts = true

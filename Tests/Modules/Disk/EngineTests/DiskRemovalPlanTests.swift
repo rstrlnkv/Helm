@@ -31,7 +31,7 @@ final class DiskRemovalPlanTests: XCTestCase {
     }
 
     /// A row the person picked out of the ring has no advice behind it and is
-    /// its own target — the ordinary case, and the one that must not change.
+    /// its own target.
     func testAPathWithNoAdviceIsItsOwnTarget() {
         let picked = "/Users/test/Movies/raw.mov"
         XCTAssertEqual(DiskRemovalPlan.targets(basket: [picked],
@@ -73,8 +73,7 @@ final class DiskRemovalPlanTests: XCTestCase {
                        [advice])
     }
 
-    /// The rule the view model had before targets existed, and it still holds:
-    /// an advice whose path went away with a folder above it is spent.
+    /// An advice whose path went away with a folder above it is spent.
     func testAnAdviceTakenWithAFolderAboveItIsGone() {
         let advice = DiskAdvice(name: "raw.mov", path: "/Users/test/Movies/raw.mov",
                                 bytes: 5_000_000_000, kind: .largeOld)
@@ -88,12 +87,9 @@ final class DiskRemovalPlanTests: XCTestCase {
 
     // MARK: - The bucket is not a file
 
-    /// **The last place that can tell the aggregate from the file.** The folded
-    /// bucket wears the name `…` and its path is the path a real file of that
-    /// name would have; past this method everything is strings, and
-    /// `UserFileScope` and `HelmTrash` see one path with two meanings. It was the
-    /// gate that kept it out, by refusing the name — which refused the person's
-    /// own file with it.
+    /// The last place that can tell the aggregate from the file. The folded
+    /// bucket's path is the path a real file named `…` would have; past this
+    /// method everything is strings, so the bucket is dropped here by its flag.
     func testAFoldedBucketIsNeverHandedToTheTrash() {
         let bucket = entry(caches + "/…", 400_000_000, isDirectory: false, isFolded: true)
         let question = DiskRemovalPlan.question(basket: [bucket], advice: [])
@@ -101,8 +97,8 @@ final class DiskRemovalPlanTests: XCTestCase {
         XCTAssertEqual(question.bytes, 0, "and it does not promise the bytes either")
     }
 
-    /// The control, and it is the whole point: the same path, the same name, no
-    /// flag. A rule that read the name would refuse this one too.
+    /// The control: the same path and name, no flag. A rule that read the name
+    /// would refuse this one too.
     func testAFileTheUserNamedLikeTheBucketIsHandedOverLikeAnyOther() {
         let real = entry(caches + "/…", 400_000_000, isDirectory: false)
         let question = DiskRemovalPlan.question(basket: [real], advice: [])

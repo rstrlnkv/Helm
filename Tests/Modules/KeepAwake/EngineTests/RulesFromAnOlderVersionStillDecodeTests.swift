@@ -14,16 +14,11 @@ import HelmRuntime
 /// person ever chose. The Mac stops being held awake and the page says the file
 /// cannot be read.
 ///
-/// Nothing has been added since v0.9.0, so this file is a fence rather than a
-/// report: it fails on the first field that arrives without a default. The 0.10
-/// plan asked for exactly this file, beside a `Watch` field on `AppTrigger` and
-/// a hand-written `init(from:)` to carry it — neither of which was built, so the
-/// next person to add one starts where that plan did.
+/// A fence: it fails on the first field that arrives without a default.
 final class RulesFromAnOlderVersionStillDecodeTests: XCTestCase {
 
-    /// What `AppTriggerRules.encode` wrote at v0.9.0 — three keys, checked
-    /// against `git show v0.9.0:…/Logic/AppTrigger.swift`. A build that cannot
-    /// read this is a build that silently forgets somebody's rules.
+    /// A document as `AppTriggerRules.encode` writes it, three keys. A build
+    /// that cannot read this silently forgets somebody's rules.
     private let asTheLastReleaseWroteThem = """
     [{"bundleID":"com.example.render","needsExternalDisplay":false,"needsPower":true},\
     {"bundleID":"com.example.edit","needsExternalDisplay":true,"needsPower":false}]

@@ -1,7 +1,6 @@
 import XCTest
 @testable import Module_Homebrew_Engine
 
-/// Kept: the only test of the list parser's happy path (version choice, blanks); `BrewParserShapeTests` pins its empty and whitespace shapes only.
 final class BrewListParserTests: XCTestCase {
     func testParsesNameVersionSkipsBlanksAndTakesFirstVersion() {
         let out = "ada-url 3.4.4\nbrotli 1.2.0\n\nc-ares 1.34.8\nmulti 1.0 1.1\nnoversion\n"
@@ -16,7 +15,6 @@ final class BrewListParserTests: XCTestCase {
     }
 }
 
-/// Kept: the only test of the outdated parser's ordinary document and of the empty/nil split; `BrewParserShapeTests` covers collisions and nil only.
 final class BrewOutdatedParserTests: XCTestCase {
     func testParsesFormulaeAndCasks() throws {
         let json = """
@@ -37,16 +35,14 @@ final class BrewOutdatedParserTests: XCTestCase {
                        [])
         XCTAssertNil(BrewOutdatedParser.parse(Data()))
     }
-    /// One array present and the other absent is still an answer — brew prints
-    /// both today, and a build that stops printing the empty one has not
-    /// stopped answering.
+    /// One array present and the other absent is still an answer: a build that
+    /// stops printing the empty one has not stopped answering.
     func testMissingInstalledVersions() {
         let json = #"{"formulae":[{"name":"x","current_version":"2.0"}]}"#.data(using: .utf8)!
         XCTAssertEqual(BrewOutdatedParser.parse(json)?.first?.installed, "")
     }
 }
 
-/// Kept: the only test of the sectioned and flat search output; `BrewParserShapeTests` covers empty output only.
 final class BrewSearchParserTests: XCTestCase {
     func testSectionedOutput() {
         let out = "==> Formulae\nwget\nwget2\n\n==> Casks\nwget-gui\n"
@@ -55,10 +51,9 @@ final class BrewSearchParserTests: XCTestCase {
                               SearchHit(name: "wget2", isCask: false),
                               SearchHit(name: "wget-gui", isCask: true)])
     }
-    /// A flat list carries no kind, so the rows take the caller's — which is
-    /// the kind it asked brew for. This used to read `parse("…")` with the kind
-    /// defaulted, and «a flat list is formulae» was then a property of the
-    /// parser rather than of the question.
+    /// A flat list carries no kind, so the rows take the kind the caller asked
+    /// brew for: «a flat list is formulae» is a property of the question, not
+    /// of the parser.
     func testAFlatListTakesTheKindTheCallerAskedFor() {
         XCTAssertEqual(BrewSearchParser.parse("wget\nwget2\n", isCask: false),
                        [SearchHit(name: "wget", isCask: false), SearchHit(name: "wget2", isCask: false)])

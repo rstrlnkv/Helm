@@ -5,61 +5,29 @@ import SwiftUI
 
 /// **The card whose figure is being replaced, while it is being replaced.**
 ///
-/// Two things happen to a card under a running measurement, and they answer two
-/// different questions.
+/// The figure steps back: for as long as a newer reading is on its way, it
+/// drops from full ink to `HelmText.quiet`, the ink of its own label, so the
+/// old answer is not presented as the current one. It stays readable; when the
+/// run ends the ink comes back, over the new figure or the old one if the tool
+/// refused.
 ///
-/// **The figure steps back.** A card showing «343 ↓ 358 ↑» while a new reading
-/// is being taken is presenting the old answer as the current one, unmarked.
-/// So for exactly as long as a newer one is on its way, the figure drops from
-/// full-strength ink to `HelmText.quiet` — the ink its own label is in. It is
-/// still perfectly readable, which is the point: this is not a fade to nothing,
-/// it is a demotion. The stale figure stops out-ranking the word above it and
-/// rejoins the quiet register until it is either replaced or confirmed. When
-/// the run ends the ink comes back, and whatever number is there then — the new
-/// one, or the old one if the tool refused — arrives into a card brightening.
+/// It is a colour, never `.opacity`: animating opacity puts the subtree in an
+/// offscreen layer, and dropping that layer makes hierarchical colours jump
+/// (Architecture/DesignSystem.md § Motion). It reaches only the figure because
+/// the card's label and note set their own `foregroundStyle`.
 ///
-/// **It is a colour, and never `.opacity`.** Animating opacity puts the subtree
-/// in an offscreen layer, and dropping that layer at the end makes hierarchical
-/// colours jump — the "Automation" heading's defect, ARCHITECTURE.md § Design system.
-/// Interpolating a literal `Color.primary.opacity(k)` moves the ink without
-/// creating a layer at all, which is also why the value here is spelled as a
-/// literal rather than as `.secondary`.
+/// The edge sweeps: a short segment travels round the card's border for as
+/// long as the run lasts, outlining the slot where the answer will land, which
+/// also covers a card with no figure yet. The lap is far shorter than the
+/// measurement on purpose: the tool reports nothing until it exits, so a lap as
+/// long as the run would be a progress bar with no evidence behind it. A short
+/// lap says «running», not «this far along». It is on the edge because an edge
+/// is peripheral, as an ambient signal should be, and it is how macOS itself
+/// marks something live.
 ///
-/// And it reaches **only the figure** by construction rather than by aim: the
-/// card's label and note set their own `foregroundStyle`, so a style applied
-/// from outside is overridden on both and inherited by the one `Text` that does
-/// not set one. The label «Скорость» is not a stale claim and does not move.
-///
-/// **The edge sweeps.** A short segment travelling round the card's own border,
-/// continuously, for as long as the run lasts. This is the half that answers the
-/// state where there is no figure at all — a dash and a unit, nothing to
-/// demote — because what it draws is the *slot*: it outlines exactly where the
-/// answer is going to land.
-///
-/// **The lap is deliberately far shorter than the measurement, and that is the
-/// whole honesty of it.** Nine or ten laps go by in one run. A segment that took
-/// the length of the measurement to get round would be a progress bar bent into
-/// a rectangle, which is precisely the claim there is no evidence for — the tool
-/// runs down and up in parallel (`dl_phase_start == ul_phase_start`, measured)
-/// and reports nothing at all until it exits. A short lap reads «running»; a
-/// long one reads «this far along». Nothing here is a fraction of anything.
-///
-/// It is on the edge rather than over the surface for two reasons. A person
-/// waiting on this measurement is looking at the button they pressed, forty
-/// points above; an edge is peripheral, which is what an ambient signal should
-/// be. And macOS itself says «something is live here» with an edge — the
-/// screen-sharing border, the recording indicator — where a shimmer across a
-/// surface is a web idiom on a surface that does not do that.
-///
-/// **Reduce Motion, and the schedule trick does not save this one.** A segment
-/// stepping round a border once a second would arrive in eight great leaps,
-/// which is more alarming than the glide, not less — so unlike
-/// `HelmExpectedWait`, the answer here is not a coarser clock. The border is
-/// drawn **whole and still**: the same statement — this card is the one being
-/// worked on, this is where the answer lands — with no travel in it. The
-/// demotion still happens, and `HelmMotion.disclosure` collapses it to a cut on
-/// its own. Nothing is lost except the movement, which is the thing that was
-/// asked to go.
+/// Under Reduce Motion the border is drawn whole and still: a segment stepping
+/// round once a second would leap, which is worse than the glide. The demotion
+/// still happens, cut by `HelmMotion.disclosure`.
 extension View {
     /// `measuring` is the engine's own fact — a run is in flight for this
     /// tunnel — and `false` is completely inert: no border, full ink, and a
@@ -73,14 +41,9 @@ struct HelmMeasuringSlot: ViewModifier {
     @Environment(\.helmTraits) private var traits
 
 
-    /// How long the segment takes to get round, in seconds.
-    ///
-    /// 2,4 — chosen by rendering it, not by arithmetic. At 1 s it reads as
-    /// agitation, which is the wrong thing to say about a wait somebody was
-    /// told would take twenty seconds; past about 4 s the eye starts to follow
-    /// it round and ask where it is going, which is the reading this must not
-    /// invite. Nine laps in a measurement is a cycle nobody can mistake for a
-    /// journey.
+    /// How long the segment takes to get round, in seconds, chosen by
+    /// rendering it: at 1 s it reads as agitation, and past about 4 s the eye
+    /// follows it and asks where it is going.
     nonisolated static let lap: Double = 2.4
 
     /// How much of the border is lit at once, as a fraction of the perimeter.
@@ -88,31 +51,23 @@ struct HelmMeasuringSlot: ViewModifier {
     /// travelling dot, and short enough that the card is never nearly outlined.
     nonisolated static let segment: Double = 0.17
 
-    /// **Where the lit segment is, as two spans of the border's own
-    /// parametrisation.**
-    ///
-    /// Two, because a segment crossing the origin is not expressible as one
-    /// `trim(from:to:)` — and they are always both returned rather than being
-    /// chosen between, so there is no branch and therefore no frame on which the
-    /// shape's identity changes. Off the wrap, the second is empty.
+    /// Where the lit segment is, as two spans of the border's parametrisation:
+    /// a segment crossing the origin is not one `trim(from:to:)`. Both are
+    /// always returned, so there is no branch and the shape's identity never
+    /// changes. Off the wrap, the second is empty.
     struct Sweep: Equatable {
         let first: ClosedRange<Double>
         let second: ClosedRange<Double>
 
-        /// The head runs from 0 to 1 once per `lap`, taken off absolute time so
-        /// it is a pure function of the clock with no state to fall out of step
-        /// with — the same property that makes `HelmExpectedWait` measurable
-        /// offscreen, and for the same reason.
+        /// The head runs from 0 to 1 once per `lap`, taken off absolute time, so
+        /// it is a pure function of the clock with no state to fall out of step.
         static func at(_ now: Date, lap: Double) -> Sweep {
             guard lap > 0 else { return Sweep(first: 0...0, second: 0...0) }
             let length = HelmMeasuringSlot.segment
-            // Folded twice on purpose. `truncatingRemainder` keeps the sign
-            // of its *dividend*, and the interval is negative on any Mac whose
-            // clock has reset — a dead battery boots at the Unix epoch, which
-            // is well before 2001. One fold leaves the head in `-1..<0` and
-            // hands `trim(from:to:)` a span it is not defined on; adding a
-            // whole lap and folding again puts it in `0..<1` for every clock,
-            // which is the parametrisation the border is drawn in.
+            // Folded twice: `truncatingRemainder` keeps the dividend's sign, and
+            // the interval is negative on a Mac whose clock reset to the Unix
+            // epoch. One fold leaves the head in `-1..<0`, where `trim` is not
+            // defined; a second puts it in `0..<1` for every clock.
             let turn = (now.timeIntervalSinceReferenceDate / lap)
                 .truncatingRemainder(dividingBy: 1)
             let head = (turn + 1).truncatingRemainder(dividingBy: 1)
@@ -122,13 +77,9 @@ struct HelmMeasuringSlot: ViewModifier {
         }
     }
 
-    /// The figure's ink, as arguments — the shape `HelmMotion.spins` set.
-    ///
-    /// `HelmText.quiet` rather than something quieter still: it is a token whose
-    /// contrast has been measured against every surface this app draws
-    /// (4,92:1 light, 6,06:1 dark), and a stale figure must stay *readable* —
-    /// somebody's last measurement is the only speed reading they have while a
-    /// new one is being taken.
+    /// The figure's ink, as arguments, the shape `HelmMotion.spins` set.
+    /// `HelmText.quiet` and nothing quieter: a stale figure must stay readable,
+    /// because it is the only reading the person has while a new one is taken.
     private static func ink(measuring: Bool) -> Color {
         measuring ? HelmText.quiet : .primary
     }
@@ -136,10 +87,9 @@ struct HelmMeasuringSlot: ViewModifier {
     let measuring: Bool
     let lap: Double
 
-    /// What is **drawn**, against what has arrived. Seeded from the incoming
-    /// value rather than from a constant, so a card built while a run is
-    /// already going does not play the demotion it missed — the law the hero's
-    /// own `shown` obeys, one file over.
+    /// What is drawn, against what has arrived. Seeded from the incoming value,
+    /// so a card built while a run is already going does not play the demotion
+    /// it missed.
     @State private var shown: Bool
 
     init(measuring: Bool, lap: Double) {
@@ -149,17 +99,14 @@ struct HelmMeasuringSlot: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        // **No branch around `content`, ever.** An `if` inside a `ViewModifier`
-        // is SwiftUI being told the two sides are different views, and after
-        // that no transaction on the outside can interpolate between them
-        // (ARCHITECTURE.md § Design system, law 1). Both halves below are a value
-        // handed to one unchanging tree.
+        // No branch around `content`: an `if` inside a `ViewModifier` makes two
+        // views, and no outside transaction can interpolate between them
+        // (Architecture/DesignSystem.md § Motion).
         content
             .foregroundStyle(Self.ink(measuring: shown))
             .overlay(border)
-            // Where the value **lands**. `.animation(_:value:)` on the outside
-            // was measured doing nothing for this shape twice in this codebase;
-            // a transaction at the point of the write is what carries it.
+            // Animated where the value lands: `.animation(_:value:)` on the
+            // outside does not carry this shape.
             .onChange(of: measuring) { _, arrived in
                 withAnimation(HelmMotion.disclosure) { shown = arrived }
             }
@@ -196,12 +143,10 @@ struct HelmMeasuringSlot: ViewModifier {
         RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
     }
 
-    /// **Not the module tint.** A coloured edge would be carrying colour and
-    /// nothing else, which is the exact charge that took the tick and the
-    /// warning triangle off this page's verdict. `Color.primary` is the ink
-    /// every other mark on the card is made of and it tracks light and dark by
-    /// itself; at 0,38 it reads clearly against the well without becoming a
-    /// second border system on a page that has one card shape.
+    /// Not the module tint: a coloured edge would carry meaning by colour
+    /// alone. `Color.primary` is the ink of every other mark on the card and
+    /// tracks light and dark; at 0.38 it reads against the well without becoming
+    /// a second border system.
     private static let lit = Color.primary.opacity(0.38)
     private static let weight: CGFloat = 1.5
     private static let cap = StrokeStyle(lineWidth: weight, lineCap: .round)

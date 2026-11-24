@@ -1,33 +1,17 @@
 import XCTest
 @testable import Module_Layout_Engine
 
-/// **A day is a day the person had, not an instant in UTC.**
+/// A day is a day the person had, not an instant in UTC.
 ///
-/// `ConversionLedger.Day.day` is stored as `calendar.startOfDay(for: now)` — an
-/// absolute `Date` — and every reader matches it with `==` or with a dictionary
-/// keyed on it. Both are exact comparisons of an instant, and the instant that
-/// «the start of today» names depends on the time zone the Mac was in when the
-/// row was written.
+/// «The start of today» as an instant depends on the time zone the Mac was in
+/// when the row was written, so a Mac correcting its own time zone at lunchtime
+/// («Set time zone automatically» after a flight) would split one day into two
+/// rows nine hours apart:
 ///
-/// `add`'s own comment already says «a Mac can wake in another timezone», and
-/// answers it by re-sorting the rows. Sorting fixes the order; it does not make
-/// two stamps for the same day one row. So the Mac correcting its own time zone
-/// at lunchtime — «Set time zone automatically» after a flight, or after being
-/// set up somewhere else — splits one day into two rows nine hours apart, and
-/// nothing downstream puts them back together:
-///
-/// - `total(over: .today)` floors at *this* zone's midnight, so the morning's
-///   row is below the floor and «words fixed today» drops back to what has
-///   happened since the change;
+/// - `total(over: .today)` floors at this zone's midnight, so «words fixed
+///   today» would drop back to what happened since the change;
 /// - `recent(days:)` looks each day up by this zone's midnight, so the
-///   morning's row matches no bar at all and the words vanish from the tile —
-///   not shifted to a neighbouring day, gone.
-///
-/// The figures are the whole of the module's page. A count that goes backwards
-/// through nothing the reader did is the complaint the ledger was written to
-/// answer, one scale over: it replaced a counter that reset at every launch.
-///
-/// Guards a past defect: a day split in two by a time-zone change (fix commit `95da25a3`).
+///   morning's words would match no bar and vanish from the tile.
 final class ADayIsTheSameDayInEitherTimeZoneTests: XCTestCase {
 
     private func calendar(_ zone: String) -> Calendar {

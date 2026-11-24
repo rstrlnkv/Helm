@@ -3,14 +3,12 @@ import IOKit.pwr_mgt
 @testable import Module_KeepAwake_Engine
 
 /// An IOKit power assertion outlives the object that took it unless something
-/// gives it back, and nothing here did.
+/// gives it back.
 ///
-/// `deactivate()` releases them, and that covered the module being switched off
-/// in Settings. It did not cover the engine being dropped any other way — and
-/// an assertion nobody released is held until the process exits, which for this
-/// module means a Mac that will not sleep and a settings page that says Keep
-/// Awake is off. The same shape as `CGKeyTap` having no `deinit`, one framework
-/// over.
+/// `deactivate()` releases them when the module is switched off; an
+/// `IOKitSleepAssertions` dropped any other way releases them in its `deinit`. An assertion nobody
+/// released is held until the process exits: a Mac that will not sleep under a
+/// page that says Keep Awake is off.
 ///
 /// Asserted against the power manager's own books, not against a flag on the
 /// object: the object is gone by the time the question is worth asking, and a

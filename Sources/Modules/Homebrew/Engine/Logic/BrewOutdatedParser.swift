@@ -4,13 +4,10 @@ import Foundation
 /// `formulae` and `casks` arrays.
 ///
 /// **nil is "this is not an answer", and it is not the same as an empty list.**
-/// Both of `Root`'s fields are optional — a cask carries no `pinned` key and a
-/// brew that prints only one of the two arrays is still answering — so *any*
-/// JSON object at all satisfied the decode, and a document naming neither array
-/// came back as a confident «nothing is outdated»: no throw, no log, nothing to
-/// notice, for as long as that brew is installed. A newer brew that re-nests
-/// the arrays and a document cut off mid-write are the two ways to reach it,
-/// and the page draws either as «Updates: 0» over a machine it never read.
+/// Both of `Root`'s fields are optional (a brew that prints one array is still
+/// answering), so any JSON object satisfies the decode. A document naming
+/// neither array (a re-nesting brew, a cut-off write) must not become
+/// «Updates: 0» over a machine never read.
 enum BrewOutdatedParser {
     private struct Root: Decodable { let formulae: [Entry]?; let casks: [Entry]? }
     private struct Entry: Decodable {

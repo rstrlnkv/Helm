@@ -16,26 +16,17 @@ import HelmAppStrings
 ///
 /// **Folded, never edited.** A launch is a card (`LogSessions`), the burst of
 /// lines a launch writes while it switches its modules on is one fold, and a line
-/// written again and again in a row is one row with a count. Every one of those
-/// is made from the lines in the order they arrived and none is dropped from the
-/// presentation, the footer's counts or «Copy log», which hands back the lines
-/// expanded, in the file's own format (`LogPresentation.lines`). What is *drawn*
-/// of it is the newest launches, whole, and the earlier ones as the reader comes
-/// up to them (`drawnAtOpen`, `LogReaderPlace.drawEarlier`): a stack lays out every
-/// row it is given, so the rows laid out at open are those of the newest launches
-/// and not of the whole tail. What the page decides is what to show first; what it
-/// says is what the file holds.
+/// written again and again in a row is one row with a count. None is dropped
+/// from the presentation, the footer's counts or «Copy log», which hands back
+/// the lines expanded, in the file's own format (`LogPresentation.lines`). Which
+/// launches are drawn is Architecture/DiagnosticsLog.md § The log pane.
 ///
-/// Shown on every build, because this is also where the log is switched on. It
-/// used to be dev-only, and the switch lived in Settings under "Diagnostics" —
-/// two places for one subject, and the one a person is told to press when they
-/// report a problem was not the one named after it.
+/// Shown on every build, because this is also where the log is switched on:
+/// one place for one subject.
 ///
-/// **The controls are the window's, not the page's.** Level, module, search,
-/// Follow, Copy and the rest live in the header row of the card like every other
-/// page's (`headerContent`, drawn by `helmCardHeader`); the page is the cards and a footer. The permanent
-/// band that held the writing switch is gone — the switch is one line in the
-/// «More actions» menu, which is as often as anyone needs it.
+/// The controls are the window's, not the page's: they live in the header row
+/// of the card (`headerContent`, drawn by `helmCardHeader`), and the writing
+/// switch is one line in the «More actions» menu.
 struct LogView: View {
     /// Set by the settings window, where the page's header is the card's row
     /// (`helmCardHeader`) instead of one in this stack.
@@ -61,12 +52,9 @@ struct LogView: View {
     @State private var following = true
     /// Where the reader is, by the line (`LogReaderPlace`).
     @State private var place = LogReaderPlace()
-    /// How many times `drawnAtOpen` is doubled to give the figure that the launches
-    /// before the newest are drawn to hold (`drawn(rowsBefore:)`). Raised by
-    /// `LogReaderPlace.drawEarlier` alone, to the nearest count at which a launch
-    /// more is drawn (`earlierAfterAsk`) and not at all when none is left, never
-    /// lowered; a filter changing does not clear it. It lasts as long as the page's
-    /// `@State` does, and stays 0 while nobody rests near the top of what is drawn.
+    /// How many times `drawnAtOpen` is doubled (`drawn(rowsBefore:)`). Raised
+    /// only by `LogReaderPlace.drawEarlier`, through `earlierAfterAsk`, never
+    /// lowered; a filter changing does not clear it.
     @State private var earlier = 0
     /// The launches whose start-up fold is open, by the id of their first line.
     @State private var openStartups: Set<LogEntry.ID> = []
@@ -86,21 +74,14 @@ struct LogView: View {
     var body: some View {
         let page = presented
         VStack(spacing: 0) {
-            // **A band, not a scroll edge — and `HelmPageHeader` directly is
-            // how a page says so.** The other pages hand their content to
-            // `helmPageHeader`, which lays the strip over a scroll view and
-            // gives it the material and the rule. This page is a scroll view
-            // and a footer stacked, and the scroll view is several levels
-            // inside the stack the band is applied to, so nothing ever
-            // scrolls *under* the band. A material over content that never
-            // passes behind it would blur nothing, and the rule would be a
-            // hairline between a header and a card — the line measured away
-            // from the page headers, back under a new name. The
-            // 52 pt strip is the same either way; only the edge is not.
+            // A band, not a scroll edge, so `HelmPageHeader` directly. This
+            // page is a scroll view and a footer stacked, and nothing ever
+            // scrolls under the band: a material there would blur nothing,
+            // and the rule would be a hairline between a header and a card.
             //
             // `bleeds: true` like every other full-width page: without it the
-            // header caps at `HelmLayout.settingsColumn` and centres, which put
-            // its icon at x = 53 against the rows' x = 21 on this pane.
+            // header caps at `HelmLayout.settingsColumn` and centres, out of
+            // line with the rows.
             //
             // In the settings window the header is the card's row
             // (`helmCardHeader`), and this row is not drawn at all.
@@ -113,26 +94,18 @@ struct LogView: View {
             Divider()
             footer(page)
         }
-        // **The same fact as `standsOnStillContent:` above, for the other
-        // placement of the same band.** This page reports `false` for the
-        // scroll and always will — not because it has no scroll view, which it
-        // does, in `lines`, but because `helmPageBar` is applied here, to the
-        // outer `VStack(spacing: 0)`, with that scroll view several levels
-        // inside it. The pages that rely on the scroll trigger hand their own
-        // scrolling content straight to `helmPageHeader` instead, where the closure
-        // fires. So before this the band was structurally incapable of
-        // lighting: nothing above it against the `Divider()`s below. The header
-        // in the row takes the fact as an argument because it is right here;
-        // the card's row is drawn at the pane's root, a view away, and a preference is how it hears.
+        // The same fact as `standsOnStillContent:` above, for the card's row:
+        // `helmPageBar` is applied to the outer stack, with the scroll view
+        // several levels inside it, so the scroll trigger can never fire here.
+        // The card's row is drawn at the pane's root, a view away, so it hears
+        // through a preference.
         .helmPageStandsOnStillContent()
         .helmPageBar(title: AppStr.settingsPane)
         // Declared unconditionally: this page's shape never changes.
         .helmHeaderContent(headerContent(page))
         .onAppear {
             refresh()
-            // One second: the log is read, not animated, and a person watching
-            // it is reading the line that just arrived rather than counting
-            // frames.
+            // One second: the log is read, not animated.
             let made = RepeatingTick(interval: 1) { refresh() }
             tick = made
             made.set(active: true)
@@ -187,11 +160,10 @@ struct LogView: View {
     /// Copy and the «More actions» menu — and the search.
     ///
     /// Follow is a toggle with a face: its state is its glyph (an open eye when
-    /// following, a slashed one when not) and never a tint. The old glyph button
-    /// lit up in the accent colour when it was on; this one does not, because a
-    /// state carried by colour alone is not read by everyone. Its word is in the
-    /// tooltip and the accessibility label, as it always was, and what it is
-    /// doing is the accessibility value.
+    /// following, a slashed one when not) and never a tint, because a state
+    /// carried by colour alone is not read by everyone. Its word is in the
+    /// tooltip and the accessibility label, and what it is doing is the
+    /// accessibility value.
     private func levelHeaderContent(_ page: LogPresentation) -> HelmHeaderContent {
         HelmHeaderContent(
             tabs: Self.levelTabs.map { HelmHeaderTab(id: $0.id, title: $0.title, symbol: $0.symbol) },
@@ -225,12 +197,8 @@ struct LogView: View {
                 HelmHeaderAction(id: "copy", title: AppStr.copyLog, symbol: "doc.on.doc",
                                   isEnabled: !page.lines.isEmpty) {
                     NSPasteboard.general.clearContents()
-                    // The lines the file carries. It used to be
-                    // `"\(time) [\(category)] \(message)"` — a second format,
-                    // written here, which dropped the level, the date and the
-                    // source site. On the machine this was measured on, 469 of
-                    // 500 warnings in the file were one wording from one place,
-                    // and pasted out of Helm they arrived with neither.
+                    // The lines in the file's own format: a second format here
+                    // would drop the level, the date or the source site.
                     NSPasteboard.general.setString(LogLine.lines(page.lines), forType: .string)
                 },
                 // Whether anything is written to the file at all, and what ends
@@ -249,16 +217,11 @@ struct LogView: View {
                         HelmReveal.inFinder(HelmLog.fileURL.path)
                     },
                     HelmHeaderMenuItem(id: "clear", title: HelmWord.clear, isOn: false,
-                                        // **The file, not the page.** It was gated
-                                        // on the tail, so a build with logging
-                                        // switched off said «Nothing logged yet»,
-                                        // greyed both buttons, and left the log on
-                                        // disk — which is exactly the person who
-                                        // most wants it gone. Clear means the log:
-                                        // both files and the window onto them.
+                                        // The file, not the page: with logging
+                                        // off the tail is empty and the log on
+                                        // disk is what a person wants gone.
                                         isEnabled: !entries.isEmpty || hasStoredLog) {
-                        // Both, because there is one Clear now and a person
-                        // pressing it means the log, not the window onto it.
+                        // Both: Clear means the log, not the window onto it.
                         HelmLog.shared.clear()
                         HelmLog.shared.clearTail()
                         entries = []
@@ -273,8 +236,7 @@ struct LogView: View {
 
     /// The zero-height end of the list, what Follow scrolls to. Below the last
     /// card and above the page's own bottom padding, so «at the end» is the
-    /// padding's height and no more (see `cardView` for what that was measured
-    /// to hold for).
+    /// padding's height and no more.
     private static let endMarker = "helm.log.end"
 
     /// What the person chose to see; a change of it is a different page, and the
@@ -300,9 +262,8 @@ struct LogView: View {
 
     @ViewBuilder private func lines(_ page: LogPresentation) -> some View {
         if page.isEmpty {
-            // No symbol: the header already draws this exact mark 610 pt above,
-            // and `HelmEmptyState`'s own rule is that a statement is a sentence
-            // and nothing else.
+            // No symbol: the header already draws this mark, and
+            // `HelmEmptyState`'s rule is that a statement is a sentence alone.
             HelmEmptyState(message: entries.isEmpty ? AppStr.logEmpty : AppStr.logNothingMatches,
                            note: entries.isEmpty && !loggingOn && !AppBuild.isDev
                                ? AppStr.logNoteStableAt(Self.logFolder) : nil) {
@@ -334,34 +295,23 @@ struct LogView: View {
                 } action: { _, now in
                     place.scrolled(now)
                 }
-                // **The end is held by the scroll view, not scrolled to once.** A
+                // The end is held by the scroll view, not scrolled to once: a
                 // lazy card's rows make the page's height an estimate until
-                // they have been drawn, and a `scrollTo` lands where the
-                // estimate put the end — then the rows are measured, the page
-                // changes height under a view that stays where it was, and the
-                // newest line is somewhere below. Measured on a real tail in a
-                // window on screen: the page opened at y = 7 677 of 15 901 pt,
-                // and with
-                // the bottom anchor for the first offset alone it opened
-                // 1 227 pt short at 760 pt wide and 1 262 pt short at 848 and
-                // 1 000. Anchoring the bottom for size changes too keeps the
-                // end under a view that was at it. It is set only while Follow
-                // is lit, and it holds nothing for a view that was *not* at the
-                // end: a reader scrolled up, with Follow on or off, is held by
-                // the line they read (`LogReaderPlace`). `.alignment` is left
-                // alone, so a short log still sits at the top of its pane.
+                // they are drawn, so a `scrollTo` lands short once they are
+                // measured. Anchoring the bottom for size changes too keeps the
+                // end under a view that was at it. Set only while Follow is
+                // lit; a reader scrolled up is held by the line they read
+                // (`LogReaderPlace`). `.alignment` is left alone, so a short
+                // log still sits at the top of its pane.
                 .defaultScrollAnchor(following ? .bottom : nil, for: .initialOffset)
                 .defaultScrollAnchor(following ? .bottom : nil, for: .sizeChanges)
                 // One rule for every road: while Follow is lit and what is
-                // shown changes — a filter, a new line — or Follow turns on,
-                // the view goes to the end of the newest card. Keyed on the
-                // newest line's identity, never the count alone: `LogTail` caps
-                // at 1000, so once full the count is constant and a
-                // count-keyed handler stops firing while the control still says
-                // Follow. The oldest identity and the count are in the key
+                // shown changes, or Follow turns on, the view goes to the end
+                // of the newest card. Keyed on the newest line's identity,
+                // never the count alone: once `LogTail` is full the count is
+                // constant. The oldest identity and the count are in the key
                 // because a filter can change what is shown and leave the
-                // newest line the same one, and Follow turning on changes none
-                // of them.
+                // newest line the same.
                 .onChange(of: FilterKey(level: minimumLevel, chosen: chosen, query: query)) { _, _ in
                     place.forget()
                 }
@@ -373,12 +323,9 @@ struct LogView: View {
                     // A second time on the next turn, and `place` asks for the end
                     // again after each quiet period until the view is at it (or
                     // gives up after `LogReaderPlace.attempts`): the anchor above
-                    // holds the end for a view that was at it, and a view that was
-                    // not — a person had scrolled up, then pressed Follow or
-                    // widened a filter — is brought to it here, on an estimate
-                    // where rows are lazy. The hop carries nothing but a
-                    // constant; whether Follow is still lit is read inside it,
-                    // because a person may have turned it off in between.
+                    // holds the end only for a view that was at it. Whether
+                    // Follow is still lit is read inside the hop, because a
+                    // person may have turned it off in between.
                     DispatchQueue.main.async {
                         guard following else { return }
                         proxy.scrollTo(Self.endMarker, anchor: .bottom)
@@ -393,11 +340,9 @@ struct LogView: View {
                     place.following = { following }
                     place.scrollToLine = { proxy.scrollTo($0, anchor: UnitPoint(x: 0, y: $1)) }
                     place.scrollToEnd = { proxy.scrollTo(Self.endMarker, anchor: .bottom) }
-                    // Read when it is asked, not when it is set: the count and the
-                    // lines are the page's now, and a closure that held the values
-                    // of this `onAppear` would answer from them for ever. The
-                    // presentation is built here, once per ask: an ask happens at
-                    // rest, and a body or a scroll event never builds a second one.
+                    // Read when it is asked, not when it is set: a closure that
+                    // held this `onAppear`'s values would answer from them for
+                    // ever. The presentation is built once per ask, at rest.
                     place.drawEarlier = {
                         if let next = Self.earlierAfterAsk(earlier, in: presented) { earlier = next }
                     }
@@ -415,16 +360,8 @@ struct LogView: View {
     /// clipped to its corners, so a row's wash reaches the card's edge instead
     /// of a rounded corner's.
     ///
-    /// **The rows are lazy above `lazyAbove` of them** — a card's rows are the
-    /// part that grows to a thousand, and what plain and lazy each cost is
-    /// measured at that constant.
-    ///
-    /// **Follow's landing is held by the scroll view** — see the anchor in
-    /// `lines`. Lazy rows are what make the page's height an estimate until they
-    /// are drawn, and an estimate is what a one-off `scrollTo` lands on; the
-    /// arrangement here (the end mark after the last card, the rows of a large
-    /// card lazy) is measured to end at the page's own bottom padding with the
-    /// anchor in place, on a real tail in a window on screen.
+    /// The rows are lazy above `lazyAbove` of them, which is why Follow's
+    /// landing is held by the scroll view (the anchor in `lines`).
     private func cardView(_ card: LogPresentation.Card) -> some View {
         let burstLines = card.startup.reduce(0) { $0 + $1.repeats }
         let open = Self.startupIsOpen(card.id, opened: openStartups, query: query)
@@ -459,48 +396,33 @@ struct LogView: View {
         .clipShape(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous))
     }
 
-    /// **How many rows a card draws plainly before it draws them lazily.**
-    /// A plain stack's heights are all measured, so the place of a line is a
-    /// reading and `LogReaderPlace` can hold the reader to it; a lazy stack
-    /// estimates the height of everything the view has scrolled past, and the
-    /// estimate is re-made on every arrival and fold. Lazy is what makes a
-    /// thousand rows cheap, so it stays for the card too large to draw whole. The
-    /// figure is chosen, not measured here.
-    /// It counts the rows of one card that is drawn: the launches not drawn
-    /// (`drawnAtOpen`) are not counted and are not in the page. At open a log of
-    /// many launches, each of at most this many rows, draws fewer than `drawnAtOpen`
-    /// plus twice this many: the newest, the older ones that hold fewer than
-    /// `drawnAtOpen` between them, and the one that takes them past it. The bound
-    /// depends on both figures, and a log can come within a row of it: launches of
-    /// 400, 400, 99 and 400 rows, oldest first, draw 899 at open, by hand over
-    /// `drawn(rowsBefore:)`, not by a run.
+    /// How many rows a card draws plainly before it draws them lazily. A plain
+    /// stack's heights are all measured, so `LogReaderPlace` can hold the reader
+    /// to a line; a lazy stack estimates what the view has scrolled past. Lazy
+    /// is what makes a thousand rows cheap, so it stays for the card too large
+    /// to draw whole. Chosen, not measured; the bound it sets with
+    /// `drawnAtOpen` is Architecture/DiagnosticsLog.md § The log pane.
     static let lazyAbove = 400
 
-    /// **How many rows the launches before the newest hold, at least, when the page
-    /// opens** (`LogPresentation.drawn(rowsBefore:)`): whole launches are added,
-    /// nearest first, while those added hold fewer than this, so the figure is a
-    /// threshold reached or passed, and the last launch added may take them well
-    /// past it. The newest launch is outside the count and is drawn whole whatever
-    /// its size. Chosen, not measured here: what it keeps from growing with the log
-    /// is the number of rows laid out at open.
-    /// Each doubling of it (`earlier`) is a step of an ask for earlier launches.
+    /// How many rows the launches before the newest hold, at least, when the
+    /// page opens (`LogPresentation.drawn(rowsBefore:)`): a threshold reached or
+    /// passed, since launches are added whole. Chosen, not measured: it keeps
+    /// the rows laid out at open from growing with the log. Each doubling of it
+    /// (`earlier`) is a step of an ask for earlier launches.
     static let drawnAtOpen = 100
 
-    /// **What `earlier` becomes when the reader asks for earlier launches.** The
-    /// nearest count above it at which `page` draws a launch more than it does now;
-    /// nil when every launch is drawn already, and then nothing is written, so the
-    /// page is not redrawn and its toolbar not declared again by an ask that has
-    /// nothing to give. A doubling that adds no launch is stepped over, never
-    /// written: a page that drew nothing new would not move, nothing would rest,
-    /// and nothing would ask again, which leaves a reader at a top that is not the
-    /// log's. The loop ends because `drawn(rowsBefore:)` never draws fewer with a
-    /// larger figure and draws every launch once the figure passes the rows the
-    /// page holds, and because `drawnAtOpen << next` grows with `next`. The shift
-    /// grows only while it does not overflow, and the function is not defined to
-    /// answer for a count past that: `earlier` starts at zero and is written only
-    /// with this function's answer, each answer the nearest count that adds a
-    /// launch, so the page never hands it such a count. By the shift's semantics,
-    /// not by a run in Swift, the shift of 100 is positive and growing up to 56.
+    /// What `earlier` becomes when the reader asks for earlier launches: the
+    /// nearest count above it at which `page` draws a launch more. Nil when every
+    /// launch is drawn already, and then nothing is written, so an ask with
+    /// nothing to give does not redraw the page.
+    ///
+    /// A doubling that adds no launch is stepped over, never written: a page
+    /// that drew nothing new would not move, nothing would rest, and nothing
+    /// would ask again, leaving a reader at a top that is not the log's. The
+    /// loop ends because `drawn(rowsBefore:)` never draws fewer with a larger
+    /// figure and draws every launch once the figure passes the page's rows.
+    /// `drawnAtOpen << next` stays positive up to 56, and `earlier` is written
+    /// only with this function's answers, so it never gets that far.
     static func earlierAfterAsk(_ earlier: Int, in page: LogPresentation) -> Int? {
         let now = page.drawn(rowsBefore: drawnAtOpen << earlier).count
         guard now < page.cards.count else { return nil }
@@ -532,14 +454,12 @@ struct LogView: View {
         opened.contains(id) || LogSearch.isActive(query)
     }
 
-    /// **What a card's header says**, in the words of the app's language: a
-    /// heading, and a quieter detail beside it. A run that began with its own
-    /// start line is named by its time, with the version beside it; the head of
-    /// the tail, whose start scrolled out of it, is an *earlier* launch with the
-    /// time of its first line; and a run with no start line that is not the
-    /// head — after a «terminating», after a «logging enabled» nothing answered
-    /// — is named by the time of its first line alone, because it began later
-    /// than the card above it and the file records no more (`LogCardTitle`).
+    /// What a card's header says: a heading, and a quieter detail beside it. A
+    /// run that began with its own start line is named by its time, with the
+    /// version beside it; the head of the tail, whose start scrolled out of it,
+    /// is an *earlier* launch with the time of its first line; any other run
+    /// with no start line is named by the time of its first line alone, since
+    /// the file records no more (`LogCardTitle`).
     static func headerWords(for session: LogSession) -> (heading: String, detail: String?) {
         let began = HelmDates.dayAndMinute(session.lines[0].date)
         switch session.title {
@@ -593,12 +513,10 @@ struct LogView: View {
 
     /// The start-up burst as one line, opened by a press.
     ///
-    /// **A swap and not a reveal, on purpose.** `helmAccordion` keeps its
-    /// content mounted at a measured height, and here that would be a couple of
-    /// dozen hidden rows for every launch in the tail, drawn for nobody. No
-    /// curve is written, so there is nothing for a conditional insertion to
-    /// collapse ahead of — the failure the accordion exists for is an animated
-    /// removal, and this is not animated.
+    /// A swap and not a reveal, on purpose: `helmAccordion` keeps its content
+    /// mounted, which here would be dozens of hidden rows per launch drawn for
+    /// nobody. The accordion guards an animated removal, and this one is not
+    /// animated.
     private func startupFold(_ card: LogPresentation.Card, lines: Int, open: Bool) -> some View {
         Button {
             openStartups.formSymmetricDifference([card.id])
@@ -638,10 +556,9 @@ struct LogView: View {
         storedLog && entryCount >= HelmLog.tailLimit
     }
 
-    /// **Counts, and where the tail begins** — «3 of 12 launches · Showing 17
-    /// of the last 46 lines · since 29.09.2026, 23:41 · older lines are in the
-    /// file». Empty for an empty tail: there is nothing to count and nothing to
-    /// date.
+    /// Counts, and where the tail begins: «3 of 12 launches · Showing 17 of the
+    /// last 46 lines · since 29.09.2026, 23:41 · older lines are in the file».
+    /// Empty for an empty tail.
     static func footerCounts(_ page: LogPresentation, entries: [LogEntry],
                              storedLog: Bool) -> String {
         guard let oldest = entries.first else { return "" }
@@ -668,13 +585,10 @@ struct LogView: View {
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s4)
     }
 
-    /// **Assigns only what changed.** A `@State` write re-runs the page's body
-    /// whether or not the value differs, and this runs once a second for as long
-    /// as the page is on screen: with nothing written in between, re-reading the
-    /// tail was a full re-diff of up to a thousand rows for a page that had not
-    /// moved.
-    /// `LogEntry`'s `==` is its five parts — the id is not one of them — so a
-    /// tail that says the same thing is the same tail.
+    /// Assigns only what changed: a `@State` write re-runs the page's body
+    /// whether or not the value differs, and this runs once a second.
+    /// `LogEntry`'s `==` is its five parts, not the id, so a tail that says the
+    /// same thing is the same tail.
     private func refresh() {
         let read = HelmLog.shared.recentEntries()
         if read != entries { entries = read }
@@ -685,10 +599,8 @@ struct LogView: View {
 
 /// One line, or a run of identical ones — see the row's own doc below.
 ///
-/// **Equatable, so a tick that changed one line re-draws one row.** A card's
-/// rows are lazy (see `LogView.cardView`), but every row that is drawn would
-/// still re-run its body whenever the tail moves, and that is the cost this
-/// buys back: a row is its lines, and the same lines are the same row. The day heading rides on the
+/// Equatable, so a tick that changed one line re-draws one row: a row is its
+/// lines, and the same lines are the same row. The day heading rides on the
 /// comparison because it depends on the row above, which a filter can change
 /// without touching this row's lines.
 struct LogRowView: View, Equatable {
@@ -705,19 +617,14 @@ struct LogRowView: View, Equatable {
     /// says it without the colour, and the value says it aloud. The category
     /// word is not tinted: the tint says "bad", and the word says "who".
     ///
-    /// **No line is cut short.** A message runs as long as it is — the longest
-    /// message in the owner's log copy is 902 characters (the file's
-    /// line, with its stamp, level and category, is 949) — because a page whose
-    /// point is showing exactly what the file holds does not get to decide
-    /// which characters matter.
+    /// No line is cut short: a page whose point is showing exactly what the
+    /// file holds does not get to decide which characters matter.
     var body: some View {
         let entry = row.first
         let signal = tint(for: entry.level)
         HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s4) {
-            // One literal with two interpolations. Built as `"\(a)" + "\(b)"`
-            // first, which is String concatenation — so each `Text` was rendered
-            // through its own `description` and the row printed
-            // `Text(storage: SwiftUI.Text.Storage.verbatim("16:29:07")…)`.
+            // One literal with two interpolations: `"\(a)" + "\(b)"` is String
+            // concatenation and would print each `Text`'s `description`.
             Text("\(Text(HelmDates.logTime(entry.date)).foregroundStyle(HelmText.quiet))\(Text(HelmDates.logMillis(entry.date)).foregroundStyle(HelmText.faint))")
                 .helmFigure()
             Image(systemName: glyph(for: entry.level) ?? "circle")
@@ -754,10 +661,8 @@ struct LogRowView: View, Equatable {
         }
         .padding(.vertical, HelmSpace.s1)
         .padding(.horizontal, HelmSpace.s5)
-        // The wash fills the row and reaches its edges; nothing stands at the
-        // left edge in a colour of its own (the owner took the direction without
-        // the bar: the fill says it, the glyph says it, and the bar was a third,
-        // louder voice down every warning card).
+        // The wash fills the row and reaches its edges; no coloured bar at the
+        // left edge: the fill and the glyph already say it.
         .background {
             if let signal { signal.opacity(HelmSurface.rowWashOpacity) }
         }

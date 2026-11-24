@@ -31,8 +31,7 @@ import HelmAppStrings
             button.action = #selector(statusItemClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             // The menu-bar button is the only entrance to Helm, and an image
-            // with no description is an unnamed button among twenty others:
-            // VoiceOver could not find the app at all.
+            // with no description is an unnamed button VoiceOver cannot find.
             button.setAccessibilityLabel("Helm")
             button.toolTip = "Helm"
         }
@@ -43,15 +42,10 @@ import HelmAppStrings
         hostCancellable = host.$live
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.resubscribeToModules() }
-        // The style changing redraws the icon. The order changing is the second
-        // entry, and the reason is this:
+        // The style changing redraws the icon, and so does the order:
         // `refreshIcon` hands `StatusPlan.choose` the modules in the user's
-        // order, read at call time — so a reorder changes the answer while
-        // nothing asks for it again. Latent today: `KeepAwakeDescriptor` is the
-        // only descriptor whose `statusAppearance` sets `tintToken`, so the fallback to
-        // the first tinted module finds it whatever the order. It stops being
-        // latent the day a second module tints the icon, and that is not the
-        // day to remember this.
+        // order, read at call time, so a reorder can change the answer (the
+        // first tinted module wins) while nothing else asks for it again.
         refreshObservers = [.helmMenuBarStyleChanged, .helmModuleOrderChanged].map { name in
             NotificationCenter.default.addObserver(
                 forName: name, object: nil, queue: .main
@@ -76,9 +70,9 @@ import HelmAppStrings
             // A module with no `statusChanges` has nothing to say here.
             guard let changes = live.statusChanges() else { continue }
             changes
-                // objectWillChange fires BEFORE the property is written, so
-                // refreshing inline read the previous state — the countdown tick
-                // was never started and nothing refreshed it afterwards.
+                // objectWillChange fires before the property is written, so
+                // refreshing inline would read the previous state and never
+                // start the countdown tick.
                 .sink { [weak self] _ in
                     Task { @MainActor in self?.refreshIcon() }
                 }
@@ -122,8 +116,7 @@ import HelmAppStrings
         spinTick.set(active: frame != nil)
         // A module says nothing for an unchanged payload; redraw only when the glyph or title changes.
         let title = appearance.title
-        // The spin's own colour when it has one, and the module's tint
-        // otherwise — which is what Keep Awake has always drawn with.
+        // The spin's own colour when it has one, and the module's tint otherwise.
         let spinTint = appearance.spinTintToken ?? token
         let key = StatusPlan.redrawKey(style: style.rawValue, size: size.rawValue, tint: token,
                                        progress: progress, title: title, frame: frame,
@@ -165,8 +158,8 @@ import HelmAppStrings
     private func showMenu() {
         guard let button = statusItem.button else { return }
 
-        // Only what is actually running: opening a disabled module's page just
-        // to be told it is disabled is a dead end. The panel already did this.
+        // Only what is actually running, as in the panel: opening a disabled
+        // module's page just to be told it is disabled is a dead end.
         let live = Set(host.enabledModules.map { $0.descriptor.idRaw })
         // The person's own arrangement, not the category enum's: they compose
         // the sidebar, and a menu of the same modules that disagreed with it
@@ -191,8 +184,7 @@ import HelmAppStrings
             editWidgets: #selector(editWidgets))
 
         // Hand placement to the status item: popUp(at:) with a hand-computed
-        // point stopped fitting once the module entries were added, and the menu
-        // opened scrolled (its first item pushed off-screen).
+        // point opens a long menu scrolled, its first item off-screen.
         statusItem.menu = menu
         button.performClick(nil)
         statusItem.menu = nil

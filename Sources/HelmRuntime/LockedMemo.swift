@@ -3,22 +3,14 @@ import Foundation
 /// **A table built once per key and kept.** One lock, one dictionary, and the
 /// build under the lock.
 ///
-/// There were four of these written by hand — the folder-name tables in
-/// `SystemFolderNames`, the `.lproj` tables in `L10n` (gone since, into catalogs), the number formatters in
-/// `HelmBytes` and the keyboard-layout tables in Layout's `SystemPorts` — three
-/// of them under one name, and they had already stopped being the same thing:
-/// two held the lock across the build and two let go of it to build and took it
-/// again to store, so two threads asking for one key both did the work.
-/// Idempotent tables, so nobody paid for it in wrong answers; it is here because
-/// three copies of «the same thing» that are not the same thing is how the two
-/// byte formatters started.
+/// Shared by the folder-name tables in `SystemFolderNames`, the number
+/// formatters in `HelmBytes` and the keyboard-layout tables in Layout's
+/// `SystemPorts`, so they cannot drift into different things under one name.
 ///
-/// **The lock is held across the build on purpose.** The alternative saves
-/// nothing worth having: every build here is a language's sub-bundle, a
-/// `NumberFormatter`, an image, one small `.strings` file or fifty Carbon calls,
-/// none of them re-entrant into this memo. Holding it makes «built once» a fact rather
-/// than a likelihood, which is the difference the callers' comments all claimed
-/// and only some of them had.
+/// **The lock is held across the build on purpose.** Every build here is small
+/// (a `NumberFormatter`, an image, one `.strings` file, a few Carbon calls) and
+/// none re-enters this memo, so holding it makes «built once» a fact rather
+/// than a likelihood.
 ///
 /// It is a `class` and not an `actor` because every caller is synchronous —
 /// `Bytes(_:)` is called from a view body — and an actor would make each of them

@@ -1,25 +1,26 @@
 import AppKit
 import HelmRuntime
 import HelmUI
+import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
 /// **The Dock helper's link reaches the Launchpad, or says why not.** Asked of the host with no window in play
 /// (no module is live in a test, and `present` is nil in any case): a refused link does nothing, a link with the
 /// module off logs one line and opens Settings on the Launchpad page through `.helmOpenSettings`, and links closer
-/// than the throttle are one press. The notification is the boundary, as in `OpeningHelmAgainOpensSettingsTests`.
+/// than the throttle are one press. The notification is the boundary.
 @MainActor
 final class ALaunchpadLinkOpensTheWindowOrTheSettingsTests: XCTestCase {
     private let link = URL(string: "helm-launchpad://toggle")!
 
     /// What the link did and the module ids `.helmOpenSettings` was posted for.
     private func open(_ url: URL, at now: TimeInterval) -> (ModuleHost.LinkOutcome, [String?]) {
-        var asked: [String?] = []
-        let token = NotificationCenter.default.addObserver(forName: .helmOpenSettings, object: nil, queue: nil) {
-            asked.append($0.object as? String)
+        let asked = Locked<[String?]>([])
+        let token = NotificationCenter.default.addObserver(forName: .helmOpenSettings, object: nil, queue: nil) { note in
+            asked.withLock { $0.append(note.object as? String) }
         }
         defer { NotificationCenter.default.removeObserver(token) }
-        return (ModuleHost.shared.openLaunchpadFromLink(url, now: now), asked)
+        return (ModuleHost.shared.openLaunchpadFromLink(url, now: now), asked.value)
     }
 
     func testALinkWithTheModuleOffOpensItsSettingsPage() {

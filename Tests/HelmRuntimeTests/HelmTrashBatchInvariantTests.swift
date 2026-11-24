@@ -2,16 +2,15 @@ import XCTest
 import HelmTestSupport
 @testable import HelmRuntime
 
-/// `HelmTrash.remove` is the one place four modules now go to delete, and its
-/// result is read two ways at once: `removed` is counted for "N moved to
+/// `HelmTrash.remove` is where every module goes to delete, and its result is
+/// read two ways at once: `removed` is counted for "N moved to
 /// Trash", `refused`/`failed` is listed for "these did not go". Those two lists
 /// describe the same batch, so nothing may appear in both — a path in both is a
 /// screen that says one file went and the same file did not.
 ///
-/// Today's change added a branch that turns `NSFileNoSuchFileError` into a
-/// *success* when the path went with a parent taken earlier in the same batch.
-/// Everything it depends on is string matching over `allowed`, and `allowed` is
-/// whatever the caller passed: it is neither deduplicated nor normalised here.
+/// `NSFileNoSuchFileError` counts as a success when the path went with a
+/// parent taken earlier in the same batch, which is string matching over
+/// `allowed`, and `allowed` is whatever the caller passed.
 final class HelmTrashBatchInvariantTests: XCTestCase {
 
     private var root: URL!
@@ -20,9 +19,8 @@ final class HelmTrashBatchInvariantTests: XCTestCase {
         root = scratchDirectory("trash-batch")
     }
 
-    /// A file this batch will really trash. The teardown that used to sit here
-    /// removed `url.path` — the *source*, which the move has already emptied —
-    /// so it reclaimed nothing while reading as though it did (`TrashScratch`).
+    /// A file this batch will really trash, reclaimed from the Trash and not
+    /// from its source, which the move has emptied (`TrashScratch`).
     @discardableResult
     /// Not the shared `write` on its own: this file is going to the Trash, so
     /// its leaf has to be a name nobody else could own and the reclamation has
@@ -73,14 +71,11 @@ final class HelmTrashBatchInvariantTests: XCTestCase {
                        + "\(result.removed.count) moved and \(result.refused.count) refused")
     }
 
-    /// The other spelling of one path. Every string test in this function —
-    /// the length sort, the `hasPrefix($0 + "/")` parent check — is written
-    /// against the exact characters given, and a trailing slash names the same
-    /// directory to every filesystem call in between.
-    ///
-    /// The child then reads as a path that "was already gone before any of this
-    /// started", which is the one case the new branch deliberately refuses, so
-    /// somebody is sent looking for a file that is in the Trash.
+    /// The other spelling of one path. The length sort and the
+    /// `hasPrefix($0 + "/")` parent check read the exact characters, while a
+    /// trailing slash names the same directory to every filesystem call. Read
+    /// wrong, the child is "already gone before any of this started", a
+    /// refusal, and somebody is sent looking for a file that is in the Trash.
     func testAFolderWithATrailingSlashStillTakesItsChildrenWithIt() throws {
         let (folder, child) = try folderWithChild("folder", child: "inside.bin")
 
@@ -107,14 +102,10 @@ final class FileWeightIndirectionTests: XCTestCase {
     }
 
     /// A symlink is a few dozen bytes and deleting it frees a few dozen bytes.
-    /// The walk added today is entered on `isDirectory`, which is answered
-    /// about what the link points at — so a shortcut to a large folder reports
-    /// the folder.
-    ///
-    /// Both readers of that number are wrong about it in a way somebody feels:
-    /// Disk's banner says a symlink freed the size of its target, and an
-    /// Autopilot rule reading "larger than 100 MB → move to Trash" matches a
-    /// link that is 60 bytes long.
+    /// `isDirectory` is answered about what the link points at, so a walk
+    /// entered on it would report the target: Disk's banner would claim the
+    /// target freed, and an Autopilot "larger than 100 MB" rule would match a
+    /// 60-byte link.
     func testASymlinkWeighsWhatDeletingItGivesBack() throws {
         let target = root.appendingPathComponent("big")
         try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)

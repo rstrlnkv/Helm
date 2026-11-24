@@ -11,7 +11,7 @@ extension View {
     /// state at its last body, and a copy kept in `@State` behind an `==` would hold the old ones
     /// (`LogView`'s Copy captures `page.lines`).
     ///
-    /// The empty part of the row drags the window, since there is no title bar under it any more.
+    /// The empty part of the row drags the window, since there is no title bar under it.
     ///
     /// **The row has no right-click menu of its own**: it lies in the window's title bar zone, where a SwiftUI
     /// `.contextMenu` is never reached; the window pops one up (`HeaderBarMenu`) over the band
@@ -49,12 +49,8 @@ private struct CardHeader: ViewModifier {
     /// The Kit's `Toolbar` (Figma 309:216): the plate 14 from the card's left edge, the controls 10 from its right.
     static let leadingInset = CGFloat(14)
     static let trailingInset = CGFloat(10)
-    /// Where the toolbar centres an item (window y 26) against the row's centre (y 30: `ShellGeometry.inset` 4 + 26): the
-    /// row's content stands 4 higher under both looks, so the row does not move when the look flips (owner's decision,
-    /// 2026-11-23). Only this row passes it.
-    static let raise = CGFloat(4)
 
-    /// Where the tabs go: only under Glass, where the window has a toolbar to take them.
+    /// Where the tabs go: only under Glass; under Flat the row draws the tabs itself, the toolbar being worn with no items.
     private var tabsTarget: HelmTabsTarget? {
         look == .liquidGlass ? tabsSink.map { HelmTabsTarget(owner: owner, sink: $0) } : nil
     }
@@ -70,7 +66,7 @@ private struct CardHeader: ViewModifier {
                                overContent: true, scrolled: scrolled,
                                standsOnStillContent: standsOnStillContent, status: status,
                                dimmed: !windowAppearsActive, leadingInset: Self.leadingInset,
-                               trailingInset: Self.trailingInset, raise: Self.raise) {
+                               trailingInset: Self.trailingInset) {
                     HelmHeaderControls(content: controls, page: title, tabs: tabsTarget,
                                        style: choices.tabLabels)
                 }
@@ -126,16 +122,12 @@ struct HeaderRoleKey: LayoutValueKey {
     static let defaultValue = HeaderRole.run
 }
 
-/// **The row's parts: the name's side, the tab strip, and the runs (the actions, then the search) — the strip centred on
-/// the card's row, giving way to either neighbour.** `shift` is how far the card's centre lies right of this
-/// layout's own (the row's insets are not equal, `CardHeader`), so the strip's centre is the card's, not the padded
-/// area's. It never overlaps: it keeps `nameGap` after the name's side and `HelmHeaderActions.gap` before the runs.
-/// **The run's width is the room of every declared action, hidden or not** (`HelmHeaderActions`), so on Homebrew
-/// the strip sits ~40 pt left of centre where an action is hidden on that tab; ignoring the hidden slot would make
-/// the strip jump between that page's tabs.
-///
-/// **At the narrowest the row is what the old stack made**: name, `nameGap` (36: 12, the old stack's spacer's least 12, 12), strip,
-/// `gap`, run — the sum `SettingsWindow.minSize` is measured against — because both limits close on the strip there.
+/// **The row's parts: the name's side, the tab strip, and the runs (the actions, then the search) — the strip centred
+/// on the card's row, giving way to either neighbour** (Architecture/ThePageHeader.md § The row's geometry). `shift`
+/// is how far the card's centre lies right of this layout's own, since the row's insets are not equal (`CardHeader`).
+/// The run's width is the room of every declared action, hidden or not, so the strip does not jump between one
+/// page's tabs. At the narrowest both limits close on the strip: name, `nameGap`, strip, `gap`, run, the sum
+/// `SettingsWindow.minSize` is measured against.
 struct HeaderRowLayout: Layout {
     let shift: CGFloat
     static let nameGap = CGFloat(36)

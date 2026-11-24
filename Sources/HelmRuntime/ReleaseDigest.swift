@@ -47,18 +47,15 @@ public enum ReleaseDigest {
     /// The pool goes **inside** the loop, not around it. `FileHandle.read`
     /// returns an autoreleased `Data`, so without one every slice ever read
     /// stays alive until the whole call returns and the footprint tracks the
-    /// volume read rather than what is kept: measured over a 1200 MB file,
-    /// 1204 MB of growth without the pool against 1.0 MB with it. This is the
-    /// same defect the duplicate scanner's hash loop had, in a loop that is not
-    /// even parallel — see ARCHITECTURE.md § Module pattern.
+    /// volume read rather than what is kept, in a loop that is not even
+    /// parallel (Architecture/ModulePattern.md § Bulk reads).
     static func sha256(ofFileAt url: URL) throws -> String {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         var hasher = SHA256()
         while true {
-            // Read and update inside the pool, hand only a verdict back out —
-            // the same shape `DuplicateScanner.hash` uses, so the slice never
-            // outlives the iteration that read it.
+            // Read and update inside the pool, hand only a verdict back out,
+            // so the slice never outlives the iteration that read it.
             let more: Bool = try autoreleasepool {
                 guard let data = try handle.read(upToCount: 1 << 20), !data.isEmpty else {
                     return false

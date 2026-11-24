@@ -6,8 +6,8 @@ import Foundation
 /// twice — once as `/Users/…` and once as `/System/Volumes/Data/Users/…`.
 ///
 /// A walk that follows both paths counts each file once (fileID dedup) but
-/// charges it to whichever path a worker reached first: a race that parked
-/// hundreds of gigabytes under "System" while "Users" showed megabytes.
+/// charges it to whichever path a worker reached first, so whole folders'
+/// worth can land under "System" instead of "Users".
 ///
 /// macOS ships its own list of these duplicate paths at `/usr/share/firmlinks`
 /// — the same table the kernel uses to build the merged root. Skipping the
@@ -16,7 +16,7 @@ import Foundation
 /// blanket skip of the whole mount would silently drop.
 /// Shared: the disk scan skips these so bytes land where the user expects
 /// them, and the duplicate walk skips them so it does not read every user file
-/// twice. Two modules needing it is what moved it out of Disk.
+/// twice.
 public enum FirmlinkMap {
     static let tablePath = "/usr/share/firmlinks"
 

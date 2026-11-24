@@ -8,17 +8,16 @@ import HelmRuntime
 ///
 /// The steps and their order are `ResetPlan.order`, and the first of them is not
 /// a deletion: Helm can change things outside its own two folders (the list is in
-/// ARCHITECTURE.md § Giving everything back), and some of them only the
-/// module that put them there can take back. So the
-/// engines are asked first, while their settings still exist and while there is
-/// somebody at the screen to answer what the asking can raise. Then the saved
-/// state on disk and the diagnostics log go to the Trash in one call, then every
-/// preference. The log was meant to outlast the state, so that a failed trash
-/// leaves its reason in a surviving file; it does not: `HelmTrash.remove` takes
-/// the shortest path first, the log folder before Application Support, and while
-/// logging is on the next line is written to a log folder the logger makes again.
-/// That log survives the next launch: the purge latch inside the trashed folder
-/// is written again (`.relatchTheLogPurge`) before the relaunch.
+/// Architecture/GivingEverythingBack.md), and some of them only the module that
+/// put them there can take back. So the engines are asked first, while their
+/// settings still exist and while there is somebody at the screen to answer
+/// what the asking can raise. Then the saved state on disk and the diagnostics
+/// log go to the Trash in one call, then every preference. The log does not
+/// outlast the state: `HelmTrash.remove` takes the shortest path first, the log
+/// folder before Application Support, so a failed trash leaves its reason only
+/// in the log folder the logger makes again while logging is on. That log
+/// survives the next launch: the purge latch inside the trashed folder is
+/// written again (`.relatchTheLogPurge`) before the relaunch.
 ///
 /// **To the Trash, not to `unlink`.** Everywhere else in Helm removal is
 /// recoverable, and somebody who presses this by accident must be able to get
@@ -30,26 +29,32 @@ import HelmRuntime
 /// Settings. Nothing here pretends otherwise.
 @MainActor enum ResetEverything {
 
-    /// The steps are `ResetPlan.order` and the switch is exhaustive: a step
-    /// added to the plan and not carried out here is a build error rather than
-    /// a promise nothing keeps.
     static func run() {
+        run(standInIsLive: ModuleHost.shared.anyStandsIn, perform: carryOut)
+    }
+
+    /// The steps are `ResetPlan.order`; `perform` is the seam a test drives it through.
+    static func run(standInIsLive: Bool, perform: (ResetPlan.Step) -> Void) {
         // A stand-in engine would not give back what the real one holds, and the
         // reset would forget the real settings that say the module ran.
-        guard !ModuleHost.shared.anyStandsIn else {
+        guard !standInIsLive else {
             HelmLog.shared.warn("host", "refused: a stand-in engine is live, reset everything not run")
             return
         }
-        for step in ResetPlan.order {
-            switch step {
-            case .handBackWhatIsOutsideHelm: ModuleHost.shared.handBackSystemState()
-            case .giveBackTheLoginItem: LoginItem.setEnabled(false)
-            case .stopEveryModule: ModuleHost.shared.shutdown()
-            case .trashHelmsOwnFolders: trashHelmsOwnFolders()
-            case .relatchTheLogPurge: HelmLog.shared.rewritePurgeLatch()
-            case .forgetPreferences: forgetPreferences()
-            case .relaunch: relaunch()
-            }
+        for step in ResetPlan.order { perform(step) }
+    }
+
+    /// The switch is exhaustive: a step added to the plan and not carried out
+    /// here is a build error rather than a promise nothing keeps.
+    private static func carryOut(_ step: ResetPlan.Step) {
+        switch step {
+        case .handBackWhatIsOutsideHelm: ModuleHost.shared.handBackSystemState()
+        case .giveBackTheLoginItem: LoginItem.setEnabled(false)
+        case .stopEveryModule: ModuleHost.shared.shutdown()
+        case .trashHelmsOwnFolders: trashHelmsOwnFolders()
+        case .relatchTheLogPurge: HelmLog.shared.rewritePurgeLatch()
+        case .forgetPreferences: forgetPreferences()
+        case .relaunch: relaunch()
         }
     }
 

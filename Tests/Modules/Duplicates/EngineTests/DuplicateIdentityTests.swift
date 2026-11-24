@@ -6,21 +6,16 @@ import XCTest
 ///
 /// The trap: fileID 0 is the "could not be read" sentinel, and
 /// `Duplicates.sizeGroups` collapses equal `fileID`s as "one file wearing two
-/// names". As first shipped, two *different* files that both failed `lstat`
-/// shared fileID 0 and were collapsed into one — silently removed from the
-/// duplicate search, with no refusal and no report. Worse, the collapse was
-/// keyed on the id alone, across all sizes, so a 5 MB unknown swallowed a
-/// 7 MB unknown that had a genuine 7 MB twin. The walk now hands the id over
-/// with each entry and stays on one device, but the logic must hold on its own:
-/// whoever feeds it a 0 must not lose a file for it.
+/// names". Two *different* files that both failed `lstat` would be collapsed
+/// into one and silently dropped from the search, and a collapse keyed on the
+/// id alone, across sizes, would let a 5 MB unknown swallow a 7 MB unknown
+/// with a genuine twin. The walk stays on one device, but the logic must hold
+/// on its own: whoever feeds it a 0 must not lose a file for it.
 ///
 /// (The cross-volume sibling is not pinned here because a test cannot
 /// conjure a second filesystem: an id carries no device, so two files on
 /// different volumes sharing an inode *number* would collapse the same way
-/// if the walk ever left the root's volume again — `DeviceIDTests` is the
-/// record of this exact family.)
-///
-/// Guards a past defect: 1677af73 fix: seven agents over the whole app, and what they found.
+/// if the walk left the root's volume — see `DeviceIDTests`.)
 final class DuplicateIdentityTests: XCTestCase {
 
     /// Two distinct files whose id the walk did not return both arrive with
@@ -37,10 +32,9 @@ final class DuplicateIdentityTests: XCTestCase {
         XCTAssertEqual(Set(groups.first?.map(\.path) ?? []), ["/a", "/b"])
     }
 
-    /// The collapse is keyed on the id across *all* sizes, so an unknown of
-    /// one size can swallow an unknown of another — sizes a hard link could
-    /// never disagree on. Here the 7 MB file with a genuine twin vanishes
-    /// because a 5 MB stranger claimed id 0 first.
+    /// An unknown of one size must not swallow an unknown of another — sizes a
+    /// hard link could never disagree on — or the 7 MB file with a genuine twin
+    /// vanishes because a 5 MB stranger claimed id 0 first.
     func testAnUnknownIdentityDoesNotSwallowAFileOfAnotherSize() {
         let groups = Duplicates.sizeGroups([
             fileWithID("/small-unknown", bytes: 5_000_000, id: 0),
@@ -54,8 +48,8 @@ final class DuplicateIdentityTests: XCTestCase {
                        ["/big-unknown", "/big-twin"])
     }
 
-    /// The honest hard-link collapse must survive whatever fix lands: one
-    /// real inode, two names, still one file.
+    /// The honest hard-link collapse holds: one real inode, two names, still
+    /// one file.
     func testRealHardLinksStayCollapsed() {
         let groups = Duplicates.sizeGroups([
             fileWithID("/original", bytes: 5_000_000, id: 42),

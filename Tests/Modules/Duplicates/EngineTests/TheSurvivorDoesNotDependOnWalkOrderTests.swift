@@ -1,36 +1,28 @@
 import XCTest
 @testable import Module_Duplicates_Engine
 
-/// **The ladder is not transitive, so the survivor is a fact about the array
+/// **The ladder must be transitive, or the survivor is a fact about the array
 /// rather than about the copies.**
 ///
 /// `SurvivingCopy.order` is `files.sorted { decide($0, over: $1, by: rule).keepsFirst }`,
 /// and `decide` answers with the *first rung that can tell the two apart*. That
 /// composition is a strict weak ordering only while every rung either separates
-/// every pair or none of them. `.date` is not such a rung, by design and with the
-/// reasoning written above it: «Two dates decide; one date and one blank decide
-/// nothing.» A copy whose Date Added the filesystem never recorded is therefore
-/// *incomparable* on that rung with every other copy — and incomparability is the
-/// relation that does not compose. Three copies, one of them dateless, are enough
-/// to close a cycle:
+/// every pair or none of them. A `.date` rung that is silent when one date is
+/// blank makes a dateless copy *incomparable* with every other, and three
+/// copies close a cycle:
 ///
 ///   • Mirror (no date) beats Sync — the date rung is silent, the alphabet decides.
 ///   • Sync beats Archive — both dates are known, and Sync's is the earlier.
 ///   • Archive beats Mirror — the date rung is silent again, and the alphabet
 ///     decides the other way.
 ///
-/// `Swift.sorted(by:)` given that predicate has no defined answer; what it hands
-/// back is whichever of the three the input order happened to feed it first. The
-/// survivor is the one copy the module *keeps* — every other copy in the group is
-/// what «Select extras» ticks — so the array the walk built decides which of
-/// somebody's three copies is offered for the Trash.
+/// `Swift.sorted(by:)` given that predicate hands back whichever copy the input
+/// order fed it first, so the walk would decide which of somebody's copies is
+/// offered for the Trash.
 ///
-/// **Why the existing guard did not catch it.** `KeepPolicyTests.
-/// testTheOrderDoesNotDependOnTheInputOrder` reverses a pair of copies whose dates
-/// are both known and equal. Two elements cannot hold a cycle, and a rung that is
-/// silent for *both* orderings of one pair is symmetric — so that test is green for
-/// every predicate this file can write, including one that is wrong. It is the shape (ARCHITECTURE.md § What makes a check) names: a check whose subject
-/// cannot exhibit the defect.
+/// **Three copies, not two.** Two elements cannot hold a cycle, so a reversed
+/// pair is green for every predicate this file can write: a check whose subject
+/// cannot exhibit the defect (Architecture/TestsAndMeasurement.md § What makes a check).
 ///
 /// The fixture is machine-independent on purpose: `TransitFolders(roots: [])`
 /// rather than `.system`, so the `.place` rung is silent for every path here and
@@ -126,8 +118,7 @@ final class TheSurvivorDoesNotDependOnWalkOrderTests: XCTestCase {
     ///
     /// Separate from the permutation test because it fails for a different reason —
     /// an ordering can be stable under permutation and still keep a copy that loses
-    /// its own pairwise reading, and a repair that only sorts the input would pass
-    /// the test above while leaving this one red.
+    /// its own pairwise reading, as one that only sorts the input would.
     func testTheKeptCopyBeatsEveryOtherCopyOneAtATime() {
         for policy in KeepPolicy.allCases {
             let rule = rule(policy)
@@ -171,11 +162,10 @@ final class TheSurvivorDoesNotDependOnWalkOrderTests: XCTestCase {
     /// **The second control: one blank date is not by itself a cycle.** Two copies,
     /// one dateless, permuted both ways — one survivor.
     ///
-    /// So the finding is not «a `nil` date makes the ordering unstable», which would
-    /// invite the wrong repair (treating an unknown date as a loss, which is the rule
-    /// `KeepPolicyTests.testAnUnknownDateIsARungOfItsOwnAndTheCopyItIsMissingFromStays`
-    /// exists to keep out). It takes a third copy for the silent rung to compose
-    /// with a speaking one.
+    /// So the rule is not «a `nil` date makes the ordering unstable», which would
+    /// invite treating an unknown date as a loss (kept out by
+    /// `KeepPolicyTests.testAnUnknownDateIsARungOfItsOwnAndTheCopyItIsMissingFromStays`).
+    /// It takes a third copy for the silent rung to compose with a speaking one.
     func testOneDatelessCopyAgainstOneDatedCopyIsStillDecided() {
         let pair = [facts("/Users/r/Mirror/photo.jpg", added: nil),
                     facts("/Users/r/Sync/photo.jpg", added: day(100))]

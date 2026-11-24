@@ -13,7 +13,6 @@ import Foundation
 /// so the line carries no names by construction.
 enum ConditionLabel {
 
-    /// The fixed order.
     private static let order: [(ActiveCondition, String)] = [
         (.manual, "manual"),
         (.timer, "timer"),

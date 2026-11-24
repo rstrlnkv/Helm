@@ -8,19 +8,14 @@ import XCTest
 /// there to clear.**
 ///
 /// The history card is drawn only when it has a pass, a reason or a refusal to
-/// show (`drawsHistory`), and an earlier pass asked whether a store holding
-/// nothing but old records leaves the person with no way to clear them. It does
-/// not, for a reason that lives in the engine rather than on the page: the
-/// `history` reply is read through the thirty-day window on the way out, so the
-/// page is handed an empty list for such a store and its «Clear» was never
-/// offered for it — before the card was made conditional as well as after. The
-/// old rows also leave the store itself: the next record written prunes by the
+/// show (`drawsHistory`). A store holding nothing but old records leaves no card
+/// and nothing to clear, for a reason that lives in the engine: the `history`
+/// reply is read through the thirty-day window on the way out, so the page is
+/// handed an empty list, and the next record written prunes the store by the
 /// same window.
 ///
-/// A fake that returned the store unfiltered is what made the question look
-/// open. These hold the real engine's answer.
-///
-/// Past defect: fixed in 4ce355a9.
+/// These hold the real engine's answer; a fake returning the store unfiltered
+/// would make the question look open.
 final class AStaleHistoryIsNeverHandedToThePageTests: XCTestCase {
 
     private var store: NamespacedStore!

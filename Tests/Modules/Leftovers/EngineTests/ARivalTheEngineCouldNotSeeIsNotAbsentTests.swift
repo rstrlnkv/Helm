@@ -4,41 +4,25 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// **The engine's last word on a shared switch is read through the entries alone,
-/// which fold «refused» back into «empty».**
+/// **The engine's last word on a shared switch counts rivals it could not see.**
 ///
 /// `TheEngineRefusesASharedSwitchTests` holds the rule: `launchctl disable
 /// gui/<uid>/<label>` is aimed at a label, two files can register one label, Helm
 /// cannot read which of the two launchd kept, so neither may be switched. The
 /// engine asks it of the disk at the moment of the press, through
-/// `LaunchClaims.onDisk`, and `onDisk` opened the two agent folders with
-/// `files.contents(of:).entries` until 2026-09-08.
+/// `LaunchClaims.onDisk`.
 ///
 /// `contents(of:).entries` is the list with the reason for an empty one thrown
-/// away, which is fine for a caller that walks what it finds and draws no
-/// conclusion from an empty answer, and wrong for every reader of a *source*.
+/// away — fine for a caller that draws no conclusion from an empty answer, wrong
+/// for `onDisk`, which concludes from it that no second file registers the label
+/// and the press may go through. A folder that would not open would take the
+/// rival with it, and the switch would be aimed at a label two files register.
 ///
-/// `onDisk` draws the strongest conclusion in the module from an empty answer: no
-/// second file registers this label, therefore the press may go through. A folder
-/// that would not open comes back with nothing in it, the rival vanishes with the
-/// folder, and the switch is aimed at a label two files register — which is the
-/// exact act the guard exists to refuse. `DirectoryListing.Contents.refused` was
-/// added for this fold one layer up (`ASourceNobodyWalkedIsNotACleanMacTests`);
-/// this is the same fold left in place at the port that *acts*.
-///
-/// **It is not a hypothetical folder.** Either agent folder can refuse a
-/// listing — `DirectoryListing.Contents.refused` names a mode, an ACL, a folder
-/// belonging to somebody else, or a TCC grant (`/Library/LaunchAgents` lists
-/// openly on the Mac this was written on, `drwxr-xr-x root wheel`; what is root's
-/// is writing there). Either one going unread turns «two files claim this
-/// switch» into «one does», silently, on the safe-direction side of a guard
-/// whose whole subject is the unsafe direction.
-///
-/// The refusal the engine already has for a rival it *can* see was the shape of the
-/// repair, and it is what shipped: `LaunchClaims.onDisk` now reads `contents(of:)`
-/// and carries `everyFolderOpened`, and a switch may not be aimed at a label whose
-/// rivals were never counted. What holds it is below — this file is the mutation
-/// that said the hole was real, kept as the guard that says it is closed.
+/// **Either agent folder can refuse a listing** —
+/// `DirectoryListing.Contents.refused` names a mode, an ACL, a folder belonging
+/// to somebody else, or a TCC grant. So `onDisk` reads `contents(of:)` and
+/// carries `everyFolderOpened`, and a switch may not be aimed at a label whose
+/// rivals were never counted.
 final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
     private let label = "com.vendor.updater"
@@ -48,9 +32,9 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
     /// Both agent folders hold the same label — the ordinary shape on a Mac with a
     /// vendor updater installed for the person and for everybody.
     ///
-    /// `unopenable` names folders whose `contents(of:)` answers `.refused`, which
-    /// is the port's third answer: the fake can be in that state because the port
-    /// can (ARCHITECTURE.md § Fakes).
+    /// `unopenable` names folders whose `contents(of:)` answers `.refused`, the
+    /// port's third answer: the fake can be in that state because the port can
+    /// (Architecture/TestsAndMeasurement.md § Fakes).
     private func files(refusing refused: Set<String> = []) -> LeftoversFakeFiles {
         var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/LaunchAgents"] = ["\(label).plist"]
@@ -82,7 +66,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
 
     // MARK: - The finding
 
-    /// **Root's agent folder would not open, and the switch went through.**
+    /// **Root's agent folder would not open, and the switch does not go through.**
     func testASwitchIsRefusedWhenAnAgentFolderWouldNotOpen() async throws {
         let files = files(refusing: ["/Library/LaunchAgents"])
         let recorder = LeftoversFakeSwitcher()
@@ -151,7 +135,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
     /// **The control that keeps the feature.** Both folders opened, one file
     /// registers the label — the switch works.
     ///
-    /// Without it, a guard that refused every press would pass the three tests above
+    /// Without it, a guard that refused every press would pass the tests above
     /// and this module would lose «Turn off» entirely.
     func testALabelOnlyOneOpenedFolderRegistersIsStillSwitched() async throws {
         var files = files()
@@ -171,9 +155,9 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
     /// that `launchctl disable gui/<uid>/…` does not reach — may be refused without
     /// withholding anything.
     ///
-    /// This is what tells «the engine counts rivals it could not see» from «the
-    /// engine gives up on any unreadable folder anywhere». Both would be green on
-    /// the tests above; only one of them is the finding.
+    /// This tells «the engine counts rivals it could not see» from «the engine
+    /// gives up on any unreadable folder anywhere»: both would be green on the
+    /// tests above.
     func testARefusedFolderThatIsNotAnAgentFolderWithholdsNothing() async throws {
         var files = files()
         files.listing["/Library/LaunchAgents"] = []
@@ -195,10 +179,10 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
     /// and both hold the label — the engine refuses, as
     /// `TheEngineRefusesASharedSwitchTests` already records.
     ///
-    /// Green today and green after the repair. It is here because every assertion
-    /// above is an *absence* — `recorder.labels == []` — and an absence passes just
-    /// as well when the press never reached the engine, the request was built wrong,
-    /// or the label was dropped on the way. This is the same press arriving.
+    /// Every assertion above is an *absence* — `recorder.labels == []` — and an
+    /// absence passes just as well when the press never reached the engine, the
+    /// request was built wrong, or the label was dropped on the way. This is the
+    /// same press arriving.
     func testTheSwitchIsRefusedWhenBothFoldersOpenedAndBothHoldTheLabel() async throws {
         let files = files()
         let recorder = LeftoversFakeSwitcher()

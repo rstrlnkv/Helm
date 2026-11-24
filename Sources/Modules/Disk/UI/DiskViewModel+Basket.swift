@@ -5,10 +5,9 @@ import Module_Disk_Engine
 
 // MARK: - Basket
 
-/// The basket, and the removal it feeds — split from `DiskViewModel.swift`
-/// when that file reached the linter's length limit. Same type, one file over:
-/// the fields this half writes are `internal(set)` there for exactly this
-/// reader, and `busy` stays there because an extension cannot hold storage.
+/// The basket, and the removal it feeds. Same type as `DiskViewModel.swift`:
+/// the fields this half writes are internal there for this reader, and `busy`
+/// stays there because an extension cannot hold storage.
 extension DiskViewModel {
 
     /// Whether the basket may hold this row.
@@ -18,11 +17,9 @@ extension DiskViewModel {
     /// stand over a row the basket will quietly decline.
     ///
     /// **The folded bucket is refused by its flag.** It is the one row on the
-    /// ring whose path names no file — an aggregate of the small files in a
-    /// directory, wearing the name `…` — and the gate used to keep it out by
-    /// refusing that name, which refused the person's own file of the same name
-    /// with it, drawn as a system item with nothing saying why. The flag is what
-    /// the two differ by, and it cannot be typed into a filename.
+    /// ring whose path names no file, an aggregate of the small files in a
+    /// directory wearing the name `…`. A person's own file may carry that name;
+    /// the flag cannot be typed into a filename.
     func canBasket(_ entry: DiskEntry) -> Bool {
         !entry.isFolded && UserFileScope.isRemovable(entry.path)
     }
@@ -30,15 +27,12 @@ extension DiskViewModel {
     /// **The basket does not move while a removal is in flight.**
     ///
     /// `emptyBasket` sends what is ticked, waits, and then empties the basket
-    /// wholesale — so a row ticked in between was accepted and then discarded:
-    /// never sent, never refused, never mentioned, and still sitting on the ring
-    /// afterwards. Unticking one in the meantime is the mirror image, and worse
-    /// to read: the report then names a folder the person had just withdrawn.
+    /// wholesale, so a row ticked in between would be silently discarded, and
+    /// one unticked would still be named in the report.
     ///
     /// The guard is here as well as on the button (`.disabled(dvm.busy)` in
     /// `DiskResultView`) because (Architecture/Removal.md § One removal at a time) asks
-    /// for both — the page is a redraw away, and this method is also what the
-    /// bar's menu calls.
+    /// for both: the page is a redraw away, and the bar's menu calls this too.
     func toggleBasket(_ entry: DiskEntry) {
         guard !busy else { return }
         if let index = basket.firstIndex(where: { $0.path == entry.path }) {
@@ -68,12 +62,9 @@ extension DiskViewModel {
         // here and `HelmTrash` still has the last word.
         let paths = removalQuestion.paths
         guard !paths.isEmpty, !closed else { return }
-        // **One removal at a time**, the rule `UninstallerViewModel` already
-        // follows. The basket is not emptied until the answer comes back, so
-        // between the press and that moment the button is live and the same
-        // paths are still in it. The second round is not a second deletion —
-        // the files are already in the Trash — it is a refusal per path, and
-        // the lines below overwrite the report of the removal that worked.
+        // **One removal at a time.** The basket is not emptied until the answer
+        // comes back, so a second press would send the same paths again; it
+        // would refuse each one and overwrite the report of the removal that worked.
         guard !busy else { return }
         busy = true
         defer { busy = false }
@@ -82,26 +73,21 @@ extension DiskViewModel {
         removedCount = removal.removed.count
         banner = DkStr.movedToTrash(Bytes(removal.freedBytes))
         basket = []
-        // Re-walking the disk to learn what we already know — those paths are
-        // gone, and by how much — costs a minute on a full volume. Apply the
-        // deletion to the tree in hand instead.
+        // The deletion is applied to the tree in hand: a re-walk to learn what
+        // is already known costs a minute on a full volume.
         let removed = removal.removed
         guard let previous = result, !removed.isEmpty else { return }
         let pruned = DiskTreePrune.removing(paths: removed, from: previous.root)
         // Free space stays as measured: `HelmTrash` moved these paths to
-        // `~/.Trash`, a folder on this same volume, so the disk gained nothing
-        // and crediting `freed` to it invented space until the next real scan —
-        // and past it, since the figure is saved and restored. Pruning the tree
-        // is the true half: what the volume *uses* falls by what left.
+        // `~/.Trash` on this same volume, so the disk gained nothing. What the
+        // volume *uses* falls by what left, which pruning the tree shows.
         let updated = ScanResult(root: pruned, freeBytes: previous.freeBytes,
                                  filesScanned: previous.filesScanned, seconds: previous.seconds,
                                  advice: DiskRemovalPlan.remaining(previous.advice,
                                                                    after: removed))
         result = updated
-        // An unfinished tree is not written down. Every directory in it reports a
-        // floor rather than a total, and the store is what the module reopens on
-        // and labels "measured N minutes ago" — so saving one turns a tree the
-        // person was told is incomplete into a measurement they are not.
+        // An unfinished tree is not written down: every directory in it reports
+        // a floor, and the store is what the module reopens on as "measured".
         if treeIsComplete {
             store.saveDetached(updated, at: completedAt ?? Date())
         }
