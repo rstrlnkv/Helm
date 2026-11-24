@@ -48,7 +48,6 @@ struct LaunchpadGeometry: Equatable {
 
     /// Kept under the grid for the page dots: `LaunchpadMetrics.dotsRoom` at `scale`, and never less than the dots' bottom offset and their touch size, which does
     /// not shrink with the scale, so the last row never reaches the touch area on a small scale.
-    var dotsRoom: CGFloat { Self.dotsRoom(scale: scale) }
     static func dotsRoom(scale: CGFloat) -> CGFloat {
         max(LaunchpadMetrics.dotsRoom * scale, LaunchpadMetrics.dotsBottom * scale + 24 * max(1, scale))
     }

@@ -29,11 +29,6 @@ struct LivePageUnderTheHeaderFixture {
                               width: width, height: height, appearance: appearance)
     }
 
-    /// Settles the mount (`MountedRender.settle`), `turns` turns.
-    func settle(_ turns: Int = 25) {
-        mount.settle(turns)
-    }
-
     func drop() {
         mount.drop()
     }

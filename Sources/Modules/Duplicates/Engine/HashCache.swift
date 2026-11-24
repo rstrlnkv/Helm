@@ -90,9 +90,6 @@ final class HashCache: Codable, @unchecked Sendable {
 
     // MARK: - Use
 
-    /// Entries in `fresh` — the files this map believes still exist.
-    var count: Int { lock.withLock { fresh.count } }
-
     func prefix(fileID: UInt64, bytes: Int, modified: TimeInterval?) -> String? {
         promote(Self.key(fileID: fileID, bytes: bytes, modified: modified)) { $0.prefix }
     }

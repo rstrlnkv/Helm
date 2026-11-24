@@ -85,9 +85,6 @@ public enum HelmActivity {
 
     public static var running: [Running] { lock.withLock { Array(live.values) } }
 
-    /// For tests, which must not inherit another test's phases.
-    static func reset() { lock.withLock { live.removeAll() } }
-
     /// The phrase that goes after a memory reading.
     ///
     /// Oldest first, because a phase that has been running for forty minutes is

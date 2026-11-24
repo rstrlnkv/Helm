@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Helm
 
 import XCTest
-import HelmContract
 import HelmTestSupport
 @testable import HelmApp
 import HelmRuntime

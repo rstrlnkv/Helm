@@ -52,15 +52,4 @@ extension XCTestCase {
                                                  onLine: { run.line($0) }, onExit: { run.exit($0) })
         return (handle, run)
     }
-
-    /// Waits on the wall clock for `condition`. A test that can wait with
-    /// `waitUntilReached` does that instead.
-    func eventually(_ seconds: TimeInterval, _ condition: () -> Bool) -> Bool {
-        let deadline = Date().addingTimeInterval(seconds)
-        while Date() < deadline {
-            if condition() { return true }
-            Thread.sleep(forTimeInterval: 0.01)
-        }
-        return condition()
-    }
 }

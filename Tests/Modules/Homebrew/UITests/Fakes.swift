@@ -17,27 +17,6 @@ struct FixedLocator: BrewLocator {
     func brewPath() -> String? { "/opt/homebrew/bin/brew" }
 }
 
-/// A fake that answers questions only, given the two stubs **by conforming**. The
-/// port gives `runCapturingDiagnostics` no default on purpose (`Ports.swift`), so a
-/// fake about `doctor` or about streaming conforms to `ProcessRunner` and writes
-/// its own. This one answers `runCapturingDiagnostics` with status 0 and nothing
-/// and ends every streamed child at once.
-protocol QueryOnlyRunner: ProcessRunner {}
-
-extension QueryOnlyRunner {
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                 env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        onExit(0)
-        return NoProcess()
-    }
-}
-
 /// The one `ProcessRunner` the model tests stand on, set up by what the test passes.
 /// Every query is written down and answered with status 0 and `answer(args)` (nothing
 /// by default); a streamed child ends at once, or with `hangingStreams` never does and

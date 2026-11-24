@@ -15,9 +15,6 @@ import XCTest
 /// what is kept here is the key the audit stores it under.
 final class ThePermissionAuditAsksTheSignatureTests: XCTestCase {
 
-    private static let audit = "Sources/HelmApp/PermissionAudit.swift"
-    private static let marketing = "AppBuild.shortVersion"
-
     /// **The stored key is the one earlier builds wrote, and a rename would be
     /// silent.** A fresh key reads as an empty last-seen value, `shouldSpeak`
     /// says nothing on a first run by design, and the run that needs this audit

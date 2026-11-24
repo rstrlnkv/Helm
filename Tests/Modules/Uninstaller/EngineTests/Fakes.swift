@@ -112,8 +112,6 @@ struct FakeApps: AppLister {
         })
     }
 }
-/// Another name for `FakeFS()`, the same Mac.
-typealias NoFiles = FakeFS
 final class FakeTrash: TrashPort, @unchecked Sendable {
     var trashed: [String] = []
     let failing: Set<String>

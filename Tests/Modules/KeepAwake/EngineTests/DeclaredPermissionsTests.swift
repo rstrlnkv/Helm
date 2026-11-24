@@ -1,5 +1,4 @@
 import XCTest
-import HelmRuntime
 import HelmTestSupport
 
 /// A module must declare the grants its features actually need.

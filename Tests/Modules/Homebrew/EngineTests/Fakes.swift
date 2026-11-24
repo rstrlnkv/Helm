@@ -40,26 +40,6 @@ func brewEngine(_ runner: ProcessRunner,
                    tools: ToolsAlreadyInstalled(), ticker: NoWaitTicker())
 }
 
-/// A `ProcessRunner` that implements only the queries: the diagnostics stream is
-/// empty and a streamed child exits 0 at once. New fakes use `ScriptedRunner`.
-protocol QueryOnlyRunner: ProcessRunner {}
-
-extension QueryOnlyRunner {
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                 env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        onExit(0)
-        return NoProcess()
-    }
-}
-
-typealias IdleRunner = ScriptedRunner
-
 /// One canned answer: the words an argument list must contain for this answer to
 /// be the one, and the `(status, stdout)` brew would have replied with.
 struct BrewAnswer {

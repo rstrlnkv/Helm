@@ -3,7 +3,6 @@ import Foundation
 import HelmTestSupport
 import XCTest
 @testable import Module_Screenshots_Engine
-@testable import Module_Screenshots_UI
 
 // One fake per port of the Screenshots engine, for the whole UI test target: `FakeScreen` (`ScreenCapturing`),
 // `CountingBoard` (`ShotPasteboard`), `AsideTrash` (`ShotTrashing`) and `CountingShutter` (`ShutterPlaying`). A
