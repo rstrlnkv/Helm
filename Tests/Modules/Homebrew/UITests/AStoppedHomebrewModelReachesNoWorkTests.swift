@@ -164,7 +164,7 @@ final class AStoppedHomebrewModelReachesNoWorkTests: XCTestCase {
     }
 
     /// `AsyncStream` hands over what it had buffered even after its consumer is
-    /// cancelled, so a loop that must go quiet keeps its own flag (`closed`). The
+    /// cancelled, so `StreamFollower` reads cancellation before each element. The
     /// news and the stop come in one main-actor turn: the loop has not run yet,
     /// so the line and the state are buffered when `stop()` cancels it.
     func testNewsBufferedInTheTurnOfTheStopIsNotDrawn() async {

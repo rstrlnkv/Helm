@@ -57,7 +57,7 @@ private final class SharedLatestRequest: @unchecked Sendable {
 
 @MainActor public final class HomebrewViewModel: ObservableObject {
     private let work: any HomebrewWork
-    private var eventsTask: Task<Void, Never>?
+    private var events: StreamFollower?
     /// Set by `stop()`, once. A closed model reaches no work (`door`) and hears
     /// nothing more.
     private(set) var closed = false
@@ -732,13 +732,7 @@ private final class SharedLatestRequest: @unchecked Sendable {
         self.work = work
         self.updateBeforeChecking = updateBeforeChecking
         refreshesBeforeChecking = updateBeforeChecking.isOn
-        let news = work.stream()
-        eventsTask = Task { [weak self] in
-            for await item in news {
-                guard let self, !self.closed else { break }   // closed: stop consuming
-                self.handle(item)
-            }
-        }
+        events = StreamFollower(work.stream(), owner: self) { $0.handle($1) }
     }
 
     /// The host calls this before the engine's `deactivate()`: the model hears
@@ -750,17 +744,12 @@ private final class SharedLatestRequest: @unchecked Sendable {
     /// with an empty list.
     func stop() {
         closed = true
-        eventsTask?.cancel(); eventsTask = nil
+        events?.cancel()
         pause?.cancel(); infoAsk?.cancel()
         _ = searches.take(); _ = infoAsks.take()
         queuedSearch = nil
         cancelUninstall(); cancelFix()
     }
-
-    /// Ends the event loop, which unregisters the stream's subscriber. The
-    /// `guard` above already released the view model; without this the task
-    /// itself waited for an event that may never come.
-    deinit { eventsTask?.cancel() }
 
     /// What the page asks for on appear — and it asks whether brew is there
     /// every time.

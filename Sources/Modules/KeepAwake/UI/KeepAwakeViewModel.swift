@@ -126,33 +126,18 @@ struct KeepAwakeNoticeBanner: View {
     }
 
     private let engine: KeepAwakeEngine
-    private var eventsTask: Task<Void, Never>?
+    private var events: StreamFollower?
 
-    /// The stream is taken here, synchronously, before the first suspension:
-    /// `stream()` registers the subscriber and replays the latest state in one
-    /// step, so the latest state emitted before this line, and every one after it,
-    /// reaches `apply` once and in order.
     init(engine: KeepAwakeEngine) {
         self.engine = engine
-        let states = engine.stream()
-        eventsTask = Task { [weak self] in
-            for await state in states {
-                guard let self else { break }
-                self.apply(state)
-            }
-        }
+        events = StreamFollower(engine.stream(), owner: self) { $0.apply($1) }
     }
 
     /// Ends the event loop, which unregisters the engine's subscriber. The
     /// host calls it through the descriptor's `stop(_:)` before the engine goes.
     func stop() {
-        eventsTask?.cancel()
-        eventsTask = nil
+        events?.cancel()
     }
-
-    /// The backstop for a model dropped without `stop()`: the loop re-acquires
-    /// `self` per state, so it does not keep the model alive.
-    deinit { eventsTask?.cancel() }
 
     private func apply(_ p: KeepAwakeEngine.StatePayload) {
         isActive = p.isActive

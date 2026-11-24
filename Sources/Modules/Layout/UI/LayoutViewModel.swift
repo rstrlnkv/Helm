@@ -1,4 +1,5 @@
 import SwiftUI
+import HelmUI
 import Module_Layout_Engine
 
 /// What the model asks of the engine: the one door. A fake stands for the engine
@@ -21,21 +22,12 @@ extension LayoutEngine: LayoutWork {}
                                                            lastConversionUndone: false,
                                                            totals: .none)
     private let work: any LayoutWork
-    private var eventsTask: Task<Void, Never>?
+    private var events: StreamFollower?
     private(set) var closed = false
 
-    /// The stream is taken here, synchronously, before the first suspension:
-    /// `stream()` registers the subscriber and replays the latest state in one
-    /// step, so no state emitted from this line on is missed.
     init(work: any LayoutWork) {
         self.work = work
-        let states = work.stream()
-        eventsTask = Task { [weak self] in
-            for await state in states {
-                guard let self, !self.closed else { break }
-                self.state = state
-            }
-        }
+        events = StreamFollower(work.stream(), owner: self) { $0.state = $1 }
     }
 
     /// Ends the event loop, which unregisters the engine's subscriber, and
@@ -43,13 +35,8 @@ extension LayoutEngine: LayoutWork {}
     /// descriptor's `stop(_:)` before the engine's `deactivate()`.
     func stop() {
         closed = true
-        eventsTask?.cancel()
-        eventsTask = nil
+        events?.cancel()
     }
-
-    /// The backstop for a model dropped without `stop()`: the loop re-acquires
-    /// `self` per state, so it does not keep the model alive.
-    deinit { eventsTask?.cancel() }
 
     func fix() {
         guard !closed else { return }
