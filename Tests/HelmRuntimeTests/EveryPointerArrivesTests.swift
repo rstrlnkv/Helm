@@ -354,8 +354,7 @@ final class EveryPointerArrivesTests: XCTestCase {
     func testTheRulesFileStaysInsideItsCeiling() throws {
         let text = try rules()
         let size = text.utf8.count
-        // Delete once the rules rewrite is in: the old status line goes, and with it the old ceiling.
-        let ceiling = text.contains("Work branch `dev`") ? 15_360 : 10_240
+        let ceiling = 10_240
         XCTAssertGreaterThan(size, 4_000, "the rules file is \(size) bytes — an emptied file is under every ceiling")
         XCTAssertLessThanOrEqual(size, ceiling, "the rules file is \(size) bytes, ceiling \(ceiling) — move a story to a page")
     }
