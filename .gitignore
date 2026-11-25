@@ -28,8 +28,7 @@ DerivedData/
 # already draws above, rather than a second policy for the same question.
 .swiftpm/**/xcuserdata/
 
-# Internal agent rules and secrets stay out of this repo: `CLAUDE.local.md`
-# and `AGENTS.md` are symlinks to `<Core>/<project>/CLAUDE.md`.
+# Project instructions live in `<Core>/<project>/AGENTS.md`; the checkout links to them.
 CLAUDE.md
 CLAUDE.local.md
 AGENTS.md

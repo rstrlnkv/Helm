@@ -120,14 +120,14 @@ final class EveryPointerArrivesTests: XCTestCase {
 
     private func rules() throws -> String {
         try XCTUnwrap(try RepoSource.rules(), """
-            no CLAUDE.local.md at \(RepoSource.root.path) or in the main checkout its .git file points to — \
+            no AGENTS.md at \(RepoSource.root.path) or in the main checkout its .git file points to — \
             the rules are not reachable, and a check of them cannot be skipped
             """)
     }
 
     // MARK: - 1. Every section sign resolves
 
-    private static let codeDocumentPointer = regex(#"\b(ARCHITECTURE|CLAUDE)(?:\.local)?(?:\.md)?`?[ \t]*\x{A7}[ \t]*"#)
+    private static let codeDocumentPointer = regex(#"\b(ARCHITECTURE|AGENTS)(?:\.md)?`?[ \t]*\x{A7}[ \t]*"#)
     private static let codePagePointer = regex(#"Architecture/([A-Za-z0-9]+)\.md`?[ \t]*\x{A7}[ \t]*"#)
     private static let codePageMention = regex(#"Architecture/([A-Za-z0-9]+)\.md"#)
 
@@ -136,7 +136,7 @@ final class EveryPointerArrivesTests: XCTestCase {
     private func scanSwift() throws -> CodeScan {
         var scan = CodeScan()
         let architecture = try architectureHeadings()
-        let claude = Self.headings(in: try rules())
+        let rulesHeadings = Self.headings(in: try rules())
         let pages = Set(pagesOnDisk())
         for file in try RepoSource.swiftFiles(under: "Sources") + RepoSource.swiftFiles(under: "Tests") {
             scan.files += 1
@@ -149,7 +149,7 @@ final class EveryPointerArrivesTests: XCTestCase {
             for match in Self.codeDocumentPointer.matches(in: text as String, range: whole) {
                 let document = text.substring(with: match.range(at: 1))
                 if document == "ARCHITECTURE" { scan.architecturePointers += 1 }
-                if Self.resolve(rest(after: match), headings: document == "CLAUDE" ? claude : architecture) == nil {
+                if Self.resolve(rest(after: match), headings: document == "AGENTS" ? rulesHeadings : architecture) == nil {
                     scan.dead.append("\(file) — \(document) \u{A7} \(Self.excerpt(rest(after: match)))")
                 }
             }
@@ -168,6 +168,14 @@ final class EveryPointerArrivesTests: XCTestCase {
         return scan
     }
 
+    func testRulesPointersAcceptBothDocumentSpellings() {
+        for name in ["AGENTS", "`AGENTS.md`"] {
+            let citation = "\(name) \u{A7} Commands"
+            XCTAssertTrue(Self.codeDocumentPointer.firstMatch(in: citation, range: NSRange(citation.startIndex..., in: citation)) != nil, name)
+            XCTAssertTrue(Self.namedBefore.firstMatch(in: name, range: NSRange(name.startIndex..., in: name)) != nil, name)
+        }
+    }
+
     func testEverySectionTheSwiftFilesNameExists() throws {
         let dead = try scanSwift().dead
         XCTAssertTrue(dead.isEmpty, "\(dead.count) Swift pointer(s) arrive nowhere:\n" + dead.joined(separator: "\n"))
@@ -176,11 +184,11 @@ final class EveryPointerArrivesTests: XCTestCase {
     /// Before which document a section sign stands: a named document or page, or
     /// neither, which reads against the hub and all its pages.
     private static let namedBefore = regex(
-        #"(?:\b(ARCHITECTURE|CLAUDE)(?:\.local)?(?:\.md)?|Architecture/([A-Za-z0-9]+)\.md)`?[ \t]*$"#)
+        #"(?:\b(ARCHITECTURE|AGENTS)(?:\.md)?|Architecture/([A-Za-z0-9]+)\.md)`?[ \t]*$"#)
 
     private func scanDocuments() throws -> [String] {
         let architecture = try architectureHeadings()
-        let claude = Self.headings(in: try rules())
+        let rulesHeadings = Self.headings(in: try rules())
         var dead: [String] = []
         for file in try standingDocuments() {
             let text = Self.softJoined(try RepoSource.text(of: file))
@@ -189,9 +197,9 @@ final class EveryPointerArrivesTests: XCTestCase {
                 let named = Self.namedBefore.firstMatch(in: tailEnd, range: NSRange(tailEnd.startIndex..., in: tailEnd))
                 var headings = architecture
                 var label = "\u{A7}"
-                if let named, let range = Range(named.range(at: 1), in: tailEnd), tailEnd[range] == "CLAUDE" {
-                    headings = claude
-                    label = "CLAUDE \u{A7}"
+                if let named, let range = Range(named.range(at: 1), in: tailEnd), tailEnd[range] == "AGENTS" {
+                    headings = rulesHeadings
+                    label = "AGENTS \u{A7}"
                 } else if let named, let range = Range(named.range(at: 2), in: tailEnd) {
                     let name = tailEnd[range] + ".md"
                     guard let own = try? page(String(name)) else { dead.append("\(file) — names the page Architecture/\(name), which does not exist"); continue }
@@ -215,7 +223,7 @@ final class EveryPointerArrivesTests: XCTestCase {
         let architecture = try architectureHeadings()
         let tails = Self.tails(of: Self.softJoined(try rules())).map(\.tail)
         let dead = tails.filter { !$0.hasPrefix(" X ") && Self.resolve($0, headings: architecture) == nil }
-        return (tails.count, dead.map { "CLAUDE.local.md — \u{A7} \(Self.excerpt($0))" })
+        return (tails.count, dead.map { "AGENTS.md — \u{A7} \(Self.excerpt($0))" })
     }
 
     func testEverySectionTheRulesFileNamesExists() throws {

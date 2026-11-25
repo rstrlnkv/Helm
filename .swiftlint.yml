@@ -1,4 +1,4 @@
-# Helm's lint. The house rules live in CLAUDE.md and ARCHITECTURE.md; this
+# Helm's lint. The house rules live in AGENTS.md and ARCHITECTURE.md; this
 # catches only what a machine can see, so it stays quiet enough to be read.
 included:
   - Sources

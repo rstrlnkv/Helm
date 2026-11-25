@@ -42,7 +42,7 @@ public enum RepoSource {
         }
     }
 
-    /// The project's agent rules, `CLAUDE.local.md`, or nil when none is reachable.
+    /// The project's agent rules, `AGENTS.md`, or nil when none is reachable.
     ///
     /// The rules live outside the tree and the code folder holds a gitignored
     /// symlink to them, so a checkout has the file, a linked worktree does not
@@ -58,14 +58,14 @@ public enum RepoSource {
         do {
             return try String(contentsOf: found, encoding: .utf8)
         } catch {
-            throw RepoSource.Failure("CLAUDE.local.md could not be read: \(error)")
+            throw RepoSource.Failure("AGENTS.md could not be read: \(error)")
         }
     }
 
     /// Where the rules may be: the root, then the main checkout's root, read from
     /// the `.git` file's `gitdir` and its `commondir` (no process launched).
     private static func rulesPaths(from start: URL) -> [URL] {
-        var candidates = [start.appendingPathComponent("CLAUDE.local.md")]
+        var candidates = [start.appendingPathComponent("AGENTS.md")]
         let dotGit = start.appendingPathComponent(".git")
         if let pointer = try? String(contentsOf: dotGit, encoding: .utf8),
            pointer.hasPrefix("gitdir:") {
@@ -76,7 +76,7 @@ public enum RepoSource {
                 let commonDir = URL(fileURLWithPath: common.trimmingCharacters(in: .whitespacesAndNewlines),
                                     relativeTo: gitdir).standardizedFileURL
                 candidates.append(commonDir.deletingLastPathComponent()
-                    .appendingPathComponent("CLAUDE.local.md"))
+                    .appendingPathComponent("AGENTS.md"))
             }
         }
         return candidates
