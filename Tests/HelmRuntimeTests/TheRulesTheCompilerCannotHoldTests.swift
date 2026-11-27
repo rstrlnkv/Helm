@@ -6,7 +6,7 @@ import XCTest
 /// must not appear in the source, so each is read off the source, one test a
 /// rule, and each carries the control that proves its scan reads something.
 ///
-/// Every rule is named by the `CLAUDE.local.md` rule it keeps or by the defect
+/// Every rule is named by the `AGENTS.md` rule it keeps or by the defect
 /// class it guards, on its own test.
 final class TheRulesTheCompilerCannotHoldTests: XCTestCase {
 
@@ -41,7 +41,7 @@ final class TheRulesTheCompilerCannotHoldTests: XCTestCase {
 
     // MARK: - 1. Launch through HelmProcess
 
-    /// CLAUDE.local.md: launch through `HelmLaunch`, catch what it raises.
+    /// AGENTS.md: launch through `HelmLaunch`, catch what it raises.
     /// `NSTask` raises an Objective-C exception on some launch paths and a
     /// Swift `catch` cannot see it, so a bare `try process.run()` aborts the app.
     func testNothingInTheShellStartsAChildWithoutTheGuard() throws {
@@ -65,7 +65,7 @@ final class TheRulesTheCompilerCannotHoldTests: XCTestCase {
 
     // MARK: - 2. A module's id is never a literal inside it
 
-    /// CLAUDE.local.md: module id from the engine, not a literal. The id names
+    /// AGENTS.md: module id from the engine, not a literal. The id names
     /// a store and a folder on disk, and a second spelling is compared with nothing.
     func testNoModuleSpellsItsOwnIdAsALiteral() throws {
         var offenders: [String] = []
@@ -93,7 +93,7 @@ final class TheRulesTheCompilerCannotHoldTests: XCTestCase {
 
     // MARK: - 3. A private file is written by PrivateFile
 
-    /// CLAUDE.local.md: files naming somebody's files via `PrivateFile`, not
+    /// AGENTS.md: files naming somebody's files via `PrivateFile`, not
     /// atomic write plus mode change.
     func testNothingWritesAtomicallyAndPrivateFileStillWrites() throws {
         let reads = try SwiftSource.uncommented(under: "Sources")
@@ -144,7 +144,7 @@ final class TheRulesTheCompilerCannotHoldTests: XCTestCase {
 
     // MARK: - 6. A removal goes through HelmTrash
 
-    /// CLAUDE.local.md: remove via `HelmTrash.swift`. The two ports below call
+    /// AGENTS.md: remove via `HelmTrash.swift`. The two ports below call
     /// `FileManager.trashItem(at:` directly today; they are the named exceptions.
     func testFileManagerTrashItemIsCalledOnlyWhereItIsNamed() throws {
         let expected = [
@@ -172,7 +172,7 @@ final class TheRulesTheCompilerCannotHoldTests: XCTestCase {
 
     // MARK: - 8. Deployed keychain items
 
-    /// CLAUDE.local.md: never re-key a deployed keychain item. Each name is
+    /// AGENTS.md: never re-key a deployed keychain item. Each name is
     /// stored data on every Mac that ran the build; a second spelling is a
     /// second item or a new one that reads every saved setting as tampered with.
     func testEachDeployedKeychainNameIsSpelledInOneFileAndNothingElseDeletesOrBuildsAKey() throws {

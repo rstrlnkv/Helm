@@ -61,7 +61,7 @@ Each guard faces a direction the others are blind to; its header says which:
 - `Tests/HelmUITests/StringsCoverageTests.swift` — a symbol missing a language or not `translated`, a lost placeholder, a `%` rule judged on each value alone, an inline table at a call site, an English value posing as a translation.
 - `Tests/HelmUITests/NoOrphanTranslationsTests.swift` — a symbol nothing asks for, a word asked
   by its English spelling. After touching
-  any `Localizable.xcstrings`, the catalog filter in `CLAUDE.local.md` runs them with the other two.
+  any `Localizable.xcstrings`, the catalog filter in `AGENTS.md` runs them with the other two.
 - `Tests/HelmUITests/OneEntryPerKeyTests.swift` — a key written twice in one catalog, which the build
   passes, and one English text under two symbols across the catalogs.
 - `Tests/HelmUITests/PunctuationIsTerminologyTests.swift` — a mark or a space a language

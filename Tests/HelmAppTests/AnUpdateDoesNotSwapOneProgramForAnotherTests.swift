@@ -6,7 +6,7 @@ import XCTest
 import HelmTestSupport
 @testable import HelmApp
 
-/// An update is refused when the downloaded bundle calls itself something else.
+/// Installer refuses a different program or an occupied backup path before handover.
 ///
 /// **Why this is a test.** The swap goes to `Bundle.main.bundlePath`, and a dev
 /// build is a release build with its identifier rewritten after signing, so
@@ -15,7 +15,7 @@ import HelmTestSupport
 /// address. Both halves are correct on their own.
 final class AnUpdateDoesNotSwapOneProgramForAnotherTests: XCTestCase {
 
-    /// A bundle on disk with nothing in it but the one key that matters.
+    /// A scratch bundle with a version and, when supplied, an identifier.
     private func bundle(id: String?) throws -> URL {
         let root = scratchDirectory("identity").appendingPathComponent("Helm.app")
         let contents = root.appendingPathComponent("Contents")
@@ -24,6 +24,13 @@ final class AnUpdateDoesNotSwapOneProgramForAnotherTests: XCTestCase {
         if let id { plist["CFBundleIdentifier"] = id }
         try (plist as NSDictionary).write(to: contents.appendingPathComponent("Info.plist"))
         return root
+    }
+
+    private func archive(_ app: URL) -> URL {
+        let zip = scratchDirectory("update-zip").appendingPathComponent("Helm.zip")
+        let made = HelmProcess.run("/usr/bin/ditto", ["-c", "-k", "--keepParent", app.path, zip.path])
+        XCTAssertEqual(made.status, 0, "precondition: the archive was not made")
+        return zip
     }
 
     func testABundleReadsItsOwnIdentifier() throws {
@@ -38,10 +45,7 @@ final class AnUpdateDoesNotSwapOneProgramForAnotherTests: XCTestCase {
     }
 
     func testTheRefusalStandsBeforeAnythingIsHandedOver() async throws {
-        let app = try bundle(id: "com.helm.app")
-        let zip = scratchDirectory("identity-zip").appendingPathComponent("Helm.zip")
-        let made = HelmProcess.run("/usr/bin/ditto", ["-c", "-k", "--keepParent", app.path, zip.path])
-        XCTAssertEqual(made.status, 0, "precondition: the archive was not made")
+        let zip = try archive(bundle(id: "com.helm.app"))
         XCTAssertTrue(Installer.accepts(version: "9.9.9", build: nil, expected: "9.9.9"),
                       "precondition: the version is one the installer accepts, so only the identity can refuse")
 
@@ -55,6 +59,62 @@ final class AnUpdateDoesNotSwapOneProgramForAnotherTests: XCTestCase {
             guard case .identityMismatch = error else { return XCTFail("refused for another reason: \(error)") }
         }
         XCTAssertFalse(handedOver, "the swap was handed over before the identity was checked")
+    }
+
+    func testAnExistingBackupRefusesBeforeAnythingIsHandedOver() async throws {
+        let install = try bundle(id: "com.helm.app")
+        let backup = URL(fileURLWithPath: install.path + ".helm-old")
+        let word = try write("Contents/word", in: backup)
+        let original = try Data(contentsOf: word)
+
+        try await assertBackupRefusesHandover(at: install)
+
+        XCTAssertEqual(try Data(contentsOf: word), original, "Installer changed the prior backup")
+    }
+
+    func testADanglingBackupLinkRefusesBeforeAnythingIsHandedOver() async throws {
+        let install = try bundle(id: "com.helm.app")
+        let backup = install.path + ".helm-old"
+        let missing = install.deletingLastPathComponent().appendingPathComponent("missing").path
+        let fm = FileManager.default
+        try fm.createSymbolicLink(atPath: backup, withDestinationPath: missing)
+        XCTAssertFalse(fm.fileExists(atPath: missing), "precondition: the link must be dangling")
+
+        try await assertBackupRefusesHandover(at: install)
+
+        XCTAssertEqual(try fm.destinationOfSymbolicLink(atPath: backup), missing,
+                       "Installer changed the prior backup link")
+    }
+
+    func testAFreeBackupPathLetsTheUpdateReachHandover() async throws {
+        enum Stop: Error { case reachedHandover }
+        let install = try bundle(id: "com.helm.app")
+        let zip = try archive(bundle(id: "com.helm.app"))
+        do {
+            try await Installer.installZip(at: zip, expectedVersion: "9.9.9",
+                                           installedID: "com.helm.app", installPath: install.path) { _, path, _, _ in
+                XCTAssertEqual(path, install.path)
+                throw Stop.reachedHandover  // Installer keeps responsibility for staging cleanup.
+            }
+            XCTFail("Installer returned without reaching handover")
+        } catch Stop.reachedHandover {
+        }
+    }
+
+    private func assertBackupRefusesHandover(at install: URL,
+                                            file: StaticString = #filePath, line: UInt = #line) async throws {
+        let zip = try archive(bundle(id: "com.helm.app"))
+        var handedOver = false
+        do {
+            try await Installer.installZip(at: zip, expectedVersion: "9.9.9",
+                                           installedID: "com.helm.app", installPath: install.path,
+                                           handOver: { _, _, _, _ in handedOver = true })
+            XCTFail("Installer accepted an occupied backup path", file: file, line: line)
+        } catch Installer.InstallError.existingBackup {
+        } catch {
+            XCTFail("Installer refused for another reason: \(error)", file: file, line: line)
+        }
+        XCTAssertFalse(handedOver, "Installer handed over despite the backup collision", file: file, line: line)
     }
 
     func testOnlyABundleOfTheInstalledProgramPasses() throws {

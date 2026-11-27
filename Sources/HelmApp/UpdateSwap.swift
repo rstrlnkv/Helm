@@ -15,15 +15,13 @@ import HelmRuntime
 ///
 /// **Move aside, copy, and only then delete.** A `ditto` can refuse for any
 /// reason (a full disk, a payload that will not read, a `/Applications` that
-/// stopped being writable), and the downloaded zip and the unzipped payload are
-/// both gone by then, so deleting first could leave the person with no Helm at
-/// all. And a `ditto` into a live bundle merges into it, making a half-new,
-/// half-old Helm, so nothing is copied until the installed bundle has been moved
-/// out of the way.
+/// stopped being writable), so deleting the original first could leave no Helm
+/// at all. A `ditto` into a live bundle merges into it, so the installed bundle
+/// must move first. An earlier backup may be the only complete copy. Restore it
+/// into an empty install path; if both paths exist, leave both alone.
 ///
 /// **What it can report, and what it cannot.** Nothing it writes can reach a
-/// screen: the report belongs to whichever Helm launches next, which is the new
-/// one when the swap worked and the old one when it did not. So the *app*
+/// screen: the report belongs to whichever Helm launches next. So the *app*
 /// writes the note before it quits (`UpdateHandoff`) and the script's only
 /// reporting duty is to take that note away on success — the failure is then
 /// reported by an act nobody had to remember to perform, which also covers the
@@ -43,30 +41,33 @@ enum UpdateSwap {
     #!/bin/bash
     NEW="$1"; INSTALL="$2"; PID="$3"; WORK="$4"; SELF="$5"; MARK="$6"
     ASIDE="$INSTALL\(asideSuffix)"
-    STATUS=0
+    STATUS=1; RELAUNCH=0
+    restore_original() {
+      [ ! -e "$INSTALL" ] && [ ! -L "$INSTALL" ] &&
+        [ -d "$ASIDE" ] && [ ! -L "$ASIDE" ] && /bin/mv "$ASIDE" "$INSTALL"
+    }
     # Wait for the running Helm to exit before touching its bundle.
     while /bin/kill -0 "$PID" 2>/dev/null; do /bin/sleep 0.2; done
     /bin/sleep 0.3
-    # An earlier attempt's copy would make the move below fail before it started.
-    /bin/rm -rf "$ASIDE"
-    if /bin/mv "$INSTALL" "$ASIDE"; then
+    if [ -e "$ASIDE" ] || [ -L "$ASIDE" ]; then
+      # The install may be partial. Do not overwrite or relaunch it.
+      if restore_original; then RELAUNCH=1; fi
+    elif /bin/mv "$INSTALL" "$ASIDE"; then
       if /usr/bin/ditto "$NEW" "$INSTALL"; then
         /usr/bin/xattr -cr "$INSTALL" 2>/dev/null || true
         /bin/rm -rf "$ASIDE"
         # Only now: the payload and the note are what a failure is recovered from.
         /bin/rm -rf "$WORK"
         /bin/rm -f "$MARK"
-      else
-        /bin/rm -rf "$INSTALL"
-        /bin/mv "$ASIDE" "$INSTALL"
-        STATUS=1
+        STATUS=0; RELAUNCH=1
+      elif /bin/rm -rf "$INSTALL" && restore_original; then
+        RELAUNCH=1
       fi
-    else
-      # Could not be moved out of the way, so nothing is copied over it.
-      STATUS=1
+    elif [ -d "$INSTALL" ]; then
+      # The move failed; nothing was copied over the installed app.
+      RELAUNCH=1
     fi
-    # Whichever bundle is there now — the new one, or the one put back.
-    /usr/bin/open "$INSTALL"
+    if [ "$RELAUNCH" = 1 ]; then /usr/bin/open "$INSTALL"; fi
     /bin/rm -f "$SELF"
     exit "$STATUS"
     """
@@ -85,9 +86,8 @@ enum UpdateSwap {
 /// The note that an update was handed over and has not been seen through.
 ///
 /// Written by the app before it quits, removed by the swap script only when the
-/// copy landed, and read by whichever Helm launches afterwards — the new one if
-/// the swap worked, the one that was put back if it did not. **The absence of
-/// the removal is the report**, so nothing has to be written at the moment
+/// copy landed, and read by whichever Helm launches afterwards. **The absence
+/// of the removal is the report**, so nothing has to be written at the moment
 /// things go wrong, which is the moment least able to write anything: a full
 /// disk cannot record that the disk was full.
 ///
@@ -130,8 +130,8 @@ enum UpdateHandoff {
         return String(bytes: data, encoding: .utf8) ?? ""
     }
 
-    /// Said out loud at launch, once: the person has the version they already
-    /// had, and the trail says which one did not go in.
+    /// Said out loud at launch, once. The note records which update did not
+    /// finish, not whether the swap script put the original back.
     ///
     /// - Returns: the version that did not go in, for `UpdateService` to
     ///   publish to the updates card. **Returned whether or not logging is on**:
@@ -139,9 +139,7 @@ enum UpdateHandoff {
     @discardableResult
     static func reportAtLaunch() -> String? {
         guard let version = take() else { return nil }
-        HelmLog.shared.error("update",
-                             "the update to \(version) did not finish; this copy is the "
-                             + "one that was already installed")
+        HelmLog.shared.error("update", "the update to \(version) did not finish")
         return version
     }
 }

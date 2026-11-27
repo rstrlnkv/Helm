@@ -28,10 +28,8 @@ import Module_Uninstaller_UI
         // Dev builds always log: the file is the evidence a build is triaged on.
         let version = AppBuild.shortVersion ?? "0"
         HelmLog.shared.start(version: version, override: AppSettings.loggingOverride, isDev: AppBuild.isDev)
-        // Straight after the log opens, because this is the one thing that can
-        // have gone wrong while there was no log: an update swap that never
-        // completed leaves its note behind, and this launch is either the copy
-        // that was put back or the one that landed (`UpdateHandoff`).
+        // Read the swap note as soon as the log opens. It records an unfinished
+        // update, not which bundle is running now (`UpdateHandoff`).
         UpdateService.shared.unfinishedUpdate = UpdateHandoff.reportAtLaunch()
 
         host.bootstrap()
