@@ -4,8 +4,8 @@ import HelmRuntime
 
 /// Silent in-app installer for ad-hoc builds. Unzips a self-downloaded app bundle
 /// (no quarantine, so no Gatekeeper prompt), then hands off to a small detached
-/// script that waits for this process to quit, swaps the bundle in place, and
-/// relaunches. The running app cannot overwrite its own bundle, hence the script.
+/// script that waits for this process to quit before it touches the installed
+/// bundle. The running app cannot overwrite its own bundle, hence the script.
 enum Installer {
     enum InstallError: Error {
         case unzipFailed, appNotFound, versionMismatch(String), notReplaceable
@@ -14,10 +14,8 @@ enum Installer {
         case couldNotHandOver
         /// The note that says an update is in flight could not be written, so
         /// nothing was handed over. **Refusing is the safe direction here**, and
-        /// it is the only one available: the note's absence is what reports a
-        /// failed swap, so proceeding without it makes a swap that destroys the
-        /// installed bundle indistinguishable from one that worked — and by then
-        /// this process is gone. `UpdateHandoff.note` says the rest.
+        /// is the only one available: without the note, a failed swap looks like
+        /// one that worked. `UpdateHandoff.note` says the rest.
         case couldNotRecordHandover
         /// The downloaded bundle calls itself something other than what is
         /// installed here, so the swap would put one program at another's
@@ -25,24 +23,27 @@ enum Installer {
         /// no second place to install to, and by the time the script runs there
         /// is nobody here to ask.
         case identityMismatch
+        /// A prior `.helm-old` entry blocks the swap; leave it and Helm alone.
+        case existingBackup
     }
 
-    /// Unzips `zipURL`, validates the bundle, then swaps + relaunches (terminates the app).
+    /// Unzips `zipURL`, validates the bundle, then hands off the swap and quits.
     /// Runs on the main actor, but the unzip does not: `ditto` is a blocking
     /// child process, and holding the main thread through it would freeze the
     /// Installing line. Everything that touches `Bundle.main`, `NSApp` or the
     /// swap stays on main.
     ///
-    /// The unzipped payload is removed on every way out that does not hand it to
-    /// the swap script; once handed over, the script owns it (and keeps it on a
-    /// failed copy, `UpdateSwap`).
+    /// Installer attempts to clean up its staging directory if it does not hand
+    /// it over. After handover, `UpdateSwap` attempts cleanup after a successful
+    /// copy and keeps the staged payload on failure.
     ///
-    /// `installedID` and `handOver` default to the running app and the real swap
-    /// plus `terminate`; they are what the refusals are driven through.
+    /// `installedID` and `installPath` default to the running app's identity and
+    /// path. `handOver` starts the swap and quits; tests substitute a recorder.
     @MainActor
     static func installZip(
         at zipURL: URL, expectedVersion: String,
         installedID: String? = Bundle.main.bundleIdentifier,
+        installPath: String = Bundle.main.bundlePath,
         handOver: (_ newApp: URL, _ installPath: String, _ workDir: String, _ version: String) throws -> Void
             = { newApp, installPath, workDir, version in
                 try launchSwapScript(newApp: newApp.path, installPath: installPath,
@@ -64,7 +65,7 @@ enum Installer {
         }
         guard unzipped == 0 else { throw InstallError.unzipFailed }
 
-        // The downloaded archive is consumed — drop it now so it never lingers.
+        // After a successful unzip, try to remove the consumed archive.
         try? fm.removeItem(at: zipURL)
 
         guard let newApp = firstAppBundle(in: work, fm: fm) else { throw InstallError.appNotFound }
@@ -74,19 +75,27 @@ enum Installer {
         guard accepts(version: got, build: build(ofBundleAt: newApp), expected: expectedVersion)
         else { throw InstallError.versionMismatch(got) }
 
-        // The swap goes to Bundle.main.bundlePath, whatever is standing there,
-        // so the downloaded bundle must call itself the same program that is
+        // The swap goes to the installed path, whatever is standing there, so
+        // the downloaded bundle must call itself the same program that is
         // installed here: a dev build (identifier rewritten after signing) would
         // otherwise take Beta's newer release into the dev build's own address.
         guard isSameProgram(newApp, as: installedID) else {
             throw InstallError.identityMismatch
         }
 
-        let installPath = Bundle.main.bundlePath
         guard fm.isWritableFile(atPath: (installPath as NSString).deletingLastPathComponent)
                 || fm.isWritableFile(atPath: installPath) else {
             throw InstallError.notReplaceable
         }
+
+        // lstat sees a dangling link without following it. The script checks
+        // again after quit, in case a backup appeared after this check.
+        var backup = stat()
+        guard lstat(installPath + UpdateSwap.asideSuffix, &backup) != 0 else {
+            throw InstallError.existingBackup
+        }
+        // A lookup failure other than "not found" does not establish absence.
+        guard errno == ENOENT else { throw InstallError.notReplaceable }
 
         try handOver(newApp, installPath, work.path, expectedVersion)
         handedOver = true
@@ -148,8 +157,8 @@ enum Installer {
 
     private static func launchSwapScript(newApp: String, installPath: String,
                                          workDir: String, version: String) throws {
-        // Keep the script OUTSIDE workDir so it can delete workDir (which holds the
-        // unzipped bundle) as its final act without unlinking itself mid-run.
+        // Keep the script outside workDir: after a successful copy it attempts
+        // cleanup of workDir before relaunch and removal of the script itself.
         let scriptURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("HelmSwap-\(UUID().uuidString).sh")
         try UpdateSwap.script.write(to: scriptURL, atomically: true, encoding: .utf8)
@@ -178,7 +187,7 @@ enum Installer {
                                    pid: ProcessInfo.processInfo.processIdentifier,
                                    workDir: workDir,
                                    script: scriptURL.path)
-        // Detach: the script must outlive this process (it swaps + relaunches us).
+        // Detach: the script must outlive this process to replace its bundle.
         proc.standardOutput = nil
         proc.standardError = nil
         guard HelmProcess.start(proc, path: "/bin/bash") else {

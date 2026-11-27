@@ -7,26 +7,24 @@ import HelmTestSupport
 
 /// The one path in Helm that can destroy Helm.
 ///
-/// By the time the swap script runs, the downloaded zip is deleted, the payload
-/// sits in a directory the script removes whatever happens, and the app that
-/// could have said something has quit. A refused `ditto` (a full disk, a payload
-/// that will not read, a `/Applications` that stopped being writable) must
-/// leave the installed Helm in place.
+/// The swap script waits for Helm to quit before touching the installed bundle.
+/// It attempts to remove the staged payload after a successful copy and retains
+/// it on failure. If the copy fails, the script attempts relaunch only if it
+/// puts the original back. If both the install path and a prior backup are
+/// occupied, it leaves both alone and does not relaunch.
 ///
-/// So the script is driven here, verbatim, against scratch directories: the real
-/// text, the real `mv`, the real `ditto`, the real `rm`. **Its one line that
-/// reaches outside the swap is the relaunch**, and that is the only thing
-/// substituted — `/usr/bin/open` for `/bin/echo`, which also makes the script
-/// say which bundle it would have put back in front of the person. The
-/// substitution is pinned: if the production text stops containing that exact
-/// command, the precondition below fails rather than the run quietly testing a
-/// script that no longer opens anything.
+/// These tests run the swap script against scratch directories. A recorder stands
+/// in for `/usr/bin/open` and captures the path and bundle contents at relaunch.
+/// The restore-denial case substitutes `mv` only to refuse moving the scratch
+/// backup back into place; other moves use the real `mv`.
 final class AFailedCopyKeepsTheInstalledAppTests: XCTestCase {
 
     private struct Run {
         let status: Int32
-        /// What the script handed to the launcher — the bundle the person gets back.
-        let opened: String
+        let errors: String
+        /// What the script handed to the launcher, and what was there at that moment.
+        let opened: String?
+        let openedWord: String?
     }
 
     /// A pid that is certainly not running, so the script's wait for the app to
@@ -48,12 +46,34 @@ final class AFailedCopyKeepsTheInstalledAppTests: XCTestCase {
     override func setUp() { super.setUp(); UpdateHandoff.clear() }
     override func tearDown() { UpdateHandoff.clear(); super.tearDown() }
 
-    private func run(new: URL, install: URL, work: URL, in scratch: URL) throws -> Run {
+    private func run(new: URL, install: URL, work: URL, in scratch: URL,
+                     denyRestore: Bool = false) throws -> Run {
         let text = UpdateSwap.script
         XCTAssertTrue(text.contains("/usr/bin/open \"$INSTALL\""),
                       "the script no longer relaunches through /usr/bin/open, so the "
                       + "substitution below is silently testing something else")
-        let harness = text.replacingOccurrences(of: "/usr/bin/open", with: "/bin/echo")
+        let recorder = #"""
+        record_open() {
+          printf '%s\n' "$@" >> "$0.opened"
+          if [ -f "$1/Contents/word" ]; then
+            /bin/cat "$1/Contents/word" >> "$0.opened-word"
+          fi
+        }
+        """#
+        var harness = recorder + "\n" + text.replacingOccurrences(of: "/usr/bin/open", with: "record_open")
+        if denyRestore {
+            let movePort = #"""
+            fixture_mv() {
+              local fixture="${0%/*}/Applications/Helm.app"
+              if [ "$#" -eq 2 ] && [ "$1" = "$fixture.helm-old" ] && [ "$2" = "$fixture" ]; then
+                printf '%s\n' 'test: denied backup restore' >&2
+                return 1
+              fi
+              /bin/mv "$@"
+            }
+            """#
+            harness = movePort + "\n" + harness.replacingOccurrences(of: "/bin/mv", with: "fixture_mv")
+        }
         let scriptURL = scratch.appendingPathComponent("swap.sh")
         try harness.write(to: scriptURL, atomically: true, encoding: .utf8)
 
@@ -63,7 +83,11 @@ final class AFailedCopyKeepsTheInstalledAppTests: XCTestCase {
                                    pid: try deadPID(),
                                    workDir: work.path,
                                    script: scriptURL.path))
-        return Run(status: result.status, opened: result.output.trimmingCharacters(in: .whitespacesAndNewlines))
+        let opened = try? String(contentsOf: scriptURL.appendingPathExtension("opened"), encoding: .utf8)
+        let openedWord = try? String(contentsOf: scriptURL.appendingPathExtension("opened-word"), encoding: .utf8)
+        return Run(status: result.status, errors: result.errors,
+                   opened: opened?.trimmingCharacters(in: .newlines),
+                   openedWord: openedWord)
     }
 
     /// `install` holding one file, so "which bundle is there now" is a question
@@ -102,6 +126,7 @@ final class AFailedCopyKeepsTheInstalledAppTests: XCTestCase {
                        "the note saying an update was in flight survived the update, so "
                        + "the next launch reports a failure that did not happen")
         XCTAssertEqual(result.opened, install.path)
+        XCTAssertEqual(result.openedWord, "new", "the replaced bundle was not in place at relaunch")
     }
 
     func testACopyThatFailsPutsTheOldBundleBackAndKeepsTheNoteAndThePayload() throws {
@@ -137,6 +162,75 @@ final class AFailedCopyKeepsTheInstalledAppTests: XCTestCase {
         XCTAssertEqual(result.opened, install.path,
                        "the script relaunched something other than the bundle it left "
                        + "in place")
+    }
+
+    func testAnInterruptedSwapWithOnlyTheBackupRestoresAndRelaunchesTheOriginal() throws {
+        let scratch = scratchDirectory("swap-interrupted")
+        let install = scratch.appendingPathComponent("Applications/Helm.app")
+        let aside = URL(fileURLWithPath: install.path + ".helm-old")
+        let work = scratch.appendingPathComponent("work")
+        let new = work.appendingPathComponent("Helm.app")
+        try bundle(aside, saying: "old")
+        try bundle(new, saying: "new")
+        XCTAssertTrue(UpdateHandoff.note(version: "0.9.9"), "the handoff note was never planted")
+
+        let result = try run(new: new, install: install, work: work, in: scratch)
+
+        XCTAssertNotEqual(result.status, 0, "restoring the original must not report a successful update")
+        XCTAssertEqual(word(in: install), "old",
+                       "the original was not restored: backup=\(word(in: aside) ?? "missing")")
+        XCTAssertEqual(word(in: new), "new", "the retry did not preserve the staged payload")
+        XCTAssertEqual(try? String(contentsOf: marker, encoding: .utf8), "0.9.9",
+                       "the retry did not preserve the handoff note")
+        XCTAssertEqual(result.opened, install.path, "the retry must attempt one relaunch at the installed path")
+        XCTAssertEqual(result.openedWord, "old", "the retry attempted a relaunch without the original in place")
+    }
+
+    func testAnInterruptedSwapWithAPartialInstallLeavesBothBundlesUntouchedWithoutRelaunch() throws {
+        let scratch = scratchDirectory("swap-interrupted-partial")
+        let applications = scratch.appendingPathComponent("Applications")
+        let install = applications.appendingPathComponent("Helm.app")
+        let aside = URL(fileURLWithPath: install.path + ".helm-old")
+        let work = scratch.appendingPathComponent("work")
+        // No new bundle was left at the source, so `ditto` fails if the retry reaches it.
+        let new = work.appendingPathComponent("Helm.app")
+        try bundle(aside, saying: "old")
+        try bundle(install, saying: "partial")
+        let originalTree = tree(under: applications)
+        try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
+        XCTAssertTrue(UpdateHandoff.note(version: "0.9.9"), "the handoff note was never planted")
+
+        let result = try run(new: new, install: install, work: work, in: scratch)
+
+        XCTAssertNotEqual(result.status, 0, "the retry reported success without a new bundle")
+        XCTAssertEqual(tree(under: applications), originalTree, "the retry changed the bundle tree")
+        XCTAssertEqual(word(in: install), "partial", "the retry changed the partial install")
+        XCTAssertEqual(word(in: aside), "old", "the retry changed the original backup")
+        XCTAssertNil(result.opened, "the retry attempted to relaunch with both paths occupied")
+        XCTAssertEqual(try? String(contentsOf: marker, encoding: .utf8), "0.9.9",
+                       "the failed retry did not preserve the handoff note")
+    }
+
+    func testAFailedCopyDoesNotRelaunchWhenTheBackupCannotBeMovedBack() throws {
+        let scratch = scratchDirectory("swap-restore-denied")
+        let install = scratch.appendingPathComponent("Applications/Helm.app")
+        let aside = URL(fileURLWithPath: install.path + ".helm-old")
+        let work = scratch.appendingPathComponent("work")
+        let new = work.appendingPathComponent("Helm.app") // Missing, so `ditto` fails.
+        try bundle(install, saying: "old")
+        try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
+        XCTAssertTrue(UpdateHandoff.note(version: "0.9.9"), "the handoff note was never planted")
+
+        let result = try run(new: new, install: install, work: work, in: scratch, denyRestore: true)
+
+        XCTAssertTrue(result.errors.contains("test: denied backup restore"),
+                      "the scratch backup move was never denied: \(result.errors)")
+        XCTAssertNotEqual(result.status, 0, "the failed rollback reported a successful update")
+        XCTAssertEqual(word(in: aside), "old", "the denied rollback lost the original bundle")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: install.path))
+        XCTAssertNil(result.opened, "the script attempted a relaunch after the restore was denied")
+        XCTAssertEqual(try? String(contentsOf: marker, encoding: .utf8), "0.9.9",
+                       "the failed rollback did not preserve the handoff note")
     }
 
     /// The script names `$1 … $n` and the spawn builds the array; nothing between
