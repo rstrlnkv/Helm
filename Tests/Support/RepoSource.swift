@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// The repository, as the tests that read it see it.
@@ -42,24 +43,93 @@ public enum RepoSource {
         }
     }
 
-    /// The project's agent rules, `AGENTS.md`, or nil when none is reachable.
-    ///
-    /// The rules live outside the tree and the code folder holds a gitignored
-    /// symlink to them, so a checkout has the file, a linked worktree does not
-    /// (it is found in the main checkout, whose root is the parent of the
-    /// worktree's common git directory — read from the `.git` file's `gitdir`
-    /// and its `commondir`, no process launched) and a fresh clone has neither.
-    /// nil is that third state and nothing else: a file that exists and cannot
-    /// be read throws, so it is never taken for an absent one. `from` is a seam
-    /// for the test that proves the nil path; the default is this repository.
-    public static func rules(from start: URL = root) throws -> String? {
-        guard let found = rulesPaths(from: start).first(where: { FileManager.default.fileExists(atPath: $0.path) })
-        else { return nil }
-        do {
-            return try String(contentsOf: found, encoding: .utf8)
-        } catch {
-            throw RepoSource.Failure("AGENTS.md could not be read: \(error)")
+    /// Read the first local `AGENTS.md`, following a recognized project entry.
+    /// Managed entries use sibling Core unless given a trusted `coreDirectory`
+    /// or, for the default checkout, an absolute `CORE_DIR` from the environment.
+    /// Return nil if both checkouts lack the file; throw for bad entries or reads.
+    public static func rules(from start: URL? = nil, coreDirectory: URL? = nil) throws -> String? {
+        let core = start == nil ? ProcessInfo.processInfo.environment["CORE_DIR"] : nil
+        let configuredCore = coreDirectory ?? core.flatMap { path in
+            path.hasPrefix("/") ? URL(fileURLWithPath: path, isDirectory: true) : nil
         }
+        for entry in rulesPaths(from: start ?? root) {
+            do {
+                // Unlike fileExists, this sees a dangling symlink as an entry.
+                _ = try FileManager.default.attributesOfItem(atPath: entry.path)
+            } catch let error as NSError where error.domain == NSCocoaErrorDomain
+                && error.code == CocoaError.fileReadNoSuchFile.rawValue {
+                continue
+            } catch {
+                throw Failure("\(entry.path) could not be inspected: \(error)")
+            }
+            let text = try readRules(at: entry)
+            guard let target = try projectRulesPath(in: text, entry: entry, coreDirectory: configuredCore)
+            else { return text }
+            return try readRules(at: target)
+        }
+        return nil
+    }
+
+    private static func readRules(at file: URL) throws -> String {
+        do {
+            guard try file.resolvingSymlinksInPath().resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true
+            else { throw Failure("not a regular file") }
+            return try String(contentsOf: file, encoding: .utf8)
+        } catch {
+            throw Failure("\(file.path) could not be read: \(error)")
+        }
+    }
+
+    private static func projectRulesPath(in text: String, entry: URL, coreDirectory: URL?) throws -> URL? {
+        let lines = text.split(whereSeparator: \.isNewline)
+        guard lines.first == "# Local agent entry point" else { return nil }
+        let malformed = Failure("\(entry.path): malformed local agent entry point")
+        guard !lines.contains(where: {
+            let line = $0.drop(while: \.isWhitespace)
+            return line.hasPrefix("```") || line.hasPrefix("~~~")
+        }) else { throw malformed }
+
+        let bullets = lines.filter { $0.hasPrefix("- ") }
+        let siblingCore = entry.deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Core", isDirectory: true)
+        let core: URL, name: String, supplied: Substring?
+        if bullets == ["- `../Core/AGENTS.md`", "- `../Core/helm/AGENTS.md`"] {
+            (core, name, supplied) = (siblingCore, "AGENTS.md", nil)
+        } else {
+            // The managed Core row is not a source of paths to read.
+            let managedPrefix = "- Project: "
+            guard bullets.count == 1 || (bullets.count == 2 && bullets[0].hasPrefix("- Core (if present): ")),
+                  let row = bullets.last, row.hasPrefix(managedPrefix) else { throw malformed }
+            let path = row.dropFirst(managedPrefix.count)
+            guard path.hasPrefix("/"), !path.contains("\0"),
+                  path.hasSuffix("/AGENTS.md") || path.hasSuffix("/CLAUDE.md") else { throw malformed }
+            (core, name, supplied) = (coreDirectory ?? siblingCore,
+                                      path.hasSuffix("/AGENTS.md") ? "AGENTS.md" : "CLAUDE.md", path)
+        }
+
+        let canonicalCore = try resolvedRulesPath(core)
+        let project = canonicalCore.appendingPathComponent("helm", isDirectory: true)
+        let target = project.appendingPathComponent(name, isDirectory: false)
+        let outOfScope = Failure("\(entry.path): project target is outside \(project.path)")
+        // Compare trusted spellings, including Foundation's spelling without /private, before opening the target.
+        if let supplied, supplied != target.path {
+            let spellings = [core, canonicalCore.resolvingSymlinksInPath()]
+            guard spellings.contains(where: {
+                supplied == $0.appendingPathComponent("helm/\(name)", isDirectory: false).path
+            }) else { throw outOfScope }
+        }
+        let resolved = try resolvedRulesPath(target)
+        guard resolved.path.hasPrefix(project.path + "/") else { throw outOfScope }
+        return resolved
+    }
+
+    private static func resolvedRulesPath(_ file: URL) throws -> URL {
+        // Foundation may return the input unchanged if symlink resolution fails.
+        guard let resolved = realpath(file.path, nil) else {
+            throw Failure("\(file.path) could not be resolved")
+        }
+        defer { free(resolved) }
+        return URL(fileURLWithPath: String(cString: resolved), isDirectory: false)
     }
 
     /// Where the rules may be: the root, then the main checkout's root, read from
