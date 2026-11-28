@@ -42,7 +42,7 @@ The toolbar is 52 pt tall and centres its items at y 26 while the row centres at
 
 ## The header band's Dark numbers
 
-`darkFill` and `darkShade` were read on the Glass ground (Finder's sidebar material at level 49) and apply under Glass only; Flat keeps the Light fill in Dark, unmeasured against its own ground.
+`darkFill` and `darkShade` were tuned against the former Finder-style glass backdrop. They still apply only to the Liquid Glass toolbar style in Dark; Flat keeps the Light fill in Dark. The header values were not retuned for the shared system backdrop.
 
 ## Where the row is drawn, and where it is not
 

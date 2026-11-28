@@ -404,8 +404,8 @@ struct MenuBarSettingsView: View {
 }
 
 /// **Flat or Liquid Glass**, written to `AppSettings.barAppearance`, whose setter posts
-/// `.helmBarAppearanceChanged` for the window's ground (`helmTracksBarAppearance`,
-/// `ShellContentView`). Its own `@State`, so the page holds nothing for it. The header row's right-click menu
+/// `.helmBarAppearanceChanged` for the header row (`helmTracksBarAppearance`).
+/// Its own `@State`, so the page holds nothing for it. The header row's right-click menu
 /// (`HeaderBarMenu`) writes the same setting, so the row listens for the notification and takes the value
 /// the store holds.
 struct BarAppearanceRow: View {

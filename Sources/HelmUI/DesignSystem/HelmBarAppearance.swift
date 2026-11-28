@@ -9,8 +9,7 @@ import SwiftUI
 /// - `liquidGlass` — the system's own glass under a group. What nothing says
 ///   is this look.
 ///
-/// The look also picks the window's ground (`ShellContentView`): flat is the system's flat sidebar material,
-/// `liquidGlass` is `NSGlassEffectView`.
+/// The toolbar style does not change the window's system ground.
 ///
 /// The window sets the look at the root of the detail pane (`helmTracksBarAppearance`), and the header row reads
 /// it (Architecture/ThePageHeader.md § The page header): under `liquidGlass` the tabs are the window's `NSToolbar`

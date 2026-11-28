@@ -2,24 +2,18 @@ import AppKit
 import HelmRuntime
 import HelmUI
 
-/// **The shell's content view: the window's ground by the look, the sidebar on it,
+/// **The shell's content view: the system's sidebar material as the window's ground, the sidebar on it,
 /// and the opaque card inset from the window's edge, with the pane clipped inside
 /// the card to the card's corners.** Every frame comes from `ShellGeometry`; the
 /// view holds no radius of its own, it cuts the card from the window's corner and
 /// applies it to the card and to the clip in one place, `apply(_:)`.
 ///
-/// **The ground is the look's** (`HelmBarAppearance`): Flat is the system's flat
-/// sidebar material behind the window, `.sidebar` and `.followsWindowActiveState`,
-/// Glass is the material Finder's sidebar wears (`makeGlassGround()`). Both are full bleed and one is visible
-/// (`showGround(_:)`); a live change of the look swaps them at once, without an
-/// animation, as the header row's look does.
-///
 /// **The corner.** On macOS 27 it is the token `HelmRadius.window`, decided once
 /// in `init`: nothing is read and no line is written. On macOS 26 it is
 /// `WindowCorner`'s reading in `layout()` (not testable here, no such machine).
 ///
-/// Subviews, bottom to top: the flat ground, the glass ground, the sidebar, as
-/// wide as the card's x so the two cannot part; the card, and inside it the clip,
+/// Subviews, bottom to top: the ground; the sidebar, as wide as the card's x
+/// so the two cannot part; the card, and inside it the clip,
 /// and inside that the pane; last, the window buttons' capsule
 /// (`ShellWindowButtons`), above everything and hit by nothing.
 /// The card carries the fill and the shadow and never masks, so the shadow is
@@ -103,12 +97,8 @@ final class ShellContentView: NSView {
     /// The card's page area in window coordinates, for the window to place presses on the header row.
     var paneFrameInWindow: NSRect { pane.convert(pane.bounds, to: nil) }
 
-    /// The Flat look's ground: the system's flat material behind the window (probe: it follows the window's
-    /// activity by itself).
-    private let flat = NSVisualEffectView()
-    private let glass = ShellContentView.makeGlassGround()
-    /// The look the ground wears, read when it changes (`.helmBarAppearanceChanged`), never kept.
-    private let look: () -> HelmBarAppearance
+    /// The full-bleed system ground follows the window's activity, not the toolbar style.
+    private let ground = NSVisualEffectView()
     private let buttons = ShellWindowButtons()
     /// The card's radius as last applied.
     private var applied: CGFloat?
@@ -119,9 +109,6 @@ final class ShellContentView: NSView {
     /// back into the same window keeps its journal and its bound, and only a
     /// different window starts a new one.
     private weak var journalWindow: NSWindow?
-    /// Swaps the ground when the look changes; removed in `deinit`, which Swift 6 treats as nonisolated
-    /// even on a `@MainActor` class.
-    nonisolated(unsafe) private var lookObserver: NSObjectProtocol?
     private let system = ProcessInfo.processInfo.operatingSystemVersion
 
     /// Whether the corner is the token's (macOS 27 and later) and not read.
@@ -130,23 +117,15 @@ final class ShellContentView: NSView {
     override var isFlipped: Bool { true }
 
     /// The views are held for as long as this view lives.
-    init(sidebar: NSView, pane: NSView, look: @escaping () -> HelmBarAppearance) {
+    init(sidebar: NSView, pane: NSView) {
         self.sidebar = sidebar
         self.pane = pane
-        self.look = look
         super.init(frame: .zero)
 
-        flat.material = .sidebar
-        flat.blendingMode = .behindWindow
-        flat.state = .followsWindowActiveState
-        addSubview(flat)
-        addSubview(glass)
-        showGround(look())
-        lookObserver = NotificationCenter.default.addObserver(
-            forName: .helmBarAppearanceChanged, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { if let self { self.showGround(self.look()) } }
-        }
+        ground.material = .sidebar
+        ground.blendingMode = .behindWindow
+        ground.state = .followsWindowActiveState
+        addSubview(ground)
         addSubview(sidebar)
 
         card.wantsLayer = true
@@ -176,25 +155,6 @@ final class ShellContentView: NSView {
     }
 
     required init?(coder: NSCoder) { fatalError("ShellContentView is built in code") }
-
-    deinit {
-        if let lookObserver { NotificationCenter.default.removeObserver(lookObserver) }
-    }
-
-    // MARK: - the ground
-
-    /// One ground is visible: the look's. An instant swap; the cases are named so a third look cannot be
-    /// forgotten here.
-    private func showGround(_ look: HelmBarAppearance) {
-        switch look {
-        case .flat:
-            flat.isHidden = false
-            glass.isHidden = true
-        case .liquidGlass:
-            flat.isHidden = true
-            glass.isHidden = false
-        }
-    }
 
     // MARK: - fill
 
@@ -284,30 +244,12 @@ final class ShellContentView: NSView {
         sidebarWidth = fold.from + (fold.to - fold.from) * CGFloat(HelmMotion.interfaceProgress(at: fraction))
     }
 
-    /// **The Glass ground is the material AppKit gives a split view's sidebar.**
-    /// `NSSplitViewItem(sidebarWithViewController:)` builds an `NSGlassEffectView`, style `.regular`,
-    /// `cornerRadius` 0, private `_variant` 18, in an opaque window; this is that view, and it matches
-    /// Finder's sidebar in every key, appearance and look. A system without the `_variant` selector keeps
-    /// the plain regular glass, and the log says so.
-    private static func makeGlassGround() -> NSGlassEffectView {
-        let glass = NSGlassEffectView()
-        glass.style = .regular
-        glass.cornerRadius = 0
-        if glass.responds(to: NSSelectorFromString("set_variant:")) {
-            glass.setValue(18, forKey: "_variant")
-        } else {
-            HelmLog.shared.info("app", "window backdrop: no sidebar variant on this system, plain regular glass")
-        }
-        return glass
-    }
-
     // MARK: - layout
 
     override func layout() {
         super.layout()
 
-        flat.frame = bounds
-        glass.frame = bounds
+        ground.frame = bounds
 
         let frame = ShellGeometry.cardFrame(in: bounds.size, sidebarWidth: sidebarWidth)
         card.frame = frame

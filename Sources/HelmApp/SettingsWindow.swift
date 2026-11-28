@@ -5,7 +5,7 @@ import HelmRuntime
 import HelmUI
 import HelmAppStrings
 
-/// The settings window: the ground of the stored look (`HelmBarAppearance`) with a column of module rows on it, and an opaque
+/// The settings window: the system's sidebar material with a column of module rows on it, and an opaque
 /// card holding the page, built by `SettingsShellViewController` from
 /// `ShellContentView`. Each of the two hosts a SwiftUI view; a shared
 /// `SettingsModel` carries the selection between them.
@@ -398,7 +398,7 @@ enum SettingsSelection: Hashable {
         detail.safeAreaRegions = []
         addChild(sidebar)
         addChild(detail)
-        return ShellContentView(sidebar: sidebar.view, pane: detail.view) { AppSettings.barAppearance }
+        return ShellContentView(sidebar: sidebar.view, pane: detail.view)
     }
 }
 

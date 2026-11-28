@@ -48,15 +48,13 @@ struct HeaderEdgeLight: ViewModifier {
 
     /// Near-white at 3.8%, from the composite over four backdrops.
     static let fill = 0.038
-    /// Under Glass in Dark the fill is 1%, not 3.8%: at 3.8% the band matches the
-    /// window backdrop's level (Finder's sidebar material,
-    /// `ShellContentView.makeGlassGround()`) and takes the card's top edge and
-    /// rounded corners away. Read on the Glass ground only; Flat and Light keep
-    /// 3.8%, unmeasured against the Flat ground.
+    /// The Dark fill for the Liquid Glass toolbar style. It was tuned against the
+    /// former Finder-style glass backdrop: `fill` matched that backdrop and hid
+    /// the card's top edge and rounded corners. Flat and Light use `fill`.
     static let darkFill = 0.01
-    /// In Dark, with content scrolled under the strip, the material is shaded by
-    /// 20% black: unshaded, `Material.bar` reaches the backdrop's level and the
-    /// band loses the card's edge. At rest and in Light nothing is shaded.
+    /// The Dark shade for the Liquid Glass toolbar style, with content scrolled
+    /// under the strip. Unshaded `Material.bar` matched the former backdrop and
+    /// hid the card's edge. At rest and in Light nothing is shaded.
     static let darkShade = 0.2
     /// The bottom edge, at the same moment as the fill.
     static let rule = 0.071
@@ -71,7 +69,6 @@ struct HeaderEdgeLight: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.helmBarAppearance) private var appearance
 
-    /// The Dark numbers were read on the Glass ground; see `darkFill`.
     private var glassDark: Bool { colorScheme == .dark && appearance == .liquidGlass }
 
     func body(content: Content) -> some View {
