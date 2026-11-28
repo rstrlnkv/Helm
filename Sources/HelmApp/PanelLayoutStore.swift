@@ -1,4 +1,3 @@
-import Foundation
 import HelmRuntime
 import HelmUI
 
@@ -21,9 +20,7 @@ enum PanelLayoutStore {
     /// one; a stored layout keeps its own order.
     static func read(from store: NamespacedStore, offered: [String],
                      sizes: [String: PanelWidgetSize] = [:]) -> PanelLayout {
-        let stored = store.data(key).flatMap {
-            try? JSONDecoder().decode(PanelLayout.self, from: $0)
-        }
+        let stored = store.readJSON(PanelLayout.self, for: key)
         guard let stored else { return PanelLayout.seeded(from: offered, sizes: sizes) }
         return stored.reconciled(arriving: offered)
     }
@@ -33,7 +30,6 @@ enum PanelLayoutStore {
     /// The editor has a Done, but the panel can close without it being pressed:
     /// a click outside, Escape, the icon's own click.
     static func write(_ layout: PanelLayout, to store: NamespacedStore) {
-        guard let data = try? JSONEncoder().encode(layout) else { return }
-        store.set(data, for: key)
+        store.writeJSON(layout, for: key)
     }
 }

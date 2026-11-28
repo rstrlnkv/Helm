@@ -1,4 +1,3 @@
-import Foundation
 import HelmRuntime
 import HelmUI
 
@@ -23,9 +22,7 @@ enum SidebarLayoutStore {
     /// somebody happens to rearrange something.
     static func read(from store: NamespacedStore,
                      registry: [(String, ModuleCategory)]) -> SidebarLayout {
-        let stored = store.data(key).flatMap {
-            try? JSONDecoder().decode(SidebarLayout.self, from: $0)
-        }
+        let stored = store.readJSON(SidebarLayout.self, for: key)
         // No layout yet: seed, then honour a flat order the person may have
         // stored under the older key, so an upgrade does not rearrange their
         // sidebar. Once a layout exists the flat key is not consulted again.
@@ -39,8 +36,7 @@ enum SidebarLayoutStore {
     }
 
     static func write(_ layout: SidebarLayout, to store: NamespacedStore) {
-        guard let data = try? JSONEncoder().encode(layout) else { return }
-        store.set(data, for: key)
+        store.writeJSON(layout, for: key)
     }
 
     /// The seeded arrangement, with each section's modules put in the order the
