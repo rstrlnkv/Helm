@@ -164,7 +164,7 @@ struct ShellSidebar: View {
                         } else if !AppStr.sectionTitle(group.section).isEmpty {
                             Text(AppStr.sectionTitle(group.section))
                                 .font(HelmText.rowDetail.weight(.medium))
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(HelmText.quiet)
                                 .lineLimit(1)
                                 .padding(.horizontal, HelmSpace.s4)
                                 .padding(.top, Self.headingTop).padding(.bottom, HelmSpace.s2)
